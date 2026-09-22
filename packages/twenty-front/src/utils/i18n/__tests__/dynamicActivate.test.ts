@@ -8,6 +8,13 @@ describe('dynamicActivate', () => {
     expect(document.documentElement.lang).toBe('he-IL');
   });
 
+  it('lays the document out right to left for Persian', async () => {
+    await dynamicActivate('fa-IR');
+
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(document.documentElement.lang).toBe('fa-IR');
+  });
+
   it('lays it back out left to right when the locale changes', async () => {
     await dynamicActivate('ar-SA');
     await dynamicActivate('fr-FR');
