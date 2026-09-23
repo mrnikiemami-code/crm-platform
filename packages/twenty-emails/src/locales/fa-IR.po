@@ -16,92 +16,92 @@ msgstr ""
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "{actorName} updated server administrator access for {targetName} ({targetEmail})."
-msgstr "{actorName} updated server administrator access for {targetName} ({targetEmail})."
+msgstr "{actorName} دسترسی مدیر سرور را برای {targetName} ({targetEmail}) به‌روزرسانی کرد."
 
 #. js-lingui-explicit-id
 #: src/emails/send-invite-link.email.tsx
 msgid "{senderName} (<0>{senderEmail}</0>) has invited you to join a workspace called <1>{workspaceName}</1>."
-msgstr "{senderName} (<0>{senderEmail}</0>) has invited you to join a workspace called <1>{workspaceName}</1>."
+msgstr "{senderName} (<0>{senderEmail}</0>) شما را به پیوستن به فضای کاری <1>{workspaceName}</1> دعوت کرده است."
 
 #. js-lingui-explicit-id
 #: src/emails/validate-approved-access-domain.email.tsx
 msgid "{senderName} (<0>{senderEmail}</0>): Please validate this domain to allow users with <1>@{domain}</1> email addresses to join your workspace without requiring an invitation."
-msgstr "{senderName} (<0>{senderEmail}</0>): Please validate this domain to allow users with <1>@{domain}</1> email addresses to join your workspace without requiring an invitation."
+msgstr "{senderName} (<0>{senderEmail}</0>): لطفاً این دامنه را تأیید کنید تا کاربران با ایمیل <1>@{domain}</1> بتوانند بدون دعوت‌نامه به فضای کاری شما بپیوندند."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-converting.email.tsx
 msgid "A heads up before your trial ends"
-msgstr "A heads up before your trial ends"
+msgstr "یادآوری قبل از پایان دوره آزمایشی"
 
 #. js-lingui-explicit-id
 #: src/emails/send-invite-link.email.tsx
 msgid "Accept invite"
-msgstr "Accept invite"
+msgstr "پذیرش دعوت"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-ending.email.tsx
 msgid "Add a payment method"
-msgstr "Add a payment method"
+msgstr "افزودن روش پرداخت"
 
 #. js-lingui-explicit-id
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "After that, the workspace and all of its data will be permanently deleted — and we won't be able to bring it back."
-msgstr "After that, the workspace and all of its data will be permanently deleted — and we won't be able to bring it back."
+msgstr "پس از آن، فضای کاری و تمام داده‌های آن برای همیشه حذف می‌شود — و امکان بازگرداندن آن وجود نخواهد داشت."
 
 #. js-lingui-explicit-id
 #: src/emails/send-email-verification-link.email.tsx
 msgid "Confirm new email"
-msgstr "Confirm new email"
+msgstr "تأیید ایمیل جدید"
 
 #. js-lingui-explicit-id
 #: src/emails/send-email-verification-link.email.tsx
 msgid "Confirm your email address"
-msgstr "Confirm your email address"
+msgstr "آدرس ایمیل خود را تأیید کنید"
 
 #. js-lingui-explicit-id
 #: src/emails/send-email-verification-link.email.tsx
 msgid "Confirm your new email address"
-msgstr "Confirm your new email address"
+msgstr "آدرس ایمیل جدید خود را تأیید کنید"
 
 #. js-lingui-explicit-id
 #: src/emails/password-update-notify.email.tsx
 msgid "Connect to Twenty"
-msgstr "Connect to Twenty"
+msgstr "اتصال به Twenty"
 
 #. js-lingui-explicit-id
 #: src/emails/password-update-notify.email.tsx
 msgid "Dear {userName},"
-msgstr "Dear {userName},"
+msgstr "{userName} عزیز،"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Developers"
-msgstr "Developers"
+msgstr "توسعه‌دهندگان"
 
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "Disabled"
-msgstr "Disabled"
+msgstr "غیرفعال"
 
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "Enabled"
-msgstr "Enabled"
+msgstr "فعال"
 
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "Full admin panel access: {fullAdminStatus}"
-msgstr "Full admin panel access: {fullAdminStatus}"
+msgstr "دسترسی کامل به پنل مدیریت: {fullAdminStatus}"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Github"
-msgstr "Github"
+msgstr "GitHub"
 
 #. js-lingui-explicit-id
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "Good news first: your workspace <0>{workspaceDisplayName}</0> is only paused — none of your data is gone."
-msgstr "Good news first: your workspace <0>{workspaceDisplayName}</0> is only paused — none of your data is gone."
+msgstr "ابتدا خبر خوب: فضای کاری <0>{workspaceDisplayName}</0> فقط موقتاً متوقف شده — هیچ‌کدام از داده‌های شما حذف نشده است."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
@@ -111,7 +111,7 @@ msgstr "Good news first: your workspace <0>{workspaceDisplayName}</0> is only pa
 #: src/emails/password-update-notify.email.tsx
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "Hello,"
-msgstr "Hello,"
+msgstr "سلام،"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
@@ -120,143 +120,143 @@ msgstr "Hello,"
 #: src/emails/clean-suspended-workspace.email.tsx
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "Hi {userName},"
-msgstr "Hi {userName},"
+msgstr "سلام {userName}،"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-converting.email.tsx
 msgid "If Twenty is working for you, you're all set — there's nothing to do. If it's not the right fit, you can cancel in one click before then and you won't be charged."
-msgstr "If Twenty is working for you, you're all set — there's nothing to do. If it's not the right fit, you can cancel in one click before then and you won't be charged."
+msgstr "اگر Twenty برایتان مناسب است، کار دیگری لازم نیست. اگر احساس می‌کنید مناسب نیست، می‌توانید قبل از موعد با یک کلیک لغو کنید و هزینه‌ای از شما کسر نمی‌شود."
 
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "If you did not expect this change, review your server administrators immediately."
-msgstr "If you did not expect this change, review your server administrators immediately."
+msgstr "اگر انتظار این تغییر را نداشتید، فوراً مدیران سرور خود را بررسی کنید."
 
 #. js-lingui-explicit-id
 #: src/emails/password-update-notify.email.tsx
 msgid "If you did not initiate this change, please contact your workspace owner immediately."
-msgstr "If you did not initiate this change, please contact your workspace owner immediately."
+msgstr "اگر این تغییر را خودتان انجام نداده‌اید، فوراً با مالک فضای کاری تماس بگیرید."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-ending.email.tsx
 msgid "If you do nothing, we'll pause your workspace and keep your data safe for {dataRetentionDays} days in case you change your mind — no card will be charged."
-msgstr "If you do nothing, we'll pause your workspace and keep your data safe for {dataRetentionDays} days in case you change your mind — no card will be charged."
+msgstr "اگر اقدامی نکنید، فضای کاری را موقتاً متوقف می‌کنیم و داده‌هایتان را به مدت {dataRetentionDays} روز نگه می‌داریم تا اگر نظرتان عوض شد در دسترس باشد — از کارت شما مبلغی کسر نمی‌شود."
 
 #. js-lingui-explicit-id
 #: src/emails/clean-suspended-workspace.email.tsx
 msgid "If you'd ever like to give Twenty another try, you can start a fresh workspace in minutes — we'd love to have you back."
-msgstr "If you'd ever like to give Twenty another try, you can start a fresh workspace in minutes — we'd love to have you back."
+msgstr "هر زمان خواستید دوباره Twenty را امتحان کنید، می‌توانید ظرف چند دقیقه یک فضای کاری جدید بسازید — خوشحال می‌شویم دوباره ببینمتان."
 
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "Impersonation: {impersonateStatus}"
-msgstr "Impersonation: {impersonateStatus}"
+msgstr "ورود به‌جای کاربر: {impersonateStatus}"
 
 #. js-lingui-explicit-id
 #: src/components/WhatIsTwenty.tsx
 msgid "It's a CRM, a software to help businesses manage their customer data and relationships efficiently."
-msgstr "It's a CRM, a software to help businesses manage their customer data and relationships efficiently."
+msgstr "یک CRM است؛ نرم‌افزاری برای کمک به کسب‌وکارها در مدیریت کارآمد داده‌ها و روابط مشتریان."
 
 #. js-lingui-explicit-id
 #: src/emails/clean-suspended-workspace.email.tsx
 msgid "Its data has been removed and can no longer be recovered."
-msgstr "Its data has been removed and can no longer be recovered."
+msgstr "داده‌های آن حذف شده و دیگر قابل بازیابی نیست."
 
 #. js-lingui-explicit-id
 #: src/emails/send-invite-link.email.tsx
 msgid "Join your team on Twenty"
-msgstr "Join your team on Twenty"
+msgstr "به تیم خود در Twenty بپیوندید"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
 msgid "Just so it's never a surprise, here's a heads up about your annual plan."
-msgstr "Just so it's never a surprise, here's a heads up about your annual plan."
+msgstr "تا غافلگیر نشوید، این یک یادآوری درباره طرح سالانه شماست."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
 #: src/emails/billing-trial-converting.email.tsx
 msgid "Manage subscription"
-msgstr "Manage subscription"
+msgstr "مدیریت اشتراک"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
 msgid "No action is needed if you'd like to continue. If you'd rather not renew, you can cancel anytime before then."
-msgstr "No action is needed if you'd like to continue. If you'd rather not renew, you can cancel anytime before then."
+msgstr "اگر می‌خواهید ادامه دهید، اقدام خاصی لازم نیست. اگر تمایلی به تمدید ندارید، هر زمان قبل از موعد می‌توانید لغو کنید."
 
 #. js-lingui-explicit-id
 #: src/emails/password-update-notify.email.tsx
 msgid "Password updated"
-msgstr "Password updated"
+msgstr "رمز عبور به‌روزرسانی شد"
 
 #. js-lingui-explicit-id
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "Reactivate it within the next {remainingDays} {dayOrDays} and you'll pick up exactly where you left off, with every record, view and setting right where you left it."
-msgstr "Reactivate it within the next {remainingDays} {dayOrDays} and you'll pick up exactly where you left off, with every record, view and setting right where you left it."
+msgstr "ظرف {remainingDays} {dayOrDays} آینده دوباره فعالش کنید تا دقیقاً از همان‌جا ادامه دهید؛ همه رکوردها، نماها و تنظیمات سر جایشان هستند."
 
 #. js-lingui-explicit-id
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "Reactivate workspace"
-msgstr "Reactivate workspace"
+msgstr "فعال‌سازی مجدد فضای کاری"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Read Twenty's user guide"
-msgstr "Read Twenty's user guide"
+msgstr "راهنمای کاربری Twenty را بخوانید"
 
 #. js-lingui-explicit-id
 #: src/emails/password-reset-link.email.tsx
 msgid "Reset"
-msgstr "Reset"
+msgstr "بازنشانی"
 
 #. js-lingui-explicit-id
 #: src/emails/password-reset-link.email.tsx
 msgid "Reset your password 🗝"
-msgstr "Reset your password 🗝"
+msgstr "بازنشانی رمز عبور 🗝"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "San Francisco / Paris"
-msgstr "San Francisco / Paris"
+msgstr "سان‌فرانسیسکو / پاریس"
 
 #. js-lingui-explicit-id
 #: src/emails/server-admin-access-changed.email.tsx
 msgid "Server administrator access changed"
-msgstr "Server administrator access changed"
+msgstr "دسترسی مدیر سرور تغییر کرد"
 
 #. js-lingui-explicit-id
 #: src/emails/password-reset-link.email.tsx
 msgid "Set"
-msgstr "Set"
+msgstr "تنظیم"
 
 #. js-lingui-explicit-id
 #: src/emails/password-reset-link.email.tsx
 msgid "Set your password 🗝"
-msgstr "Set your password 🗝"
+msgstr "رمز عبور خود را تنظیم کنید 🗝"
 
 #. js-lingui-explicit-id
 #: src/emails/clean-suspended-workspace.email.tsx
 msgid "Start a new workspace"
-msgstr "Start a new workspace"
+msgstr "شروع فضای کاری جدید"
 
 #. js-lingui-explicit-id
 #: src/emails/test.email.tsx
 msgid "Test email"
-msgstr "Test email"
+msgstr "ایمیل آزمایشی"
 
 #. js-lingui-explicit-id
 #: src/emails/password-update-notify.email.tsx
 msgid "This is a confirmation that password for your account ({email}) was successfully changed on {formattedDate}."
-msgstr "This is a confirmation that password for your account ({email}) was successfully changed on {formattedDate}."
+msgstr "این تأیید می‌کند که رمز عبور حساب ({email}) در تاریخ {formattedDate} با موفقیت تغییر کرد."
 
 #. js-lingui-explicit-id
 #: src/emails/password-reset-link.email.tsx
 msgid "This link is only valid for the next {duration}. If the link does not work, you can use the login verification link directly:"
-msgstr "This link is only valid for the next {duration}. If the link does not work, you can use the login verification link directly:"
+msgstr "این لینک فقط تا {duration} آینده معتبر است. اگر لینک کار نکرد، می‌توانید مستقیماً از لینک تأیید ورود استفاده کنید:"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-ending.email.tsx
 msgid "To keep your workspace and everything you've built, add a payment method and pick a plan."
-msgstr "To keep your workspace and everything you've built, add a payment method and pick a plan."
+msgstr "برای حفظ فضای کاری و هرآنچه ساخته‌اید، یک روش پرداخت اضافه کنید و طرحی انتخاب کنید."
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
@@ -266,90 +266,90 @@ msgstr "Twenty.com, Public Benefit Corporation"
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "User guide"
-msgstr "User guide"
+msgstr "راهنمای کاربری"
 
 #. js-lingui-explicit-id
 #: src/emails/validate-approved-access-domain.email.tsx
 #: src/emails/validate-approved-access-domain.email.tsx
 msgid "Validate domain"
-msgstr "Validate domain"
+msgstr "تأیید دامنه"
 
 #. js-lingui-explicit-id
 #: src/emails/send-email-verification-link.email.tsx
 msgid "Verify Email"
-msgstr "Verify Email"
+msgstr "تأیید ایمیل"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Visit Twenty's developer documentation"
-msgstr "Visit Twenty's developer documentation"
+msgstr "مستندات توسعه‌دهندگان Twenty را ببینید"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Visit Twenty's GitHub repository"
-msgstr "Visit Twenty's GitHub repository"
+msgstr "مخزن GitHub مربوط به Twenty را ببینید"
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Visit Twenty's website"
-msgstr "Visit Twenty's website"
+msgstr "وب‌سایت Twenty را ببینید"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-converting.email.tsx
 msgid "We don't like surprise charges, so here's a friendly heads up."
-msgstr "We don't like surprise charges, so here's a friendly heads up."
+msgstr "ما هم از کسر ناگهانی هزینه خوشمان نمی‌آید؛ پس این یک یادآوری دوستانه است."
 
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "Website"
-msgstr "Website"
+msgstr "وب‌سایت"
 
 #. js-lingui-explicit-id
 #: src/components/WhatIsTwenty.tsx
 msgid "What is Twenty?"
-msgstr "What is Twenty?"
+msgstr "Twenty چیست؟"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
 msgid "Your annual plan for <0>{workspaceDisplayName}</0> renews on {formattedDate}."
-msgstr "Your annual plan for <0>{workspaceDisplayName}</0> renews on {formattedDate}."
+msgstr "طرح سالانه شما برای <0>{workspaceDisplayName}</0> در تاریخ {formattedDate} تمدید می‌شود."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-ending.email.tsx
 msgid "Your free trial of <0>{workspaceDisplayName}</0> ends on {formattedDate}."
-msgstr "Your free trial of <0>{workspaceDisplayName}</0> ends on {formattedDate}."
+msgstr "دوره آزمایشی رایگان <0>{workspaceDisplayName}</0> در تاریخ {formattedDate} به پایان می‌رسد."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-converting.email.tsx
 msgid "Your free trial of <0>{workspaceDisplayName}</0> ends on {formattedDate}. Unless you cancel before then, the card on file will be charged for your annual plan."
-msgstr "Your free trial of <0>{workspaceDisplayName}</0> ends on {formattedDate}. Unless you cancel before then, the card on file will be charged for your annual plan."
+msgstr "دوره آزمایشی رایگان <0>{workspaceDisplayName}</0> در تاریخ {formattedDate} به پایان می‌رسد. اگر قبل از آن لغو نکنید، هزینه طرح سالانه از کارت ثبت‌شده کسر می‌شود."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-converting.email.tsx
 msgid "Your free trial of <0>{workspaceDisplayName}</0> ends on {formattedDate}. Unless you cancel before then, the card on file will be charged for your monthly plan."
-msgstr "Your free trial of <0>{workspaceDisplayName}</0> ends on {formattedDate}. Unless you cancel before then, the card on file will be charged for your monthly plan."
+msgstr "دوره آزمایشی رایگان <0>{workspaceDisplayName}</0> در تاریخ {formattedDate} به پایان می‌رسد. اگر قبل از آن لغو نکنید، هزینه طرح ماهانه از کارت ثبت‌شده کسر می‌شود."
 
 #. js-lingui-explicit-id
 #: src/emails/billing-subscription-renewing.email.tsx
 msgid "Your plan renews soon"
-msgstr "Your plan renews soon"
+msgstr "طرح شما به‌زودی تمدید می‌شود"
 
 #. js-lingui-explicit-id
 #: src/emails/billing-trial-ending.email.tsx
 msgid "Your trial is ending soon"
-msgstr "Your trial is ending soon"
+msgstr "دوره آزمایشی شما به‌زودی تمام می‌شود"
 
 #. js-lingui-explicit-id
 #: src/emails/clean-suspended-workspace.email.tsx
 msgid "Your workspace <0>{workspaceDisplayName}</0> has now been permanently deleted — it was paused {daysSinceInactive} days ago and wasn't reactivated in time."
-msgstr "Your workspace <0>{workspaceDisplayName}</0> has now been permanently deleted — it was paused {daysSinceInactive} days ago and wasn't reactivated in time."
+msgstr "فضای کاری <0>{workspaceDisplayName}</0> اکنون برای همیشه حذف شده است — {daysSinceInactive} روز پیش متوقف شد و به‌موقع دوباره فعال نشد."
 
 #. js-lingui-explicit-id
 #: src/emails/clean-suspended-workspace.email.tsx
 msgid "Your workspace has been deleted"
-msgstr "Your workspace has been deleted"
+msgstr "فضای کاری شما حذف شده است"
 
 #. js-lingui-explicit-id
 #: src/emails/warn-suspended-workspace.email.tsx
 msgid "Your workspace is paused"
-msgstr "Your workspace is paused"
+msgstr "فضای کاری شما موقتاً متوقف شده است"
