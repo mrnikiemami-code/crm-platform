@@ -1,3 +1,4 @@
+import path from 'node:path';
 import dts from 'rollup-plugin-dts';
 
 const external = (id) => {
@@ -7,7 +8,13 @@ const external = (id) => {
   if (id.startsWith('@/')) {
     return false;
   }
-  return !id.startsWith('.') && !id.startsWith('/');
+  // Absolute paths must be bundled. The previous `!id.startsWith('/')` check
+  // only matched Unix paths, so on Windows resolved files (D:\...) were marked
+  // external and written into .d.ts as broken absolute/`*.ts` re-exports.
+  if (path.isAbsolute(id)) {
+    return false;
+  }
+  return !id.startsWith('.');
 };
 
 const plugins = [

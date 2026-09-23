@@ -13,6 +13,7 @@
         "commands": [
           "rimraf dist",
           "nest build --path ./tsconfig.build.json",
+          "node ./scripts/copy-yarn-engine-asset.mjs",
           "mkdir -p dist/assets/twenty-client-sdk && cp ../twenty-client-sdk/package.json dist/assets/twenty-client-sdk/ && cp -r ../twenty-client-sdk/dist dist/assets/twenty-client-sdk/dist"
         ]
       },
@@ -72,7 +73,10 @@
       "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/twenty-server",
-        "command": "rimraf dist && NODE_ENV=development nest start --watch"
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "command": "rimraf dist && node ./scripts/copy-yarn-engine-asset.mjs && nest start --watch"
       }
     },
     "start:ci": {
@@ -95,7 +99,10 @@
       "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/twenty-server",
-        "command": "rimraf dist && NODE_ENV=development nest start --watch --debug"
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "command": "rimraf dist && node ./scripts/copy-yarn-engine-asset.mjs && nest start --watch --debug"
       }
     },
     "reset:env": {
@@ -135,10 +142,14 @@
     },
     "worker": {
       "executor": "nx:run-commands",
+      "cache": false,
       "dependsOn": ["^build"],
       "options": {
         "cwd": "packages/twenty-server",
-        "command": "NODE_ENV=development nest start --watch --entryFile queue-worker/queue-worker"
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "command": "node ./scripts/run-worker-dev.mjs"
       }
     },
     "ts-node": {
