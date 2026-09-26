@@ -95,7 +95,7 @@ const StyledEditorWrapper = styled.div<{ isMobile: boolean }>`
     p.is-editor-empty:first-of-type::before {
       color: ${themeCssVariables.font.color.light};
       content: attr(data-placeholder);
-      float: left;
+      float: inline-start;
       font-weight: ${themeCssVariables.font.weight.regular};
       height: 0;
       pointer-events: none;

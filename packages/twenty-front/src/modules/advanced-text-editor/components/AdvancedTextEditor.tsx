@@ -41,7 +41,7 @@ const StyledEditorContainer = styled.div<{
     p.is-editor-empty:first-of-type::before {
       ${FORM_FIELD_PLACEHOLDER_STYLES}
       content: attr(data-placeholder);
-      float: left;
+      float: inline-start;
       height: 0;
       pointer-events: none;
     }
