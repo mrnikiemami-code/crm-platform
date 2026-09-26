@@ -211,7 +211,13 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
               Icon={colorSchemeList.find(({ id }) => id === colorScheme)?.icon}
             />
           }
-          description={colorScheme}
+          description={
+            colorScheme === 'System'
+              ? t`System`
+              : colorScheme === 'Dark'
+                ? t`Dark`
+                : t`Light`
+          }
           hasSubmenu
           onClick={() => setMultiWorkspaceDropdown('themes')}
         >{t`Theme`}</ListItem>
