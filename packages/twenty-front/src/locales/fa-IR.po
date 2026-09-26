@@ -6375,7 +6375,7 @@ msgstr "مصرف روزانه"
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
 msgid "Danger zone"
-msgstr "منطقه خطر"
+msgstr "عملیات حساس"
 
 #. js-lingui-id: Fo2vDn
 #: src/localization/hooks/useLocaleOptions.ts
