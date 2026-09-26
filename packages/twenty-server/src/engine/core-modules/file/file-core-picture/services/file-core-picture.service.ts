@@ -7,7 +7,7 @@ import { isNonEmptyString } from '@sniptt/guards';
 import { FileFolder } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { WorkspaceActivationStatus } from 'twenty-shared/workspace';
-import { Like, type QueryRunner, Repository } from 'typeorm';
+import { type QueryRunner, Repository } from 'typeorm';
 import { v4 } from 'uuid';
 
 import {
@@ -21,8 +21,14 @@ import {
 import { FileStorageService } from 'src/engine/core-modules/file-storage/services/file-storage.service';
 import { FileWithSignedUrlDTO } from 'src/engine/core-modules/file/dtos/file-with-sign-url.dto';
 import { FileEntity } from 'src/engine/core-modules/file/entities/file.entity';
+import {
+  FileException,
+  FileExceptionCode,
+} from 'src/engine/core-modules/file/file.exception';
 import { FileUrlService } from 'src/engine/core-modules/file/file-url/file-url.service';
 import { extractFileInfoOrThrow } from 'src/engine/core-modules/file/utils/extract-file-info-or-throw.utils';
+import { isFileEntityPathInFolder } from 'src/engine/core-modules/file/utils/is-file-entity-path-in-folder.util';
+import { normalizeFileEntityPathToPosix } from 'src/engine/core-modules/file/utils/normalize-file-entity-path-to-posix.util';
 import { removeFileFolderFromFileEntityPath } from 'src/engine/core-modules/file/utils/remove-file-folder-from-file-entity-path.utils';
 import { SecureHttpClientService } from 'src/engine/core-modules/secure-http-client/secure-http-client.service';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
@@ -215,9 +221,20 @@ export class FileCorePictureService {
     const file = await this.fileRepository.findOneOrFail(workspaceId, {
       where: {
         id: fileId,
-        path: Like(`${FileFolder.CorePicture}/%`),
       },
     });
+
+    if (
+      !isFileEntityPathInFolder({
+        path: file.path,
+        fileFolder: FileFolder.CorePicture,
+      })
+    ) {
+      throw new FileException(
+        'File not found',
+        FileExceptionCode.FILE_NOT_FOUND,
+      );
+    }
 
     const customApplicationUniversalIdentifier =
       await this.findCustomApplicationUniversalIdentifier(workspaceId);
@@ -319,10 +336,21 @@ export class FileCorePictureService {
       {
         where: {
           id: sourceFileId,
-          path: Like(`${FileFolder.CorePicture}/%`),
         },
       },
     );
+
+    if (
+      !isFileEntityPathInFolder({
+        path: sourceFile.path,
+        fileFolder: FileFolder.CorePicture,
+      })
+    ) {
+      throw new FileException(
+        'File not found',
+        FileExceptionCode.FILE_NOT_FOUND,
+      );
+    }
 
     const sourceApplicationUniversalIdentifier =
       await this.findCustomApplicationUniversalIdentifier(sourceWorkspaceId);
@@ -334,7 +362,8 @@ export class FileCorePictureService {
       resourcePath: removeFileFolderFromFileEntityPath(sourceFile.path),
     });
 
-    const filename = sourceFile.path.split('/').pop() ?? '';
+    const filename =
+      normalizeFileEntityPathToPosix(sourceFile.path).split('/').pop() ?? '';
 
     return this.uploadWorkspaceMemberProfilePicture({
       file: await streamToBuffer(fileStream),

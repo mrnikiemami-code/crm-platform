@@ -78,13 +78,14 @@ export const WorkspaceMemberPictureUploader = ({
       }
 
       newAvatarUrl = `${REACT_APP_SERVER_BASE_URL}/file/${FileFolder.CorePicture}/${uploadedFile.id}`;
+      const signedUrl = uploadedFile.url;
+
       await updateWorkspaceMemberSettings({
         workspaceMemberId,
         update: { avatarUrl: newAvatarUrl },
       });
 
-      const signedUrl = uploadedFile.url;
-
+      // Settings merge stores the unsigned URL; restore the signed preview URL.
       if (isDefined(signedUrl) && isEditingSelf) {
         setCurrentWorkspaceMember((previous) =>
           previous ? { ...previous, avatarUrl: signedUrl } : previous,

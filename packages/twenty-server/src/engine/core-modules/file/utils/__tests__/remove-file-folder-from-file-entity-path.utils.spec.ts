@@ -35,6 +35,20 @@ describe('removeFileFolderFromFileEntityPath', () => {
     ).toBe('doc.pdf');
   });
 
+  it('should normalize Windows backslash separators', () => {
+    expect(
+      removeFileFolderFromFileEntityPath(
+        `${FileFolder.CorePicture}\\avatar.png`,
+      ),
+    ).toBe('avatar.png');
+
+    expect(
+      removeFileFolderFromFileEntityPath(
+        `${FileFolder.FilesField}\\subfolder\\file.txt`,
+      ),
+    ).toBe('subfolder/file.txt');
+  });
+
   it('should throw BadRequestException for invalid file folder', () => {
     expect(() =>
       removeFileFolderFromFileEntityPath('invalid-folder/file.txt'),

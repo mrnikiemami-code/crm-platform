@@ -33,6 +33,8 @@ import { validateStoragePathIsWithinWorkspaceOrThrow } from 'src/engine/core-mod
 import { FileEntity } from 'src/engine/core-modules/file/entities/file.entity';
 import { FileSettings } from 'src/engine/core-modules/file/types/file-settings.types';
 import { FILE_STATUS } from 'src/engine/core-modules/file/types/file-status.types';
+import { isFileEntityPathInFolder } from 'src/engine/core-modules/file/utils/is-file-entity-path-in-folder.util';
+import { normalizeFileEntityPathToPosix } from 'src/engine/core-modules/file/utils/normalize-file-entity-path-to-posix.util';
 import { removeFileFolderFromFileEntityPath } from 'src/engine/core-modules/file/utils/remove-file-folder-from-file-entity-path.utils';
 import { STOCK_METERS } from 'src/engine/core-modules/usage-limit/constants/usage-meters.constant';
 import { UsageLimitStockService } from 'src/engine/core-modules/usage-limit/services/usage-limit-stock.service';
@@ -298,13 +300,15 @@ export class FileStorageService {
     fileFolder: FileFolder;
     relativePath: string;
   }): { onStoragePath: string; resourcePath: string } {
-    const resourcePath = join(fileFolder, relativePath).replace(/\/+/g, '/');
+    // Always persist posix paths — path.join() uses backslashes on Windows
+    // and breaks Like(`${folder}/%`) lookups that assume `/` separators.
+    const resourcePath = normalizeFileEntityPathToPosix(
+      join(fileFolder, relativePath),
+    );
 
-    const onStoragePath = join(
-      workspaceId,
-      applicationUniversalIdentifier,
-      resourcePath,
-    ).replace(/\/+/g, '/');
+    const onStoragePath = normalizeFileEntityPathToPosix(
+      join(workspaceId, applicationUniversalIdentifier, resourcePath),
+    );
 
     validateStoragePathIsWithinWorkspaceOrThrow({
       onStoragePath,
@@ -795,9 +799,20 @@ export class FileStorageService {
     const file = await this.fileRepository.findOneOrFail(workspaceId, {
       where: {
         id: fileId,
-        path: Like(`${fileFolder}/%`),
       },
     });
+
+    if (
+      !isFileEntityPathInFolder({
+        path: file.path,
+        fileFolder,
+      })
+    ) {
+      throw new FileStorageException(
+        'File not found',
+        FileStorageExceptionCode.FILE_NOT_FOUND,
+      );
+    }
 
     const applicationUniversalIdentifier =
       await this.resolveApplicationUniversalIdentifierOrThrow({

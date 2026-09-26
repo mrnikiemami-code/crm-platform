@@ -17,6 +17,7 @@ import {
 import { validateFilePath } from 'src/engine/core-modules/file-storage/utils/validate-file-path.util';
 import { validateStoragePathIsWithinServerScopeOrThrow } from 'src/engine/core-modules/file-storage/utils/validate-storage-path-is-within-server-scope-or-throw.util';
 import { FileEntity } from 'src/engine/core-modules/file/entities/file.entity';
+import { normalizeFileEntityPathToPosix } from 'src/engine/core-modules/file/utils/normalize-file-entity-path-to-posix.util';
 
 export type ServerResourceIdentifier = {
   fileFolder: ServerFileFolder;
@@ -52,16 +53,13 @@ export class ServerFileStorageService {
       );
     }
 
-    const filePath = join(
-      fileFolder,
-      applicationRegistrationId,
-      resourcePath,
-    ).replace(/\/+/g, '/');
+    const filePath = normalizeFileEntityPathToPosix(
+      join(fileFolder, applicationRegistrationId, resourcePath),
+    );
 
-    const onStorageFilePath = join(
-      SERVER_FILE_STORAGE_PREFIX,
-      filePath,
-    ).replace(/\/+/g, '/');
+    const onStorageFilePath = normalizeFileEntityPathToPosix(
+      join(SERVER_FILE_STORAGE_PREFIX, filePath),
+    );
 
     validateStoragePathIsWithinServerScopeOrThrow({
       onStoragePath: onStorageFilePath,
