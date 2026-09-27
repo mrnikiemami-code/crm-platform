@@ -141,7 +141,9 @@ export const OverflowingTextWithTooltip = memo(
           className={isTooltipMultiline ? styles.multilineTooltip : undefined}
           sideOffset={5}
           side={tooltipPlace}
-          positionMethod="absolute"
+          // absolute resolves against the document origin of the zoomed root,
+          // so any root scroll shifts the popup away from the trigger
+          positionMethod="fixed"
           onClick={handleTooltipClick}
         >
           {tooltipText}

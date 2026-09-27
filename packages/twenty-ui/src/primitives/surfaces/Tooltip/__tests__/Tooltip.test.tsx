@@ -154,6 +154,18 @@ describe('Tooltip interactions', () => {
     expect(screen.getAllByRole('tooltip')).toHaveLength(1);
   });
 
+  it('marks the positioner for root zoom compensation', async () => {
+    render(
+      <Tooltip content="Zoomed hint" open>
+        <button type="button">Details</button>
+      </Tooltip>,
+    );
+
+    const tooltip = await screen.findByRole('tooltip');
+
+    expect(tooltip.parentElement).toHaveAttribute('data-floating-ui-viewport');
+  });
+
   it('suppresses a disabled tooltip without disabling its action', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

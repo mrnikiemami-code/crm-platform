@@ -13,7 +13,7 @@ const StyledText = styled.span`
   gap: 4px;
   height: 20px;
   overflow: hidden;
-  padding-left: ${themeCssVariables.spacing[2]};
+  padding-inline-start: ${themeCssVariables.spacing[2]};
   text-overflow: ellipsis;
 
   white-space: nowrap;
@@ -38,9 +38,12 @@ const StyledValueContainer = styled.div`
   white-space: nowrap;
 `;
 
+// numbers, percentages, currencies and dates carry no strong direction, so
+// without isolation an RTL context reorders signs and symbols around digits
 const StyledValue = styled.div`
   color: ${themeCssVariables.font.color.primary};
   max-width: 100%;
+  unicode-bidi: plaintext;
 `;
 
 export const RecordTableColumnAggregateFooterValue = ({

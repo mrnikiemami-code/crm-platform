@@ -51,6 +51,10 @@ export const TooltipPopup = ({
         collisionAvoidance={collisionAvoidance}
         sticky={sticky}
         disableAnchorTracking={disableAnchorTracking}
+        // floating-ui coordinates are visual-viewport pixels; the app's zoom
+        // stylesheet cancels the root zoom on this node so they are not
+        // multiplied a second time, and restores it for the popup content
+        data-floating-ui-viewport
         className={styles.positioner}
         style={{ maxWidth }}
       >

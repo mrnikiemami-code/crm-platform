@@ -45,7 +45,7 @@ const StyledIconContainer = styled.div`
   flex-shrink: 0;
   height: 20px;
   justify-content: center;
-  padding-right: ${themeCssVariables.spacing[2]};
+  padding-inline-end: ${themeCssVariables.spacing[2]};
 `;
 
 export const RecordTableColumnAggregateFooterValueCell = ({

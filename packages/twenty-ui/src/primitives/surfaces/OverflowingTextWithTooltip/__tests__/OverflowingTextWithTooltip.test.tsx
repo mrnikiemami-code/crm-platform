@@ -83,6 +83,23 @@ describe('OverflowingTextWithTooltip', () => {
     );
   });
 
+  it('positions the tooltip against the viewport like other tooltips', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <OverflowingTextWithTooltip text="Truncated label" tooltipDelay={0} />,
+    );
+    const text = screen.getByText('Truncated label');
+
+    setTextDimensions({ element: text, clientWidth: 80, scrollWidth: 160 });
+
+    await user.hover(text);
+
+    const tooltip = await screen.findByRole('tooltip');
+
+    expect(tooltip.parentElement).toHaveStyle({ position: 'fixed' });
+  });
+
   it('keeps text that fits hidden on keyboard focus', async () => {
     const user = userEvent.setup();
 
