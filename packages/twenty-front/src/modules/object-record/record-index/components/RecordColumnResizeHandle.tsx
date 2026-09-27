@@ -8,9 +8,11 @@ const StyledRecordColumnResizeHandle = styled.div<{
 }>`
   bottom: 0;
   cursor: col-resize;
-  left: ${({ position }) => (position === 'left' ? '-1px' : 'auto')};
+  inset-inline-end: ${({ position }) =>
+    position === 'right' ? '-1px' : 'auto'};
+  inset-inline-start: ${({ position }) =>
+    position === 'left' ? '-1px' : 'auto'};
   position: absolute;
-  right: ${({ position }) => (position === 'right' ? '-1px' : 'auto')};
   top: 0;
   width: 10px;
   z-index: 1;
@@ -20,9 +22,11 @@ const StyledRecordColumnResizeHandle = styled.div<{
     bottom: 0;
     content: '';
     display: ${({ isResizing }) => (isResizing ? 'block' : 'none')};
-    left: ${({ position }) => (position === 'left' ? '-1px' : 'auto')};
+    inset-inline-end: ${({ position }) =>
+      position === 'right' ? '-1px' : 'auto'};
+    inset-inline-start: ${({ position }) =>
+      position === 'left' ? '-1px' : 'auto'};
     position: absolute;
-    right: ${({ position }) => (position === 'right' ? '-1px' : 'auto')};
     top: 0;
     width: 2px;
   }

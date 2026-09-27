@@ -6,6 +6,7 @@ import {
 } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 
+import { getInlineEndPointerDeltaSign } from '@/ui/theme/utils/getInlineEndPointerDeltaSign';
 import { getUiZoom } from '@/ui/theme/utils/getUiZoom';
 
 import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
@@ -38,6 +39,8 @@ export const useResizeBoardColumn = () => {
   // force a synchronous style recalc, and the zoom cannot change mid-drag
   const [dragUiZoom, setDragUiZoom] = useState(1);
 
+  const [dragPointerDeltaSign, setDragPointerDeltaSign] = useState<1 | -1>(1);
+
   const handleResizeStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.pointerType !== 'mouse') {
@@ -46,6 +49,9 @@ export const useResizeBoardColumn = () => {
 
       setDragSelectionStartEnabled(false);
       setDragUiZoom(getUiZoom());
+      setDragPointerDeltaSign(
+        getInlineEndPointerDeltaSign(event.currentTarget),
+      );
       setInitialPointerPositionX(event.clientX);
     },
     [setDragSelectionStartEnabled],
@@ -71,7 +77,7 @@ export const useResizeBoardColumn = () => {
         recordBoardId,
         clampRecordBoardColumnWidth(
           recordIndexKanbanColumnWidth +
-            (x - initialPointerPositionX) / dragUiZoom,
+            (dragPointerDeltaSign * (x - initialPointerPositionX)) / dragUiZoom,
         ),
       );
     },
@@ -81,6 +87,7 @@ export const useResizeBoardColumn = () => {
       recordBoardId,
       setDragSelectionStartEnabled,
       dragUiZoom,
+      dragPointerDeltaSign,
     ],
   );
 
@@ -96,7 +103,7 @@ export const useResizeBoardColumn = () => {
       const nextWidth = Math.round(
         clampRecordBoardColumnWidth(
           recordIndexKanbanColumnWidth +
-            (x - initialPointerPositionX) / dragUiZoom,
+            (dragPointerDeltaSign * (x - initialPointerPositionX)) / dragUiZoom,
         ),
       );
 
@@ -112,6 +119,7 @@ export const useResizeBoardColumn = () => {
       updateViewKanbanColumnWidth,
       setDragSelectionStartEnabled,
       dragUiZoom,
+      dragPointerDeltaSign,
     ],
   );
 
