@@ -33,6 +33,35 @@ describe('useListenClickOutside', () => {
     expect(callback).toHaveBeenCalled();
   });
 
+  it('should trigger the callback when a later window capture listener stops the click', () => {
+    const callback = jest.fn();
+
+    renderHook(
+      () =>
+        useListenClickOutside({
+          refs: [containerRef],
+          callback,
+          listenerId,
+        }),
+      { wrapper: Wrapper },
+    );
+
+    const stopClick = (event: MouseEvent) => {
+      event.stopImmediatePropagation();
+    };
+
+    window.addEventListener('click', stopClick, { capture: true });
+
+    act(() => {
+      fireEvent.mouseDown(document.body);
+      fireEvent.click(document.body);
+    });
+
+    window.removeEventListener('click', stopClick, { capture: true });
+
+    expect(callback).toHaveBeenCalled();
+  });
+
   it('should not call the callback when clicking inside the specified refs using default comparison', () => {
     const callback = jest.fn();
 

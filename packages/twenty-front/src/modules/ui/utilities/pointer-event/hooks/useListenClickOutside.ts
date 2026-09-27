@@ -139,29 +139,32 @@ export const useListenClickOutside = <T extends Element>({
     [listenerId, enabled, refs, excludedClickOutsideIds, callback, store],
   );
 
+  // Window capture, registered before any gesture starts, runs ahead of
+  // click blockers installed on window mid-gesture (d3-zoom suppresses the
+  // click after a pointer move on the workflow canvas).
   useEffect(() => {
-    document.addEventListener('mousedown', handleMouseDown, {
+    window.addEventListener('mousedown', handleMouseDown, {
       capture: true,
     });
-    document.addEventListener('click', handleClickOutside, { capture: true });
-    document.addEventListener('touchstart', handleMouseDown, {
+    window.addEventListener('click', handleClickOutside, { capture: true });
+    window.addEventListener('touchstart', handleMouseDown, {
       capture: true,
     });
-    document.addEventListener('touchend', handleClickOutside, {
+    window.addEventListener('touchend', handleClickOutside, {
       capture: true,
     });
 
     return () => {
-      document.removeEventListener('mousedown', handleMouseDown, {
+      window.removeEventListener('mousedown', handleMouseDown, {
         capture: true,
       });
-      document.removeEventListener('click', handleClickOutside, {
+      window.removeEventListener('click', handleClickOutside, {
         capture: true,
       });
-      document.removeEventListener('touchstart', handleMouseDown, {
+      window.removeEventListener('touchstart', handleMouseDown, {
         capture: true,
       });
-      document.removeEventListener('touchend', handleClickOutside, {
+      window.removeEventListener('touchend', handleClickOutside, {
         capture: true,
       });
     };
