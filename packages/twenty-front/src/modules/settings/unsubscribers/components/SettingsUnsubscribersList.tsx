@@ -5,6 +5,7 @@ import { useDebounce } from 'use-debounce';
 import { isDefined } from 'twenty-shared/utils';
 
 import { useUnsubscribeTopics } from '@/activities/emails/hooks/useUnsubscribeTopics';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { SettingsEmptyPlaceholder } from '@/settings/components/SettingsEmptyPlaceholder';
 import { SettingsPaginationControls } from '@/settings/components/SettingsPaginationControls';
 import { SettingsSectionSkeletonLoader } from '@/settings/components/SettingsSectionSkeletonLoader';
@@ -49,6 +50,7 @@ const StyledSearch = styled.div`
 
 export const SettingsUnsubscribersList = () => {
   const { t } = useLingui();
+  const { timeZone } = useDateTimeFormat();
 
   const [page, setPage] = useState(0);
   const [searchText, setSearchText] = useState('');
@@ -175,7 +177,7 @@ export const SettingsUnsubscribersList = () => {
             label: t`Date`,
             align: 'right',
             Cell: ({ item }) => (
-              <>{formatToHumanReadableDate(item.createdAt)}</>
+              <>{formatToHumanReadableDate(item.createdAt, timeZone)}</>
             ),
           },
         ]}

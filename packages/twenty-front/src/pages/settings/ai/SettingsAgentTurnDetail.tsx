@@ -1,5 +1,6 @@
 import { AiChatAssistantMessageRenderer } from '@/ai/components/AiChatAssistantMessageRenderer';
 import { mapDBMessagesToUIMessages } from '@/ai/utils/mapDBMessagesToUIMessages';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsPageLayout } from '@/settings/components/layout/SettingsPageLayout';
 import { Table } from '@/ui/layout/table/components/Table';
@@ -64,6 +65,7 @@ export const SettingsAgentTurnDetail = () => {
     variables: { agentId: agentId || '' },
     skip: !agentId,
   });
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
 
   const turn = data?.agentTurns?.find((t) => t.id === turnId);
 
@@ -143,7 +145,7 @@ export const SettingsAgentTurnDetail = () => {
         <Section.Root>
           <Section.Header
             title={t`Messages`}
-            description={new Date(turn.createdAt).toLocaleString('en-US', {
+            description={formatDateTimeForAppLocale(turn.createdAt, {
               dateStyle: 'medium',
               timeStyle: 'short',
             })}
@@ -213,15 +215,12 @@ export const SettingsAgentTurnDetail = () => {
                       gridTemplateColumns="140px 80px 1fr"
                     >
                       <TableCell color={themeCssVariables.font.color.tertiary}>
-                        {new Date(evaluation.createdAt).toLocaleDateString(
-                          'en-US',
-                          {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          },
-                        )}
+                        {formatDateTimeForAppLocale(evaluation.createdAt, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </TableCell>
                       <TableCell gap={themeCssVariables.spacing[2]}>
                         <Status

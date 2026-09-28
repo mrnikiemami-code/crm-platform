@@ -390,23 +390,26 @@ Known remaining visible gap (RESOLVED in Phase 3B):
 
 Current accepted implementation checkpoint:
 
-`JALALI PHASE 4 COMPLETE`
+`JALALI PRESENTATION LAYER COMPLETE`
 
-Phases 1–3B are committed in `a842caff67 feat(i18n): complete Jalali presentation phases 1-3B`.
-Phase 4 is committed as `feat(i18n): add Jalali record calendar`.
+Jalali Phases 1–5 are all COMPLETE / ACCEPTED / COMMITTED:
+- Phases 1–3B: `a842caff67 feat(i18n): complete Jalali presentation phases 1-3B`
+- Phase 4: `6a1a81800d feat(i18n): add Jalali record calendar`
+- Phase 4 docs: `8aff38f8d0 docs: finalize Jalali phase 4 checkpoint`
+- Phase 5: `fix(i18n): complete Jalali presentation cleanup`
 
-The next coding phase is:
+No Jalali phase is pending. Do NOT repeat Phases 1–5.
+No backend / DB / API / GraphQL / domain / workflow-engine / cron / canonical date semantic was changed by the Jalali program.
 
-`JALALI PHASE 5 — FINAL QA / CLEANUP`
-
-Do NOT repeat Phase 1, Phase 2, Phase 3A, Phase 3B or Phase 4.
+The next workstream may return to broader UI/RTL improvements.
+Optional, separately-scoped presentation extras (not started, not required):
+- chart axis/tooltip date and number labels
+- email-rendered dates (server-side templates)
 
 Before continuing in a recovered session:
 1. inspect `git status`
 2. inspect the local diff
-3. verify the Phase 1/2/3A/3B/4 files are still present
-4. do not overwrite or regenerate them blindly
-5. continue only after confirming the local state
+3. do not overwrite or regenerate Jalali files blindly
 
 ---
 
@@ -438,18 +441,18 @@ Status: COMPLETE / ACCEPTED / COMMITTED (`a842caff67`, together with Phase 1, Ph
 
 ## Remaining frontend date gaps (NOT blockers for Phase 3B acceptance)
 
-These belong to Phase 4 / Phase 5 cleanup:
-- Admin panel host-locale date surfaces
-- `SettingsEnterprise`
-- Settings Applications `toLocaleString` surfaces
-- `SettingsDatePickerInput`
-- `groupThreadsByDate`
-- event-logs relative column
-- Settings AI hardcoded en-US surfaces
-- Calendar tab / `formatToHumanReadableDate` timezone caveat (host timezone)
-- duration digit localization (`beautifyDateDiff` / `formatExpiration`)
-- old persisted filter `displayValue` possibility
-- ~~Record Calendar grid + top bar (Phase 4)~~ RESOLVED in Phase 4
+All RESOLVED in Phase 4 / Phase 5 (see the Phase 5 section):
+- ~~Admin panel host-locale date surfaces~~
+- ~~`SettingsEnterprise`~~
+- ~~Settings Applications `toLocaleString` surfaces~~
+- ~~`SettingsDatePickerInput`~~
+- ~~`groupThreadsByDate`~~
+- ~~event-logs relative column~~
+- ~~Settings AI hardcoded en-US surfaces~~ (user-facing ones; AI prompt context intentionally kept)
+- ~~Calendar tab / `formatToHumanReadableDate` timezone caveat (host timezone)~~
+- ~~duration digit localization (`beautifyDateDiff` / `formatExpiration`)~~
+- ~~old persisted filter `displayValue` possibility~~
+- ~~Record Calendar grid + top bar (Phase 4)~~
 
 ## Original Phase 3B scope (for reference)
 
@@ -576,24 +579,43 @@ Status: COMPLETE / ACCEPTED / COMMITTED (`feat(i18n): add Jalali record calendar
 
 # Jalali Phase 5 — Final Presentation QA / Cleanup
 
-Status: NOT STARTED
+Status: COMPLETE / ACCEPTED / COMMITTED (`fix(i18n): complete Jalali presentation cleanup`)
 
-Purpose:
-- global search for remaining Gregorian/host-locale leaks in fa-IR UI
-- RTL visual QA
-- timezone midnight boundaries
-- mobile/responsive picker QA
-- table/list/detail/filter/workflow/timeline/calendar smoke tests
-- en/non-fa regression check
-- serialization guard check
-- ensure no backend/domain date semantic changes slipped in
-- address the remaining frontend date gaps listed under Phase 3B
+## Phase 5 accepted results
 
-Optional presentation-only extras should be evaluated separately:
-- chart labels
-- email-rendered dates
+- shared helper: `useFormatDateTimeForAppLocale` (thin hook over `formatDateTimeForAppLocale` with app locale + user timezone) and `NUMERIC_DATE_FORMAT_OPTIONS` / `NUMERIC_DATE_TIME_FORMAT_OPTIONS` (same fields as the previous no-argument `toLocaleDateString()` / `toLocaleString()`, so en output is identical)
+- admin panel: queue jobs (Persian relative + Jalali full-time tooltip), chat message/thread rows, workspace/user detail created dates, workspace detail thread dates, maintenance-mode card, signing keys (exact + relative)
+- `SettingsEnterprise` license/subscription dates
+- Settings → Applications front-component / command-menu-item / connection detail dates (invalid values still fall back to the raw string)
+- `SettingsDatePickerInput` display value
+- `groupThreadsByDate`: fa-IR groups by Persian month/year with Persian label; non-fa month label no longer depends on the host locale
+- event-logs timestamp column: locale-aware relative text (`EventLogTimestampCell`)
+- Settings → AI agent logs tab + turn detail: app locale instead of hard-coded en-US
+- `formatToHumanReadableDate` takes the user timezone (blocklist, email sender/preview, unsubscribers, attachments); no more host-timezone day shift
+- durations: expiry logic separated from display — `isExpired` / `formatExpiration` use date arithmetic (`differenceInDays < 0`, identical one-full-day threshold) instead of parsing `-` in the rendered string; fa-IR digits localized at display only via `localizeDigitsForAppLocale` (fa-IR only; other locales unchanged; Lingui message IDs unchanged)
+- filter chips: DATE `IS_BEFORE` / `IS_AFTER` chips regenerate the label from the canonical plain-date value for fa-IR instead of showing a possibly stale persisted `displayValue`; payload/value/displayValue never rewritten; non-fa unchanged
 
-Do not include them automatically if the user wants to stop strictly at frontend UI.
+## Intentionally retained (technical / Gregorian / out of scope)
+
+- `SettingsAiPrompts` en-US current date (AI prompt context, machine-oriented)
+- `apollo/loggerLink` debug time, `navigator.language` detection fallbacks, `Intl.DateTimeFormat().resolvedOptions().timeZone` timezone detection
+- `TimeZoneAbbreviation` (ASCII GMT offset)
+- Gregorian branches: `getMonthSelectOptions`, `formatZonedDateTimeDatePart`, `RecordCalendarTopBar` gregorian title
+- typed date input masks (ASCII digits by Phase 2/3A design), `validateCustomDateFormat`, cron-to-human descriptors (already locale-aware)
+- number formatting (`formatNumber`, `QUERY_MAX_RECORDS`, `BackgroundMockTableRow`, `RoutingDebugDisplay`, subscription values)
+- weekend shading Sat/Sun (product decision)
+- out of frontend scope: chart axis labels, email-rendered dates, backend/server formatting
+
+## Phase 5 validation
+
+- focused Phase 5 suites: 6 suites / 89 tests PASS
+- regression (localization, ai, date inputs, record-calendar, activities, record-filter, object-filter-dropdown, advanced-filter, record-field, record-show, views, workflow, object-core, settings, pages/settings, utils): 590 suites / 3513 tests PASS, 0 failures
+- tsgo PASS
+- oxlint --type-aware 0 warnings / 0 errors
+- oxfmt --check PASS
+- manual fa-IR browser smoke PASS: admin user/workspace created `۱۴۰۵/۶/۳۱`, queue jobs `۱ دقیقه پیش` + tooltip `۱۴۰۵/۷/۶, ۲۰:۳۹:۰۰`, signing keys `۵ روز پیش`, opportunities DATE_TIME `بهمن ۱۱، ۱۴۰۴، ۷:۵۵ ب.ظ.`, filter chips `: مهر ۶، ۱۴۰۵` / `< مهر ۶، ۱۴۰۵، ۸:۴۲ ب.ظ.` (reset afterwards), Jalali DateTimePicker + RTL next/previous month (Mehr ↔ Aban), timeline month group `مهر ۱۴۰۵` + relative + Jalali tooltip, workflows `۲۴ ساعت پیش`, temporary Tasks calendar view month `مهر ۱۴۰۵` / week `۵ تا ۱۱ مهر ۱۴۰۵` / day `دوشنبه، مهر ۶، ۱۴۰۵` (deleted afterwards; 3 original views intact)
+- en path smoke PASS (language temporarily switched to English, then restored to فارسی): admin created `9/22/2026`, queue tooltip `9/28/2026, 8:47:00 PM` (identical to previous `toLocale*` output)
+- not exercisable with local data (unit-tested only): API key expiration, AI chat threads/agent turns, enterprise license dates, event logs (enterprise-gated), applications front components, DATE-only field chips (no DATE field in the workspace; schema not mutated for testing)
 
 ---
 
@@ -604,12 +626,12 @@ Phase 3B — display stragglers   (COMPLETE, committed)
         ↓
 Phase 4 — record calendar       (COMPLETE, committed)
         ↓
-Phase 5 — final QA / cleanup    (NEXT)
+Phase 5 — final QA / cleanup    (COMPLETE, committed)
         ↓
-Jalali Presentation Layer complete
+Jalali Presentation Layer complete   (CURRENT STATE)
 ```
 
-After Phase 4, it is a safe point to pause Jalali work and return to broader UI/RTL fixes before Phase 5.
+The Jalali presentation program is finished. The next workstream may return to broader UI/RTL improvements.
 
 ---
 
@@ -653,6 +675,14 @@ Phase 4:
 - oxfmt passed
 - manual fa-IR record-calendar smoke test passed
 
+Phase 5:
+- focused Phase 5 suites 6 suites / 89 tests passed
+- regression 590 suites / 3513 tests passed
+- tsgo passed
+- oxlint --type-aware 0 warnings / 0 errors
+- oxfmt passed
+- manual fa-IR + en smoke tests passed
+
 ---
 
 # Recovery prompt for a new chat
@@ -666,15 +696,15 @@ Read CRM-PLATFORM-RECOVERY.md from the repository first and treat it as the reco
 
 Do not redo accepted work.
 
-First inspect the current repository/local state and reconcile it against the recovery file, especially the committed Jalali Phase 1–4 work.
+First inspect the current repository/local state and reconcile it against the recovery file.
 
 Current accepted checkpoint should be:
-JALALI PHASE 4 COMPLETE.
+JALALI PRESENTATION LAYER COMPLETE (Jalali Phases 1–5 committed).
 
-Next planned phase:
-JALALI PHASE 5 — FINAL QA / CLEANUP.
+The Jalali presentation program is complete; do not start another Jalali phase.
+The next workstream may return to broader UI/RTL improvements.
 
-Keep all Jalali work presentation-only. Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
+Any future date work must stay presentation-only. Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
 ```
 
 ---

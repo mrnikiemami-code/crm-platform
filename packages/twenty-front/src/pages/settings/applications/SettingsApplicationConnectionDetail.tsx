@@ -12,6 +12,8 @@ import { IconRefresh, IconTrash, IconUsers } from 'twenty-ui/icon';
 import { Button } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
+import { NUMERIC_DATE_TIME_FORMAT_OPTIONS } from '@/localization/constants/NumericDateTimeFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { GET_MY_CONNECTED_ACCOUNTS } from '@/settings/accounts/graphql/queries/getMyConnectedAccounts';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsSectionSkeletonLoader } from '@/settings/components/SettingsSectionSkeletonLoader';
@@ -61,22 +63,20 @@ const StyledScopeList = styled.div`
   min-width: 0;
 `;
 
-const formatDateTime = (isoString?: string | null): string => {
-  if (isoString === undefined || isoString === null) {
-    return '-';
-  }
-
-  const date = new Date(isoString);
-
-  if (Number.isNaN(date.getTime())) {
-    return isoString;
-  }
-
-  return date.toLocaleString();
-};
-
 export const SettingsApplicationConnectionDetail = () => {
   const { t } = useLingui();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
+
+  const formatDateTime = (isoString?: string | null): string => {
+    if (isoString === undefined || isoString === null) {
+      return '-';
+    }
+
+    return (
+      formatDateTimeForAppLocale(isoString, NUMERIC_DATE_TIME_FORMAT_OPTIONS) ||
+      isoString
+    );
+  };
   const { applicationId = '', connectedAccountId = '' } = useParams<{
     applicationId: string;
     connectedAccountId: string;

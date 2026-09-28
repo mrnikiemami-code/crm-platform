@@ -46,6 +46,24 @@ describe('formatExpiration', () => {
     const resultWithExpiresMention = formatExpiration(expiresAt, true, false);
     expect(resultWithExpiresMention).toEqual('Expires in 8 years and 9 days');
   });
+  it('should return Expired for past dates', () => {
+    expect(formatExpiration('2023-12-01T00:00:00.000Z')).toEqual('Expired');
+  });
+  it('should localize digits for fa-IR without changing the text', () => {
+    const expiresAt = '2024-01-10T00:00:00.000Z';
+    expect(formatExpiration(expiresAt, false, true, 'fa-IR')).toEqual(
+      'In ۹ days',
+    );
+    expect(formatExpiration(expiresAt, false, true, 'en')).toEqual('In 9 days');
+    expect(formatExpiration(expiresAt, false, true, 'fr-FR')).toEqual(
+      'In 9 days',
+    );
+  });
+  it('should not report Expired for fa-IR future dates', () => {
+    expect(
+      formatExpiration('2032-01-10T00:00:00.000Z', true, false, 'fa-IR'),
+    ).toEqual('Expires in ۸ years and ۹ days');
+  });
 });
 
 describe('isExpired', () => {
@@ -61,6 +79,11 @@ describe('isExpired', () => {
 
   it('should return false for null dates', () => {
     expect(isExpired(null)).toBe(false);
+  });
+
+  it('should keep the one full day threshold', () => {
+    expect(isExpired('2023-12-31T12:00:00.000Z')).toBe(false);
+    expect(isExpired('2023-12-30T23:59:59.000Z')).toBe(true);
   });
 
   it('should return false for never expiring dates', () => {

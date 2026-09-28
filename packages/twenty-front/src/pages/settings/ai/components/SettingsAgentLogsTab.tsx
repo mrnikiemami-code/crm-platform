@@ -1,3 +1,4 @@
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
@@ -44,6 +45,7 @@ export const SettingsAgentLogsTab = ({
   agentId,
 }: SettingsAgentLogsTabProps) => {
   const { enqueueToast } = useToast();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
   const [evaluatingTurnIds, setEvaluatingTurnIds] = useState<Set<string>>(
     new Set(),
   );
@@ -201,7 +203,7 @@ export const SettingsAgentLogsTab = ({
           return (
             <TableRow key={turn.id} gridTemplateColumns="140px 80px 1fr 40px">
               <TableCell color={themeCssVariables.font.color.tertiary}>
-                {new Date(turn.createdAt).toLocaleDateString('en-US', {
+                {formatDateTimeForAppLocale(turn.createdAt, {
                   month: 'short',
                   day: 'numeric',
                   hour: '2-digit',

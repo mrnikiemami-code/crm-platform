@@ -2,6 +2,8 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useState } from 'react';
 
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { NUMERIC_DATE_FORMAT_OPTIONS } from '@/localization/constants/NumericDateFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { getToastOptionsFromError } from '@/error-handler/utils/getToastOptionsFromError';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { GET_DATABASE_CONFIG_VARIABLE } from '@/settings/admin-panel/config-variables/graphql/queries/getDatabaseConfigVariable';
@@ -113,6 +115,7 @@ export const SettingsEnterprise = ({
   isAdminPanelTab = false,
 }: SettingsEnterpriseProps = {}) => {
   const { t } = useLingui();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
   const currentWorkspace = useAtomStateValue(currentWorkspaceState);
   const [enterpriseKey, setEnterpriseKey] = useState('');
   const [isActivating, setIsActivating] = useState(false);
@@ -244,12 +247,12 @@ export const SettingsEnterprise = ({
     : null;
 
   const licenseExpiresAtDate = isDefined(licenseExpiresAt)
-    ? licenseExpiresAt.toLocaleDateString()
+    ? formatDateTimeForAppLocale(licenseExpiresAt, NUMERIC_DATE_FORMAT_OPTIONS)
     : '';
 
   const cancelAtDate =
     isCancelScheduled && isDefined(cancelAt)
-      ? cancelAt.toLocaleDateString()
+      ? formatDateTimeForAppLocale(cancelAt, NUMERIC_DATE_FORMAT_OPTIONS)
       : '';
 
   const cancellationMessage =
@@ -712,7 +715,10 @@ export const SettingsEnterprise = ({
                 <SubscriptionInfoRowContainer
                   label={cancellationOrPeriodEndDateLabel}
                   Icon={IconCalendarRepeat}
-                  currentValue={cancellationOrPeriodEndDate.toLocaleDateString()}
+                  currentValue={formatDateTimeForAppLocale(
+                    cancellationOrPeriodEndDate,
+                    NUMERIC_DATE_FORMAT_OPTIONS,
+                  )}
                 />
               )}
             </SubscriptionInfoContainer>
@@ -775,7 +781,10 @@ export const SettingsEnterprise = ({
                 <SubscriptionInfoRowContainer
                   label={cancellationOrPeriodEndDateLabel}
                   Icon={IconCalendarRepeat}
-                  currentValue={cancellationOrPeriodEndDate.toLocaleDateString()}
+                  currentValue={formatDateTimeForAppLocale(
+                    cancellationOrPeriodEndDate,
+                    NUMERIC_DATE_FORMAT_OPTIONS,
+                  )}
                 />
               )}
             </SubscriptionInfoContainer>

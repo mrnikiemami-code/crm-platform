@@ -15,6 +15,7 @@ import { getSafeUrl, isDefined } from 'twenty-shared/utils';
 
 import { type AttachmentWithFile } from '@/activities/files/utils/filterAttachmentsWithFile';
 import { FileIcon } from '@/file/components/FileIcon';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { useHasPermissionFlag } from '@/settings/roles/hooks/useHasPermissionFlag';
 import { CoreObjectNameSingular } from 'twenty-shared/types';
 import { IconCalendar } from 'twenty-ui/icon';
@@ -87,6 +88,7 @@ export const AttachmentRow = ({
 }: AttachmentRowProps) => {
   const { theme } = useContext(ThemeContext);
   const [isEditing, setIsEditing] = useState(false);
+  const { timeZone } = useDateTimeFormat();
 
   const hasDownloadPermission = useHasPermissionFlag(
     PermissionFlagType.DOWNLOAD_FILE,
@@ -228,7 +230,7 @@ export const AttachmentRow = ({
           <StyledCalendarIconContainer>
             <IconCalendar size={theme.icon.size.md} />
           </StyledCalendarIconContainer>
-          {formatToHumanReadableDate(attachment.createdAt)}
+          {formatToHumanReadableDate(attachment.createdAt, timeZone)}
           <AttachmentDropdown
             attachmentId={attachment.id}
             onDelete={handleDelete}

@@ -1,6 +1,7 @@
 import { t } from '@lingui/core/macro';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { type BlocklistItem } from '@/accounts/types/BlocklistItem';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import { formatToHumanReadableDate } from '~/utils/date-utils';
@@ -17,6 +18,8 @@ export const SettingsAccountsBlocklistTableRow = ({
   blocklistItem,
   onRemove,
 }: SettingsAccountsBlocklistTableRowProps) => {
+  const { timeZone } = useDateTimeFormat();
+
   return (
     <TableRow
       key={blocklistItem.id}
@@ -28,7 +31,7 @@ export const SettingsAccountsBlocklistTableRow = ({
       </TableCell>
       <TableCell>
         {blocklistItem.createdAt
-          ? formatToHumanReadableDate(blocklistItem.createdAt)
+          ? formatToHumanReadableDate(blocklistItem.createdAt, timeZone)
           : ''}
       </TableCell>
       <TableCell align="right">

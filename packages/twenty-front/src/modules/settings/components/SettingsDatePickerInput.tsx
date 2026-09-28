@@ -10,6 +10,7 @@ import {
   useFloating,
 } from '@floating-ui/react';
 
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import {
   DATE_TIME_PICKER_MONTH_YEAR_PANEL_DROPDOWN_ID,
   DateTimePicker,
@@ -83,6 +84,7 @@ export const SettingsDatePickerInput = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { userTimezone } = useUserTimezone();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
   const generatedId = useId();
 
   const pickerInstanceId = instanceId ?? label ?? generatedId;
@@ -131,13 +133,12 @@ export const SettingsDatePickerInput = ({
       return placeholder ?? t`Select date & time`;
     }
 
-    return date.toLocaleString(undefined, {
+    return formatDateTimeForAppLocale(date, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      timeZone: userTimezone,
     });
   };
 

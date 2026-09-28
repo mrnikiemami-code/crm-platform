@@ -3,6 +3,8 @@ import { styled } from '@linaria/react';
 
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
+import { NUMERIC_DATE_TIME_FORMAT_OPTIONS } from '@/localization/constants/NumericDateTimeFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { SettingsAdminChatCollapsibleSection } from '@/settings/admin-panel/components/SettingsAdminChatCollapsibleSection';
 import { SettingsAdminChatMessagePartRenderer } from '@/settings/admin-panel/components/SettingsAdminChatMessagePartRenderer';
 import { type AdminChatThreadMessage } from '@/settings/admin-panel/types/AdminChatThreadMessage';
@@ -37,6 +39,7 @@ export const SettingsAdminChatMessage = ({
   message,
 }: SettingsAdminChatMessageProps) => {
   const isUser = message.role === AgentMessageRole.USER;
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
 
   const renderableParts = message.parts
     .filter(isRenderableAdminChatMessagePart)
@@ -53,7 +56,10 @@ export const SettingsAdminChatMessage = ({
         />
       ))}
       <StyledTimestamp>
-        {new Date(message.createdAt).toLocaleString()}
+        {formatDateTimeForAppLocale(
+          message.createdAt,
+          NUMERIC_DATE_TIME_FORMAT_OPTIONS,
+        )}
       </StyledTimestamp>
     </StyledMessageBubble>
   );

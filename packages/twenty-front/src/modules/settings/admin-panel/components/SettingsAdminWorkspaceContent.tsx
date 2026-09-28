@@ -1,3 +1,5 @@
+import { NUMERIC_DATE_FORMAT_OPTIONS } from '@/localization/constants/NumericDateFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { useNumberFormat } from '@/localization/hooks/useNumberFormat';
 import { type WorkspaceInfo } from '@/settings/admin-panel/types/WorkspaceInfo';
 import { getUpgradeHealthStatusBadge } from '@/settings/admin-panel/utils/getUpgradeHealthStatusBadge';
@@ -57,6 +59,7 @@ export const SettingsAdminWorkspaceContent = ({
   const { formatNumber } = useNumberFormat();
   const { dateFormat, timeFormat, timeZone } = useContext(UserContext);
   const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
 
   const formattedLastUpdated = formatDateTimeString({
     value: workspaceUpgradeStatus?.latestCommand?.createdAt,
@@ -135,7 +138,10 @@ export const SettingsAdminWorkspaceContent = ({
       Icon: IconCalendar,
       label: t`Created`,
       value: activeWorkspace?.createdAt
-        ? new Date(activeWorkspace.createdAt).toLocaleDateString()
+        ? formatDateTimeForAppLocale(
+            activeWorkspace.createdAt,
+            NUMERIC_DATE_FORMAT_OPTIONS,
+          )
         : '',
     },
   ];

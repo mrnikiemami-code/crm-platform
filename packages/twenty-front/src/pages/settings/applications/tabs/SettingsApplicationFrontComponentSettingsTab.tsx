@@ -1,3 +1,5 @@
+import { NUMERIC_DATE_TIME_FORMAT_OPTIONS } from '@/localization/constants/NumericDateTimeFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
@@ -36,14 +38,6 @@ const StyledMonoText = styled.span`
   white-space: nowrap;
 `;
 
-const formatDateTime = (isoString: string): string => {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) {
-    return isoString;
-  }
-  return date.toLocaleString();
-};
-
 const GRID_TEMPLATE = '220px 1fr';
 
 export const SettingsApplicationFrontComponentSettingsTab = ({
@@ -57,6 +51,11 @@ export const SettingsApplicationFrontComponentSettingsTab = ({
   updatedAt,
 }: SettingsApplicationFrontComponentSettingsTabProps) => {
   const trimmedDescription = description?.trim();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
+
+  const formatDateTime = (isoString: string) =>
+    formatDateTimeForAppLocale(isoString, NUMERIC_DATE_TIME_FORMAT_OPTIONS) ||
+    isoString;
 
   const detailRows: { key: string; label: string; value: ReactNode }[] = [
     {

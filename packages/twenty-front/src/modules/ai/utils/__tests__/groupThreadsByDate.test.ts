@@ -40,11 +40,6 @@ describe('groupThreadsByDate', () => {
   });
 
   it('groups threads into Today, Yesterday, Previous 7 days, and month sections', () => {
-    const monthFormatter = new Intl.DateTimeFormat(undefined, {
-      month: 'long',
-      year: 'numeric',
-    });
-
     const threads: AgentChatThread[] = [
       buildThread('1', today),
       buildThread('2', yesterday),
@@ -74,8 +69,42 @@ describe('groupThreadsByDate', () => {
     });
     expect(result[3]).toMatchObject({
       id: 'month:2026-4',
-      title: monthFormatter.format(eightDaysAgo),
+      title: 'April 2026',
       threads: [{ id: '5' }, { id: '6' }],
+    });
+  });
+
+  it('labels month sections in the app locale instead of the host locale', () => {
+    const [group] = groupThreadsByDate(
+      [buildThread('1', new Date('2026-03-15T12:00:00'))],
+      today,
+      'fr-FR',
+    );
+
+    expect(group).toMatchObject({ id: 'month:2026-3', title: 'mars 2026' });
+  });
+
+  it('groups fa-IR month sections by Persian month', () => {
+    const result = groupThreadsByDate(
+      [
+        buildThread('farvardin-late', new Date('2026-04-10T12:00:00')),
+        buildThread('esfand', new Date('2026-03-15T12:00:00')),
+        buildThread('farvardin-early', new Date('2026-03-25T12:00:00')),
+      ],
+      today,
+      'fa-IR',
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      id: 'month:persian:1405-1',
+      title: 'فروردین ۱۴۰۵',
+      threads: [{ id: 'farvardin-late' }, { id: 'farvardin-early' }],
+    });
+    expect(result[1]).toMatchObject({
+      id: 'month:persian:1404-12',
+      title: 'اسفند ۱۴۰۴',
+      threads: [{ id: 'esfand' }],
     });
   });
 

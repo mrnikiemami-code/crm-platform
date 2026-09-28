@@ -3,6 +3,7 @@ import { styled } from '@linaria/react';
 import { ActivityRow } from '@/activities/components/ActivityRow';
 import { EmailThreadNotShared } from '@/activities/emails/components/EmailThreadNotShared';
 import { getEmailParticipantAvatarColorSeed } from '@/activities/emails/utils/getEmailParticipantAvatarColorSeed';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { useOpenRecordInSidePanel } from '@/side-panel/hooks/useOpenRecordInSidePanel';
 import { useContext } from 'react';
 
@@ -89,6 +90,7 @@ type LastAvatar = {
 export const EmailThreadPreview = ({ thread }: EmailThreadPreviewProps) => {
   const { theme } = useContext(ThemeContext);
   const { openRecordInSidePanel } = useOpenRecordInSidePanel();
+  const { timeZone } = useDateTimeFormat();
 
   const visibility = thread.visibility;
 
@@ -203,7 +205,7 @@ export const EmailThreadPreview = ({ thread }: EmailThreadPreviewProps) => {
         )}
       </StyledSubjectAndBody>
       <StyledReceivedAt>
-        {formatToHumanReadableDate(thread.lastMessageReceivedAt)}
+        {formatToHumanReadableDate(thread.lastMessageReceivedAt, timeZone)}
       </StyledReceivedAt>
     </ActivityRow>
   );

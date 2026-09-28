@@ -1,3 +1,4 @@
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import {
   formatExpiration,
   isExpired,
@@ -32,7 +33,13 @@ export const SettingsApiKeysFieldItemTableRow = ({
 }: SettingsApiKeysFieldItemTableRowProps) => {
   const { t } = useLingui();
   const { theme } = useContext(ThemeContext);
-  const formattedExpiration = formatExpiration(apiKey.expiresAt || null);
+  const { locale } = useDateDisplayContext();
+  const formattedExpiration = formatExpiration(
+    apiKey.expiresAt || null,
+    false,
+    true,
+    locale,
+  );
 
   const gridColumns = '5fr 2fr 3fr 1fr';
 

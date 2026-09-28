@@ -1,3 +1,5 @@
+import { NUMERIC_DATE_TIME_FORMAT_OPTIONS } from '@/localization/constants/NumericDateTimeFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { SettingsEmptyPlaceholder } from '@/settings/components/SettingsEmptyPlaceholder';
 import { SettingsAdminDeleteJobsConfirmationModal } from '@/settings/admin-panel/health-status/components/SettingsAdminDeleteJobsConfirmationModal';
 import { SettingsAdminJobDetailsExpandable } from '@/settings/admin-panel/health-status/components/SettingsAdminJobDetailsExpandable';
@@ -14,6 +16,7 @@ import { TableBody } from '@/ui/layout/table/components/TableBody';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { styled } from '@linaria/react';
 import { plural, t } from '@lingui/core/macro';
 import { useState } from 'react';
@@ -26,6 +29,7 @@ import {
   type QueueJob,
   GetQueueJobsDocument,
 } from '~/generated-admin/graphql';
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
 import { beautifyPastDateRelativeToNow } from '~/utils/date-utils';
 
 type SettingsAdminQueueJobsTableProps = {
@@ -83,6 +87,8 @@ export const SettingsAdminQueueJobsTable = ({
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const { openDialog } = useDialog();
+  const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
 
   const jobStateOptions: { value: JobState; label: string }[] = [
     { value: JobState.COMPLETED, label: t`Completed` },
@@ -202,13 +208,16 @@ export const SettingsAdminQueueJobsTable = ({
   const formatTimestampRelative = (timestamp?: number | null) => {
     if (!timestamp) return '-';
 
-    return beautifyPastDateRelativeToNow(timestamp);
+    return beautifyPastDateRelativeToNow(timestamp, localeCatalog);
   };
 
   const formatTimestampFull = (timestamp?: number | null) => {
     if (!timestamp) return '';
 
-    return new Date(timestamp).toLocaleString();
+    return formatDateTimeForAppLocale(
+      timestamp,
+      NUMERIC_DATE_TIME_FORMAT_OPTIONS,
+    );
   };
 
   return (

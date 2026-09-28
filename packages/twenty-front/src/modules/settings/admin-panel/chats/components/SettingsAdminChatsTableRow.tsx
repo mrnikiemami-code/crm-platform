@@ -8,6 +8,8 @@ import { Tag } from 'twenty-ui/primitives/data-display';
 import { OverflowingTextWithTooltip } from 'twenty-ui/primitives/surfaces';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
+import { NUMERIC_DATE_FORMAT_OPTIONS } from '@/localization/constants/NumericDateFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { SETTINGS_ADMIN_CHATS_TABLE_GRID } from '@/settings/admin-panel/chats/constants/SettingsAdminChatsTableGrid';
 import { type AdminChatThreadListItem } from '@/settings/admin-panel/chats/types/AdminChatThreadListItem';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
@@ -30,6 +32,8 @@ const StyledZeroReplies = styled.span`
 export const SettingsAdminChatsTableRow = ({
   thread,
 }: SettingsAdminChatsTableRowProps) => {
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
+
   return (
     <TableRow
       to={getSettingsPath(SettingsPath.AdminPanelWorkspaceChatThread, {
@@ -78,7 +82,10 @@ export const SettingsAdminChatsTableRow = ({
         </StyledFlagsContainer>
       </TableCell>
       <TableCell align="right">
-        {new Date(thread.createdAt).toLocaleDateString()}
+        {formatDateTimeForAppLocale(
+          thread.createdAt,
+          NUMERIC_DATE_FORMAT_OPTIONS,
+        )}
       </TableCell>
     </TableRow>
   );

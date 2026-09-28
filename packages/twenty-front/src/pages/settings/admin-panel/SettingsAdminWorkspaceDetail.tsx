@@ -5,6 +5,8 @@ import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { billingState } from '@/client-config/states/billingState';
 import { canManageFeatureFlagsState } from '@/client-config/states/canManageFeatureFlagsState';
 import { labPublicFeatureFlagsState } from '@/client-config/states/labPublicFeatureFlagsState';
+import { NUMERIC_DATE_FORMAT_OPTIONS } from '@/localization/constants/NumericDateFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { AI_ADMIN_PATH } from '@/settings/admin-panel/ai/constants/AiAdminPath';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { SettingsAdminWorkspaceBillingContent } from '@/settings/admin-panel/components/SettingsAdminWorkspaceBillingContent';
@@ -92,6 +94,7 @@ const StyledTabPanel = styled.div`
 export const SettingsAdminWorkspaceDetail = () => {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const apolloAdminClient = useApolloAdminClient();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
 
   const activeTabId = useAtomComponentStateValue(
     activeTabIdComponentState,
@@ -493,7 +496,10 @@ export const SettingsAdminWorkspaceDetail = () => {
                           {thread.messageCount}
                         </TableCell>
                         <TableCell align="right">
-                          {new Date(thread.updatedAt).toLocaleDateString()}
+                          {formatDateTimeForAppLocale(
+                            thread.updatedAt,
+                            NUMERIC_DATE_FORMAT_OPTIONS,
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -3,6 +3,7 @@ import { t } from '@lingui/core/macro';
 
 import { ParticipantChip } from '@/activities/components/ParticipantChip';
 import { type EmailThreadMessageParticipant } from '@/activities/emails/types/EmailThreadMessageParticipant';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { Tooltip } from 'twenty-ui/primitives/surfaces';
@@ -42,6 +43,7 @@ export const EmailThreadMessageSender = ({
   sentAt,
 }: EmailThreadMessageSenderProps) => {
   const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const { timeZone } = useDateTimeFormat();
   let sentAtContent = null;
 
   if (isDefined(sentAt)) {
@@ -50,7 +52,7 @@ export const EmailThreadMessageSender = ({
     sentAtContent = (
       <Tooltip
         delay={TooltipDelay.mediumDelay}
-        content={formatToHumanReadableDate(sentAt)}
+        content={formatToHumanReadableDate(sentAt, timeZone)}
         side="top"
       >
         <StyledThreadMessageSentAt id={tooltipId}>

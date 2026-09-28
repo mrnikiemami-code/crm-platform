@@ -1,6 +1,7 @@
 import { isNonEmptyString } from '@sniptt/guards';
 import { Temporal } from 'temporal-polyfill';
 
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { useGetFieldMetadataItemByIdOrThrow } from '@/object-metadata/hooks/useGetFieldMetadataItemById';
 import { useGetDateFilterDisplayValue } from '@/object-record/object-filter-dropdown/hooks/useGetDateFilterDisplayValue';
 import { useGetDateTimeFilterDisplayValue } from '@/object-record/object-filter-dropdown/hooks/useGetDateTimeFilterDisplayValue';
@@ -20,9 +21,22 @@ import {
   relativeDateFilterStringifiedSchema,
 } from 'twenty-shared/utils';
 
+const parsePlainDateOrNull = (value: string) => {
+  if (!isNonEmptyString(value)) {
+    return null;
+  }
+
+  try {
+    return Temporal.PlainDate.from(value);
+  } catch {
+    return null;
+  }
+};
+
 // TODO: finish the implementation of this hook to obtain filter display value and remove deprecated display value property
 export const useGetRecordFilterDisplayValue = () => {
   const { isSystemTimezone, userTimezone } = useUserTimezone();
+  const { calendar } = useDateTimeFormat();
 
   const { getDateTimeFilterDisplayValue } = useGetDateTimeFilterDisplayValue();
   const { getDateFilterDisplayValue } = useGetDateFilterDisplayValue();
@@ -91,6 +105,23 @@ export const useGetRecordFilterDisplayValue = () => {
         case RecordFilterOperand.IS_IN_FUTURE:
         case RecordFilterOperand.IS_IN_PAST:
           return '';
+        case RecordFilterOperand.IS_BEFORE:
+        case RecordFilterOperand.IS_AFTER: {
+          // The persisted displayValue was formatted when the filter was
+          // saved, so it can be in another calendar than the current one.
+          const plainDate =
+            calendar === 'persian'
+              ? parsePlainDateOrNull(recordFilter.value)
+              : null;
+
+          if (isDefined(plainDate)) {
+            return getDateFilterDisplayValue(
+              plainDate.toZonedDateTime(userTimezone),
+            ).displayValue;
+          }
+
+          return ` ${recordFilter.displayValue}`;
+        }
         default:
           return ` ${recordFilter.displayValue}`;
       }

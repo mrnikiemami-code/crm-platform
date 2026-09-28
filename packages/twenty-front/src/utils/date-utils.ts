@@ -273,10 +273,15 @@ export const beautifyDateDiff = (
   return result;
 };
 
-export const formatToHumanReadableDate = (date: Date | string) => {
+// Without a timeZone the host timezone is used, which can shift the day
+// relative to the user timezone preference.
+export const formatToHumanReadableDate = (
+  date: Date | string,
+  timeZone?: string,
+) => {
   const parsedJSDate = parseDate(date);
 
-  return i18n.date(parsedJSDate, { dateStyle: 'medium' });
+  return i18n.date(parsedJSDate, { dateStyle: 'medium', timeZone });
 };
 
 const getTimePattern = (timeFormat: TimeFormat) => {

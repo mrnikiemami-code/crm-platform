@@ -78,6 +78,17 @@ const createdAtIsAfterFilter = {
   label: 'Created at',
 } as RecordFilter;
 
+// displayValue persisted by an older, gregorian formatting of the value.
+const closeDateIsBeforeFilterWithStaleDisplayValue = {
+  id: 'close-date-before',
+  fieldMetadataId: 'close-date',
+  type: 'DATE',
+  operand: RecordFilterOperand.IS_BEFORE,
+  value: '2026-10-02',
+  displayValue: 'Oct 2, 2026',
+  label: 'Close date',
+} as RecordFilter;
+
 const renderGetRecordFilterDisplayValue = () =>
   renderHook(() => useGetRecordFilterDisplayValue(), { wrapper: Wrapper })
     .result.current.getRecordFilterDisplayValue;
@@ -104,6 +115,32 @@ describe('useGetRecordFilterDisplayValue date chips', () => {
     expect(renderGetRecordFilterDisplayValue()(createdAtIsAfterFilter)).toBe(
       '۱۱ مهر ۱۴۰۵، ۰۰:۱۵ (GMT+3:30)',
     );
+  });
+
+  it('regenerates a stale persisted date displayValue from the value for fa-IR', () => {
+    setWorkspaceMember({
+      locale: 'fa-IR',
+      dateFormat: WorkspaceMemberDateFormatEnum.DAY_FIRST,
+    });
+
+    const filter = { ...closeDateIsBeforeFilterWithStaleDisplayValue };
+
+    expect(renderGetRecordFilterDisplayValue()(filter)).toBe('۱۰ مهر ۱۴۰۵');
+    expect(filter.value).toBe('2026-10-02');
+    expect(filter.displayValue).toBe('Oct 2, 2026');
+  });
+
+  it('keeps the persisted date displayValue for en', () => {
+    setWorkspaceMember({
+      locale: 'en',
+      dateFormat: WorkspaceMemberDateFormatEnum.MONTH_FIRST,
+    });
+
+    expect(
+      renderGetRecordFilterDisplayValue()(
+        closeDateIsBeforeFilterWithStaleDisplayValue,
+      ),
+    ).toBe(' Oct 2, 2026');
   });
 
   it('keeps the gregorian chips for en', () => {

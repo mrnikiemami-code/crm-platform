@@ -14,6 +14,7 @@ import {
   beautifyExactDateTime,
   beautifyPastDateRelativeToNow,
   beautifyPastDateRelativeToNowShort,
+  formatToHumanReadableDate,
   hasDatePassed,
   parseDate,
 } from '~/utils/date-utils';
@@ -291,6 +292,20 @@ describe('beautifyDateDiff', () => {
     const dateToCompareWith = '2023-11-01T00:00:00.000Z';
     const result = beautifyDateDiff(date, dateToCompareWith, true);
     expect(result).toEqual('4 days');
+  });
+});
+
+describe('formatToHumanReadableDate', () => {
+  // 20:45 UTC is already the next day in Tehran.
+  const crossMidnightDate = '2026-10-02T20:45:00Z';
+
+  it('should use the given timezone for the day', () => {
+    expect(formatToHumanReadableDate(crossMidnightDate, 'Asia/Tehran')).toBe(
+      'Oct 3, 2026',
+    );
+    expect(formatToHumanReadableDate(crossMidnightDate, 'UTC')).toBe(
+      'Oct 2, 2026',
+    );
   });
 });
 

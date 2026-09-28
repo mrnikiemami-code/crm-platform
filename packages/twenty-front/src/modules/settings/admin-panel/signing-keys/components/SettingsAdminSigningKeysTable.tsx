@@ -1,3 +1,4 @@
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { SettingsAdminRevokeSigningKeyConfirmationModal } from '@/settings/admin-panel/signing-keys/components/SettingsAdminRevokeSigningKeyConfirmationModal';
 import { useRevokeSigningKey } from '@/settings/admin-panel/signing-keys/hooks/useRevokeSigningKey';
@@ -56,6 +57,7 @@ export const SettingsAdminSigningKeysTable = () => {
   const apolloAdminClient = useApolloAdminClient();
   const { openDialog } = useDialog();
   const { copyToClipboard } = useCopyToClipboard();
+  const dateDisplayContext = useDateDisplayContext();
   const [selectedSigningKey, setSelectedSigningKey] =
     useState<SelectedSigningKey | null>(null);
 
@@ -119,7 +121,7 @@ export const SettingsAdminSigningKeysTable = () => {
                 >
                   <OverflowingTextWithTooltip
                     text={signingKey.id}
-                    tooltipContent={t`Created on ${beautifyExactDateTime(signingKey.createdAt)}`}
+                    tooltipContent={t`Created on ${beautifyExactDateTime(signingKey.createdAt, dateDisplayContext)}`}
                     alwaysShowTooltip
                   />
                   <Button
@@ -135,9 +137,13 @@ export const SettingsAdminSigningKeysTable = () => {
                 <TableCell>
                   {isDefined(signingKey.revokedAt) ? (
                     <OverflowingTextWithTooltip
-                      text={beautifyPastDateRelativeToNow(signingKey.revokedAt)}
+                      text={beautifyPastDateRelativeToNow(
+                        signingKey.revokedAt,
+                        dateDisplayContext.localeCatalog,
+                      )}
                       tooltipContent={beautifyExactDateTime(
                         signingKey.revokedAt,
+                        dateDisplayContext,
                       )}
                       alwaysShowTooltip
                     />

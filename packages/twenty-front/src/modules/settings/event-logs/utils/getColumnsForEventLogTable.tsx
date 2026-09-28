@@ -3,11 +3,11 @@ import { msg } from '@lingui/core/macro';
 import { type MessageDescriptor } from '@lingui/core';
 
 import { EventLogJsonCell } from '@/settings/event-logs/components/EventLogJsonCell';
+import { EventLogTimestampCell } from '@/settings/event-logs/components/EventLogTimestampCell';
 import {
   type EventLogRecord,
   EventLogTable,
 } from '~/generated-metadata/graphql';
-import { beautifyPastDateRelativeToNow } from '~/utils/date-utils';
 
 export type ColumnConfig = {
   id: string;
@@ -30,7 +30,9 @@ const TIMESTAMP_COLUMN: ColumnConfig = {
   label: msg`Timestamp`,
   minWidth: 100,
   defaultWidth: 150,
-  renderCell: (record) => beautifyPastDateRelativeToNow(record.timestamp),
+  renderCell: (record) => (
+    <EventLogTimestampCell timestamp={record.timestamp} />
+  ),
 };
 
 const USER_COLUMN: ColumnConfig = {

@@ -1,3 +1,4 @@
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
 import { SettingsPageLayout } from '@/settings/components/layout/SettingsPageLayout';
@@ -56,6 +57,7 @@ const REGENERATE_API_KEY_MODAL_ID = 'regenerate-api-key-modal';
 
 export const SettingsDevelopersApiKeyDetail = () => {
   const { t } = useLingui();
+  const { locale } = useDateDisplayContext();
   const { enqueueToast } = useToast();
   const { openDialog } = useDialog();
   const [isLoading, setIsLoading] = useState(false);
@@ -292,7 +294,12 @@ export const SettingsDevelopersApiKeyDetail = () => {
                       onClick={() => openDialog(REGENERATE_API_KEY_MODAL_ID)}
                     >{t`Regenerate Key`}</Button>
                     <StyledInfo>
-                      {formatExpiration(apiKey?.expiresAt || '', true, false)}
+                      {formatExpiration(
+                        apiKey?.expiresAt || '',
+                        true,
+                        false,
+                        locale,
+                      )}
                     </StyledInfo>
                   </StyledInputContainer>
                 </>
@@ -329,7 +336,12 @@ export const SettingsDevelopersApiKeyDetail = () => {
               <SettingsTextInput
                 instanceId={`api-key-expiration-${apiKey?.id}`}
                 placeholder={t`E.g. backoffice integration`}
-                value={formatExpiration(apiKey?.expiresAt || '', true, false)}
+                value={formatExpiration(
+                  apiKey?.expiresAt || '',
+                  true,
+                  false,
+                  locale,
+                )}
                 disabled
                 fullWidth
               />

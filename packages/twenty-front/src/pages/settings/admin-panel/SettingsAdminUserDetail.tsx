@@ -15,6 +15,8 @@ import {
 } from 'twenty-shared/utils';
 
 import { currentUserState } from '@/auth/states/currentUserState';
+import { NUMERIC_DATE_FORMAT_OPTIONS } from '@/localization/constants/NumericDateFormatOptions';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { SettingsAdminServerAdminAccess } from '@/settings/admin-panel/components/SettingsAdminServerAdminAccess';
 import { SettingsAdminWorkspaceContent } from '@/settings/admin-panel/components/SettingsAdminWorkspaceContent';
@@ -54,6 +56,7 @@ const StyledButtonContainer = styled.div`
 export const SettingsAdminUserDetail = () => {
   const { userId } = useParams<{ userId: string }>();
   const apolloAdminClient = useApolloAdminClient();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
 
   const activeTabId = useAtomComponentStateValue(
     activeTabIdComponentState,
@@ -118,7 +121,10 @@ export const SettingsAdminUserDetail = () => {
       Icon: IconCalendar,
       label: t`Created`,
       value: user?.createdAt
-        ? new Date(user.createdAt).toLocaleDateString()
+        ? formatDateTimeForAppLocale(
+            user.createdAt,
+            NUMERIC_DATE_FORMAT_OPTIONS,
+          )
         : '',
     },
     ...(currentUser?.canAccessFullAdminPanel && isDefined(userId)

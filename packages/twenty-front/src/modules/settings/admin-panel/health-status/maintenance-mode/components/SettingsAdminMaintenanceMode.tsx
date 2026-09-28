@@ -1,4 +1,5 @@
 import { maintenanceModeState } from '@/client-config/states/maintenanceModeState';
+import { useFormatDateTimeForAppLocale } from '@/localization/hooks/useFormatDateTimeForAppLocale';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { CLEAR_MAINTENANCE_MODE } from '@/settings/admin-panel/health-status/maintenance-mode/graphql/mutations/clearMaintenanceMode';
 import { SET_MAINTENANCE_MODE } from '@/settings/admin-panel/health-status/maintenance-mode/graphql/mutations/setMaintenanceMode';
@@ -6,7 +7,6 @@ import { adminPanelMaintenanceModeState } from '@/settings/admin-panel/health-st
 import { SettingsDatePickerInput } from '@/settings/components/SettingsDatePickerInput';
 import { SettingsOptionCardContentSwitch } from '@/settings/components/SettingsOptions/SettingsOptionCardContentSwitch';
 import { TextInput } from '@/ui/input/components/TextInput';
-import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
 import { useAtomState } from '@/ui/utilities/state/jotai/hooks/useAtomState';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
@@ -44,7 +44,7 @@ export const SettingsAdminMaintenanceMode = () => {
   const maintenanceMode = useAtomStateValue(maintenanceModeState);
   const setMaintenanceMode = useSetAtomState(maintenanceModeState);
 
-  const { userTimezone } = useUserTimezone();
+  const formatDateTimeForAppLocale = useFormatDateTimeForAppLocale();
   const { enqueueToast } = useToast();
 
   const [setMaintenanceModeMutation] = useMutation(SET_MAINTENANCE_MODE, {
@@ -178,11 +178,10 @@ export const SettingsAdminMaintenanceMode = () => {
     : undefined;
 
   const formattedStartDate = isDefined(scheduledStartDate)
-    ? scheduledStartDate.toLocaleDateString(undefined, {
+    ? formatDateTimeForAppLocale(scheduledStartDate, {
         month: '2-digit',
         day: '2-digit',
         year: 'numeric',
-        timeZone: userTimezone,
       })
     : '';
 
