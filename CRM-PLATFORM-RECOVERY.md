@@ -566,6 +566,7 @@ Status: COMPLETE / ACCEPTED / COMMITTED (`feat(i18n): add Jalali record calendar
 
 - record-calendar: 12 suites / 70 tests PASS
 - localization + date inputs + record-index: 51 suites / 454 tests PASS
+- object-record + localization + ui + utils: 373 suites / 2116 tests PASS
 - tsgo PASS
 - oxlint 0 warnings / 0 errors
 - oxfmt PASS
@@ -646,6 +647,7 @@ Phase 3B:
 Phase 4:
 - record-calendar 12 suites / 70 tests passed
 - localization + date inputs + record-index 51 suites / 454 tests passed
+- object-record + localization + ui + utils 373 suites / 2116 tests passed
 - tsgo passed
 - oxlint 0 warnings / 0 errors
 - oxfmt passed
