@@ -1,0 +1,59 @@
+import { DateFormat } from '@/localization/constants/DateFormat';
+import { JALALI_DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/JalaliDateBlocks';
+import { getJalaliDateMask } from '@/ui/input/components/internal/date/utils/getJalaliDateMask';
+import { getJalaliWeekDayNames } from '@/ui/input/components/internal/date/utils/getJalaliWeekDayNames';
+import { getJalaliYearSelectOptions } from '@/ui/input/components/internal/date/utils/getJalaliYearSelectOptions';
+import { isPlainDateWithinDatePickerRange } from '@/ui/input/components/internal/date/utils/isPlainDateWithinDatePickerRange';
+import { Temporal } from 'temporal-polyfill';
+
+describe('getJalaliWeekDayNames', () => {
+  it('should start the week on the calendar start day', () => {
+    const saturdayFirst = getJalaliWeekDayNames(6);
+
+    expect(saturdayFirst).toHaveLength(7);
+    expect(saturdayFirst[0].longName).toBe('شنبه');
+    expect(saturdayFirst[6].longName).toBe('جمعه');
+    expect(getJalaliWeekDayNames(0)[0].longName).toBe('یکشنبه');
+    expect(getJalaliWeekDayNames(1)[0].longName).toBe('دوشنبه');
+  });
+});
+
+describe('getJalaliYearSelectOptions', () => {
+  it('should list 200 Jalali years from 50 years ahead with Persian digits', () => {
+    const options = getJalaliYearSelectOptions(
+      Temporal.PlainDate.from('2026-09-28'),
+    );
+
+    expect(options).toHaveLength(200);
+    expect(options[0]).toEqual({ label: '۱۴۵۵', value: 1455 });
+    expect(options).toContainEqual({ label: '۱۴۰۵', value: 1405 });
+    expect(options[199].value).toBe(1256);
+  });
+});
+
+describe('getJalaliDateMask', () => {
+  it('should describe Jalali numeric blocks in the user date order', () => {
+    expect(getJalaliDateMask(DateFormat.YEAR_FIRST)).toBe('YYYY`/MM`/DD`');
+    expect(getJalaliDateMask(DateFormat.DAY_FIRST)).toBe('DD`/MM`/YYYY`');
+    expect(getJalaliDateMask(DateFormat.MONTH_FIRST)).toBe('MM`/DD`/YYYY`');
+  });
+});
+
+describe('JALALI_DATE_BLOCKS', () => {
+  it('should bound the year to the Jalali years of the picker range', () => {
+    expect(JALALI_DATE_BLOCKS.YYYY.from).toBe(1278);
+    expect(JALALI_DATE_BLOCKS.YYYY.to).toBe(1479);
+    expect(JALALI_DATE_BLOCKS.MM.to).toBe(12);
+    expect(JALALI_DATE_BLOCKS.DD.to).toBe(31);
+  });
+});
+
+describe('isPlainDateWithinDatePickerRange', () => {
+  it('should accept dates between 1900-01-01 and 2100-12-31', () => {
+    expect(isPlainDateWithinDatePickerRange('1900-01-01')).toBe(true);
+    expect(isPlainDateWithinDatePickerRange('2026-09-28')).toBe(true);
+    expect(isPlainDateWithinDatePickerRange('2100-12-31')).toBe(true);
+    expect(isPlainDateWithinDatePickerRange('1899-12-31')).toBe(false);
+    expect(isPlainDateWithinDatePickerRange('2101-01-01')).toBe(false);
+  });
+});

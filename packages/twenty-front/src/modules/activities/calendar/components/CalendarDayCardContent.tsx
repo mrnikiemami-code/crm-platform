@@ -3,6 +3,8 @@ import { differenceInSeconds, endOfDay, format } from 'date-fns';
 
 import { CalendarEventRow } from '@/activities/calendar/components/CalendarEventRow';
 import { getCalendarEventStartDate } from '@/activities/calendar/utils/getCalendarEventStartDate';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
 import { CardContent } from 'twenty-ui/primitives/surfaces';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { type TimelineCalendarEvent } from '~/generated/graphql';
@@ -64,11 +66,26 @@ export const CalendarDayCardContent = ({
   calendarEvents,
   divider,
 }: CalendarDayCardContentProps) => {
+  const { locale, calendar } = useDateDisplayContext();
   const endOfDayDate = endOfDay(getCalendarEventStartDate(calendarEvents[0]));
   const dayEndsIn = differenceInSeconds(endOfDayDate, Date.now());
 
-  const weekDayLabel = format(endOfDayDate, 'EE');
-  const monthDayLabel = format(endOfDayDate, 'dd');
+  const weekDayLabel =
+    calendar === 'persian'
+      ? formatDateTimeForAppLocale({
+          date: endOfDayDate,
+          locale,
+          options: { weekday: 'short' },
+        })
+      : format(endOfDayDate, 'EE');
+  const monthDayLabel =
+    calendar === 'persian'
+      ? formatDateTimeForAppLocale({
+          date: endOfDayDate,
+          locale,
+          options: { day: '2-digit' },
+        })
+      : format(endOfDayDate, 'dd');
 
   return (
     <StyledCardContentContainer>

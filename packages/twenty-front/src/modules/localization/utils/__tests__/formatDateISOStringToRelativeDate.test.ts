@@ -1,5 +1,5 @@
 import { formatDateISOStringToRelativeDate } from '@/localization/utils/formatDateISOStringToRelativeDate';
-import { enUS, fr } from 'date-fns/locale';
+import { enUS, faIR, fr } from 'date-fns/locale';
 
 describe('formatDateISOStringToRelativeDate', () => {
   beforeAll(() => {
@@ -380,6 +380,93 @@ describe('formatDateISOStringToRelativeDate', () => {
       });
 
       expect(result).toBe('about 7 hours ago');
+    });
+  });
+
+  describe('persian calendar', () => {
+    const persianParams = {
+      localeCatalog: faIR,
+      timeZone: 'Asia/Tehran',
+      calendar: 'persian' as const,
+    };
+
+    beforeAll(() => {
+      jest.useFakeTimers();
+      // 2026-09-28 15:30 in Asia/Tehran.
+      jest.setSystemTime(new Date('2026-09-28T12:00:00Z'));
+    });
+
+    afterAll(() => {
+      jest.useRealTimers();
+    });
+
+    it('should return today for a date-only value on the current day', () => {
+      expect(
+        formatDateISOStringToRelativeDate({
+          ...persianParams,
+          isoDate: '2026-09-28',
+          isDayMaximumPrecision: true,
+        }),
+      ).toBe('امروز');
+    });
+
+    it('should return yesterday for a date-only value on the previous day', () => {
+      expect(
+        formatDateISOStringToRelativeDate({
+          ...persianParams,
+          isoDate: '2026-09-27',
+          isDayMaximumPrecision: true,
+        }),
+      ).toBe('دیروز');
+    });
+
+    it('should return tomorrow for a date-only value on the next day', () => {
+      expect(
+        formatDateISOStringToRelativeDate({
+          ...persianParams,
+          isoDate: '2026-09-29',
+          isDayMaximumPrecision: true,
+        }),
+      ).toBe('فردا');
+    });
+
+    it('should return yesterday for an instant on the previous day in the user timezone', () => {
+      // 2026-09-27 20:00 UTC = 2026-09-27 23:30 in Asia/Tehran.
+      expect(
+        formatDateISOStringToRelativeDate({
+          ...persianParams,
+          isoDate: '2026-09-27T20:00:00Z',
+          isDayMaximumPrecision: true,
+        }),
+      ).toBe('دیروز');
+    });
+
+    it('should return exact hours within 24h', () => {
+      expect(
+        formatDateISOStringToRelativeDate({
+          ...persianParams,
+          isoDate: '2026-09-28T09:00:00Z',
+        }),
+      ).toBe('۳ ساعت پیش');
+    });
+
+    it('should bucket to whole days beyond 24h', () => {
+      expect(
+        formatDateISOStringToRelativeDate({
+          ...persianParams,
+          isoDate: '2026-09-25T09:00:00Z',
+        }),
+      ).toBe('۳ روز پیش');
+    });
+
+    it('should only use persian digits', () => {
+      const result = formatDateISOStringToRelativeDate({
+        ...persianParams,
+        isoDate: '2026-09-28T11:55:00Z',
+      });
+
+      expect(result).toBe('۵ دقیقه پیش');
+      expect(result).not.toMatch(/[0-9]/);
     });
   });
 });

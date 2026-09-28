@@ -7,6 +7,7 @@ import {
 } from 'twenty-shared/utils';
 
 import { type CoreWorkflowFilterFieldDefinition } from '@/object-core/workflows/constants/CoreWorkflowFilterFields';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
 import { findCoreWorkflowFilterField } from '@/object-core/workflows/utils/findCoreWorkflowFilterField';
 import { getOperandLabelShort } from '@/object-record/object-filter-dropdown/utils/getOperandLabel';
 import { getRelativeDateDisplayValue } from '@/object-record/object-filter-dropdown/utils/getRelativeDateDisplayValue';
@@ -15,10 +16,12 @@ const getReadableValue = ({
   stepFilter,
   selectedField,
   timezone,
+  locale,
 }: {
   stepFilter: StepFilter;
   selectedField: CoreWorkflowFilterFieldDefinition;
   timezone: string | undefined;
+  locale: string | undefined;
 }): string => {
   if (stepFilter.operand === ViewFilterOperand.IS_RELATIVE) {
     const relativeDateFilter = safeParseRelativeDateFilterJsonStringified(
@@ -55,11 +58,12 @@ const getReadableValue = ({
 
     return Number.isNaN(date.getTime())
       ? ''
-      : new Intl.DateTimeFormat(undefined, {
-          dateStyle: 'medium',
-          timeStyle: 'short',
+      : formatDateTimeForAppLocale({
+          date,
+          locale,
           timeZone: timezone,
-        }).format(date);
+          options: { dateStyle: 'medium', timeStyle: 'short' },
+        });
   }
 
   return stepFilter.value;
@@ -68,9 +72,11 @@ const getReadableValue = ({
 export const getCoreWorkflowFilterChipLabel = ({
   stepFilter,
   timezone,
+  locale,
 }: {
   stepFilter: StepFilter;
   timezone?: string;
+  locale?: string;
 }): string => {
   const selectedField = findCoreWorkflowFilterField(stepFilter.stepOutputKey);
 
@@ -82,6 +88,7 @@ export const getCoreWorkflowFilterChipLabel = ({
     stepFilter,
     selectedField,
     timezone,
+    locale,
   });
   const operandLabel = getOperandLabelShort(stepFilter.operand);
 

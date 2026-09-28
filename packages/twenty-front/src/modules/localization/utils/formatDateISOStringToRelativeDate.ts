@@ -3,22 +3,37 @@ import { formatDistance, type Locale } from 'date-fns';
 import { Temporal } from 'temporal-polyfill';
 import { isDateWithoutTime } from 'twenty-shared/utils';
 
+import { type CalendarSystem } from '@/localization/types/CalendarSystem';
+import { formatPersianRelativeTime } from '@/localization/utils/jalali/formatPersianRelativeTime';
+
 export const formatDateISOStringToRelativeDate = ({
   isoDate,
   localeCatalog,
   timeZone,
   isDayMaximumPrecision = false,
+  calendar = 'gregory',
 }: {
   isoDate: string;
   localeCatalog: Locale;
   isDayMaximumPrecision?: boolean;
   timeZone: string;
+  calendar?: CalendarSystem;
 }) => {
-  const formatRelative = (targetMs: number, baseMs: number) =>
-    formatDistance(targetMs, baseMs, {
-      addSuffix: true,
-      locale: localeCatalog,
-    });
+  const formatRelative = (
+    targetMs: number,
+    baseMs: number,
+    isDayLevelComparison: boolean,
+  ) =>
+    calendar === 'persian'
+      ? formatPersianRelativeTime({
+          targetEpochMilliseconds: targetMs,
+          baseEpochMilliseconds: baseMs,
+          isDayLevelComparison,
+        })
+      : formatDistance(targetMs, baseMs, {
+          addSuffix: true,
+          locale: localeCatalog,
+        });
 
   if (isDateWithoutTime(isoDate)) {
     const targetPlainDate = Temporal.PlainDate.from(isoDate);
@@ -27,7 +42,8 @@ export const formatDateISOStringToRelativeDate = ({
       largestUnit: 'day',
     }).days;
 
-    if (isDayMaximumPrecision) {
+    // The persian path gets today/yesterday/tomorrow from Intl (numeric: auto).
+    if (isDayMaximumPrecision && calendar === 'gregory') {
       if (dayDiff === 0) return t`Today`;
       if (dayDiff === -1) return t`Yesterday`;
       if (dayDiff === 1) return t`Tomorrow`;
@@ -36,6 +52,7 @@ export const formatDateISOStringToRelativeDate = ({
     return formatRelative(
       targetPlainDate.toZonedDateTime(timeZone).epochMilliseconds,
       todayPlainDate.toZonedDateTime(timeZone).epochMilliseconds,
+      true,
     );
   }
 
@@ -48,8 +65,9 @@ export const formatDateISOStringToRelativeDate = ({
     return formatRelative(
       target.startOfDay().epochMilliseconds,
       now.startOfDay().epochMilliseconds,
+      true,
     );
   }
 
-  return formatRelative(target.epochMilliseconds, now.epochMilliseconds);
+  return formatRelative(target.epochMilliseconds, now.epochMilliseconds, false);
 };

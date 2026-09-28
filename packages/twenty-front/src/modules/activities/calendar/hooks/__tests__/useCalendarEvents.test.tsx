@@ -98,4 +98,40 @@ describe('useCalendarEvents', () => {
     expect(result.current.monthTimes).toBeDefined();
     expect(result.current.monthTimesByYear).toBeDefined();
   });
+
+  it('keeps gregorian month and year grouping by default', () => {
+    const { result } = renderHook(() => useCalendarEvents(calendarEvents));
+
+    expect(result.current.monthTimes).toEqual([new Date(2024, 1, 1).getTime()]);
+    expect(Object.keys(result.current.monthTimesByYear)).toEqual(['2024']);
+  });
+
+  it('groups days by persian month and year across nowruz', () => {
+    const [baseCalendarEvent] = calendarEvents;
+    const nowruzCalendarEvents = [
+      {
+        ...baseCalendarEvent,
+        id: 'esfand-29',
+        startsAt: '2026-03-20T10:00:00Z',
+      },
+      {
+        ...baseCalendarEvent,
+        id: 'farvardin-1',
+        startsAt: '2026-03-21T10:00:00Z',
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useCalendarEvents(nowruzCalendarEvents, 'persian'),
+    );
+
+    expect(result.current.monthTimes).toHaveLength(2);
+    expect(Object.keys(result.current.monthTimesByYear).sort()).toEqual([
+      '1404',
+      '1405',
+    ]);
+    expect(result.current.monthTimesByYear[1405]).toEqual([
+      result.current.monthTimes[0],
+    ]);
+  });
 });

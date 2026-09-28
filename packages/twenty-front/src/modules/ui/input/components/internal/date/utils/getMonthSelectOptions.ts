@@ -1,7 +1,10 @@
+// The month options drive Gregorian month arithmetic, so the labels must stay
+// Gregorian even for locales whose default Intl calendar is not (fa-IR -> persian).
 const getMonthName = (index: number, locale?: string): string =>
-  new Intl.DateTimeFormat(locale || 'en-US', { month: 'long' }).format(
-    new Date(0, index, 1),
-  );
+  new Intl.DateTimeFormat(locale || 'en-US', {
+    month: 'long',
+    calendar: 'gregory',
+  }).format(new Date(0, index, 1));
 
 const getMonthNames = (
   locale?: string,

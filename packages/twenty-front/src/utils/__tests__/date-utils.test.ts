@@ -1,9 +1,12 @@
 import { i18n } from '@lingui/core';
 import { addDays, format, formatDistanceToNow, subDays } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { faIR, fr } from 'date-fns/locale';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
 import { messages as enMessages } from '~/locales/generated/en';
 import { messages as frMessages } from '~/locales/generated/fr-FR';
+
+import { DateFormat } from '@/localization/constants/DateFormat';
+import { TimeFormat } from '@/localization/constants/TimeFormat';
 
 import {
   beautifyDateDiff,
@@ -364,6 +367,84 @@ describe('French locale tests', () => {
       const today = new Date('2024-01-01T12:00:00.000Z');
       const result = beautifyExactDate(today);
       expect(result).toBe("Aujourd'hui"); // French for "Today"
+    });
+  });
+});
+
+describe('persian display context', () => {
+  const persianDisplayContext = {
+    calendar: 'persian' as const,
+    timeZone: 'Asia/Tehran',
+    dateFormat: DateFormat.DAY_FIRST,
+    timeFormat: TimeFormat.HOUR_24,
+  };
+
+  beforeAll(() => {
+    i18n.activate(SOURCE_LOCALE);
+  });
+
+  describe('beautifyExactDateTime', () => {
+    it('should format a past date-time in the jalali calendar and user timezone', () => {
+      expect(
+        beautifyExactDateTime('2023-01-01T08:43:00Z', persianDisplayContext),
+      ).toBe('۱۱ دی ۱۴۰۱، ۱۲:۱۳');
+    });
+
+    it('should decide "today" in the user timezone, not the host timezone', () => {
+      // 2023-12-31T21:00Z is still yesterday in GMT but already 00:30 on
+      // 2024-01-01 in Tehran, where "now" is 03:30.
+      expect(
+        beautifyExactDateTime('2023-12-31T21:00:00Z', persianDisplayContext),
+      ).toBe('۰۰:۳۰');
+    });
+
+    it('should keep the gregorian output for a gregorian display context', () => {
+      const mockDate = '2023-01-01T12:13:24';
+
+      expect(
+        beautifyExactDateTime(mockDate, {
+          ...persianDisplayContext,
+          calendar: 'gregory',
+        }),
+      ).toBe(format(new Date(mockDate), 'MMM d, yyyy · HH:mm'));
+    });
+  });
+
+  describe('beautifyExactDate', () => {
+    it('should return "Today" across the user timezone midnight', () => {
+      expect(
+        beautifyExactDate('2023-12-31T21:00:00Z', persianDisplayContext),
+      ).toBe('Today');
+    });
+
+    it('should format the jalali date just before the user timezone midnight', () => {
+      expect(
+        beautifyExactDate('2023-12-31T20:00:00Z', persianDisplayContext),
+      ).toBe('۱۰ دی ۱۴۰۲');
+    });
+  });
+
+  describe('beautifyPastDateRelativeToNow', () => {
+    it('should use persian wording and digits with the fa-IR catalog', () => {
+      expect(beautifyPastDateRelativeToNow('2023-12-31T21:00:00Z', faIR)).toBe(
+        '۳ ساعت پیش',
+      );
+    });
+
+    it('should use persian wording when the calendar is passed explicitly', () => {
+      expect(
+        beautifyPastDateRelativeToNow(
+          '2023-12-30T00:00:00Z',
+          undefined,
+          'persian',
+        ),
+      ).toBe('۲ روز پیش');
+    });
+
+    it('should keep "now" for very recent dates', () => {
+      expect(beautifyPastDateRelativeToNow('2023-12-31T23:59:50Z', faIR)).toBe(
+        'now',
+      );
     });
   });
 });

@@ -2,11 +2,19 @@ import { styled } from '@linaria/react';
 import { useIMask } from 'react-imask';
 
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { formatJalaliDateInputString } from '@/localization/utils/jalali/formatJalaliDateInputString';
+import { normalizeLocalizedDigitsToAscii } from '@/localization/utils/jalali/normalizeLocalizedDigitsToAscii';
+import { parseJalaliDateInputString } from '@/localization/utils/jalali/parseJalaliDateInputString';
 import { DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/DateBlocks';
+import { JALALI_DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/JalaliDateBlocks';
 import { MAX_DATE } from '@/ui/input/components/internal/date/constants/MaxDate';
 import { MIN_DATE } from '@/ui/input/components/internal/date/constants/MinDate';
+import { useTimeInput } from '@/ui/input/components/internal/date/hooks/useTimeInput';
 import { getDateTimeMask } from '@/ui/input/components/internal/date/utils/getDateTimeMask';
+import { getJalaliDateMask } from '@/ui/input/components/internal/date/utils/getJalaliDateMask';
 import { getTimeBlocks } from '@/ui/input/components/internal/date/utils/getTimeBlocks';
+import { getTimeMask } from '@/ui/input/components/internal/date/utils/getTimeMask';
+import { isPlainDateWithinDatePickerRange } from '@/ui/input/components/internal/date/utils/isPlainDateWithinDatePickerRange';
 import { type FormFieldInputVariant } from '@/ui/input/types/FormFieldInputVariant';
 
 import { TimeZoneAbbreviation } from '@/ui/input/components/internal/date/components/TimeZoneAbbreviation';
@@ -15,7 +23,7 @@ import { useGetShiftedDateToSystemTimeZone } from '@/ui/input/components/interna
 import { useParseDateTimeInputStringToJSDate } from '@/ui/input/components/internal/date/hooks/useParseDateTimeInputStringToJSDate';
 import { useParseJSDateToIMaskDateTimeInputString } from '@/ui/input/components/internal/date/hooks/useParseJSDateToIMaskDateTimeInputString';
 import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Temporal } from 'temporal-polyfill';
 import { isDefined } from 'twenty-shared/utils';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
@@ -42,12 +50,15 @@ const StyledInput = styled.input<{
 }>`
   background: transparent;
   border: none;
-  color: ${themeCssVariables.font.color.primary};
+  color: ${({ hasError }) =>
+    hasError
+      ? themeCssVariables.color.red
+      : themeCssVariables.font.color.primary};
   font-size: ${themeCssVariables.font.size.md};
   font-weight: ${({ $variant }) =>
     $variant === 'transparent' ? themeCssVariables.font.weight.regular : 500};
   outline: none;
-  padding-left: ${({ $variant }) =>
+  padding-inline-start: ${({ $variant }) =>
     $variant === 'transparent' ? '0' : themeCssVariables.spacing[2]};
   width: 140px;
 `;
@@ -73,7 +84,10 @@ export const DateTimePickerInput = ({
 
   const { userTimezone } = useUserTimezone();
 
-  const { dateFormat, timeFormat } = useDateTimeFormat();
+  const { dateFormat, timeFormat, calendar } = useDateTimeFormat();
+  const isPersianCalendar = calendar === 'persian';
+  const [hasInvalidJalaliDate, setHasInvalidJalaliDate] = useState(false);
+  const { formatTime, parseTime } = useTimeInput(timeFormat);
 
   const { getShiftedDateToSystemTimeZone } =
     useGetShiftedDateToSystemTimeZone();
@@ -107,23 +121,87 @@ export const DateTimePickerInput = ({
       )
     : null;
 
-  const { ref, setValue } = useIMask(
-    {
-      mask: Date,
-      pattern,
-      blocks,
-      min: MIN_DATE,
-      max: MAX_DATE,
-      format: (date: any) => parseJSDateToDateTimeInputString(date),
-      parse: handleParseStringToDate,
-      lazy: false,
-      autofix: false,
+  const formatZonedDateTimeForJalaliInput = useCallback(
+    (zonedDateTime: Temporal.ZonedDateTime) => {
+      const zonedDateTimeInTimeZone = zonedDateTime.withTimeZone(
+        timeZone ?? userTimezone,
+      );
+
+      return `${formatJalaliDateInputString({
+        isoPlainDate: zonedDateTimeInTimeZone.toPlainDate(),
+        dateFormat,
+      })} ${formatTime(zonedDateTimeInTimeZone.hour, zonedDateTimeInTimeZone.minute)}`;
     },
+    [timeZone, userTimezone, dateFormat, formatTime],
+  );
+
+  const parseJalaliDateTimeInputString = (value: string) => {
+    const [datePart, ...timeParts] = value.split(' ');
+    const isoPlainDate = parseJalaliDateInputString({
+      value: datePart,
+      dateFormat,
+    });
+    const time = parseTime(timeParts.join(' '));
+
+    if (
+      !isDefined(isoPlainDate) ||
+      !isDefined(time) ||
+      !isPlainDateWithinDatePickerRange(isoPlainDate)
+    ) {
+      return null;
+    }
+
+    return Temporal.PlainDate.from(isoPlainDate)
+      .toPlainDateTime({ hour: time.hour, minute: time.minute })
+      .toZonedDateTime(timeZone ?? userTimezone);
+  };
+
+  // See DatePickerInput: numeric Jalali blocks instead of IMask's Date mask.
+  const { ref, setValue } = useIMask(
+    isPersianCalendar
+      ? {
+          mask: `${getJalaliDateMask(dateFormat)} ${getTimeMask(timeFormat)}`,
+          blocks: { ...JALALI_DATE_BLOCKS, ...getTimeBlocks(timeFormat) },
+          prepareChar: normalizeLocalizedDigitsToAscii,
+          lazy: false,
+          autofix: false,
+        }
+      : {
+          mask: Date,
+          pattern,
+          blocks,
+          min: MIN_DATE,
+          max: MAX_DATE,
+          format: (date: any) => parseJSDateToDateTimeInputString(date),
+          parse: handleParseStringToDate,
+          lazy: false,
+          autofix: false,
+        },
     {
-      defaultValue: isDefined(shiftedIMaskDate)
-        ? parseJSDateToDateTimeInputString(shiftedIMaskDate)
-        : undefined,
+      defaultValue:
+        isPersianCalendar && isDefined(internalDate)
+          ? formatZonedDateTimeForJalaliInput(internalDate)
+          : isDefined(shiftedIMaskDate)
+            ? parseJSDateToDateTimeInputString(shiftedIMaskDate)
+            : undefined,
+      onAccept: () => {
+        setHasInvalidJalaliDate(false);
+      },
       onComplete: (value) => {
+        if (isPersianCalendar) {
+          const zonedDateTime = parseJalaliDateTimeInputString(value);
+
+          if (!isDefined(zonedDateTime)) {
+            setHasInvalidJalaliDate(true);
+            return;
+          }
+
+          setInternalDate(date);
+
+          onChange?.(zonedDateTime);
+          return;
+        }
+
         const parsedDate = parseDateTimeInputStringToJSDate(value);
 
         if (!isDefined(parsedDate)) {
@@ -155,6 +233,11 @@ export const DateTimePickerInput = ({
         return;
       }
 
+      if (isPersianCalendar) {
+        setValue(formatZonedDateTimeForJalaliInput(date));
+        return;
+      }
+
       const newDateAsDate = new Date(date.toInstant().toString());
 
       const newShiftedDate = getShiftedDateToSystemTimeZone(
@@ -167,6 +250,8 @@ export const DateTimePickerInput = ({
   }, [
     date,
     internalDate,
+    isPersianCalendar,
+    formatZonedDateTimeForJalaliInput,
     parseJSDateToDateTimeInputString,
     setValue,
     shiftedIMaskDate,
@@ -185,6 +270,9 @@ export const DateTimePickerInput = ({
       <StyledInput
         $variant={variant}
         disabled={shouldDisplayReadOnly}
+        hasError={hasInvalidJalaliDate}
+        aria-invalid={hasInvalidJalaliDate || undefined}
+        dir={isPersianCalendar ? 'ltr' : undefined}
         type="text"
         ref={ref as any}
         onFocus={!shouldDisplayReadOnly ? onFocus : undefined}

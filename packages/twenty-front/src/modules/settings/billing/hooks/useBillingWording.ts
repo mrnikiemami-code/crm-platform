@@ -11,11 +11,13 @@ import {
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { useLingui } from '@lingui/react/macro';
 import { beautifyExactDate } from '~/utils/date-utils';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { getSubscriptionPlanKey } from '@/settings/billing/utils/getSubscriptionPlanKey';
 
 export const useBillingWording = () => {
   const { t } = useLingui();
+  const dateDisplayContext = useDateDisplayContext();
 
   const currentWorkspace = useAtomStateValue(currentWorkspaceState);
 
@@ -48,6 +50,7 @@ export const useBillingWording = () => {
 
     return beautifyExactDate(
       new Date(currentBillingSubscription.currentPeriodEnd),
+      dateDisplayContext,
     );
   };
 

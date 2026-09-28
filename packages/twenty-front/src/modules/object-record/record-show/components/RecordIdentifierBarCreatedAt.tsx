@@ -1,14 +1,13 @@
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
 import { StyledHeaderIdentifierLabel } from '@/ui/layout/page/components/StyledHeaderIdentifierLabel';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
 import { useAtomFamilySelectorValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilySelectorValue';
-import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { styled } from '@linaria/react';
 import { Trans } from '@lingui/react/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import { useId } from 'react';
 import { Tooltip } from 'twenty-ui/primitives/surfaces';
-import { dateLocaleState } from '~/localization/states/dateLocaleState';
 import {
   beautifyExactDateTime,
   beautifyPastDateRelativeToNow,
@@ -29,7 +28,7 @@ export const RecordIdentifierBarCreatedAt = ({
     recordStoreFamilySelector,
     { recordId: objectRecordId, fieldName: 'createdAt' },
   );
-  const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const dateDisplayContext = useDateDisplayContext();
   const instanceId = useId().replace(/:/g, '');
 
   if (!isNonEmptyString(recordCreatedAt)) {
@@ -39,13 +38,14 @@ export const RecordIdentifierBarCreatedAt = ({
   const createdAtElementId = `record-identifier-bar-created-at-${instanceId}`;
   const beautifiedCreatedAt = beautifyPastDateRelativeToNow(
     recordCreatedAt,
-    localeCatalog,
+    dateDisplayContext.localeCatalog,
+    dateDisplayContext.calendar,
   );
 
   return (
     <Tooltip
       delay={TooltipDelay.mediumDelay}
-      content={beautifyExactDateTime(recordCreatedAt)}
+      content={beautifyExactDateTime(recordCreatedAt, dateDisplayContext)}
       side="left"
     >
       <StyledCreatedAt id={createdAtElementId}>

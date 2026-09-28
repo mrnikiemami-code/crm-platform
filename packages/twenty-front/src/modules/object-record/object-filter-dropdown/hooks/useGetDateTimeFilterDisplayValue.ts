@@ -1,3 +1,5 @@
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { formatDateISOStringToDateTime } from '@/localization/utils/formatDateISOStringToDateTime';
 import { useUserDateFormat } from '@/ui/input/components/internal/date/hooks/useUserDateFormat';
 import { useUserTimeFormat } from '@/ui/input/components/internal/date/hooks/useUserTimeFormat';
 import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
@@ -11,6 +13,7 @@ export const useGetDateTimeFilterDisplayValue = () => {
 
   const { userDateFormat } = useUserDateFormat();
   const { userTimeFormat } = useUserTimeFormat();
+  const { calendar, dateFormat, timeFormat } = useDateTimeFormat();
 
   const getDateTimeFilterDisplayValue = (
     referenceZonedDateTime: Temporal.ZonedDateTime,
@@ -19,7 +22,18 @@ export const useGetDateTimeFilterDisplayValue = () => {
       ? ` (${getTimezoneAbbreviationForZonedDateTime(referenceZonedDateTime)})`
       : '';
 
-    const displayValue = `${formatZonedDateTimeDatePart(referenceZonedDateTime, userDateFormat)} ${formatZonedDateTimeTimePart(referenceZonedDateTime, userTimeFormat)}${timezoneSuffix}`;
+    const dateTimeText =
+      calendar === 'persian'
+        ? formatDateISOStringToDateTime({
+            date: referenceZonedDateTime.toInstant().toString(),
+            timeZone: referenceZonedDateTime.timeZoneId,
+            dateFormat,
+            timeFormat,
+            calendar,
+          })
+        : `${formatZonedDateTimeDatePart(referenceZonedDateTime, userDateFormat)} ${formatZonedDateTimeTimePart(referenceZonedDateTime, userTimeFormat)}`;
+
+    const displayValue = `${dateTimeText}${timezoneSuffix}`;
 
     return { displayValue };
   };

@@ -13,6 +13,8 @@ import { getCalendarEventEndDate } from '@/activities/calendar/utils/getCalendar
 import { getCalendarEventStartDate } from '@/activities/calendar/utils/getCalendarEventStartDate';
 import { hasCalendarEventEnded } from '@/activities/calendar/utils/hasCalendarEventEnded';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
 import { useOpenCalendarEventInSidePanel } from '@/side-panel/hooks/useOpenCalendarEventInSidePanel';
 import { useContext } from 'react';
 import { IconArrowRight } from 'twenty-ui/icon';
@@ -78,15 +80,25 @@ export const CalendarEventRow = ({
   const { theme } = useContext(ThemeContext);
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const { openCalendarEventInSidePanel } = useOpenCalendarEventInSidePanel();
+  const { locale, calendar } = useDateDisplayContext();
 
   const startsAt = getCalendarEventStartDate(calendarEvent);
   const endsAt = getCalendarEventEndDate(calendarEvent);
   const hasEnded = hasCalendarEventEnded(calendarEvent);
 
+  const formatEventTime = (date: Date) =>
+    calendar === 'persian'
+      ? formatDateTimeForAppLocale({
+          date,
+          locale,
+          options: { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' },
+        })
+      : format(date, 'HH:mm');
+
   const startTimeLabel = calendarEvent.isFullDay
     ? t`All day`
-    : format(startsAt, 'HH:mm');
-  const endTimeLabel = calendarEvent.isFullDay ? '' : format(endsAt, 'HH:mm');
+    : formatEventTime(startsAt);
+  const endTimeLabel = calendarEvent.isFullDay ? '' : formatEventTime(endsAt);
 
   const isCurrentWorkspaceMemberAttending = calendarEvent.participants?.some(
     ({ workspaceMemberId }) => workspaceMemberId === currentWorkspaceMember?.id,

@@ -16,6 +16,7 @@ import { type CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useOpenCalendarEventInSidePanel } from '@/side-panel/hooks/useOpenCalendarEventInSidePanel';
 import { UserContext } from '@/users/contexts/UserContext';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import {
   formatToHumanReadableDay,
   formatToHumanReadableMonth,
@@ -96,6 +97,7 @@ export const EventCardCalendarEvent = ({
 }) => {
   const { openCalendarEventInSidePanel } = useOpenCalendarEventInSidePanel();
   const { timeZone } = useContext(UserContext);
+  const { locale } = useDateDisplayContext();
 
   const {
     record: calendarEvent,
@@ -164,17 +166,20 @@ export const EventCardCalendarEvent = ({
   const startsAtMonth = formatToHumanReadableMonth(
     calendarEvent.startsAt,
     timeZone,
+    locale,
   );
   const startsAtDay = formatToHumanReadableDay(
     calendarEvent.startsAt,
     timeZone,
+    locale,
   );
   const startsAtTime = formatToHumanReadableTime(
     calendarEvent.startsAt,
     timeZone,
+    locale,
   );
   const endsAtTime = isDefined(calendarEvent.endsAt)
-    ? formatToHumanReadableTime(calendarEvent.endsAt, timeZone)
+    ? formatToHumanReadableTime(calendarEvent.endsAt, timeZone, locale)
     : null;
   return (
     <StyledEventCardCalendarEventContainer

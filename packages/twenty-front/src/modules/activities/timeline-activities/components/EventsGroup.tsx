@@ -9,7 +9,7 @@ import { themeCssVariables } from 'twenty-ui/theme-constants';
 type EventsGroupProps = {
   group: EventGroup;
   month: string;
-  year?: number;
+  year?: string;
   mainObjectMetadataItem: EnrichedObjectMetadataItem | null;
 };
 

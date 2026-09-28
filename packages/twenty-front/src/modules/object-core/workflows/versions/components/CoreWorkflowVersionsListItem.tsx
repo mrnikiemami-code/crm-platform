@@ -3,6 +3,8 @@ import { useLingui } from '@lingui/react/macro';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { Tag } from 'twenty-ui/primitives/data-display';
 
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
 import { CORE_WORKFLOW_VERSION_STATUS_TAG_PROPS } from '@/object-core/workflows/versions/constants/CoreWorkflowVersionStatusTagProps';
 import { SelectableListItem } from '@/ui/layout/selectable-list/components/SelectableListItem';
 import { type CoreWorkflowVersionStatus } from '~/generated/graphql';
@@ -54,6 +56,7 @@ export const CoreWorkflowVersionsListItem = ({
   onSelect,
 }: CoreWorkflowVersionsListItemProps) => {
   const { t } = useLingui();
+  const { locale, timeZone } = useDateDisplayContext();
   const tagProps = CORE_WORKFLOW_VERSION_STATUS_TAG_PROPS[status];
 
   return (
@@ -64,10 +67,11 @@ export const CoreWorkflowVersionsListItem = ({
       >
         <StyledLabel>{label}</StyledLabel>
         <StyledDate>
-          {new Date(createdAt).toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+          {formatDateTimeForAppLocale({
+            date: new Date(createdAt),
+            locale,
+            timeZone,
+            options: { year: 'numeric', month: 'long', day: 'numeric' },
           })}
         </StyledDate>
         <Tag color={tagProps.color}>{t(tagProps.label)}</Tag>

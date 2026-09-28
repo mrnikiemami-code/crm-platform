@@ -3,7 +3,11 @@ import { styled } from '@linaria/react';
 
 import { Select } from '@/ui/input/components/Select';
 
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { getPersianMonthSelectOptions } from '@/localization/utils/jalali/getPersianMonthSelectOptions';
 import { DatePickerInput } from '@/ui/input/components/internal/date/components/DatePickerInput';
+import { DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME } from '@/ui/input/components/internal/date/styles/DatePickerNavigationButtonClassName';
+import { getJalaliYearSelectOptions } from '@/ui/input/components/internal/date/utils/getJalaliYearSelectOptions';
 import { getMonthSelectOptions } from '@/ui/input/components/internal/date/utils/getMonthSelectOptions';
 import { ClickOutsideListenerContext } from '@/ui/utilities/pointer-event/contexts/ClickOutsideListenerContext';
 import { IconChevronLeft, IconChevronRight } from 'twenty-ui/icon';
@@ -60,8 +64,14 @@ export const DatePickerHeader = ({
 }: DatePickerHeaderProps) => {
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const userLocale = currentWorkspaceMember?.locale ?? SOURCE_LOCALE;
+  const { calendar } = useDateTimeFormat();
+  const isPersianCalendar = calendar === 'persian';
 
-  const dateParsed = isDefined(date) ? Temporal.PlainDate.from(date) : null;
+  const dateParsed = isDefined(date)
+    ? Temporal.PlainDate.from(date).withCalendar(
+        isPersianCalendar ? 'persian' : 'iso8601',
+      )
+    : null;
 
   return (
     <>
@@ -74,7 +84,11 @@ export const DatePickerHeader = ({
         >
           <Select
             dropdownId={MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID}
-            options={getMonthSelectOptions(userLocale)}
+            options={
+              isPersianCalendar
+                ? getPersianMonthSelectOptions(userLocale)
+                : getMonthSelectOptions(userLocale)
+            }
             onChange={onChangeMonth}
             value={dateParsed?.month}
             fullWidth
@@ -89,11 +103,16 @@ export const DatePickerHeader = ({
             dropdownId={MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID}
             onChange={onChangeYear}
             value={dateParsed?.year}
-            options={YEARS_SELECT_OPTIONS}
+            options={
+              isPersianCalendar
+                ? getJalaliYearSelectOptions()
+                : YEARS_SELECT_OPTIONS
+            }
             fullWidth
           />
         </ClickOutsideListenerContext.Provider>
         <LightIconButton
+          className={DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME}
           onClick={onSubtractMonth}
           size="md"
           disabled={prevMonthButtonDisabled}
@@ -102,6 +121,7 @@ export const DatePickerHeader = ({
           <IconChevronLeft />
         </LightIconButton>
         <LightIconButton
+          className={DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME}
           onClick={onAddMonth}
           size="md"
           disabled={nextMonthButtonDisabled}

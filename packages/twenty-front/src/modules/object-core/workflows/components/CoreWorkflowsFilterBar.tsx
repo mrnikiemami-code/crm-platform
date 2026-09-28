@@ -4,6 +4,7 @@ import { IconFilter } from 'twenty-ui/icon';
 import { IconButton } from 'twenty-ui/components';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { findCoreWorkflowFilterField } from '@/object-core/workflows/utils/findCoreWorkflowFilterField';
 import { useOpenCoreWorkflowFiltersSidePanel } from '@/object-core/workflows/hooks/useOpenCoreWorkflowFiltersSidePanel';
 import { coreWorkflowsFilterSettingsState } from '@/object-core/workflows/states/coreWorkflowsFilterSettingsState';
@@ -31,6 +32,7 @@ export const CoreWorkflowsFilterBar = () => {
   const [coreWorkflowsFilterSettings, setCoreWorkflowsFilterSettings] =
     useAtomState(coreWorkflowsFilterSettingsState);
   const { userTimezone } = useUserTimezone();
+  const { locale } = useDateDisplayContext();
 
   const appliedStepFilters = (coreWorkflowsFilterSettings.stepFilters ?? [])
     .filter(isUsableCoreWorkflowFilterRule)
@@ -45,6 +47,7 @@ export const CoreWorkflowsFilterBar = () => {
           labelValue={getCoreWorkflowFilterChipLabel({
             stepFilter,
             timezone: userTimezone,
+            locale,
           })}
           Icon={findCoreWorkflowFilterField(stepFilter.stepOutputKey)?.Icon}
           testId={`core-workflow-filter-${stepFilter.id}`}

@@ -121,4 +121,44 @@ describe('formatDateISOStringToDate', () => {
       expect(result).toBe('2 Jan, 2022');
     });
   });
+
+  describe('persian calendar', () => {
+    it('should format date-only values without shifting the day in any timezone', () => {
+      const timeZones = ['UTC', 'Asia/Tokyo', 'America/Los_Angeles'];
+
+      for (const timeZone of timeZones) {
+        expect(
+          formatDateISOStringToDate({
+            date: '2026-03-21',
+            timeZone,
+            dateFormat: DateFormat.DAY_FIRST,
+            calendar: 'persian',
+          }),
+        ).toBe('۱ فروردین ۱۴۰۵');
+      }
+    });
+
+    it('should keep UTC midnight on the same day when displayed in UTC', () => {
+      expect(
+        formatDateISOStringToDate({
+          date: '2026-09-28T00:00:00.000Z',
+          timeZone: 'UTC',
+          dateFormat: DateFormat.DAY_FIRST,
+          calendar: 'persian',
+        }),
+      ).toBe('۶ مهر ۱۴۰۵');
+    });
+
+    it('should resolve instants in the user timezone', () => {
+      // 2026-09-27 21:00 UTC = 2026-09-28 00:30 in Asia/Tehran (UTC+3:30).
+      expect(
+        formatDateISOStringToDate({
+          date: '2026-09-27T21:00:00Z',
+          timeZone: 'Asia/Tehran',
+          dateFormat: DateFormat.MONTH_FIRST,
+          calendar: 'persian',
+        }),
+      ).toBe('مهر ۶، ۱۴۰۵');
+    });
+  });
 });

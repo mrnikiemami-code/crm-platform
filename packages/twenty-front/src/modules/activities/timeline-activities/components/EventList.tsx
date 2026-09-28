@@ -6,8 +6,10 @@ import { type TimelineActivity } from '@/activities/timeline-activities/types/Ti
 import { useTimelineActivityTypeFilter } from '@/activities/timeline-activities/hooks/useTimelineActivityTypeFilter';
 import { filterOutInvalidTimelineActivities } from '@/activities/timeline-activities/utils/filterOutInvalidTimelineActivities';
 import { keepTimelineActivitiesOfSelectedTypes } from '@/activities/timeline-activities/utils/keepTimelineActivitiesOfSelectedTypes';
+import { getEventGroupLabels } from '@/activities/timeline-activities/utils/getEventGroupLabels';
 import { groupEventsByMonth } from '@/activities/timeline-activities/utils/groupEventsByMonth';
 import { type ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
 import { useLingui } from '@lingui/react/macro';
@@ -38,6 +40,7 @@ const StyledTimelineContainer = styled.div`
 
 export const EventList = ({ events, targetableObject }: EventListProps) => {
   const { t } = useLingui();
+  const { locale, calendar, timeZone } = useDateDisplayContext();
 
   const mainObjectMetadataItem = useObjectMetadataItem({
     objectNameSingular: targetableObject.targetObjectNameSingular,
@@ -61,7 +64,10 @@ export const EventList = ({ events, targetableObject }: EventListProps) => {
     timelineActivityTypeMaps,
   );
 
-  const groupedEvents = groupEventsByMonth(filteredEvents);
+  const groupedEvents = groupEventsByMonth(filteredEvents, {
+    calendar,
+    timeZone,
+  });
 
   if (groupedEvents.length === 0) {
     return (
@@ -80,21 +86,28 @@ export const EventList = ({ events, targetableObject }: EventListProps) => {
 
   return (
     <StyledTimelineContainer>
-      {groupedEvents.map((group, index) => (
-        <EventsGroup
-          mainObjectMetadataItem={mainObjectMetadataItem}
-          key={group.year.toString() + group.month}
-          group={group}
-          month={new Date(group.items[0].happensAt).toLocaleString('default', {
-            month: 'long',
-          })}
-          year={
-            index === 0 || group.year !== groupedEvents[index - 1].year
-              ? group.year
-              : undefined
-          }
-        />
-      ))}
+      {groupedEvents.map((group, index) => {
+        const { monthLabel, yearLabel } = getEventGroupLabels({
+          group,
+          locale,
+          calendar,
+          timeZone,
+        });
+
+        return (
+          <EventsGroup
+            mainObjectMetadataItem={mainObjectMetadataItem}
+            key={group.year.toString() + group.month}
+            group={group}
+            month={monthLabel}
+            year={
+              index === 0 || group.year !== groupedEvents[index - 1].year
+                ? yearLabel
+                : undefined
+            }
+          />
+        );
+      })}
     </StyledTimelineContainer>
   );
 };

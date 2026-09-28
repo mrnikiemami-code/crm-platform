@@ -6,10 +6,13 @@ import {
   type RelativeDateFilter,
 } from 'twenty-shared/utils';
 
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { updateTemporalValueInCalendar } from '@/localization/utils/updateTemporalValueInCalendar';
 import {
   DATE_TIME_PICKER_MONTH_YEAR_PANEL_DROPDOWN_ID,
   DateTimePickerHeader,
 } from '@/ui/input/components/internal/date/components/DateTimePickerHeader';
+import { JalaliDatePickerCalendar } from '@/ui/input/components/internal/date/components/JalaliDatePickerCalendar';
 import { RelativeDatePickerHeader } from '@/ui/input/components/internal/date/components/RelativeDatePickerHeader';
 import { RelativeDateTimeRangeText } from '@/ui/input/components/internal/date/components/RelativeDateTimeRangeText';
 import { StyledDatePickerContainer } from '@/ui/input/components/internal/date/components/StyledDatePickerContainer';
@@ -150,6 +153,7 @@ export const DateTimePicker = ({
 }: DateTimePickerProps) => {
   const { theme } = useContext(ThemeContext);
   const { userFirstDayOfTheWeek } = useUserFirstDayOfTheWeek();
+  const { calendar } = useDateTimeFormat();
 
   const { userTimezone } = useUserTimezone();
 
@@ -161,6 +165,12 @@ export const DateTimePicker = ({
   const { getShiftedDateToSystemTimeZone } =
     useGetShiftedDateToSystemTimeZone();
 
+  const getZonedDateTimeFromPlainDate = (plainDatePart: Temporal.PlainDate) =>
+    plainDatePart.toZonedDateTime(timeZone ?? userTimezone).with({
+      hour: dateToUse?.hour ?? 0,
+      minute: dateToUse?.minute ?? 0,
+    });
+
   const getZonedDateTimeFromDatePicked = (datePicked: Date) => {
     const plainDatePart = Temporal.PlainDate.from({
       day: datePicked.getDate(),
@@ -168,12 +178,7 @@ export const DateTimePicker = ({
       year: datePicked.getFullYear(),
     });
 
-    const zonedDateTime = plainDatePart
-      .toZonedDateTime(timeZone ?? userTimezone)
-      .with({
-        hour: dateToUse?.hour ?? 0,
-        minute: dateToUse?.minute ?? 0,
-      });
+    const zonedDateTime = getZonedDateTimeFromPlainDate(plainDatePart);
 
     return { zonedDateTime };
   };
@@ -189,25 +194,45 @@ export const DateTimePicker = ({
   };
 
   const handleChangeMonth = (month: number) => {
-    const newZonedDateTime = dateToUse?.with({ month: month }) ?? null;
+    const newZonedDateTime = updateTemporalValueInCalendar({
+      value: dateToUse,
+      calendar,
+      update: (zonedDateTimeInCalendar) =>
+        zonedDateTimeInCalendar.with({ month: month }),
+    });
 
     onChange?.(newZonedDateTime);
   };
 
   const handleAddMonth = () => {
-    const newZonedDateTime = dateToUse?.add({ months: 1 }) ?? null;
+    const newZonedDateTime = updateTemporalValueInCalendar({
+      value: dateToUse,
+      calendar,
+      update: (zonedDateTimeInCalendar) =>
+        zonedDateTimeInCalendar.add({ months: 1 }),
+    });
 
     onChange?.(newZonedDateTime);
   };
 
   const handleSubtractMonth = () => {
-    const newZonedDateTime = dateToUse?.subtract({ months: 1 }) ?? null;
+    const newZonedDateTime = updateTemporalValueInCalendar({
+      value: dateToUse,
+      calendar,
+      update: (zonedDateTimeInCalendar) =>
+        zonedDateTimeInCalendar.subtract({ months: 1 }),
+    });
 
     onChange?.(newZonedDateTime);
   };
 
   const handleChangeYear = (year: number) => {
-    const newZonedDateTime = dateToUse?.with({ year: year }) ?? null;
+    const newZonedDateTime = updateTemporalValueInCalendar({
+      value: dateToUse,
+      calendar,
+      update: (zonedDateTimeInCalendar) =>
+        zonedDateTimeInCalendar.with({ year: year }),
+    });
 
     onChange?.(newZonedDateTime);
   };
@@ -228,6 +253,22 @@ export const DateTimePicker = ({
     const { zonedDateTime } = getZonedDateTimeFromDatePicked(newDate);
 
     handleClose?.(zonedDateTime);
+  };
+
+  const displayedPlainDate = dateToUse
+    .withTimeZone(timeZone ?? userTimezone)
+    .toPlainDate();
+
+  // Same event sequence as react-datepicker: onChange only for a different
+  // day, then onSelect (which closes) for every click.
+  const handleJalaliDaySelect = (plainDatePicked: Temporal.PlainDate) => {
+    const zonedDateTime = getZonedDateTimeFromPlainDate(plainDatePicked);
+
+    if (!plainDatePicked.equals(displayedPlainDate)) {
+      onChange?.(zonedDateTime);
+    }
+
+    handleClose(zonedDateTime);
   };
 
   const relativeUnit = relativeDate?.unit ?? 'DAY';
@@ -266,6 +307,47 @@ export const DateTimePicker = ({
   const calendarStartDayNumber =
     convertFirstDayOfTheWeekToCalendarStartDayNumber(userFirstDayOfTheWeek);
 
+  const renderCalendarHeader = ({
+    monthDate,
+    decreaseMonth,
+    increaseMonth,
+    prevMonthButtonDisabled,
+    nextMonthButtonDisabled,
+  }: {
+    monthDate: Date;
+    decreaseMonth: () => void;
+    increaseMonth: () => void;
+    prevMonthButtonDisabled: boolean;
+    nextMonthButtonDisabled: boolean;
+  }) =>
+    isRelative ? (
+      <RelativeDatePickerHeader
+        instanceId={instanceId}
+        direction={relativeDate?.direction ?? 'PAST'}
+        amount={relativeDate?.amount}
+        unit={relativeUnit}
+        onChange={onRelativeDateChange}
+        allowIntraDayUnits={true}
+        calendarMonthDate={monthDate}
+        onPreviousMonth={decreaseMonth}
+        onNextMonth={increaseMonth}
+        prevMonthButtonDisabled={prevMonthButtonDisabled}
+        nextMonthButtonDisabled={nextMonthButtonDisabled}
+      />
+    ) : (
+      <DateTimePickerHeader
+        date={dateToUse}
+        onChange={onChange}
+        onAddMonth={handleAddMonth}
+        onSubtractMonth={handleSubtractMonth}
+        prevMonthButtonDisabled={prevMonthButtonDisabled}
+        nextMonthButtonDisabled={nextMonthButtonDisabled}
+        hideInput={hideHeaderInput}
+        onChangeMonth={handleChangeMonth}
+        onChangeYear={handleChangeYear}
+      />
+    );
+
   return (
     <StyledOuterWrapper>
       <StyledDatePickerContainer
@@ -288,6 +370,18 @@ export const DateTimePicker = ({
               />
             )}
           </>
+        ) : calendar === 'persian' ? (
+          <JalaliDatePickerCalendar
+            anchorPlainDate={relativeRangeStartPlainDate ?? displayedPlainDate}
+            selectedPlainDate={isRelative ? null : displayedPlainDate}
+            rangeStartPlainDate={relativeRangeStartPlainDate}
+            rangeEndPlainDate={relativeRangeEndPlainDate}
+            todayPlainDate={Temporal.Now.plainDateISO(timeZone ?? userTimezone)}
+            calendarStartDay={calendarStartDayNumber}
+            disabled={isRelative}
+            onDaySelect={handleJalaliDaySelect}
+            renderHeader={renderCalendarHeader}
+          />
         ) : (
           <Suspense
             fallback={
@@ -335,41 +429,7 @@ export const DateTimePicker = ({
               calendarStartDay={
                 calendarStartDayNumber as 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
               }
-              renderCustomHeader={({
-                monthDate,
-                decreaseMonth,
-                increaseMonth,
-                prevMonthButtonDisabled,
-                nextMonthButtonDisabled,
-              }) =>
-                isRelative ? (
-                  <RelativeDatePickerHeader
-                    instanceId={instanceId}
-                    direction={relativeDate?.direction ?? 'PAST'}
-                    amount={relativeDate?.amount}
-                    unit={relativeUnit}
-                    onChange={onRelativeDateChange}
-                    allowIntraDayUnits={true}
-                    calendarMonthDate={monthDate}
-                    onPreviousMonth={decreaseMonth}
-                    onNextMonth={increaseMonth}
-                    prevMonthButtonDisabled={prevMonthButtonDisabled}
-                    nextMonthButtonDisabled={nextMonthButtonDisabled}
-                  />
-                ) : (
-                  <DateTimePickerHeader
-                    date={dateToUse}
-                    onChange={onChange}
-                    onAddMonth={handleAddMonth}
-                    onSubtractMonth={handleSubtractMonth}
-                    prevMonthButtonDisabled={prevMonthButtonDisabled}
-                    nextMonthButtonDisabled={nextMonthButtonDisabled}
-                    hideInput={hideHeaderInput}
-                    onChangeMonth={handleChangeMonth}
-                    onChangeYear={handleChangeYear}
-                  />
-                )
-              }
+              renderCustomHeader={renderCalendarHeader}
             />
           </Suspense>
         )}

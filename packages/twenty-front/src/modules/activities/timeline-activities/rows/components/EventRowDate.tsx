@@ -25,7 +25,7 @@ type EventRowDateProps = {
 };
 
 export const EventRowDate = ({ happensAt }: EventRowDateProps) => {
-  const { dateFormat, timeFormat, timeZone } = useDateTimeFormat();
+  const { dateFormat, timeFormat, timeZone, calendar } = useDateTimeFormat();
   const { localeCatalog } = useAtomStateValue(dateLocaleState);
 
   const instanceId = useId();
@@ -38,6 +38,7 @@ export const EventRowDate = ({ happensAt }: EventRowDateProps) => {
   const relativeHappensAt = beautifyPastDateRelativeToNow(
     happensAt,
     localeCatalog,
+    calendar,
   );
   const exactHappensAt = formatDateTimeString({
     value: happensAt,
@@ -45,6 +46,7 @@ export const EventRowDate = ({ happensAt }: EventRowDateProps) => {
     dateFormat,
     timeFormat,
     localeCatalog,
+    calendar,
   });
 
   return (

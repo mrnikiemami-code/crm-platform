@@ -1,5 +1,6 @@
 import { currentWorkspaceMembersState } from '@/auth/states/currentWorkspaceMembersState';
 import { type CurrentWorkspace } from '@/auth/states/currentWorkspaceState';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { useNumberFormat } from '@/localization/hooks/useNumberFormat';
 import { SettingsBillingSubscriptionInfoCard } from '@/settings/billing/components/internal/SettingsBillingSubscriptionInfoCard';
 import { SettingsBillingSubscriptionInfoCardHeaderActions } from '@/settings/billing/components/internal/SettingsBillingSubscriptionInfoCardHeaderActions';
@@ -62,6 +63,7 @@ export const SettingsBillingSubscriptionInfo = ({
 }) => {
   const { t } = useLingui();
   const { formatNumber } = useNumberFormat();
+  const dateDisplayContext = useDateDisplayContext();
 
   const { openDialog } = useDialog();
 
@@ -120,7 +122,7 @@ export const SettingsBillingSubscriptionInfo = ({
     currentBillingSubscription.status !== SubscriptionStatus.Canceled &&
     isDefined(scheduledCancellationDate);
   const scheduledCancellationDateLabel = isDefined(scheduledCancellationDate)
-    ? beautifyExactDate(scheduledCancellationDate)
+    ? beautifyExactDate(scheduledCancellationDate, dateDisplayContext)
     : undefined;
 
   const canSwitchSubscription =
@@ -260,7 +262,7 @@ export const SettingsBillingSubscriptionInfo = ({
       : t`/month billed annually`
     : undefined;
   const scheduledChangeStartDate = isDefined(nextBillingPhase?.start_date)
-    ? beautifyExactDate(nextBillingPhase.start_date * 1000)
+    ? beautifyExactDate(nextBillingPhase.start_date * 1000, dateDisplayContext)
     : undefined;
 
   const canDisplaySwitchToYearlyAction =

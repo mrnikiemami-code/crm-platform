@@ -1,4 +1,6 @@
 import { type TimelineActivity } from '@/activities/timeline-activities/types/TimelineActivity';
+import { type CalendarSystem } from '@/localization/types/CalendarSystem';
+import { Temporal } from 'temporal-polyfill';
 import { isDefined } from 'twenty-shared/utils';
 
 export type EventGroup = {
@@ -7,13 +9,37 @@ export type EventGroup = {
   items: TimelineActivity[];
 };
 
-export const groupEventsByMonth = (events: TimelineActivity[]) => {
+type GroupEventsByMonthOptions = {
+  calendar: CalendarSystem;
+  timeZone: string;
+};
+
+// month is 0-based in both calendars so groups sort the same way.
+const getEventMonthAndYear = (
+  happensAt: string,
+  options?: GroupEventsByMonthOptions,
+) => {
+  const date = new Date(happensAt);
+
+  if (options?.calendar === 'persian') {
+    const persianDate = Temporal.Instant.fromEpochMilliseconds(date.getTime())
+      .toZonedDateTimeISO(options.timeZone)
+      .withCalendar('persian');
+
+    return { month: persianDate.month - 1, year: persianDate.year };
+  }
+
+  return { month: date.getMonth(), year: date.getFullYear() };
+};
+
+export const groupEventsByMonth = (
+  events: TimelineActivity[],
+  options?: GroupEventsByMonthOptions,
+) => {
   const activityGroups: EventGroup[] = [];
 
   for (const event of events) {
-    const date = new Date(event.happensAt);
-    const month = date.getMonth();
-    const year = date.getFullYear();
+    const { month, year } = getEventMonthAndYear(event.happensAt, options);
 
     const matchingGroup = activityGroups.find(
       (group) => group.year === year && group.month === month,

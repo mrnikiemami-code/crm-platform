@@ -1,8 +1,10 @@
 import { type DateFormat } from '@/localization/constants/DateFormat';
 import { type TimeFormat } from '@/localization/constants/TimeFormat';
+import { type CalendarSystem } from '@/localization/types/CalendarSystem';
 import { formatDateISOStringToCustomUnicodeFormat } from '@/localization/utils/formatDateISOStringToCustomUnicodeFormat';
 import { formatDateISOStringToDateTime } from '@/localization/utils/formatDateISOStringToDateTime';
 import { formatDateISOStringToRelativeDate } from '@/localization/utils/formatDateISOStringToRelativeDate';
+import { getCalendarSystemForLocale } from '@/localization/utils/getCalendarSystemForLocale';
 import {
   FieldDateDisplayFormat,
   type FieldDateMetadataSettings,
@@ -16,6 +18,7 @@ export const formatDateTimeString = ({
   timeFormat,
   dateFieldSettings,
   localeCatalog,
+  calendar,
 }: {
   timeZone: string;
   dateFormat: DateFormat;
@@ -23,10 +26,16 @@ export const formatDateTimeString = ({
   value?: string | null;
   dateFieldSettings?: FieldDateMetadataSettings;
   localeCatalog: Locale;
+  // Defaults to the calendar of the date-fns catalog, which is loaded from the
+  // same workspace member locale as useDateTimeFormat().calendar.
+  calendar?: CalendarSystem;
 }) => {
   if (!value) {
     return '';
   }
+
+  const resolvedCalendar =
+    calendar ?? getCalendarSystemForLocale(localeCatalog?.code);
 
   switch (dateFieldSettings?.displayFormat) {
     case FieldDateDisplayFormat.RELATIVE:
@@ -34,6 +43,7 @@ export const formatDateTimeString = ({
         isoDate: value,
         localeCatalog,
         timeZone,
+        calendar: resolvedCalendar,
       });
     case FieldDateDisplayFormat.USER_SETTINGS:
       return formatDateISOStringToDateTime({
@@ -42,8 +52,22 @@ export const formatDateTimeString = ({
         dateFormat,
         timeFormat,
         localeCatalog,
+        calendar: resolvedCalendar,
       });
     case FieldDateDisplayFormat.CUSTOM:
+      // Custom date-fns patterns cannot describe persian calendar fields, so
+      // fall back to the user's standard date-time format (keeping the time).
+      if (resolvedCalendar === 'persian') {
+        return formatDateISOStringToDateTime({
+          date: value,
+          timeZone,
+          dateFormat,
+          timeFormat,
+          localeCatalog,
+          calendar: resolvedCalendar,
+        });
+      }
+
       return formatDateISOStringToCustomUnicodeFormat({
         date: value,
         timeZone,
@@ -57,6 +81,7 @@ export const formatDateTimeString = ({
         dateFormat,
         timeFormat,
         localeCatalog,
+        calendar: resolvedCalendar,
       });
   }
 };

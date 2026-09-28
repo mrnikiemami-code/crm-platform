@@ -3,7 +3,8 @@ import { Temporal } from 'temporal-polyfill';
 import { maintenanceModeState } from '@/client-config/states/maintenanceModeState';
 import { InformationBanner } from '@/information-banner/components/InformationBanner';
 import { useMaintenanceModeBannerDismissal } from '@/information-banner/hooks/useMaintenanceModeBannerDismissal';
-import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { t } from '@lingui/core/macro';
 import { getSafeUrl, isDefined } from 'twenty-shared/utils';
@@ -12,22 +13,24 @@ import { IconExternalLink } from 'twenty-ui/icon';
 const formatMaintenanceDateTime = (
   isoString: string,
   timeZone: string,
-): string => {
-  const zonedDateTime =
-    Temporal.Instant.from(isoString).toZonedDateTimeISO(timeZone);
-
-  return zonedDateTime.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    timeZoneName: 'short',
+  locale: string,
+): string =>
+  formatDateTimeForAppLocale({
+    date: new Date(Temporal.Instant.from(isoString).epochMilliseconds),
+    locale,
+    timeZone,
+    options: {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      timeZoneName: 'short',
+    },
   });
-};
 
 export const InformationBannerMaintenance = () => {
   const maintenanceMode = useAtomStateValue(maintenanceModeState);
-  const { timeZone } = useDateTimeFormat();
+  const { timeZone, locale } = useDateDisplayContext();
   const { dismissBanner, isDismissed, isLoading } =
     useMaintenanceModeBannerDismissal({
       enabled: isDefined(maintenanceMode),
@@ -41,10 +44,12 @@ export const InformationBannerMaintenance = () => {
   const startFormatted = formatMaintenanceDateTime(
     maintenanceMode.startAt,
     timeZone,
+    locale,
   );
   const endFormatted = formatMaintenanceDateTime(
     maintenanceMode.endAt,
     timeZone,
+    locale,
   );
 
   const message = t`Scheduled maintenance: ${startFormatted} — ${endFormatted}`;

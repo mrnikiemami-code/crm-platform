@@ -1,13 +1,17 @@
 import { CalendarMonthCard } from '@/activities/calendar/components/CalendarMonthCard';
 import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
 import { useCalendarEvents } from '@/activities/calendar/hooks/useCalendarEvents';
+import { getCalendarYear } from '@/activities/calendar/utils/getCalendarYear';
 import { CustomResolverFetchMoreLoader } from '@/activities/components/CustomResolverFetchMoreLoader';
 import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
+import { formatYearForAppLocale } from '@/localization/utils/formatYearForAppLocale';
 import { StyledWidgetScrollContainer } from '@/ui/layout/components/WidgetContentContainer';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
-import { format, getYear } from 'date-fns';
+import { format } from 'date-fns';
 import { Section } from 'twenty-ui/components';
 import {
   AnimatedPlaceholder,
@@ -57,13 +61,15 @@ export const CalendarEventsCardContent = ({
 }: CalendarEventsCardContentProps) => {
   const { t } = useLingui();
   const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const { locale, calendar } = useDateDisplayContext();
+  const isPersianCalendar = calendar === 'persian';
 
   const {
     calendarEventsByDayTime,
     daysByMonthTime,
     monthTimes,
     monthTimesByYear,
-  } = useCalendarEvents(timelineCalendarEvents ?? []);
+  } = useCalendarEvents(timelineCalendarEvents ?? [], calendar);
 
   if (firstQueryLoading) {
     return <SkeletonLoader />;
@@ -95,19 +101,28 @@ export const CalendarEventsCardContent = ({
       <StyledContainer>
         {monthTimes.map((monthTime) => {
           const monthDayTimes = daysByMonthTime[monthTime] || [];
-          const year = getYear(monthTime);
+          const year = getCalendarYear(monthTime, calendar);
           const lastMonthTimeOfYear = monthTimesByYear[year]?.[0];
           const isLastMonthOfYear = lastMonthTimeOfYear === monthTime;
-          const monthLabel = format(monthTime, 'MMMM', {
-            locale: localeCatalog,
-          });
+          const monthLabel = isPersianCalendar
+            ? formatDateTimeForAppLocale({
+                date: new Date(monthTime),
+                locale,
+                options: { month: 'long' },
+              })
+            : format(monthTime, 'MMMM', {
+                locale: localeCatalog,
+              });
+          const yearLabel = isPersianCalendar
+            ? formatYearForAppLocale(year, locale)
+            : year;
 
           return (
             <Section.Root key={monthTime}>
               <StyledTitleContainer>
                 <Heading level={3} size="lg">
                   {monthLabel}
-                  {isLastMonthOfYear && <StyledYear> {year}</StyledYear>}
+                  {isLastMonthOfYear && <StyledYear> {yearLabel}</StyledYear>}
                 </Heading>
               </StyledTitleContainer>
               <CalendarMonthCard dayTimes={monthDayTimes} />

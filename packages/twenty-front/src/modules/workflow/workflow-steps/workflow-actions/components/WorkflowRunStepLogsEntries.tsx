@@ -3,6 +3,8 @@ import { useLingui } from '@lingui/react/macro';
 import { type WorkflowRunStepLog } from 'twenty-shared/workflow';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
+import { formatDateTimeForAppLocale } from '@/localization/utils/formatDateTimeForAppLocale';
 import { MONOSPACE_FONT_FAMILY } from '@/ui/theme/constants/MonospaceFontFamily';
 import {
   StyledSection,
@@ -62,14 +64,27 @@ const StyledMessage = styled.span`
   white-space: pre-wrap;
 `;
 
-const formatTimestamp = (timestamp: string): string => {
+const formatTimestamp = ({
+  timestamp,
+  locale,
+  timeZone,
+}: {
+  timestamp: string;
+  locale: string;
+  timeZone: string;
+}): string => {
   const date = new Date(timestamp);
 
   if (Number.isNaN(date.getTime())) {
     return timestamp;
   }
 
-  return date.toLocaleTimeString();
+  return formatDateTimeForAppLocale({
+    date,
+    locale,
+    timeZone,
+    options: { timeStyle: 'medium' },
+  });
 };
 
 export const WorkflowRunStepLogsEntries = ({
@@ -80,6 +95,7 @@ export const WorkflowRunStepLogsEntries = ({
   onlyLatestIteration?: boolean;
 }) => {
   const { t } = useLingui();
+  const { locale, timeZone } = useDateDisplayContext();
 
   if (entries.length === 0) {
     return null;
@@ -96,7 +112,11 @@ export const WorkflowRunStepLogsEntries = ({
         {entries.map((entry, index) => (
           <StyledEntryRow key={`${entry.timestamp}-${index}`}>
             <StyledTimestamp>
-              {formatTimestamp(entry.timestamp)}
+              {formatTimestamp({
+                timestamp: entry.timestamp,
+                locale,
+                timeZone,
+              })}
             </StyledTimestamp>
             <StyledLevelBadge level={entry.level}>
               {entry.level}

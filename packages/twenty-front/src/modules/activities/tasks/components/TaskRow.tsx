@@ -7,6 +7,7 @@ import { beautifyExactDate, hasDatePassed } from '~/utils/date-utils';
 import { ActivityRow } from '@/activities/components/ActivityRow';
 import { useActivityFieldComponentInstanceId } from '@/activities/hooks/useActivityFieldComponentInstanceId';
 import { type Task } from '@/activities/types/Task';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 import { useObjectMorphJunctionConfigOrThrow } from '@/object-record/record-field/ui/hooks/useObjectMorphJunctionConfigOrThrow';
 import { useOpenRecordInSidePanel } from '@/side-panel/hooks/useOpenRecordInSidePanel';
 import { CoreObjectNameSingular } from 'twenty-shared/types';
@@ -91,6 +92,7 @@ const StyledCheckboxContainer = styled.div`
 export const TaskRow = ({ task }: { task: Task }) => {
   const { theme } = useContext(ThemeContext);
   const { openRecordInSidePanel } = useOpenRecordInSidePanel();
+  const dateDisplayContext = useDateDisplayContext();
 
   const body = getActivitySummary(task?.bodyV2?.blocknote ?? null);
 
@@ -142,7 +144,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
             isPast={hasDatePassed(task.dueAt) && task.status === 'TODO'}
           >
             <IconCalendar size={theme.icon.size.md} />
-            {beautifyExactDate(task.dueAt)}
+            {beautifyExactDate(task.dueAt, dateDisplayContext)}
           </StyledDueDate>
         )}
         {

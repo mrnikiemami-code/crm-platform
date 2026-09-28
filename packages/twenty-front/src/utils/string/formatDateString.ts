@@ -1,9 +1,11 @@
 import { type Locale } from 'date-fns';
 
 import { type DateFormat } from '@/localization/constants/DateFormat';
+import { type CalendarSystem } from '@/localization/types/CalendarSystem';
 import { formatDateISOStringToCustomUnicodeFormat } from '@/localization/utils/formatDateISOStringToCustomUnicodeFormat';
 import { formatDateISOStringToDate } from '@/localization/utils/formatDateISOStringToDate';
 import { formatDateISOStringToRelativeDate } from '@/localization/utils/formatDateISOStringToRelativeDate';
+import { getCalendarSystemForLocale } from '@/localization/utils/getCalendarSystemForLocale';
 import {
   FieldDateDisplayFormat,
   type FieldDateMetadataSettings,
@@ -16,16 +18,23 @@ export const formatDateString = ({
   dateFormat,
   dateFieldSettings,
   localeCatalog,
+  calendar,
 }: {
   timeZone: string;
   dateFormat: DateFormat;
   value?: string | null;
   dateFieldSettings?: FieldDateMetadataSettings;
   localeCatalog: Locale;
+  // Defaults to the calendar of the date-fns catalog, which is loaded from the
+  // same workspace member locale as useDateTimeFormat().calendar.
+  calendar?: CalendarSystem;
 }): string => {
   if (!isDefined(value)) {
     return '';
   }
+
+  const resolvedCalendar =
+    calendar ?? getCalendarSystemForLocale(localeCatalog?.code);
 
   switch (dateFieldSettings?.displayFormat) {
     case FieldDateDisplayFormat.RELATIVE:
@@ -34,6 +43,7 @@ export const formatDateString = ({
         isDayMaximumPrecision: true,
         localeCatalog,
         timeZone,
+        calendar: resolvedCalendar,
       });
     case FieldDateDisplayFormat.USER_SETTINGS:
       return formatDateISOStringToDate({
@@ -41,6 +51,7 @@ export const formatDateString = ({
         timeZone,
         dateFormat,
         localeCatalog,
+        calendar: resolvedCalendar,
       });
     case FieldDateDisplayFormat.CUSTOM:
       return formatDateISOStringToCustomUnicodeFormat({
@@ -48,6 +59,8 @@ export const formatDateString = ({
         timeZone,
         dateFormat: dateFieldSettings.customUnicodeDateFormat,
         localeCatalog,
+        calendar: resolvedCalendar,
+        fallbackDateFormat: dateFormat,
       });
     default:
       return formatDateISOStringToDate({
@@ -55,6 +68,7 @@ export const formatDateString = ({
         timeZone,
         dateFormat,
         localeCatalog,
+        calendar: resolvedCalendar,
       });
   }
 };

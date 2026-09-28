@@ -5,9 +5,13 @@ import { useIMask } from 'react-imask';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { getPersianMonthSelectOptions } from '@/localization/utils/jalali/getPersianMonthSelectOptions';
+import { normalizeLocalizedDigitsToAscii } from '@/localization/utils/jalali/normalizeLocalizedDigitsToAscii';
 import { Select } from '@/ui/input/components/Select';
 import { DateTimePickerInput } from '@/ui/input/components/internal/date/components/DateTimePickerInput';
+import { DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME } from '@/ui/input/components/internal/date/styles/DatePickerNavigationButtonClassName';
 import { useTimeInput } from '@/ui/input/components/internal/date/hooks/useTimeInput';
+import { getJalaliYearSelectOptions } from '@/ui/input/components/internal/date/utils/getJalaliYearSelectOptions';
 import { getMonthSelectOptions } from '@/ui/input/components/internal/date/utils/getMonthSelectOptions';
 import { getTimeBlocks } from '@/ui/input/components/internal/date/utils/getTimeBlocks';
 import { getTimeMask } from '@/ui/input/components/internal/date/utils/getTimeMask';
@@ -151,11 +155,16 @@ export const DateTimePickerHeader = ({
   onChangeMonth,
   onChangeYear,
 }: DateTimePickerHeaderProps) => {
-  const { timeFormat } = useDateTimeFormat();
+  const { timeFormat, calendar } = useDateTimeFormat();
   const { formatTime, parseTime, isHour12 } = useTimeInput(timeFormat);
+  const isPersianCalendar = calendar === 'persian';
 
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const userLocale = currentWorkspaceMember?.locale ?? SOURCE_LOCALE;
+
+  const dateInCalendar = isPersianCalendar
+    ? date?.withCalendar('persian')
+    : date;
 
   const { closeDropdown: closeMonthSelect } = useCloseDropdown();
   const { closeDropdown: closeYearSelect } = useCloseDropdown();
@@ -169,6 +178,9 @@ export const DateTimePickerHeader = ({
     {
       mask: getTimeMask(timeFormat),
       blocks: getTimeBlocks(timeFormat),
+      ...(isPersianCalendar && {
+        prepareChar: normalizeLocalizedDigitsToAscii,
+      }),
       lazy: false,
       autofix: true,
     },
@@ -214,6 +226,7 @@ export const DateTimePickerHeader = ({
               <IconClock size={16} />
             </StyledClockIcon>
             <StyledTimeInput
+              dir={isPersianCalendar ? 'ltr' : undefined}
               type="text"
               ref={timeInputRef}
               placeholder={isHour12 ? 'HH:mm AA' : 'HH:mm'}
@@ -245,9 +258,13 @@ export const DateTimePickerHeader = ({
                 >
                   <Select
                     dropdownId={MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID}
-                    options={getMonthSelectOptions(userLocale)}
+                    options={
+                      isPersianCalendar
+                        ? getPersianMonthSelectOptions(userLocale)
+                        : getMonthSelectOptions(userLocale)
+                    }
                     onChange={onChangeMonth}
-                    value={date?.month}
+                    value={dateInCalendar?.month}
                     fullWidth={false}
                     dropdownWidth={160}
                   />
@@ -261,8 +278,12 @@ export const DateTimePickerHeader = ({
                   <Select
                     dropdownId={MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID}
                     onChange={onChangeYear}
-                    value={date?.year}
-                    options={YEARS_SELECT_OPTIONS}
+                    value={dateInCalendar?.year}
+                    options={
+                      isPersianCalendar
+                        ? getJalaliYearSelectOptions()
+                        : YEARS_SELECT_OPTIONS
+                    }
                     fullWidth={false}
                     dropdownWidth={160}
                   />
@@ -272,6 +293,7 @@ export const DateTimePickerHeader = ({
           />
           <StyledNavigationButtons>
             <LightIconButton
+              className={DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME}
               onClick={onSubtractMonth}
               size="md"
               disabled={prevMonthButtonDisabled}
@@ -280,6 +302,7 @@ export const DateTimePickerHeader = ({
               <IconChevronLeft />
             </LightIconButton>
             <LightIconButton
+              className={DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME}
               onClick={onAddMonth}
               size="md"
               disabled={nextMonthButtonDisabled}

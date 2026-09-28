@@ -1,5 +1,8 @@
 import { type DateFormat } from '@/localization/constants/DateFormat';
 import { type TimeFormat } from '@/localization/constants/TimeFormat';
+import { type CalendarSystem } from '@/localization/types/CalendarSystem';
+import { formatPersianDate } from '@/localization/utils/jalali/formatPersianDate';
+import { formatPersianTime } from '@/localization/utils/jalali/formatPersianTime';
 import { isValid, type Locale } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 
@@ -9,17 +12,23 @@ export const formatDateISOStringToDateTime = ({
   dateFormat,
   timeFormat,
   localeCatalog,
+  calendar = 'gregory',
 }: {
   date: string;
   timeZone: string;
   dateFormat: DateFormat;
   timeFormat: TimeFormat;
-  localeCatalog: Locale;
+  localeCatalog?: Locale;
+  calendar?: CalendarSystem;
 }) => {
   const parsedDate = new Date(date);
 
   if (!isValid(parsedDate)) {
     return '';
+  }
+
+  if (calendar === 'persian') {
+    return `${formatPersianDate({ date: parsedDate, timeZone, dateFormat })}، ${formatPersianTime({ date: parsedDate, timeZone, timeFormat })}`;
   }
 
   // TODO: replace this with shiftPointInTimeToFromTimezoneDifference to remove date-fns-tz, which formatInTimeZone is doig under the hood :

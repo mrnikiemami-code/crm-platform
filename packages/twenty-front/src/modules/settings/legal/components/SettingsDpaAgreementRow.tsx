@@ -8,6 +8,7 @@ import { type DpaAgreement } from '@/settings/legal/types/Dpa';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 import { beautifyExactDateTime } from '~/utils/date-utils';
+import { useDateDisplayContext } from '@/localization/hooks/useDateDisplayContext';
 
 export const DPA_AGREEMENT_ROW_GRID_COLUMNS = '3fr 2fr 2fr 140px';
 
@@ -27,6 +28,7 @@ export const SettingsDpaAgreementRow = ({
   onDownload,
 }: SettingsDpaAgreementRowProps) => {
   const { t } = useLingui();
+  const dateDisplayContext = useDateDisplayContext();
 
   const label =
     agreement.type === 'SIGNED'
@@ -44,7 +46,9 @@ export const SettingsDpaAgreementRow = ({
         <StyledEllipsisLabel>{label}</StyledEllipsisLabel>
       </TableCell>
       <TableCell>{agreement.templateVersion}</TableCell>
-      <TableCell>{beautifyExactDateTime(agreement.acceptedAt)}</TableCell>
+      <TableCell>
+        {beautifyExactDateTime(agreement.acceptedAt, dateDisplayContext)}
+      </TableCell>
       <TableCell align="right">
         {agreement.downloadUrl ? (
           <Button

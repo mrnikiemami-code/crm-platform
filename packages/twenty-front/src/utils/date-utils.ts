@@ -12,8 +12,17 @@ import {
   type Locale,
 } from 'date-fns';
 
+import { Temporal } from 'temporal-polyfill';
+
 import { DateFormat } from '@/localization/constants/DateFormat';
 import { TimeFormat } from '@/localization/constants/TimeFormat';
+import { type CalendarSystem } from '@/localization/types/CalendarSystem';
+import { type DateDisplayContext } from '@/localization/types/DateDisplayContext';
+import { formatDateISOStringToDate } from '@/localization/utils/formatDateISOStringToDate';
+import { formatDateISOStringToDateTime } from '@/localization/utils/formatDateISOStringToDateTime';
+import { getCalendarSystemForLocale } from '@/localization/utils/getCalendarSystemForLocale';
+import { formatPersianRelativeTime } from '@/localization/utils/jalali/formatPersianRelativeTime';
+import { formatPersianTime } from '@/localization/utils/jalali/formatPersianTime';
 import { CustomError, isDefined } from 'twenty-shared/utils';
 
 import { i18n } from '@lingui/core';
@@ -70,17 +79,62 @@ export const formatDate = (
   }
 };
 
+const isTodayInTimeZone = (date: Date, timeZone: string) =>
+  Temporal.Instant.fromEpochMilliseconds(date.getTime())
+    .toZonedDateTimeISO(timeZone)
+    .toPlainDate()
+    .equals(Temporal.Now.plainDateISO(timeZone));
+
+// Without a persian display context the gregorian output (host timezone,
+// English month abbreviations) is kept as is for existing callers.
 export const beautifyExactDateTime = (
   dateToBeautify: Date | string | number,
+  displayContext?: DateDisplayContext,
 ) => {
   const parsedDate = parseDate(dateToBeautify);
+
+  if (displayContext?.calendar === 'persian') {
+    const { timeZone, dateFormat, timeFormat } = displayContext;
+
+    if (isTodayInTimeZone(parsedDate, timeZone)) {
+      return formatPersianTime({ date: parsedDate, timeZone, timeFormat });
+    }
+
+    return formatDateISOStringToDateTime({
+      date: parsedDate.toISOString(),
+      timeZone,
+      dateFormat,
+      timeFormat,
+      calendar: 'persian',
+    });
+  }
+
   const isTodayDate = isToday(parsedDate);
   const dateFormat = isTodayDate ? 'HH:mm' : 'MMM d, yyyy · HH:mm';
   return formatDate(dateToBeautify, dateFormat);
 };
 
-export const beautifyExactDate = (dateToBeautify: Date | string | number) => {
+export const beautifyExactDate = (
+  dateToBeautify: Date | string | number,
+  displayContext?: DateDisplayContext,
+) => {
   const parsedDate = parseDate(dateToBeautify);
+
+  if (displayContext?.calendar === 'persian') {
+    const { timeZone, dateFormat } = displayContext;
+
+    if (isTodayInTimeZone(parsedDate, timeZone)) {
+      return t`Today`;
+    }
+
+    return formatDateISOStringToDate({
+      date: parsedDate.toISOString(),
+      timeZone,
+      dateFormat,
+      calendar: 'persian',
+    });
+  }
+
   const isTodayDate = isToday(parsedDate);
   if (isTodayDate) {
     return t`Today`;
@@ -91,6 +145,7 @@ export const beautifyExactDate = (dateToBeautify: Date | string | number) => {
 export const beautifyPastDateRelativeToNow = (
   pastDate: Date | string | number,
   locale?: Locale,
+  calendar: CalendarSystem = getCalendarSystemForLocale(locale?.code),
 ) => {
   try {
     const parsedDate = parseDate(pastDate);
@@ -101,6 +156,14 @@ export const beautifyPastDateRelativeToNow = (
 
     if (diffInSeconds < 30) {
       return t`now`;
+    }
+
+    if (calendar === 'persian') {
+      return formatPersianRelativeTime({
+        targetEpochMilliseconds: parsedDate.getTime(),
+        baseEpochMilliseconds: now.getTime(),
+        isDayLevelComparison: false,
+      });
     }
 
     return formatDistanceToNow(parsedDate, {

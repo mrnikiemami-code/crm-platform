@@ -2,6 +2,10 @@ import { renderHook } from '@testing-library/react';
 import { Provider as JotaiProvider } from 'jotai';
 import { type ReactNode } from 'react';
 
+import {
+  type CurrentWorkspaceMember,
+  currentWorkspaceMemberState,
+} from '@/auth/states/currentWorkspaceMemberState';
 import { DateFormat } from '@/localization/constants/DateFormat';
 import { TimeFormat } from '@/localization/constants/TimeFormat';
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
@@ -17,6 +21,11 @@ const mockPreferences = {
   calendarStartDay: CalendarStartDay.MONDAY,
 };
 
+const setCurrentWorkspaceMemberLocale = (locale: string) =>
+  jotaiStore.set(currentWorkspaceMemberState.atom, {
+    locale,
+  } as CurrentWorkspaceMember);
+
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <JotaiProvider store={jotaiStore}>{children}</JotaiProvider>
 );
@@ -24,6 +33,7 @@ const Wrapper = ({ children }: { children: ReactNode }) => (
 describe('useDateTimeFormat', () => {
   beforeEach(() => {
     jotaiStore.set(workspaceMemberFormatPreferencesState.atom, mockPreferences);
+    jotaiStore.set(currentWorkspaceMemberState.atom, null);
   });
 
   it('should be a function', () => {
@@ -40,6 +50,7 @@ describe('useDateTimeFormat', () => {
       dateFormat: DateFormat.MONTH_FIRST,
       timeFormat: TimeFormat.HOUR_24,
       calendarStartDay: CalendarStartDay.MONDAY,
+      calendar: 'gregory',
     });
   });
 
@@ -60,6 +71,39 @@ describe('useDateTimeFormat', () => {
     expect(result.current.calendarStartDay).toBe(CalendarStartDay.MONDAY);
   });
 
+  it('should resolve the persian calendar for a fa-IR workspace member', () => {
+    setCurrentWorkspaceMemberLocale('fa-IR');
+
+    const { result } = renderHook(() => useDateTimeFormat(), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.calendar).toBe('persian');
+  });
+
+  it('should keep the gregorian calendar for an en workspace member', () => {
+    setCurrentWorkspaceMemberLocale('en');
+
+    const { result } = renderHook(() => useDateTimeFormat(), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.calendar).toBe('gregory');
+  });
+
+  it('should not let the locale change timezone or format preferences', () => {
+    setCurrentWorkspaceMemberLocale('fa-IR');
+
+    const { result } = renderHook(() => useDateTimeFormat(), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.timeZone).toBe('America/New_York');
+    expect(result.current.dateFormat).toBe(DateFormat.MONTH_FIRST);
+    expect(result.current.timeFormat).toBe(TimeFormat.HOUR_24);
+    expect(result.current.calendarStartDay).toBe(CalendarStartDay.MONDAY);
+  });
+
   it('should have stable return object structure', () => {
     const { result } = renderHook(() => useDateTimeFormat(), {
       wrapper: Wrapper,
@@ -71,6 +115,7 @@ describe('useDateTimeFormat', () => {
       'dateFormat',
       'timeFormat',
       'calendarStartDay',
+      'calendar',
     ]);
   });
 });

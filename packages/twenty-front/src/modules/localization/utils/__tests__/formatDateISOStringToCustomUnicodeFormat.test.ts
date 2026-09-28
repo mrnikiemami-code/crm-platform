@@ -1,5 +1,6 @@
 import { formatDateISOStringToCustomUnicodeFormat } from '@/localization/utils/formatDateISOStringToCustomUnicodeFormat';
-import { enUS } from 'date-fns/locale';
+import { DateFormat } from '@/localization/constants/DateFormat';
+import { enUS, faIR } from 'date-fns/locale';
 
 describe('formatDateISOStringToCustomUnicodeFormat', () => {
   describe('date-only ISO strings (no time component)', () => {
@@ -107,6 +108,48 @@ describe('formatDateISOStringToCustomUnicodeFormat', () => {
       });
 
       expect(result).toBe('Invalid format string');
+    });
+  });
+
+  // Custom formats are gregorian date-fns tokens, so the persian calendar falls
+  // back to the user's standard date format instead of printing gregorian fields.
+  describe('persian calendar fallback', () => {
+    it('should ignore the custom pattern and use the fallback date format', () => {
+      const result = formatDateISOStringToCustomUnicodeFormat({
+        date: '2026-09-28',
+        timeZone: 'UTC',
+        dateFormat: 'yyyy-MM-dd',
+        localeCatalog: faIR,
+        calendar: 'persian',
+        fallbackDateFormat: DateFormat.MONTH_FIRST,
+      });
+
+      expect(result).toBe('مهر ۶، ۱۴۰۵');
+    });
+
+    it('should default the fallback to the day-first format', () => {
+      const result = formatDateISOStringToCustomUnicodeFormat({
+        date: '2026-09-27T21:00:00Z',
+        timeZone: 'Asia/Tehran',
+        dateFormat: 'yyyy',
+        localeCatalog: faIR,
+        calendar: 'persian',
+      });
+
+      expect(result).toBe('۶ مهر ۱۴۰۵');
+    });
+
+    it('should never emit gregorian digits or years', () => {
+      const result = formatDateISOStringToCustomUnicodeFormat({
+        date: '2026-09-28T10:00:00Z',
+        timeZone: 'UTC',
+        dateFormat: 'yyyy-MM-dd HH:mm',
+        localeCatalog: faIR,
+        calendar: 'persian',
+      });
+
+      expect(result).not.toMatch(/[0-9]/);
+      expect(result).not.toContain('۲۰۲۶');
     });
   });
 });
