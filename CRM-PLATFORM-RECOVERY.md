@@ -300,10 +300,10 @@ Date-only safety:
 Non-fa path:
 - current date-fns/Gregorian behavior preserved
 
-Known unrelated old test issue:
-- `src/utils/format/__tests__/formatDate.test.ts` has 3 old failures on Windows because its utility uses `Intl.DateTimeFormat(undefined,...)` and therefore the host OS locale
-- this is not a Phase 2 regression
-- planned cleanup is in Phase 3B
+Known unrelated old test issue (RESOLVED in Phase 3B):
+- `src/utils/format/__tests__/formatDate.test.ts` had 3 old failures on Windows because its utility used `Intl.DateTimeFormat(undefined,...)` and therefore the host OS locale
+- this was not a Phase 2 regression
+- fixed in Phase 3B (explicit app locale, deterministic output)
 
 ---
 
@@ -380,9 +380,9 @@ Manual smoke tests passed in fa-IR for:
 - invalid date handling
 - restoring original record/filter values afterward
 
-Known remaining visible gap:
-- filter chip can still display a Gregorian label such as `Oct 2, 2026`
-- this belongs to Phase 3B
+Known remaining visible gap (RESOLVED in Phase 3B):
+- filter chip could still display a Gregorian label such as `Oct 2, 2026`
+- fixed in Phase 3B; fa-IR chips now use Jalali shared formatting
 
 ---
 
@@ -390,18 +390,18 @@ Known remaining visible gap:
 
 Current accepted implementation checkpoint:
 
-`JALALI PHASE 3A COMPLETE — NOT YET COMMITTED`
+`JALALI PHASE 3B COMPLETE — NOT YET COMMITTED`
 
 The next coding phase is:
 
-`JALALI PHASE 3B — DISPLAY STRAGGLERS`
+`JALALI PHASE 4 — RECORD CALENDAR`
 
-Do NOT repeat Phase 1, Phase 2 or Phase 3A unless local changes were lost.
+Do NOT repeat Phase 1, Phase 2, Phase 3A or Phase 3B unless local changes were lost.
 
 Before continuing in a recovered session:
 1. inspect `git status`
 2. inspect the local diff
-3. verify the Phase 1/2/3A files are still present
+3. verify the Phase 1/2/3A/3B files are still present
 4. do not overwrite or regenerate them blindly
 5. continue only after confirming the local state
 
@@ -409,9 +409,49 @@ Before continuing in a recovered session:
 
 # Jalali Phase 3B — Remaining frontend display paths
 
-Status: NEXT / NOT STARTED at recovery-file creation
+Status: COMPLETE / ACCEPTED / CURRENTLY UNCOMMITTED LOCALLY
 
-Scope:
+Important:
+Phase 3B changes are part of the same local uncommitted Jalali working tree as Phase 1, Phase 2 and Phase 3A.
+
+## Phase 3B accepted results
+
+- fa-IR filter chips use Jalali shared formatting (display only; filter values/boundaries unchanged)
+- legacy `beautify*` display paths are calendar-aware where appropriate (optional display context; non-fa output unchanged)
+- `RecordIdentifierBarCreatedAt` relative text + exact tooltip localized (fa-IR Persian calendar, user timezone, Persian digits)
+- `EventRowDate` localized (Persian relative time, Jalali exact tooltip, timezone preserved)
+- timeline grouping uses Persian year/month for fa-IR (client-side presentation only; non-fa Gregorian grouping unchanged)
+- direct user-facing `toLocale*` surfaces route through explicit app locale/timezone helpers
+- host-locale dependency in `src/utils/format/formatDate.ts` fixed
+- previous 3 Windows `formatDate.test.ts` failures fixed
+- `TimeZoneAbbreviation` intentionally remains technical English / GMT offset (ASCII, technically correct; Intl's fa-IR name embeds bidi marks)
+- no backend/server/email/chart/date semantics changed
+- no dependency added
+
+## Phase 3B validation
+
+- 375 suites / 2277 tests PASS
+- 186 suites / 979 tests PASS
+- tsgo PASS
+- oxlint 0 warnings / 0 errors
+- oxfmt PASS
+
+## Remaining frontend date gaps (NOT blockers for Phase 3B acceptance)
+
+These belong to Phase 4 / Phase 5 cleanup:
+- Admin panel host-locale date surfaces
+- `SettingsEnterprise`
+- Settings Applications `toLocaleString` surfaces
+- `SettingsDatePickerInput`
+- `groupThreadsByDate`
+- event-logs relative column
+- Settings AI hardcoded en-US surfaces
+- Calendar tab / `formatToHumanReadableDate` timezone caveat (host timezone)
+- duration digit localization (`beautifyDateDiff` / `formatExpiration`)
+- old persisted filter `displayValue` possibility
+- Record Calendar grid + top bar (Phase 4)
+
+## Original Phase 3B scope (for reference)
 
 ## Filter chip labels
 
@@ -502,9 +542,11 @@ Goal:
 
 # Jalali Phase 4 — Record Calendar
 
-Status: NOT STARTED
+Status: NEXT / NOT STARTED
 
 Treat as a separate substantial task after Phase 3B.
+
+Includes the record-calendar grid and `RecordCalendarTopBar`.
 
 Current known problem:
 - some record-calendar labels can be Jalali while the underlying month/week/day grid is Gregorian
@@ -538,6 +580,7 @@ Purpose:
 - en/non-fa regression check
 - serialization guard check
 - ensure no backend/domain date semantic changes slipped in
+- address the remaining frontend date gaps listed under Phase 3B
 
 Optional presentation-only extras should be evaluated separately:
 - chart labels
@@ -550,9 +593,9 @@ Do not include them automatically if the user wants to stop strictly at frontend
 # Remaining Jalali roadmap
 
 ```
-Phase 3B — display stragglers
+Phase 3B — display stragglers   (COMPLETE, uncommitted)
         ↓
-Phase 4 — record calendar
+Phase 4 — record calendar       (NEXT)
         ↓
 Phase 5 — final QA / cleanup
         ↓
@@ -586,6 +629,14 @@ Phase 3A:
 - oxfmt passed
 - manual fa-IR DatePicker/DateTimePicker smoke tests passed
 
+Phase 3B:
+- 375 suites / 2277 tests passed
+- 186 suites / 979 tests passed
+- old 3 host-locale `formatDate.test.ts` failures fixed
+- tsgo passed
+- oxlint 0 warnings / 0 errors
+- oxfmt passed
+
 ---
 
 # Recovery prompt for a new chat
@@ -599,13 +650,13 @@ Read CRM-PLATFORM-RECOVERY.md from the repository first and treat it as the reco
 
 Do not redo accepted work.
 
-First inspect the current repository/local state and reconcile it against the recovery file, especially the uncommitted Jalali Phase 1, Phase 2 and Phase 3A work.
+First inspect the current repository/local state and reconcile it against the recovery file, especially the uncommitted Jalali Phase 1, Phase 2, Phase 3A and Phase 3B work.
 
 Current accepted checkpoint should be:
-JALALI PHASE 3A COMPLETE.
+JALALI PHASE 3B COMPLETE — NOT YET COMMITTED.
 
 Next planned phase:
-JALALI PHASE 3B — remaining frontend display paths.
+JALALI PHASE 4 — RECORD CALENDAR.
 
 Keep all Jalali work presentation-only. Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
 ```
