@@ -34,13 +34,17 @@ const createCalendarStore = (fieldType: FieldMetadataType) => {
   return store;
 };
 
-const getRecordIds = (store: ReturnType<typeof createStore>, day: string) =>
+const getRecordIds = (
+  store: ReturnType<typeof createStore>,
+  day: string,
+  timeZone = 'America/Los_Angeles',
+) =>
   store.get(
     calendarDayRecordIdsComponentFamilySelector.selectorFamily({
       instanceId,
       familyKey: {
         day: Temporal.PlainDate.from(day),
-        timeZone: 'America/Los_Angeles',
+        timeZone,
       },
     }),
   );
@@ -84,5 +88,37 @@ describe('calendarDayRecordIdsComponentFamilySelector', () => {
 
     expect(getRecordIds(store, '2026-07-15')).toEqual(['late', 'early']);
     expect(getRecordIds(store, '2026-07-16')).toEqual(['next-day']);
+  });
+
+  it('places DateTime records around Tehran midnight on Nowruz by the Tehran day', () => {
+    const store = createCalendarStore(FieldMetadataType.DATE_TIME);
+    const records = [
+      { id: 'before-midnight', createdAt: '2026-03-20T20:29:59Z', position: 1 },
+      { id: 'at-midnight', createdAt: '2026-03-20T20:30:00Z', position: 2 },
+    ];
+    for (const record of records) {
+      store.set(recordStoreFamilyState.atomFamily(record.id), {
+        ...record,
+        __typename: 'Company',
+      });
+    }
+    store.set(
+      recordCalendarRecordIdsComponentState.atomFamily({ instanceId }),
+      records.map((record) => record.id),
+    );
+
+    expect(getRecordIds(store, '2026-03-20', 'Asia/Tehran')).toEqual([
+      'before-midnight',
+    ]);
+    expect(getRecordIds(store, '2026-03-21', 'Asia/Tehran')).toEqual([
+      'at-midnight',
+    ]);
+    expect(getRecordIds(store, '2026-03-20', 'UTC')).toEqual([
+      'before-midnight',
+      'at-midnight',
+    ]);
+    expect(
+      store.get(recordStoreFamilyState.atomFamily('at-midnight'))?.createdAt,
+    ).toBe('2026-03-20T20:30:00Z');
   });
 });

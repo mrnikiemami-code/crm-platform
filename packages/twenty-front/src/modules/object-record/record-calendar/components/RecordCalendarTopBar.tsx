@@ -3,11 +3,14 @@ import { RecordCalendarComponentInstanceContext } from '@/object-record/record-c
 import { isRecordCalendarReadOnlyComponentState } from '@/object-record/record-calendar/states/isRecordCalendarReadOnlyComponentState';
 import { recordCalendarSelectedDateComponentState } from '@/object-record/record-calendar/states/recordCalendarSelectedDateComponentState';
 import { useRecordCalendarDaysRange } from '@/object-record/record-calendar/hooks/useRecordCalendarDaysRange';
+import { formatPersianRecordCalendarTitle } from '@/object-record/record-calendar/utils/formatPersianRecordCalendarTitle';
 import { formatRecordCalendarWeekRange } from '@/object-record/record-calendar/utils/formatRecordCalendarWeekRange';
+import { shiftRecordCalendarSelectedDate } from '@/object-record/record-calendar/utils/shiftRecordCalendarSelectedDate';
 import { recordIndexCalendarLayoutComponentState } from '@/object-record/record-index/states/recordIndexCalendarLayoutComponentState';
 import { WidgetComponentInstanceContext } from '@/page-layout/widgets/states/contexts/WidgetComponentInstanceContext';
 import { DatePickerWithoutCalendar } from '@/ui/input/components/internal/date/components/DatePickerWithoutCalendar';
 import { TimeZoneAbbreviation } from '@/ui/input/components/internal/date/components/TimeZoneAbbreviation';
+import { DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME } from '@/ui/input/components/internal/date/styles/DatePickerNavigationButtonClassName';
 import { Select } from '@/ui/input/components/Select';
 import { SelectControl } from '@/ui/input/components/SelectControl';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
@@ -84,7 +87,7 @@ export const RecordCalendarTopBar = () => {
     useAtomComponentState(recordIndexCalendarLayoutComponentState);
 
   const dateLocale = useAtomStateValue(dateLocaleState);
-  const { timeZone } = useDateTimeFormat();
+  const { timeZone, calendar, dateFormat } = useDateTimeFormat();
   const { firstDay: firstDayOfWeek, lastDay: lastDayOfWeek } =
     useRecordCalendarDaysRange(
       recordCalendarSelectedDate,
@@ -104,25 +107,25 @@ export const RecordCalendarTopBar = () => {
   };
 
   const handlePreviousPeriod = () => {
-    const previousDate =
-      recordIndexCalendarLayout === ViewCalendarLayout.DAY
-        ? recordCalendarSelectedDate.subtract({ days: 1 })
-        : recordIndexCalendarLayout === ViewCalendarLayout.WEEK
-          ? recordCalendarSelectedDate.subtract({ weeks: 1 })
-          : recordCalendarSelectedDate.subtract({ months: 1 });
-
-    setRecordCalendarSelectedDate(previousDate);
+    setRecordCalendarSelectedDate(
+      shiftRecordCalendarSelectedDate({
+        selectedDate: recordCalendarSelectedDate,
+        calendarLayout: recordIndexCalendarLayout,
+        calendar,
+        direction: -1,
+      }),
+    );
   };
 
   const handleNextPeriod = () => {
-    const nextDate =
-      recordIndexCalendarLayout === ViewCalendarLayout.DAY
-        ? recordCalendarSelectedDate.add({ days: 1 })
-        : recordIndexCalendarLayout === ViewCalendarLayout.WEEK
-          ? recordCalendarSelectedDate.add({ weeks: 1 })
-          : recordCalendarSelectedDate.add({ months: 1 });
-
-    setRecordCalendarSelectedDate(nextDate);
+    setRecordCalendarSelectedDate(
+      shiftRecordCalendarSelectedDate({
+        selectedDate: recordCalendarSelectedDate,
+        calendarLayout: recordIndexCalendarLayout,
+        calendar,
+        direction: 1,
+      }),
+    );
   };
 
   const handleCalendarLayoutChange = (calendarLayout: ViewCalendarLayout) => {
@@ -135,23 +138,31 @@ export const RecordCalendarTopBar = () => {
   };
 
   const formattedDate =
-    recordIndexCalendarLayout === ViewCalendarLayout.DAY
-      ? recordCalendarSelectedDate.toLocaleString(dateLocale.locale, {
-          dateStyle: 'full',
+    calendar === 'persian'
+      ? formatPersianRecordCalendarTitle({
+          selectedDate: recordCalendarSelectedDate,
+          calendarLayout: recordIndexCalendarLayout,
+          firstDay: firstDayOfWeek,
+          lastDay: lastDayOfWeek,
+          dateFormat,
         })
-      : recordIndexCalendarLayout === ViewCalendarLayout.WEEK
-        ? formatRecordCalendarWeekRange({
-            firstDayOfWeek,
-            lastDayOfWeek,
-            locale: dateLocale.localeCatalog,
+      : recordIndexCalendarLayout === ViewCalendarLayout.DAY
+        ? recordCalendarSelectedDate.toLocaleString(dateLocale.locale, {
+            dateStyle: 'full',
           })
-        : format(
-            turnPlainDateToShiftedDateInSystemTimeZone(
-              recordCalendarSelectedDate,
-            ),
-            'MMMM yyyy',
-            { locale: dateLocale.localeCatalog },
-          );
+        : recordIndexCalendarLayout === ViewCalendarLayout.WEEK
+          ? formatRecordCalendarWeekRange({
+              firstDayOfWeek,
+              lastDayOfWeek,
+              locale: dateLocale.localeCatalog,
+            })
+          : format(
+              turnPlainDateToShiftedDateInSystemTimeZone(
+                recordCalendarSelectedDate,
+              ),
+              'MMMM yyyy',
+              { locale: dateLocale.localeCatalog },
+            );
 
   const dropdownContentOffset = { x: 140, y: 0 } satisfies DropdownOffset;
 
@@ -205,6 +216,7 @@ export const RecordCalendarTopBar = () => {
           <Button
             aria-label={t`Previous period`}
             size="sm"
+            className={DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME}
             startIcon={<IconChevronLeft />}
             onClick={handlePreviousPeriod}
             variant="ghost"
@@ -219,6 +231,7 @@ export const RecordCalendarTopBar = () => {
           <Button
             aria-label={t`Next period`}
             size="sm"
+            className={DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME}
             startIcon={<IconChevronRight />}
             onClick={handleNextPeriod}
             variant="ghost"

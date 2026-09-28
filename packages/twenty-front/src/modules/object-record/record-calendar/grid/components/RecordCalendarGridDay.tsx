@@ -1,4 +1,6 @@
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { RecordCalendarCardDraggableContainer } from '@/object-record/record-calendar/record-calendar-card/components/RecordCalendarCardDraggableContainer';
+import { formatPersianRecordCalendarDayNumber } from '@/object-record/record-calendar/utils/formatPersianRecordCalendarDayNumber';
 import { RECORD_CALENDAR_VISIBLE_RECORD_LIMIT } from '@/object-record/record-calendar/constants/RecordCalendarVisibleRecordLimit';
 import { calendarDayRecordIdsComponentFamilySelector } from '@/object-record/record-calendar/states/selectors/calendarDayRecordsComponentFamilySelector';
 import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
@@ -35,7 +37,7 @@ const StyledContainer = styled.div<{
   padding: ${themeCssVariables.spacing[1]};
 
   &:not(:last-child) {
-    border-right: 1px solid ${themeCssVariables.border.color.light};
+    border-inline-end: 1px solid ${themeCssVariables.border.color.light};
   }
 `;
 
@@ -51,7 +53,7 @@ const StyledDayHeader = styled.div`
 
 const StyledDayHeaderDayContainer = styled.div`
   display: flex;
-  margin-left: auto;
+  margin-inline-start: auto;
   padding: ${themeCssVariables.spacing['0.5']}
     ${themeCssVariables.spacing['0.5']};
 `;
@@ -101,6 +103,7 @@ export const RecordCalendarGridDay = ({
   isOtherMonth,
 }: RecordCalendarGridDayProps) => {
   const { userTimezone } = useUserTimezone();
+  const { calendar } = useDateTimeFormat();
 
   const dayKey = day.toString();
 
@@ -145,7 +148,11 @@ export const RecordCalendarGridDay = ({
       <StyledDayHeader>
         {hovered && <RecordCalendarAddNew cardDate={day} />}
         <StyledDayHeaderDayContainer>
-          <StyledDayHeaderDay isToday={isToday}>{day.day}</StyledDayHeaderDay>
+          <StyledDayHeaderDay isToday={isToday}>
+            {calendar === 'persian'
+              ? formatPersianRecordCalendarDayNumber(day)
+              : day.day}
+          </StyledDayHeaderDay>
         </StyledDayHeaderDayContainer>
       </StyledDayHeader>
       <StyledCardsContainer isDraggedOver={isDropTarget}>

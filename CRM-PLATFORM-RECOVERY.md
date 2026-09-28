@@ -390,18 +390,21 @@ Known remaining visible gap (RESOLVED in Phase 3B):
 
 Current accepted implementation checkpoint:
 
-`JALALI PHASE 3B COMPLETE — NOT YET COMMITTED`
+`JALALI PHASE 4 COMPLETE`
+
+Phases 1–3B are committed in `a842caff67 feat(i18n): complete Jalali presentation phases 1-3B`.
+Phase 4 is committed as `feat(i18n): add Jalali record calendar`.
 
 The next coding phase is:
 
-`JALALI PHASE 4 — RECORD CALENDAR`
+`JALALI PHASE 5 — FINAL QA / CLEANUP`
 
-Do NOT repeat Phase 1, Phase 2, Phase 3A or Phase 3B unless local changes were lost.
+Do NOT repeat Phase 1, Phase 2, Phase 3A, Phase 3B or Phase 4.
 
 Before continuing in a recovered session:
 1. inspect `git status`
 2. inspect the local diff
-3. verify the Phase 1/2/3A/3B files are still present
+3. verify the Phase 1/2/3A/3B/4 files are still present
 4. do not overwrite or regenerate them blindly
 5. continue only after confirming the local state
 
@@ -409,10 +412,7 @@ Before continuing in a recovered session:
 
 # Jalali Phase 3B — Remaining frontend display paths
 
-Status: COMPLETE / ACCEPTED / CURRENTLY UNCOMMITTED LOCALLY
-
-Important:
-Phase 3B changes are part of the same local uncommitted Jalali working tree as Phase 1, Phase 2 and Phase 3A.
+Status: COMPLETE / ACCEPTED / COMMITTED (`a842caff67`, together with Phase 1, Phase 2 and Phase 3A)
 
 ## Phase 3B accepted results
 
@@ -449,7 +449,7 @@ These belong to Phase 4 / Phase 5 cleanup:
 - Calendar tab / `formatToHumanReadableDate` timezone caveat (host timezone)
 - duration digit localization (`beautifyDateDiff` / `formatExpiration`)
 - old persisted filter `displayValue` possibility
-- Record Calendar grid + top bar (Phase 4)
+- ~~Record Calendar grid + top bar (Phase 4)~~ RESOLVED in Phase 4
 
 ## Original Phase 3B scope (for reference)
 
@@ -542,28 +542,34 @@ Goal:
 
 # Jalali Phase 4 — Record Calendar
 
-Status: NEXT / NOT STARTED
+Status: COMPLETE / ACCEPTED / COMMITTED (`feat(i18n): add Jalali record calendar`)
 
-Treat as a separate substantial task after Phase 3B.
+## Phase 4 accepted results
 
-Includes the record-calendar grid and `RecordCalendarTopBar`.
+- fa-IR month grid is built from the Persian month (`getRecordCalendarDaysRange` with `calendar`): Persian month start/end, leading/trailing cells, `calendarStartDay` respected (Saturday-first supported)
+- every grid cell stays an iso8601 `Temporal.PlainDate`; only boundaries and labels are Persian
+- week and day ranges are calendar-independent (identical days for both calendars)
+- top bar titles always match the grid: month `فروردین ۱۴۰۵`, week via Intl `formatRange` (`۲۴ اسفند ۱۴۰۴ تا ۱ فروردین ۱۴۰۵`), day `weekday، <formatPersianDate with user dateFormat>`
+- ICU fa-IR persian `dateStyle: 'full'` / month+year patterns are malformed (year-first, ASCII comma), so titles are assembled from parts
+- navigation: month steps use Persian arithmetic through `updateTemporalValueInCalendar` (`shiftRecordCalendarSelectedDate`); day/week are plain ISO steps; Today unchanged (`Temporal.Now.plainDateISO(user timezone)`)
+- Persian weekday headers and Persian-digit day numbers; `isOtherMonth` uses the Persian month
+- RTL: top-bar chevrons mirrored with `DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME`; physical `border-right` / `margin-left` / `padding-left` replaced with logical properties (identical in LTR)
+- top-bar dropdown `DatePickerWithoutCalendar` month/year handlers reuse `updateTemporalValueInCalendar` (gregorian path is a pass-through)
+- event placement unchanged: DATE via `PlainDate.from`, DATE_TIME via instant → user timezone → plain date; no timestamp conversion
+- fetch range still derives from the visible grid `firstDay`/`lastDay` (filter semantics unchanged; Persian month grids simply request the Persian-month grid range)
+- weekend shading intentionally still Sat/Sun (Iran's Friday weekend is a product decision, not calendar presentation)
+- `TimeZoneAbbreviation` intentionally unchanged
+- en / fr-FR output unchanged
+- no backend/DB/API/GraphQL/timestamp/timezone-precedence change, no dependency added
 
-Current known problem:
-- some record-calendar labels can be Jalali while the underlying month/week/day grid is Gregorian
-- do not create a mixed-calendar UI
+## Phase 4 validation
 
-Need to handle:
-- month view
-- week view
-- day view
-- Persian month/year navigation
-- weekday labels
-- Jalali boundaries
-- RTL
-- user timezone
-- keep event timestamps canonical
-
-Do not change backend calendar/event semantics.
+- record-calendar: 12 suites / 70 tests PASS
+- localization + date inputs + record-index: 51 suites / 454 tests PASS
+- tsgo PASS
+- oxlint 0 warnings / 0 errors
+- oxfmt PASS
+- manual fa-IR browser smoke PASS (temporary Tasks calendar view, deleted afterwards): Mehr 1405 month grid, next month Aban 1405, Today, week `۵ تا ۱۱ مهر ۱۴۰۵`, day view, previous day, mirrored RTL chevrons, record placed on its user-timezone day
 
 ---
 
@@ -593,20 +599,20 @@ Do not include them automatically if the user wants to stop strictly at frontend
 # Remaining Jalali roadmap
 
 ```
-Phase 3B — display stragglers   (COMPLETE, uncommitted)
+Phase 3B — display stragglers   (COMPLETE, committed)
         ↓
-Phase 4 — record calendar       (NEXT)
+Phase 4 — record calendar       (COMPLETE, committed)
         ↓
-Phase 5 — final QA / cleanup
+Phase 5 — final QA / cleanup    (NEXT)
         ↓
 Jalali Presentation Layer complete
 ```
 
-After Phase 3B, it is a safe point to pause Jalali work and return to broader UI/RTL fixes before Phase 4.
+After Phase 4, it is a safe point to pause Jalali work and return to broader UI/RTL fixes before Phase 5.
 
 ---
 
-# Current validation state for uncommitted Jalali work
+# Current validation state for Jalali work
 
 Phase 1:
 - focused tests passed
@@ -637,6 +643,14 @@ Phase 3B:
 - oxlint 0 warnings / 0 errors
 - oxfmt passed
 
+Phase 4:
+- record-calendar 12 suites / 70 tests passed
+- localization + date inputs + record-index 51 suites / 454 tests passed
+- tsgo passed
+- oxlint 0 warnings / 0 errors
+- oxfmt passed
+- manual fa-IR record-calendar smoke test passed
+
 ---
 
 # Recovery prompt for a new chat
@@ -650,13 +664,13 @@ Read CRM-PLATFORM-RECOVERY.md from the repository first and treat it as the reco
 
 Do not redo accepted work.
 
-First inspect the current repository/local state and reconcile it against the recovery file, especially the uncommitted Jalali Phase 1, Phase 2, Phase 3A and Phase 3B work.
+First inspect the current repository/local state and reconcile it against the recovery file, especially the committed Jalali Phase 1–4 work.
 
 Current accepted checkpoint should be:
-JALALI PHASE 3B COMPLETE — NOT YET COMMITTED.
+JALALI PHASE 4 COMPLETE.
 
 Next planned phase:
-JALALI PHASE 4 — RECORD CALENDAR.
+JALALI PHASE 5 — FINAL QA / CLEANUP.
 
 Keep all Jalali work presentation-only. Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
 ```

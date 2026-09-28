@@ -7,7 +7,9 @@ import { SKELETON_LOADER_HEIGHT_SIZES } from '@/activities/components/SkeletonLo
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { CalendarStartDay } from 'twenty-shared/constants';
 
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { detectCalendarStartDay } from '@/localization/utils/detection/detectCalendarStartDay';
+import { updateTemporalValueInCalendar } from '@/localization/utils/updateTemporalValueInCalendar';
 import { DatePickerHeader } from '@/ui/input/components/internal/date/components/DatePickerHeader';
 import {
   DATE_PICKER_CONTAINER_WIDTH,
@@ -84,6 +86,7 @@ export const DatePickerWithoutCalendar = ({
   const { closeDropdown: closeDropdownMonthSelect } = useCloseDropdown();
   const { closeDropdown: closeDropdownYearSelect } = useCloseDropdown();
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
+  const { calendar } = useDateTimeFormat();
 
   const closeDropdowns = () => {
     closeDropdownYearSelect(MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID);
@@ -95,28 +98,38 @@ export const DatePickerWithoutCalendar = ({
     onClose?.(newDate);
   };
 
-  const handleChangeMonth = (month: number) => {
-    const newDate = plainDate?.with({ month: month });
+  const updatePlainDateInCalendar = (
+    update: (plainDateInCalendar: Temporal.PlainDate) => Temporal.PlainDate,
+  ) => {
+    const newDate = isDefined(plainDate)
+      ? updateTemporalValueInCalendar({ value: plainDate, calendar, update })
+      : null;
 
     onChange?.(newDate?.toString() ?? null);
+  };
+
+  const handleChangeMonth = (month: number) => {
+    updatePlainDateInCalendar((plainDateInCalendar) =>
+      plainDateInCalendar.with({ month: month }),
+    );
   };
 
   const handleAddMonth = () => {
-    const newDate = plainDate?.add({ months: 1 });
-
-    onChange?.(newDate?.toString() ?? null);
+    updatePlainDateInCalendar((plainDateInCalendar) =>
+      plainDateInCalendar.add({ months: 1 }),
+    );
   };
 
   const handleSubtractMonth = () => {
-    const newDate = plainDate?.subtract({ months: 1 });
-
-    onChange?.(newDate?.toString() ?? null);
+    updatePlainDateInCalendar((plainDateInCalendar) =>
+      plainDateInCalendar.subtract({ months: 1 }),
+    );
   };
 
   const handleChangeYear = (year: number) => {
-    const newDate = plainDate?.with({ year: year });
-
-    onChange?.(newDate?.toString() ?? null);
+    updatePlainDateInCalendar((plainDateInCalendar) =>
+      plainDateInCalendar.with({ year: year }),
+    );
   };
 
   const handleDateChange = (datePicked: Date | null) => {

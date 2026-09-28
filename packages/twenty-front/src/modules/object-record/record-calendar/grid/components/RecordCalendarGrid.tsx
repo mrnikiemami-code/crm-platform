@@ -2,9 +2,9 @@ import { RecordCalendarGridDay } from '@/object-record/record-calendar/grid/comp
 import { RecordCalendarDragDropContext } from '@/object-record/record-calendar/components/RecordCalendarDragDropContext';
 import { useRecordCalendarDaysRange } from '@/object-record/record-calendar/hooks/useRecordCalendarDaysRange';
 import { recordCalendarSelectedDateComponentState } from '@/object-record/record-calendar/states/recordCalendarSelectedDateComponentState';
+import { isPlainDateInSameRecordCalendarMonth } from '@/object-record/record-calendar/utils/isPlainDateInSameRecordCalendarMonth';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { styled } from '@linaria/react';
-import { isPlainDateInSameMonth } from 'twenty-shared/utils';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { ViewCalendarLayout } from '~/generated-metadata/graphql';
 
@@ -60,7 +60,7 @@ export const RecordCalendarGrid = ({
   const recordCalendarSelectedDate = useAtomComponentStateValue(
     recordCalendarSelectedDateComponentState,
   );
-  const { days, weekDayLabels } = useRecordCalendarDaysRange(
+  const { days, weekDayLabels, calendar } = useRecordCalendarDaysRange(
     recordCalendarSelectedDate,
     calendarLayout,
   );
@@ -82,7 +82,11 @@ export const RecordCalendarGrid = ({
                   day={day}
                   isOtherMonth={
                     calendarLayout === ViewCalendarLayout.MONTH &&
-                    !isPlainDateInSameMonth(day, recordCalendarSelectedDate)
+                    !isPlainDateInSameRecordCalendarMonth({
+                      day,
+                      referenceDate: recordCalendarSelectedDate,
+                      calendar,
+                    })
                   }
                 />
               ))}

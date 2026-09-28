@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { enUS } from 'date-fns/locale';
+import { enUS, fr, type Locale } from 'date-fns/locale';
 import { Temporal } from 'temporal-polyfill';
 import { type ButtonProps } from 'twenty-ui/primitives/input';
 
+import { DateFormat } from '@/localization/constants/DateFormat';
 import { RecordCalendarTopBar } from '@/object-record/record-calendar/components/RecordCalendarTopBar';
 import { recordCalendarSelectedDateComponentState } from '@/object-record/record-calendar/states/recordCalendarSelectedDateComponentState';
 import { recordIndexCalendarLayoutComponentState } from '@/object-record/record-index/states/recordIndexCalendarLayoutComponentState';
@@ -15,9 +16,10 @@ const mockUpdateCurrentView = jest.fn();
 const mockUseAtomComponentState = jest.fn();
 const mockUseAtomStateValue = jest.fn();
 const mockUseRecordCalendarDaysRange = jest.fn();
+const mockUseDateTimeFormat = jest.fn();
 
 jest.mock('@/localization/hooks/useDateTimeFormat', () => ({
-  useDateTimeFormat: jest.fn(() => ({ timeZone: 'UTC' })),
+  useDateTimeFormat: () => mockUseDateTimeFormat(),
 }));
 jest.mock(
   '@/object-record/record-calendar/hooks/useRecordCalendarDaysRange',
@@ -103,31 +105,59 @@ jest.mock('twenty-ui/primitives/input', () => ({
   ),
 }));
 
+const setupTopBar = ({
+  calendarLayout = ViewCalendarLayout.DAY,
+  selectedDate = '2026-07-15',
+  firstDay = '2026-07-13',
+  lastDay = '2026-07-19',
+  calendar = 'gregory',
+  timeZone = 'UTC',
+  locale = 'en-US',
+  localeCatalog = enUS,
+}: {
+  calendarLayout?: ViewCalendarLayout;
+  selectedDate?: string;
+  firstDay?: string;
+  lastDay?: string;
+  calendar?: 'gregory' | 'persian';
+  timeZone?: string;
+  locale?: string;
+  localeCatalog?: Locale;
+} = {}) => {
+  mockUseAtomComponentState.mockImplementation((state: unknown) => {
+    if (state === recordIndexCalendarLayoutComponentState) {
+      return [calendarLayout, mockSetRecordIndexCalendarLayout];
+    }
+
+    if (state === recordCalendarSelectedDateComponentState) {
+      return [
+        Temporal.PlainDate.from(selectedDate),
+        mockSetRecordCalendarSelectedDate,
+      ];
+    }
+
+    return [undefined, jest.fn()];
+  });
+  mockUseAtomStateValue.mockReturnValue({ locale, localeCatalog });
+  mockUseDateTimeFormat.mockReturnValue({
+    timeZone,
+    calendar,
+    dateFormat: DateFormat.SYSTEM,
+  });
+  mockUseRecordCalendarDaysRange.mockReturnValue({
+    firstDay: Temporal.PlainDate.from(firstDay),
+    lastDay: Temporal.PlainDate.from(lastDay),
+  });
+};
+
 describe('RecordCalendarTopBar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAtomComponentState.mockImplementation((state: unknown) => {
-      if (state === recordIndexCalendarLayoutComponentState) {
-        return [ViewCalendarLayout.DAY, mockSetRecordIndexCalendarLayout];
-      }
+    setupTopBar();
+  });
 
-      if (state === recordCalendarSelectedDateComponentState) {
-        return [
-          Temporal.PlainDate.from('2026-07-15'),
-          mockSetRecordCalendarSelectedDate,
-        ];
-      }
-
-      return [undefined, jest.fn()];
-    });
-    mockUseAtomStateValue.mockReturnValue({
-      locale: 'en-US',
-      localeCatalog: enUS,
-    });
-    mockUseRecordCalendarDaysRange.mockReturnValue({
-      firstDay: Temporal.PlainDate.from('2026-07-13'),
-      lastDay: Temporal.PlainDate.from('2026-07-19'),
-    });
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('shows Day, Week, and Month with the selected full date', () => {
@@ -172,5 +202,132 @@ describe('RecordCalendarTopBar', () => {
     expect(mockUpdateCurrentView).toHaveBeenCalledWith({
       calendarLayout: ViewCalendarLayout.WEEK,
     });
+  });
+
+  it('keeps English week and month titles and gregorian month navigation', () => {
+    setupTopBar({ calendarLayout: ViewCalendarLayout.WEEK });
+    const { unmount } = render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(
+      'Jul 13 – 19, 2026',
+    );
+    unmount();
+
+    setupTopBar({ calendarLayout: ViewCalendarLayout.MONTH });
+    render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent('July 2026');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next period' }));
+
+    expect(mockSetRecordCalendarSelectedDate).toHaveBeenNthCalledWith(
+      1,
+      Temporal.PlainDate.from('2026-06-15'),
+    );
+    expect(mockSetRecordCalendarSelectedDate).toHaveBeenNthCalledWith(
+      2,
+      Temporal.PlainDate.from('2026-08-15'),
+    );
+  });
+
+  it('keeps French day and month titles unchanged', () => {
+    setupTopBar({ locale: 'fr-FR', localeCatalog: fr });
+    const { unmount } = render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(
+      'mercredi 15 juillet 2026',
+    );
+    unmount();
+
+    setupTopBar({
+      calendarLayout: ViewCalendarLayout.MONTH,
+      locale: 'fr-FR',
+      localeCatalog: fr,
+    });
+    render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(
+      'juillet 2026',
+    );
+  });
+
+  it('shows Persian titles that match the Persian grid', () => {
+    setupTopBar({
+      calendar: 'persian',
+      calendarLayout: ViewCalendarLayout.MONTH,
+      selectedDate: '2026-04-01',
+    });
+    const { unmount: unmountMonth } = render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(
+      'فروردین ۱۴۰۵',
+    );
+    unmountMonth();
+
+    setupTopBar({
+      calendar: 'persian',
+      calendarLayout: ViewCalendarLayout.WEEK,
+      selectedDate: '2026-03-18',
+      firstDay: '2026-03-15',
+      lastDay: '2026-03-21',
+    });
+    const { unmount: unmountWeek } = render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(
+      '۲۴ اسفند ۱۴۰۴ تا ۱ فروردین ۱۴۰۵',
+    );
+    unmountWeek();
+
+    setupTopBar({ calendar: 'persian', selectedDate: '2026-03-21' });
+    render(<RecordCalendarTopBar />);
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(
+      'شنبه، ۱ فروردین ۱۴۰۵',
+    );
+  });
+
+  it('navigates Persian months across Nowruz', () => {
+    setupTopBar({
+      calendar: 'persian',
+      calendarLayout: ViewCalendarLayout.MONTH,
+      selectedDate: '2026-03-10',
+    });
+    render(<RecordCalendarTopBar />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next period' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }));
+
+    expect(mockSetRecordCalendarSelectedDate).toHaveBeenNthCalledWith(
+      1,
+      Temporal.PlainDate.from('2026-04-08'),
+    );
+    expect(mockSetRecordCalendarSelectedDate).toHaveBeenNthCalledWith(
+      2,
+      Temporal.PlainDate.from('2026-02-08'),
+    );
+  });
+
+  it('navigates Persian days across Nowruz', () => {
+    setupTopBar({ calendar: 'persian', selectedDate: '2026-03-20' });
+    render(<RecordCalendarTopBar />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next period' }));
+
+    expect(mockSetRecordCalendarSelectedDate).toHaveBeenCalledWith(
+      Temporal.PlainDate.from('2026-03-21'),
+    );
+  });
+
+  it('maps Today to the Tehran date right after Nowruz midnight', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-03-20T20:30:00Z'));
+    setupTopBar({ calendar: 'persian', timeZone: 'Asia/Tehran' });
+    render(<RecordCalendarTopBar />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+
+    expect(mockSetRecordCalendarSelectedDate).toHaveBeenCalledWith(
+      Temporal.PlainDate.from('2026-03-21'),
+    );
   });
 });

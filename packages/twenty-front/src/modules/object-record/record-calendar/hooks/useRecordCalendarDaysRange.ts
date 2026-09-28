@@ -1,5 +1,7 @@
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { detectCalendarStartDay } from '@/localization/utils/detection/detectCalendarStartDay';
+import { formatPersianRecordCalendarWeekDay } from '@/object-record/record-calendar/utils/formatPersianRecordCalendarWeekDay';
 import { getRecordCalendarDaysRange } from '@/object-record/record-calendar/utils/getRecordCalendarDaysRange';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { format } from 'date-fns';
@@ -15,6 +17,7 @@ export const useRecordCalendarDaysRange = (
 ) => {
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
   const dateLocale = useAtomStateValue(dateLocaleState);
+  const { calendar } = useDateTimeFormat();
   const calendarStartDay =
     currentWorkspaceMember?.calendarStartDay ?? CalendarStartDay.SYSTEM;
   const weekStartsOnDayIndex =
@@ -25,14 +28,18 @@ export const useRecordCalendarDaysRange = (
     selectedDate,
     calendarLayout,
     weekStartsOnDayIndex,
+    calendar,
   });
 
   return {
     ...range,
+    calendar,
     weekDayLabels: range.days[0].map((day) =>
-      format(turnPlainDateToShiftedDateInSystemTimeZone(day), 'EEE', {
-        locale: dateLocale.localeCatalog,
-      }),
+      calendar === 'persian'
+        ? formatPersianRecordCalendarWeekDay(day)
+        : format(turnPlainDateToShiftedDateInSystemTimeZone(day), 'EEE', {
+            locale: dateLocale.localeCatalog,
+          }),
     ),
   };
 };
