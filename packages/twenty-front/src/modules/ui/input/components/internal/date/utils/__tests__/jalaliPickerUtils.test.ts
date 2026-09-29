@@ -40,9 +40,8 @@ describe('getJalaliDateMask', () => {
 });
 
 describe('JALALI_DATE_BLOCKS', () => {
-  it('should bound the year to the Jalali years of the picker range', () => {
-    expect(JALALI_DATE_BLOCKS.YYYY.from).toBe(1278);
-    expect(JALALI_DATE_BLOCKS.YYYY.to).toBe(1479);
+  it('should keep the year a four digit field and bound month and day', () => {
+    expect(JALALI_DATE_BLOCKS.YYYY.mask).toBe('0000');
     expect(JALALI_DATE_BLOCKS.MM.to).toBe(12);
     expect(JALALI_DATE_BLOCKS.DD.to).toBe(31);
   });

@@ -1,19 +1,12 @@
 import { IMask } from 'react-imask';
 
-import { turnISOPlainDateIntoPersianPlainDate } from '@/localization/utils/jalali/turnISOPlainDateIntoPersianPlainDate';
-import { MAX_DATE } from '@/ui/input/components/internal/date/constants/MaxDate';
-import { MIN_DATE } from '@/ui/input/components/internal/date/constants/MinDate';
-import { turnJSDateToPlainDate } from 'twenty-shared/utils';
-
 // Ranges only bound each field; whether the day exists in that Jalali month
-// is checked by parseJalaliDateInputString once the input is complete.
+// and the year is within the picker range is checked by the inputs once the
+// value is complete. The year stays a plain pattern: a MaskedRange would turn
+// the digit shared by both bounds into a fixed "1" in the visible mask.
 export const JALALI_DATE_BLOCKS = {
   YYYY: {
-    mask: IMask.MaskedRange,
-    from: turnISOPlainDateIntoPersianPlainDate(turnJSDateToPlainDate(MIN_DATE))
-      .year,
-    to: turnISOPlainDateIntoPersianPlainDate(turnJSDateToPlainDate(MAX_DATE))
-      .year,
+    mask: '0000',
   },
   MM: {
     mask: IMask.MaskedRange,
