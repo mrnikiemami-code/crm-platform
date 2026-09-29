@@ -62,6 +62,7 @@ type SettingsDataModelFieldSelectFormOptionRowProps = {
   option: FieldMetadataItemOption;
   isNewRow?: boolean;
   fieldIsNullable?: boolean;
+  isDuplicate?: boolean;
 };
 
 const StyledRow = styled.div`
@@ -113,6 +114,7 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
   option,
   isNewRow,
   fieldIsNullable,
+  isDuplicate = false,
 }: SettingsDataModelFieldSelectFormOptionRowProps) => {
   const { theme } = useContext(ThemeContext);
   const colorLabels = useColorLabels();
@@ -122,7 +124,14 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
   const { closeDropdown: closeColorDropdown } = useCloseDropdown();
   const { closeDropdown: closeActionsDropdown } = useCloseDropdown();
 
-  const shouldForbidRemoveAsDefault = isDefault && !fieldIsNullable;
+  // A duplicate keeps the default value alive in its twin row, so it stays
+  // removable even when it holds the default.
+  const canRemove = !!onRemove && (!isDefault || isDuplicate);
+  const shouldForbidRemoveAsDefault =
+    isDefault && !fieldIsNullable && !canRemove;
+  const duplicateErrorMessage = isDuplicate
+    ? t`This option is a duplicate.`
+    : undefined;
 
   const handleInputEnter = () => {
     onInputEnter?.();
@@ -153,6 +162,8 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
             }
             RightIcon={isDefault ? IconCheck : undefined}
             maxLength={OPTION_VALUE_MAXIMUM_LENGTH}
+            error={duplicateErrorMessage}
+            noErrorHelper
           />
         </StyledOptionInputContainer>
       </AdvancedSettingsWrapper>
@@ -205,6 +216,7 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
           }}
           RightIcon={isDefault ? IconCheck : undefined}
           maxLength={OPTION_VALUE_MAXIMUM_LENGTH}
+          error={duplicateErrorMessage}
           onInputEnter={handleInputEnter}
           autoFocusOnMount={isNewRow}
           autoSelectOnMount={isNewRow}
@@ -229,13 +241,15 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
             <DropdownContent>
               <DropdownMenuItemsContainer>
                 {isDefault ? (
-                  <ListItem
-                    startIcon={<IconX />}
-                    onClick={() => {
-                      onRemoveAsDefault?.();
-                      closeActionsDropdown(SELECT_ACTIONS_DROPDOWN_ID);
-                    }}
-                  >{t`Remove as default`}</ListItem>
+                  fieldIsNullable && (
+                    <ListItem
+                      startIcon={<IconX />}
+                      onClick={() => {
+                        onRemoveAsDefault?.();
+                        closeActionsDropdown(SELECT_ACTIONS_DROPDOWN_ID);
+                      }}
+                    >{t`Remove as default`}</ListItem>
+                  )
                 ) : (
                   <ListItem
                     startIcon={<IconCheck />}
@@ -245,12 +259,12 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
                     }}
                   >{t`Set as default`}</ListItem>
                 )}
-                {!!onRemove && !isDefault && (
+                {canRemove && (
                   <ListItem
                     color="danger"
                     startIcon={<IconTrash />}
                     onClick={() => {
-                      onRemove();
+                      onRemove?.();
                       closeActionsDropdown(SELECT_ACTIONS_DROPDOWN_ID);
                     }}
                   >{t`Remove option`}</ListItem>

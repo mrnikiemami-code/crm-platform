@@ -139,6 +139,25 @@ describe('convertBulkTextToOptions', () => {
     expect(result[1].position).toBe(1);
   });
 
+  it('reuses an existing option id only once for repeated lines', () => {
+    const text = 'Existing\nexisting\nExisting';
+    const currentOptions: FieldMetadataItemOption[] = [
+      {
+        id: 'existing-id',
+        label: 'Existing',
+        value: 'EXISTING',
+        color: 'blue',
+        position: 0,
+      },
+    ];
+
+    const result = convertBulkTextToOptions(text, currentOptions);
+
+    expect(result).toHaveLength(3);
+    expect(result[0].id).toBe('existing-id');
+    expect(new Set(result.map(({ id }) => id)).size).toBe(3);
+  });
+
   it('handles mixed existing and new options', () => {
     const text = 'Existing\nNew 1\nAnother Existing\nNew 2';
     const currentOptions: FieldMetadataItemOption[] = [

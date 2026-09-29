@@ -14,6 +14,7 @@ export const convertBulkTextToOptions = (
     .filter((line) => line.length > 0);
 
   const newBulkSelectOptions: FieldMetadataItemOption[] = [];
+  const reusedOptionIds = new Set<string>();
 
   for (
     let optionIndex = 0;
@@ -23,11 +24,15 @@ export const convertBulkTextToOptions = (
     const label = parsedBulkTextOptions[optionIndex];
 
     // try to find an existing option with the same label, so we can keep its id, color, value, and label
+    // each option is reused once so repeated lines never share an id
     const existingOption = currentOptions.find(
-      (opt) => opt.label.toLowerCase() === label.toLowerCase(),
+      (opt) =>
+        !reusedOptionIds.has(opt.id) &&
+        opt.label.toLowerCase() === label.toLowerCase(),
     );
 
     if (isDefined(existingOption)) {
+      reusedOptionIds.add(existingOption.id);
       // reuse existing option meta (including original label), just update position
       newBulkSelectOptions.push({
         ...existingOption,

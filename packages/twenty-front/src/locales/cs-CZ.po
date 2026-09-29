@@ -17293,6 +17293,11 @@ msgstr "Odebrat model \"{0}\""
 msgid "Remove option"
 msgstr "Odstranit možnost"
 
+#. js-lingui-id: XjFYE7
+#: src/modules/settings/data-model/fields/forms/select/components/SettingsDataModelFieldSelectFormOptionRow.tsx
+msgid "This option is a duplicate."
+msgstr ""
+
 #. js-lingui-id: bKJVLZ
 #: src/pages/settings/admin-panel/SettingsAdminAiProviderDetail.tsx
 msgid "Remove provider"

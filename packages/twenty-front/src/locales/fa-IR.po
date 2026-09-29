@@ -17270,6 +17270,11 @@ msgstr "حذف مدل «{0}»"
 msgid "Remove option"
 msgstr "حذف گزینه"
 
+#. js-lingui-id: XjFYE7
+#: src/modules/settings/data-model/fields/forms/select/components/SettingsDataModelFieldSelectFormOptionRow.tsx
+msgid "This option is a duplicate."
+msgstr "این گزینه تکراری است."
+
 #. js-lingui-id: bKJVLZ
 #: src/pages/settings/admin-panel/SettingsAdminAiProviderDetail.tsx
 msgid "Remove provider"

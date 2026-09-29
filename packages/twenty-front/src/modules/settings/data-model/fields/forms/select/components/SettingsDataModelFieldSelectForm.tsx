@@ -448,76 +448,94 @@ export const SettingsDataModelFieldSelectForm = ({
                       }
                       draggableItems={
                         <>
-                          {options.map((option, index) => (
-                            <DraggableItem
-                              key={option.id}
-                              draggableId={option.id}
-                              index={index}
-                              itemComponent={
-                                <SettingsDataModelFieldSelectFormOptionRow
-                                  key={option.id}
-                                  option={option}
-                                  isNewRow={index === options.length - 1}
-                                  onChange={(nextOption) => {
-                                    if (disabled) {
-                                      return;
-                                    }
-                                    const nextOptions = toSpliced(
-                                      options,
-                                      index,
-                                      1,
-                                      nextOption,
-                                    );
-                                    onChange(nextOptions);
+                          {options.map((option, index) => {
+                            const isDuplicate = options.some(
+                              (otherOption) =>
+                                otherOption.id !== option.id &&
+                                otherOption.value === option.value,
+                            );
+                            // The default is stored by value, so only the
+                            // first row holding it is shown as the default.
+                            const isDefault =
+                              isOptionDefaultValue(option.value) &&
+                              options.findIndex(
+                                ({ value }) => value === option.value,
+                              ) === index;
 
-                                    if (
-                                      nextOption.value !== option.value &&
-                                      isOptionDefaultValue(option.value)
-                                    ) {
-                                      handleRemoveOptionAsDefault(option.value);
-                                      handleSetOptionAsDefault(
-                                        nextOption.value,
+                            return (
+                              <DraggableItem
+                                key={option.id}
+                                draggableId={option.id}
+                                index={index}
+                                itemComponent={
+                                  <SettingsDataModelFieldSelectFormOptionRow
+                                    key={option.id}
+                                    option={option}
+                                    isNewRow={index === options.length - 1}
+                                    onChange={(nextOption) => {
+                                      if (disabled) {
+                                        return;
+                                      }
+                                      const nextOptions = toSpliced(
+                                        options,
+                                        index,
+                                        1,
+                                        nextOption,
                                       );
-                                    }
-                                  }}
-                                  onRemove={() => {
-                                    if (disabled) {
-                                      return;
-                                    }
-                                    const nextOptions = toSpliced(
-                                      options,
-                                      index,
-                                      1,
-                                    ).map((option, nextOptionIndex) => ({
-                                      ...option,
-                                      position: nextOptionIndex,
-                                    }));
-                                    onChange(nextOptions);
-                                  }}
-                                  isDefault={isOptionDefaultValue(option.value)}
-                                  fieldIsNullable={!!isNullable}
-                                  onSetAsDefault={() => {
-                                    if (disabled) {
-                                      return;
-                                    }
-                                    handleSetOptionAsDefault(option.value);
-                                  }}
-                                  onRemoveAsDefault={() => {
-                                    if (disabled) {
-                                      return;
-                                    }
-                                    handleRemoveOptionAsDefault(option.value);
-                                  }}
-                                  onInputEnter={() => {
-                                    if (disabled) {
-                                      return;
-                                    }
-                                    handleInputEnter();
-                                  }}
-                                />
-                              }
-                            />
-                          ))}
+                                      onChange(nextOptions);
+
+                                      if (
+                                        nextOption.value !== option.value &&
+                                        isDefault
+                                      ) {
+                                        handleRemoveOptionAsDefault(
+                                          option.value,
+                                        );
+                                        handleSetOptionAsDefault(
+                                          nextOption.value,
+                                        );
+                                      }
+                                    }}
+                                    onRemove={() => {
+                                      if (disabled) {
+                                        return;
+                                      }
+                                      const nextOptions = toSpliced(
+                                        options,
+                                        index,
+                                        1,
+                                      ).map((option, nextOptionIndex) => ({
+                                        ...option,
+                                        position: nextOptionIndex,
+                                      }));
+                                      onChange(nextOptions);
+                                    }}
+                                    isDefault={isDefault}
+                                    isDuplicate={isDuplicate}
+                                    fieldIsNullable={!!isNullable}
+                                    onSetAsDefault={() => {
+                                      if (disabled) {
+                                        return;
+                                      }
+                                      handleSetOptionAsDefault(option.value);
+                                    }}
+                                    onRemoveAsDefault={() => {
+                                      if (disabled) {
+                                        return;
+                                      }
+                                      handleRemoveOptionAsDefault(option.value);
+                                    }}
+                                    onInputEnter={() => {
+                                      if (disabled) {
+                                        return;
+                                      }
+                                      handleInputEnter();
+                                    }}
+                                  />
+                                }
+                              />
+                            );
+                          })}
                         </>
                       }
                     />
