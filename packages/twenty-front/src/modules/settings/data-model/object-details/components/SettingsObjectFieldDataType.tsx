@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 
 import { type SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
 import { getSettingsFieldTypeConfig } from '@/settings/data-model/utils/getSettingsFieldTypeConfig';
+import { useLingui } from '@lingui/react/macro';
 import { type IconComponent, IconTwentyStar } from 'twenty-ui/icon';
 import { useContext } from 'react';
+import { isDefined } from 'twenty-shared/utils';
 import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
 
 type SettingsObjectFieldDataTypeProps = {
@@ -67,10 +69,13 @@ export const SettingsObjectFieldDataType = ({
   onClick,
 }: SettingsObjectFieldDataTypeProps) => {
   const { theme } = useContext(ThemeContext);
+  const { t } = useLingui();
   const fieldTypeConfig = getSettingsFieldTypeConfig(value);
   const Icon: IconComponent =
     IconFromProps ?? fieldTypeConfig?.Icon ?? IconTwentyStar;
-  const label = labelFromProps ?? fieldTypeConfig?.label;
+  const label =
+    labelFromProps ??
+    (isDefined(fieldTypeConfig) ? t(fieldTypeConfig.label) : undefined);
 
   return (
     <StyledDataType

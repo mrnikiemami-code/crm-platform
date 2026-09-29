@@ -41,14 +41,6 @@ const StyledInputsContainer = styled.div`
   width: 100%;
 `;
 
-const RELATION_TYPE_OPTIONS = Object.entries(RELATION_TYPES).map(
-  ([value, { label, Icon }]) => ({
-    label,
-    value: value as RelationType,
-    Icon,
-  }),
-);
-
 export const settingsDataModelFieldMorphRelationFormSchema = z.object({
   morphRelationObjectMetadataIds: z.array(z.uuid()).min(1),
   relationType: z.enum(
@@ -81,6 +73,14 @@ export const SettingsDataModelFieldRelationForm = ({
 }: SettingsDataModelFieldRelationFormProps) => {
   const { t } = useLingui();
   const { control, watch } = useFormContext();
+
+  const relationTypeOptions = Object.entries(RELATION_TYPES).map(
+    ([value, { label, Icon }]) => ({
+      label: t(label),
+      value: value as RelationType,
+      Icon,
+    }),
+  );
 
   const currentIds = watch('morphRelationObjectMetadataIds') as
     | string[]
@@ -135,7 +135,7 @@ export const SettingsDataModelFieldRelationForm = ({
               fullWidth
               disabled={disabled || disableRelationEdition}
               value={value}
-              options={RELATION_TYPE_OPTIONS}
+              options={relationTypeOptions}
               onChange={onChange}
             />
           )}

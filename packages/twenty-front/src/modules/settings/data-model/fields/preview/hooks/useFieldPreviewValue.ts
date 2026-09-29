@@ -7,6 +7,8 @@ import { getFieldPreviewValue } from '@/settings/data-model/fields/preview/utils
 import { getMultiSelectFieldPreviewValue } from '@/settings/data-model/fields/preview/utils/getMultiSelectFieldPreviewValue';
 import { getPhonesFieldPreviewValue } from '@/settings/data-model/fields/preview/utils/getPhonesFieldPreviewValue';
 import { getSelectFieldPreviewValue } from '@/settings/data-model/fields/preview/utils/getSelectFieldPreviewValue';
+import { getTextFieldPreviewPlaceholder } from '@/settings/data-model/fields/preview/utils/getTextFieldPreviewPlaceholder';
+import { i18n } from '@lingui/core';
 import { isDefined } from 'twenty-shared/utils';
 import { FieldMetadataType, RelationType } from '~/generated-metadata/graphql';
 
@@ -58,6 +60,10 @@ export const useFieldPreviewValue = ({
         fieldType: fieldMetadataItem.type,
         fieldSettings: fieldMetadataItem.settings,
         defaultValue: fieldMetadataItem.defaultValue,
+        placeholderValue: getTextFieldPreviewPlaceholder({
+          fieldType: fieldMetadataItem.type,
+          locale: i18n.locale,
+        }),
       });
   }
 };

@@ -1,5 +1,6 @@
 import { styled } from '@linaria/react';
-import { useContext } from 'react';
+import { isNonEmptyString } from '@sniptt/guards';
+import { useContext, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 import { type z } from 'zod';
 
@@ -10,7 +11,9 @@ import { AdvancedSettingsContentWrapperWithDot } from '@/settings/components/Adv
 import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
 import { SettingsOptionCardContentSwitch } from '@/settings/components/SettingsOptions/SettingsOptionCardContentSwitch';
 import { IDENTIFIER_MAX_CHAR_LENGTH } from 'twenty-shared/metadata';
+import { computeFieldTechnicalNameSuggestion } from '@/settings/data-model/fields/forms/utils/computeFieldTechnicalNameSuggestion';
 import { getErrorMessageFromError } from '@/settings/data-model/fields/forms/utils/errorMessages';
+import { hasNonLatinLetters } from '@/settings/data-model/utils/hasNonLatinLetters';
 import { IconPicker } from '@/ui/input/components/IconPicker';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
@@ -18,6 +21,7 @@ import { useLingui } from '@lingui/react/macro';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 import { IconInfoCircle, IconRefresh } from 'twenty-ui/icon';
+import { InlineBanner } from 'twenty-ui/primitives/feedback';
 import { Tooltip, Card } from 'twenty-ui/primitives/surfaces';
 import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
 import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/computeMetadataNameFromLabel';
@@ -70,11 +74,25 @@ const StyledAdvancedSettingsContainer = styled.div`
   width: 100%;
 `;
 
+const StyledExplicitNameContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${themeCssVariables.spacing[2]};
+  padding-top: ${themeCssVariables.spacing[4]};
+`;
+
+const StyledTechnicalNameError = styled.span`
+  color: ${themeCssVariables.font.color.danger};
+  font-size: ${themeCssVariables.font.size.xs};
+`;
+
 type SettingsDataModelFieldIconLabelFormProps = {
   fieldMetadataItem?: FieldMetadataItem;
   maxLength?: number;
   isCreationMode?: boolean;
   readonly?: boolean;
+  fieldType?: FieldMetadataType;
+  existingFieldNames?: string[];
 };
 
 export const SettingsDataModelFieldIconLabelForm = ({
@@ -82,6 +100,8 @@ export const SettingsDataModelFieldIconLabelForm = ({
   fieldMetadataItem,
   maxLength,
   readonly = false,
+  fieldType,
+  existingFieldNames = [],
 }: SettingsDataModelFieldIconLabelFormProps) => {
   const {
     control,
@@ -119,6 +139,34 @@ export const SettingsDataModelFieldIconLabelForm = ({
       setValue('name', computeMetadataNameFromLabel(label), {
         shouldDirty: true,
       });
+  };
+
+  const [isNameEditedManually, setIsNameEditedManually] = useState(false);
+
+  const requiresExplicitName = isCreationMode && hasNonLatinLetters(label);
+
+  const setLabelSyncedWithName = (nextIsLabelSyncedWithName: boolean) =>
+    setValue('isLabelSyncedWithName', nextIsLabelSyncedWithName, {
+      shouldDirty: true,
+    });
+
+  const fillNameOnCreation = (nextLabel: string) => {
+    if (!hasNonLatinLetters(nextLabel)) {
+      setIsNameEditedManually(false);
+      setLabelSyncedWithName(true);
+      fillNameFromLabel(nextLabel);
+      return;
+    }
+
+    setLabelSyncedWithName(false);
+
+    if (!isNameEditedManually && isDefined(fieldType)) {
+      setValue(
+        'name',
+        computeFieldTechnicalNameSuggestion({ fieldType, existingFieldNames }),
+        { shouldDirty: true, shouldValidate: true },
+      );
+    }
   };
 
   const isRelation =
@@ -168,10 +216,9 @@ export const SettingsDataModelFieldIconLabelForm = ({
               onChange={(value) => {
                 onChange(value);
                 trigger('label');
-                if (
-                  isCreationMode ||
-                  (isLabelSyncedWithName === true && isCustomField)
-                ) {
+                if (isCreationMode) {
+                  fillNameOnCreation(value);
+                } else if (isLabelSyncedWithName === true && isCustomField) {
                   fillNameFromLabel(value);
                 }
               }}
@@ -182,6 +229,43 @@ export const SettingsDataModelFieldIconLabelForm = ({
           )}
         />
       </StyledInputsContainer>
+      {requiresExplicitName && (
+        <StyledExplicitNameContainer>
+          <InlineBanner
+            color="blue"
+            message={t`The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle).`}
+          />
+          <Controller
+            name="name"
+            control={control}
+            render={({ field: { onChange, value } }) => (
+              <SettingsTextInput
+                instanceId={`${nameTextInputId}-explicit`}
+                label={t`API Name`}
+                placeholder="eventTitle"
+                value={value ?? ''}
+                dir="ltr"
+                required
+                onChange={(nextValue) => {
+                  onChange(nextValue);
+                  setIsNameEditedManually(true);
+                  trigger('name');
+                }}
+                disabled={readonly}
+                fullWidth
+                maxLength={IDENTIFIER_MAX_CHAR_LENGTH}
+                error={errors.name?.message}
+                noErrorHelper
+              />
+            )}
+          />
+          {isNonEmptyString(errors.name?.message) && (
+            <StyledTechnicalNameError aria-live="polite">
+              {errors.name.message}
+            </StyledTechnicalNameError>
+          )}
+        </StyledExplicitNameContainer>
+      )}
       {canToggleSyncLabelWithName && (
         <AdvancedSettingsWrapper hideDot>
           <StyledAdvancedSettingsOuterContainer>

@@ -1267,6 +1267,12 @@ msgstr "활성 동기화"
 msgid "Activity visibility"
 msgstr "활동 가시성"
 
+#. js-lingui-id: cTLr3k
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Actor"
+msgstr ""
+
 #. js-lingui-id: m16xKo
 #: src/pages/settings/ai/components/SettingsAgentEvalsTab.tsx
 msgid "Add"
@@ -1805,6 +1811,12 @@ msgstr "{beautifiedCreatedAt} 추가"
 msgid "Added to blocklist"
 msgstr "차단 목록에 추가됨"
 
+#. js-lingui-id: BsHpRj
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Address"
+msgstr ""
+
 #. js-lingui-id: hW/fMg
 #: src/modules/object-metadata/hooks/useSortSubFieldChoicesForField.ts
 #: src/modules/object-record/record-field/ui/form-types/components/FormAddressFieldInput.tsx
@@ -1892,6 +1904,7 @@ msgstr "관리자"
 #: src/modules/ai/components/AiModelPicker.tsx
 #: src/modules/navigation/components/SettingsNavigationDrawerContent.tsx
 #: src/modules/settings/components/SettingsMorphRelationMultiSelect.tsx
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 #: src/modules/ui/input/components/AdvancedSettingsSwitch.tsx
 msgid "Advanced"
 msgstr "고급"
@@ -2326,6 +2339,11 @@ msgstr "모든 작업이 처리되었습니다. 이 기세를 유지하세요."
 msgid "All the applications currently installed on this workspace"
 msgstr "이 작업공간에 현재 설치된 모든 앱"
 
+#. js-lingui-id: JOwsLs
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "All the basic field types you need to start"
+msgstr ""
+
 #. js-lingui-id: xP6s/m
 #: src/pages/settings/layout/SettingsLayout.tsx
 msgid "All the layout items declared on your workspace"
@@ -2691,6 +2709,7 @@ msgstr "API 키"
 
 #. js-lingui-id: kAtj+q
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "API 이름"
@@ -2980,6 +2999,12 @@ msgstr "확실합니까? 현재 정보는 저장되지 않습니다."
 #: src/localization/hooks/useLocaleOptions.ts
 msgid "Armenian"
 msgstr "아르메니아어"
+
+#. js-lingui-id: f6R0uX
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Array"
+msgstr ""
 
 #. js-lingui-id: cybVUo
 #: src/modules/settings/members/components/MemberInfosTab.tsx
@@ -3421,6 +3446,7 @@ msgid "Base URL is required"
 msgstr "기본 URL이 필요합니다"
 
 #. js-lingui-id: 0wJVK+
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 #: src/pages/onboarding/UpgradeFreeTrial.tsx
 msgid "Basic"
 msgstr "기본"
@@ -3447,6 +3473,11 @@ msgstr "이 워크플로는 수동 트리거를 사용하지 않으므로 양식
 #: src/modules/settings/admin-panel/utils/getUpgradeHealthStatusBadge.ts
 msgid "Behind"
 msgstr "뒤처짐"
+
+#. js-lingui-id: Fg77nJ
+#: src/modules/settings/data-model/constants/RelationTypes.ts
+msgid "Belongs to one"
+msgstr ""
 
 #. js-lingui-id: YBt9YP
 #: src/pages/onboarding/InstallAppsContent.tsx
@@ -5700,6 +5731,11 @@ msgstr "이 보기에서 새 레코드 생성: "
 msgid "Create a record"
 msgstr "레코드 생성"
 
+#. js-lingui-id: LhCBaa
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "Create a relation with other objects"
+msgstr ""
+
 #. js-lingui-id: ZITKtg
 #: src/pages/settings/ai/components/SettingsAgentRoleTab.tsx
 msgid "Create a role to define permissions for this agent."
@@ -6094,6 +6130,12 @@ msgstr "통화"
 #: src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx
 msgid "Currency"
 msgstr "통화"
+
+#. js-lingui-id: LosIvV
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Currency"
+msgstr ""
 
 #. js-lingui-id: m0pL0h
 #: src/modules/object-record/record-field/ui/form-types/components/FormCurrencyFieldInput.tsx
@@ -6504,6 +6546,18 @@ msgstr "데이터베이스 이벤트"
 #: src/pages/settings/ai/SettingsAgentTurnDetail.tsx
 msgid "Date"
 msgstr "날짜"
+
+#. js-lingui-id: 9XFK6Z
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Date"
+msgstr ""
+
+#. js-lingui-id: VSf/ZF
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Date and Time"
+msgstr ""
 
 #. js-lingui-id: QIIAIQ
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownCalendarFieldsContent.tsx
@@ -7961,6 +8015,12 @@ msgstr "이메일/도메인"
 #: src/pages/settings/communications/SettingsWorkspaceCommunications.tsx
 msgid "Emails"
 msgstr "이메일"
+
+#. js-lingui-id: 5bOlqR
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Emails"
+msgstr ""
 
 #. js-lingui-id: XGd8Wo
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
@@ -9577,6 +9637,12 @@ msgstr "파일 라벨"
 msgid "File no longer exists - {label}"
 msgstr "파일이 더 이상 존재하지 않습니다 - {label}"
 
+#. js-lingui-id: x5Whxk
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Files"
+msgstr ""
+
 #. js-lingui-id: BZGmTs
 #: src/modules/settings/logic-functions/components/tabs/SettingsLogicFunctionTestTab.tsx
 msgid "Fill with sample input from"
@@ -9942,6 +10008,7 @@ msgid "Front Components"
 msgstr "프런트 컴포넌트"
 
 #. js-lingui-id: g2Tj8R
+#: src/modules/settings/data-model/fields/forms/currency/components/SettingsDataModelFieldCurrencyForm.tsx
 #: src/modules/side-panel/pages/page-layout/utils/getChartNumberFormatLabel.ts
 msgid "Full"
 msgstr "전체"
@@ -9955,6 +10022,12 @@ msgstr "전체 관리자 패널 액세스"
 #: src/modules/activities/emails/hooks/useCampaignEmailEditorVariables.ts
 msgid "Full name"
 msgstr "전체 이름"
+
+#. js-lingui-id: mb/L+O
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Full Name"
+msgstr ""
 
 #. js-lingui-id: i9zh9T
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectOpenRecordInPicker.tsx
@@ -10342,6 +10415,11 @@ msgstr "핸들"
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsFilterDropdown.tsx
 msgid "Has error"
 msgstr "오류 있음"
+
+#. js-lingui-id: MvwlmR
+#: src/modules/settings/data-model/constants/RelationTypes.ts
+msgid "Has many"
+msgstr ""
 
 #. js-lingui-id: Gpb1xF
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
@@ -11631,6 +11709,12 @@ msgstr "참가 중"
 msgid "JSON"
 msgstr ""
 
+#. js-lingui-id: bZ20Uo
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "JSON"
+msgstr ""
+
 #. js-lingui-id: klrZv0
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
 msgid "JSON filters"
@@ -12266,6 +12350,12 @@ msgstr "링크 URL"
 #: src/modules/activities/timeline-activities/rows/generic/components/EventRowGenericLinked.tsx
 msgid "linked a {objectLabel}"
 msgstr "{objectLabel}을(를) 연결했습니다"
+
+#. js-lingui-id: tVNrrY
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Links"
+msgstr ""
 
 #. js-lingui-id: 82kQhK
 #: src/modules/advanced-text-editor/extensions/slash-command/DefaultSlashCommands.ts
@@ -13177,6 +13267,11 @@ msgstr "더 보기 ({remainingCount})"
 msgid "More actions"
 msgstr "추가 작업"
 
+#. js-lingui-id: TzzH0D
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "More advanced fields for advanced projects"
+msgstr ""
+
 #. js-lingui-id: 3Siwmw
 #: src/modules/activities/files/components/AttachmentDropdown.tsx
 #: src/modules/object-record/record-board/record-board-column/components/RecordBoardColumnHeader.tsx
@@ -13195,6 +13290,12 @@ msgstr "추가 옵션"
 #: src/modules/page-layout/widgets/components/RecordPageAddWidgetSection.tsx
 msgid "More widgets"
 msgstr "더 많은 위젯"
+
+#. js-lingui-id: 7D4pqg
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Morph Relation"
+msgstr ""
 
 #. js-lingui-id: SOHptZ
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstallStats.tsx
@@ -13265,6 +13366,12 @@ msgstr "팀과 에이전트 전반에 걸쳐 업무를 진척시키세요"
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsTable.tsx
 msgid "Msgs"
 msgstr "메시지"
+
+#. js-lingui-id: SAcUP6
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Multi-select"
+msgstr ""
 
 #. js-lingui-id: cT1jbf
 #: src/modules/settings/admin-panel/components/SettingsAdminChatAskQuestionsQuestion.tsx
@@ -13373,6 +13480,11 @@ msgstr "이름"
 msgid "Name and describe your function"
 msgstr "함수의 이름과 설명 추가"
 
+#. js-lingui-id: VVSh3E
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "Name cannot be empty."
+msgstr ""
+
 #. js-lingui-id: zaxmAs
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
 msgid "Name in both singular (e.g., 'Invoice') and plural (e.g., 'Invoices') forms."
@@ -13388,6 +13500,11 @@ msgstr "API 키 이름"
 #: src/pages/settings/general/SettingsGeneral.tsx
 msgid "Name of your workspace"
 msgstr "워크스페이스 이름"
+
+#. js-lingui-id: lxgzPN
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "Name should start with a letter."
+msgstr ""
 
 #. js-lingui-id: JxC/pi
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
@@ -14796,6 +14913,12 @@ msgstr "숫자"
 msgid "Number"
 msgstr "숫자"
 
+#. js-lingui-id: 337SRm
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Number"
+msgstr ""
+
 #. js-lingui-id: bR2sEm
 #: src/modules/settings/experience/components/NumberFormatSelect.tsx
 msgid "Number format"
@@ -15858,6 +15981,12 @@ msgstr "전화번호"
 msgid "Phone number copied to clipboard"
 msgstr "전화번호가 클립보드에 복사되었습니다"
 
+#. js-lingui-id: /WYEJU
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Phones"
+msgstr ""
+
 #. js-lingui-id: DLlQEh
 #. placeholder {0}: displayedSubStepObjectDisplay?.label
 #. placeholder {0}: subStepObjectDisplay?.label
@@ -16456,6 +16585,12 @@ msgstr "임의"
 msgid "Rating"
 msgstr "평점"
 
+#. js-lingui-id: Mq2/Tn
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Rating"
+msgstr ""
+
 #. js-lingui-id: iaocTt
 #: src/modules/page-layout/widgets/graph/graph-widget-aggregate-chart/utils/getAggregateChartOperationLabel.ts
 #: src/modules/page-layout/widgets/graph/hooks/useGraphWidgetAggregateQuery.ts
@@ -16838,9 +16973,15 @@ msgid "Registered as a development instance. This instance will not be billed."
 msgstr "개발 인스턴스로 등록되었습니다. 이 인스턴스에는 청구되지 않습니다."
 
 #. js-lingui-id: h9AYFD
-#: src/modules/settings/data-model/fields/forms/components/SettingsObjectNewFieldSelector.tsx
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 msgid "Relation"
 msgstr "관계"
+
+#. js-lingui-id: Kh9wUo
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Relation"
+msgstr ""
 
 #. js-lingui-id: dQHMbF
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectFields.tsx
@@ -17411,6 +17552,12 @@ msgstr "이 키를 취소하면 이 키로 서명된 모든 JWT가 무효화됩�
 msgid "Rich Text"
 msgstr "서식 있는 텍스트"
 
+#. js-lingui-id: RGOjxb
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Rich Text"
+msgstr ""
+
 #. js-lingui-id: E1BXUR
 #: src/modules/metadata-error-handler/hooks/useMetadataErrorHandler.ts
 msgid "role"
@@ -17606,6 +17753,11 @@ msgstr "모든 면에 같은 값 사용"
 #: src/modules/settings/logic-functions/components/triggers/SettingsLogicFunctionTriggerPayloadFormat.tsx
 msgid "Sample input"
 msgstr "샘플 입력"
+
+#. js-lingui-id: irA7xX
+#: src/modules/settings/data-model/fields/preview/utils/getTextFieldPreviewPlaceholder.ts
+msgid "Sample text"
+msgstr ""
 
 #. js-lingui-id: +5kO8P
 #: src/pages/settings/profile/appearance/components/DateTimeSettingsCalendarStartDaySelect.tsx
@@ -18212,6 +18364,12 @@ msgstr "녹음을 {formattedStartTimestamp}(으)로 탐색"
 msgid "Select"
 msgstr "선택"
 
+#. js-lingui-id: qvztrV
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Select"
+msgstr ""
+
 #. js-lingui-id: Mepl7c
 #: src/pages/onboarding/InstallAppsContent.tsx
 msgid "Select {labelText}"
@@ -18805,6 +18963,7 @@ msgid "Sharing this connection with the workspace requires reconnecting it. You 
 msgstr "이 연결을 워크스페이스와 공유하려면 다시 연결해야 합니다. 다시 인증할 수 있도록 리디렉션됩니다."
 
 #. js-lingui-id: RRXpo1
+#: src/modules/settings/data-model/fields/forms/currency/components/SettingsDataModelFieldCurrencyForm.tsx
 #: src/modules/settings/data-model/fields/forms/number/constants/NumberDataModelSelectOptions.ts
 #: src/modules/side-panel/pages/page-layout/utils/getChartNumberFormatLabel.ts
 msgid "Short"
@@ -19480,6 +19639,11 @@ msgstr "주소 2"
 msgid "String"
 msgstr ""
 
+#. js-lingui-id: 6j6PzK
+#: src/utils/validation-schemas/camelCaseStringSchema.ts
+msgid "String should be camel case"
+msgstr ""
+
 #. js-lingui-id: zHJ27S
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceBillingContent.tsx
 msgid "Stripe customer"
@@ -19970,6 +20134,11 @@ msgstr "팀"
 msgid "Team member"
 msgstr "팀원"
 
+#. js-lingui-id: Gjg8qZ
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Technical name is required"
+msgstr ""
+
 #. js-lingui-id: lKXcJz
 #: src/pages/settings/emailing-domains/utils/getEmailingDomainStatusText.ts
 msgid "Temporary Failure"
@@ -20023,6 +20192,12 @@ msgstr "텍스트"
 #: src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/BodyInput.tsx
 msgid "Text"
 msgstr "텍스트"
+
+#. js-lingui-id: BAUEID
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Text"
+msgstr ""
 
 #. js-lingui-id: MapzEo
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
@@ -20184,6 +20359,11 @@ msgstr "배포 환경에 맞게 필드가 채워진 전체 계약서입니다."
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
 msgid "The icon your workflow trigger will display in the command menu"
 msgstr "커맨드 메뉴에서 워크플로우 트리거에 표시될 아이콘"
+
+#. js-lingui-id: wzML+0
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+msgid "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
+msgstr ""
 
 #. js-lingui-id: 4m3QoL
 #: src/modules/settings/admin-panel/ai/components/SettingsAdminAI.tsx
@@ -20597,6 +20777,11 @@ msgstr "이 모델은 공급자에서 제거됩니다. 나중에 다시 추가�
 msgid "This month"
 msgstr "이번 달"
 
+#. js-lingui-id: AwFolB
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "This name is already used."
+msgstr ""
+
 #. js-lingui-id: ThVMIW
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
 msgid "This Organization key is already bound to a different server instance. Releasing it here will transfer the license to this server and stop counting seats on the previous one."
@@ -20672,6 +20857,16 @@ msgstr "이 하위 도메인은 예약되어 있습니다"
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceCreditGrantsTable.tsx
 msgid "This takes {0} credits back off this workspace straight away. Revoking cannot be undone."
 msgstr "이 작업을 수행하면 이 워크스페이스에서 즉시 {0} 크레딧이 회수됩니다. 취소는 되돌릴 수 없습니다."
+
+#. js-lingui-id: Weisjb
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "This technical name is already used by another field"
+msgstr ""
+
+#. js-lingui-id: 45Di2s
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "This technical name is reserved, choose another one"
+msgstr ""
 
 #. js-lingui-id: MMGDfe
 #: src/modules/settings/admin-panel/config-variables/components/ConfigVariableHelpText.tsx
@@ -21196,6 +21391,12 @@ msgstr "HTTP 요청으로 함수를 트리거합니다."
 msgid "True"
 msgstr "참"
 
+#. js-lingui-id: lOfOMM
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "True/False"
+msgstr ""
+
 #. js-lingui-id: KDw4GX
 #: src/modules/onboarding/components/upgrade-free-trial/ChooseYourPlanErrorState.tsx
 #: src/modules/settings/billing/components/SettingsBillingPlansErrorState.tsx
@@ -21475,6 +21676,12 @@ msgstr "고유"
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpsertRecord.tsx
 msgid "Unique fields"
 msgstr "고유 필드"
+
+#. js-lingui-id: MMgbgh
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Unique ID"
+msgstr ""
 
 #. js-lingui-id: NXfWhP
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
@@ -22167,6 +22374,11 @@ msgstr "인덱스를 신중하게 사용하기"
 #: src/modules/settings/domains/utils/getSubdomainValidationSchema.ts
 msgid "Use letter, number and dash only. Start and finish with a letter or a number"
 msgstr "문자, 숫자, 대시만 사용하세요. 문자 또는 숫자로 시작하고 끝내세요"
+
+#. js-lingui-id: MtdZ/n
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. eventTitle)"
+msgstr ""
 
 #. js-lingui-id: oSORjU
 #: src/modules/workflow/workflow-steps/workflow-actions/ai-agent-action/components/WorkflowOutputSchemaBuilder.tsx

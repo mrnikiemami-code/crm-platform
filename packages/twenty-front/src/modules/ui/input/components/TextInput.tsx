@@ -140,16 +140,16 @@ const StyledInput = styled.input<
       : sizeVariant === 'xs'
         ? `${themeCssVariables.spacing[2]} 0`
         : themeCssVariables.spacing[2]};
-  padding-left: ${({ LeftIcon, autoGrow }) =>
-    autoGrow
-      ? themeCssVariables.spacing[1]
-      : LeftIcon
-        ? `calc(${themeCssVariables.spacing[3]} + 16px)`
-        : themeCssVariables.spacing[2]};
-  padding-right: ${({ RightIcon, autoGrow }) =>
+  padding-inline-end: ${({ RightIcon, autoGrow }) =>
     autoGrow
       ? themeCssVariables.spacing[1]
       : RightIcon
+        ? `calc(${themeCssVariables.spacing[3]} + 16px)`
+        : themeCssVariables.spacing[2]};
+  padding-inline-start: ${({ LeftIcon, autoGrow }) =>
+    autoGrow
+      ? themeCssVariables.spacing[1]
+      : LeftIcon
         ? `calc(${themeCssVariables.spacing[3]} + 16px)`
         : themeCssVariables.spacing[2]};
   text-overflow: ellipsis;
@@ -194,9 +194,10 @@ const StyledLeftIconContainer = styled.div<{ sizeVariant: TextInputSize }>`
   align-items: center;
   bottom: 0;
   display: flex;
+  inset-inline-start: 0;
   justify-content: center;
   margin: auto 0;
-  padding-left: ${({ sizeVariant }) =>
+  padding-inline-start: ${({ sizeVariant }) =>
     sizeVariant === 'xs'
       ? themeCssVariables.spacing[0.5]
       : sizeVariant === 'md' || sizeVariant === 'sm'
@@ -212,11 +213,11 @@ const StyledTrailingIconContainer = styled.div<
   align-items: center;
   bottom: 0;
   display: flex;
+  inset-inline-end: 0;
   justify-content: center;
   margin: auto 0;
-  padding-right: ${themeCssVariables.spacing[2]};
+  padding-inline-end: ${themeCssVariables.spacing[2]};
   position: absolute;
-  right: 0;
   top: 0;
 `;
 
@@ -339,7 +340,7 @@ const TextInputComponent = forwardRef<
               {label + (required ? '*' : '')}
             </Field.Label>
           )}
-          <StyledInputContainer>
+          <StyledInputContainer dir={dir}>
             {leftAdornment && (
               <StyledAdornmentContainer
                 sizeVariant={sizeVariant}

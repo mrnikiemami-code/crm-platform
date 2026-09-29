@@ -1267,6 +1267,12 @@ msgstr "ActiveSync"
 msgid "Activity visibility"
 msgstr "活動可見性"
 
+#. js-lingui-id: cTLr3k
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Actor"
+msgstr ""
+
 #. js-lingui-id: m16xKo
 #: src/pages/settings/ai/components/SettingsAgentEvalsTab.tsx
 msgid "Add"
@@ -1805,6 +1811,12 @@ msgstr "已添加 {beautifiedCreatedAt}"
 msgid "Added to blocklist"
 msgstr "已添加到阻止列表"
 
+#. js-lingui-id: BsHpRj
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Address"
+msgstr ""
+
 #. js-lingui-id: hW/fMg
 #: src/modules/object-metadata/hooks/useSortSubFieldChoicesForField.ts
 #: src/modules/object-record/record-field/ui/form-types/components/FormAddressFieldInput.tsx
@@ -1892,6 +1904,7 @@ msgstr "管理員"
 #: src/modules/ai/components/AiModelPicker.tsx
 #: src/modules/navigation/components/SettingsNavigationDrawerContent.tsx
 #: src/modules/settings/components/SettingsMorphRelationMultiSelect.tsx
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 #: src/modules/ui/input/components/AdvancedSettingsSwitch.tsx
 msgid "Advanced"
 msgstr "進階"
@@ -2326,6 +2339,11 @@ msgstr "所有任務已處理。請繼續保持。"
 msgid "All the applications currently installed on this workspace"
 msgstr "此工作區目前已安裝的所有應用程式"
 
+#. js-lingui-id: JOwsLs
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "All the basic field types you need to start"
+msgstr ""
+
 #. js-lingui-id: xP6s/m
 #: src/pages/settings/layout/SettingsLayout.tsx
 msgid "All the layout items declared on your workspace"
@@ -2691,6 +2709,7 @@ msgstr "API 密鑰"
 
 #. js-lingui-id: kAtj+q
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "API 名稱"
@@ -2980,6 +2999,12 @@ msgstr "您確定嗎？您當前的信息將不會被保存。"
 #: src/localization/hooks/useLocaleOptions.ts
 msgid "Armenian"
 msgstr "亞美尼亞語"
+
+#. js-lingui-id: f6R0uX
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Array"
+msgstr ""
 
 #. js-lingui-id: cybVUo
 #: src/modules/settings/members/components/MemberInfosTab.tsx
@@ -3421,6 +3446,7 @@ msgid "Base URL is required"
 msgstr "需要提供基礎 URL"
 
 #. js-lingui-id: 0wJVK+
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 #: src/pages/onboarding/UpgradeFreeTrial.tsx
 msgid "Basic"
 msgstr "基本"
@@ -3447,6 +3473,11 @@ msgstr "由於此工作流程未使用手動觸發，表單不會在介面上方
 #: src/modules/settings/admin-panel/utils/getUpgradeHealthStatusBadge.ts
 msgid "Behind"
 msgstr "落後"
+
+#. js-lingui-id: Fg77nJ
+#: src/modules/settings/data-model/constants/RelationTypes.ts
+msgid "Belongs to one"
+msgstr ""
 
 #. js-lingui-id: YBt9YP
 #: src/pages/onboarding/InstallAppsContent.tsx
@@ -5700,6 +5731,11 @@ msgstr "在此視圖中建立新記錄。詳細資料： "
 msgid "Create a record"
 msgstr "建立記錄"
 
+#. js-lingui-id: LhCBaa
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "Create a relation with other objects"
+msgstr ""
+
 #. js-lingui-id: ZITKtg
 #: src/pages/settings/ai/components/SettingsAgentRoleTab.tsx
 msgid "Create a role to define permissions for this agent."
@@ -6094,6 +6130,12 @@ msgstr "貨幣"
 #: src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx
 msgid "Currency"
 msgstr "貨幣"
+
+#. js-lingui-id: LosIvV
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Currency"
+msgstr ""
 
 #. js-lingui-id: m0pL0h
 #: src/modules/object-record/record-field/ui/form-types/components/FormCurrencyFieldInput.tsx
@@ -6504,6 +6546,18 @@ msgstr "數據庫事件"
 #: src/pages/settings/ai/SettingsAgentTurnDetail.tsx
 msgid "Date"
 msgstr "日期"
+
+#. js-lingui-id: 9XFK6Z
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Date"
+msgstr ""
+
+#. js-lingui-id: VSf/ZF
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Date and Time"
+msgstr ""
 
 #. js-lingui-id: QIIAIQ
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownCalendarFieldsContent.tsx
@@ -7961,6 +8015,12 @@ msgstr "電子郵件/域名"
 #: src/pages/settings/communications/SettingsWorkspaceCommunications.tsx
 msgid "Emails"
 msgstr "電子郵件"
+
+#. js-lingui-id: 5bOlqR
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Emails"
+msgstr ""
 
 #. js-lingui-id: XGd8Wo
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
@@ -9577,6 +9637,12 @@ msgstr "檔案標籤"
 msgid "File no longer exists - {label}"
 msgstr "檔案已不存在 - {label}"
 
+#. js-lingui-id: x5Whxk
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Files"
+msgstr ""
+
 #. js-lingui-id: BZGmTs
 #: src/modules/settings/logic-functions/components/tabs/SettingsLogicFunctionTestTab.tsx
 msgid "Fill with sample input from"
@@ -9942,6 +10008,7 @@ msgid "Front Components"
 msgstr "前端元件"
 
 #. js-lingui-id: g2Tj8R
+#: src/modules/settings/data-model/fields/forms/currency/components/SettingsDataModelFieldCurrencyForm.tsx
 #: src/modules/side-panel/pages/page-layout/utils/getChartNumberFormatLabel.ts
 msgid "Full"
 msgstr "完整"
@@ -9955,6 +10022,12 @@ msgstr "完整管理面板存取權"
 #: src/modules/activities/emails/hooks/useCampaignEmailEditorVariables.ts
 msgid "Full name"
 msgstr "全名"
+
+#. js-lingui-id: mb/L+O
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Full Name"
+msgstr ""
 
 #. js-lingui-id: i9zh9T
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectOpenRecordInPicker.tsx
@@ -10342,6 +10415,11 @@ msgstr "帳號"
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsFilterDropdown.tsx
 msgid "Has error"
 msgstr "有錯誤"
+
+#. js-lingui-id: MvwlmR
+#: src/modules/settings/data-model/constants/RelationTypes.ts
+msgid "Has many"
+msgstr ""
 
 #. js-lingui-id: Gpb1xF
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
@@ -11608,6 +11686,12 @@ msgstr "加入中"
 msgid "JSON"
 msgstr ""
 
+#. js-lingui-id: bZ20Uo
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "JSON"
+msgstr ""
+
 #. js-lingui-id: klrZv0
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
 msgid "JSON filters"
@@ -12243,6 +12327,12 @@ msgstr "連結 URL"
 #: src/modules/activities/timeline-activities/rows/generic/components/EventRowGenericLinked.tsx
 msgid "linked a {objectLabel}"
 msgstr "已連結一個 {objectLabel}"
+
+#. js-lingui-id: tVNrrY
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Links"
+msgstr ""
 
 #. js-lingui-id: 82kQhK
 #: src/modules/advanced-text-editor/extensions/slash-command/DefaultSlashCommands.ts
@@ -13154,6 +13244,11 @@ msgstr "更多 ({remainingCount})"
 msgid "More actions"
 msgstr "更多動作"
 
+#. js-lingui-id: TzzH0D
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "More advanced fields for advanced projects"
+msgstr ""
+
 #. js-lingui-id: 3Siwmw
 #: src/modules/activities/files/components/AttachmentDropdown.tsx
 #: src/modules/object-record/record-board/record-board-column/components/RecordBoardColumnHeader.tsx
@@ -13172,6 +13267,12 @@ msgstr "更多選項"
 #: src/modules/page-layout/widgets/components/RecordPageAddWidgetSection.tsx
 msgid "More widgets"
 msgstr "更多小工具"
+
+#. js-lingui-id: 7D4pqg
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Morph Relation"
+msgstr ""
 
 #. js-lingui-id: SOHptZ
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstallStats.tsx
@@ -13242,6 +13343,12 @@ msgstr "跨團隊與代理推動工作向前邁進"
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsTable.tsx
 msgid "Msgs"
 msgstr "訊息"
+
+#. js-lingui-id: SAcUP6
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Multi-select"
+msgstr ""
 
 #. js-lingui-id: cT1jbf
 #: src/modules/settings/admin-panel/components/SettingsAdminChatAskQuestionsQuestion.tsx
@@ -13350,6 +13457,11 @@ msgstr "名稱"
 msgid "Name and describe your function"
 msgstr "命名並描述您的功能"
 
+#. js-lingui-id: VVSh3E
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "Name cannot be empty."
+msgstr ""
+
 #. js-lingui-id: zaxmAs
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
 msgid "Name in both singular (e.g., 'Invoice') and plural (e.g., 'Invoices') forms."
@@ -13365,6 +13477,11 @@ msgstr "API 密鑰名稱"
 #: src/pages/settings/general/SettingsGeneral.tsx
 msgid "Name of your workspace"
 msgstr "工作區名稱"
+
+#. js-lingui-id: lxgzPN
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "Name should start with a letter."
+msgstr ""
 
 #. js-lingui-id: JxC/pi
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
@@ -14773,6 +14890,12 @@ msgstr "數字"
 msgid "Number"
 msgstr "數字"
 
+#. js-lingui-id: 337SRm
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Number"
+msgstr ""
+
 #. js-lingui-id: bR2sEm
 #: src/modules/settings/experience/components/NumberFormatSelect.tsx
 msgid "Number format"
@@ -15835,6 +15958,12 @@ msgstr "電話號碼"
 msgid "Phone number copied to clipboard"
 msgstr "電話號碼已複製到剪貼板"
 
+#. js-lingui-id: /WYEJU
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Phones"
+msgstr ""
+
 #. js-lingui-id: DLlQEh
 #. placeholder {0}: displayedSubStepObjectDisplay?.label
 #. placeholder {0}: subStepObjectDisplay?.label
@@ -16433,6 +16562,12 @@ msgstr "隨機"
 msgid "Rating"
 msgstr "評分"
 
+#. js-lingui-id: Mq2/Tn
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Rating"
+msgstr ""
+
 #. js-lingui-id: iaocTt
 #: src/modules/page-layout/widgets/graph/graph-widget-aggregate-chart/utils/getAggregateChartOperationLabel.ts
 #: src/modules/page-layout/widgets/graph/hooks/useGraphWidgetAggregateQuery.ts
@@ -16815,9 +16950,15 @@ msgid "Registered as a development instance. This instance will not be billed."
 msgstr "已註冊為開發環境執行個體。此執行個體不會產生計費。"
 
 #. js-lingui-id: h9AYFD
-#: src/modules/settings/data-model/fields/forms/components/SettingsObjectNewFieldSelector.tsx
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 msgid "Relation"
 msgstr "關聯"
+
+#. js-lingui-id: Kh9wUo
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Relation"
+msgstr ""
 
 #. js-lingui-id: dQHMbF
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectFields.tsx
@@ -17388,6 +17529,12 @@ msgstr "撤銷此金鑰會使所有以其簽署的 JWT 失效。使用此金鑰�
 msgid "Rich Text"
 msgstr "豐富文字"
 
+#. js-lingui-id: RGOjxb
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Rich Text"
+msgstr ""
+
 #. js-lingui-id: E1BXUR
 #: src/modules/metadata-error-handler/hooks/useMetadataErrorHandler.ts
 msgid "role"
@@ -17583,6 +17730,11 @@ msgstr "每一側使用相同的數值"
 #: src/modules/settings/logic-functions/components/triggers/SettingsLogicFunctionTriggerPayloadFormat.tsx
 msgid "Sample input"
 msgstr "範例輸入"
+
+#. js-lingui-id: irA7xX
+#: src/modules/settings/data-model/fields/preview/utils/getTextFieldPreviewPlaceholder.ts
+msgid "Sample text"
+msgstr ""
 
 #. js-lingui-id: +5kO8P
 #: src/pages/settings/profile/appearance/components/DateTimeSettingsCalendarStartDaySelect.tsx
@@ -18189,6 +18341,12 @@ msgstr "將錄音跳至 {formattedStartTimestamp}"
 msgid "Select"
 msgstr "選擇"
 
+#. js-lingui-id: qvztrV
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Select"
+msgstr ""
+
 #. js-lingui-id: Mepl7c
 #: src/pages/onboarding/InstallAppsContent.tsx
 msgid "Select {labelText}"
@@ -18782,6 +18940,7 @@ msgid "Sharing this connection with the workspace requires reconnecting it. You 
 msgstr "若要與工作區共用此連線，必須重新連線。系統會將您重新導向以再次授權。"
 
 #. js-lingui-id: RRXpo1
+#: src/modules/settings/data-model/fields/forms/currency/components/SettingsDataModelFieldCurrencyForm.tsx
 #: src/modules/settings/data-model/fields/forms/number/constants/NumberDataModelSelectOptions.ts
 #: src/modules/side-panel/pages/page-layout/utils/getChartNumberFormatLabel.ts
 msgid "Short"
@@ -19457,6 +19616,11 @@ msgstr "街道地址 2"
 msgid "String"
 msgstr ""
 
+#. js-lingui-id: 6j6PzK
+#: src/utils/validation-schemas/camelCaseStringSchema.ts
+msgid "String should be camel case"
+msgstr ""
+
 #. js-lingui-id: zHJ27S
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceBillingContent.tsx
 msgid "Stripe customer"
@@ -19947,6 +20111,11 @@ msgstr "團隊"
 msgid "Team member"
 msgstr "團隊成員"
 
+#. js-lingui-id: Gjg8qZ
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Technical name is required"
+msgstr ""
+
 #. js-lingui-id: lKXcJz
 #: src/pages/settings/emailing-domains/utils/getEmailingDomainStatusText.ts
 msgid "Temporary Failure"
@@ -20000,6 +20169,12 @@ msgstr "文本"
 #: src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/BodyInput.tsx
 msgid "Text"
 msgstr "文本"
+
+#. js-lingui-id: BAUEID
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Text"
+msgstr ""
 
 #. js-lingui-id: MapzEo
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
@@ -20131,6 +20306,11 @@ msgstr "針對您的部署所套用欄位後的完整協議。"
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
 msgid "The icon your workflow trigger will display in the command menu"
 msgstr "您的工作流程觸發器在指令選單中顯示的圖示"
+
+#. js-lingui-id: wzML+0
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+msgid "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
+msgstr ""
 
 #. js-lingui-id: 4m3QoL
 #: src/modules/settings/admin-panel/ai/components/SettingsAdminAI.tsx
@@ -20544,6 +20724,11 @@ msgstr "此模型將從該供應商中移除。您稍後可以重新新增。"
 msgid "This month"
 msgstr "本月"
 
+#. js-lingui-id: AwFolB
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "This name is already used."
+msgstr ""
+
 #. js-lingui-id: ThVMIW
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
 msgid "This Organization key is already bound to a different server instance. Releasing it here will transfer the license to this server and stop counting seats on the previous one."
@@ -20619,6 +20804,16 @@ msgstr "此子網域已被保留"
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceCreditGrantsTable.tsx
 msgid "This takes {0} credits back off this workspace straight away. Revoking cannot be undone."
 msgstr "這會立即從此工作區收回 {0} 點數。撤銷操作無法還原。"
+
+#. js-lingui-id: Weisjb
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "This technical name is already used by another field"
+msgstr ""
+
+#. js-lingui-id: 45Di2s
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "This technical name is reserved, choose another one"
+msgstr ""
 
 #. js-lingui-id: MMGDfe
 #: src/modules/settings/admin-panel/config-variables/components/ConfigVariableHelpText.tsx
@@ -21143,6 +21338,12 @@ msgstr "以 HTTP 請求觸發此函式"
 msgid "True"
 msgstr "真"
 
+#. js-lingui-id: lOfOMM
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "True/False"
+msgstr ""
+
 #. js-lingui-id: KDw4GX
 #: src/modules/onboarding/components/upgrade-free-trial/ChooseYourPlanErrorState.tsx
 #: src/modules/settings/billing/components/SettingsBillingPlansErrorState.tsx
@@ -21422,6 +21623,12 @@ msgstr "唯一"
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpsertRecord.tsx
 msgid "Unique fields"
 msgstr "唯一欄位"
+
+#. js-lingui-id: MMgbgh
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Unique ID"
+msgstr ""
 
 #. js-lingui-id: NXfWhP
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
@@ -22114,6 +22321,11 @@ msgstr "謹慎使用索引"
 #: src/modules/settings/domains/utils/getSubdomainValidationSchema.ts
 msgid "Use letter, number and dash only. Start and finish with a letter or a number"
 msgstr "只能使用字母、數字和連字號。必須以字母或數字開頭和結尾"
+
+#. js-lingui-id: MtdZ/n
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. eventTitle)"
+msgstr ""
 
 #. js-lingui-id: oSORjU
 #: src/modules/workflow/workflow-steps/workflow-actions/ai-agent-action/components/WorkflowOutputSchemaBuilder.tsx

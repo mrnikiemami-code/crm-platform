@@ -68,6 +68,7 @@ export const SettingsObjectNewFieldConfigure = () => {
           (value) => value.name,
         ),
         sourceObjectMetadataId: activeObjectMetadataItem?.id,
+        isCreationMode: true,
       }),
     ),
     defaultValues: {
@@ -246,6 +247,10 @@ export const SettingsObjectNewFieldConfigure = () => {
             <SettingsDataModelFieldIconLabelForm
               maxLength={FIELD_NAME_MAXIMUM_LENGTH}
               isCreationMode={true}
+              fieldType={fieldType}
+              existingFieldNames={activeObjectMetadataItem.fields.map(
+                (field) => field.name,
+              )}
             />
           </Section.Root>
           <Section.Root>

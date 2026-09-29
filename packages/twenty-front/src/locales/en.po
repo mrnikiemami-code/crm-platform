@@ -1262,6 +1262,12 @@ msgstr "Active Sync"
 msgid "Activity visibility"
 msgstr "Activity visibility"
 
+#. js-lingui-id: cTLr3k
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Actor"
+msgstr "Actor"
+
 #. js-lingui-id: m16xKo
 #: src/pages/settings/ai/components/SettingsAgentEvalsTab.tsx
 msgid "Add"
@@ -1800,6 +1806,12 @@ msgstr "Added {beautifiedCreatedAt}"
 msgid "Added to blocklist"
 msgstr "Added to blocklist"
 
+#. js-lingui-id: BsHpRj
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Address"
+msgstr "Address"
+
 #. js-lingui-id: hW/fMg
 #: src/modules/object-metadata/hooks/useSortSubFieldChoicesForField.ts
 #: src/modules/object-record/record-field/ui/form-types/components/FormAddressFieldInput.tsx
@@ -1887,6 +1899,7 @@ msgstr "Administrators"
 #: src/modules/ai/components/AiModelPicker.tsx
 #: src/modules/navigation/components/SettingsNavigationDrawerContent.tsx
 #: src/modules/settings/components/SettingsMorphRelationMultiSelect.tsx
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 #: src/modules/ui/input/components/AdvancedSettingsSwitch.tsx
 msgid "Advanced"
 msgstr "Advanced"
@@ -2321,6 +2334,11 @@ msgstr "All tasks addressed. Maintain the momentum."
 msgid "All the applications currently installed on this workspace"
 msgstr "All the applications currently installed on this workspace"
 
+#. js-lingui-id: JOwsLs
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "All the basic field types you need to start"
+msgstr "All the basic field types you need to start"
+
 #. js-lingui-id: xP6s/m
 #: src/pages/settings/layout/SettingsLayout.tsx
 msgid "All the layout items declared on your workspace"
@@ -2686,6 +2704,7 @@ msgstr "API Keys"
 
 #. js-lingui-id: kAtj+q
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "API Name"
@@ -2975,6 +2994,12 @@ msgstr "Are you sure? Your current information will not be saved."
 #: src/localization/hooks/useLocaleOptions.ts
 msgid "Armenian"
 msgstr "Armenian"
+
+#. js-lingui-id: f6R0uX
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Array"
+msgstr "Array"
 
 #. js-lingui-id: cybVUo
 #: src/modules/settings/members/components/MemberInfosTab.tsx
@@ -3416,6 +3441,7 @@ msgid "Base URL is required"
 msgstr "Base URL is required"
 
 #. js-lingui-id: 0wJVK+
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
 #: src/pages/onboarding/UpgradeFreeTrial.tsx
 msgid "Basic"
 msgstr "Basic"
@@ -3442,6 +3468,11 @@ msgstr "Because this workflow is not using a manual trigger, the form will not o
 #: src/modules/settings/admin-panel/utils/getUpgradeHealthStatusBadge.ts
 msgid "Behind"
 msgstr "Behind"
+
+#. js-lingui-id: Fg77nJ
+#: src/modules/settings/data-model/constants/RelationTypes.ts
+msgid "Belongs to one"
+msgstr "Belongs to one"
 
 #. js-lingui-id: YBt9YP
 #: src/pages/onboarding/InstallAppsContent.tsx
@@ -5695,6 +5726,11 @@ msgstr "Create a new record in this view. Details: "
 msgid "Create a record"
 msgstr "Create a record"
 
+#. js-lingui-id: LhCBaa
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "Create a relation with other objects"
+msgstr "Create a relation with other objects"
+
 #. js-lingui-id: ZITKtg
 #: src/pages/settings/ai/components/SettingsAgentRoleTab.tsx
 msgid "Create a role to define permissions for this agent."
@@ -6087,6 +6123,12 @@ msgstr "currencies"
 
 #. js-lingui-id: Q2lUR2
 #: src/modules/object-record/record-field/ui/meta-types/input/components/CurrencyFieldInput.tsx
+msgid "Currency"
+msgstr "Currency"
+
+#. js-lingui-id: LosIvV
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
 msgid "Currency"
 msgstr "Currency"
 
@@ -6499,6 +6541,18 @@ msgstr "Database event"
 #: src/pages/settings/ai/SettingsAgentTurnDetail.tsx
 msgid "Date"
 msgstr "Date"
+
+#. js-lingui-id: 9XFK6Z
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Date"
+msgstr "Date"
+
+#. js-lingui-id: VSf/ZF
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Date and Time"
+msgstr "Date and Time"
 
 #. js-lingui-id: QIIAIQ
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownCalendarFieldsContent.tsx
@@ -7954,6 +8008,12 @@ msgstr "Email/Domain"
 #: src/pages/settings/accounts/SettingsAccountsEmails.tsx
 #: src/pages/settings/accounts/SettingsAccountsEmails.tsx
 #: src/pages/settings/communications/SettingsWorkspaceCommunications.tsx
+msgid "Emails"
+msgstr "Emails"
+
+#. js-lingui-id: 5bOlqR
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
 msgid "Emails"
 msgstr "Emails"
 
@@ -9572,6 +9632,12 @@ msgstr "File label"
 msgid "File no longer exists - {label}"
 msgstr "File no longer exists - {label}"
 
+#. js-lingui-id: x5Whxk
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Files"
+msgstr "Files"
+
 #. js-lingui-id: BZGmTs
 #: src/modules/settings/logic-functions/components/tabs/SettingsLogicFunctionTestTab.tsx
 msgid "Fill with sample input from"
@@ -9937,6 +10003,7 @@ msgid "Front Components"
 msgstr "Front Components"
 
 #. js-lingui-id: g2Tj8R
+#: src/modules/settings/data-model/fields/forms/currency/components/SettingsDataModelFieldCurrencyForm.tsx
 #: src/modules/side-panel/pages/page-layout/utils/getChartNumberFormatLabel.ts
 msgid "Full"
 msgstr "Full"
@@ -9950,6 +10017,12 @@ msgstr "full admin panel access"
 #: src/modules/activities/emails/hooks/useCampaignEmailEditorVariables.ts
 msgid "Full name"
 msgstr "Full name"
+
+#. js-lingui-id: mb/L+O
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Full Name"
+msgstr "Full Name"
 
 #. js-lingui-id: i9zh9T
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectOpenRecordInPicker.tsx
@@ -10337,6 +10410,11 @@ msgstr "Handle"
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsFilterDropdown.tsx
 msgid "Has error"
 msgstr "Has error"
+
+#. js-lingui-id: MvwlmR
+#: src/modules/settings/data-model/constants/RelationTypes.ts
+msgid "Has many"
+msgstr "Has many"
 
 #. js-lingui-id: Gpb1xF
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
@@ -11626,6 +11704,12 @@ msgstr "Joining"
 msgid "JSON"
 msgstr "JSON"
 
+#. js-lingui-id: bZ20Uo
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "JSON"
+msgstr "JSON"
+
 #. js-lingui-id: klrZv0
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
 msgid "JSON filters"
@@ -12261,6 +12345,12 @@ msgstr "Link URL"
 #: src/modules/activities/timeline-activities/rows/generic/components/EventRowGenericLinked.tsx
 msgid "linked a {objectLabel}"
 msgstr "linked a {objectLabel}"
+
+#. js-lingui-id: tVNrrY
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Links"
+msgstr "Links"
 
 #. js-lingui-id: 82kQhK
 #: src/modules/advanced-text-editor/extensions/slash-command/DefaultSlashCommands.ts
@@ -13172,6 +13262,11 @@ msgstr "More ({remainingCount})"
 msgid "More actions"
 msgstr "More actions"
 
+#. js-lingui-id: TzzH0D
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryDescriptions.ts
+msgid "More advanced fields for advanced projects"
+msgstr "More advanced fields for advanced projects"
+
 #. js-lingui-id: 3Siwmw
 #: src/modules/activities/files/components/AttachmentDropdown.tsx
 #: src/modules/object-record/record-board/record-board-column/components/RecordBoardColumnHeader.tsx
@@ -13190,6 +13285,12 @@ msgstr "More options"
 #: src/modules/page-layout/widgets/components/RecordPageAddWidgetSection.tsx
 msgid "More widgets"
 msgstr "More widgets"
+
+#. js-lingui-id: 7D4pqg
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Morph Relation"
+msgstr "Morph Relation"
 
 #. js-lingui-id: SOHptZ
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstallStats.tsx
@@ -13260,6 +13361,12 @@ msgstr "Move work forward across teams and agents"
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsTable.tsx
 msgid "Msgs"
 msgstr "Msgs"
+
+#. js-lingui-id: SAcUP6
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Multi-select"
+msgstr "Multi-select"
 
 #. js-lingui-id: cT1jbf
 #: src/modules/settings/admin-panel/components/SettingsAdminChatAskQuestionsQuestion.tsx
@@ -13368,6 +13475,11 @@ msgstr "Name"
 msgid "Name and describe your function"
 msgstr "Name and describe your function"
 
+#. js-lingui-id: VVSh3E
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "Name cannot be empty."
+msgstr "Name cannot be empty."
+
 #. js-lingui-id: zaxmAs
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
 msgid "Name in both singular (e.g., 'Invoice') and plural (e.g., 'Invoices') forms."
@@ -13383,6 +13495,11 @@ msgstr "Name of your API key"
 #: src/pages/settings/general/SettingsGeneral.tsx
 msgid "Name of your workspace"
 msgstr "Name of your workspace"
+
+#. js-lingui-id: lxgzPN
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "Name should start with a letter."
+msgstr "Name should start with a letter."
 
 #. js-lingui-id: JxC/pi
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
@@ -14791,6 +14908,12 @@ msgstr "number"
 msgid "Number"
 msgstr "Number"
 
+#. js-lingui-id: 337SRm
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Number"
+msgstr "Number"
+
 #. js-lingui-id: bR2sEm
 #: src/modules/settings/experience/components/NumberFormatSelect.tsx
 msgid "Number format"
@@ -15853,6 +15976,12 @@ msgstr "Phone Number"
 msgid "Phone number copied to clipboard"
 msgstr "Phone number copied to clipboard"
 
+#. js-lingui-id: /WYEJU
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Phones"
+msgstr "Phones"
+
 #. js-lingui-id: DLlQEh
 #. placeholder {0}: displayedSubStepObjectDisplay?.label
 #. placeholder {0}: subStepObjectDisplay?.label
@@ -16451,6 +16580,12 @@ msgstr "Random"
 msgid "Rating"
 msgstr "Rating"
 
+#. js-lingui-id: Mq2/Tn
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Rating"
+msgstr "Rating"
+
 #. js-lingui-id: iaocTt
 #: src/modules/page-layout/widgets/graph/graph-widget-aggregate-chart/utils/getAggregateChartOperationLabel.ts
 #: src/modules/page-layout/widgets/graph/hooks/useGraphWidgetAggregateQuery.ts
@@ -16833,7 +16968,13 @@ msgid "Registered as a development instance. This instance will not be billed."
 msgstr "Registered as a development instance. This instance will not be billed."
 
 #. js-lingui-id: h9AYFD
-#: src/modules/settings/data-model/fields/forms/components/SettingsObjectNewFieldSelector.tsx
+#: src/modules/settings/data-model/constants/SettingsFieldTypeCategoryLabels.ts
+msgid "Relation"
+msgstr "Relation"
+
+#. js-lingui-id: Kh9wUo
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
 msgid "Relation"
 msgstr "Relation"
 
@@ -17406,6 +17547,12 @@ msgstr "Revoking this key will invalidate every JWT signed with it. Users with a
 msgid "Rich Text"
 msgstr "Rich Text"
 
+#. js-lingui-id: RGOjxb
+#: src/modules/settings/data-model/constants/SettingsCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Rich Text"
+msgstr "Rich Text"
+
 #. js-lingui-id: E1BXUR
 #: src/modules/metadata-error-handler/hooks/useMetadataErrorHandler.ts
 msgid "role"
@@ -17601,6 +17748,11 @@ msgstr "Same value on every side"
 #: src/modules/settings/logic-functions/components/triggers/SettingsLogicFunctionTriggerPayloadFormat.tsx
 msgid "Sample input"
 msgstr "Sample input"
+
+#. js-lingui-id: irA7xX
+#: src/modules/settings/data-model/fields/preview/utils/getTextFieldPreviewPlaceholder.ts
+msgid "Sample text"
+msgstr "Sample text"
 
 #. js-lingui-id: +5kO8P
 #: src/pages/settings/profile/appearance/components/DateTimeSettingsCalendarStartDaySelect.tsx
@@ -18207,6 +18359,12 @@ msgstr "Seek recording to {formattedStartTimestamp}"
 msgid "Select"
 msgstr "Select"
 
+#. js-lingui-id: qvztrV
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Select"
+msgstr "Select"
+
 #. js-lingui-id: Mepl7c
 #: src/pages/onboarding/InstallAppsContent.tsx
 msgid "Select {labelText}"
@@ -18800,6 +18958,7 @@ msgid "Sharing this connection with the workspace requires reconnecting it. You 
 msgstr "Sharing this connection with the workspace requires reconnecting it. You will be redirected to authorize it again."
 
 #. js-lingui-id: RRXpo1
+#: src/modules/settings/data-model/fields/forms/currency/components/SettingsDataModelFieldCurrencyForm.tsx
 #: src/modules/settings/data-model/fields/forms/number/constants/NumberDataModelSelectOptions.ts
 #: src/modules/side-panel/pages/page-layout/utils/getChartNumberFormatLabel.ts
 msgid "Short"
@@ -19475,6 +19634,11 @@ msgstr "Street address 2"
 msgid "String"
 msgstr "String"
 
+#. js-lingui-id: 6j6PzK
+#: src/utils/validation-schemas/camelCaseStringSchema.ts
+msgid "String should be camel case"
+msgstr "String should be camel case"
+
 #. js-lingui-id: zHJ27S
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceBillingContent.tsx
 msgid "Stripe customer"
@@ -20019,6 +20183,12 @@ msgstr "text"
 msgid "Text"
 msgstr "Text"
 
+#. js-lingui-id: BAUEID
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Text"
+msgstr "Text"
+
 #. js-lingui-id: MapzEo
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
 #: src/modules/advanced-text-editor/constants/getAdvancedTextEditorTypographySettings.ts
@@ -20179,6 +20349,11 @@ msgstr "The full agreement with fields resolved for your deployment."
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
 msgid "The icon your workflow trigger will display in the command menu"
 msgstr "The icon your workflow trigger will display in the command menu"
+
+#. js-lingui-id: wzML+0
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+msgid "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
+msgstr "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
 
 #. js-lingui-id: 4m3QoL
 #: src/modules/settings/admin-panel/ai/components/SettingsAdminAI.tsx
@@ -20594,6 +20769,11 @@ msgstr "This model will be removed from the provider. You can re-add it later."
 msgid "This month"
 msgstr "This month"
 
+#. js-lingui-id: AwFolB
+#: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
+msgid "This name is already used."
+msgstr "This name is already used."
+
 #. js-lingui-id: ThVMIW
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
 msgid "This Organization key is already bound to a different server instance. Releasing it here will transfer the license to this server and stop counting seats on the previous one."
@@ -20669,6 +20849,11 @@ msgstr "This subdomain is reserved"
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceCreditGrantsTable.tsx
 msgid "This takes {0} credits back off this workspace straight away. Revoking cannot be undone."
 msgstr "This takes {0} credits back off this workspace straight away. Revoking cannot be undone."
+
+#. js-lingui-id: Weisjb
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "This technical name is already used by another field"
+msgstr "This technical name is already used by another field"
 
 #. js-lingui-id: MMGDfe
 #: src/modules/settings/admin-panel/config-variables/components/ConfigVariableHelpText.tsx
@@ -21193,6 +21378,12 @@ msgstr "Triggers the function with an HTTP request"
 msgid "True"
 msgstr "True"
 
+#. js-lingui-id: lOfOMM
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "True/False"
+msgstr "True/False"
+
 #. js-lingui-id: KDw4GX
 #: src/modules/onboarding/components/upgrade-free-trial/ChooseYourPlanErrorState.tsx
 #: src/modules/settings/billing/components/SettingsBillingPlansErrorState.tsx
@@ -21472,6 +21663,12 @@ msgstr "Unique"
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpsertRecord.tsx
 msgid "Unique fields"
 msgstr "Unique fields"
+
+#. js-lingui-id: MMgbgh
+#: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts
+msgctxt "Field type"
+msgid "Unique ID"
+msgstr "Unique ID"
 
 #. js-lingui-id: NXfWhP
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
@@ -23705,6 +23902,7 @@ msgid "Create Text Field"
 msgstr "Create Text Field"
 
 #. js-lingui-id: Gjg8qZ
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
 msgid "Technical name is required"
 msgstr "Technical name is required"
@@ -23714,7 +23912,13 @@ msgstr "Technical name is required"
 msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
 msgstr "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
 
+#. js-lingui-id: MtdZ/n
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. eventTitle)"
+msgstr "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. eventTitle)"
+
 #. js-lingui-id: 45Di2s
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
 msgid "This technical name is reserved, choose another one"
 msgstr "This technical name is reserved, choose another one"

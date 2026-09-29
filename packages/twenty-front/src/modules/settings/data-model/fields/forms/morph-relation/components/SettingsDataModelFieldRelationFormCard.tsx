@@ -13,6 +13,7 @@ import { SettingsDataModelRelationPreviewImage } from '@/settings/data-model/fie
 import { SettingsDataModelRelationFieldPreviewSubWidget } from '@/settings/data-model/fields/preview/components/SettingsDataModelRelationFieldPreviewSubWidget';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { useLingui } from '@lingui/react/macro';
 import { isDefined } from 'twenty-shared/utils';
 import {
   FieldMetadataType,
@@ -36,6 +37,7 @@ export const SettingsDataModelFieldRelationFormCard = ({
     SettingsDataModelFieldMorphRelationFormValues &
       SettingsDataModelFieldEditFormValues
   >();
+  const { t } = useLingui();
   const isMobile = useIsMobile();
   const isJunctionRelationsEnabled = useIsFeatureEnabled(
     FeatureFlagKey.IS_JUNCTION_RELATIONS_ENABLED,
@@ -101,7 +103,7 @@ export const SettingsDataModelFieldRelationFormCard = ({
           <SettingsDataModelRelationPreviewImage
             src={relationTypeConfig.imageSrc}
             flip={relationTypeConfig.isImageFlipped}
-            alt={relationTypeConfig.label}
+            alt={t(relationTypeConfig.label)}
             isMobile={isMobile}
           />
           <SettingsDataModelRelationFieldPreviewSubWidget

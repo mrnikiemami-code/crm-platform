@@ -1,4 +1,5 @@
 import { errors } from '@/settings/data-model/fields/forms/utils/errorMessages';
+import { hasNonLatinLetters } from '@/settings/data-model/utils/hasNonLatinLetters';
 import { z } from 'zod';
 
 import { METADATA_LABEL_VALID_PATTERN } from '~/pages/settings/data-model/constants/MetadataLabelValidPattern';
@@ -21,7 +22,8 @@ export const metadataLabelSchema = (existingLabels?: string[]) => {
     )
     .refine(
       (label) => {
-        if (!existingLabels || !label?.length) {
+        // Non-Latin labels get an explicit technical name, checked on its own
+        if (!existingLabels || !label?.length || hasNonLatinLetters(label)) {
           return true;
         }
         const computedName = computeMetadataNameFromLabel(label);
