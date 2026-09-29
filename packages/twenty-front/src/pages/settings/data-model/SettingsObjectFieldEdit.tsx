@@ -24,7 +24,6 @@ import { SettingsTranslationsButton } from '@/settings/translations/components/S
 import { useWorkspaceSurface } from '@/ui/layout/hooks/useWorkspaceSurface';
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
-import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { styled } from '@linaria/react';
@@ -63,7 +62,7 @@ export const SettingsObjectFieldEdit = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const stateReturnTo =
+  const returnTo =
     typeof location.state === 'object' &&
     location.state !== null &&
     'returnTo' in location.state &&
@@ -71,13 +70,6 @@ export const SettingsObjectFieldEdit = () => {
     isValidReturnToPath(location.state.returnTo)
       ? location.state.returnTo
       : undefined;
-  const navigationMemorizedUrl = useAtomStateValue(navigationMemorizedUrlState);
-  const returnTo =
-    stateReturnTo ??
-    (workspaceSurface.type === 'main' &&
-    isValidReturnToPath(navigationMemorizedUrl)
-      ? navigationMemorizedUrl
-      : undefined);
 
   const { objectNamePlural = '', fieldName = '' } = useParams();
 
