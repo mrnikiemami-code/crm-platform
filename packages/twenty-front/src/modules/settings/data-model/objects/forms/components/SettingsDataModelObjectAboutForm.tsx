@@ -111,23 +111,15 @@ export const SettingsDataModelObjectAboutForm = ({
     color: objectIconColor,
   });
 
-  const apiNameTooltipText =
-    !isDefined(objectMetadataItem) ||
-    getIsMetadataItemCustom(objectMetadataItem)
-      ? isLabelSyncedWithName
-        ? t`Deactivate "Synchronize Objects Labels and API Names" to set a custom API name`
-        : t`Input must be in camel case and cannot start with a number`
-      : t`Can't change API names for standard objects`;
-
   const isObjectBeingCreated = !isDefined(objectMetadataItem);
 
   // Transliterating non-Latin labels yields ambiguous names (e.g. "hmyshH"),
-  // so new objects with such labels need an explicit technical name.
+  // so custom objects with such labels take an explicit technical name.
   const doLabelsRequireExplicitTechnicalName = (
     currentLabelSingular: string | undefined,
     currentLabelPlural: string | undefined,
   ) =>
-    isObjectBeingCreated &&
+    !isStandardObject &&
     (hasNonLatinLetters(currentLabelSingular) ||
       hasNonLatinLetters(currentLabelPlural));
 
@@ -136,8 +128,25 @@ export const SettingsDataModelObjectAboutForm = ({
     labelPlural,
   );
 
+  const apiNameTooltipText =
+    !isDefined(objectMetadataItem) ||
+    getIsMetadataItemCustom(objectMetadataItem)
+      ? isLabelSyncedWithName && !requiresExplicitTechnicalName
+        ? t`Deactivate "Synchronize Objects Labels and API Names" to set a custom API name`
+        : t`Input must be in camel case and cannot start with a number`
+      : t`Can't change API names for standard objects`;
+
   const [isNamePluralEditedManually, setIsNamePluralEditedManually] =
     useState(false);
+
+  const turnOffLabelSync = () => {
+    if (!isLabelSyncedWithName) return;
+
+    setValue('isLabelSyncedWithName', false, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   const fillLabelPlural = (labelSingular: string | undefined) => {
     if (!isDefined(labelSingular)) return;
@@ -162,12 +171,7 @@ export const SettingsDataModelObjectAboutForm = ({
         currentLabelPlural,
       )
     ) {
-      if (isLabelSyncedWithName) {
-        setValue('isLabelSyncedWithName', false, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
-      }
+      turnOffLabelSync();
       return;
     }
 
@@ -391,6 +395,11 @@ export const SettingsDataModelObjectAboutForm = ({
                               onChange={(nextValue) => {
                                 onChange(nextValue);
                                 if (!requiresExplicitTechnicalName) {
+                                  return;
+                                }
+                                turnOffLabelSync();
+                                // Existing names are kept unless edited one by one
+                                if (!isObjectBeingCreated) {
                                   return;
                                 }
                                 if (fieldName === 'namePlural') {

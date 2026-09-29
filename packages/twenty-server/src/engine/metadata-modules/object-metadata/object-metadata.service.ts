@@ -475,12 +475,10 @@ export class ObjectMetadataService {
     createObjectInput,
     workspaceId,
     ownerFlatApplication,
-    nameFieldLabel,
   }: {
     createObjectInput: CreateObjectInput;
     workspaceId: string;
     ownerFlatApplication?: FlatApplication;
-    nameFieldLabel?: string;
   }): Promise<FlatObjectMetadata> {
     const { workspaceCustomFlatApplication } =
       await this.applicationService.findWorkspaceTwentyStandardAndCustomApplicationOrThrow(
@@ -496,7 +494,6 @@ export class ObjectMetadataService {
       fromCreateObjectInputToFlatObjectMetadataAndFlatFieldMetadatasToCreate({
         createObjectInput,
         flatApplication: resolvedOwnerFlatApplication,
-        nameFieldLabel,
       });
 
     const flatNavigationMenuItemToCreate =

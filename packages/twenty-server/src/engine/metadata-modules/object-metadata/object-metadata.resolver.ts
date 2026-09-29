@@ -50,7 +50,6 @@ import { CursorPagingInput } from 'src/engine/metadata-modules/pagination/dtos/c
 import { type CursorConnection } from 'src/engine/metadata-modules/pagination/dtos/cursor-connection-type.factory';
 import { applyMetadataFilterToQueryBuilder } from 'src/engine/metadata-modules/pagination/utils/apply-metadata-filter-to-query-builder.util';
 import { findManyWithCursorPagination } from 'src/engine/metadata-modules/pagination/utils/find-many-with-cursor-pagination.util';
-import { computeLocalizedDefaultNameFieldLabel } from 'src/engine/metadata-modules/object-metadata/utils/compute-localized-default-name-field-label.util';
 import { getEffectiveImageIdentifierFieldMetadataId } from 'src/engine/metadata-modules/object-metadata/utils/get-effective-image-identifier-field-metadata-id.util';
 import { MostlyEmptyFieldsService } from 'src/engine/metadata-modules/object-metadata/mostly-empty-fields.service';
 import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
@@ -350,30 +349,12 @@ export class ObjectMetadataResolver {
   async createOneObject(
     @Args('input') input: CreateOneObjectInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
-    @Context() context: I18nContext,
   ) {
     try {
-      const { standardApplicationId } =
-        await this.applicationTranslationCatalogService.getApplicationAuthorIdentifiers(
-          { workspaceId },
-        );
-
-      const standardApplicationI18nContext =
-        await this.applicationTranslationCatalogService.buildEffectiveEntityI18nContext(
-          {
-            applicationId: standardApplicationId,
-            locale: context.req.locale,
-            workspaceId,
-          },
-        );
-
       const flatobjectMetadata =
         await this.objectMetadataService.createOneObject({
           createObjectInput: input.object,
           workspaceId,
-          nameFieldLabel: computeLocalizedDefaultNameFieldLabel({
-            standardApplicationI18nContext,
-          }),
         });
 
       return fromFlatObjectMetadataToObjectMetadataDto(flatobjectMetadata);

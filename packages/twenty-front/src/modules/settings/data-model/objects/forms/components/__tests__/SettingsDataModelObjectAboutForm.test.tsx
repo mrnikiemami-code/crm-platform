@@ -6,7 +6,12 @@ import { Provider as JotaiProvider } from 'jotai';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
+import { isDefined } from 'twenty-shared/utils';
 
+import {
+  type CurrentWorkspace,
+  currentWorkspaceState,
+} from '@/auth/states/currentWorkspaceState';
 import { type EnrichedObjectMetadataItem } from '@/object-metadata/types/EnrichedObjectMetadataItem';
 import { SETTINGS_OBJECT_MODEL_IS_LABEL_SYNCED_WITH_NAME_LABEL_DEFAULT_VALUE } from '@/settings/constants/SettingsObjectModel';
 import { SettingsDataModelObjectAboutForm } from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm';
@@ -27,22 +32,35 @@ jest.mock('@/ui/input/components/IconPicker', () => ({
 
 type FormValues = SettingsDataModelObjectAboutFormValues;
 
-const renderNewObjectForm = ({
+const WORKSPACE_CUSTOM_APPLICATION_ID = 'workspace-custom-application-id';
+
+const renderObjectForm = ({
+  objectMetadataItem,
   conflictingObjectMetadataItem,
 }: {
+  objectMetadataItem?: EnrichedObjectMetadataItem;
   conflictingObjectMetadataItem?: EnrichedObjectMetadataItem;
 } = {}) => {
   const formRef: { current?: UseFormReturn<FormValues> } = {};
 
-  const NewObjectForm = () => {
+  const ObjectForm = () => {
     const formConfig = useForm<FormValues>({
       mode: 'onChange',
       resolver: zodResolver(settingsDataModelObjectAboutFormSchema),
-      defaultValues: {
-        color: 'gray',
-        isLabelSyncedWithName:
-          SETTINGS_OBJECT_MODEL_IS_LABEL_SYNCED_WITH_NAME_LABEL_DEFAULT_VALUE,
-      },
+      defaultValues: isDefined(objectMetadataItem)
+        ? {
+            color: 'gray',
+            isLabelSyncedWithName: objectMetadataItem.isLabelSyncedWithName,
+            labelSingular: objectMetadataItem.labelSingular,
+            labelPlural: objectMetadataItem.labelPlural,
+            nameSingular: objectMetadataItem.nameSingular,
+            namePlural: objectMetadataItem.namePlural,
+          }
+        : {
+            color: 'gray',
+            isLabelSyncedWithName:
+              SETTINGS_OBJECT_MODEL_IS_LABEL_SYNCED_WITH_NAME_LABEL_DEFAULT_VALUE,
+          },
     });
     formRef.current = formConfig;
 
@@ -51,6 +69,7 @@ const renderNewObjectForm = ({
       <FormProvider {...formConfig}>
         <SettingsDataModelObjectAboutForm
           onNewDirtyField={() => formConfig.trigger()}
+          objectMetadataItem={objectMetadataItem}
           conflictingObjectMetadataItem={conflictingObjectMetadataItem}
         />
       </FormProvider>
@@ -61,7 +80,7 @@ const renderNewObjectForm = ({
     <JotaiProvider store={jotaiStore}>
       <I18nProvider i18n={i18n}>
         <MemoryRouter>
-          <NewObjectForm />
+          <ObjectForm />
         </MemoryRouter>
       </I18nProvider>
     </JotaiProvider>,
@@ -75,6 +94,36 @@ const renderNewObjectForm = ({
   };
 
   return { getForm };
+};
+
+const renderNewObjectForm = ({
+  conflictingObjectMetadataItem,
+}: {
+  conflictingObjectMetadataItem?: EnrichedObjectMetadataItem;
+} = {}) => renderObjectForm({ conflictingObjectMetadataItem });
+
+const renderExistingCustomObjectForm = (
+  objectMetadataItem: Pick<
+    EnrichedObjectMetadataItem,
+    | 'labelSingular'
+    | 'labelPlural'
+    | 'nameSingular'
+    | 'namePlural'
+    | 'isLabelSyncedWithName'
+  >,
+) => {
+  jotaiStore.set(currentWorkspaceState.atom, {
+    workspaceCustomApplication: { id: WORKSPACE_CUSTOM_APPLICATION_ID },
+  } as CurrentWorkspace);
+
+  return renderObjectForm({
+    objectMetadataItem: {
+      id: 'existing-object-id',
+      applicationId: WORKSPACE_CUSTOM_APPLICATION_ID,
+      isSystem: false,
+      ...objectMetadataItem,
+    } as EnrichedObjectMetadataItem,
+  });
 };
 
 const typeInto = async (input: HTMLElement, value: string) => {
@@ -214,6 +263,160 @@ describe('SettingsDataModelObjectAboutForm on object creation', () => {
           'The labels contain non-Latin characters. Enter the technical name in Latin letters (e.g. academyEvent).',
         ),
       ).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('SettingsDataModelObjectAboutForm on custom object edition', () => {
+  beforeEach(() => {
+    resetJotaiStore();
+  });
+
+  afterAll(() => {
+    activateLocale(SOURCE_LOCALE);
+  });
+
+  describe('with fa-IR locale and Persian labels', () => {
+    const transliteratedObject = {
+      labelSingular: 'همایش',
+      labelPlural: 'همایش‌ها',
+      nameSingular: 'hmysh',
+      namePlural: 'hmyshH',
+      isLabelSyncedWithName: true,
+    };
+
+    beforeEach(() => {
+      activateLocale('fa-IR');
+    });
+
+    it('keeps the existing technical names when only a Persian label changes', async () => {
+      const { getForm } = renderExistingCustomObjectForm(transliteratedObject);
+
+      await typeInto(screen.getByLabelText('مفرد'), 'همایش تازه');
+      await typeInto(screen.getByLabelText('جمع'), 'همایش‌های تازه');
+
+      expect(getForm().getValues()).toMatchObject({
+        labelSingular: 'همایش تازه',
+        labelPlural: 'همایش‌های تازه',
+        nameSingular: 'hmysh',
+        namePlural: 'hmyshH',
+        isLabelSyncedWithName: false,
+      });
+      expect(getForm().getFieldState('nameSingular').isDirty).toBe(false);
+      expect(getForm().getFieldState('namePlural').isDirty).toBe(false);
+      expect(getForm().getFieldState('isLabelSyncedWithName').isDirty).toBe(
+        true,
+      );
+
+      let isValid = false;
+      await act(async () => {
+        isValid = await getForm().trigger();
+      });
+
+      expect(isValid).toBe(true);
+    });
+
+    it('exposes the technical names for explicit editing', () => {
+      renderExistingCustomObjectForm(transliteratedObject);
+
+      const technicalNameSingularInput = screen.getByPlaceholderText('listing');
+
+      expect(technicalNameSingularInput).toHaveValue('hmysh');
+      expect(technicalNameSingularInput).toHaveAttribute('dir', 'ltr');
+      expect(technicalNameSingularInput).toBeEnabled();
+      expect(screen.getByPlaceholderText('listings')).toHaveValue('hmyshH');
+      expect(
+        screen.getByText(
+          'برچسب‌ها شامل نویسه‌های غیرلاتین هستند. نام فنی را با حروف لاتین وارد کنید (مثلاً academyEvent).',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('applies an explicit valid technical name edit without touching the other one', async () => {
+      const { getForm } = renderExistingCustomObjectForm(transliteratedObject);
+
+      await typeInto(screen.getByPlaceholderText('listing'), 'academyEvent');
+
+      expect(getForm().getValues()).toMatchObject({
+        nameSingular: 'academyEvent',
+        namePlural: 'hmyshH',
+        isLabelSyncedWithName: false,
+      });
+
+      await typeInto(screen.getByPlaceholderText('listings'), 'academyEvents');
+
+      let isValid = false;
+      await act(async () => {
+        isValid = await getForm().trigger();
+      });
+
+      expect(isValid).toBe(true);
+      expect(getForm().getValues()).toMatchObject({
+        labelSingular: 'همایش',
+        labelPlural: 'همایش‌ها',
+        nameSingular: 'academyEvent',
+        namePlural: 'academyEvents',
+        isLabelSyncedWithName: false,
+      });
+    });
+
+    it('rejects an invalid explicit technical name with a localized error', async () => {
+      const { getForm } = renderExistingCustomObjectForm(transliteratedObject);
+
+      await typeInto(screen.getByPlaceholderText('listing'), 'Academy event');
+
+      expect(getForm().getFieldState('nameSingular').invalid).toBe(true);
+      expect(
+        screen.getByText(
+          'فقط از حروف لاتین و اعداد به‌صورت camelCase استفاده کنید و با حرف کوچک شروع کنید (مثلاً academyEvent)',
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('with English locale and Latin labels', () => {
+    beforeEach(() => {
+      activateLocale(SOURCE_LOCALE);
+    });
+
+    it('keeps synchronizing API names from the labels', async () => {
+      const { getForm } = renderExistingCustomObjectForm({
+        labelSingular: 'Event',
+        labelPlural: 'Events',
+        nameSingular: 'event',
+        namePlural: 'events',
+        isLabelSyncedWithName: true,
+      });
+
+      await typeInto(screen.getByLabelText('Singular'), 'Academy event');
+
+      expect(getForm().getValues()).toMatchObject({
+        labelSingular: 'Academy event',
+        labelPlural: 'Academy events',
+        nameSingular: 'academyEvent',
+        namePlural: 'academyEvents',
+        isLabelSyncedWithName: true,
+      });
+      expect(screen.queryByPlaceholderText('listing')).not.toBeInTheDocument();
+    });
+
+    it('leaves API names alone when synchronization is off', async () => {
+      const { getForm } = renderExistingCustomObjectForm({
+        labelSingular: 'Event',
+        labelPlural: 'Events',
+        nameSingular: 'event',
+        namePlural: 'events',
+        isLabelSyncedWithName: false,
+      });
+
+      await typeInto(screen.getByLabelText('Singular'), 'Academy event');
+
+      expect(getForm().getValues()).toMatchObject({
+        labelSingular: 'Academy event',
+        nameSingular: 'event',
+        namePlural: 'events',
+        isLabelSyncedWithName: false,
+      });
     });
   });
 });

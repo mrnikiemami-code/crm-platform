@@ -50,6 +50,7 @@ import { findManyWithCursorPagination } from 'src/engine/metadata-modules/pagina
 import { fieldMetadataGraphqlApiExceptionHandler } from 'src/engine/metadata-modules/field-metadata/utils/field-metadata-graphql-api-exception-handler.util';
 import { fromFlatFieldMetadataToFieldMetadataDto } from 'src/engine/metadata-modules/flat-field-metadata/utils/from-flat-field-metadata-to-field-metadata-dto.util';
 import { resolveEffectiveEntityProperty } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
+import { computeFieldMetadataPropertyI18nContext } from 'src/engine/metadata-modules/field-metadata/utils/compute-field-metadata-property-i18n-context.util';
 import { PermissionsGraphqlApiExceptionFilter } from 'src/engine/metadata-modules/permissions/utils/permissions-graphql-api-exception.filter';
 import { ApplicationTranslationCatalogService } from 'src/engine/metadata-modules/application-translation-catalog/services/application-translation-catalog.service';
 import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
@@ -58,7 +59,7 @@ import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filt
 // FieldMetadataDTO date decorators on already-loaded parent records.
 type FieldMetadataStandardOverrideParent = Pick<
   FieldMetadataDTO,
-  'label' | 'description' | 'icon' | 'overrides' | 'applicationId'
+  'name' | 'label' | 'description' | 'icon' | 'overrides' | 'applicationId'
 >;
 
 @UseGuards(WorkspaceAuthGuard)
@@ -184,20 +185,27 @@ export class FieldMetadataResolver {
     context: { loaders: IDataloaders } & I18nContext,
     workspaceId: string,
   ): Promise<string> {
+    const i18nContext =
+      await this.applicationTranslationCatalogService.buildEffectiveEntityI18nContext(
+        {
+          applicationId: fieldMetadata.applicationId ?? undefined,
+          loaders: context.loaders,
+          locale: context.req.locale,
+          workspaceId,
+        },
+      );
+
     return resolveEffectiveEntityProperty({
       metadataName: 'fieldMetadata',
       baseValue: fieldMetadata[labelKey],
       overrides: fieldMetadata.overrides,
       property: labelKey,
-      i18nContext:
-        await this.applicationTranslationCatalogService.buildEffectiveEntityI18nContext(
-          {
-            applicationId: fieldMetadata.applicationId ?? undefined,
-            loaders: context.loaders,
-            locale: context.req.locale,
-            workspaceId,
-          },
-        ),
+      i18nContext: computeFieldMetadataPropertyI18nContext({
+        fieldName: fieldMetadata.name,
+        property: labelKey,
+        baseValue: fieldMetadata[labelKey],
+        i18nContext,
+      }),
     });
   }
 

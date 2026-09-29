@@ -10,7 +10,6 @@ type BuildNameFlatFieldMetadataForCustomObjectArgs = {
     UniversalFlatObjectMetadata,
     'universalIdentifier' | 'applicationUniversalIdentifier'
   >;
-  label?: string;
 };
 
 export const buildNameFlatFieldMetadataForCustomObject = ({
@@ -18,7 +17,6 @@ export const buildNameFlatFieldMetadataForCustomObject = ({
     applicationUniversalIdentifier,
     universalIdentifier: objectMetadataUniversalIdentifier,
   },
-  label = DEFAULT_NAME_FIELD_LABEL,
 }: BuildNameFlatFieldMetadataForCustomObjectArgs): UniversalFlatFieldMetadata<FieldMetadataType.TEXT> => {
   const now = new Date().toISOString();
 
@@ -34,9 +32,9 @@ export const buildNameFlatFieldMetadataForCustomObject = ({
       name: 'name',
     }),
     name: 'name',
-    label,
+    label: DEFAULT_NAME_FIELD_LABEL,
     icon: 'IconAbc',
-    description: label,
+    description: DEFAULT_NAME_FIELD_LABEL,
     isNullable: true,
     isActive: true,
     isSystem: false,
