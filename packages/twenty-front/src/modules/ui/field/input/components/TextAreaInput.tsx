@@ -58,8 +58,8 @@ const StyledTextAreaContainer = styled.div`
 
 const StyledLightIconButtonContainer = styled.div`
   background: transparent;
+  inset-inline-end: 0;
   position: absolute;
-  right: 0;
   top: 16px;
   transform: translateY(-50%);
 `;

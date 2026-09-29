@@ -43,7 +43,7 @@ const StyledInput = styled.input<{
   height: 32px;
   outline: none;
   padding: ${themeCssVariables.spacing[0]} ${themeCssVariables.spacing[2]};
-  padding-right: ${({ withRightComponent }) =>
+  padding-inline-end: ${({ withRightComponent }) =>
     withRightComponent ? '32px' : '0'};
   position: relative;
 
@@ -62,8 +62,8 @@ const StyledInputContainer = styled.div`
 `;
 
 const StyledRightContainer = styled.div`
+  inset-inline-end: ${themeCssVariables.spacing[2]};
   position: absolute;
-  right: ${themeCssVariables.spacing[2]};
   top: 50%;
   transform: translateY(-50%);
 `;
