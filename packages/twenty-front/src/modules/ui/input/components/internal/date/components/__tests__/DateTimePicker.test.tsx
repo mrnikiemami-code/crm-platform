@@ -155,11 +155,14 @@ describe('DateTimePicker', () => {
         'HH:mm',
       ) as HTMLInputElement;
 
+      expect(timeInput.value).toBe('۱۳:۳۰');
+
       await userEvent.type(timeInput, '۰۹۱۵', {
         initialSelectionStart: 0,
         initialSelectionEnd: timeInput.value.length,
       });
 
+      expect(timeInput.value).toBe('۰۹:۱۵');
       expect(onChange.mock.calls.at(-1)?.[0].toString()).toBe(
         '2026-09-28T09:15:00+03:30[Asia/Tehran]',
       );

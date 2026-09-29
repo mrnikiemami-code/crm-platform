@@ -1,6 +1,4 @@
-import { DateFormat } from '@/localization/constants/DateFormat';
 import { JALALI_DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/JalaliDateBlocks';
-import { getJalaliDateMask } from '@/ui/input/components/internal/date/utils/getJalaliDateMask';
 import { getJalaliWeekDayNames } from '@/ui/input/components/internal/date/utils/getJalaliWeekDayNames';
 import { getJalaliYearSelectOptions } from '@/ui/input/components/internal/date/utils/getJalaliYearSelectOptions';
 import { isPlainDateWithinDatePickerRange } from '@/ui/input/components/internal/date/utils/isPlainDateWithinDatePickerRange';
@@ -31,19 +29,12 @@ describe('getJalaliYearSelectOptions', () => {
   });
 });
 
-describe('getJalaliDateMask', () => {
-  it('should describe Jalali numeric blocks in the user date order', () => {
-    expect(getJalaliDateMask(DateFormat.YEAR_FIRST)).toBe('YYYY`/MM`/DD`');
-    expect(getJalaliDateMask(DateFormat.DAY_FIRST)).toBe('DD`/MM`/YYYY`');
-    expect(getJalaliDateMask(DateFormat.MONTH_FIRST)).toBe('MM`/DD`/YYYY`');
-  });
-});
-
 describe('JALALI_DATE_BLOCKS', () => {
-  it('should keep the year a four digit field and bound month and day', () => {
+  it('should keep the year an unbounded four digit field and bound month and day', () => {
     expect(JALALI_DATE_BLOCKS.YYYY.mask).toBe('0000');
-    expect(JALALI_DATE_BLOCKS.MM.to).toBe(12);
-    expect(JALALI_DATE_BLOCKS.DD.to).toBe(31);
+    expect(JALALI_DATE_BLOCKS.YYYY).not.toHaveProperty('validate');
+    expect(JALALI_DATE_BLOCKS.MM).toHaveProperty('validate');
+    expect(JALALI_DATE_BLOCKS.DD).toHaveProperty('validate');
   });
 });
 

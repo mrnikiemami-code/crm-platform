@@ -1,20 +1,20 @@
 import { styled } from '@linaria/react';
 import { useIMask } from 'react-imask';
 
+import { DateFormat } from '@/localization/constants/DateFormat';
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { formatJalaliDateInputString } from '@/localization/utils/jalali/formatJalaliDateInputString';
-import { normalizeLocalizedDigitsToAscii } from '@/localization/utils/jalali/normalizeLocalizedDigitsToAscii';
 import { parseJalaliDateInputString } from '@/localization/utils/jalali/parseJalaliDateInputString';
 import { DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/DateBlocks';
-import { JALALI_DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/JalaliDateBlocks';
 import { MAX_DATE } from '@/ui/input/components/internal/date/constants/MaxDate';
 import { MIN_DATE } from '@/ui/input/components/internal/date/constants/MinDate';
 import { useTimeInput } from '@/ui/input/components/internal/date/hooks/useTimeInput';
 import { getDateTimeMask } from '@/ui/input/components/internal/date/utils/getDateTimeMask';
-import { getJalaliDateMask } from '@/ui/input/components/internal/date/utils/getJalaliDateMask';
+import { getJalaliInputMaskOptions } from '@/ui/input/components/internal/date/utils/getJalaliInputMaskOptions';
 import { getTimeBlocks } from '@/ui/input/components/internal/date/utils/getTimeBlocks';
-import { getTimeMask } from '@/ui/input/components/internal/date/utils/getTimeMask';
 import { isPlainDateWithinDatePickerRange } from '@/ui/input/components/internal/date/utils/isPlainDateWithinDatePickerRange';
+import { localizeJalaliInputValue } from '@/ui/input/components/internal/date/utils/localizeJalaliInputValue';
+import { normalizeJalaliInputValue } from '@/ui/input/components/internal/date/utils/normalizeJalaliInputValue';
 import { type FormFieldInputVariant } from '@/ui/input/types/FormFieldInputVariant';
 
 import { TimeZoneAbbreviation } from '@/ui/input/components/internal/date/components/TimeZoneAbbreviation';
@@ -127,19 +127,22 @@ export const DateTimePickerInput = ({
         timeZone ?? userTimezone,
       );
 
-      return `${formatJalaliDateInputString({
-        isoPlainDate: zonedDateTimeInTimeZone.toPlainDate(),
-        dateFormat,
-      })} ${formatTime(zonedDateTimeInTimeZone.hour, zonedDateTimeInTimeZone.minute)}`;
+      return localizeJalaliInputValue(
+        `${formatJalaliDateInputString({
+          isoPlainDate: zonedDateTimeInTimeZone.toPlainDate(),
+          dateFormat: DateFormat.YEAR_FIRST,
+        })} ${formatTime(zonedDateTimeInTimeZone.hour, zonedDateTimeInTimeZone.minute)}`,
+      );
     },
-    [timeZone, userTimezone, dateFormat, formatTime],
+    [timeZone, userTimezone, formatTime],
   );
 
   const parseJalaliDateTimeInputString = (value: string) => {
-    const [datePart, ...timeParts] = value.split(' ');
+    const [datePart, ...timeParts] =
+      normalizeJalaliInputValue(value).split(' ');
     const isoPlainDate = parseJalaliDateInputString({
       value: datePart,
-      dateFormat,
+      dateFormat: DateFormat.YEAR_FIRST,
     });
     const time = parseTime(timeParts.join(' '));
 
@@ -159,13 +162,7 @@ export const DateTimePickerInput = ({
   // See DatePickerInput: numeric Jalali blocks instead of IMask's Date mask.
   const { ref, setValue } = useIMask(
     isPersianCalendar
-      ? {
-          mask: `${getJalaliDateMask(dateFormat)} ${getTimeMask(timeFormat)}`,
-          blocks: { ...JALALI_DATE_BLOCKS, ...getTimeBlocks(timeFormat) },
-          prepareChar: normalizeLocalizedDigitsToAscii,
-          lazy: false,
-          autofix: false,
-        }
+      ? getJalaliInputMaskOptions(timeFormat)
       : {
           mask: Date,
           pattern,

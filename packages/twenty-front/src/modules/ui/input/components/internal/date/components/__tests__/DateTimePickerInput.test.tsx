@@ -13,16 +13,20 @@ import { workspaceMemberFormatPreferencesState } from '@/localization/states/wor
 import { DateTimePickerInput } from '@/ui/input/components/internal/date/components/DateTimePickerInput';
 import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
 
+const RIGHT_TO_LEFT_MARK = '\u200F';
+
 const renderDateTimePickerInput = ({
   locale,
   timeFormat,
   date = null,
   timeZone,
+  dateFormat = locale === 'en' ? DateFormat.MONTH_FIRST : DateFormat.YEAR_FIRST,
 }: {
   locale: string;
   timeFormat: TimeFormat;
   date?: Temporal.ZonedDateTime | null;
   timeZone?: string;
+  dateFormat?: DateFormat;
 }) => {
   jotaiStore.set(currentWorkspaceMemberState.atom, {
     locale,
@@ -30,8 +34,7 @@ const renderDateTimePickerInput = ({
   } as CurrentWorkspaceMember);
   jotaiStore.set(workspaceMemberFormatPreferencesState.atom, {
     ...jotaiStore.get(workspaceMemberFormatPreferencesState.atom),
-    dateFormat:
-      locale === 'en' ? DateFormat.MONTH_FIRST : DateFormat.YEAR_FIRST,
+    dateFormat,
     timeFormat,
   });
 
@@ -68,7 +71,44 @@ describe('DateTimePickerInput', () => {
         ),
       });
 
-      expect(input.value).toBe('1405/07/06 00:30');
+      expect(input.value).toBe('۱۴۰۵/۰۷/۰۶ ۰۰:۳۰');
+    });
+
+    it.each([
+      [
+        '2026-09-23T14:30:00+03:30[Asia/Tehran]',
+        `۱۴۰۵/۰۷/۰۱ ۰۲:۳۰ ب.ظ.${RIGHT_TO_LEFT_MARK}`,
+      ],
+      [
+        '2026-09-23T09:05:00+03:30[Asia/Tehran]',
+        `۱۴۰۵/۰۷/۰۱ ۰۹:۰۵ ق.ظ.${RIGHT_TO_LEFT_MARK}`,
+      ],
+    ])(
+      'should display an existing 12-hour value %s year-first with the Persian day period',
+      (zonedDateTime, expected) => {
+        const { input } = renderDateTimePickerInput({
+          locale: 'fa-IR',
+          timeFormat: TimeFormat.HOUR_12,
+          dateFormat: DateFormat.DAY_FIRST,
+          date: Temporal.ZonedDateTime.from(zonedDateTime),
+        });
+
+        expect(input.value).toBe(expected);
+        expect(input).toHaveAttribute('dir', 'ltr');
+      },
+    );
+
+    it('should display an existing 24-hour value year-first', () => {
+      const { input } = renderDateTimePickerInput({
+        locale: 'fa-IR',
+        timeFormat: TimeFormat.HOUR_24,
+        dateFormat: DateFormat.MONTH_FIRST,
+        date: Temporal.ZonedDateTime.from(
+          '2026-09-23T14:30:00+03:30[Asia/Tehran]',
+        ),
+      });
+
+      expect(input.value).toBe('۱۴۰۵/۰۷/۰۱ ۱۴:۳۰');
     });
 
     it.each([
@@ -85,6 +125,7 @@ describe('DateTimePickerInput', () => {
 
         await typeIntoMaskedInput(input, typedDigits);
 
+        expect(input.value).toBe('۱۴۰۵/۰۷/۰۶ ۱۳:۳۰');
         expect(onChange).toHaveBeenCalledTimes(1);
 
         const emitted: Temporal.ZonedDateTime = onChange.mock.calls[0][0];
@@ -104,6 +145,7 @@ describe('DateTimePickerInput', () => {
 
       await typeIntoMaskedInput(input, '1405070601:30PM');
 
+      expect(input.value).toBe(`۱۴۰۵/۰۷/۰۶ ۰۱:۳۰ ب.ظ.${RIGHT_TO_LEFT_MARK}`);
       expect(onChange.mock.calls[0][0].toString()).toBe(
         '2026-09-28T13:30:00+03:30[Asia/Tehran]',
       );

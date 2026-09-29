@@ -54,8 +54,30 @@ describe('DatePickerInput', () => {
         date: '2026-09-28',
       });
 
-      expect(input.value).toBe('1405/07/06');
+      expect(input.value).toBe('۱۴۰۵/۰۷/۰۶');
       expect(input).toHaveAttribute('dir', 'ltr');
+    });
+
+    it.each([DateFormat.DAY_FIRST, DateFormat.MONTH_FIRST])(
+      'should display an existing value year-first with the %s preference',
+      (dateFormat) => {
+        const { input } = renderDatePickerInput({
+          locale: 'fa-IR',
+          dateFormat,
+          date: '2026-09-23',
+        });
+
+        expect(input.value).toBe('۱۴۰۵/۰۷/۰۱');
+      },
+    );
+
+    it('should show a year-first empty mask', () => {
+      const { input } = renderDatePickerInput({
+        locale: 'fa-IR',
+        dateFormat: DateFormat.DAY_FIRST,
+      });
+
+      expect(input.value).toBe('____/__/__');
     });
 
     it.each([
@@ -70,19 +92,20 @@ describe('DatePickerInput', () => {
 
       await typeIntoMaskedInput(input, typedDigits);
 
-      expect(input.value).toBe('1405/07/06');
+      expect(input.value).toBe('۱۴۰۵/۰۷/۰۶');
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith('2026-09-28');
     });
 
-    it('should follow the day-first input order', async () => {
+    it('should keep the year-first input order with the day-first preference', async () => {
       const { input, onChange } = renderDatePickerInput({
         locale: 'fa-IR',
         dateFormat: DateFormat.DAY_FIRST,
       });
 
-      await typeIntoMaskedInput(input, '01011405');
+      await typeIntoMaskedInput(input, '14050101');
 
+      expect(input.value).toBe('۱۴۰۵/۰۱/۰۱');
       expect(onChange).toHaveBeenCalledWith('2026-03-21');
     });
 
@@ -143,7 +166,7 @@ describe('DatePickerInput', () => {
 
       await typeIntoMaskedInput(input, '140513');
 
-      expect(input.value).not.toContain('/13');
+      expect(input.value).toBe('۱۴۰۵/۱_/__');
       expect(onChange).not.toHaveBeenCalled();
     });
   });

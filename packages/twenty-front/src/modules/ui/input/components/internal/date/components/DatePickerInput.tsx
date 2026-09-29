@@ -2,19 +2,20 @@ import { styled } from '@linaria/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useIMask } from 'react-imask';
 
+import { DateFormat } from '@/localization/constants/DateFormat';
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { formatJalaliDateInputString } from '@/localization/utils/jalali/formatJalaliDateInputString';
-import { normalizeLocalizedDigitsToAscii } from '@/localization/utils/jalali/normalizeLocalizedDigitsToAscii';
 import { parseJalaliDateInputString } from '@/localization/utils/jalali/parseJalaliDateInputString';
 import { DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/DateBlocks';
-import { JALALI_DATE_BLOCKS } from '@/ui/input/components/internal/date/constants/JalaliDateBlocks';
 import { MAX_DATE } from '@/ui/input/components/internal/date/constants/MaxDate';
 import { MIN_DATE } from '@/ui/input/components/internal/date/constants/MinDate';
 import { useParseDateInputStringToJSDate } from '@/ui/input/components/internal/date/hooks/useParseDateInputStringToJSDate';
 import { useParsePlainDateToDateInputString } from '@/ui/input/components/internal/date/hooks/useParsePlainDateToDateInputString';
 import { getDateMask } from '@/ui/input/components/internal/date/utils/getDateMask';
-import { getJalaliDateMask } from '@/ui/input/components/internal/date/utils/getJalaliDateMask';
+import { getJalaliInputMaskOptions } from '@/ui/input/components/internal/date/utils/getJalaliInputMaskOptions';
 import { isPlainDateWithinDatePickerRange } from '@/ui/input/components/internal/date/utils/isPlainDateWithinDatePickerRange';
+import { localizeJalaliInputValue } from '@/ui/input/components/internal/date/utils/localizeJalaliInputValue';
+import { normalizeJalaliInputValue } from '@/ui/input/components/internal/date/utils/normalizeJalaliInputValue';
 import { type FormFieldInputVariant } from '@/ui/input/types/FormFieldInputVariant';
 
 import { useParseDateInputStringToPlainDate } from '@/ui/input/components/internal/date/hooks/useParseDateInputStringToPlainDate';
@@ -98,9 +99,14 @@ export const DatePickerInput = ({
   const formatPlainDateForInput = useCallback(
     (plainDate: string) =>
       isPersianCalendar
-        ? formatJalaliDateInputString({ isoPlainDate: plainDate, dateFormat })
+        ? localizeJalaliInputValue(
+            formatJalaliDateInputString({
+              isoPlainDate: plainDate,
+              dateFormat: DateFormat.YEAR_FIRST,
+            }),
+          )
         : parsePlainDateToDateInputString(plainDate),
-    [isPersianCalendar, dateFormat, parsePlainDateToDateInputString],
+    [isPersianCalendar, parsePlainDateToDateInputString],
   );
 
   const defaultValue = internalDate
@@ -109,16 +115,10 @@ export const DatePickerInput = ({
 
   // IMask's Date mask validates gregorian month lengths, so the persian
   // calendar uses numeric blocks and validates the complete Jalali date
-  // itself. Localized digits are typed in as ASCII.
+  // itself.
   const { ref, setValue, value } = useIMask(
     isPersianCalendar
-      ? {
-          mask: getJalaliDateMask(dateFormat),
-          blocks: JALALI_DATE_BLOCKS,
-          prepareChar: normalizeLocalizedDigitsToAscii,
-          lazy: false,
-          autofix: false,
-        }
+      ? getJalaliInputMaskOptions()
       : {
           mask: Date,
           pattern,
@@ -139,8 +139,8 @@ export const DatePickerInput = ({
       onComplete: (newValue) => {
         if (isPersianCalendar) {
           const parsedPlainDate = parseJalaliDateInputString({
-            value: newValue,
-            dateFormat,
+            value: normalizeJalaliInputValue(newValue),
+            dateFormat: DateFormat.YEAR_FIRST,
           });
 
           if (

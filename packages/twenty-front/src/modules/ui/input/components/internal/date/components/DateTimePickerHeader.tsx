@@ -1,20 +1,23 @@
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { styled } from '@linaria/react';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useIMask } from 'react-imask';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { formatDigitsAsPersian } from '@/localization/utils/jalali/formatDigitsAsPersian';
 import { getPersianMonthSelectOptions } from '@/localization/utils/jalali/getPersianMonthSelectOptions';
-import { normalizeLocalizedDigitsToAscii } from '@/localization/utils/jalali/normalizeLocalizedDigitsToAscii';
 import { Select } from '@/ui/input/components/Select';
 import { DateTimePickerInput } from '@/ui/input/components/internal/date/components/DateTimePickerInput';
 import { DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME } from '@/ui/input/components/internal/date/styles/DatePickerNavigationButtonClassName';
 import { useTimeInput } from '@/ui/input/components/internal/date/hooks/useTimeInput';
+import { getJalaliTimeBlocks } from '@/ui/input/components/internal/date/utils/getJalaliTimeBlocks';
 import { getJalaliYearSelectOptions } from '@/ui/input/components/internal/date/utils/getJalaliYearSelectOptions';
 import { getMonthSelectOptions } from '@/ui/input/components/internal/date/utils/getMonthSelectOptions';
 import { getTimeBlocks } from '@/ui/input/components/internal/date/utils/getTimeBlocks';
 import { getTimeMask } from '@/ui/input/components/internal/date/utils/getTimeMask';
+import { localizeJalaliInputValue } from '@/ui/input/components/internal/date/utils/localizeJalaliInputValue';
+import { normalizeJalaliInputValue } from '@/ui/input/components/internal/date/utils/normalizeJalaliInputValue';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { ClickOutsideListenerContext } from '@/ui/utilities/pointer-event/contexts/ClickOutsideListenerContext';
@@ -174,24 +177,36 @@ export const DateTimePickerHeader = ({
     closeYearSelect(MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID);
   };
 
+  const formatTimeForInput = useCallback(
+    (hour: number, minute: number) =>
+      isPersianCalendar
+        ? localizeJalaliInputValue(formatTime(hour, minute))
+        : formatTime(hour, minute),
+    [isPersianCalendar, formatTime],
+  );
+
   const { ref: iMaskRef, setValue } = useIMask(
     {
       mask: getTimeMask(timeFormat),
-      blocks: getTimeBlocks(timeFormat),
+      blocks: isPersianCalendar
+        ? getJalaliTimeBlocks(timeFormat)
+        : getTimeBlocks(timeFormat),
       ...(isPersianCalendar && {
-        prepareChar: normalizeLocalizedDigitsToAscii,
+        prepareChar: formatDigitsAsPersian,
       }),
       lazy: false,
       autofix: true,
     },
     {
       defaultValue: isDefined(date)
-        ? formatTime(date.hour, date.minute)
+        ? formatTimeForInput(date.hour, date.minute)
         : undefined,
       onComplete: (value) => {
         if (!date) return;
 
-        const parsedTime = parseTime(value);
+        const parsedTime = parseTime(
+          isPersianCalendar ? normalizeJalaliInputValue(value) : value,
+        );
         if (!parsedTime) {
           return;
         }
@@ -205,9 +220,9 @@ export const DateTimePickerHeader = ({
 
   useEffect(() => {
     if (isDefined(date)) {
-      setValue(formatTime(date.hour, date.minute));
+      setValue(formatTimeForInput(date.hour, date.minute));
     }
-  }, [date, formatTime, setValue]);
+  }, [date, formatTimeForInput, setValue]);
 
   const timeInputRef = iMaskRef as React.Ref<HTMLInputElement>;
 
