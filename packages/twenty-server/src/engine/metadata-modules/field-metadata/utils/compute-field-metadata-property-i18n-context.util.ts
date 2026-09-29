@@ -1,11 +1,32 @@
-import { DEFAULT_NAME_FIELD_LABEL } from 'src/engine/metadata-modules/object-metadata/constants/default-name-field-label.constant';
-import { type EffectiveEntityI18nContext } from 'src/engine/metadata-modules/overrides/types/effective-entity-i18n-context.type';
-import { resolveEffectiveEntityProperty } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
+import { isDefined } from 'twenty-shared/utils';
 
-// Custom objects are created with a "name" field whose label is stored in the
-// source locale. As long as it has not been renamed, that label is the
-// standard one and is translated from the standard catalog at read time,
-// unless the owning application's catalog translates it itself.
+import { CUSTOM_OBJECT_DEFAULT_FIELD_PROPERTIES } from 'src/engine/metadata-modules/object-metadata/constants/custom-object-default-field-properties.constant';
+import { type EffectiveEntityI18nContext } from 'src/engine/metadata-modules/overrides/types/effective-entity-i18n-context.type';
+import { resolveEffectiveEntityPropertyByName } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
+
+const getCustomObjectDefaultFieldValue = (
+  fieldName: unknown,
+  property: string,
+): string | undefined => {
+  if (typeof fieldName !== 'string') {
+    return undefined;
+  }
+
+  const defaultFieldProperties =
+    CUSTOM_OBJECT_DEFAULT_FIELD_PROPERTIES.get(fieldName);
+
+  if (property === 'label' || property === 'description') {
+    return defaultFieldProperties?.[property];
+  }
+
+  return undefined;
+};
+
+// Custom objects are created with a "name" field and system fields (createdAt,
+// createdBy...) whose labels and descriptions are stored in the source locale.
+// As long as they have not been edited, they are the standard ones and are
+// translated from the standard catalog at read time, unless the owning
+// application's catalog translates them itself.
 export const computeFieldMetadataPropertyI18nContext = ({
   fieldName,
   property,
@@ -17,23 +38,24 @@ export const computeFieldMetadataPropertyI18nContext = ({
   baseValue: unknown;
   i18nContext: EffectiveEntityI18nContext;
 }): EffectiveEntityI18nContext => {
+  const defaultValue = getCustomObjectDefaultFieldValue(fieldName, property);
+
   if (
-    fieldName !== 'name' ||
-    property !== 'label' ||
-    baseValue !== DEFAULT_NAME_FIELD_LABEL ||
+    !isDefined(defaultValue) ||
+    baseValue !== defaultValue ||
     i18nContext.isStandardApp
   ) {
     return i18nContext;
   }
 
   const isTranslatedByOwningApplication =
-    resolveEffectiveEntityProperty({
+    resolveEffectiveEntityPropertyByName({
       metadataName: 'fieldMetadata',
-      baseValue: DEFAULT_NAME_FIELD_LABEL,
+      baseValue: defaultValue,
       overrides: undefined,
-      property: 'label',
+      property,
       i18nContext,
-    }) !== DEFAULT_NAME_FIELD_LABEL;
+    }) !== defaultValue;
 
   return isTranslatedByOwningApplication
     ? i18nContext

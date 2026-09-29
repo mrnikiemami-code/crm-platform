@@ -15412,10 +15412,10 @@ msgstr "գործողություններ"
 msgid "Operations"
 msgstr "Գործողություններ"
 
-#. js-lingui-id: lVa1Xn
-#: src/modules/settings/data-model/fields/forms/select/hooks/useSelectSettingsFormInitialValues.ts
-msgid "Option 1"
-msgstr "Ընտրանք 1"
+#. js-lingui-id: P5fBFV
+#: src/modules/settings/data-model/fields/forms/select/utils/generateNewSelectOptionLabel.ts
+msgid "Option {optionNumber}"
+msgstr ""
 
 #. js-lingui-id: gUeG+X
 #: src/pages/settings/admin-panel/SettingsAdminNewAiProvider.tsx
@@ -20956,10 +20956,10 @@ msgstr "Սա կփոխի {contextStoreNumberOfSelectedRecords} գրառում։ �
 msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
 msgstr "Սա ընդմիշտ կջնջի դաշտը և դրա բոլոր տվյալները {objectLabel}-ից։ Հաստատելու համար գրեք \"yes\"։"
 
-#. js-lingui-id: L85ZX9
+#. js-lingui-id: fbJ7lc
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"yes\" to confirm."
-msgstr "Սա ընդմիշտ կջնջի օբյեկտը և դրա բոլոր գրառումները։ Հաստատելու համար գրեք \"yes\"։"
+msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
+msgstr "Սա ընդմիշտ կջնջի օբյեկտը և դրա բոլոր գրառումները։ Հաստատելու համար գրեք \"{deleteConfirmationValue}\"։"
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23636,6 +23636,12 @@ msgstr "Դեղին"
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
 msgid "yes"
 msgstr "այո"
+
+#. js-lingui-id: VFlXg/
+#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
+msgctxt "Object deletion confirmation value"
+msgid "yes"
+msgstr ""
 
 #. js-lingui-id: l75CjT
 #: src/modules/settings/admin-panel/apps/components/SettingsAdminApps.tsx

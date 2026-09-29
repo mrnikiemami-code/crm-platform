@@ -15384,9 +15384,9 @@ msgstr ""
 msgid "Operations"
 msgstr ""
 
-#. js-lingui-id: lVa1Xn
-#: src/modules/settings/data-model/fields/forms/select/hooks/useSelectSettingsFormInitialValues.ts
-msgid "Option 1"
+#. js-lingui-id: P5fBFV
+#: src/modules/settings/data-model/fields/forms/select/utils/generateNewSelectOptionLabel.ts
+msgid "Option {optionNumber}"
 msgstr ""
 
 #. js-lingui-id: gUeG+X
@@ -20898,9 +20898,9 @@ msgstr ""
 msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
 msgstr ""
 
-#. js-lingui-id: L85ZX9
+#. js-lingui-id: fbJ7lc
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"yes\" to confirm."
+msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
 msgstr ""
 
 #. js-lingui-id: qEODFi
@@ -23576,6 +23576,12 @@ msgstr ""
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
 #: src/pages/settings/applications/tabs/SettingsApplicationRegistrationOAuthTab.tsx
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
+msgid "yes"
+msgstr ""
+
+#. js-lingui-id: VFlXg/
+#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
+msgctxt "Object deletion confirmation value"
 msgid "yes"
 msgstr ""
 

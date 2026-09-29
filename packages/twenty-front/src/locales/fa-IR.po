@@ -15389,10 +15389,10 @@ msgstr "عملیات"
 msgid "Operations"
 msgstr "عملیات"
 
-#. js-lingui-id: lVa1Xn
-#: src/modules/settings/data-model/fields/forms/select/hooks/useSelectSettingsFormInitialValues.ts
-msgid "Option 1"
-msgstr "گزینه‌ی ۱"
+#. js-lingui-id: P5fBFV
+#: src/modules/settings/data-model/fields/forms/select/utils/generateNewSelectOptionLabel.ts
+msgid "Option {optionNumber}"
+msgstr "گزینه {optionNumber}"
 
 #. js-lingui-id: gUeG+X
 #: src/pages/settings/admin-panel/SettingsAdminNewAiProvider.tsx
@@ -20888,10 +20888,10 @@ msgstr "این کار {contextStoreNumberOfSelectedRecords} رکورد را تغ
 msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
 msgstr "این کار فیلد و همه داده‌هایش را از {objectLabel} برای همیشه حذف می‌کند. برای تأیید «yes» را تایپ کنید."
 
-#. js-lingui-id: L85ZX9
+#. js-lingui-id: fbJ7lc
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"yes\" to confirm."
-msgstr "این کار موجودیت و همه رکوردهایش را برای همیشه حذف می‌کند. برای تأیید «yes» را تایپ کنید."
+msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
+msgstr "این کار موجودیت و همه رکوردهایش را برای همیشه حذف می‌کند. برای تأیید حذف، عبارت «{deleteConfirmationValue}» را وارد کنید."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23563,6 +23563,12 @@ msgstr "زرد"
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
 msgid "yes"
 msgstr "بله"
+
+#. js-lingui-id: VFlXg/
+#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
+msgctxt "Object deletion confirmation value"
+msgid "yes"
+msgstr "حذف"
 
 #. js-lingui-id: l75CjT
 #: src/modules/settings/admin-panel/apps/components/SettingsAdminApps.tsx

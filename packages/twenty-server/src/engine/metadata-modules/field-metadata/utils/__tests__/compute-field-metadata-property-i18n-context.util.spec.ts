@@ -2,6 +2,7 @@ import { type APP_LOCALES } from 'twenty-shared/translations';
 
 import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { computeFieldMetadataPropertyI18nContext } from 'src/engine/metadata-modules/field-metadata/utils/compute-field-metadata-property-i18n-context.util';
+import { PARTIAL_SYSTEM_FLAT_FIELD_METADATAS } from 'src/engine/metadata-modules/object-metadata/constants/partial-system-flat-field-metadatas.constant';
 import { buildNameFlatFieldMetadataForCustomObject } from 'src/engine/metadata-modules/object-metadata/utils/build-name-flat-field-metadata-for-custom-object.util';
 import { type EffectiveEntityI18nContext } from 'src/engine/metadata-modules/overrides/types/effective-entity-i18n-context.type';
 import { resolveEffectiveEntityProperty } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
@@ -158,5 +159,128 @@ describe('computeFieldMetadataPropertyI18nContext', () => {
         i18nContext: buildCustomApplicationI18nContext('en'),
       }).label,
     ).toBe('عنوان');
+  });
+
+  describe('custom object system fields', () => {
+    const SYSTEM_FIELDS = Object.values(PARTIAL_SYSTEM_FLAT_FIELD_METADATAS);
+
+    const resolveStandardObjectFieldProperty = (
+      property: 'label' | 'description',
+      baseValue: string,
+    ) =>
+      resolveEffectiveEntityProperty({
+        metadataName: 'fieldMetadata',
+        baseValue,
+        overrides: null,
+        property,
+        i18nContext: {
+          ...buildCustomApplicationI18nContext('fa-IR'),
+          isStandardApp: true,
+        },
+      });
+
+    it.each([
+      ['createdAt', 'تاریخ ایجاد'],
+      ['updatedAt', 'آخرین به‌روزرسانی'],
+      ['deletedAt', 'حذف‌شده در'],
+      ['createdBy', 'ایجادشده توسط'],
+      ['updatedBy', 'به‌روزرسانی توسط'],
+      ['id', 'شناسه'],
+    ])(
+      'displays the default %s label in the viewer locale',
+      (fieldName, persianLabel) => {
+        const { label } =
+          PARTIAL_SYSTEM_FLAT_FIELD_METADATAS[
+            fieldName as keyof typeof PARTIAL_SYSTEM_FLAT_FIELD_METADATAS
+          ];
+
+        expect(resolveFieldLabel({ name: fieldName, label }, 'fa-IR')).toBe(
+          persianLabel,
+        );
+        expect(resolveFieldLabel({ name: fieldName, label }, 'en')).toBe(label);
+      },
+    );
+
+    it('uses the same translations as the standard objects fields', () => {
+      for (const { name, label, description } of SYSTEM_FIELDS) {
+        expect(resolveFieldLabel({ name, label }, 'fa-IR')).toBe(
+          resolveStandardObjectFieldProperty('label', label),
+        );
+        expect(
+          resolveEffectiveEntityProperty({
+            metadataName: 'fieldMetadata',
+            baseValue: description,
+            overrides: null,
+            property: 'description',
+            i18nContext: computeFieldMetadataPropertyI18nContext({
+              fieldName: name,
+              property: 'description',
+              baseValue: description,
+              i18nContext: buildCustomApplicationI18nContext('fa-IR'),
+            }),
+          }),
+        ).toBe(resolveStandardObjectFieldProperty('description', description));
+      }
+    });
+
+    it('keeps a relabelled system field as authored in every locale', () => {
+      for (const label of ['Created on', 'زمان ثبت']) {
+        expect(resolveFieldLabel({ name: 'createdAt', label }, 'fa-IR')).toBe(
+          label,
+        );
+        expect(resolveFieldLabel({ name: 'createdAt', label }, 'en')).toBe(
+          label,
+        );
+      }
+    });
+
+    it('does not translate a custom field that only shares a system label', () => {
+      expect(
+        resolveFieldLabel({ name: 'reviewedBy', label: 'Created by' }, 'fa-IR'),
+      ).toBe('Created by');
+    });
+
+    it('lets a workspace translation take precedence', () => {
+      const i18nContext = buildCustomApplicationI18nContext('fa-IR');
+      const overrides = {
+        [i18nContext.workspaceCustomApplicationUniversalIdentifier as string]: {
+          translations: { 'fa-IR': { label: 'زمان ساخت' } },
+        },
+      };
+
+      expect(
+        resolveEffectiveEntityProperty({
+          metadataName: 'fieldMetadata',
+          baseValue: 'Creation date',
+          overrides,
+          property: 'label',
+          i18nContext: computeFieldMetadataPropertyI18nContext({
+            fieldName: 'createdAt',
+            property: 'label',
+            baseValue: 'Creation date',
+            i18nContext,
+          }),
+        }),
+      ).toBe('زمان ساخت');
+    });
+
+    it('translates system field labels in metadata events', () => {
+      const record = {
+        name: 'createdBy',
+        label: 'Created by',
+        description: 'The creator of the record',
+        overrides: null,
+      };
+
+      const resolvedRecord = resolveMetadataEventRecord({
+        metadataName: 'fieldMetadata',
+        record,
+        i18nContext: buildCustomApplicationI18nContext('fa-IR'),
+      });
+
+      expect(resolvedRecord.label).toBe('ایجادشده توسط');
+      expect(resolvedRecord.description).toBe('ایجادکننده رکورد');
+      expect(resolvedRecord.name).toBe('createdBy');
+    });
   });
 });

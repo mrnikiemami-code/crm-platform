@@ -15412,10 +15412,10 @@ msgstr "operaciones"
 msgid "Operations"
 msgstr "Operaciones"
 
-#. js-lingui-id: lVa1Xn
-#: src/modules/settings/data-model/fields/forms/select/hooks/useSelectSettingsFormInitialValues.ts
-msgid "Option 1"
-msgstr "Opción 1"
+#. js-lingui-id: P5fBFV
+#: src/modules/settings/data-model/fields/forms/select/utils/generateNewSelectOptionLabel.ts
+msgid "Option {optionNumber}"
+msgstr ""
 
 #. js-lingui-id: gUeG+X
 #: src/pages/settings/admin-panel/SettingsAdminNewAiProvider.tsx
@@ -20958,10 +20958,10 @@ msgstr "Esto modificará {contextStoreNumberOfSelectedRecords} registros. Esta a
 msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
 msgstr "Esto eliminará permanentemente el campo y todos sus datos de {objectLabel}. Escribe \"yes\" para confirmar."
 
-#. js-lingui-id: L85ZX9
+#. js-lingui-id: fbJ7lc
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"yes\" to confirm."
-msgstr "Esto eliminará permanentemente el objeto y todos sus registros. Escribe \"yes\" para confirmar."
+msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
+msgstr "Esto eliminará permanentemente el objeto y todos sus registros. Escribe \"{deleteConfirmationValue}\" para confirmar."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23638,6 +23638,12 @@ msgstr "Amarillo"
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
 msgid "yes"
 msgstr "sí"
+
+#. js-lingui-id: VFlXg/
+#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
+msgctxt "Object deletion confirmation value"
+msgid "yes"
+msgstr ""
 
 #. js-lingui-id: l75CjT
 #: src/modules/settings/admin-panel/apps/components/SettingsAdminApps.tsx

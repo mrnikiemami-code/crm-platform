@@ -98,6 +98,10 @@ export const ObjectSettings = ({
   };
 
   const objectLabel = objectMetadataItem.labelPlural;
+  const deleteConfirmationValue = t({
+    message: 'yes',
+    context: 'Object deletion confirmation value',
+  });
 
   return (
     <StyledContentContainer>
@@ -195,12 +199,12 @@ export const ObjectSettings = ({
       <ConfirmationDialog
         dialogId={DELETE_OBJECT_MODAL_ID}
         title={t`Delete ${objectLabel} object?`}
-        subtitle={t`This will permanently delete the object and all its records. Type "yes" to confirm.`}
+        subtitle={t`This will permanently delete the object and all its records. Type "${deleteConfirmationValue}" to confirm.`}
         confirmButtonText={t`Delete`}
         onConfirmClick={confirmDelete}
         onClose={() => closeDialog(DELETE_OBJECT_MODAL_ID)}
-        confirmationValue="yes"
-        confirmationPlaceholder="yes"
+        confirmationValue={deleteConfirmationValue}
+        confirmationPlaceholder={deleteConfirmationValue}
         loading={isDeleting}
       />
     </StyledContentContainer>

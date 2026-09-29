@@ -15412,10 +15412,10 @@ msgstr "operatsiyalar"
 msgid "Operations"
 msgstr "Operatsiyalar"
 
-#. js-lingui-id: lVa1Xn
-#: src/modules/settings/data-model/fields/forms/select/hooks/useSelectSettingsFormInitialValues.ts
-msgid "Option 1"
-msgstr "1-variant"
+#. js-lingui-id: P5fBFV
+#: src/modules/settings/data-model/fields/forms/select/utils/generateNewSelectOptionLabel.ts
+msgid "Option {optionNumber}"
+msgstr ""
 
 #. js-lingui-id: gUeG+X
 #: src/pages/settings/admin-panel/SettingsAdminNewAiProvider.tsx
@@ -20956,10 +20956,10 @@ msgstr "Bu amal {contextStoreNumberOfSelectedRecords} ta yozuvni o‘zgartiradi.
 msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
 msgstr "Bu {objectLabel} dagi maydonni va uning barcha ma’lumotlarini butunlay o‘chiradi. Tasdiqlash uchun \"yes\" deb yozing."
 
-#. js-lingui-id: L85ZX9
+#. js-lingui-id: fbJ7lc
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"yes\" to confirm."
-msgstr "Bu obyektni va uning barcha yozuvlarini butunlay o‘chiradi. Tasdiqlash uchun \"yes\" deb yozing."
+msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
+msgstr "Bu obyektni va uning barcha yozuvlarini butunlay o‘chiradi. Tasdiqlash uchun \"{deleteConfirmationValue}\" deb yozing."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23636,6 +23636,12 @@ msgstr "Sariq"
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
 msgid "yes"
 msgstr "ha"
+
+#. js-lingui-id: VFlXg/
+#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
+msgctxt "Object deletion confirmation value"
+msgid "yes"
+msgstr ""
 
 #. js-lingui-id: l75CjT
 #: src/modules/settings/admin-panel/apps/components/SettingsAdminApps.tsx
