@@ -131,7 +131,14 @@ export const SettingsObjectFieldEdit = () => {
 
   const formConfig = useForm<SettingsDataModelFieldEditFormValues>({
     mode: 'onTouched',
-    resolver: zodResolver(settingsFieldFormSchema()),
+    resolver: zodResolver(
+      settingsFieldFormSchema({
+        initialName: fieldMetadataItem?.name,
+        otherFieldNames: objectMetadataItem?.fields
+          .filter(({ id }) => id !== fieldMetadataItem?.id)
+          .map(({ name }) => name),
+      }),
+    ),
     defaultValues: {
       icon: fieldMetadataItem?.icon ?? 'Icon',
       type: fieldMetadataItem?.type as SettingsFieldType,

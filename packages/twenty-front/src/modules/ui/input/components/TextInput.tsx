@@ -27,7 +27,7 @@ const StyledContainer = styled.div<Pick<TextInputComponentProps, 'fullWidth'>>`
 `;
 
 const StyledErrorHelper = styled.div`
-  position: absolute;
+  text-align: start;
 `;
 
 const fieldRootClassName = css`

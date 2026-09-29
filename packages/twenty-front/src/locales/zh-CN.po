@@ -2708,7 +2708,6 @@ msgid "API Keys"
 msgstr "API 密钥"
 
 #. js-lingui-id: kAtj+q
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "API 名称"
@@ -6659,7 +6658,6 @@ msgid "Deactivate \"Synchronize Label and API Name\" to set a custom API name"
 msgstr "停用 \"同步标签和 API 名称\" 以设置自定义 API 名称"
 
 #. js-lingui-id: qk4i22
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
 msgid "Deactivate \"Synchronize Objects Labels and API Names\" to set a custom API name"
 msgstr "停用 \"同步对象标签和 API 名称\" 以设置自定义 API 名称"
@@ -8066,11 +8064,6 @@ msgstr "电子邮件不能为空"
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
 msgid "embed"
 msgstr "嵌入"
-
-#. js-lingui-id: eXoH4Q
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
-msgid "employees"
-msgstr "员工"
 
 #. js-lingui-id: gqv5ZL
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
@@ -11135,7 +11128,6 @@ msgid "Input (Prompt)"
 msgstr "输入 (提示词)"
 
 #. js-lingui-id: JE2tjr
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "Input must be in camel case and cannot start with a number"

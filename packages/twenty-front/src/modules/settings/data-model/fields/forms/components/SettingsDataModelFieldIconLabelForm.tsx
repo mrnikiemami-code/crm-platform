@@ -1,6 +1,6 @@
+import { css } from '@linaria/core';
 import { styled } from '@linaria/react';
-import { isNonEmptyString } from '@sniptt/guards';
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 import { type z } from 'zod';
 
@@ -14,16 +14,17 @@ import { IDENTIFIER_MAX_CHAR_LENGTH } from 'twenty-shared/metadata';
 import { computeFieldTechnicalNameSuggestion } from '@/settings/data-model/fields/forms/utils/computeFieldTechnicalNameSuggestion';
 import { getErrorMessageFromError } from '@/settings/data-model/fields/forms/utils/errorMessages';
 import { shouldShowFieldTechnicalNameInput } from '@/settings/data-model/fields/forms/utils/shouldShowFieldTechnicalNameInput';
+import { hasNonLatinLetters } from '@/settings/data-model/utils/hasNonLatinLetters';
 import { IconPicker } from '@/ui/input/components/IconPicker';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
-import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
 import { useLingui } from '@lingui/react/macro';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { IconInfoCircle, IconRefresh } from 'twenty-ui/icon';
+import { IconRefresh } from 'twenty-ui/icon';
 import { InlineBanner } from 'twenty-ui/primitives/feedback';
-import { Tooltip, Card } from 'twenty-ui/primitives/surfaces';
-import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
+import { Field } from 'twenty-ui/primitives/input';
+import { Card } from 'twenty-ui/primitives/surfaces';
+import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { computeMetadataNameFromLabel } from '~/pages/settings/data-model/utils/computeMetadataNameFromLabel';
 
 export const settingsDataModelFieldIconLabelFormSchema = (
@@ -55,35 +56,31 @@ const StyledInputsContainer = styled.div`
   width: 100%;
 `;
 
-const StyledAdvancedSettingsSectionInputWrapper = styled.div`
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: ${themeCssVariables.spacing[4]};
-  width: 100%;
-`;
-
 const StyledAdvancedSettingsOuterContainer = styled.div`
   padding-top: ${themeCssVariables.spacing[4]};
 `;
 
-const StyledAdvancedSettingsContainer = styled.div`
-  display: flex;
-  gap: ${themeCssVariables.spacing[2]};
-  position: relative;
-  width: 100%;
-`;
-
-const StyledExplicitNameContainer = styled.div`
+const StyledTechnicalNameContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${themeCssVariables.spacing[2]};
   padding-top: ${themeCssVariables.spacing[4]};
 `;
 
-const StyledTechnicalNameError = styled.span`
-  color: ${themeCssVariables.font.color.danger};
-  font-size: ${themeCssVariables.font.size.xs};
+const readonlyTechnicalNameClassName = css`
+  background-color: ${themeCssVariables.background.transparent.lighter};
+  border: 1px solid ${themeCssVariables.border.color.medium};
+  border-radius: ${themeCssVariables.border.radius.md};
+  box-sizing: border-box;
+  color: ${themeCssVariables.font.color.primary};
+  font-family: ${themeCssVariables.font.family};
+  font-size: ${themeCssVariables.font.size.md};
+  height: 32px;
+  outline: none;
+  padding: ${themeCssVariables.spacing[2]};
+  text-align: start;
+  user-select: text;
+  width: 100%;
 `;
 
 type SettingsDataModelFieldIconLabelFormProps = {
@@ -111,7 +108,6 @@ export const SettingsDataModelFieldIconLabelForm = ({
     trigger,
   } = useFormContext<SettingsDataModelFieldIconLabelFormValues>();
 
-  const { theme } = useContext(ThemeContext);
   const label = watch('label');
 
   const { t, i18n } = useLingui();
@@ -124,15 +120,16 @@ export const SettingsDataModelFieldIconLabelForm = ({
   const labelTextInputId = `${fieldMetadataItem?.id}-label`;
   const nameTextInputId = `${fieldMetadataItem?.id}-name`;
 
+  const technicalNameLabel = t({
+    message: 'API Name',
+    context: 'Field technical name',
+  });
+
   const isLabelSyncedWithName =
     watch('isLabelSyncedWithName') ??
     (isDefined(fieldMetadataItem)
       ? fieldMetadataItem.isLabelSyncedWithName
       : true);
-
-  const apiNameTooltipText = isLabelSyncedWithName
-    ? t`Deactivate "Synchronize Objects Labels and API Names" to set a custom API name`
-    : t`Input must be in camel case and cannot start with a number`;
 
   const fillNameFromLabel = (label: string) => {
     isDefined(label) &&
@@ -176,17 +173,36 @@ export const SettingsDataModelFieldIconLabelForm = ({
     }
   };
 
+  // Transliterating a non-Latin label would silently rename the stored name
+  const syncNameOnEdition = (nextLabel: string) => {
+    if (hasNonLatinLetters(nextLabel)) {
+      setLabelSyncedWithName(false);
+      return;
+    }
+
+    fillNameFromLabel(nextLabel);
+  };
+
   const isRelation =
     fieldMetadataItem?.type === FieldMetadataType.RELATION ||
     fieldMetadataItem?.type === FieldMetadataType.MORPH_RELATION;
 
   const isCustomButNotRelationField = isCustomField && !isRelation;
 
-  const canToggleSyncLabelWithName =
-    !isCreationMode && isCustomButNotRelationField;
+  // Default fields of custom objects (createdAt, position...) are custom too,
+  // but renaming them would break the records they are built on
+  const isSystemField =
+    fieldMetadataItem?.isSystem === true ||
+    fieldMetadataItem?.isUIEditable === false;
 
-  const isNameEditEnabled =
-    isLabelSyncedWithName === false && isCustomButNotRelationField;
+  const isRenamableField = isCustomButNotRelationField && !isSystemField;
+
+  const canToggleSyncLabelWithName = !isCreationMode && isRenamableField;
+
+  const showsStoredTechnicalName = !isCreationMode && isCustomField;
+
+  const canEditStoredTechnicalName =
+    showsStoredTechnicalName && isRenamableField && !readonly;
 
   const isLabelEditEnabled =
     isCreationMode ||
@@ -225,8 +241,8 @@ export const SettingsDataModelFieldIconLabelForm = ({
                 trigger('label');
                 if (isCreationMode) {
                   fillNameOnCreation(value);
-                } else if (isLabelSyncedWithName === true && isCustomField) {
-                  fillNameFromLabel(value);
+                } else if (isLabelSyncedWithName === true && isRenamableField) {
+                  syncNameOnEdition(value);
                 }
               }}
               error={getErrorMessageFromError(errors.label?.message)}
@@ -237,7 +253,7 @@ export const SettingsDataModelFieldIconLabelForm = ({
         />
       </StyledInputsContainer>
       {requiresExplicitName && (
-        <StyledExplicitNameContainer>
+        <StyledTechnicalNameContainer>
           <InlineBanner
             color="blue"
             message={t`The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle).`}
@@ -248,10 +264,7 @@ export const SettingsDataModelFieldIconLabelForm = ({
             render={({ field: { onChange, value } }) => (
               <SettingsTextInput
                 instanceId={`${nameTextInputId}-explicit`}
-                label={t({
-                  message: 'API Name',
-                  context: 'Field technical name',
-                })}
+                label={technicalNameLabel}
                 placeholder="eventCode"
                 value={value ?? ''}
                 dir="ltr"
@@ -265,103 +278,88 @@ export const SettingsDataModelFieldIconLabelForm = ({
                 fullWidth
                 maxLength={IDENTIFIER_MAX_CHAR_LENGTH}
                 error={errors.name?.message}
-                noErrorHelper
               />
             )}
           />
-          {isNonEmptyString(errors.name?.message) && (
-            <StyledTechnicalNameError aria-live="polite">
-              {errors.name.message}
-            </StyledTechnicalNameError>
-          )}
-        </StyledExplicitNameContainer>
+        </StyledTechnicalNameContainer>
       )}
+      {canEditStoredTechnicalName && (
+        <StyledTechnicalNameContainer>
+          <Controller
+            name="name"
+            control={control}
+            defaultValue={fieldMetadataItem?.name}
+            render={({ field: { onChange, value } }) => (
+              <SettingsTextInput
+                instanceId={nameTextInputId}
+                label={technicalNameLabel}
+                placeholder="eventCode"
+                value={value ?? ''}
+                dir="ltr"
+                required
+                onChange={(nextValue) => {
+                  onChange(nextValue);
+                  if (isLabelSyncedWithName !== false) {
+                    setLabelSyncedWithName(false);
+                  }
+                  trigger('name');
+                }}
+                fullWidth
+                maxLength={IDENTIFIER_MAX_CHAR_LENGTH}
+                error={errors.name?.message}
+              />
+            )}
+          />
+        </StyledTechnicalNameContainer>
+      )}
+      {showsStoredTechnicalName &&
+        !canEditStoredTechnicalName &&
+        isDefined(fieldMetadataItem) && (
+          <StyledTechnicalNameContainer>
+            <Field.Root>
+              <Field.Label>{technicalNameLabel}</Field.Label>
+              <Field.Control
+                className={readonlyTechnicalNameClassName}
+                value={fieldMetadataItem.name}
+                dir="ltr"
+                readOnly
+              />
+            </Field.Root>
+          </StyledTechnicalNameContainer>
+        )}
       {canToggleSyncLabelWithName && (
         <AdvancedSettingsWrapper hideDot>
           <StyledAdvancedSettingsOuterContainer>
-            <StyledAdvancedSettingsContainer>
-              <StyledAdvancedSettingsSectionInputWrapper>
-                <StyledInputsContainer>
-                  <Controller
-                    name="name"
-                    control={control}
-                    defaultValue={fieldMetadataItem?.name}
-                    render={({ field: { onChange, value } }) => (
-                      <SettingsTextInput
-                        instanceId={nameTextInputId}
-                        label={t`API Name`}
-                        placeholder={t`employees`}
-                        value={value}
-                        onChange={onChange}
-                        readOnly={readonly}
-                        disabled={!isNameEditEnabled}
-                        fullWidth
-                        maxLength={IDENTIFIER_MAX_CHAR_LENGTH}
-                        RightIcon={() =>
-                          apiNameTooltipText && (
-                            <>
-                              <Tooltip
-                                content={apiNameTooltipText}
-                                sideOffset={5}
-                                side="bottom"
-                                positionMethod="fixed"
-                                delay={TooltipDelay.shortDelay}
-                              >
-                                <IconInfoCircle
-                                  id="info-circle-id-name"
-                                  size={theme.icon.size.md}
-                                  color={theme.font.color.tertiary}
-                                  style={{ outline: 'none' }}
-                                />
-                              </Tooltip>
-                            </>
-                          )
+            <Controller
+              name="isLabelSyncedWithName"
+              control={control}
+              defaultValue={fieldMetadataItem?.isLabelSyncedWithName ?? true}
+              render={({ field: { onChange, value } }) => (
+                <AdvancedSettingsContentWrapperWithDot
+                  hideDot={false}
+                  dotPosition="centered"
+                >
+                  <Card rounded>
+                    <SettingsOptionCardContentSwitch
+                      Icon={IconRefresh}
+                      title={t`Synchronize Field Label and API Name`}
+                      description={t`Should changing a field's label also change the API name?`}
+                      checked={value ?? true}
+                      disabled={readonly}
+                      advancedMode
+                      onChange={(value) => {
+                        onChange(value);
+                        if (!isDefined(fieldMetadataItem) || value === false) {
+                          return;
                         }
-                      />
-                    )}
-                  />
-                </StyledInputsContainer>
-                <Controller
-                  name="isLabelSyncedWithName"
-                  control={control}
-                  defaultValue={
-                    fieldMetadataItem?.isLabelSyncedWithName ?? true
-                  }
-                  render={({ field: { onChange, value } }) => (
-                    <AdvancedSettingsContentWrapperWithDot
-                      hideDot={false}
-                      dotPosition="centered"
-                    >
-                      <Card rounded>
-                        <SettingsOptionCardContentSwitch
-                          Icon={IconRefresh}
-                          title={t`Synchronize Field Label and API Name`}
-                          description={t`Should changing a field's label also change the API name?`}
-                          checked={value ?? true}
-                          disabled={readonly}
-                          advancedMode
-                          onChange={(value) => {
-                            onChange(value);
-                            if (!isDefined(fieldMetadataItem)) {
-                              return;
-                            }
 
-                            if (value === false) {
-                              return;
-                            }
-
-                            if (isCustomField && !isRelation) {
-                              fillNameFromLabel(label);
-                              return;
-                            }
-                          }}
-                        />
-                      </Card>
-                    </AdvancedSettingsContentWrapperWithDot>
-                  )}
-                />
-              </StyledAdvancedSettingsSectionInputWrapper>
-            </StyledAdvancedSettingsContainer>
+                        syncNameOnEdition(label);
+                      }}
+                    />
+                  </Card>
+                </AdvancedSettingsContentWrapperWithDot>
+              )}
+            />
           </StyledAdvancedSettingsOuterContainer>
         </AdvancedSettingsWrapper>
       )}

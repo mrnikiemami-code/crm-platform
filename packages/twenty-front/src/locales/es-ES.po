@@ -2708,7 +2708,6 @@ msgid "API Keys"
 msgstr "Claves API"
 
 #. js-lingui-id: kAtj+q
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "Nombre API"
@@ -6659,7 +6658,6 @@ msgid "Deactivate \"Synchronize Label and API Name\" to set a custom API name"
 msgstr "Desactive \"Sincronizar etiqueta y nombre de API\" para establecer un nombre de API personalizado"
 
 #. js-lingui-id: qk4i22
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
 msgid "Deactivate \"Synchronize Objects Labels and API Names\" to set a custom API name"
 msgstr "Desactive \"Sincronizar etiquetas de objetos y nombres de API\" para establecer un nombre de API personalizado"
@@ -8066,11 +8064,6 @@ msgstr "Los correos electrónicos no deben estar vacíos"
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
 msgid "embed"
 msgstr "incrustar"
-
-#. js-lingui-id: eXoH4Q
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
-msgid "employees"
-msgstr "empleados"
 
 #. js-lingui-id: gqv5ZL
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
@@ -11158,7 +11151,6 @@ msgid "Input (Prompt)"
 msgstr "Entrada (prompt)"
 
 #. js-lingui-id: JE2tjr
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "Input must be in camel case and cannot start with a number"

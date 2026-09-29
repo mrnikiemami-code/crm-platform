@@ -13,6 +13,8 @@ type SettingsFieldFormSchemaOptions = {
   existingOtherLabels?: string[];
   sourceObjectMetadataId?: string;
   isCreationMode?: boolean;
+  initialName?: string;
+  otherFieldNames?: string[];
 };
 
 export const settingsFieldFormSchema = (
@@ -22,16 +24,24 @@ export const settingsFieldFormSchema = (
     existingOtherLabels,
     sourceObjectMetadataId,
     isCreationMode = false,
+    initialName,
+    otherFieldNames = [],
   } = options;
+
+  const isEditingStoredName = !isCreationMode && isDefined(initialName);
 
   const baseSchema = z
     .object({})
     .extend(
       settingsDataModelFieldIconLabelFormSchema(existingOtherLabels).shape,
     )
-    // On creation the name is validated below, so non-Latin labels get the
-    // technical name messages instead of the generic camel case one
-    .extend(isCreationMode ? { name: z.string().optional() } : {})
+    // The name is validated below, so it gets the technical name messages
+    // instead of the generic camel case one
+    .extend(
+      isCreationMode || isEditingStoredName
+        ? { name: z.string().optional() }
+        : {},
+    )
     .extend(settingsDataModelFieldDescriptionFormSchema().shape)
     .extend(settingsDataModelFieldTypeFormSchema.shape)
     .and(settingsDataModelFieldSettingsFormSchema)
@@ -55,6 +65,23 @@ export const settingsFieldFormSchema = (
     })
     .superRefine((data, ctx) => {
       const { label, name } = data as { label?: string; name?: string };
+
+      if (isEditingStoredName) {
+        // Stored names are kept as is, even when they predate these rules
+        if (!isDefined(name) || name === initialName) return;
+
+        const editedNameResult =
+          fieldTechnicalNameSchema(otherFieldNames).safeParse(name);
+
+        if (!editedNameResult.success) {
+          ctx.addIssue({
+            code: 'custom',
+            message: editedNameResult.error.issues[0]?.message,
+            path: ['name'],
+          });
+        }
+        return;
+      }
 
       if (!isCreationMode) return;
 

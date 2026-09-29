@@ -7,6 +7,11 @@ import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
 import { SOURCE_LOCALE } from 'twenty-shared/translations';
 
+import {
+  type CurrentWorkspace,
+  currentWorkspaceState,
+} from '@/auth/states/currentWorkspaceState';
+import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { SettingsDataModelFieldIconLabelForm } from '@/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm';
 import { settingsFieldFormSchema } from '@/settings/data-model/fields/forms/validation-schemas/settingsFieldFormSchema';
 import {
@@ -61,6 +66,97 @@ const renderNewFieldForm = () => {
           isCreationMode
           fieldType={FieldMetadataType.TEXT}
           existingFieldNames={EXISTING_FIELD_NAMES}
+        />
+      </FormProvider>
+    );
+  };
+
+  render(
+    <JotaiProvider store={jotaiStore}>
+      <I18nProvider i18n={i18n}>
+        <MemoryRouter>
+          <FieldForm />
+        </MemoryRouter>
+      </I18nProvider>
+    </JotaiProvider>,
+  );
+
+  const getForm = () => {
+    if (!formRef.current) {
+      throw new Error('Form is not rendered');
+    }
+    return formRef.current;
+  };
+
+  return { getForm };
+};
+
+const WORKSPACE_CUSTOM_APPLICATION_ID = 'workspace-custom-application-id';
+
+const OTHER_FIELD_NAMES = ['name', 'eventCode'];
+
+type ExistingFieldArgs = {
+  type?: FieldMetadataType;
+  label?: string;
+  name?: string;
+  isCustom?: boolean;
+  isSystem?: boolean;
+  isLabelSyncedWithName?: boolean;
+};
+
+const renderExistingFieldForm = ({
+  type = FieldMetadataType.TEXT,
+  label = 'همایش',
+  name = 'hmyshH',
+  isCustom = true,
+  isSystem = false,
+  isLabelSyncedWithName = true,
+}: ExistingFieldArgs = {}) => {
+  jotaiStore.set(currentWorkspaceState.atom, {
+    workspaceCustomApplication: { id: WORKSPACE_CUSTOM_APPLICATION_ID },
+  } as CurrentWorkspace);
+
+  const fieldMetadataItem = {
+    id: 'existing-field-id',
+    type,
+    label,
+    name,
+    icon: 'IconTypography',
+    isLabelSyncedWithName,
+    isSystem,
+    isUIEditable: !isSystem,
+    applicationId: isCustom
+      ? WORKSPACE_CUSTOM_APPLICATION_ID
+      : 'standard-application-id',
+  } as FieldMetadataItem;
+
+  const formRef: { current?: UseFormReturn<FormValues> } = {};
+
+  const FieldForm = () => {
+    const formConfig = useForm<FormValues>({
+      mode: 'onTouched',
+      resolver: zodResolver(
+        settingsFieldFormSchema({
+          initialName: name,
+          otherFieldNames: OTHER_FIELD_NAMES,
+        }),
+      ),
+      defaultValues: {
+        type,
+        icon: 'IconTypography',
+        label,
+        isLabelSyncedWithName,
+        settings: { displayedMaxRows: 0 },
+      },
+    });
+    formRef.current = formConfig;
+
+    return (
+      // oxlint-disable-next-line react/jsx-props-no-spreading
+      <FormProvider {...formConfig}>
+        <SettingsDataModelFieldIconLabelForm
+          fieldMetadataItem={fieldMetadataItem}
+          isCreationMode={false}
         />
       </FormProvider>
     );
@@ -167,7 +263,14 @@ describe('SettingsDataModelFieldIconLabelForm on field creation', () => {
         await typeInto(screen.getByPlaceholderText('eventCode'), technicalName);
 
         expect(await validateName(getForm)).toBe(false);
-        expect(screen.getByText(expectedMessage)).toBeInTheDocument();
+
+        const error = screen.getByText(expectedMessage);
+
+        expect(
+          screen
+            .getByPlaceholderText('eventCode')
+            .compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
       },
     );
 
@@ -205,6 +308,137 @@ describe('SettingsDataModelFieldIconLabelForm on field creation', () => {
       ).not.toBeInTheDocument();
       expect(getForm().getValues()).toMatchObject({
         label: 'Event title',
+        name: 'eventTitle',
+        isLabelSyncedWithName: true,
+      });
+    });
+  });
+});
+
+describe('SettingsDataModelFieldIconLabelForm on field edition', () => {
+  beforeEach(() => {
+    resetJotaiStore();
+  });
+
+  afterAll(() => {
+    activateLocale(SOURCE_LOCALE);
+  });
+
+  describe('with fa-IR locale', () => {
+    beforeEach(() => {
+      activateLocale('fa-IR');
+    });
+
+    it('shows the exact stored API name of a custom field as editable LTR input', () => {
+      renderExistingFieldForm();
+
+      const technicalNameInput = screen.getByLabelText('نام فنی (API)*');
+
+      expect(technicalNameInput).toHaveValue('hmyshH');
+      expect(technicalNameInput).toHaveAttribute('dir', 'ltr');
+      expect(technicalNameInput).toBeEnabled();
+    });
+
+    it('keeps the stored name valid without changes', async () => {
+      const { getForm } = renderExistingFieldForm();
+
+      expect(await validateName(getForm)).toBe(true);
+    });
+
+    it('stops label sync when the API name is edited', async () => {
+      const { getForm } = renderExistingFieldForm();
+
+      await typeInto(screen.getByLabelText('نام فنی (API)*'), 'academyTitle');
+
+      expect(await validateName(getForm)).toBe(true);
+      expect(getForm().getValues()).toMatchObject({
+        name: 'academyTitle',
+        isLabelSyncedWithName: false,
+      });
+    });
+
+    it.each([
+      ['', 'نام فنی الزامی است'],
+      ['1event', 'نام فنی باید با حرف انگلیسی آغاز شود'],
+      ['Event code', 'فقط حروف انگلیسی، عدد و قالب lowerCamelCase مجاز است'],
+      ['eventCode', 'این نام فنی قبلاً استفاده شده است'],
+    ])(
+      'shows a localized error for the edited API name %p',
+      async (technicalName, expectedMessage) => {
+        const { getForm } = renderExistingFieldForm();
+
+        await typeInto(screen.getByLabelText('نام فنی (API)*'), technicalName);
+
+        expect(await validateName(getForm)).toBe(false);
+        expect(screen.getByText(expectedMessage)).toBeInTheDocument();
+      },
+    );
+
+    it('does not transliterate a Persian label into the stored name', async () => {
+      const { getForm } = renderExistingFieldForm();
+
+      await typeInto(screen.getByDisplayValue('همایش'), 'همایش تازه');
+
+      expect(screen.getByLabelText('نام فنی (API)*')).toHaveValue('hmyshH');
+      expect(getForm().getFieldState('name').isDirty).toBe(false);
+      expect(getForm().getValues('isLabelSyncedWithName')).toBe(false);
+    });
+
+    it('shows the API name of a custom relation field as selectable read-only text', () => {
+      renderExistingFieldForm({
+        type: FieldMetadataType.RELATION,
+        name: 'academyEvent',
+      });
+
+      const technicalName = screen.getByLabelText('نام فنی (API)');
+
+      expect(technicalName).toHaveValue('academyEvent');
+      expect(technicalName).toHaveAttribute('readonly');
+      expect(technicalName).not.toBeDisabled();
+      expect(technicalName).toHaveAttribute('dir', 'ltr');
+    });
+
+    it('shows the API name of a default field of a custom object as read-only', async () => {
+      const { getForm } = renderExistingFieldForm({
+        type: FieldMetadataType.DATE_TIME,
+        label: 'Creation date',
+        name: 'createdAt',
+        isSystem: true,
+      });
+
+      const technicalName = screen.getByLabelText('نام فنی (API)');
+
+      expect(technicalName).toHaveValue('createdAt');
+      expect(technicalName).toHaveAttribute('readonly');
+
+      await typeInto(screen.getByDisplayValue('Creation date'), 'Created on');
+
+      expect(getForm().getFieldState('name').isDirty).toBe(false);
+      expect(getForm().getValues('name')).toBeUndefined();
+    });
+
+    it('keeps the API name of standard fields hidden', () => {
+      renderExistingFieldForm({ isCustom: false, name: 'createdAt' });
+
+      expect(screen.queryByDisplayValue('createdAt')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('with English locale', () => {
+    beforeEach(() => {
+      activateLocale(SOURCE_LOCALE);
+    });
+
+    it('keeps syncing the API name from a Latin label', async () => {
+      const { getForm } = renderExistingFieldForm({
+        label: 'Event',
+        name: 'event',
+      });
+
+      await typeInto(screen.getByDisplayValue('Event'), 'Event title');
+
+      expect(screen.getByLabelText('API Name*')).toHaveValue('eventTitle');
+      expect(getForm().getValues()).toMatchObject({
         name: 'eventTitle',
         isLabelSyncedWithName: true,
       });

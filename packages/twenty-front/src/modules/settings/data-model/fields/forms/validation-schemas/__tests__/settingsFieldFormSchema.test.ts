@@ -51,3 +51,31 @@ describe('settingsFieldFormSchema on creation', () => {
     ).toEqual(['String should be camel case']);
   });
 });
+
+const parseEditedTextField = (name: string | undefined) =>
+  settingsFieldFormSchema({
+    initialName: 'hmysh_legacy',
+    otherFieldNames: ['eventCode'],
+  }).safeParse({
+    type: FieldMetadataType.TEXT,
+    icon: 'IconTypography',
+    label: 'همایش',
+    name,
+    settings: { displayedMaxRows: 0 },
+  });
+
+describe('settingsFieldFormSchema on edition', () => {
+  it('accepts the stored name as is, even when it predates the rules', () => {
+    expect(parseEditedTextField('hmysh_legacy').success).toBe(true);
+    expect(parseEditedTextField(undefined).success).toBe(true);
+  });
+
+  it.each([
+    ['', 'Technical name is required'],
+    ['1event', 'Technical name must start with a Latin letter'],
+    ['eventCode', 'This technical name is already used by another field'],
+    ['appToken', 'This technical name is reserved, choose another one'],
+  ])('validates an edited name %p like on creation', (name, expected) => {
+    expect(getNameErrors(parseEditedTextField(name))).toEqual([expected]);
+  });
+});
