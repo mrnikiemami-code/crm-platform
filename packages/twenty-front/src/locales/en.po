@@ -2704,8 +2704,13 @@ msgstr "API Keys"
 
 #. js-lingui-id: kAtj+q
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
+msgid "API Name"
+msgstr "API Name"
+
+#. js-lingui-id: 0eSr8E
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+msgctxt "Field technical name"
 msgid "API Name"
 msgstr "API Name"
 
@@ -23920,6 +23925,11 @@ msgstr "Create Text Field"
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
 msgid "Technical name is required"
 msgstr "Technical name is required"
+
+#. js-lingui-id: KXWGQg
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Technical name must start with a Latin letter"
+msgstr "Technical name must start with a Latin letter"
 
 #. js-lingui-id: 3egNKr
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts

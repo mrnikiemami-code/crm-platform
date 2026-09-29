@@ -13,7 +13,7 @@ import { SettingsOptionCardContentSwitch } from '@/settings/components/SettingsO
 import { IDENTIFIER_MAX_CHAR_LENGTH } from 'twenty-shared/metadata';
 import { computeFieldTechnicalNameSuggestion } from '@/settings/data-model/fields/forms/utils/computeFieldTechnicalNameSuggestion';
 import { getErrorMessageFromError } from '@/settings/data-model/fields/forms/utils/errorMessages';
-import { hasNonLatinLetters } from '@/settings/data-model/utils/hasNonLatinLetters';
+import { shouldShowFieldTechnicalNameInput } from '@/settings/data-model/fields/forms/utils/shouldShowFieldTechnicalNameInput';
 import { IconPicker } from '@/ui/input/components/IconPicker';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
@@ -114,7 +114,7 @@ export const SettingsDataModelFieldIconLabelForm = ({
   const { theme } = useContext(ThemeContext);
   const label = watch('label');
 
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
 
   const getIsMetadataItemCustom = useGetIsMetadataItemCustom();
 
@@ -143,7 +143,14 @@ export const SettingsDataModelFieldIconLabelForm = ({
 
   const [isNameEditedManually, setIsNameEditedManually] = useState(false);
 
-  const requiresExplicitName = isCreationMode && hasNonLatinLetters(label);
+  const getRequiresExplicitName = (nextLabel: string | undefined) =>
+    shouldShowFieldTechnicalNameInput({
+      isCreationMode,
+      label: nextLabel,
+      locale: i18n.locale,
+    });
+
+  const requiresExplicitName = getRequiresExplicitName(label);
 
   const setLabelSyncedWithName = (nextIsLabelSyncedWithName: boolean) =>
     setValue('isLabelSyncedWithName', nextIsLabelSyncedWithName, {
@@ -151,7 +158,7 @@ export const SettingsDataModelFieldIconLabelForm = ({
     });
 
   const fillNameOnCreation = (nextLabel: string) => {
-    if (!hasNonLatinLetters(nextLabel)) {
+    if (!getRequiresExplicitName(nextLabel)) {
       setIsNameEditedManually(false);
       setLabelSyncedWithName(true);
       fillNameFromLabel(nextLabel);
@@ -241,8 +248,11 @@ export const SettingsDataModelFieldIconLabelForm = ({
             render={({ field: { onChange, value } }) => (
               <SettingsTextInput
                 instanceId={`${nameTextInputId}-explicit`}
-                label={t`API Name`}
-                placeholder="eventTitle"
+                label={t({
+                  message: 'API Name',
+                  context: 'Field technical name',
+                })}
+                placeholder="eventCode"
                 value={value ?? ''}
                 dir="ltr"
                 required

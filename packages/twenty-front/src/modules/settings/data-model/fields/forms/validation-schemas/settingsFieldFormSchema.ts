@@ -7,6 +7,7 @@ import { isDefined } from 'twenty-shared/utils';
 import { z } from 'zod';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { settingsDataModelFieldTypeFormSchema } from '~/pages/settings/data-model/new-field/SettingsObjectNewFieldSelect';
+import { camelCaseStringSchema } from '~/utils/validation-schemas/camelCaseStringSchema';
 
 type SettingsFieldFormSchemaOptions = {
   existingOtherLabels?: string[];
@@ -28,6 +29,9 @@ export const settingsFieldFormSchema = (
     .extend(
       settingsDataModelFieldIconLabelFormSchema(existingOtherLabels).shape,
     )
+    // On creation the name is validated below, so non-Latin labels get the
+    // technical name messages instead of the generic camel case one
+    .extend(isCreationMode ? { name: z.string().optional() } : {})
     .extend(settingsDataModelFieldDescriptionFormSchema().shape)
     .extend(settingsDataModelFieldTypeFormSchema.shape)
     .and(settingsDataModelFieldSettingsFormSchema)
@@ -52,11 +56,11 @@ export const settingsFieldFormSchema = (
     .superRefine((data, ctx) => {
       const { label, name } = data as { label?: string; name?: string };
 
-      if (!isCreationMode || !hasNonLatinLetters(label)) return;
+      if (!isCreationMode) return;
 
-      const technicalNameResult = fieldTechnicalNameSchema(
-        existingOtherLabels,
-      ).safeParse(name ?? '');
+      const technicalNameResult = hasNonLatinLetters(label)
+        ? fieldTechnicalNameSchema(existingOtherLabels).safeParse(name ?? '')
+        : camelCaseStringSchema.optional().safeParse(name);
 
       if (!technicalNameResult.success) {
         ctx.addIssue({

@@ -19,7 +19,16 @@ describe('fieldTechnicalNameSchema', () => {
     expect(getFirstErrorMessage('')).toBe('Technical name is required');
   });
 
-  it.each(['عنوان', 'EventTitle', 'event_title', 'event title', '2event'])(
+  it.each(['عنوان', '2event', '_event'])(
+    'should reject %s as not starting with a Latin letter',
+    (value) => {
+      expect(getFirstErrorMessage(value)).toBe(
+        'Technical name must start with a Latin letter',
+      );
+    },
+  );
+
+  it.each(['EventTitle', 'event_title', 'event title', 'eventعنوان'])(
     'should reject %s',
     (value) => {
       expect(getFirstErrorMessage(value)).toBe(

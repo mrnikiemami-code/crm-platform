@@ -2704,10 +2704,15 @@ msgstr "کلیدهای API"
 
 #. js-lingui-id: kAtj+q
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "نام API"
+
+#. js-lingui-id: 0eSr8E
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+msgctxt "Field technical name"
+msgid "API Name"
+msgstr "نام فنی (API)"
 
 #. js-lingui-id: lwCAhN
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
@@ -8065,7 +8070,7 @@ msgstr "کارمند"
 #. js-lingui-id: gqv5ZL
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 msgid "Employees"
-msgstr "کارمندان"
+msgstr "کد همایش"
 
 #. js-lingui-id: N2S1rs
 #: src/modules/activities/timeline-activities/rows/main-object/components/EventFieldDiff.tsx
@@ -20813,7 +20818,7 @@ msgstr "این فوراً {0} اعتبار را از این فضای کاری پ
 #. js-lingui-id: Weisjb
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 msgid "This technical name is already used by another field"
-msgstr "این نام فنی قبلاً برای فیلد دیگری استفاده شده است"
+msgstr "این نام فنی قبلاً استفاده شده است"
 
 #. js-lingui-id: MMGDfe
 #: src/modules/settings/admin-panel/config-variables/components/ConfigVariableHelpText.tsx
@@ -23876,6 +23881,11 @@ msgstr "ایجاد فیلد متنی"
 msgid "Technical name is required"
 msgstr "نام فنی الزامی است"
 
+#. js-lingui-id: KXWGQg
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Technical name must start with a Latin letter"
+msgstr "نام فنی باید با حرف انگلیسی آغاز شود"
+
 #. js-lingui-id: 3egNKr
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
 msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
@@ -23884,7 +23894,7 @@ msgstr "فقط از حروف لاتین و اعداد به‌صورت camelCase 
 #. js-lingui-id: MtdZ/n
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. eventTitle)"
-msgstr "فقط از حروف لاتین و اعداد به‌صورت camelCase استفاده کنید و با حرف کوچک شروع کنید (مثلاً eventTitle)"
+msgstr "فقط حروف انگلیسی، عدد و قالب lowerCamelCase مجاز است"
 
 #. js-lingui-id: 45Di2s
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts

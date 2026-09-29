@@ -2709,10 +2709,15 @@ msgstr "Chei API"
 
 #. js-lingui-id: kAtj+q
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 #: src/pages/settings/ai/components/SettingsSkillFormContent.tsx
 msgid "API Name"
 msgstr "Numele API"
+
+#. js-lingui-id: 0eSr8E
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
+msgctxt "Field technical name"
+msgid "API Name"
+msgstr ""
 
 #. js-lingui-id: lwCAhN
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
@@ -20147,6 +20152,11 @@ msgstr "Membru al echipei"
 #. js-lingui-id: Gjg8qZ
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 msgid "Technical name is required"
+msgstr ""
+
+#. js-lingui-id: KXWGQg
+#: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
+msgid "Technical name must start with a Latin letter"
 msgstr ""
 
 #. js-lingui-id: lKXcJz

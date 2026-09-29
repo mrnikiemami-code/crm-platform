@@ -17,6 +17,9 @@ export const fieldTechnicalNameSchema = (existingFieldNames: string[] = []) =>
     .max(IDENTIFIER_MAX_CHAR_LENGTH, {
       error: getInvalidFieldTechnicalNameMessage,
     })
+    .regex(/^[a-zA-Z]/, {
+      error: () => t`Technical name must start with a Latin letter`,
+    })
     .regex(/^[a-z][a-zA-Z0-9]*$/, {
       error: getInvalidFieldTechnicalNameMessage,
     })
