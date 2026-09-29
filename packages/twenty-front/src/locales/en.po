@@ -6244,11 +6244,6 @@ msgstr "Custom domain updated"
 msgid "Custom fields"
 msgstr "Custom fields"
 
-#. js-lingui-id: nBvIz1
-#: src/modules/settings/data-model/fields/forms/date/components/SettingsDataModelFieldDateForm.tsx
-msgid "Custom formats only apply to the Gregorian calendar. Persian calendar dates are shown in the default format."
-msgstr "Custom formats only apply to the Gregorian calendar. Persian calendar dates are shown in the default format."
-
 #. js-lingui-id: c6P+Xe
 #: src/pages/settings/ai/components/SettingsAiOverviewTab.tsx
 msgid "Custom instructions appended to every system prompt"

@@ -40,14 +40,6 @@ const StyledTextInputContainer = styled.div`
   padding: ${themeCssVariables.spacing[4]};
   padding-top: 0;
 `;
-
-const StyledCustomFormatNotice = styled.div`
-  color: ${themeCssVariables.font.color.tertiary};
-  font-size: ${themeCssVariables.font.size.sm};
-  line-height: 1.5;
-  padding-top: ${themeCssVariables.spacing[2]};
-`;
-
 export type SettingsDataModelFieldDateFormValues = z.infer<
   typeof settingsDataModelFieldDateFormSchema
 >;
@@ -77,19 +69,38 @@ export const SettingsDataModelFieldDateForm = ({
     ? displayFormatFromForm
     : initialDisplayFormat;
 
+  // Custom formats are gregorian date-fns tokens, which the persian calendar
+  // formatter ignores in favor of the default format. A custom format already
+  // stored on the field is kept as is and shown as the default it renders as.
+  const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const isCustomFormatSupported =
+    getCalendarSystemForLocale(localeCatalog?.code) !== 'persian';
+
   const showCustomFormatTextInput =
+    isCustomFormatSupported &&
     isDateFieldCustomDisplayFormat(activeDisplayFormat);
 
-  // Custom formats are gregorian date-fns tokens, which the persian calendar
-  // formatter ignores in favor of the default format.
-  const { localeCatalog } = useAtomStateValue(dateLocaleState);
-  const isCustomFormatIgnoredByCalendar =
-    getCalendarSystemForLocale(localeCatalog?.code) === 'persian';
+  const displayFormatOptions = Object.values(FieldDateDisplayFormat)
+    .filter(
+      (displayFormat) =>
+        isCustomFormatSupported ||
+        displayFormat !== FieldDateDisplayFormat.CUSTOM,
+    )
+    .map((displayFormat) => ({
+      label: getDisplayFormatLabel(displayFormat),
+      value: displayFormat,
+    }));
 
-  const displayFormatSelectDescription =
-    activeDisplayFormat === FieldDateDisplayFormat.CUSTOM
-      ? t`Enter in Unicode format`
-      : t`Choose the format used to display date value`;
+  const getSelectedDisplayFormat = (
+    displayFormat: FieldDateDisplayFormat | undefined,
+  ) =>
+    !isCustomFormatSupported && displayFormat === FieldDateDisplayFormat.CUSTOM
+      ? FieldDateDisplayFormat.USER_SETTINGS
+      : displayFormat;
+
+  const displayFormatSelectDescription = showCustomFormatTextInput
+    ? t`Enter in Unicode format`
+    : t`Choose the format used to display date value`;
 
   return (
     <>
@@ -109,14 +120,9 @@ export const SettingsDataModelFieldDateForm = ({
               selectSizeVariant="small"
               dropdownWidth={120}
               dropdownId="selectFieldDateDisplayFormat"
-              value={value}
+              value={getSelectedDisplayFormat(value)}
               onChange={onChange}
-              options={Object.keys(FieldDateDisplayFormat).map((key) => {
-                return {
-                  label: getDisplayFormatLabel(key as FieldDateDisplayFormat),
-                  value: key as FieldDateDisplayFormat,
-                };
-              })}
+              options={displayFormatOptions}
             />
           </SettingsOptionCardContentSelect>
         )}
@@ -143,11 +149,6 @@ export const SettingsDataModelFieldDateForm = ({
                 fullWidth
                 dir="ltr"
               />
-              {isCustomFormatIgnoredByCalendar && (
-                <StyledCustomFormatNotice>
-                  {t`Custom formats only apply to the Gregorian calendar. Persian calendar dates are shown in the default format.`}
-                </StyledCustomFormatNotice>
-              )}
             </StyledTextInputContainer>
           )}
         />
