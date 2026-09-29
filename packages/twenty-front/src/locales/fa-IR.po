@@ -23682,7 +23682,7 @@ msgstr "این نام فنی قبلاً برای موجودیت دیگری اس�
 #. js-lingui-id: gFlIct
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
 msgid "The labels contain non-Latin characters. Enter the technical name in Latin letters (e.g. academyEvent)."
-msgstr "برچسب‌ها شامل نویسه‌های غیرلاتین هستند. نام فنی را با حروف لاتین وارد کنید (مثلاً academyEvent)."
+msgstr "برای استفاده داخلی سیستم، یک نام فنی با حروف لاتین وارد کنید؛ برای مثال: academyEvent"
 
 #. js-lingui-id: lxrRNF
 #: src/modules/settings/data-model/fields/preview/utils/getLabelIdentifierPreviewPlaceholder.ts

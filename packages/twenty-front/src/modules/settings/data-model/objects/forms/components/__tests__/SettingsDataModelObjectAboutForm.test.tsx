@@ -164,7 +164,7 @@ describe('SettingsDataModelObjectAboutForm on object creation', () => {
       expect(getForm().getValues('namePlural') ?? '').toBe('');
       expect(
         screen.getByText(
-          'برچسب‌ها شامل نویسه‌های غیرلاتین هستند. نام فنی را با حروف لاتین وارد کنید (مثلاً academyEvent).',
+          'برای استفاده داخلی سیستم، یک نام فنی با حروف لاتین وارد کنید؛ برای مثال: academyEvent',
         ),
       ).toBeInTheDocument();
 
@@ -327,7 +327,7 @@ describe('SettingsDataModelObjectAboutForm on custom object edition', () => {
       expect(screen.getByPlaceholderText('listings')).toHaveValue('hmyshH');
       expect(
         screen.getByText(
-          'برچسب‌ها شامل نویسه‌های غیرلاتین هستند. نام فنی را با حروف لاتین وارد کنید (مثلاً academyEvent).',
+          'برای استفاده داخلی سیستم، یک نام فنی با حروف لاتین وارد کنید؛ برای مثال: academyEvent',
         ),
       ).toBeInTheDocument();
     });
