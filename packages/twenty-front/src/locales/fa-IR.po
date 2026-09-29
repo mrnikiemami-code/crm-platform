@@ -2486,6 +2486,11 @@ msgstr "الفبایی"
 msgid "Already in navbar"
 msgstr "از قبل در نوار ناوبری"
 
+#. js-lingui-id: evXcqr
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemSelectableItem.tsx
+msgid "Already in sidebar"
+msgstr "از قبل در نوار کناری است"
+
 #. js-lingui-id: u/DP73
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
 msgid "Alt text"
@@ -3026,6 +3031,11 @@ msgstr "صعودی"
 #: src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowFindRecordsSorts.tsx
 msgid "Ascending"
 msgstr "صعودی"
+
+#. js-lingui-id: 4mdmhg
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "Ask & find"
+msgstr "پرسش و جستجو"
 
 #. js-lingui-id: LfkDyR
 #: src/modules/ai/components/AiChatErrorRenderer.tsx
@@ -4073,6 +4083,11 @@ msgstr "تنها نما را نمی‌توان حذف کرد"
 msgid "Cannot impersonate selected user"
 msgstr "امکان ورود به‌جای کاربر انتخاب‌شده وجود ندارد"
 
+#. js-lingui-id: lbmcW3
+#: src/modules/navigation-menu-item/edit/hooks/useNavigationMenuItemAddOptions.tsx
+msgid "Cannot nest folders into folders"
+msgstr "نمی‌توان پوشه را داخل پوشه قرار داد"
+
 #. js-lingui-id: H1Ddy9
 #: src/modules/object-record/record-field/ui/meta-types/input/components/FilesFieldInput.tsx
 #: src/modules/object-record/record-field/ui/meta-types/input/hooks/useOpenFilesFieldInput.tsx
@@ -4152,6 +4167,11 @@ msgstr "تغییر گره"
 #: src/modules/workflow/workflow-steps/components/WorkflowStepFooter.tsx
 msgid "Change node type"
 msgstr "تغییر نوع گره"
+
+#. js-lingui-id: VYPUgO
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemObjectColorEditor.tsx
+msgid "Change object color"
+msgstr "تغییر رنگ موجودیت"
 
 #. js-lingui-id: GptGxg
 #: src/modules/settings/accounts/components/SettingsAccountsPasswordController.tsx
@@ -4351,6 +4371,11 @@ msgstr "انتخاب بین کوتاه و کامل"
 msgid "Choose folders to sync"
 msgstr "انتخاب پوشه‌ها برای همگام‌سازی"
 
+#. js-lingui-id: SJ1Aum
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemInlineEditor.tsx
+msgid "Choose icon and color"
+msgstr "انتخاب نماد و رنگ"
+
 #. js-lingui-id: 5EMoSo
 #: src/modules/settings/billing/components/internal/SettingsBillingPlansWithoutSubscription.tsx
 msgid "Choose plan"
@@ -4521,6 +4546,11 @@ msgstr "برای اعمال تغییرات روی علامت تأیید کلیک
 msgid "Click to add your first widget"
 msgstr "برای افزودن اولین ویجت کلیک کنید"
 
+#. js-lingui-id: cwMTjO
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemTypeTooltip.tsx
+msgid "Click to edit"
+msgstr "برای ویرایش کلیک کنید"
+
 #. js-lingui-id: d0rtA5
 #: src/modules/page-layout/widgets/graph/components/GraphWidgetTooltip.tsx
 msgid "Click to see data"
@@ -4593,10 +4623,21 @@ msgstr "بستن"
 msgid "Close banner"
 msgstr "بستن بنر"
 
+#. js-lingui-id: aYX0za
+#: src/modules/keyboard-shortcut-menu/components/KeyboardShortcutMenuDialog.tsx
+msgid "Close keyboard shortcuts"
+msgstr "بستن میانبرهای صفحه‌کلید"
+
 #. js-lingui-id: vcpc5o
 #: src/modules/blocknote-editor/components/BlockEditor.tsx
 msgid "Close menu"
 msgstr "بستن منو"
+
+#. js-lingui-id: fJGhA7
+#: src/modules/activities/files/components/AttachmentList.tsx
+#: src/modules/ui/field/display/components/GlobalFilePreviewModal.tsx
+msgid "Close preview"
+msgstr "بستن پیش‌نمایش"
 
 #. js-lingui-id: saip/v
 #: src/modules/side-panel/components/SidePanelCloseButton.tsx
@@ -5619,6 +5660,11 @@ msgstr "کپی در کلیپ‌بورد ممکن نشد"
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstalledWorkspaces.tsx
 msgid "Couldn't load installed workspaces"
 msgstr "فضاهای کاری نصب‌شده بارگذاری نشد"
+
+#. js-lingui-id: zaNpE4
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemAddDropdownContent.tsx
+msgid "Couldn't load pages"
+msgstr "بارگذاری صفحه‌ها ممکن نشد"
 
 #. js-lingui-id: kjbTwZ
 #: src/modules/navigation-menu-item/edit/hooks/useNavigationMenuItemEditController.ts
@@ -7480,6 +7526,11 @@ msgstr "دانلود"
 msgid "Download {filename}"
 msgstr "دانلود {filename}"
 
+#. js-lingui-id: ueLv9s
+#: src/modules/activities/files/components/AttachmentList.tsx
+msgid "Download attachment"
+msgstr "دانلود پیوست"
+
 #. js-lingui-id: WcWS//
 #: src/modules/settings/security/components/sso/SettingsSsoSamlForm.tsx
 msgid "Download file"
@@ -7740,6 +7791,13 @@ msgstr "ویرایش ساختار داده و فیلدها"
 msgid "Edit each side"
 msgstr "ویرایش هر طرف"
 
+#. js-lingui-id: QjNcml
+#: src/modules/object-record/record-inline-cell/components/RecordInlineCellEditButton.tsx
+#: src/modules/object-record/record-table/record-table-cell/components/RecordTableCellEditButton.tsx
+#: src/modules/page-layout/widgets/field/components/FieldWidgetEditAction.tsx
+msgid "Edit field"
+msgstr "ویرایش فیلد"
+
 #. js-lingui-id: 9QCQIc
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownHiddenRecordGroupsContent.tsx
 msgid "Edit field values"
@@ -7781,6 +7839,11 @@ msgstr "ویرایش محدودیت"
 #: src/modules/navigation-menu-item/edit/side-panel/hooks/useAddLinkToNavigationMenu.ts
 msgid "Edit link"
 msgstr "ویرایش پیوند"
+
+#. js-lingui-id: PWLkwC
+#: src/modules/navigation-menu-item/display/sections/workspace/components/WorkspaceSection.tsx
+msgid "Edit navigation"
+msgstr "ویرایش ناوبری"
 
 #. js-lingui-id: IaSCqp
 #: src/modules/settings/roles/role-permissions/permission-flags/hooks/useActionRolePermissionFlagConfig.ts
@@ -7824,6 +7887,11 @@ msgstr "ویرایش رکوردها در همه موجودیت‌ها"
 #: src/modules/page-layout/widgets/field/components/FieldWidgetRelationEditAction.tsx
 msgid "Edit relation"
 msgstr "ویرایش رابطه"
+
+#. js-lingui-id: xE9ptR
+#: src/modules/page-layout/components/PageLayoutTabMenuItemSelectAvatar.tsx
+msgid "Edit tab icon"
+msgstr "ویرایش نماد برگه"
 
 #. js-lingui-id: /VLYQj
 #: src/modules/settings/translations/components/SettingsTranslationsButton.tsx
@@ -8202,6 +8270,61 @@ msgstr "الزام تأیید دو مرحله‌ای برای هر ورود کا
 #: src/localization/hooks/useLocaleOptions.ts
 msgid "English"
 msgstr "انگلیسی"
+
+#. js-lingui-id: DXBlEM
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemLinkEditor.tsx
+msgid "Enter a valid URL"
+msgstr "یک URL معتبر وارد کنید"
+
+#. js-lingui-id: bH7fqD
+#: src/modules/object-record/record-field-list/record-detail-section/relation/components/RecordDetailRelationRecordsListItem.tsx
+msgid "Expand relation"
+msgstr "باز کردن ارتباط"
+
+#. js-lingui-id: LmLruJ
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "Go to"
+msgstr "رفتن به"
+
+#. js-lingui-id: K+AYNB
+#: src/modules/page-layout/widgets/fields/components/FieldsConfigurationFieldEditor.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableFieldsDropdownVisibleFieldsContent.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableSettingsFieldVisibility.tsx
+#: src/modules/views/components/ViewFieldsSearchDropdownSection.tsx
+#: src/modules/views/components/ViewFieldsVisibleDropdownSection.tsx
+msgid "Hide field"
+msgstr "پنهان کردن فیلد"
+
+#. js-lingui-id: hFJP7z
+#: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemRowActions.tsx
+msgid "Menu item actions"
+msgstr "اقدامات مورد منو"
+
+#. js-lingui-id: cfSo6A
+#: src/modules/object-record/record-field-list/record-detail-section/duplicate/components/RecordDetailDuplicatesSection.tsx
+msgid "Merge duplicates"
+msgstr "ادغام تکراری‌ها"
+
+#. js-lingui-id: KPWxKD
+#: src/modules/page-layout/widgets/email-thread/components/EmailThreadWidget.tsx
+msgid "No messages to show"
+msgstr "پیامی برای نمایش وجود ندارد"
+
+#. js-lingui-id: JXsce6
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "No Speech Detected"
+msgstr "گفتاری شناسایی نشد"
+
+#. js-lingui-id: dOnou/
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "No speech was detected in this recording."
+msgstr "در این ضبط گفتاری شناسایی نشد."
+
+#. js-lingui-id: du4Icj
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "No transcript is available for this recording."
+msgstr "رونوشتی برای این ضبط در دسترس نیست."
 
 #. js-lingui-id: faIRPe
 #: src/localization/hooks/useLocaleOptions.ts
@@ -16028,6 +16151,11 @@ msgstr "تصویر"
 msgid "Pie Chart"
 msgstr "نمودار دایره‌ای"
 
+#. js-lingui-id: qVkGWK
+#: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+msgid "Pin"
+msgstr "سنجاق کردن"
+
 #. js-lingui-id: 6U8nJN
 #: src/modules/ai/components/AiModelPicker.tsx
 msgid "Pin a specific model"
@@ -16255,6 +16383,11 @@ msgstr "پیشوند"
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "Preparing Transcript"
 msgstr "در حال آماده‌سازی رونوشت"
+
+#. js-lingui-id: FA0aDS
+#: src/modules/command-menu-item/utils/getCommandMenuItemProgressLabel.ts
+msgid "Preparing…"
+msgstr "در حال آماده‌سازی…"
 
 #. js-lingui-id: NwnQoz
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
@@ -17099,6 +17232,13 @@ msgstr "حذف فیلد"
 msgid "Remove filter"
 msgstr "حذف فیلتر"
 
+#. js-lingui-id: T/pF0Z
+#: src/modules/navigation-menu-item/display/folder/components/NavigationMenuItemFolderContent.tsx
+#: src/modules/navigation-menu-item/display/folder/components/NavigationMenuItemFolderDnd.tsx
+#: src/modules/navigation-menu-item/display/sections/favorites/components/FavoritesSection.tsx
+msgid "Remove from favorites"
+msgstr "حذف از علاقه‌مندی‌ها"
+
 #. js-lingui-id: 9VZ6f0
 #: src/modules/navigation-menu-item/edit/side-panel/components/SidePanelEditOrganizeActions.tsx
 msgid "Remove from sidebar"
@@ -17177,6 +17317,11 @@ msgstr "این ارائه‌دهنده را حذف کنید و همه‌ی مد�
 #: src/modules/object-record/record-field/ui/form-types/components/VariableChip.tsx
 msgid "Remove variable"
 msgstr "حذف متغیر"
+
+#. js-lingui-id: Rkg5R1
+#: src/modules/page-layout/widgets/widget-card/components/WidgetCardHeader.tsx
+msgid "Remove widget"
+msgstr "حذف ویجت"
 
 #. js-lingui-id: 2wxgft
 #: src/modules/activities/files/components/AttachmentDropdown.tsx
@@ -17609,6 +17754,11 @@ msgstr "انتقال به دوره بعد"
 #: src/localization/hooks/useLocaleOptions.ts
 msgid "Romanian"
 msgstr "رومانیایی"
+
+#. js-lingui-id: cepC1f
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemActions.tsx
+msgid "Root level"
+msgstr "سطح ریشه"
 
 #. js-lingui-id: vQrTaX
 #: src/pages/settings/applications/tabs/SettingsApplicationRegistrationOAuthTab.tsx
@@ -18407,6 +18557,12 @@ msgstr "مدل شناخته‌شده انتخاب کنید یا مدل سفار�
 msgid "Select a known provider or create a custom one"
 msgstr "ارائه‌دهنده شناخته‌شده انتخاب کنید یا ارائه‌دهنده سفارشی بسازید"
 
+#. js-lingui-id: KQtk7u
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemInsertionPreview.tsx
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemInsertionPreview.tsx
+msgid "Select a menu item"
+msgstr "یک مورد منو انتخاب کنید"
+
 #. js-lingui-id: dtAvBz
 #: src/modules/navigation-menu-item/edit/side-panel/components/SidePanelNavigationMenuItemEditPage.tsx
 msgid "Select a navigation item to edit"
@@ -18596,6 +18752,11 @@ msgstr "زبان و اندازه رابط کاربری را تنظیم کنید.
 #: src/modules/settings/components/__stories__/SettingsRadioCards.stories.tsx
 msgid "Selected folders"
 msgstr "پوشه‌های انتخاب‌شده"
+
+#. js-lingui-id: p7/fS2
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "Selection"
+msgstr "انتخاب‌شده‌ها"
 
 #. js-lingui-id: JlFcis
 #: src/modules/page-layout/widgets/email-thread/components/EmailThreadComposer.tsx
@@ -18982,6 +19143,15 @@ msgstr "نمایش همه"
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstalledWorkspaces.tsx
 msgid "Show all"
 msgstr "نمایش همه"
+
+#. js-lingui-id: tAUYYP
+#: src/modules/page-layout/widgets/fields/components/FieldsConfigurationFieldEditor.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableFieldsDropdownHiddenFieldsContent.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableSettingsFieldVisibility.tsx
+#: src/modules/views/components/ViewFieldsHiddenDropdownSection.tsx
+#: src/modules/views/components/ViewFieldsSearchDropdownSection.tsx
+msgid "Show field"
+msgstr "نمایش فیلد"
 
 #. js-lingui-id: JObkI8
 #. placeholder {0}: groupValue ?? ''
@@ -20314,6 +20484,11 @@ msgstr "آیکونی که trigger گردش‌کار شما در منوی دست�
 msgid "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
 msgstr "برای استفاده داخلی سیستم، یک نام فنی با حروف لاتین وارد کنید؛ برای مثال: academyEvent"
 
+#. js-lingui-id: JNopdb
+#: src/modules/page-layout/widgets/email-thread/components/EmailThreadWidget.tsx
+msgid "The messages in this thread are missing or incomplete."
+msgstr "پیام‌های این رشته موجود نیستند یا ناقص‌اند."
+
 #. js-lingui-id: 4m3QoL
 #: src/modules/settings/admin-panel/ai/components/SettingsAdminAI.tsx
 msgid "The model behind each mode for every workspace. Workspaces can pin their own."
@@ -20411,6 +20586,11 @@ msgstr "ایمیل مشترکی که می‌خواهید استفاده کنید
 msgid "The transcript could not be generated."
 msgstr "رونوشت تولید نشد."
 
+#. js-lingui-id: DLD5Rt
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "The transcript expired before it could be imported."
+msgstr "رونوشت پیش از وارد شدن منقضی شد."
+
 #. js-lingui-id: Qdm4D5
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "The transcript is being prepared…"
@@ -20453,6 +20633,7 @@ msgid "Theme"
 msgstr "تم"
 
 #. js-lingui-id: Wn862P
+#: src/modules/command-menu/components/CommandMenuItem.tsx
 #: src/modules/keyboard-shortcut-menu/components/KeyboardShortcutMenuItem.tsx
 msgid "then"
 msgstr "سپس"
@@ -20730,6 +20911,11 @@ msgstr "این ماه"
 #: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
 msgid "This name is already used."
 msgstr "این نام قبلاً استفاده شده است."
+
+#. js-lingui-id: um21gF
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "This object"
+msgstr "این موجودیت"
 
 #. js-lingui-id: ThVMIW
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -21194,10 +21380,20 @@ msgstr "رونوشت"
 msgid "Transcript copied to clipboard"
 msgstr "رونوشت در کلیپ‌بورد کپی شد"
 
+#. js-lingui-id: WDwcvt
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "Transcript Expired"
+msgstr "رونوشت منقضی شد"
+
 #. js-lingui-id: U2CSqa
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "Transcript Failed"
 msgstr "رونوشت ناموفق"
+
+#. js-lingui-id: w6D8fb
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "Transcript Unavailable"
+msgstr "رونوشت در دسترس نیست"
 
 #. js-lingui-id: zPGNJm
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
@@ -21700,6 +21896,11 @@ msgstr "فایل نامشخص"
 msgid "Unknown object"
 msgstr "موجودیت نامشخص"
 
+#. js-lingui-id: lZSo+Q
+#: src/modules/activities/emails/components/EmailThreadMessageSender.tsx
+msgid "Unknown sender"
+msgstr "فرستنده نامشخص"
+
 #. js-lingui-id: 0Wy3/1
 #: src/modules/page-layout/widgets/call-recording-transcript/components/CallRecordingTranscriptEntryListItem.tsx
 #: src/modules/page-layout/widgets/call-recording-transcript/utils/buildCallRecordingTranscriptPlainText.ts
@@ -21782,6 +21983,11 @@ msgstr "فهرست نامرتب با گلوله"
 #: src/modules/settings/billing/components/SettingsBillingSubscriptionInfo.tsx
 msgid "Unpaid"
 msgstr "پرداخت‌نشده"
+
+#. js-lingui-id: nWMRxa
+#: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+msgid "Unpin"
+msgstr "برداشتن سنجاق"
 
 #. js-lingui-id: SYfHmN
 #: src/modules/side-panel/pages/page-layout/utils/getTabSettingsPlacementItems.ts
@@ -23289,6 +23495,11 @@ msgstr "اجرای گردش‌کار"
 #: src/modules/settings/admin-panel/constants/SettingsAdminFeatureFlagMetadata.ts
 msgid "Workflow index page"
 msgstr "صفحه فهرست گردش‌کار"
+
+#. js-lingui-id: 1p/qH4
+#: src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStepContent.tsx
+msgid "Workflow step results"
+msgstr "نتایج مرحله گردش‌کار"
 
 #. js-lingui-id: QHAMlE
 #: src/modules/object-core/workflows/versions/hooks/useOpenCoreWorkflowVersionsSidePanel.ts

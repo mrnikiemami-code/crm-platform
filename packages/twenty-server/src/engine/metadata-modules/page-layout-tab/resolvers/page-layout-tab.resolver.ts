@@ -29,6 +29,7 @@ import { UpdatePageLayoutTabInput } from 'src/engine/metadata-modules/page-layou
 import { PageLayoutTabDTO } from 'src/engine/metadata-modules/page-layout-tab/dtos/page-layout-tab.dto';
 import { PageLayoutTabService } from 'src/engine/metadata-modules/page-layout-tab/services/page-layout-tab.service';
 import { resolveEffectiveEntityProperty } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
+import { computePageLayoutPropertyI18nContext } from 'src/engine/metadata-modules/page-layout/utils/compute-page-layout-property-i18n-context.util';
 import { PageLayoutGraphqlApiExceptionFilter } from 'src/engine/metadata-modules/page-layout/utils/page-layout-graphql-api-exception.filter';
 import { WorkspaceMigrationGraphqlApiExceptionInterceptor } from 'src/engine/workspace-manager/workspace-migration/interceptors/workspace-migration-graphql-api-exception.interceptor';
 import { ApplicationTranslationCatalogService } from 'src/engine/metadata-modules/application-translation-catalog/services/application-translation-catalog.service';
@@ -66,7 +67,13 @@ export class PageLayoutTabResolver {
       baseValue: tab.title,
       overrides: tab.overrides,
       property: 'title',
-      i18nContext,
+      i18nContext: computePageLayoutPropertyI18nContext({
+        metadataName: 'pageLayoutTab',
+        isSystemSideEffect: tab.isSystemSideEffect,
+        property: 'title',
+        baseValue: tab.title,
+        i18nContext,
+      }),
     });
   }
 

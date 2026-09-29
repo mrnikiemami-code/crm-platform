@@ -6,7 +6,6 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { UserInputError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import { ApplicationTranslationCatalogService } from 'src/engine/metadata-modules/application-translation-catalog/services/application-translation-catalog.service';
-import { computeFieldMetadataPropertyI18nContext } from 'src/engine/metadata-modules/field-metadata/utils/compute-field-metadata-property-i18n-context.util';
 import { ALL_TRANSLATABLE_PROPERTIES_BY_METADATA_NAME } from 'src/engine/metadata-modules/flat-entity/constant/all-translatable-properties-by-metadata-name.constant';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
@@ -21,6 +20,7 @@ import {
   readOverrideTranslation,
   resolveEffectiveEntityPropertyByName,
 } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
+import { computeMetadataEntityPropertyI18nContext } from 'src/engine/metadata-modules/overrides/utils/compute-metadata-entity-property-i18n-context.util';
 import { readAuthoredOverrideProperty } from 'src/engine/metadata-modules/overrides/utils/read-authored-override-property.util';
 
 type TranslatableFlatEntity = FlatObjectMetadata | FlatFieldMetadata;
@@ -129,15 +129,13 @@ export class MetadataTranslationService {
           baseValue: sourceValue,
           overrides,
           property,
-          i18nContext:
-            metadataName === 'fieldMetadata'
-              ? computeFieldMetadataPropertyI18nContext({
-                  fieldName: readStringProperty(entity, 'name'),
-                  property,
-                  baseValue: sourceValue,
-                  i18nContext: getI18nContext(applicationId),
-                })
-              : getI18nContext(applicationId),
+          i18nContext: computeMetadataEntityPropertyI18nContext({
+            metadataName,
+            entity: entity as Record<string, unknown>,
+            property,
+            baseValue: sourceValue,
+            i18nContext: getI18nContext(applicationId),
+          }),
         });
 
         translations.push({

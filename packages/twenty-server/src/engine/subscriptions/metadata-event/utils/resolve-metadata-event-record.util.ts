@@ -2,9 +2,9 @@ import { isNonEmptyString } from '@sniptt/guards';
 import { TRANSLATABLE_PROPERTIES_BY_METADATA_NAME } from 'twenty-shared/i18n';
 import { type AllMetadataName } from 'twenty-shared/metadata';
 
-import { computeFieldMetadataPropertyI18nContext } from 'src/engine/metadata-modules/field-metadata/utils/compute-field-metadata-property-i18n-context.util';
 import { ALL_OVERRIDABLE_PROPERTIES_BY_METADATA_NAME } from 'src/engine/metadata-modules/overrides/constants/all-overridable-properties-by-metadata-name.constant';
 import { type EffectiveEntityI18nContext } from 'src/engine/metadata-modules/overrides/types/effective-entity-i18n-context.type';
+import { computeMetadataEntityPropertyI18nContext } from 'src/engine/metadata-modules/overrides/utils/compute-metadata-entity-property-i18n-context.util';
 import { resolveEffectiveEntityPropertyByName } from 'src/engine/metadata-modules/overrides/utils/resolve-effective-entity-property.util';
 import { readAuthoredOverrideProperty } from 'src/engine/metadata-modules/overrides/utils/read-authored-override-property.util';
 import { isTranslatableMetadataName } from 'src/engine/subscriptions/metadata-event/utils/is-translatable-metadata-name.util';
@@ -66,15 +66,13 @@ export const resolveMetadataEventRecord = ({
       baseValue: baseRecord[property],
       overrides,
       property,
-      i18nContext:
-        metadataName === 'fieldMetadata'
-          ? computeFieldMetadataPropertyI18nContext({
-              fieldName: baseRecord.name,
-              property,
-              baseValue: baseRecord[property],
-              i18nContext,
-            })
-          : i18nContext,
+      i18nContext: computeMetadataEntityPropertyI18nContext({
+        metadataName,
+        entity: baseRecord,
+        property,
+        baseValue: baseRecord[property],
+        i18nContext,
+      }),
     });
 
     if (isNonEmptyString(effectiveValue)) {

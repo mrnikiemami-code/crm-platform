@@ -2486,6 +2486,11 @@ msgstr ""
 msgid "Already in navbar"
 msgstr ""
 
+#. js-lingui-id: evXcqr
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemSelectableItem.tsx
+msgid "Already in sidebar"
+msgstr ""
+
 #. js-lingui-id: u/DP73
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
 msgid "Alt text"
@@ -3025,6 +3030,11 @@ msgstr ""
 #: src/modules/views/editable-chip/components/EditableSortChip.tsx
 #: src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowFindRecordsSorts.tsx
 msgid "Ascending"
+msgstr ""
+
+#. js-lingui-id: 4mdmhg
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "Ask & find"
 msgstr ""
 
 #. js-lingui-id: LfkDyR
@@ -4073,6 +4083,11 @@ msgstr ""
 msgid "Cannot impersonate selected user"
 msgstr ""
 
+#. js-lingui-id: lbmcW3
+#: src/modules/navigation-menu-item/edit/hooks/useNavigationMenuItemAddOptions.tsx
+msgid "Cannot nest folders into folders"
+msgstr ""
+
 #. js-lingui-id: H1Ddy9
 #: src/modules/object-record/record-field/ui/meta-types/input/components/FilesFieldInput.tsx
 #: src/modules/object-record/record-field/ui/meta-types/input/hooks/useOpenFilesFieldInput.tsx
@@ -4151,6 +4166,11 @@ msgstr ""
 #. js-lingui-id: Vf6hT6
 #: src/modules/workflow/workflow-steps/components/WorkflowStepFooter.tsx
 msgid "Change node type"
+msgstr ""
+
+#. js-lingui-id: VYPUgO
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemObjectColorEditor.tsx
+msgid "Change object color"
 msgstr ""
 
 #. js-lingui-id: GptGxg
@@ -4351,6 +4371,11 @@ msgstr ""
 msgid "Choose folders to sync"
 msgstr ""
 
+#. js-lingui-id: SJ1Aum
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemInlineEditor.tsx
+msgid "Choose icon and color"
+msgstr ""
+
 #. js-lingui-id: 5EMoSo
 #: src/modules/settings/billing/components/internal/SettingsBillingPlansWithoutSubscription.tsx
 msgid "Choose plan"
@@ -4521,6 +4546,11 @@ msgstr ""
 msgid "Click to add your first widget"
 msgstr ""
 
+#. js-lingui-id: cwMTjO
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemTypeTooltip.tsx
+msgid "Click to edit"
+msgstr ""
+
 #. js-lingui-id: d0rtA5
 #: src/modules/page-layout/widgets/graph/components/GraphWidgetTooltip.tsx
 msgid "Click to see data"
@@ -4593,9 +4623,20 @@ msgstr ""
 msgid "Close banner"
 msgstr ""
 
+#. js-lingui-id: aYX0za
+#: src/modules/keyboard-shortcut-menu/components/KeyboardShortcutMenuDialog.tsx
+msgid "Close keyboard shortcuts"
+msgstr ""
+
 #. js-lingui-id: vcpc5o
 #: src/modules/blocknote-editor/components/BlockEditor.tsx
 msgid "Close menu"
+msgstr ""
+
+#. js-lingui-id: fJGhA7
+#: src/modules/activities/files/components/AttachmentList.tsx
+#: src/modules/ui/field/display/components/GlobalFilePreviewModal.tsx
+msgid "Close preview"
 msgstr ""
 
 #. js-lingui-id: saip/v
@@ -5618,6 +5659,11 @@ msgstr ""
 #. js-lingui-id: TU+LOV
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstalledWorkspaces.tsx
 msgid "Couldn't load installed workspaces"
+msgstr ""
+
+#. js-lingui-id: zaNpE4
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemAddDropdownContent.tsx
+msgid "Couldn't load pages"
 msgstr ""
 
 #. js-lingui-id: kjbTwZ
@@ -7480,6 +7526,11 @@ msgstr ""
 msgid "Download {filename}"
 msgstr ""
 
+#. js-lingui-id: ueLv9s
+#: src/modules/activities/files/components/AttachmentList.tsx
+msgid "Download attachment"
+msgstr ""
+
 #. js-lingui-id: WcWS//
 #: src/modules/settings/security/components/sso/SettingsSsoSamlForm.tsx
 msgid "Download file"
@@ -7740,6 +7791,13 @@ msgstr ""
 msgid "Edit each side"
 msgstr ""
 
+#. js-lingui-id: QjNcml
+#: src/modules/object-record/record-inline-cell/components/RecordInlineCellEditButton.tsx
+#: src/modules/object-record/record-table/record-table-cell/components/RecordTableCellEditButton.tsx
+#: src/modules/page-layout/widgets/field/components/FieldWidgetEditAction.tsx
+msgid "Edit field"
+msgstr ""
+
 #. js-lingui-id: 9QCQIc
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownHiddenRecordGroupsContent.tsx
 msgid "Edit field values"
@@ -7780,6 +7838,11 @@ msgstr ""
 #: src/modules/navigation-menu-item/display/sections/workspace/components/WorkspaceSection.tsx
 #: src/modules/navigation-menu-item/edit/side-panel/hooks/useAddLinkToNavigationMenu.ts
 msgid "Edit link"
+msgstr ""
+
+#. js-lingui-id: PWLkwC
+#: src/modules/navigation-menu-item/display/sections/workspace/components/WorkspaceSection.tsx
+msgid "Edit navigation"
 msgstr ""
 
 #. js-lingui-id: IaSCqp
@@ -7823,6 +7886,11 @@ msgstr ""
 #. js-lingui-id: 4QhQge
 #: src/modules/page-layout/widgets/field/components/FieldWidgetRelationEditAction.tsx
 msgid "Edit relation"
+msgstr ""
+
+#. js-lingui-id: xE9ptR
+#: src/modules/page-layout/components/PageLayoutTabMenuItemSelectAvatar.tsx
+msgid "Edit tab icon"
 msgstr ""
 
 #. js-lingui-id: /VLYQj
@@ -8243,6 +8311,11 @@ msgstr ""
 #. js-lingui-id: 93ebCf
 #: src/modules/object-record/record-field/ui/form-types/components/FormUuidFieldInput.tsx
 msgid "Enter a UUID"
+msgstr ""
+
+#. js-lingui-id: DXBlEM
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemLinkEditor.tsx
+msgid "Enter a valid URL"
 msgstr ""
 
 #. js-lingui-id: oiVP/+
@@ -8860,6 +8933,11 @@ msgstr ""
 #: src/modules/side-panel/pages/rich-text-page/hooks/useExpandRichTextSidePanelPage.ts
 #: src/modules/side-panel/routing/hooks/useExpandRecordSidePanelPage.ts
 msgid "Expand record"
+msgstr ""
+
+#. js-lingui-id: bH7fqD
+#: src/modules/object-record/record-field-list/record-detail-section/relation/components/RecordDetailRelationRecordsListItem.tsx
+msgid "Expand relation"
 msgstr ""
 
 #. js-lingui-id: tugdy6
@@ -10191,6 +10269,11 @@ msgstr ""
 msgid "Go back"
 msgstr ""
 
+#. js-lingui-id: LmLruJ
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "Go to"
+msgstr ""
+
 #. js-lingui-id: y0SPQU
 #: src/modules/settings/billing/hooks/useWaitForPaymentRecovery.tsx
 #: src/modules/settings/billing/hooks/useWaitForPaymentRecovery.tsx
@@ -10559,6 +10642,15 @@ msgstr ""
 #: src/modules/side-panel/pages/page-layout/components/dashboard/SidePanelDashboardRecordTableSettings.tsx
 #: src/modules/side-panel/pages/page-layout/components/record-table-settings/WidgetViewLayoutSettingsRows.tsx
 msgid "Hide empty groups"
+msgstr ""
+
+#. js-lingui-id: K+AYNB
+#: src/modules/page-layout/widgets/fields/components/FieldsConfigurationFieldEditor.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableFieldsDropdownVisibleFieldsContent.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableSettingsFieldVisibility.tsx
+#: src/modules/views/components/ViewFieldsSearchDropdownSection.tsx
+#: src/modules/views/components/ViewFieldsVisibleDropdownSection.tsx
+msgid "Hide field"
 msgstr ""
 
 #. js-lingui-id: CbeJV4
@@ -12956,9 +13048,20 @@ msgstr ""
 msgid "Members & invitees"
 msgstr ""
 
+#. js-lingui-id: hFJP7z
+#: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemRowActions.tsx
+msgid "Menu item actions"
+msgstr ""
+
 #. js-lingui-id: UODtG8
 #: src/modules/object-record/record-merge/components/MergeRecordsFooter.tsx
 msgid "Merge"
+msgstr ""
+
+#. js-lingui-id: cfSo6A
+#: src/modules/object-record/record-field-list/record-detail-section/duplicate/components/RecordDetailDuplicatesSection.tsx
+msgid "Merge duplicates"
 msgstr ""
 
 #. js-lingui-id: d2c8f+
@@ -14315,6 +14418,11 @@ msgstr ""
 msgid "No messages found."
 msgstr ""
 
+#. js-lingui-id: KPWxKD
+#: src/modules/page-layout/widgets/email-thread/components/EmailThreadWidget.tsx
+msgid "No messages to show"
+msgstr ""
+
 #. js-lingui-id: 0NudpV
 #: src/modules/settings/admin-panel/health-status/components/SettingsAdminWorkerMetricsGraph.tsx
 msgid "No metrics data available"
@@ -14515,6 +14623,16 @@ msgstr ""
 msgid "No server administrators found."
 msgstr ""
 
+#. js-lingui-id: JXsce6
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "No Speech Detected"
+msgstr ""
+
+#. js-lingui-id: dOnou/
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "No speech was detected in this recording."
+msgstr ""
+
 #. js-lingui-id: eeoVfm
 #: src/modules/activities/emails/components/CampaignSentEnvelope.tsx
 #: src/modules/side-panel/pages/send-campaign/components/SendCampaignForm.tsx
@@ -14554,6 +14672,11 @@ msgstr ""
 #. js-lingui-id: g+1H2/
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "No transcript is available for this call recording yet."
+msgstr ""
+
+#. js-lingui-id: du4Icj
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "No transcript is available for this recording."
 msgstr ""
 
 #. js-lingui-id: ZCTuAQ
@@ -16023,6 +16146,11 @@ msgstr ""
 msgid "Pie Chart"
 msgstr ""
 
+#. js-lingui-id: qVkGWK
+#: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+msgid "Pin"
+msgstr ""
+
 #. js-lingui-id: 6U8nJN
 #: src/modules/ai/components/AiModelPicker.tsx
 msgid "Pin a specific model"
@@ -16249,6 +16377,11 @@ msgstr ""
 #. js-lingui-id: dVCM1s
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "Preparing Transcript"
+msgstr ""
+
+#. js-lingui-id: FA0aDS
+#: src/modules/command-menu-item/utils/getCommandMenuItemProgressLabel.ts
+msgid "Preparing…"
 msgstr ""
 
 #. js-lingui-id: NwnQoz
@@ -17094,6 +17227,13 @@ msgstr ""
 msgid "Remove filter"
 msgstr ""
 
+#. js-lingui-id: T/pF0Z
+#: src/modules/navigation-menu-item/display/folder/components/NavigationMenuItemFolderContent.tsx
+#: src/modules/navigation-menu-item/display/folder/components/NavigationMenuItemFolderDnd.tsx
+#: src/modules/navigation-menu-item/display/sections/favorites/components/FavoritesSection.tsx
+msgid "Remove from favorites"
+msgstr ""
+
 #. js-lingui-id: 9VZ6f0
 #: src/modules/navigation-menu-item/edit/side-panel/components/SidePanelEditOrganizeActions.tsx
 msgid "Remove from sidebar"
@@ -17171,6 +17311,11 @@ msgstr ""
 #: src/modules/advanced-text-editor/extensions/variable-tag/VariableChip.tsx
 #: src/modules/object-record/record-field/ui/form-types/components/VariableChip.tsx
 msgid "Remove variable"
+msgstr ""
+
+#. js-lingui-id: Rkg5R1
+#: src/modules/page-layout/widgets/widget-card/components/WidgetCardHeader.tsx
+msgid "Remove widget"
 msgstr ""
 
 #. js-lingui-id: 2wxgft
@@ -17603,6 +17748,11 @@ msgstr ""
 #. js-lingui-id: uJc01W
 #: src/localization/hooks/useLocaleOptions.ts
 msgid "Romanian"
+msgstr ""
+
+#. js-lingui-id: cepC1f
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemActions.tsx
+msgid "Root level"
 msgstr ""
 
 #. js-lingui-id: vQrTaX
@@ -18402,6 +18552,12 @@ msgstr ""
 msgid "Select a known provider or create a custom one"
 msgstr ""
 
+#. js-lingui-id: KQtk7u
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemInsertionPreview.tsx
+#: src/modules/navigation-menu-item/edit/components/NavigationMenuItemInsertionPreview.tsx
+msgid "Select a menu item"
+msgstr ""
+
 #. js-lingui-id: dtAvBz
 #: src/modules/navigation-menu-item/edit/side-panel/components/SidePanelNavigationMenuItemEditPage.tsx
 msgid "Select a navigation item to edit"
@@ -18590,6 +18746,11 @@ msgstr ""
 #. js-lingui-id: AM0pWl
 #: src/modules/settings/components/__stories__/SettingsRadioCards.stories.tsx
 msgid "Selected folders"
+msgstr ""
+
+#. js-lingui-id: p7/fS2
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "Selection"
 msgstr ""
 
 #. js-lingui-id: JlFcis
@@ -18976,6 +19137,15 @@ msgstr ""
 #. js-lingui-id: lZw9AX
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstalledWorkspaces.tsx
 msgid "Show all"
+msgstr ""
+
+#. js-lingui-id: tAUYYP
+#: src/modules/page-layout/widgets/fields/components/FieldsConfigurationFieldEditor.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableFieldsDropdownHiddenFieldsContent.tsx
+#: src/modules/side-panel/pages/page-layout/components/record-table-settings/RecordTableSettingsFieldVisibility.tsx
+#: src/modules/views/components/ViewFieldsHiddenDropdownSection.tsx
+#: src/modules/views/components/ViewFieldsSearchDropdownSection.tsx
+msgid "Show field"
 msgstr ""
 
 #. js-lingui-id: JObkI8
@@ -20319,6 +20489,11 @@ msgstr ""
 msgid "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
 msgstr ""
 
+#. js-lingui-id: JNopdb
+#: src/modules/page-layout/widgets/email-thread/components/EmailThreadWidget.tsx
+msgid "The messages in this thread are missing or incomplete."
+msgstr ""
+
 #. js-lingui-id: 4m3QoL
 #: src/modules/settings/admin-panel/ai/components/SettingsAdminAI.tsx
 msgid "The model behind each mode for every workspace. Workspaces can pin their own."
@@ -20416,6 +20591,11 @@ msgstr ""
 msgid "The transcript could not be generated."
 msgstr ""
 
+#. js-lingui-id: DLD5Rt
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "The transcript expired before it could be imported."
+msgstr ""
+
 #. js-lingui-id: Qdm4D5
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "The transcript is being prepared…"
@@ -20458,6 +20638,7 @@ msgid "Theme"
 msgstr ""
 
 #. js-lingui-id: Wn862P
+#: src/modules/command-menu/components/CommandMenuItem.tsx
 #: src/modules/keyboard-shortcut-menu/components/KeyboardShortcutMenuItem.tsx
 msgid "then"
 msgstr ""
@@ -20734,6 +20915,11 @@ msgstr ""
 #. js-lingui-id: AwFolB
 #: src/modules/settings/data-model/fields/forms/utils/errorMessages.ts
 msgid "This name is already used."
+msgstr ""
+
+#. js-lingui-id: um21gF
+#: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
+msgid "This object"
 msgstr ""
 
 #. js-lingui-id: ThVMIW
@@ -21204,9 +21390,19 @@ msgstr ""
 msgid "Transcript copied to clipboard"
 msgstr ""
 
+#. js-lingui-id: WDwcvt
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "Transcript Expired"
+msgstr ""
+
 #. js-lingui-id: U2CSqa
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
 msgid "Transcript Failed"
+msgstr ""
+
+#. js-lingui-id: w6D8fb
+#: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
+msgid "Transcript Unavailable"
 msgstr ""
 
 #. js-lingui-id: zPGNJm
@@ -21710,6 +21906,11 @@ msgstr ""
 msgid "Unknown object"
 msgstr ""
 
+#. js-lingui-id: lZSo+Q
+#: src/modules/activities/emails/components/EmailThreadMessageSender.tsx
+msgid "Unknown sender"
+msgstr ""
+
 #. js-lingui-id: 0Wy3/1
 #: src/modules/page-layout/widgets/call-recording-transcript/components/CallRecordingTranscriptEntryListItem.tsx
 #: src/modules/page-layout/widgets/call-recording-transcript/utils/buildCallRecordingTranscriptPlainText.ts
@@ -21791,6 +21992,11 @@ msgstr ""
 #. js-lingui-id: 7yiFvZ
 #: src/modules/settings/billing/components/SettingsBillingSubscriptionInfo.tsx
 msgid "Unpaid"
+msgstr ""
+
+#. js-lingui-id: nWMRxa
+#: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+msgid "Unpin"
 msgstr ""
 
 #. js-lingui-id: SYfHmN
@@ -23305,6 +23511,11 @@ msgstr ""
 msgid "Workflow index page"
 msgstr ""
 
+#. js-lingui-id: 1p/qH4
+#: src/modules/side-panel/pages/workflow/step/view-run/components/SidePanelWorkflowRunViewStepContent.tsx
+msgid "Workflow step results"
+msgstr ""
+
 #. js-lingui-id: QHAMlE
 #: src/modules/object-core/workflows/versions/hooks/useOpenCoreWorkflowVersionsSidePanel.ts
 msgid "Workflow versions"
@@ -23604,6 +23815,11 @@ msgstr ""
 #: src/modules/ai/utils/groupThreadsByDate.ts
 #: src/modules/localization/utils/formatDateISOStringToRelativeDate.ts
 msgid "Yesterday"
+msgstr ""
+
+#. js-lingui-id: kWJmRL
+#: src/modules/activities/timeline-activities/utils/getTimelineActivityAuthorFullName.ts
+msgid "You"
 msgstr ""
 
 #. js-lingui-id: lWUeEt

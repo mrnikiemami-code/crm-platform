@@ -17,6 +17,7 @@ import { resolveEffectiveEntityProperty } from 'src/engine/metadata-modules/over
 import { type CreateCommandMenuItemInput } from 'src/engine/metadata-modules/command-menu-item/dtos/create-command-menu-item.input';
 import { type UpdateCommandMenuItemInput } from 'src/engine/metadata-modules/command-menu-item/dtos/update-command-menu-item.input';
 import { EngineComponentKey } from 'src/engine/metadata-modules/command-menu-item/enums/engine-component-key.enum';
+import { computeCommandMenuItemPropertyI18nContext } from 'src/engine/metadata-modules/command-menu-item/utils/compute-command-menu-item-property-i18n-context.util';
 import { interpolateNavigationCommandMenuItemField } from 'src/engine/metadata-modules/command-menu-item/utils/interpolate-navigation-command-menu-item-field.util';
 import { type FlatCommandMenuItem } from 'src/engine/metadata-modules/flat-command-menu-item/types/flat-command-menu-item.type';
 import { fromCreateCommandMenuItemInputToFlatCommandMenuItemToCreate } from 'src/engine/metadata-modules/flat-command-menu-item/utils/from-create-command-menu-item-input-to-flat-command-menu-item-to-create.util';
@@ -490,7 +491,12 @@ export class CommandMenuItemService {
       baseValue: commandMenuItem[fieldName],
       overrides: commandMenuItem.overrides,
       property: fieldName,
-      i18nContext,
+      i18nContext: computeCommandMenuItemPropertyI18nContext({
+        engineComponentKey: commandMenuItem.engineComponentKey,
+        property: fieldName,
+        baseValue: commandMenuItem[fieldName],
+        i18nContext,
+      }),
     });
 
     // shortLabel and icon are nullable columns, and resolveEffectiveEntityProperty

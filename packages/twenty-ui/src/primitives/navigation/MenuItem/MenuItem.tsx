@@ -51,6 +51,7 @@ export type MenuItemProps = {
   focused?: boolean;
   selected?: boolean;
   hotKeys?: Nullable<string[]>;
+  hotKeysJoinLabel?: string;
   isSubMenuOpened?: boolean;
 };
 
@@ -78,6 +79,7 @@ export const MenuItem = ({
   focused = false,
   selected = false,
   hotKeys,
+  hotKeysJoinLabel,
   isSubMenuOpened = false,
 }: MenuItemProps) => {
   const theme = useTheme();
@@ -119,7 +121,9 @@ export const MenuItem = ({
             {iconButtons}
           </StyledMenuItemRightContent>
         )}
-        {hotKeys && <MenuItemHotKeys hotKeys={hotKeys} />}
+        {hotKeys && (
+          <MenuItemHotKeys hotKeys={hotKeys} joinLabel={hotKeysJoinLabel} />
+        )}
         {RightIcon && (
           <RightIcon size={theme.icon.size.md} stroke={theme.icon.stroke.sm} />
         )}
