@@ -1,6 +1,7 @@
 import { Controller, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 
+import { getCalendarSystemForLocale } from '@/localization/utils/getCalendarSystemForLocale';
 import { validateCustomDateFormat } from '@/localization/utils/validateCustomDateFormat';
 import { FieldDateDisplayFormat } from '@/object-record/record-field/ui/types/FieldMetadata';
 import { isDateFieldCustomDisplayFormat } from '@/object-record/record-field/ui/types/guards/isDateFIeldCustomDisplayFormat';
@@ -10,11 +11,13 @@ import { useDateSettingsFormInitialValues } from '@/settings/data-model/fields/f
 import { getDisplayFormatLabel } from '@/settings/data-model/fields/forms/date/utils/getDisplayFormatLabel';
 import { Select } from '@/ui/input/components/Select';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
 import { IconSlash } from 'twenty-ui/icon';
 import { AnimatedExpandableContainer } from 'twenty-ui/primitives/layout';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
 
 const fieldDateSettings = z.discriminatedUnion('displayFormat', [
   z.object({
@@ -36,6 +39,13 @@ export const settingsDataModelFieldDateFormSchema = z.object({
 const StyledTextInputContainer = styled.div`
   padding: ${themeCssVariables.spacing[4]};
   padding-top: 0;
+`;
+
+const StyledCustomFormatNotice = styled.div`
+  color: ${themeCssVariables.font.color.tertiary};
+  font-size: ${themeCssVariables.font.size.sm};
+  line-height: 1.5;
+  padding-top: ${themeCssVariables.spacing[2]};
 `;
 
 export type SettingsDataModelFieldDateFormValues = z.infer<
@@ -69,6 +79,12 @@ export const SettingsDataModelFieldDateForm = ({
 
   const showCustomFormatTextInput =
     isDateFieldCustomDisplayFormat(activeDisplayFormat);
+
+  // Custom formats are gregorian date-fns tokens, which the persian calendar
+  // formatter ignores in favor of the default format.
+  const { localeCatalog } = useAtomStateValue(dateLocaleState);
+  const isCustomFormatIgnoredByCalendar =
+    getCalendarSystemForLocale(localeCatalog?.code) === 'persian';
 
   const displayFormatSelectDescription =
     activeDisplayFormat === FieldDateDisplayFormat.CUSTOM
@@ -125,7 +141,13 @@ export const SettingsDataModelFieldDateForm = ({
                 onChange={(value) => onChange(value)}
                 disabled={false}
                 fullWidth
+                dir="ltr"
               />
+              {isCustomFormatIgnoredByCalendar && (
+                <StyledCustomFormatNotice>
+                  {t`Custom formats only apply to the Gregorian calendar. Persian calendar dates are shown in the default format.`}
+                </StyledCustomFormatNotice>
+              )}
             </StyledTextInputContainer>
           )}
         />
