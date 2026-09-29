@@ -6312,7 +6312,12 @@ msgstr "Customise the fields available in the {objectLabelSingular} views and th
 
 #. js-lingui-id: qqLY+j
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
+msgid "Customization"
+msgstr "Customization"
+
+#. js-lingui-id: ln/Kl9
 #: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
+msgctxt "Field settings section"
 msgid "Customization"
 msgstr "Customization"
 
@@ -6668,13 +6673,18 @@ msgstr "Deactivate this field"
 #: src/modules/object-core/workflows/constants/CoreWorkflowStatusFilterOptions.ts
 #: src/modules/object-core/workflows/versions/constants/CoreWorkflowVersionStatusTagProps.ts
 #: src/modules/settings/billing/components/SettingsBillingLimitsTable.tsx
-#: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
 #: src/modules/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx
 #: src/pages/settings/ai/components/SettingsAgentSkillsTab.tsx
 #: src/pages/settings/data-model/SettingsObjectTable.tsx
 #: src/pages/settings/profile/SettingsProfile.tsx
+msgid "Deactivated"
+msgstr "Deactivated"
+
+#. js-lingui-id: DsAFe3
+#: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
+msgctxt "Text wrap"
 msgid "Deactivated"
 msgstr "Deactivated"
 
@@ -21653,9 +21663,13 @@ msgstr "Uninstalling..."
 
 #. js-lingui-id: wSXm5S
 #: src/modules/object-record/record-board/record-board-column/utils/getAggregateOperationShortLabel.ts
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
 #: src/pages/settings/data-model/SettingsObjectIndexTable.tsx
+msgid "Unique"
+msgstr "Unique"
+
+#. js-lingui-id: 9rg/RJ
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
+msgctxt "Field setting"
 msgid "Unique"
 msgstr "Unique"
 

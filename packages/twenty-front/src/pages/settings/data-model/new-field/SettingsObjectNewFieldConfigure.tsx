@@ -255,7 +255,10 @@ export const SettingsObjectNewFieldConfigure = () => {
           </Section.Root>
           <Section.Root>
             <Section.Header
-              title={t`Customization`}
+              title={t({
+                message: 'Customization',
+                context: 'Field settings section',
+              })}
               description={t`Customize field settings`}
             />
             <SettingsDataModelFieldSettingsFormCard

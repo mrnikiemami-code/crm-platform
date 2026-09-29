@@ -50,6 +50,8 @@ export const SettingsDataModelFieldIsUniqueForm = ({
     return null;
   }
 
+  const uniqueLabel = t({ message: 'Unique', context: 'Field setting' });
+
   return (
     <Controller
       name="isUnique"
@@ -62,11 +64,11 @@ export const SettingsDataModelFieldIsUniqueForm = ({
           <>
             <SettingsOptionCardContentSelect
               Icon={IconKey}
-              title={t`Unique`}
+              title={uniqueLabel}
               description={t`Prevent from assigning the same value to different records`}
             >
               <Switch
-                aria-label={t`Unique`}
+                aria-label={uniqueLabel}
                 size="sm"
                 checked={isUnique}
                 onCheckedChange={(value) => onChange(value)}

@@ -911,7 +911,7 @@ msgstr "2 ستون"
 #. js-lingui-id: 0HAF12
 #: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
 msgid "2. Configure field"
-msgstr "2. پیکربندی فیلد"
+msgstr "2. تنظیمات فیلد"
 
 #. js-lingui-id: 0Tx9MD
 #: src/modules/settings/roles/role-permissions/object-level-permissions/object-form/components/SettingsRolePermissionsObjectLevelObjectForm.tsx
@@ -6312,9 +6312,14 @@ msgstr "فیلدهای موجود در نماهای {objectLabelSingular} و ت�
 
 #. js-lingui-id: qqLY+j
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
-#: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
 msgid "Customization"
 msgstr "سفارشی‌سازی"
+
+#. js-lingui-id: ln/Kl9
+#: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
+msgctxt "Field settings section"
+msgid "Customization"
+msgstr "تنظیمات بیشتر"
 
 #. js-lingui-id: srRMnJ
 #: src/modules/navigation-menu-item/edit/side-panel/components/SidePanelEditLinkItemView.tsx
@@ -6328,7 +6333,7 @@ msgstr "سفارشی‌سازی"
 #. js-lingui-id: wiqA3D
 #: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
 msgid "Customize field settings"
-msgstr "سفارشی‌سازی تنظیمات فیلد"
+msgstr "تنظیمات بیشتر برای این فیلد"
 
 #. js-lingui-id: RP2we8
 #: src/modules/object-record/record-table/record-table-header/components/RecordTableHeaderPlusButtonContent.tsx
@@ -6668,7 +6673,6 @@ msgstr "غیرفعال‌سازی این فیلد"
 #: src/modules/object-core/workflows/constants/CoreWorkflowStatusFilterOptions.ts
 #: src/modules/object-core/workflows/versions/constants/CoreWorkflowVersionStatusTagProps.ts
 #: src/modules/settings/billing/components/SettingsBillingLimitsTable.tsx
-#: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
 #: src/modules/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx
@@ -6677,6 +6681,12 @@ msgstr "غیرفعال‌سازی این فیلد"
 #: src/pages/settings/profile/SettingsProfile.tsx
 msgid "Deactivated"
 msgstr "غیرفعال"
+
+#. js-lingui-id: DsAFe3
+#: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
+msgctxt "Text wrap"
+msgid "Deactivated"
+msgstr "تک‌خطی"
 
 #. js-lingui-id: Iotuxe
 #: src/modules/ai/components/RoutingDebugDisplay.tsx
@@ -7320,7 +7330,7 @@ msgstr "نام نمایشی مدل"
 #. js-lingui-id: GoHpxA
 #: src/modules/settings/data-model/fields/forms/components/text/SettingsDataModelFieldTextForm.tsx
 msgid "Display text on multiple lines"
-msgstr "نمایش متن در چند خط"
+msgstr "نمایش متن به‌صورت چند‌خطی"
 
 #. js-lingui-id: ljWYXA
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationGeneralSwitches.tsx
@@ -10785,7 +10795,7 @@ msgstr "آیکون"
 #: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
 msgid "Icon and Name"
-msgstr "آیکون و نام"
+msgstr "نام و آیکون"
 
 #. js-lingui-id: S0kLOH
 #: src/modules/settings/admin-panel/components/SettingsAdminWorkspaceContent.tsx
@@ -16257,7 +16267,7 @@ msgstr "لینک از پیش‌تنظیم"
 #. js-lingui-id: ut1ZY+
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
 msgid "Prevent from assigning the same value to different records"
-msgstr "جلوگیری از اختصاص همان مقدار به رکوردهای مختلف"
+msgstr "این مقدار نمی‌تواند در چند رکورد تکرار شود"
 
 #. js-lingui-id: rdUucN
 #: src/modules/settings/data-model/components/SettingsDataModelPreviewFormCard.tsx
@@ -20326,7 +20336,7 @@ msgstr "حالت‌هایی که افراد و عامل‌ها بین آن‌ه�
 #: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
 msgid "The name and icon of this field"
-msgstr "نام و آیکون این فیلد"
+msgstr "نام و آیکون فیلد"
 
 #. js-lingui-id: e/dfFe
 #: src/modules/settings/security/components/sso/SettingsSsoIdentitiesProvidersForm.tsx
@@ -21603,11 +21613,15 @@ msgstr "در حال حذف نصب…"
 
 #. js-lingui-id: wSXm5S
 #: src/modules/object-record/record-board/record-board-column/utils/getAggregateOperationShortLabel.ts
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
 #: src/pages/settings/data-model/SettingsObjectIndexTable.tsx
 msgid "Unique"
 msgstr "یکتا"
+
+#. js-lingui-id: 9rg/RJ
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
+msgctxt "Field setting"
+msgid "Unique"
+msgstr "مقدار یکتا"
 
 #. js-lingui-id: +WHV0k
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpsertRecord.tsx
@@ -23465,7 +23479,7 @@ msgstr "آیا مرتب‌سازی گروه {recordIndexRecordGroupSort} حذف 
 #. js-lingui-id: 5iSD9O
 #: src/modules/settings/data-model/fields/forms/components/text/SettingsDataModelFieldTextForm.tsx
 msgid "Wrap on record pages"
-msgstr "در صفحات رکورد بپیچد"
+msgstr "نمایش در صفحه رکورد"
 
 #. js-lingui-id: Q9pNST
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldDescriptionForm.tsx

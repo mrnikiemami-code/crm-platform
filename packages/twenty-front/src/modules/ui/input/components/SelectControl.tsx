@@ -74,7 +74,7 @@ export const StyledControlContainer = styled.div<{
   max-width: 100%;
   padding: ${({ $variant }) =>
     $variant === 'transparent' ? '0' : `0 ${themeCssVariables.spacing[2]}`};
-  text-align: left;
+  text-align: start;
 `;
 
 const StyledLeadingContent = styled.div`

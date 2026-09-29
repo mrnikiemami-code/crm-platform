@@ -2,7 +2,7 @@ import { msg } from '@lingui/core/macro';
 
 export const TEXT_DATA_MODEL_SELECT_OPTIONS = [
   {
-    label: msg`Deactivated`,
+    label: msg({ message: 'Deactivated', context: 'Text wrap' }),
     value: 0,
   },
   {

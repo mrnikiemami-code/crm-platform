@@ -6317,9 +6317,14 @@ msgstr "خصِّص الحقول المتاحة في طرق عرض {objectLabelSi
 
 #. js-lingui-id: qqLY+j
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
-#: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
 msgid "Customization"
 msgstr "تخصيص"
+
+#. js-lingui-id: ln/Kl9
+#: src/pages/settings/data-model/new-field/SettingsObjectNewFieldConfigure.tsx
+msgctxt "Field settings section"
+msgid "Customization"
+msgstr ""
 
 #. js-lingui-id: srRMnJ
 #: src/modules/navigation-menu-item/edit/side-panel/components/SidePanelEditLinkItemView.tsx
@@ -6673,7 +6678,6 @@ msgstr "إلغاء تنشيط هذا الحقل"
 #: src/modules/object-core/workflows/constants/CoreWorkflowStatusFilterOptions.ts
 #: src/modules/object-core/workflows/versions/constants/CoreWorkflowVersionStatusTagProps.ts
 #: src/modules/settings/billing/components/SettingsBillingLimitsTable.tsx
-#: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
 #: src/modules/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx
@@ -6682,6 +6686,12 @@ msgstr "إلغاء تنشيط هذا الحقل"
 #: src/pages/settings/profile/SettingsProfile.tsx
 msgid "Deactivated"
 msgstr "معطل"
+
+#. js-lingui-id: DsAFe3
+#: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
+msgctxt "Text wrap"
+msgid "Deactivated"
+msgstr ""
 
 #. js-lingui-id: Iotuxe
 #: src/modules/ai/components/RoutingDebugDisplay.tsx
@@ -21666,11 +21676,15 @@ msgstr "جارٍ إلغاء التثبيت..."
 
 #. js-lingui-id: wSXm5S
 #: src/modules/object-record/record-board/record-board-column/utils/getAggregateOperationShortLabel.ts
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
-#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
 #: src/pages/settings/data-model/SettingsObjectIndexTable.tsx
 msgid "Unique"
 msgstr "فريد"
+
+#. js-lingui-id: 9rg/RJ
+#: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIsUniqueForm.tsx
+msgctxt "Field setting"
+msgid "Unique"
+msgstr ""
 
 #. js-lingui-id: +WHV0k
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionUpsertRecord.tsx
