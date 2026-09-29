@@ -52,14 +52,14 @@ describe('TextInput', () => {
         <TextInput
           dir="ltr"
           value="1event"
-          error="نام فنی باید با حرف انگلیسی آغاز شود"
+          error="نام فنی باید با یک حرف انگلیسی آغاز شود."
         />
       </div>,
     );
 
     const input = screen.getByRole('textbox');
     const errorHelper = screen
-      .getByText('نام فنی باید با حرف انگلیسی آغاز شود')
+      .getByText('نام فنی باید با یک حرف انگلیسی آغاز شود.')
       .closest('[aria-live]');
 
     expect(input).toHaveAttribute('dir', 'ltr');

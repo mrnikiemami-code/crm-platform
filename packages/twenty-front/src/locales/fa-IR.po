@@ -20810,7 +20810,7 @@ msgstr "این فوراً {0} اعتبار را از این فضای کاری پ
 #. js-lingui-id: Weisjb
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 msgid "This technical name is already used by another field"
-msgstr "این نام فنی قبلاً استفاده شده است"
+msgstr "این نام فنی قبلاً استفاده شده است."
 
 #. js-lingui-id: MMGDfe
 #: src/modules/settings/admin-panel/config-variables/components/ConfigVariableHelpText.tsx
@@ -23871,12 +23871,12 @@ msgstr "ایجاد فیلد متنی"
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
 msgid "Technical name is required"
-msgstr "نام فنی الزامی است"
+msgstr "نام فنی الزامی است."
 
 #. js-lingui-id: KXWGQg
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 msgid "Technical name must start with a Latin letter"
-msgstr "نام فنی باید با حرف انگلیسی آغاز شود"
+msgstr "نام فنی باید با یک حرف انگلیسی آغاز شود."
 
 #. js-lingui-id: 3egNKr
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
@@ -23886,13 +23886,13 @@ msgstr "فقط از حروف لاتین و اعداد به‌صورت camelCase 
 #. js-lingui-id: MtdZ/n
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. eventTitle)"
-msgstr "فقط حروف انگلیسی، عدد و قالب lowerCamelCase مجاز است"
+msgstr "نام فنی فقط می‌تواند شامل حروف انگلیسی و عدد باشد و باید با قالب lowerCamelCase نوشته شود."
 
 #. js-lingui-id: 45Di2s
 #: src/modules/settings/data-model/fields/forms/validation-schemas/fieldTechnicalNameSchema.ts
 #: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
 msgid "This technical name is reserved, choose another one"
-msgstr "این نام فنی رزرو شده است؛ نام دیگری انتخاب کنید"
+msgstr "این نام فنی قابل استفاده نیست. نام دیگری انتخاب کنید."
 
 #. js-lingui-id: WhjWB+
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx

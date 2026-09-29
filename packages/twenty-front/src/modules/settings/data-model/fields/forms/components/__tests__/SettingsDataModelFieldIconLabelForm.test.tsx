@@ -37,6 +37,17 @@ type FormValues = {
 
 const EXISTING_FIELD_NAMES = ['name', 'eventCode'];
 
+const PERSIAN_TECHNICAL_NAME_ERRORS: [string, string][] = [
+  ['', 'نام فنی الزامی است.'],
+  ['1event', 'نام فنی باید با یک حرف انگلیسی آغاز شود.'],
+  [
+    'Event code',
+    'نام فنی فقط می\u200cتواند شامل حروف انگلیسی و عدد باشد و باید با قالب lowerCamelCase نوشته شود.',
+  ],
+  ['eventCode', 'این نام فنی قبلاً استفاده شده است.'],
+  ['appToken', 'این نام فنی قابل استفاده نیست. نام دیگری انتخاب کنید.'],
+];
+
 const renderNewFieldForm = () => {
   const formRef: { current?: UseFormReturn<FormValues> } = {};
 
@@ -249,12 +260,7 @@ describe('SettingsDataModelFieldIconLabelForm on field creation', () => {
       });
     });
 
-    it.each([
-      ['', 'نام فنی الزامی است'],
-      ['1event', 'نام فنی باید با حرف انگلیسی آغاز شود'],
-      ['Event code', 'فقط حروف انگلیسی، عدد و قالب lowerCamelCase مجاز است'],
-      ['eventCode', 'این نام فنی قبلاً استفاده شده است'],
-    ])(
+    it.each([...PERSIAN_TECHNICAL_NAME_ERRORS])(
       'shows a localized error for the technical name %p',
       async (technicalName, expectedMessage) => {
         const { getForm } = renderNewFieldForm();
@@ -357,12 +363,7 @@ describe('SettingsDataModelFieldIconLabelForm on field edition', () => {
       });
     });
 
-    it.each([
-      ['', 'نام فنی الزامی است'],
-      ['1event', 'نام فنی باید با حرف انگلیسی آغاز شود'],
-      ['Event code', 'فقط حروف انگلیسی، عدد و قالب lowerCamelCase مجاز است'],
-      ['eventCode', 'این نام فنی قبلاً استفاده شده است'],
-    ])(
+    it.each([...PERSIAN_TECHNICAL_NAME_ERRORS])(
       'shows a localized error for the edited API name %p',
       async (technicalName, expectedMessage) => {
         const { getForm } = renderExistingFieldForm();

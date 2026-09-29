@@ -174,7 +174,7 @@ describe('SettingsDataModelObjectAboutForm on object creation', () => {
       });
 
       expect(isValid).toBe(false);
-      expect(screen.getAllByText('نام فنی الزامی است')).toHaveLength(2);
+      expect(screen.getAllByText('نام فنی الزامی است.')).toHaveLength(2);
     });
 
     it('creates metadata names from an explicit technical name and keeps Persian labels', async () => {
