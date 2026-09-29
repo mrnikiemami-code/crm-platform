@@ -1,4 +1,7 @@
 import { useLabelIdentifierFieldMetadataItem } from '@/object-metadata/hooks/useLabelIdentifierFieldMetadataItem';
+import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { getLabelIdentifierPreviewPlaceholder } from '@/settings/data-model/fields/preview/utils/getLabelIdentifierPreviewPlaceholder';
+import { i18n } from '@lingui/core';
 import { CoreObjectNameSingular } from 'twenty-shared/types';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { isFieldValueEmpty } from '@/object-record/record-field/ui/utils/isFieldValueEmpty';
@@ -15,6 +18,7 @@ export const usePreviewRecord = ({
   objectNameSingular,
   skip: skipFromProps,
 }: UsePreviewRecordParams): ObjectRecord | null => {
+  const { objectMetadataItem } = useObjectMetadataItem({ objectNameSingular });
   const { labelIdentifierFieldMetadataItem } =
     useLabelIdentifierFieldMetadataItem({
       objectNameSingular,
@@ -53,6 +57,11 @@ export const usePreviewRecord = ({
     fieldType: labelIdentifierFieldMetadataItem.type,
     fieldSettings: labelIdentifierFieldMetadataItem.settings,
     defaultValue: labelIdentifierFieldMetadataItem.defaultValue,
+    placeholderValue: getLabelIdentifierPreviewPlaceholder({
+      fieldType: labelIdentifierFieldMetadataItem.type,
+      objectLabelSingular: objectMetadataItem.labelSingular,
+      locale: i18n.locale,
+    }),
   });
 
   const placeholderRecord = {

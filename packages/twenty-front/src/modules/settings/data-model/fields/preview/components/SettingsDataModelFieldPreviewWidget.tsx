@@ -13,7 +13,8 @@ type SettingsDataModelFieldPreviewWidgetProps = {
   fieldMetadataItem: Pick<
     FieldMetadataItem,
     'icon' | 'label' | 'type' | 'defaultValue' | 'options' | 'settings'
-  >;
+  > &
+    Partial<Pick<FieldMetadataItem, 'name'>>;
   objectNameSingular: string;
   shrink?: boolean;
   withFieldLabel?: boolean;
@@ -64,7 +65,9 @@ export const SettingsDataModelFieldPreviewWidget = ({
                 options: fieldMetadataItem.options,
                 settings: fieldMetadataItem.settings,
                 type: fieldMetadataItem.type,
-                name: computeMetadataNameFromLabel(fieldMetadataItem.label),
+                name:
+                  fieldMetadataItem.name ??
+                  computeMetadataNameFromLabel(fieldMetadataItem.label),
               }}
               shrink={shrink}
               withFieldLabel={withFieldLabel}

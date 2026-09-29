@@ -300,6 +300,7 @@ const TextInputComponent = forwardRef<
       rightAdornment,
       leftAdornment,
       textClickOutsideId,
+      dir,
     },
     ref,
   ) => {
@@ -372,6 +373,7 @@ const TextInputComponent = forwardRef<
                 );
               }}
               onKeyDown={onKeyDown}
+              dir={dir}
               {...{
                 autoFocus,
                 disabled,

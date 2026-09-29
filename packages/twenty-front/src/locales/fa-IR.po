@@ -19012,7 +19012,7 @@ msgstr "رد کردن"
 #. js-lingui-id: TyudBs
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
 msgid "Skip creating a Name field "
-msgstr "رد کردن ایجاد فیلد Name "
+msgstr "رد کردن ایجاد فیلد «نام» "
 
 #. js-lingui-id: PlF+NA
 #: src/modules/settings/data-model/fields/forms/morph-relation/components/SettingsDataModelFieldRelationJunctionForm.tsx
@@ -23653,3 +23653,38 @@ msgstr "Zed"
 #: src/modules/activities/timeline-activities/utils/getTimelineActivityAuthorFullName.ts
 msgid "You"
 msgstr "شما"
+
+#. js-lingui-id: dOsLSW
+#: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm.tsx
+msgid "Create Text Field"
+msgstr "ایجاد فیلد متنی"
+
+#. js-lingui-id: Gjg8qZ
+#: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
+msgid "Technical name is required"
+msgstr "نام فنی الزامی است"
+
+#. js-lingui-id: 3egNKr
+#: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
+msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+msgstr "فقط از حروف لاتین و اعداد به‌صورت camelCase استفاده کنید و با حرف کوچک شروع کنید (مثلاً academyEvent)"
+
+#. js-lingui-id: 45Di2s
+#: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
+msgid "This technical name is reserved, choose another one"
+msgstr "این نام فنی رزرو شده است؛ نام دیگری انتخاب کنید"
+
+#. js-lingui-id: WhjWB+
+#: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
+msgid "This technical name is already used by another object"
+msgstr "این نام فنی قبلاً برای موجودیت دیگری استفاده شده است"
+
+#. js-lingui-id: gFlIct
+#: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
+msgid "The labels contain non-Latin characters. Enter the technical name in Latin letters (e.g. academyEvent)."
+msgstr "برچسب‌ها شامل نویسه‌های غیرلاتین هستند. نام فنی را با حروف لاتین وارد کنید (مثلاً academyEvent)."
+
+#. js-lingui-id: lxrRNF
+#: src/modules/settings/data-model/fields/preview/utils/getLabelIdentifierPreviewPlaceholder.ts
+msgid "Sample {objectLabelSingular} name"
+msgstr "نمونه نام {objectLabelSingular}"

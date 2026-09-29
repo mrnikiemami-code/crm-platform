@@ -1,5 +1,64 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`settingsDataModelObjectAboutFormSchema fails when Persian labels have no technical name 1`] = `
+[ZodError: [
+  {
+    "origin": "string",
+    "code": "too_small",
+    "minimum": 1,
+    "inclusive": true,
+    "path": [
+      "namePlural"
+    ],
+    "message": "Technical name is required"
+  },
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "namePlural"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "origin": "string",
+    "code": "too_small",
+    "minimum": 1,
+    "inclusive": true,
+    "path": [
+      "nameSingular"
+    ],
+    "message": "Technical name is required"
+  },
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "nameSingular"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "code": "custom",
+    "message": "Singular and plural names must be different",
+    "path": [
+      "nameSingular"
+    ]
+  },
+  {
+    "code": "custom",
+    "message": "Singular and plural names must be different",
+    "path": [
+      "namePlural"
+    ]
+  }
+]]
+`;
+
 exports[`settingsDataModelObjectAboutFormSchema fails when color is not a valid theme color 1`] = `
 [ZodError: [
   {
@@ -80,18 +139,38 @@ exports[`settingsDataModelObjectAboutFormSchema fails when labels are empty stri
 exports[`settingsDataModelObjectAboutFormSchema fails when names are not in camelCase 1`] = `
 [ZodError: [
   {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "namePlural"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
     "code": "custom",
     "path": [
       "namePlural"
     ],
-    "message": "String should be camel case"
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "nameSingular"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
   },
   {
     "code": "custom",
     "path": [
       "nameSingular"
     ],
-    "message": "String should be camel case"
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
   }
 ]]
 `;
@@ -151,6 +230,89 @@ exports[`settingsDataModelObjectAboutFormSchema fails when singular and plural n
     "path": [
       "namePlural"
     ]
+  }
+]]
+`;
+
+exports[`settingsDataModelObjectAboutFormSchema fails when technical names are reserved 1`] = `
+[ZodError: [
+  {
+    "code": "custom",
+    "path": [
+      "namePlural"
+    ],
+    "message": "This technical name is reserved, choose another one"
+  },
+  {
+    "code": "custom",
+    "path": [
+      "nameSingular"
+    ],
+    "message": "This technical name is reserved, choose another one"
+  }
+]]
+`;
+
+exports[`settingsDataModelObjectAboutFormSchema fails when technical names contain non-Latin letters 1`] = `
+[ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "namePlural"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "nameSingular"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  }
+]]
+`;
+
+exports[`settingsDataModelObjectAboutFormSchema fails when technical names start with a digit 1`] = `
+[ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "namePlural"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "code": "custom",
+    "path": [
+      "namePlural"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "regex",
+    "pattern": "/^[a-z][a-zA-Z0-9]*$/",
+    "path": [
+      "nameSingular"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+  },
+  {
+    "code": "custom",
+    "path": [
+      "nameSingular"
+    ],
+    "message": "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
   }
 ]]
 `;

@@ -23698,3 +23698,38 @@ msgstr "Your workspace will be disabled"
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Zed"
 msgstr "Zed"
+
+#. js-lingui-id: dOsLSW
+#: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm.tsx
+msgid "Create Text Field"
+msgstr "Create Text Field"
+
+#. js-lingui-id: Gjg8qZ
+#: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
+msgid "Technical name is required"
+msgstr "Technical name is required"
+
+#. js-lingui-id: 3egNKr
+#: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
+msgid "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+msgstr "Use only Latin letters and digits in camelCase, starting with a lowercase letter (e.g. academyEvent)"
+
+#. js-lingui-id: 45Di2s
+#: src/modules/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema.ts
+msgid "This technical name is reserved, choose another one"
+msgstr "This technical name is reserved, choose another one"
+
+#. js-lingui-id: WhjWB+
+#: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
+msgid "This technical name is already used by another object"
+msgstr "This technical name is already used by another object"
+
+#. js-lingui-id: gFlIct
+#: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectAboutForm.tsx
+msgid "The labels contain non-Latin characters. Enter the technical name in Latin letters (e.g. academyEvent)."
+msgstr "The labels contain non-Latin characters. Enter the technical name in Latin letters (e.g. academyEvent)."
+
+#. js-lingui-id: lxrRNF
+#: src/modules/settings/data-model/fields/preview/utils/getLabelIdentifierPreviewPlaceholder.ts
+msgid "Sample {objectLabelSingular} name"
+msgstr "Sample {objectLabelSingular} name"

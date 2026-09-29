@@ -21,12 +21,14 @@ type FromCreateObjectInputToFlatObjectMetadataAndFlatFieldMetadatasToCreateArgs 
   {
     createObjectInput: CreateObjectInput;
     flatApplication: FlatApplication;
+    nameFieldLabel?: string;
   };
 
 export const fromCreateObjectInputToFlatObjectMetadataAndFlatFieldMetadatasToCreate =
   ({
     createObjectInput: rawCreateObjectInput,
     flatApplication,
+    nameFieldLabel,
   }: FromCreateObjectInputToFlatObjectMetadataAndFlatFieldMetadatasToCreateArgs): {
     flatObjectMetadataToCreate: UniversalFlatObjectMetadata & { id: string };
     flatFieldMetadataToCreateOnObject: UniversalFlatFieldMetadata[];
@@ -109,6 +111,7 @@ export const fromCreateObjectInputToFlatObjectMetadataAndFlatFieldMetadatasToCre
                 flatApplication.universalIdentifier,
               universalIdentifier,
             },
+            label: nameFieldLabel,
           });
 
     const flatFieldMetadataToCreateOnObject: UniversalFlatFieldMetadata[] =

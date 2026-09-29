@@ -20,7 +20,7 @@ const StyledDotContainer = styled.div<{ dotPosition: DotPosition }>`
     dotPosition === 'top' ? 'stretch' : 'center'};
   display: flex;
   height: 100%;
-  left: calc(-1 * ${themeCssVariables.spacing[5]});
+  inset-inline-start: calc(-1 * ${themeCssVariables.spacing[5]});
 
   position: absolute;
   top: ${({ dotPosition }) => (dotPosition === 'top' ? '0' : 'auto')};

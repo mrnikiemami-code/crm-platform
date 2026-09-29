@@ -1,6 +1,7 @@
 import { getFieldUniversalIdentifier } from 'twenty-shared/application';
 import { FieldMetadataType, MetadataWritability } from 'twenty-shared/types';
 
+import { DEFAULT_NAME_FIELD_LABEL } from 'src/engine/metadata-modules/object-metadata/constants/default-name-field-label.constant';
 import { type UniversalFlatFieldMetadata } from 'src/engine/workspace-manager/workspace-migration/universal-flat-entity/types/universal-flat-field-metadata.type';
 import { type UniversalFlatObjectMetadata } from 'src/engine/workspace-manager/workspace-migration/universal-flat-entity/types/universal-flat-object-metadata.type';
 
@@ -9,6 +10,7 @@ type BuildNameFlatFieldMetadataForCustomObjectArgs = {
     UniversalFlatObjectMetadata,
     'universalIdentifier' | 'applicationUniversalIdentifier'
   >;
+  label?: string;
 };
 
 export const buildNameFlatFieldMetadataForCustomObject = ({
@@ -16,6 +18,7 @@ export const buildNameFlatFieldMetadataForCustomObject = ({
     applicationUniversalIdentifier,
     universalIdentifier: objectMetadataUniversalIdentifier,
   },
+  label = DEFAULT_NAME_FIELD_LABEL,
 }: BuildNameFlatFieldMetadataForCustomObjectArgs): UniversalFlatFieldMetadata<FieldMetadataType.TEXT> => {
   const now = new Date().toISOString();
 
@@ -31,9 +34,9 @@ export const buildNameFlatFieldMetadataForCustomObject = ({
       name: 'name',
     }),
     name: 'name',
-    label: 'Name',
+    label,
     icon: 'IconAbc',
-    description: 'Name',
+    description: label,
     isNullable: true,
     isActive: true,
     isSystem: false,

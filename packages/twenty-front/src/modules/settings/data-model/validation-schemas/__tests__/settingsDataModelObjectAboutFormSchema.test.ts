@@ -64,6 +64,19 @@ describe('settingsDataModelObjectAboutFormSchema', () => {
         expectedSuccess: true,
       },
     },
+    {
+      title: 'validates Persian labels with an explicit technical name',
+      context: {
+        input: {
+          ...validInput,
+          labelSingular: 'همایش',
+          labelPlural: 'همایش‌ها',
+          nameSingular: 'academyEvent',
+          namePlural: 'academyEvents',
+        },
+        expectedSuccess: true,
+      },
+    },
   ];
 
   const failsValidationTestsUseCase: EachTestingContext<{
@@ -88,6 +101,52 @@ describe('settingsDataModelObjectAboutFormSchema', () => {
           ...validInput,
           namePlural: 'Labels_Plural',
           nameSingular: 'Label-Singular',
+        },
+        expectedSuccess: false,
+      },
+    },
+    {
+      title: 'fails when Persian labels have no technical name',
+      context: {
+        input: {
+          ...validInput,
+          labelSingular: 'همایش',
+          labelPlural: 'همایش‌ها',
+          nameSingular: '',
+          namePlural: '',
+        },
+        expectedSuccess: false,
+      },
+    },
+    {
+      title: 'fails when technical names contain non-Latin letters',
+      context: {
+        input: {
+          ...validInput,
+          nameSingular: 'همایش',
+          namePlural: 'hmyshها',
+        },
+        expectedSuccess: false,
+      },
+    },
+    {
+      title: 'fails when technical names start with a digit',
+      context: {
+        input: {
+          ...validInput,
+          nameSingular: '2event',
+          namePlural: '2events',
+        },
+        expectedSuccess: false,
+      },
+    },
+    {
+      title: 'fails when technical names are reserved',
+      context: {
+        input: {
+          ...validInput,
+          nameSingular: 'search',
+          namePlural: 'searches',
         },
         expectedSuccess: false,
       },

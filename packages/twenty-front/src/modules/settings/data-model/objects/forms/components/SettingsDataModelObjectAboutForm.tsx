@@ -4,6 +4,7 @@ import { type EnrichedObjectMetadataItem } from '@/object-metadata/types/Enriche
 import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
 import { SettingsOptionCardContentSwitch } from '@/settings/components/SettingsOptions/SettingsOptionCardContentSwitch';
 import { OBJECT_NAME_MAXIMUM_LENGTH } from '@/settings/data-model/constants/ObjectNameMaximumLength';
+import { hasNonLatinLetters } from '@/settings/data-model/utils/hasNonLatinLetters';
 import { type SettingsDataModelObjectAboutFormValues } from '@/settings/data-model/validation-schemas/settingsDataModelObjectAboutFormSchema';
 import { IconPicker } from '@/ui/input/components/IconPicker';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
@@ -11,8 +12,9 @@ import { TextArea } from '@/ui/input/components/TextArea';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
+import { isNonEmptyString } from '@sniptt/guards';
 import { plural } from 'pluralize';
-import { useContext } from 'react';
+import { Fragment, useContext, useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 import { SettingsPath } from 'twenty-shared/types';
 import { capitalize, isDefined } from 'twenty-shared/utils';
@@ -69,6 +71,12 @@ const StyledLabel = styled.span`
   margin-bottom: ${themeCssVariables.spacing[1]};
 `;
 
+const StyledTechnicalNameError = styled.span`
+  color: ${themeCssVariables.font.color.danger};
+  font-size: ${themeCssVariables.font.size.xs};
+  margin-top: ${themeCssVariables.spacing[1]};
+`;
+
 const infoCircleElementId = 'info-circle-id';
 
 export const SettingsDataModelObjectAboutForm = ({
@@ -111,6 +119,26 @@ export const SettingsDataModelObjectAboutForm = ({
         : t`Input must be in camel case and cannot start with a number`
       : t`Can't change API names for standard objects`;
 
+  const isObjectBeingCreated = !isDefined(objectMetadataItem);
+
+  // Transliterating non-Latin labels yields ambiguous names (e.g. "hmyshH"),
+  // so new objects with such labels need an explicit technical name.
+  const doLabelsRequireExplicitTechnicalName = (
+    currentLabelSingular: string | undefined,
+    currentLabelPlural: string | undefined,
+  ) =>
+    isObjectBeingCreated &&
+    (hasNonLatinLetters(currentLabelSingular) ||
+      hasNonLatinLetters(currentLabelPlural));
+
+  const requiresExplicitTechnicalName = doLabelsRequireExplicitTechnicalName(
+    labelSingular,
+    labelPlural,
+  );
+
+  const [isNamePluralEditedManually, setIsNamePluralEditedManually] =
+    useState(false);
+
   const fillLabelPlural = (labelSingular: string | undefined) => {
     if (!isDefined(labelSingular)) return;
 
@@ -128,6 +156,21 @@ export const SettingsDataModelObjectAboutForm = ({
     currentLabelSingular: string,
     currentLabelPlural: string,
   ) => {
+    if (
+      doLabelsRequireExplicitTechnicalName(
+        currentLabelSingular,
+        currentLabelPlural,
+      )
+    ) {
+      if (isLabelSyncedWithName) {
+        setValue('isLabelSyncedWithName', false, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+      return;
+    }
+
     const { nameSingular, namePlural } = computeMetadataNamesFromLabels(
       currentLabelSingular,
       currentLabelPlural,
@@ -277,6 +320,12 @@ export const SettingsDataModelObjectAboutForm = ({
                 }}
               />
             )}
+            {requiresExplicitTechnicalName && (
+              <InlineBanner
+                color={'blue'}
+                message={t`The labels contain non-Latin characters. Enter the technical name in Latin letters (e.g. academyEvent).`}
+              />
+            )}
             {[
               {
                 label: t`API Name (Singular)`,
@@ -285,7 +334,9 @@ export const SettingsDataModelObjectAboutForm = ({
                 placeholder: `listing`,
                 defaultValue: objectMetadataItem?.nameSingular ?? '',
                 disableEdition:
-                  isStandardObject || disableEdition || isLabelSyncedWithName,
+                  isStandardObject ||
+                  disableEdition ||
+                  (isLabelSyncedWithName && !requiresExplicitTechnicalName),
                 tooltip: apiNameTooltipText,
               },
               {
@@ -295,7 +346,9 @@ export const SettingsDataModelObjectAboutForm = ({
                 placeholder: `listings`,
                 defaultValue: objectMetadataItem?.namePlural ?? '',
                 disableEdition:
-                  isStandardObject || disableEdition || isLabelSyncedWithName,
+                  isStandardObject ||
+                  disableEdition ||
+                  (isLabelSyncedWithName && !requiresExplicitTechnicalName),
                 tooltip: apiNameTooltipText,
               },
             ].map(
@@ -306,11 +359,8 @@ export const SettingsDataModelObjectAboutForm = ({
                 disableEdition,
                 tooltip,
                 defaultValue,
-              }) => (
-                <AdvancedSettingsWrapper
-                  key={`object-${fieldName}-text-input`}
-                  dotPosition="top"
-                >
+              }) => {
+                const technicalNameInput = (
                   <StyledInputContainer>
                     <Controller
                       name={fieldName}
@@ -319,50 +369,96 @@ export const SettingsDataModelObjectAboutForm = ({
                       render={({
                         field: { onChange, value },
                         formState: { errors },
-                      }) => (
-                        <>
-                          <SettingsTextInput
-                            instanceId={`${objectMetadataItem?.id}-${fieldName}`}
-                            label={label}
-                            placeholder={placeholder}
-                            value={value}
-                            onChange={onChange}
-                            disabled={disableEdition}
-                            fullWidth
-                            maxLength={OBJECT_NAME_MAXIMUM_LENGTH}
-                            onBlur={() => onNewDirtyField?.()}
-                            error={errors[fieldName]?.message}
-                            // TODO we should discuss on how to notify user about form validation schema issue, from now just displaying red borders
-                            noErrorHelper={true}
-                            RightIcon={() =>
-                              tooltip && (
-                                <>
-                                  <Tooltip
-                                    content={tooltip}
-                                    sideOffset={5}
-                                    side="bottom"
-                                    positionMethod="fixed"
-                                    delay={TooltipDelay.shortDelay}
-                                  >
-                                    <IconInfoCircle
-                                      id={infoCircleElementId + fieldName}
-                                      size={theme.icon.size.md}
-                                      color={theme.font.color.tertiary}
-                                      style={{ outline: 'none' }}
-                                    />
-                                  </Tooltip>
-                                </>
-                              )
-                            }
-                          />
-                        </>
-                      )}
+                      }) => {
+                        const isConflicting =
+                          isNonEmptyString(value) &&
+                          conflictingObjectMetadataItem?.[fieldName] === value;
+                        const errorMessage =
+                          errors[fieldName]?.message ??
+                          (isConflicting
+                            ? t`This technical name is already used by another object`
+                            : undefined);
+
+                        return (
+                          <>
+                            <SettingsTextInput
+                              instanceId={`${objectMetadataItem?.id}-${fieldName}`}
+                              label={label}
+                              placeholder={placeholder}
+                              value={value}
+                              dir="ltr"
+                              required={requiresExplicitTechnicalName}
+                              onChange={(nextValue) => {
+                                onChange(nextValue);
+                                if (!requiresExplicitTechnicalName) {
+                                  return;
+                                }
+                                if (fieldName === 'namePlural') {
+                                  setIsNamePluralEditedManually(true);
+                                } else if (!isNamePluralEditedManually) {
+                                  setValue(
+                                    'namePlural',
+                                    isNonEmptyString(nextValue)
+                                      ? plural(nextValue)
+                                      : '',
+                                    { shouldDirty: true, shouldValidate: true },
+                                  );
+                                }
+                              }}
+                              disabled={disableEdition}
+                              fullWidth
+                              maxLength={OBJECT_NAME_MAXIMUM_LENGTH}
+                              onBlur={() => onNewDirtyField?.()}
+                              error={errorMessage}
+                              noErrorHelper
+                              RightIcon={() =>
+                                tooltip && (
+                                  <>
+                                    <Tooltip
+                                      content={tooltip}
+                                      sideOffset={5}
+                                      side="bottom"
+                                      positionMethod="fixed"
+                                      delay={TooltipDelay.shortDelay}
+                                    >
+                                      <IconInfoCircle
+                                        id={infoCircleElementId + fieldName}
+                                        size={theme.icon.size.md}
+                                        color={theme.font.color.tertiary}
+                                        style={{ outline: 'none' }}
+                                      />
+                                    </Tooltip>
+                                  </>
+                                )
+                              }
+                            />
+                            {isNonEmptyString(errorMessage) && (
+                              <StyledTechnicalNameError aria-live="polite">
+                                {errorMessage}
+                              </StyledTechnicalNameError>
+                            )}
+                          </>
+                        );
+                      }}
                     />
                   </StyledInputContainer>
-                </AdvancedSettingsWrapper>
-              ),
+                );
+
+                return requiresExplicitTechnicalName ? (
+                  <Fragment key={`object-${fieldName}-text-input`}>
+                    {technicalNameInput}
+                  </Fragment>
+                ) : (
+                  <AdvancedSettingsWrapper
+                    key={`object-${fieldName}-text-input`}
+                    dotPosition="top"
+                  >
+                    {technicalNameInput}
+                  </AdvancedSettingsWrapper>
+                );
+              },
             )}
-            {!isStandardObject && (
+            {!isStandardObject && !requiresExplicitTechnicalName && (
               <AdvancedSettingsWrapper>
                 <Controller
                   name="isLabelSyncedWithName"

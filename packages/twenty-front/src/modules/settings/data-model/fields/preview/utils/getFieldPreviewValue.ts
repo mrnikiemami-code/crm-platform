@@ -11,11 +11,13 @@ type getFieldPreviewValueArgs = {
   fieldType: FieldMetadataType;
   fieldSettings: FieldMetadata['settings'];
   defaultValue: unknown;
+  placeholderValue?: unknown;
 };
 export const getFieldPreviewValue = ({
   fieldType,
   fieldSettings,
   defaultValue,
+  placeholderValue,
 }: getFieldPreviewValueArgs) => {
   if (!isFieldTypeSupportedInSettings(fieldType)) return null;
 
@@ -33,6 +35,10 @@ export const getFieldPreviewValue = ({
       },
       shouldComputeFunctionDefaultValue: true,
     });
+  }
+
+  if (isDefined(placeholderValue)) {
+    return placeholderValue;
   }
 
   const fieldTypeConfig = getSettingsFieldTypeConfig(fieldType);
