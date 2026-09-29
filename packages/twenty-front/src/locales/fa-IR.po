@@ -20305,7 +20305,7 @@ msgstr "آیکونی که trigger گردش‌کار شما در منوی دست�
 #. js-lingui-id: wzML+0
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
 msgid "The label contains non-Latin characters. Enter the technical name in Latin letters (e.g. eventTitle)."
-msgstr "برای استفاده داخلی سیستم، یک نام فنی با حروف لاتین وارد کنید؛ برای مثال: eventTitle"
+msgstr "برای استفاده داخلی سیستم، یک نام فنی با حروف لاتین وارد کنید؛ برای مثال: academyEvent"
 
 #. js-lingui-id: 4m3QoL
 #: src/modules/settings/admin-panel/ai/components/SettingsAdminAI.tsx

@@ -8,8 +8,10 @@ import { type CreateFieldInput } from 'src/engine/metadata-modules/field-metadat
 import { FieldMetadataExceptionCode } from 'src/engine/metadata-modules/field-metadata/field-metadata.exception';
 import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
+import { findManyFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-many-flat-entity-by-id-in-flat-entity-maps.util';
 import { type FieldInputTranspilationResult } from 'src/engine/metadata-modules/flat-field-metadata/types/field-input-transpilation-result.type';
 import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
+import { computeRelationTargetFieldName } from 'src/engine/metadata-modules/flat-field-metadata/utils/compute-relation-target-field-name.util';
 import { extractJunctionTargetSettingsFromSettings } from 'src/engine/metadata-modules/flat-field-metadata/utils/extract-junction-target-settings-from-settings.util';
 import { generateMorphOrRelationFlatFieldMetadataPair } from 'src/engine/metadata-modules/flat-field-metadata/utils/generate-morph-or-relation-flat-field-metadata-pair.util';
 import { validateRelationCreationPayload } from 'src/engine/metadata-modules/flat-field-metadata/validators/utils/validate-relation-creation-payload.util';
@@ -75,6 +77,22 @@ export const fromRelationCreateFieldInputToFlatFieldMetadatas = async ({
       })
     : undefined;
 
+  const targetFieldName = computeRelationTargetFieldName({
+    targetFieldLabel: relationCreationPayload.targetFieldLabel,
+    sourceRelationType: relationCreationPayload.type,
+    sourceObjectNameSingular: sourceFlatObjectMetadata.nameSingular,
+    sourceObjectNamePlural: sourceFlatObjectMetadata.namePlural,
+    existingTargetObjectFieldNames: [
+      ...findManyFlatEntityByIdInFlatEntityMaps({
+        flatEntityIds: targetFlatObjectMetadata.fieldIds,
+        flatEntityMaps: existingFlatFieldMetadataMaps,
+      }).map(({ name }) => name),
+      ...(targetFlatObjectMetadata.id === sourceFlatObjectMetadata.id
+        ? [createFieldInput.name]
+        : []),
+    ],
+  });
+
   const generateResult = generateMorphOrRelationFlatFieldMetadataPair({
     createFieldInput: {
       ...createFieldInput,
@@ -88,6 +106,7 @@ export const fromRelationCreateFieldInputToFlatFieldMetadatas = async ({
     targetFlatObjectMetadata,
     targetFlatFieldMetadataType: FieldMetadataType.RELATION,
     applicationUniversalIdentifier: flatApplication.universalIdentifier,
+    targetFieldName,
     junctionTargetFlatFieldMetadata,
   });
 
