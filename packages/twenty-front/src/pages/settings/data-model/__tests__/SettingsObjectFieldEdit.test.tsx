@@ -1,6 +1,12 @@
 import { i18n } from '@lingui/core';
 import { I18nProvider } from '@lingui/react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider as JotaiProvider } from 'jotai';
 import { type ReactNode } from 'react';
@@ -14,6 +20,7 @@ import {
   resetJotaiStore,
 } from '@/ui/utilities/state/jotai/jotaiStore';
 import { messages as enMessages } from '~/locales/generated/en';
+import { messages as faMessages } from '~/locales/generated/fa-IR';
 import { SettingsObjectFieldEdit } from '~/pages/settings/data-model/SettingsObjectFieldEdit';
 import { getMockObjectMetadataItemOrThrow } from '~/testing/utils/getMockObjectMetadataItemOrThrow';
 
@@ -26,6 +33,7 @@ const fieldMetadataItem = objectMetadataItem.fields.find(
 
 const mockNavigateSettings = jest.fn();
 const mockUpdateOneFieldMetadataItem = jest.fn();
+const mockDeleteMetadataField = jest.fn();
 
 jest.mock('@hookform/resolvers/zod', () => ({
   zodResolver: () => async (values: Record<string, unknown>) => ({
@@ -51,7 +59,7 @@ jest.mock('@/object-metadata/hooks/useFieldMetadataItem', () => ({
   useFieldMetadataItem: () => ({
     deactivateMetadataField: jest.fn(),
     activateMetadataField: jest.fn(),
-    deleteMetadataField: jest.fn(),
+    deleteMetadataField: mockDeleteMetadataField,
   }),
 }));
 
@@ -172,10 +180,6 @@ jest.mock(
   () => ({ SettingsTranslationsButton: () => null }),
 );
 
-jest.mock('@/ui/layout/dialog/components/ConfirmationDialog', () => ({
-  ConfirmationDialog: () => null,
-}));
-
 const CurrentLocation = () => {
   const location = useLocation();
 
@@ -208,7 +212,10 @@ const renderFieldEdit = (state?: { returnTo: string }) => {
 
 describe('SettingsObjectFieldEdit navigation', () => {
   beforeAll(() => {
-    i18n.load({ en: enMessages });
+    i18n.load({ en: enMessages, 'fa-IR': faMessages });
+  });
+
+  beforeEach(() => {
     act(() => {
       i18n.activate('en');
     });
@@ -265,5 +272,77 @@ describe('SettingsObjectFieldEdit navigation', () => {
       RECORD_INDEX_URL,
     );
     expect(mockNavigateSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe('SettingsObjectFieldEdit delete confirmation', () => {
+  const openDeleteDialog = async (locale: 'en' | 'fa-IR') => {
+    act(() => {
+      i18n.activate(locale);
+    });
+
+    renderFieldEdit();
+
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole('button', {
+          name: locale === 'en' ? 'Delete' : 'حذف',
+        }),
+      );
+
+    const input = await screen.findByTestId('confirmation-modal-input');
+
+    return {
+      input: (input.querySelector('input') ?? input) as HTMLInputElement,
+      confirmButton: screen.getByTestId('confirmation-modal-confirm-button'),
+    };
+  };
+
+  beforeAll(() => {
+    i18n.load({ en: enMessages, 'fa-IR': faMessages });
+  });
+
+  beforeEach(() => {
+    resetJotaiStore();
+    mockDeleteMetadataField.mockReset();
+  });
+
+  it('asks for the Persian delete word in fa-IR', async () => {
+    const { input, confirmButton } = await openDeleteDialog('fa-IR');
+
+    expect(
+      screen.getByText(
+        `این کار فیلد و همه داده‌هایش را از ${objectMetadataItem.labelPlural} برای همیشه حذف می‌کند. برای تأیید حذف، عبارت «حذف» را وارد کنید.`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/yes/)).not.toBeInTheDocument();
+    expect(input).toHaveAttribute('placeholder', 'حذف');
+    expect(confirmButton).toHaveTextContent('حذف');
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: 'yes' } });
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: 'حذف' } });
+    expect(confirmButton).toBeEnabled();
+    expect(mockDeleteMetadataField).not.toHaveBeenCalled();
+  });
+
+  it('keeps "yes" as the confirmation word in en', async () => {
+    const { input, confirmButton } = await openDeleteDialog('en');
+
+    expect(
+      screen.getByText(
+        `This will permanently delete the field and all its data from ${objectMetadataItem.labelPlural}. Type "yes" to confirm.`,
+      ),
+    ).toBeInTheDocument();
+    expect(input).toHaveAttribute('placeholder', 'yes');
+
+    fireEvent.change(input, { target: { value: 'حذف' } });
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: 'yes' } });
+    expect(confirmButton).toBeEnabled();
   });
 });

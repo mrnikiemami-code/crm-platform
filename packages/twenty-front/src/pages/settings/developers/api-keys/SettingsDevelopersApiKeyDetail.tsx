@@ -10,6 +10,7 @@ import { computeNewExpirationDate } from '@/settings/developers/utils/computeNew
 import { formatExpiration } from '@/settings/developers/utils/formatExpiration';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
+import { useDeleteConfirmation } from '@/ui/layout/dialog/hooks/useDeleteConfirmation';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { useAtomFamilyStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomFamilyStateValue';
 import { useMutation, useQuery } from '@apollo/client/react';
@@ -60,6 +61,8 @@ export const SettingsDevelopersApiKeyDetail = () => {
   const { locale } = useDateDisplayContext();
   const { enqueueToast } = useToast();
   const { openDialog } = useDialog();
+  const { confirmationValue: deleteConfirmationValue } =
+    useDeleteConfirmation();
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigateSettings();
@@ -362,15 +365,15 @@ export const SettingsDevelopersApiKeyDetail = () => {
         </SettingsPageLayout>
       )}
       <ConfirmationDialog
-        confirmationPlaceholder={confirmationValue}
-        confirmationValue={confirmationValue}
+        confirmationPlaceholder={deleteConfirmationValue}
+        confirmationValue={deleteConfirmationValue}
         dialogId={DELETE_API_KEY_MODAL_ID}
         title={t`Delete API key`}
         subtitle={
           <Trans>
-            Please type {`"${confirmationValue}"`} to confirm you want to delete
-            this API Key. Be aware that any script using this key will stop
-            working.
+            Please type {`"${deleteConfirmationValue}"`} to confirm you want to
+            delete this API Key. Be aware that any script using this key will
+            stop working.
           </Trans>
         }
         onConfirmClick={deleteIntegration}

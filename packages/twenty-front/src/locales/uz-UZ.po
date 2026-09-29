@@ -16293,10 +16293,10 @@ msgstr "Iltimos, sahifani yangilang."
 msgid "Please select at least one destination object for this relation."
 msgstr "Iltimos, ushbu munosabat uchun kamida bitta manzil obyektini tanlang."
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
-msgstr "Ushbu API Kalitini o‘chirib tashlamoqchi ekanligingizni tasdiqlash uchun \"{confirmationValue}\" ni kiriting. Ushbu kalitdan foydalanayotgan har qanday skript ishlashdan to‘xtashini yodda saqlang."
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgstr "Ushbu API Kalitini o‘chirib tashlamoqchi ekanligingizni tasdiqlash uchun \"{deleteConfirmationValue}\" ni kiriting. Ushbu kalitdan foydalanayotgan har qanday skript ishlashdan to‘xtashini yodda saqlang."
 
 #. js-lingui-id: osUElx
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
@@ -16308,10 +16308,10 @@ msgstr "Ushbu ilovani o‘chirib tashlashni xohlayotganingizni tasdiqlash uchun 
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
 msgstr "Ushbu ilovani o‘chirib tashlamoqchi ekanligingizni tasdiqlash uchun \"{confirmationValue}\" ni kiriting."
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "Ushbu webhookni o‘chirmoqchi ekanligingizni tasdiqlash uchun iltimos, \"yes\" deb yozing."
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr "Ushbu webhookni o‘chirmoqchi ekanligingizni tasdiqlash uchun iltimos, \"{confirmationValue}\" deb yozing."
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21142,15 +21142,20 @@ msgstr "Bu amal {userLabel} uchun {0} huquqini beradi."
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "Bu amal {contextStoreNumberOfSelectedRecords} ta yozuvni o‘zgartiradi. Bu amalni ortga qaytarib bo‘lmaydi."
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "Bu {objectLabel} dagi maydonni va uning barcha ma’lumotlarini butunlay o‘chiradi. Tasdiqlash uchun \"yes\" deb yozing."
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "Bu {objectLabel} dagi maydonni va uning barcha ma’lumotlarini butunlay o‘chiradi."
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "Bu obyektni va uning barcha yozuvlarini butunlay o‘chiradi. Tasdiqlash uchun \"{deleteConfirmationValue}\" deb yozing."
+msgid "This will permanently delete the object and all its records."
+msgstr "Bu obyektni va uning barcha yozuvlarini butunlay o‘chiradi."
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "Tasdiqlash uchun \"{confirmationValue}\" deb yozing."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23853,9 +23858,9 @@ msgstr "Sariq"
 msgid "yes"
 msgstr "ha"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr ""
 

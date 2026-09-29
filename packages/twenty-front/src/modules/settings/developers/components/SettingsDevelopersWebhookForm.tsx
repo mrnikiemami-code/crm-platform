@@ -9,6 +9,7 @@ import { useWebhookForm } from '@/settings/developers/hooks/useWebhookForm';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { TextArea } from '@/ui/input/components/TextArea';
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
+import { useDeleteConfirmation } from '@/ui/layout/dialog/hooks/useDeleteConfirmation';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { SettingsPageLayout } from '@/settings/components/layout/SettingsPageLayout';
 import { Trans, useLingui } from '@lingui/react/macro';
@@ -40,6 +41,7 @@ export const SettingsDevelopersWebhookForm = ({
   const { t } = useLingui();
   const navigate = useNavigateSettings();
   const { openDialog } = useDialog();
+  const { confirmationValue } = useDeleteConfirmation();
   const {
     formConfig,
     loading,
@@ -218,13 +220,14 @@ export const SettingsDevelopersWebhookForm = ({
       </SettingsPageLayout>
       {!isCreationMode && (
         <ConfirmationDialog
-          confirmationPlaceholder={t`yes`}
-          confirmationValue={t`yes`}
+          confirmationPlaceholder={confirmationValue}
+          confirmationValue={confirmationValue}
           dialogId={DELETE_WEBHOOK_MODAL_ID}
           title={t`Delete webhook`}
           subtitle={
             <Trans>
-              Please type "yes" to confirm you want to delete this webhook.
+              Please type {`"${confirmationValue}"`} to confirm you want to
+              delete this webhook.
             </Trans>
           }
           onConfirmClick={handleDelete}

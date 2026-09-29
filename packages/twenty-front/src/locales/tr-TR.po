@@ -16293,10 +16293,10 @@ msgstr "Lütfen sayfayı yenileyin."
 msgid "Please select at least one destination object for this relation."
 msgstr "Bu ilişki için en az bir hedef nesne seçin."
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
-msgstr "Bu API Anahtarını silmek istediğinizi onaylamak için \"{confirmationValue}\" yazınız. Bu anahtarı kullanan herhangi bir betiğin çalışmayacağını unutmayın."
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgstr "Bu API Anahtarını silmek istediğinizi onaylamak için \"{deleteConfirmationValue}\" yazınız. Bu anahtarı kullanan herhangi bir betiğin çalışmayacağını unutmayın."
 
 #. js-lingui-id: osUElx
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
@@ -16308,10 +16308,10 @@ msgstr "Bu uygulamayı silmek istediğinizi onaylamak için lütfen \"{confirmat
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
 msgstr ""
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "Bu webhook'u silmek istediğinizi onaylamak için \"evet\" yazın."
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr ""
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21142,15 +21142,20 @@ msgstr "Bu işlem, {userLabel} için {0} verecek."
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "Bu işlem {contextStoreNumberOfSelectedRecords} kaydı değiştirecek. Bu işlem geri alınamaz."
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "Bu işlem, {objectLabel} nesnesindeki bu alanı ve ona ait tüm verileri kalıcı olarak silecek. Onaylamak için \"evet\" yazın."
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "Bu işlem, {objectLabel} nesnesindeki bu alanı ve ona ait tüm verileri kalıcı olarak silecek."
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "Bu işlem, nesneyi ve tüm kayıtlarını kalıcı olarak silecek. Onaylamak için \"{deleteConfirmationValue}\" yazın."
+msgid "This will permanently delete the object and all its records."
+msgstr "Bu işlem, nesneyi ve tüm kayıtlarını kalıcı olarak silecek."
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "Onaylamak için \"{confirmationValue}\" yazın."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23853,9 +23858,9 @@ msgstr "Sarı"
 msgid "yes"
 msgstr "evet"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr ""
 

@@ -16293,10 +16293,10 @@ msgstr "페이지를 새로 고침 해 주세요."
 msgid "Please select at least one destination object for this relation."
 msgstr "이 관계에 대해 적어도 하나의 목적지 객체를 선택하십시오."
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
-msgstr "\"{confirmationValue}\"을 입력하여 이 API 키를 삭제할 것인지 확인하세요. 이 키를 사용하는 모든 스크립트는 작동이 중지됩니다."
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgstr "\"{deleteConfirmationValue}\"을 입력하여 이 API 키를 삭제할 것인지 확인하세요. 이 키를 사용하는 모든 스크립트는 작동이 중지됩니다."
 
 #. js-lingui-id: osUElx
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
@@ -16308,10 +16308,10 @@ msgstr "이 앱을 삭제하려면 확인을 위해 \"{confirmationValue}\"를 �
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
 msgstr ""
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "\"yes\" 을 입력하여 이 Webhook을 삭제할 것인지 확인하세요."
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr "\"{confirmationValue}\" 을 입력하여 이 Webhook을 삭제할 것인지 확인하세요."
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21142,15 +21142,20 @@ msgstr "{userLabel}에게 {0} 권한을 부여합니다."
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "이 작업은 {contextStoreNumberOfSelectedRecords}개의 레코드를 변경합니다. 이 작업은 되돌릴 수 없습니다."
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "이 작업을 수행하면 {objectLabel}에서 해당 필드와 모든 데이터가 영구적으로 삭제됩니다. 확인하려면 \"yes\"를 입력하세요."
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "이 작업을 수행하면 {objectLabel}에서 해당 필드와 모든 데이터가 영구적으로 삭제됩니다."
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "이 작업을 수행하면 해당 객체와 모든 레코드가 영구적으로 삭제됩니다. 확인하려면 \"{deleteConfirmationValue}\"를 입력하세요."
+msgid "This will permanently delete the object and all its records."
+msgstr "이 작업을 수행하면 해당 객체와 모든 레코드가 영구적으로 삭제됩니다."
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "확인하려면 \"{confirmationValue}\"를 입력하세요."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23853,9 +23858,9 @@ msgstr "노란색"
 msgid "yes"
 msgstr "예"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr ""
 

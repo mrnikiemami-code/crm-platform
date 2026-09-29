@@ -1,4 +1,5 @@
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
+import { useDeleteConfirmation } from '@/ui/layout/dialog/hooks/useDeleteConfirmation';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
@@ -17,8 +18,7 @@ export const SettingsApplicationUninstallButton = ({
 }: SettingsApplicationUninstallButtonProps) => {
   const { openDialog } = useDialog();
   const uninstallDialogId = useId();
-
-  const confirmationValue = t`yes`;
+  const { confirmationValue } = useDeleteConfirmation();
 
   return (
     <>

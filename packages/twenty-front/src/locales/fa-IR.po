@@ -16270,25 +16270,25 @@ msgstr "لطفاً صفحه را تازه‌سازی کنید."
 msgid "Please select at least one destination object for this relation."
 msgstr "حداقل یک موجودیت مقصد برای این رابطه انتخاب کنید."
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
-msgstr "برای تأیید حذف این کلید API «{confirmationValue}» را تایپ کنید. توجه داشته باشید هر اسکریپتی که از این کلید استفاده می‌کند کار نخواهد کرد."
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgstr "برای تأیید حذف این کلید API، عبارت «{deleteConfirmationValue}» را وارد کنید. توجه داشته باشید هر اسکریپتی که از این کلید استفاده می‌کند کار نخواهد کرد."
 
 #. js-lingui-id: osUElx
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
 msgid "Please type \"{confirmationValue}\" to confirm you want to delete this app. All workspace installations linked to it will lose their OAuth credentials."
-msgstr "برای تأیید حذف این برنامه «{confirmationValue}» را تایپ کنید. همه‌ی نصب‌های فضای کاری مرتبط اعتبار OAuth خود را از دست می‌دهند."
+msgstr "برای تأیید حذف این برنامه، عبارت «{confirmationValue}» را وارد کنید. همه‌ی نصب‌های فضای کاری مرتبط اعتبار OAuth خود را از دست می‌دهند."
 
 #. js-lingui-id: L0SEpC
 #: src/modules/settings/applications/components/SettingsApplicationActionButton.tsx
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
-msgstr "برای تأیید حذف نصب این برنامه «{confirmationValue}» را تایپ کنید."
+msgstr "برای تأیید حذف نصب این برنامه، عبارت «{confirmationValue}» را وارد کنید."
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "برای تأیید حذف این webhook «yes» را تایپ کنید."
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr "برای تأیید حذف این webhook، عبارت «{confirmationValue}» را وارد کنید."
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21074,15 +21074,20 @@ msgstr "این کار {0} را به {userLabel} می‌دهد."
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "این کار {contextStoreNumberOfSelectedRecords} رکورد را تغییر می‌دهد. این اقدام قابل بازگشت نیست."
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "این کار فیلد و همه داده‌هایش را از {objectLabel} برای همیشه حذف می‌کند. برای تأیید «yes» را تایپ کنید."
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "این کار فیلد و همه داده‌هایش را از {objectLabel} برای همیشه حذف می‌کند."
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "این کار موجودیت و همه رکوردهایش را برای همیشه حذف می‌کند. برای تأیید حذف، عبارت «{deleteConfirmationValue}» را وارد کنید."
+msgid "This will permanently delete the object and all its records."
+msgstr "این کار موجودیت و همه رکوردهایش را برای همیشه حذف می‌کند."
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "برای تأیید حذف، عبارت «{confirmationValue}» را وارد کنید."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23780,9 +23785,9 @@ msgstr "زرد"
 msgid "yes"
 msgstr "بله"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr "حذف"
 

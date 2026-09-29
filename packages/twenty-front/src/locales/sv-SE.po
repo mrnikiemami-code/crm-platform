@@ -16295,10 +16295,10 @@ msgstr "Vänligen uppdatera sidan."
 msgid "Please select at least one destination object for this relation."
 msgstr "Välj minst ett destinationsobjekt för denna relation."
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
-msgstr "Skriv \"{confirmationValue}\" för att bekräfta att du vill ta bort denna API-nyckel. Var medveten om att alla skript som använder denna nyckel kommer att sluta fungera."
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgstr "Skriv \"{deleteConfirmationValue}\" för att bekräfta att du vill ta bort denna API-nyckel. Var medveten om att alla skript som använder denna nyckel kommer att sluta fungera."
 
 #. js-lingui-id: osUElx
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
@@ -16310,10 +16310,10 @@ msgstr "Skriv \"{confirmationValue}\" för att bekräfta att du vill ta bort den
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
 msgstr ""
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "Skriv \"yes\" för att bekräfta att du vill radera denna webhook."
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr "Skriv \"{confirmationValue}\" för att bekräfta att du vill radera denna webhook."
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21150,15 +21150,20 @@ msgstr "Detta kommer att bevilja {0} till {userLabel}."
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "Detta kommer att ändra {contextStoreNumberOfSelectedRecords} poster. Denna åtgärd går inte att ångra."
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "Detta kommer att radera fältet och all dess data från {objectLabel} permanent. Skriv \"yes\" för att bekräfta."
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "Detta kommer att radera fältet och all dess data från {objectLabel} permanent."
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "Detta kommer att radera objektet och alla dess poster permanent. Skriv \"{deleteConfirmationValue}\" för att bekräfta."
+msgid "This will permanently delete the object and all its records."
+msgstr "Detta kommer att radera objektet och alla dess poster permanent."
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "Skriv \"{confirmationValue}\" för att bekräfta."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23861,9 +23866,9 @@ msgstr "Gul"
 msgid "yes"
 msgstr "ja"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr ""
 

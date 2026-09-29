@@ -1,6 +1,7 @@
 import { DialogInstance } from '@/ui/layout/dialog/components/DialogInstance';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
+import { useDeleteConfirmation } from '@/ui/layout/dialog/hooks/useDeleteConfirmation';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
 import { useMutation, useQuery } from '@apollo/client/react';
@@ -60,6 +61,7 @@ export const SettingsAdminApplicationRegistrationDangerZone = ({
   const navigate = useNavigateSettings();
   const { enqueueToast } = useToast();
   const { openDialog, closeDialog } = useDialog();
+  const { confirmationValue } = useDeleteConfirmation();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
@@ -191,8 +193,6 @@ export const SettingsAdminApplicationRegistrationDangerZone = ({
       setIsClaiming(false);
     }
   };
-
-  const confirmationValue = t`yes`;
 
   return (
     <>

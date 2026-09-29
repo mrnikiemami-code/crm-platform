@@ -23,6 +23,7 @@ import { type SettingsFieldType } from '@/settings/data-model/types/SettingsFiel
 import { SettingsTranslationsButton } from '@/settings/translations/components/SettingsTranslationsButton';
 import { useWorkspaceSurface } from '@/ui/layout/hooks/useWorkspaceSurface';
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
+import { useDeleteConfirmation } from '@/ui/layout/dialog/hooks/useDeleteConfirmation';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,6 +59,10 @@ export const SettingsObjectFieldEdit = () => {
   const { t } = useLingui();
 
   const { openDialog, closeDialog } = useDialog();
+  const {
+    confirmationValue: deleteConfirmationValue,
+    confirmationInstruction: deleteConfirmationInstruction,
+  } = useDeleteConfirmation();
   const { enqueueToast } = useToast();
 
   const navigate = useNavigate();
@@ -462,10 +467,10 @@ export const SettingsObjectFieldEdit = () => {
         <ConfirmationDialog
           dialogId={DELETE_FIELD_MODAL_ID}
           title={t`Delete ${fieldLabel} field?`}
-          subtitle={t`This will permanently delete the field and all its data from ${objectLabel}. Type "yes" to confirm.`}
+          subtitle={`${t`This will permanently delete the field and all its data from ${objectLabel}.`} ${deleteConfirmationInstruction}`}
           confirmButtonText={t`Delete`}
-          confirmationValue="yes"
-          confirmationPlaceholder="yes"
+          confirmationValue={deleteConfirmationValue}
+          confirmationPlaceholder={deleteConfirmationValue}
           onConfirmClick={confirmDelete}
           onClose={() => closeDialog(DELETE_FIELD_MODAL_ID)}
           loading={isDeleting}

@@ -16293,9 +16293,9 @@ msgstr "Prosím, obnovte stránku."
 msgid "Please select at least one destination object for this relation."
 msgstr "Vyberte prosím alespoň jeden cílový objekt pro tento vztah."
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
 msgstr ""
 
 #. js-lingui-id: osUElx
@@ -16308,10 +16308,10 @@ msgstr "Zadejte \"{confirmationValue}\" pro potvrzení, že chcete tuto aplikaci
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
 msgstr ""
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "Prosím, napište \"ano\", abyste potvrdili, že chcete smazat tento webhook."
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr ""
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21142,15 +21142,20 @@ msgstr "Tímto udělíte {0} uživateli {userLabel}."
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "Tím se aktualizuje {contextStoreNumberOfSelectedRecords} záznamů. Tuto akci nelze vrátit zpět."
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "Tímto trvale smažete pole a všechna jeho data z {objectLabel}. Pro potvrzení zadejte \"yes\"."
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "Tímto trvale smažete pole a všechna jeho data z {objectLabel}."
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "Tímto trvale smažete objekt a všechny jeho záznamy. Pro potvrzení zadejte \"{deleteConfirmationValue}\"."
+msgid "This will permanently delete the object and all its records."
+msgstr "Tímto trvale smažete objekt a všechny jeho záznamy."
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "Pro potvrzení zadejte \"{confirmationValue}\"."
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23853,9 +23858,9 @@ msgstr "Žlutá"
 msgid "yes"
 msgstr "ano"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr ""
 

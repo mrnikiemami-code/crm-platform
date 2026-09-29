@@ -16270,10 +16270,10 @@ msgstr "請刷新頁面。"
 msgid "Please select at least one destination object for this relation."
 msgstr "請選擇至少一個用於此關係的目標對象。"
 
-#. js-lingui-id: 6nsIo3
+#. js-lingui-id: i0WNxs
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
-msgid "Please type \"{confirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
-msgstr "請鍵入\"{confirmationValue}\"確認要刪除此 API 密鑰。請注意，任何使用此密鑰的腳本都將停止工作。"
+msgid "Please type \"{deleteConfirmationValue}\" to confirm you want to delete this API Key. Be aware that any script using this key will stop working."
+msgstr "請鍵入\"{deleteConfirmationValue}\"確認要刪除此 API 密鑰。請注意，任何使用此密鑰的腳本都將停止工作。"
 
 #. js-lingui-id: osUElx
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
@@ -16285,10 +16285,10 @@ msgstr "請輸入 \"{confirmationValue}\" 以確認您要刪除此應用程式�
 msgid "Please type \"{confirmationValue}\" to confirm you want to uninstall this application."
 msgstr ""
 
-#. js-lingui-id: GbtYRD
+#. js-lingui-id: cg/qSx
 #: src/modules/settings/developers/components/SettingsDevelopersWebhookForm.tsx
-msgid "Please type \"yes\" to confirm you want to delete this webhook."
-msgstr "請鍵入\"yes\"確認要刪除此Webhook。"
+msgid "Please type \"{confirmationValue}\" to confirm you want to delete this webhook."
+msgstr "請鍵入\"{confirmationValue}\"確認要刪除此Webhook。"
 
 #. js-lingui-id: dzcUZq
 #: src/modules/settings/profile/components/DeleteAccount.tsx
@@ -21089,15 +21089,20 @@ msgstr "這將授予 {userLabel} {0}。"
 msgid "This will modify {contextStoreNumberOfSelectedRecords} records. This action cannot be undone."
 msgstr "這將修改 {contextStoreNumberOfSelectedRecords} 筆記錄。此動作無法復原。"
 
-#. js-lingui-id: XGDxrH
+#. js-lingui-id: j4VddB
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
-msgid "This will permanently delete the field and all its data from {objectLabel}. Type \"yes\" to confirm."
-msgstr "這將從 {objectLabel} 中永久刪除該欄位及其所有資料。輸入 \"yes\" 以確認。"
+msgid "This will permanently delete the field and all its data from {objectLabel}."
+msgstr "這將從 {objectLabel} 中永久刪除該欄位及其所有資料。"
 
-#. js-lingui-id: fbJ7lc
+#. js-lingui-id: EwjgZd
 #: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgid "This will permanently delete the object and all its records. Type \"{deleteConfirmationValue}\" to confirm."
-msgstr "這將永久刪除該物件及其所有記錄。輸入 \"{deleteConfirmationValue}\" 以確認。"
+msgid "This will permanently delete the object and all its records."
+msgstr "這將永久刪除該物件及其所有記錄。"
+
+#. js-lingui-id: 3/H+fY
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgid "Type \"{confirmationValue}\" to confirm."
+msgstr "輸入 \"{confirmationValue}\" 以確認。"
 
 #. js-lingui-id: qEODFi
 #: src/modules/settings/two-factor-authentication/components/DeleteTwoFactorAuthenticationMethod.tsx
@@ -23800,9 +23805,9 @@ msgstr "黃色"
 msgid "yes"
 msgstr "是"
 
-#. js-lingui-id: VFlXg/
-#: src/modules/settings/data-model/object-details/components/tabs/ObjectSettings.tsx
-msgctxt "Object deletion confirmation value"
+#. js-lingui-id: LfdKnv
+#: src/modules/ui/layout/dialog/hooks/useDeleteConfirmation.ts
+msgctxt "Delete confirmation value"
 msgid "yes"
 msgstr ""
 

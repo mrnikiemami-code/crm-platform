@@ -11,6 +11,7 @@ import { SettingsObjectSearchSection } from '@/settings/data-model/object-detail
 import { SettingsDataModelObjectSettingsFormCard } from '@/settings/data-model/objects/forms/components/SettingsDataModelObjectSettingsFormCard';
 import { SettingsTranslationsButton } from '@/settings/translations/components/SettingsTranslationsButton';
 import { ConfirmationDialog } from '@/ui/layout/dialog/components/ConfirmationDialog';
+import { useDeleteConfirmation } from '@/ui/layout/dialog/hooks/useDeleteConfirmation';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { styled } from '@linaria/react';
@@ -61,6 +62,10 @@ export const ObjectSettings = ({
   const { deleteOneObjectMetadataItem } = useDeleteOneObjectMetadataItem();
   const { enqueueToast } = useToast();
   const { openDialog, closeDialog } = useDialog();
+  const {
+    confirmationValue: deleteConfirmationValue,
+    confirmationInstruction: deleteConfirmationInstruction,
+  } = useDeleteConfirmation();
 
   const isDDLLocked = useAtomStateValue(isDDLLockedState);
 
@@ -98,10 +103,6 @@ export const ObjectSettings = ({
   };
 
   const objectLabel = objectMetadataItem.labelPlural;
-  const deleteConfirmationValue = t({
-    message: 'yes',
-    context: 'Object deletion confirmation value',
-  });
 
   return (
     <StyledContentContainer>
@@ -199,7 +200,7 @@ export const ObjectSettings = ({
       <ConfirmationDialog
         dialogId={DELETE_OBJECT_MODAL_ID}
         title={t`Delete ${objectLabel} object?`}
-        subtitle={t`This will permanently delete the object and all its records. Type "${deleteConfirmationValue}" to confirm.`}
+        subtitle={`${t`This will permanently delete the object and all its records.`} ${deleteConfirmationInstruction}`}
         confirmButtonText={t`Delete`}
         onConfirmClick={confirmDelete}
         onClose={() => closeDialog(DELETE_OBJECT_MODAL_ID)}
