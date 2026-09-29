@@ -7,6 +7,8 @@ import {
 import { type FlatObjectMetadataItem } from '@/metadata-store/types/FlatObjectMetadataItem';
 import { type FlatView } from '@/metadata-store/types/FlatView';
 import { type FindMinimalMetadataQuery } from '@/metadata-store/types/MinimalMetadata';
+import { computeLocalizedCollectionHash } from '@/metadata-store/utils/computeLocalizedCollectionHash';
+import { getMetadataRequestLocale } from '@/metadata-store/utils/getMetadataRequestLocale';
 import { mapAllMetadataNameToEntityKey } from '@/metadata-store/utils/mapAllMetadataNameToEntityKey';
 import { useApolloClient } from '@apollo/client/react';
 import { useStore } from 'jotai';
@@ -34,8 +36,10 @@ export const useLoadMinimalMetadata = () => {
 
     const entityKeysWithServerHash = new Set<MetadataEntityKey>();
 
+    const locale = getMetadataRequestLocale(store);
+
     if (isDefined(collectionHashes)) {
-      for (const { collectionName, hash } of collectionHashes) {
+      for (const { collectionName, hash: collectionHash } of collectionHashes) {
         const entityKey = mapAllMetadataNameToEntityKey(collectionName);
 
         if (!isDefined(entityKey)) {
@@ -43,6 +47,8 @@ export const useLoadMinimalMetadata = () => {
         }
 
         entityKeysWithServerHash.add(entityKey);
+
+        const hash = computeLocalizedCollectionHash({ collectionHash, locale });
 
         const entry = store.get(metadataStoreState.atomFamily(entityKey));
 

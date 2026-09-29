@@ -3,12 +3,16 @@ import { useCleanMorphRelationsTargetingObjectMetadataId } from '@/metadata-stor
 import { useUpdateMetadataStoreDraft } from '@/metadata-store/hooks/useUpdateMetadataStoreDraft';
 import { type MetadataEntityKey } from '@/metadata-store/states/metadataStoreState';
 import { type MetadataEntityTypeMap } from '@/metadata-store/types/MetadataEntityTypeMap';
+import { computeLocalizedCollectionHash } from '@/metadata-store/utils/computeLocalizedCollectionHash';
+import { getMetadataRequestLocale } from '@/metadata-store/utils/getMetadataRequestLocale';
 import { mapAllMetadataNameToEntityKey } from '@/metadata-store/utils/mapAllMetadataNameToEntityKey';
+import { useStore } from 'jotai';
 import { isDefined } from 'twenty-shared/utils';
 
 type AnyMetadataEntity = MetadataEntityTypeMap[MetadataEntityKey];
 
 export const MetadataStoreSSEEffect = () => {
+  const store = useStore();
   const { addToDraft, removeFromDraft, applyChanges } =
     useUpdateMetadataStoreDraft();
   const { cleanMorphRelations } =
@@ -22,7 +26,12 @@ export const MetadataStoreSSEEffect = () => {
         return;
       }
 
-      const collectionHash = eventDetail.updatedCollectionHash;
+      const collectionHash = isDefined(eventDetail.updatedCollectionHash)
+        ? computeLocalizedCollectionHash({
+            collectionHash: eventDetail.updatedCollectionHash,
+            locale: getMetadataRequestLocale(store),
+          })
+        : undefined;
 
       switch (eventDetail.operation.type) {
         case 'create': {
