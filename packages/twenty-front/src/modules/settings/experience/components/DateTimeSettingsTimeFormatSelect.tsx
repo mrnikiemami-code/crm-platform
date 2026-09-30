@@ -1,9 +1,9 @@
-import { formatInTimeZone } from 'date-fns-tz';
-
 import { DATE_TIME_SETTINGS_PREVIEW_DATE } from '@/localization/constants/DateTimeSettingsPreviewDate';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { TimeFormat } from '@/localization/constants/TimeFormat';
 import { detectTimeFormat } from '@/localization/utils/detection/detectTimeFormat';
 import { detectTimeZone } from '@/localization/utils/detection/detectTimeZone';
+import { formatTimePreview } from '@/localization/utils/formatTimePreview';
 import { Select } from '@/ui/input/components/Select';
 import { useLingui } from '@lingui/react/macro';
 
@@ -19,29 +19,26 @@ export const DateTimeSettingsTimeFormatSelect = ({
   value,
 }: DateTimeSettingsTimeFormatSelectProps) => {
   const { t } = useLingui();
+  const { calendar } = useDateTimeFormat();
   const systemTimeZone = detectTimeZone();
 
   const usedTimeZone = timeZone === 'system' ? systemTimeZone : timeZone;
 
   const systemTimeFormat = TimeFormat[detectTimeFormat()];
 
-  const systemTimeFormatLabel = formatInTimeZone(
-    DATE_TIME_SETTINGS_PREVIEW_DATE,
-    usedTimeZone,
-    systemTimeFormat,
-  );
+  const formatPreview = (timeFormat: TimeFormat) =>
+    formatTimePreview({
+      date: DATE_TIME_SETTINGS_PREVIEW_DATE,
+      timeZone: usedTimeZone,
+      timeFormat,
+      calendar,
+    });
 
-  const hour24Label = formatInTimeZone(
-    DATE_TIME_SETTINGS_PREVIEW_DATE,
-    usedTimeZone,
-    TimeFormat.HOUR_24,
-  );
+  const systemTimeFormatLabel = formatPreview(systemTimeFormat);
 
-  const hour12Label = formatInTimeZone(
-    DATE_TIME_SETTINGS_PREVIEW_DATE,
-    usedTimeZone,
-    TimeFormat.HOUR_12,
-  );
+  const hour24Label = formatPreview(TimeFormat.HOUR_24);
+
+  const hour12Label = formatPreview(TimeFormat.HOUR_12);
 
   return (
     <Select

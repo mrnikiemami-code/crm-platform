@@ -1,9 +1,9 @@
-import { formatInTimeZone } from 'date-fns-tz';
-
 import { DateFormat } from '@/localization/constants/DateFormat';
 import { DATE_TIME_SETTINGS_PREVIEW_DATE } from '@/localization/constants/DateTimeSettingsPreviewDate';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { detectDateFormat } from '@/localization/utils/detection/detectDateFormat';
 import { detectTimeZone } from '@/localization/utils/detection/detectTimeZone';
+import { formatDateISOStringToDate } from '@/localization/utils/formatDateISOStringToDate';
 import { Select } from '@/ui/input/components/Select';
 import { useLingui } from '@lingui/react/macro';
 
@@ -19,6 +19,7 @@ export const DateTimeSettingsDateFormatSelect = ({
   value,
 }: DateTimeSettingsDateFormatSelectProps) => {
   const { t } = useLingui();
+  const { calendar } = useDateTimeFormat();
 
   const systemTimeZone = detectTimeZone();
 
@@ -26,11 +27,15 @@ export const DateTimeSettingsDateFormatSelect = ({
 
   const systemDateFormat = DateFormat[detectDateFormat()];
 
-  const systemDateFormatLabel = formatInTimeZone(
-    DATE_TIME_SETTINGS_PREVIEW_DATE,
-    usedTimeZone,
-    systemDateFormat,
-  );
+  const formatPreview = (dateFormat: DateFormat) =>
+    formatDateISOStringToDate({
+      date: DATE_TIME_SETTINGS_PREVIEW_DATE.toISOString(),
+      timeZone: usedTimeZone,
+      dateFormat,
+      calendar,
+    });
+
+  const systemDateFormatLabel = formatPreview(systemDateFormat);
 
   return (
     <Select
@@ -46,27 +51,15 @@ export const DateTimeSettingsDateFormatSelect = ({
       }}
       options={[
         {
-          label: formatInTimeZone(
-            DATE_TIME_SETTINGS_PREVIEW_DATE,
-            usedTimeZone,
-            DateFormat.MONTH_FIRST,
-          ),
+          label: formatPreview(DateFormat.MONTH_FIRST),
           value: DateFormat.MONTH_FIRST,
         },
         {
-          label: formatInTimeZone(
-            DATE_TIME_SETTINGS_PREVIEW_DATE,
-            usedTimeZone,
-            DateFormat.DAY_FIRST,
-          ),
+          label: formatPreview(DateFormat.DAY_FIRST),
           value: DateFormat.DAY_FIRST,
         },
         {
-          label: formatInTimeZone(
-            DATE_TIME_SETTINGS_PREVIEW_DATE,
-            usedTimeZone,
-            DateFormat.YEAR_FIRST,
-          ),
+          label: formatPreview(DateFormat.YEAR_FIRST),
           value: DateFormat.YEAR_FIRST,
         },
       ]}

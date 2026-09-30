@@ -1,8 +1,8 @@
 import { NumberFormat } from '@/localization/constants/NumberFormat';
-import { detectNumberFormat } from '@/localization/utils/detection/detectNumberFormat';
+import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
+import { formatNumberPreview } from '@/localization/utils/formatNumberPreview';
 import { Select } from '@/ui/input/components/Select';
 import { useLingui } from '@lingui/react/macro';
-import { formatNumber as utilFormatNumber } from '~/utils/format/formatNumber';
 
 type NumberFormatSelectProps = {
   value: NumberFormat;
@@ -15,28 +15,23 @@ export const NumberFormatSelect = ({
 }: NumberFormatSelectProps) => {
   const { t } = useLingui();
 
-  const systemNumberFormat = NumberFormat[detectNumberFormat()];
+  const { calendar } = useDateTimeFormat();
 
-  const systemNumberFormatLabel = utilFormatNumber(1234.56, {
-    format: systemNumberFormat,
-    decimals: 2,
-  });
-  const commasAndDotExample = utilFormatNumber(1234.56, {
-    format: NumberFormat.COMMAS_AND_DOT,
-    decimals: 2,
-  });
-  const spacesAndCommaExample = utilFormatNumber(1234.56, {
-    format: NumberFormat.SPACES_AND_COMMA,
-    decimals: 2,
-  });
-  const dotsAndCommaExample = utilFormatNumber(1234.56, {
-    format: NumberFormat.DOTS_AND_COMMA,
-    decimals: 2,
-  });
-  const apostropheAndDotExample = utilFormatNumber(1234.56, {
-    format: NumberFormat.APOSTROPHE_AND_DOT,
-    decimals: 2,
-  });
+  const formatPreview = (numberFormat: NumberFormat) =>
+    formatNumberPreview({
+      value: 1234.56,
+      numberFormat,
+      decimals: 2,
+      calendar,
+    });
+
+  const systemNumberFormatLabel = formatPreview(NumberFormat.SYSTEM);
+  const commasAndDotExample = formatPreview(NumberFormat.COMMAS_AND_DOT);
+  const spacesAndCommaExample = formatPreview(NumberFormat.SPACES_AND_COMMA);
+  const dotsAndCommaExample = formatPreview(NumberFormat.DOTS_AND_COMMA);
+  const apostropheAndDotExample = formatPreview(
+    NumberFormat.APOSTROPHE_AND_DOT,
+  );
 
   return (
     <Select
