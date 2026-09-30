@@ -37,7 +37,7 @@ const StyledButton = styled.button`
   font-weight: ${themeCssVariables.font.weight.medium};
   min-width: 0;
   padding: 0;
-  text-align: left;
+  text-align: start;
 `;
 const StyledLabelButton = styled(StyledButton)`
   display: block;
@@ -151,6 +151,7 @@ export const NavigationMenuItemInlineEditor = ({
         autoFocus
         selectOnFocus
         copyButton={false}
+        shouldTrim={false}
         value={name}
         onChange={setName}
         onEnter={finishRename}

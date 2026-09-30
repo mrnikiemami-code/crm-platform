@@ -5,11 +5,13 @@ const readSource = (relativePath: string) =>
   readFileSync(join(__dirname, relativePath), 'utf8');
 
 const PHYSICAL_INLINE_DECLARATION =
-  /^\s*(left|right|margin-left|margin-right|padding-left|padding-right)\s*:/m;
+  /^\s*(left|right|margin-left|margin-right|padding-left|padding-right|text-align:\s*(left|right))\s*[:;]/m;
 
 describe('navigation item logical layout', () => {
   it.each([
     '../NavigationMenuItemRowActions.tsx',
+    '../NavigationMenuItemInlineEditor.tsx',
+    '../NavigationMenuItemBackButton.tsx',
     '../../../../ui/navigation/navigation-drawer/components/NavigationDrawerItem.tsx',
   ])('%s does not use physical inline offsets', (relativePath) => {
     expect(readSource(relativePath)).not.toMatch(PHYSICAL_INLINE_DECLARATION);
