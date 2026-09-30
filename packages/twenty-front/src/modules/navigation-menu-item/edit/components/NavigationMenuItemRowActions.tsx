@@ -9,10 +9,10 @@ const StyledActions = styled.div`
   align-items: center;
   bottom: ${themeCssVariables.spacing['0.5']};
   display: flex;
+  inset-inline-end: ${themeCssVariables.spacing['0.5']};
   opacity: 0;
   pointer-events: none;
   position: absolute;
-  right: ${themeCssVariables.spacing['0.5']};
 `;
 
 type NavigationMenuItemRowActionsProps = {

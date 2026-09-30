@@ -41,6 +41,18 @@ const StyledRow = styled.div`
     opacity: 1;
     pointer-events: auto;
   }
+
+  &[data-row-actions='1'] .navigation-drawer-item {
+    padding-inline-end: calc(
+      ${themeCssVariables.spacing[6]} + ${themeCssVariables.spacing[1]}
+    );
+  }
+
+  &[data-row-actions='2'] .navigation-drawer-item {
+    padding-inline-end: calc(
+      ${themeCssVariables.spacing[6]} * 2 + ${themeCssVariables.spacing[1]}
+    );
+  }
 `;
 type NavigationMenuItemEditableProps = {
   item: NavigationMenuItem;
@@ -120,6 +132,12 @@ export const NavigationMenuItemEditable = ({
   };
 
   const row = renderRow();
+  const shouldShowRowActions = canOrganize && isExpanded;
+  const rowActionsCount = shouldShowRowActions
+    ? isDefined(rightOptions) && rightOptions !== false
+      ? 2
+      : 1
+    : undefined;
   const shouldWrapInMenu =
     canOrganize ||
     (canEdit && selectedNavigationMenuItemIdInEditMode === item.id);
@@ -179,6 +197,7 @@ export const NavigationMenuItemEditable = ({
     >
       <StyledRow
         id={anchorId}
+        data-row-actions={rowActionsCount}
         onContextMenu={(event) => {
           if (
             !canOrganize ||
@@ -199,7 +218,7 @@ export const NavigationMenuItemEditable = ({
           />
         )}
         {content}
-        {canOrganize && isExpanded && (
+        {shouldShowRowActions && (
           <NavigationMenuItemRowActions
             rightOptions={rightOptions}
             onOpenActions={() => open('actions')}
