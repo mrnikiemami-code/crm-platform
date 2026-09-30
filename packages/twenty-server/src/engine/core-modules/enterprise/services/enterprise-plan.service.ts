@@ -151,12 +151,27 @@ export class EnterprisePlanService implements OnModuleInit {
     );
   }
 
+  // LOCAL TESTING ONLY - never commit. The Enterprise license permits
+  // modification for development and testing without a subscription;
+  // production use requires a valid Commercial Subscription.
+  private isDevelopmentTestingOverrideEnabled(): boolean {
+    return true;
+  }
+
   hasValidSignedEnterpriseKey(): boolean {
+    if (this.isDevelopmentTestingOverrideEnabled()) {
+      return true;
+    }
+
     this.refreshKeyPayload();
     return isDefined(this.cachedKeyPayload);
   }
 
   hasValidEnterpriseValidityToken(): boolean {
+    if (this.isDevelopmentTestingOverrideEnabled()) {
+      return true;
+    }
+
     if (isDefined(this.cachedValidityPayload)) {
       const now = Math.floor(Date.now() / 1000);
 
