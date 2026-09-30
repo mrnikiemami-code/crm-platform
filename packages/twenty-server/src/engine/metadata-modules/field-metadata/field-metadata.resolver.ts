@@ -21,7 +21,14 @@ import {
   ForbiddenError,
   NotFoundError,
 } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
+import { GraphQLJSON } from 'graphql-type-json';
+
+import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
+import {
+  localizeStandardFieldOptions,
+  restoreCanonicalStandardFieldOptionLabels,
+} from 'src/engine/metadata-modules/field-metadata/utils/localize-standard-field-options.util';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { type IDataloaders } from 'src/engine/dataloaders/dataloader.interface';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -77,6 +84,7 @@ export class FieldMetadataResolver {
     @InjectRepository(FieldMetadataEntity)
     private readonly fieldMetadataRepository: Repository<FieldMetadataEntity>,
     private readonly derivedFieldMetadataIdsService: DerivedFieldMetadataIdsService,
+    private readonly i18nService: I18nService,
   ) {}
 
   @UseGuards(NoPermissionGuard)
@@ -237,6 +245,17 @@ export class FieldMetadataResolver {
     );
   }
 
+  @ResolveField(() => GraphQLJSON, { nullable: true })
+  options(
+    @Parent() fieldMetadata: Pick<FieldMetadataDTO, 'options'>,
+    @Context() context: I18nContext,
+  ): FieldMetadataDTO['options'] {
+    return localizeStandardFieldOptions(fieldMetadata.options, {
+      locale: context.req.locale,
+      i18nInstance: this.i18nService.getI18nInstance(context.req.locale),
+    });
+  }
+
   @ResolveField(() => String, { nullable: true })
   async icon(
     @Parent() fieldMetadata: FieldMetadataStandardOverrideParent,
@@ -274,10 +293,26 @@ export class FieldMetadataResolver {
   async updateOneField(
     @Args('input') input: UpdateOneFieldMetadataInput,
     @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
+    @Context() context: I18nContext,
   ) {
     try {
+      const update = isDefined(input.update.options)
+        ? {
+            ...input.update,
+            options: restoreCanonicalStandardFieldOptionLabels(
+              input.update.options,
+              {
+                locale: context.req.locale,
+                i18nInstance: this.i18nService.getI18nInstance(
+                  context.req.locale,
+                ),
+              },
+            ),
+          }
+        : input.update;
+
       const flatFieldMetadata = await this.fieldMetadataService.updateOneField({
-        updateFieldInput: { ...input.update, id: input.id },
+        updateFieldInput: { ...update, id: input.id },
         workspaceId,
       });
 
