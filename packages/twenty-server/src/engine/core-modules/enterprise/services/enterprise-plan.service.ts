@@ -155,7 +155,7 @@ export class EnterprisePlanService implements OnModuleInit {
   // modification for development and testing without a subscription;
   // production use requires a valid Commercial Subscription.
   private isDevelopmentTestingOverrideEnabled(): boolean {
-    return true;
+    return false;
   }
 
   hasValidSignedEnterpriseKey(): boolean {
