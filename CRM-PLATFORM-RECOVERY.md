@@ -670,14 +670,17 @@ RazPayamak Smart implementation uses the official SmartSMS REST contract reporte
 
 Known W3 risks: the REST base host should be confirmed with a real RazPayamak account before production use; W2 generic provider config names were replaced with provider-scoped names (no deployment existed); no automatic provider fallback; recipient numbers currently pass through verbatim; no caller/persistence integration exists yet.
 
-W4 implementation exists at `8c3866f5f5f18d5c9367825e1306cbabcce94eab` (`feat(apps): persist outbound communications`) and is scope-clean (9 changed files, all under the Communication app; core changes ZERO), but **ARCHITECT REVIEW: NOT YET ACCEPTED — W4-R1 REQUIRED**.
+W4 is **ACCEPTED / ARCHITECT-CERTIFIED** after bounded correction W4-R1.
 
-Independent origin diff review found the main architecture is sound: app-local persistence port + CoreApi adapter, one send-and-persist orchestration, provider-agnostic send service, no provider-specific branching, QUEUED-before-send, provider/recipient snapshots, and no core/raw-DB coupling. However three correctness/safety issues must be repaired before W4 acceptance:
-1. **Secret/error persistence risk:** provider transport catches and the orchestration unexpected-exception path use raw `error.message` in `failureReason`; W4 now persists those strings. A transport/runtime error can contain a credential-bearing URL/body. Persist only sanitized stable failure text; retain raw errors only in non-persisted diagnostic cause if needed.
-2. **Subject has two sources of truth:** `OutboundCommunication` already owns optional `subject`, while `SendCommunicationInput` adds a second optional `subject`; persistence reads the latter while the provider receives `message.subject`. They can diverge. Remove the duplicate and snapshot exactly the subject actually sent.
-3. **Outcome-persistence error wording/cleanup:** `CommunicationOutcomePersistenceError` says the communication “was sent” even when the provider result is normalized `FAILED`. Also the unexpected-provider-error cleanup path silently swallows a FAILED-state persistence failure, potentially leaving the record QUEUED without surfacing the persistence problem. Make semantics truthful and ensure both failures remain diagnosable without retrying the provider.
+- W4 implementation: `8c3866f5f5f18d5c9367825e1306cbabcce94eab` — `feat(apps): persist outbound communications`
+- W4-R1 correction: `f1469f4fb708a84a79a37f629e91f5455e5e9472` — `fix(apps): harden durable communication outcomes`
+- Independent origin diff review verified W4-R1 changed exactly 7 Communication-app files and no core files.
 
-Immediate next task: **W4-R1 bounded correction only** for the three findings above, with focused regression tests. Do not start Person UI until W4-R1 passes independent review.
+Certified architecture: one `CommunicationSendAndPersistService` owns QUEUED→outcome orchestration; `CommunicationPersistence` is an app-local port; `CoreApiCommunicationPersistence` is the adapter; `CommunicationSendService` stays provider-agnostic; provider/recipient are immutable send-time snapshots; subject has one source of truth (`OutboundCommunication.subject`); transport/runtime exception text is never persisted; double failure (send exception + FAILED-state persistence failure) is explicit and retains both non-persisted causes; no provider retry occurs.
+
+Known accepted limitations: no distributed atomicity between provider and workspace DB; a double failure can still leave the durable row QUEUED but is now explicit/diagnosable; recipient is not normalized; provider-declared response messages are persisted as failureReason; no live-workspace end-to-end smoke yet.
+
+Immediate next task: build the first real **Person send-message vertical slice** using Twenty Apps native server logic-function + command/front-component patterns. The UI must call the same certified durable orchestration; secrets/provider HTTP remain server-side. Keep unsupported channels hidden. Do not duplicate send logic in the UI.
 
 ---
 
@@ -696,7 +699,7 @@ Immediate next task: **W4-R1 bounded correction only** for the three findings ab
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W4 IMPLEMENTED, REVIEW PENDING R1 | W0–W3 accepted; W4 `8c3866f5f5` scope-clean but architect review found 3 bounded safety/correctness issues; next: W4-R1, then re-review before Person UI |
+| Communications / Messaging | ACTIVE — W4 ARCHITECT-CERTIFIED | W0–W3 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` independently reviewed/accepted; next: Person send-message vertical slice via native app logic-function + UI |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
