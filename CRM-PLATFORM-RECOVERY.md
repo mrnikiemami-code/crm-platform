@@ -29,7 +29,7 @@ Origin Sync:
 `HEAD == origin/crm-platform` at `727cc5e06a7f8ba57198469cf58f1ba1784808cf` before W5. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation. W5 then adds the Person send-message vertical slice (implementation commit recorded below).
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W4` + `W4-R1` — durable outbound send path accepted/architect-certified (`8c3866f5f5`, `f1469f4fb7`). W5 (Person send-message vertical slice) implemented and committed at `1509e0e675`; see the W5 section below.
+`CRM-COMMUNICATIONS-001-W4` + `W4-R1` — durable outbound send path accepted/architect-certified (`8c3866f5f5`, `f1469f4fb7`). W5 (Person send-message vertical slice) implemented and committed at `15ad660a648d8aa85eddfb904712d8ec04552afa`; see the W5 section below.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -699,7 +699,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 IMPLEMENTED (Person send-message slice) | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message vertical slice committed at `1509e0e675`; see the W5 section below |
+| Communications / Messaging | ACTIVE — W5 IMPLEMENTED (Person send-message slice) | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message vertical slice committed at `15ad660a648d8aa85eddfb904712d8ec04552afa`; see the W5 section below |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -707,7 +707,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 
 # Communications W5 — Person send-message vertical slice
 
-Status: **IMPLEMENTED / COMMITTED** at `1509e0e675` (`feat(apps): add person send-message slice`). **NOT yet live-verified** (see limitations).
+Status: **IMPLEMENTED / COMMITTED** at `15ad660a648d8aa85eddfb904712d8ec04552afa` (`feat(apps): add person send-message slice`). **NOT yet live-verified** (see limitations).
 
 ## Call path (native Twenty Apps patterns)
 
