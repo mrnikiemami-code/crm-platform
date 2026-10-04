@@ -664,9 +664,13 @@ Provider requirement clarified after W2: the intended SMS service is **RazPayama
 
 Architecture correction for the next wave: provider selection must support **multiple providers for the same channel** without channel-specific `if/else` branching. A registry keyed only by `channel` is insufficient once both Kavenegar and RazPayamak exist.
 
-Immediate next task: evolve the app-local registry/selection model to support multiple providers per channel and add a RazPayamak/Smart provider from its official contract, with focused deterministic tests. Keep the task cohesive; do not split mechanically if implementation + validation remains reasonably bounded. Commit/push belong to the same task.
+W3 is **COMPLETE / COMMITTED / PUSHED** at `b69c4a2ade34714e3823f9598743e3e9673d20d6` (`feat(apps): add RazPayamak multi-provider SMS support`). GitHub commit verification confirms 24 changed files. Provider identity is now independent from channel (`kavenegar | razpayamak`), the registry is keyed by provider id, multiple SMS providers coexist, channel/provider compatibility is enforced centrally, and `CommunicationSendService` remains provider-agnostic with no provider-specific branching. Kavenegar remains supported; both drivers truthfully expose delivery-receipt capability as false until implemented.
 
-Do not advance to communication persistence/UI/workflow/timeline until the multi-provider SMS selection seam is sound.
+RazPayamak Smart implementation uses the official SmartSMS REST contract reported from the provider PDF: POST SmartSMS/Send, username + password(ApiKey), from/to/text, provider result normalized into `CommunicationSendResult`. No real SMS or credentials were used. Focused W3 validation reported 43/43 tests PASS, typecheck PASS, lint PASS, app build PASS, core changes ZERO.
+
+Known W3 risks: the REST base host should be confirmed with a real RazPayamak account before production use; W2 generic provider config names were replaced with provider-scoped names (no deployment existed); no automatic provider fallback; recipient numbers currently pass through verbatim; no caller/persistence integration exists yet.
+
+Immediate next task: **send → persist integration**. Make one shared application path create/update the app-owned `communication` record around provider send, preserving QUEUED/SENT/DELIVERED/FAILED semantics and timestamps/providerMessageId/failureReason. Keep provider selection generic. Do not add Person UI, Workflow, Timeline, delivery webhook, retries/fallback, or inbound channels in the same wave unless repository reality makes a tiny supporting seam unavoidable.
 
 ---
 
@@ -685,7 +689,7 @@ Do not advance to communication persistence/UI/workflow/timeline until the multi
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0/W1/W2 IMPLEMENTED | W0 skeleton `bbddd56c73`; W1 provider boundary `cf4d176d60`; W2 Kavenegar/send path `f951459e5a`; next: multi-provider-per-channel + RazPayamak Smart |
+| Communications / Messaging | ACTIVE — W0/W1/W2/W3 IMPLEMENTED | W0 skeleton `bbddd56c73`; W1 provider boundary `cf4d176d60`; W2 Kavenegar/send path `f951459e5a`; W3 multi-provider + RazPayamak `b69c4a2ade`; next: send→persist integration |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
