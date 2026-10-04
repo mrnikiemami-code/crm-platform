@@ -670,7 +670,14 @@ RazPayamak Smart implementation uses the official SmartSMS REST contract reporte
 
 Known W3 risks: the REST base host should be confirmed with a real RazPayamak account before production use; W2 generic provider config names were replaced with provider-scoped names (no deployment existed); no automatic provider fallback; recipient numbers currently pass through verbatim; no caller/persistence integration exists yet.
 
-Immediate next task: **send → persist integration**. Make one shared application path create/update the app-owned `communication` record around provider send, preserving QUEUED/SENT/DELIVERED/FAILED semantics and timestamps/providerMessageId/failureReason. Keep provider selection generic. Do not add Person UI, Workflow, Timeline, delivery webhook, retries/fallback, or inbound channels in the same wave unless repository reality makes a tiny supporting seam unavoidable.
+W4 implementation exists at `8c3866f5f5f18d5c9367825e1306cbabcce94eab` (`feat(apps): persist outbound communications`) and is scope-clean (9 changed files, all under the Communication app; core changes ZERO), but **ARCHITECT REVIEW: NOT YET ACCEPTED — W4-R1 REQUIRED**.
+
+Independent origin diff review found the main architecture is sound: app-local persistence port + CoreApi adapter, one send-and-persist orchestration, provider-agnostic send service, no provider-specific branching, QUEUED-before-send, provider/recipient snapshots, and no core/raw-DB coupling. However three correctness/safety issues must be repaired before W4 acceptance:
+1. **Secret/error persistence risk:** provider transport catches and the orchestration unexpected-exception path use raw `error.message` in `failureReason`; W4 now persists those strings. A transport/runtime error can contain a credential-bearing URL/body. Persist only sanitized stable failure text; retain raw errors only in non-persisted diagnostic cause if needed.
+2. **Subject has two sources of truth:** `OutboundCommunication` already owns optional `subject`, while `SendCommunicationInput` adds a second optional `subject`; persistence reads the latter while the provider receives `message.subject`. They can diverge. Remove the duplicate and snapshot exactly the subject actually sent.
+3. **Outcome-persistence error wording/cleanup:** `CommunicationOutcomePersistenceError` says the communication “was sent” even when the provider result is normalized `FAILED`. Also the unexpected-provider-error cleanup path silently swallows a FAILED-state persistence failure, potentially leaving the record QUEUED without surfacing the persistence problem. Make semantics truthful and ensure both failures remain diagnosable without retrying the provider.
+
+Immediate next task: **W4-R1 bounded correction only** for the three findings above, with focused regression tests. Do not start Person UI until W4-R1 passes independent review.
 
 ---
 
@@ -689,7 +696,7 @@ Immediate next task: **send → persist integration**. Make one shared applicati
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0/W1/W2/W3 IMPLEMENTED | W0 skeleton `bbddd56c73`; W1 provider boundary `cf4d176d60`; W2 Kavenegar/send path `f951459e5a`; W3 multi-provider + RazPayamak `b69c4a2ade`; next: send→persist integration |
+| Communications / Messaging | ACTIVE — W4 IMPLEMENTED, REVIEW PENDING R1 | W0–W3 accepted; W4 `8c3866f5f5` scope-clean but architect review found 3 bounded safety/correctness issues; next: W4-R1, then re-review before Person UI |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
