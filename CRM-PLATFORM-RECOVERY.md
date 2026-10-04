@@ -26,10 +26,10 @@ HEAD:
 `b34c641728c27b6d2c2c679b4cabeed10deb4e3f` — `docs(recovery): record communications P0 architecture`
 
 Origin Sync:
-`origin/crm-platform` is at `b34c641728c27b6d2c2c679b4cabeed10deb4e3f` after the Communications P0 recovery update. A local Cursor checkout may still be behind these direct recovery-document commits; before the next implementation wave, fetch and fast-forward to origin without touching stashes/untracked files.
+`HEAD == origin/crm-platform` at `bbddd56c734571a880d9e530a0cd3e65f399bca2` after the accepted W0 implementation was committed and pushed. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-P0` — architecture audit accepted and persisted. No production implementation yet.
+`CRM-COMMUNICATIONS-001-W0` + `W0-R1` — accepted Communication App skeleton committed/pushed at `bbddd56c734571a880d9e530a0cd3e65f399bca2`.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -652,18 +652,15 @@ Accepted correction:
 W0 + W0-R1 implementation scope remains exactly the 14 new files under:
 `packages/twenty-apps/internal/communication/`
 
-W0 is architecturally **ACCEPTED**. It still exists only in the local working tree until the scoped implementation commit is created and pushed.
+W0 is architecturally **ACCEPTED / COMMITTED / PUSHED**. Durable implementation commit: `bbddd56c734571a880d9e530a0cd3e65f399bca2` (`feat(apps): add internal Communication app skeleton`). The commit contains exactly the 14 app files under `packages/twenty-apps/internal/communication/`; core/unrelated files = ZERO.
 
 ## Next implementation wave
 
-Immediate next task: **W0-COMMIT — commit/push accepted skeleton only**.
+Immediate next task: **W1 — generic provider boundary only** (target 15–30 minutes).
 
-The implementation commit must include only:
-`packages/twenty-apps/internal/communication/`
+W1 must add the app-local `CommunicationProvider` contract, capabilities/result/input types, and a small registry/selection seam with focused deterministic unit tests. It must **not** select or call a real SMS vendor yet. This keeps the wave bounded and lets the provider integration be a separate W2.
 
-Do not include the 24 pre-existing unrelated modified files, untracked `docs/`, stashes, or any other path.
-
-After W0-COMMIT is verified on origin, update this recovery checkpoint with the implementation SHA and only then advance to W1 (generic provider boundary + one SMS provider).
+After successful focused validation, W1 itself must scope-check, commit, push, verify `HEAD == origin/crm-platform`, report, and stop. Commit/push are part of the same wave; never create a separate task merely for commit/push.
 
 W0 should create/install the internal `communication` app, define the generic `communication` workspace object + Person relation and encrypted configuration-variable seam, verify installation/object visibility, and stop. **No provider sending yet.**
 
@@ -772,6 +769,23 @@ Any future date work must stay presentation-only.
 Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
 Do not introduce Enterprise entitlement bypasses unless explicitly requested.
 ```
+
+---
+
+# Task Execution Policy — LOCKED
+
+For CRM implementation work:
+
+- Target each task/wave at roughly **15–30 minutes**.
+- If reliable implementation + validation is likely to exceed ~30 minutes, split it into smaller waves before execution.
+- Prefer focused, deterministic, repeatable automated tests. Do not make screenshot/manual visual confirmation a required PASS criterion.
+- UI screenshot/manual smoke may be supplemental only when the change is inherently visual; it never replaces proper automated validation.
+- Run the smallest relevant test/typecheck/lint/build surface first. Do not run huge regression suites for small isolated changes unless the risk justifies them.
+- Each task has one bounded architectural objective and no automatic next wave.
+- Normal successful wave lifecycle is: **implement → focused validate/test → scope review → commit → push → verify HEAD==origin → report → stop**.
+- Do **not** create separate tasks only for commit or push.
+- If validation fails or scope is contaminated, do not commit; report and stop.
+- Recovery/audit/architecture decisions are maintained separately in this Source of Truth and should not require implementation agents to create documentation-only waves.
 
 ---
 
