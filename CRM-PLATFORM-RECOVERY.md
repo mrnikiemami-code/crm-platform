@@ -38,7 +38,7 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- SMS: PLANNED / NOT IMPLEMENTED.
+- Communications / Messaging: PLANNED / NOT IMPLEMENTED. First delivery channel will be SMS; architecture is multi-channel from day one.
 
 Next Recommended Work:
 None fixed. Only optional, separately-scoped items remain (see Known Unverified / Pending Items). Do not start them automatically.
@@ -432,17 +432,92 @@ Do not start branding unless explicitly requested.
 
 ---
 
-# SMS
+# Communications / Messaging
 
 Status: **PLANNED / NOT IMPLEMENTED**
 
-- No SMS production code exists. `ISmsProvider` does **not** exist in the source tree.
-- Current direction: a provider abstraction rather than vendor lock-in.
-- Candidate conceptual boundary: `ISmsProvider`.
-- Potential providers may include Iranian SMS providers, but:
-  - no provider has been selected
-  - no SMS implementation exists
-  - no SMS production code has been accepted
+This supersedes the earlier SMS-only planning direction. Do **not** build an SMS-specific core subsystem.
+
+## Product direction
+
+Build a small extensible **outbound Communication** capability. The first real delivery channel will be **SMS**, but the boundary must allow later channels without redesigning the core:
+
+- SMS
+- WhatsApp
+- Telegram
+- Instagram
+- Bale
+- future providers/channels
+
+Twenty's existing native email/message infrastructure must be inspected and reused where safe, but email must **not** be forced into the new abstraction if that would require a large core refactor.
+
+## Architecture direction
+
+- App-first / minimal-core-change.
+- Prefer a generic Communication boundary over `ISmsProvider` as the top-level contract.
+- Provider/vendor adapters sit behind the channel boundary; do not lock the CRM to Kavenegar, Melipayamak, FarazSMS, or any other vendor.
+- Capability-aware channels are preferred because SMS, WhatsApp, Telegram, Instagram, etc. do not have identical semantics.
+- Preserve workspace isolation.
+- Provider credentials/secrets must not be stored as ordinary plaintext workspace records.
+- UI and Workflow should eventually call the same application service.
+- Reuse the existing Timeline/activity infrastructure rather than creating a duplicate history UI.
+
+Conceptual capability examples (not yet locked interfaces):
+- send text
+- send media
+- templates
+- delivery receipts
+- read receipts
+- reply / conversation support
+
+## MVP scope — outbound first
+
+Fast delivery order:
+
+1. **P0 — Analyze only:** inspect Twenty's actual email/message/thread/channel, Timeline/activity, Workflow/HTTP Request, Apps framework, webhook, queue/retry, provider settings and secret-handling seams. No code changes.
+2. **P1 — Foundation:** minimal generic Communication model/contracts.
+3. **P2 — SMS provider:** connect one selected Iranian SMS provider.
+4. **P3 — Send UI:** Person record → «ارسال پیام» → choose available channel → send.
+5. **P4 — History:** persist send result/status and surface it through the existing Person Timeline/history path.
+6. **P5 — Workflow:** generic `Send Communication` workflow action using the same application service as the UI.
+7. **P6 — Delivery:** provider callback/webhook for delivery/failure status.
+8. **P7 — Second channel:** Telegram or WhatsApp to prove the abstraction without redesign.
+
+Initial minimal status vocabulary should stay small unless repository analysis proves otherwise:
+- QUEUED
+- SENT
+- DELIVERED
+- FAILED
+
+Likely message linkage requirements:
+- workspace
+- Person/contact
+- channel/provider
+- sender identity where applicable
+- recipient
+- body
+- provider external message ID
+- status/timestamps
+
+## Explicitly OUT OF SCOPE for the first MVP
+
+- multi-channel Inbox
+- inbound chat/conversations
+- chat UI
+- attachments
+- bulk marketing/campaign manager
+- AI-generated messages
+- implementing WhatsApp, Telegram, Instagram or Bale in the first wave
+
+These are future consumers of the Communication boundary only.
+
+## Current implementation reality
+
+- No Communication/SMS production implementation has been accepted.
+- No SMS provider has been selected.
+- No WhatsApp/Telegram/Instagram/Bale implementation exists.
+- The next planned task is `CRM-COMMUNICATIONS-001-P0` and is **ANALYZE ONLY**, timeboxed to roughly 15–20 minutes.
+- P0 must stop for user review and must not commit implementation.
 
 ---
 
@@ -461,7 +536,7 @@ Status: **PLANNED / NOT IMPLEMENTED**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| SMS | PLANNED / NOT IMPLEMENTED | no `ISmsProvider`, no SMS code |
+| Communications / Messaging | PLANNED / NOT IMPLEMENTED | SMS-first, multi-channel architecture planned; no accepted implementation yet |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -541,7 +616,7 @@ plus Persian/RTL, Data Model, Record Detail, Navigation, Kanban/system-status,
 Settings/Experience, and development-startup fixes committed.
 
 The Jalali presentation program is complete; do not start another Jalali phase.
-Branding and SMS are PLANNED only — do not start them automatically.
+Branding and Communications / Messaging are PLANNED only — do not start them automatically. Communications is SMS-first but must remain multi-channel; the next planned step is analyze-only P0.
 
 Any future date work must stay presentation-only.
 Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
