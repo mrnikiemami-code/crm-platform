@@ -511,13 +511,102 @@ Likely message linkage requirements:
 
 These are future consumers of the Communication boundary only.
 
-## Current implementation reality
+## P0 architecture analysis — COMPLETE / ACCEPTED
 
-- No Communication/SMS production implementation has been accepted.
-- No SMS provider has been selected.
-- No WhatsApp/Telegram/Instagram/Bale implementation exists.
-- The next planned task is `CRM-COMMUNICATIONS-001-P0` and is **ANALYZE ONLY**, timeboxed to roughly 15–20 minutes.
-- P0 must stop for user review and must not commit implementation.
+Task: `CRM-COMMUNICATIONS-001-P0` (analyze-only; no production files changed).
+
+Repository evidence confirmed that Twenty already provides most seams needed for a zero-core-change MVP:
+
+- generic workspace message store: `message`, `messageThread`, `messageParticipant`, `messageThreadTarget`, `messageChannelMessageAssociation`
+- `MessageChannelEntity` with `MessageChannelType = { EMAIL, SMS, EMAIL_GROUP, APP }`; `SMS` is currently a reserved/unused enum slot and must not be repurposed for MVP
+- app-owned message channels via `ApplicationMessageChannelsResolver` and app message ingestion via `ApplicationMessageIngestionResolver`; app-channel design explicitly anticipates non-email handles such as WhatsApp numbers
+- outbound precedent: `MessageOutboundDriver` + `MessagingMessageOutboundService` + `SendEmailService`
+- UI/workflow precedent: `SendEmailResolver` and `SendEmailWorkflowAction` both funnel into `SendEmailService`
+- existing Timeline engine can emit app-defined activity types through a Person relation; do not build a second timeline
+- Apps framework supports objects, fields, relations, logic functions, workflow actions, front components, command-menu items, timeline activity types, connection providers and server-route/webhook triggers
+- app variables are encrypted at rest; future OAuth providers can use connection providers / encrypted connected-account tokens
+- queue/retry and application-job infrastructure already exist
+- Person phone handles already exist at `PersonWorkspaceEntity.phones`
+
+### Locked MVP ownership
+
+Use one dedicated internal/private Twenty App, recommended location:
+
+`packages/twenty-apps/internal/communication/`
+
+The app owns:
+1. provider drivers
+2. provider secrets/config
+3. send application service / logic function
+4. workflow step
+5. Person-record UI action
+6. delivery webhook
+7. communication persistence
+
+Core stays untouched for MVP. Keep the generic `CommunicationProvider` contract inside the app; promote it to core only if a second independent consumer later proves that necessary.
+
+### Locked minimal model
+
+One app-owned workspace object: `communication`.
+
+Minimum fields:
+- `channel`: extensible channel value (SMS first; later WhatsApp/Telegram/Instagram/Bale)
+- `body`
+- nullable `subject`
+- `status`: `QUEUED | SENT | DELIVERED | FAILED`
+- `providerMessageId`
+- nullable `failureReason`
+- nullable `queuedAt / sentAt / deliveredAt`
+- `direction = OUTBOUND` for MVP
+- relation `targetPerson -> Person`
+- relation `sender -> WorkspaceMember`
+- channel/provider account identifier as needed
+
+Workspace-object rows are already workspace scoped; do not introduce a user-managed `workspaceId` field.
+
+### Provider boundary
+
+Use an app-local generic provider boundary conceptually equivalent to:
+
+`CommunicationProvider { channel; capabilities(); send(message); }`
+
+A registry selects the provider/channel driver. Do **not** extend `MessageOutboundDriver` for MVP because it is email-shaped (`subject/html/cc/inReplyTo/threadExternalId`) and forcing SMS through it would create unnecessary core coupling.
+
+### Integration decisions
+
+- Timeline: `defineTimelineActivityType` through the communication→Person relation; consume existing routing/rendering infrastructure.
+- Workflow: expose the same send logic through `workflowActionTriggerSettings`; do not add a core `WorkflowActionType` or modify `WorkflowActionFactory`.
+- UI: Person command-menu/front component calls the same send application path.
+- Secrets: encrypted app variables; OAuth-style future providers use `defineConnectionProvider`.
+- Delivery callbacks: app logic function exposed through `serverRouteTriggerSettings`, with provider-specific signature verification/parsing.
+- Existing core `message/messageThread` reuse for conversation continuity remains optional and is **not MVP-critical**.
+
+### Do not touch for MVP
+
+- email outbound drivers / `SendEmailService`
+- core `message/messageThread/messageParticipant` import/sync pipeline
+- `MessageChannelType` / core `messageChannel`
+- Timeline core services/entities
+- `WorkflowActionFactory` / core workflow registry
+- Enterprise/licence code
+- secret-encryption internals
+- existing Persian/Jalali infrastructure
+
+### Remaining implementation risks to verify in bounded waves
+
+- outbound HTTP/egress availability from app logic-function runtime
+- app relation capabilities only if future direct linkage to core `message` is desired (MVP avoids this)
+- provider-specific rate-limit/backoff tuning
+- encryption key availability in deployment environment
+- timeline noise at high message volume
+
+## Next implementation wave
+
+Next planned task: **W0 — App skeleton only**.
+
+W0 should create/install the internal `communication` app, define the generic `communication` workspace object + Person relation and encrypted configuration-variable seam, verify installation/object visibility, and stop. **No provider sending yet.**
+
+No SMS provider has been selected. No Communication/SMS production implementation has yet been accepted.
 
 ---
 
