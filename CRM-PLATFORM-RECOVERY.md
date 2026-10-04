@@ -23,13 +23,13 @@ Branch:
 `crm-platform`
 
 HEAD:
-`b34c641728c27b6d2c2c679b4cabeed10deb4e3f` — `docs(recovery): record communications P0 architecture`
+`727cc5e06a7f8ba57198469cf58f1ba1784808cf` — `docs(recovery): record Communication W4-R1 certification`
 
 Origin Sync:
-`HEAD == origin/crm-platform` at `bbddd56c734571a880d9e530a0cd3e65f399bca2` after the accepted W0 implementation was committed and pushed. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation.
+`HEAD == origin/crm-platform` at `727cc5e06a7f8ba57198469cf58f1ba1784808cf` before W5. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation. W5 then adds the Person send-message vertical slice (implementation commit recorded below).
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W0` + `W0-R1` — accepted Communication App skeleton committed/pushed at `bbddd56c734571a880d9e530a0cd3e65f399bca2`.
+`CRM-COMMUNICATIONS-001-W4` + `W4-R1` — durable outbound send path accepted/architect-certified (`8c3866f5f5`, `f1469f4fb7`). W5 (Person send-message vertical slice) implemented and committed at `1509e0e675`; see the W5 section below.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -38,10 +38,10 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: PLANNED / NOT IMPLEMENTED. First delivery channel will be SMS; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W4 accepted/committed; W5 adds the first Person send-message vertical slice (command menu → composer front component → authenticated route logic function → certified durable orchestration). SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
 
 Next Recommended Work:
-`CRM-COMMUNICATIONS-001-W0` — create only the internal Communication App skeleton, generic communication workspace object + Person relation, and encrypted configuration-variable seam. No provider sending yet. Stop for review before commit.
+`CRM-COMMUNICATIONS-001-W6` (not started) — remaining vertical-slice polish decided by the architect: timeline presentation, richer composer UX/localization, delivery status surfacing, or Workflow action reuse of the same durable path. Do not start automatically.
 
 ---
 
@@ -699,9 +699,57 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W4 ARCHITECT-CERTIFIED | W0–W3 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` independently reviewed/accepted; next: Person send-message vertical slice via native app logic-function + UI |
+| Communications / Messaging | ACTIVE — W5 IMPLEMENTED (Person send-message slice) | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message vertical slice committed at `1509e0e675`; see the W5 section below |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
+
+---
+
+# Communications W5 — Person send-message vertical slice
+
+Status: **IMPLEMENTED / COMMITTED** at `1509e0e675` (`feat(apps): add person send-message slice`). **NOT yet live-verified** (see limitations).
+
+## Call path (native Twenty Apps patterns)
+
+```
+Person record
+  → Command menu item "Send message"        (availabilityType: RECORD_SELECTION, Person object)
+  → Front component composer                (useRecordId + useTranslate, twenty-sdk/front-component)
+  → POST /s/communication/person-phones     (httpRouteTriggerSettings, isAuthRequired: true)
+  → POST /s/communication/send              (httpRouteTriggerSettings, isAuthRequired: true)
+  → CommunicationSendAndPersistService      (the certified W4 durable path, unchanged)
+  → CommunicationSendService → ProviderRegistry → Kavenegar | RazPayamak
+```
+
+- Sender is resolved from the **trusted logic-function execution context** (`context.workspaceMemberId`, resolved server-side by the platform) and is never accepted from the client.
+- Person access and recipient ownership are validated server-side before any send.
+- The front component imports **no** provider/config/persistence modules; provider HTTP and secrets stay server-side.
+- Only implemented channels are offered (`SUPPORTED_COMMUNICATION_CHANNELS = ['SMS']`).
+- Duplicate submission is prevented while a request is in flight; there is no automatic resend/retry.
+- SENT is never presented as DELIVERED; a normalized `FAILED` result is reported truthfully with its provider-declared reason.
+
+## New files (all under `packages/twenty-apps/internal/communication/`)
+
+- `src/logic-functions/send-person-communication.ts` (route trigger)
+- `src/logic-functions/list-person-phone-options.ts` (route trigger)
+- `src/logic-functions/handlers/send-person-communication-handler.ts`
+- `src/logic-functions/data/find-person-phone-options.ts`
+- `src/logic-functions/types/{person-phone,communication-channel-option,send-person-communication-input}.type.ts`
+- `src/components/send-message-composer.front-component.tsx`
+- `src/command-menu-items/send-message.command-menu-item.ts`
+- focused tests under `src/logic-functions/__tests__/`
+
+## Verification status
+
+- Unit/build: 87 focused tests PASS (68 preserved + 19 new); typecheck PASS; oxlint 0/0; app build PASS (7 files); manifest wiring verified (1 command menu item → Person, 1 front component, 2 authenticated route logic functions).
+- **Live-workspace verification: NOT PERFORMED.** The app is not installed on a running instance in this environment, so the end-to-end flow (real composer → real route → real provider) is unverified. Do not claim end-to-end completion until it is installed and smoke-tested.
+
+## Known limitations
+
+- No live end-to-end smoke (app not installed).
+- No timeline presentation yet (deliberately out of scope).
+- Recipient numbers are not normalized (out of scope).
+- Composer UI is functional but minimal (no RTL/i18n polish beyond `useTranslate`).
 
 ---
 
