@@ -1,20 +1,24 @@
 import {
-  type CommunicationConfig,
-  getCommunicationConfig,
-} from 'src/config/communication-config';
+  type KavenegarConfig,
+  getKavenegarConfig,
+} from 'src/providers/kavenegar/kavenegar.config';
 import {
   type CommunicationHttpClient,
   defaultCommunicationHttpClient,
 } from 'src/providers/http/communication-http-client';
 import { type CommunicationCapabilities } from 'src/providers/types/communication-capabilities.type';
 import { type CommunicationChannel } from 'src/providers/types/communication-channel.type';
+import { type CommunicationProviderId } from 'src/providers/types/communication-provider-id.type';
 import { type CommunicationProvider } from 'src/providers/types/communication-provider.type';
 import { type CommunicationSendResult } from 'src/providers/types/communication-send-result.type';
 import { type OutboundCommunication } from 'src/providers/types/outbound-communication.type';
 
+// Delivery receipts are not implemented through this driver yet, so the
+// capability reports what this implementation actually exposes, not what the
+// vendor can theoretically do.
 const SMS_CAPABILITIES: CommunicationCapabilities = {
   supportsSubject: false,
-  supportsDeliveryReceipt: true,
+  supportsDeliveryReceipt: false,
 };
 
 // Kavenegar's `sms/send.json` success envelope. `return.status` is 200 on
@@ -28,7 +32,7 @@ type KavenegarSendEnvelope = {
 // https://api.kavenegar.com/v1/{API-KEY}/sms/send.json
 // The key therefore never appears in a body, a header, or an error message.
 const buildSendUrl = (
-  config: CommunicationConfig,
+  config: KavenegarConfig,
   message: OutboundCommunication,
 ): string => {
   const query = new URLSearchParams({
@@ -67,19 +71,18 @@ const extractProviderMessageId = (rawBody: string): string | null => {
 };
 
 export type KavenegarProviderDependencies = {
-  /** Overrides the configured endpoint; tests use this instead of real config. */
-  endpoint?: string;
   /** Injected transport. Defaults to the platform `fetch`. */
   httpClient?: CommunicationHttpClient;
   /** Injected configuration. Defaults to reading the app variables. */
-  getConfig?: () => CommunicationConfig;
+  getConfig?: () => KavenegarConfig;
 };
 
 export class KavenegarCommunicationProvider implements CommunicationProvider {
+  readonly id: CommunicationProviderId = 'kavenegar';
   readonly channel: CommunicationChannel = 'SMS';
 
   private readonly httpClient: CommunicationHttpClient;
-  private readonly resolveConfig: () => CommunicationConfig;
+  private readonly resolveConfig: () => KavenegarConfig;
 
   constructor(dependencies: KavenegarProviderDependencies = {}) {
     this.httpClient =
@@ -87,16 +90,13 @@ export class KavenegarCommunicationProvider implements CommunicationProvider {
     this.resolveConfig =
       dependencies.getConfig ??
       (() => {
-        const result = getCommunicationConfig();
+        const result = getKavenegarConfig();
 
         if (!result.success) {
           throw new Error(result.error);
         }
 
-        return {
-          ...result.config,
-          endpoint: dependencies.endpoint ?? result.config.endpoint,
-        };
+        return result.config;
       });
   }
 

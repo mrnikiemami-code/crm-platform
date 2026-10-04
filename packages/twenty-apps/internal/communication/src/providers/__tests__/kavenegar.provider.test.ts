@@ -38,7 +38,6 @@ const buildProvider = (
   };
 
   const provider = new KavenegarCommunicationProvider({
-    endpoint: ENDPOINT,
     httpClient,
     getConfig: () => ({ endpoint: ENDPOINT, apiKey: API_KEY, sender: SENDER }),
   });
@@ -47,13 +46,15 @@ const buildProvider = (
 };
 
 describe('KavenegarCommunicationProvider', () => {
-  it('identifies as SMS and declares its capabilities', () => {
+  it('identifies as kavenegar on SMS and declares its capabilities', () => {
     const { provider } = buildProvider(() => ({ rawBody: '{}' }));
 
+    expect(provider.id).toBe('kavenegar');
     expect(provider.channel).toBe('SMS');
+    // Delivery receipt is not implemented through this driver yet.
     expect(provider.capabilities()).toEqual({
       supportsSubject: false,
-      supportsDeliveryReceipt: true,
+      supportsDeliveryReceipt: false,
     });
   });
 
@@ -142,7 +143,6 @@ describe('KavenegarCommunicationProvider', () => {
 
   it('normalizes a transport failure into FAILED without swallowing it', async () => {
     const provider = new KavenegarCommunicationProvider({
-      endpoint: ENDPOINT,
       httpClient: async () => {
         throw new Error('socket hang up');
       },
@@ -171,17 +171,16 @@ describe('KavenegarCommunicationProvider', () => {
 
   it('fails explicitly when the request is made without configuration', async () => {
     const provider = new KavenegarCommunicationProvider({
-      endpoint: ENDPOINT,
       httpClient: async () => ({ status: 200, ok: true, text: async () => '{}' }),
       getConfig: () => {
         throw new Error(
-          'Communication is not configured. Set the following application variable(s): COMMUNICATION_PROVIDER_API_KEY.',
+          'Kavenegar is not configured. Set the following application variable(s): KAVENEGAR_API_KEY.',
         );
       },
     });
 
     await expect(provider.send(MESSAGE)).rejects.toThrow(
-      'COMMUNICATION_PROVIDER_API_KEY',
+      'KAVENEGAR_API_KEY',
     );
   });
 });

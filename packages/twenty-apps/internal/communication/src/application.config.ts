@@ -6,26 +6,65 @@ export default defineApplication({
   universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER,
   displayName: 'Communication',
   description:
-    'Generic outbound communication for People. Records one outbound message independently of the channel it travels through, so new channels can be added without changing the data model.',
-  // Provider credentials are declared as server variables. Twenty stores their
-  // values encrypted at rest (`isSecret: true`) and never exposes them in API
+    'Generic outbound communication for People. Records one outbound message independently of the channel it travels through, so new channels and providers can be added without changing the data model.',
+  // Provider credentials and configuration are declared as server variables.
+  // Twenty stores their values encrypted at rest and never exposes them in API
   // responses, so no credential is ever written to a workspace record.
+  //
+  // Configuration is namespaced per provider: each driver reads only its own
+  // variables, so adding a provider never touches another provider's config.
   serverVariables: {
-    COMMUNICATION_PROVIDER_ENDPOINT: {
+    // Which provider is used when a caller does not choose one explicitly.
+    COMMUNICATION_PROVIDER: {
       description:
-        'Base endpoint of the outbound communication provider. No provider is selected yet; this is the configuration seam only.',
+        'Provider id used by default for outbound communication. One of: kavenegar, razpayamak.',
       isSecret: false,
       isRequired: false,
     },
-    COMMUNICATION_PROVIDER_API_KEY: {
+    KAVENEGAR_ENDPOINT: {
       description:
-        'API key used to authenticate outbound communication requests. Stored encrypted; never exposed in API responses.',
+        'Kavenegar API base endpoint, for example https://api.kavenegar.com/v1.',
+      isSecret: false,
+      isRequired: false,
+    },
+    KAVENEGAR_API_KEY: {
+      description:
+        'Kavenegar API key. Sent in the request path; stored encrypted and never exposed in API responses.',
       isSecret: true,
       isRequired: false,
     },
-    COMMUNICATION_PROVIDER_SENDER: {
+    KAVENEGAR_SENDER: {
+      description: 'Kavenegar sender line the message is sent from.',
+      isSecret: false,
+      isRequired: false,
+    },
+    RAZPAYAMAK_USERNAME: {
       description:
-        'Default sender identity (for example a phone number) outbound communications are sent from.',
+        'RazPayamak panel username used by the SmartSMS service.',
+      isSecret: false,
+      isRequired: false,
+    },
+    RAZPAYAMAK_API_KEY: {
+      description:
+        'RazPayamak ApiKey issued under the developer menu. Sent as the SmartSMS `password` field; stored encrypted and never exposed in API responses.',
+      isSecret: true,
+      isRequired: false,
+    },
+    RAZPAYAMAK_SENDER: {
+      description:
+        'RazPayamak primary sender number used as the SmartSMS `from` field.',
+      isSecret: false,
+      isRequired: false,
+    },
+    RAZPAYAMAK_BACKUP_SENDER_ONE: {
+      description:
+        'Optional RazPayamak backup sender line used when the primary line fails.',
+      isSecret: false,
+      isRequired: false,
+    },
+    RAZPAYAMAK_BACKUP_SENDER_TWO: {
+      description:
+        'Optional second RazPayamak backup sender line used when the primary and first backup fail.',
       isSecret: false,
       isRequired: false,
     },
