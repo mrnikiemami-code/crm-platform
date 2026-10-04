@@ -141,7 +141,7 @@ describe('KavenegarCommunicationProvider', () => {
     expect(result).toHaveProperty('failureReason', 'Unauthorized');
   });
 
-  it('normalizes a transport failure into FAILED without swallowing it', async () => {
+  it('normalizes a transport failure into a stable FAILED reason', async () => {
     const provider = new KavenegarCommunicationProvider({
       httpClient: async () => {
         throw new Error('socket hang up');
@@ -151,11 +151,28 @@ describe('KavenegarCommunicationProvider', () => {
 
     const result = await provider.send(MESSAGE);
 
+    expect(result).toEqual({
+      status: 'FAILED',
+      failureReason: 'Kavenegar request failed.',
+    });
+  });
+
+  it('does not expose the API key when a transport error embeds the request URL', async () => {
+    const provider = new KavenegarCommunicationProvider({
+      httpClient: async () => {
+        // A real transport error can echo the credential-bearing URL.
+        throw new Error(
+          `request to https://api.kavenegar.test/v1/${API_KEY}/sms/send.json?receptor=09120000000 failed`,
+        );
+      },
+      getConfig: () => ({ endpoint: ENDPOINT, apiKey: API_KEY, sender: SENDER }),
+    });
+
+    const result = await provider.send(MESSAGE);
+
     expect(result.status).toBe('FAILED');
-    expect(result).toHaveProperty(
-      'failureReason',
-      'Kavenegar request failed: socket hang up',
-    );
+    expect(JSON.stringify(result)).not.toContain(API_KEY);
+    expect(JSON.stringify(result)).not.toContain('sms/send.json');
   });
 
   it('never leaks the API key through a failure reason', async () => {

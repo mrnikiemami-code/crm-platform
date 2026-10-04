@@ -13,6 +13,8 @@ export type SendCommunicationInput = {
   targetPersonId?: string;
   /** Optional workspace member recorded as the sender. */
   senderId?: string;
-  /** Optional subject; only meaningful for channels that support one. */
-  subject?: string;
 };
+
+// The subject is intentionally NOT duplicated here. `message.subject` is the
+// single source of truth for the outbound subject, so the value the provider
+// receives and the value persisted to history can never diverge.

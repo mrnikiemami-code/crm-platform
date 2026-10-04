@@ -146,12 +146,14 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
         },
         body: buildSendBody(config, message),
       });
-    } catch (error) {
+    } catch {
+      // Deliberately does not interpolate the thrown message: a transport
+      // error can embed the request body (which carries the ApiKey). The raw
+      // error is not surfaced here because this result is persisted as
+      // history.
       return {
         status: 'FAILED',
-        failureReason: `RazPayamak request failed: ${
-          error instanceof Error ? error.message : 'unknown transport error'
-        }`,
+        failureReason: 'RazPayamak request failed.',
       };
     }
 

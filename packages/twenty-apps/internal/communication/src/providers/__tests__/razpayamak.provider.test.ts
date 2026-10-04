@@ -182,7 +182,7 @@ describe('RazpayamakCommunicationProvider', () => {
     );
   });
 
-  it('normalizes a transport failure into FAILED without swallowing it', async () => {
+  it('normalizes a transport failure into a stable FAILED reason', async () => {
     const provider = new RazpayamakCommunicationProvider({
       sendUrl: SEND_URL,
       httpClient: async () => {
@@ -197,11 +197,33 @@ describe('RazpayamakCommunicationProvider', () => {
 
     const result = await provider.send(MESSAGE);
 
+    expect(result).toEqual({
+      status: 'FAILED',
+      failureReason: 'RazPayamak request failed.',
+    });
+  });
+
+  it('does not expose the ApiKey when a transport error embeds the request body', async () => {
+    const provider = new RazpayamakCommunicationProvider({
+      sendUrl: SEND_URL,
+      httpClient: async () => {
+        // A real transport error can echo the credential-bearing body.
+        throw new Error(
+          `connect failed for body {"username":"${USERNAME}","password":"${API_KEY}"}`,
+        );
+      },
+      getConfig: () => ({
+        username: USERNAME,
+        apiKey: API_KEY,
+        sender: SENDER,
+      }),
+    });
+
+    const result = await provider.send(MESSAGE);
+
     expect(result.status).toBe('FAILED');
-    expect(result).toHaveProperty(
-      'failureReason',
-      'RazPayamak request failed: socket hang up',
-    );
+    expect(JSON.stringify(result)).not.toContain(API_KEY);
+    expect(JSON.stringify(result)).not.toContain(USERNAME);
   });
 
   it('never leaks the credentials through a failure reason', async () => {

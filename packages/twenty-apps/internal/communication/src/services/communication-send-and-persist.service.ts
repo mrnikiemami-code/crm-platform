@@ -14,13 +14,17 @@ export type SendAndPersistResult = {
   result: CommunicationSendResult;
 };
 
-// Raised when the provider accepted or rejected the message but the outcome
-// could not be recorded. The send already happened, so this must surface
-// loudly instead of triggering a second send.
+// Raised when the provider returned a result but that outcome could not be
+// recorded. The wording is outcome-neutral on purpose: a normalized `FAILED`
+// result was never "sent", so claiming delivery here would be false.
+//
+// The message never carries the persistence error's own text (which could hold
+// a credential-bearing payload); the cause is kept only as a non-persisted
+// diagnostic property.
 export class CommunicationOutcomePersistenceError extends Error {
   readonly communicationId: string;
   readonly sendResult: CommunicationSendResult;
-  /** Underlying persistence failure, kept for diagnostics. */
+  /** Underlying persistence failure, kept for diagnostics only. */
   readonly persistenceCause: unknown;
 
   constructor({
@@ -33,12 +37,42 @@ export class CommunicationOutcomePersistenceError extends Error {
     cause: unknown;
   }) {
     super(
-      `Communication ${communicationId} was sent but its outcome could not be persisted.`,
+      `The send outcome for communication ${communicationId} could not be persisted.`,
     );
     this.name = 'CommunicationOutcomePersistenceError';
     this.communicationId = communicationId;
     this.sendResult = sendResult;
     this.persistenceCause = cause;
+  }
+}
+
+// Raised when the provider call threw unexpectedly AND marking the record
+// FAILED also failed. Both facts are preserved as diagnostic properties so
+// neither is silently lost, while the durable record may still read QUEUED.
+// The message is stable and carries no raw exception text.
+export class CommunicationUnexpectedSendFailureError extends Error {
+  readonly communicationId: string;
+  /** The original unexpected provider/transport error. */
+  readonly sendCause: unknown;
+  /** The failure encountered while trying to persist the FAILED state. */
+  readonly persistenceCause: unknown;
+
+  constructor({
+    communicationId,
+    sendCause,
+    persistenceCause,
+  }: {
+    communicationId: string;
+    sendCause: unknown;
+    persistenceCause: unknown;
+  }) {
+    super(
+      `Communication ${communicationId} failed unexpectedly and its FAILED state could not be persisted.`,
+    );
+    this.name = 'CommunicationUnexpectedSendFailureError';
+    this.communicationId = communicationId;
+    this.sendCause = sendCause;
+    this.persistenceCause = persistenceCause;
   }
 }
 
@@ -98,7 +132,10 @@ export class CommunicationSendAndPersistService {
       providerId,
       recipient: input.message.recipient,
       body: input.message.body,
-      ...(input.subject === undefined ? {} : { subject: input.subject }),
+      // Snapshot exactly the subject handed to the provider.
+      ...(input.message.subject === undefined
+        ? {}
+        : { subject: input.message.subject }),
       ...(input.targetPersonId === undefined
         ? {}
         : { targetPersonId: input.targetPersonId }),
@@ -110,20 +147,32 @@ export class CommunicationSendAndPersistService {
 
     try {
       result = await this.sendService.send(input.message, { providerId });
-    } catch (error) {
+    } catch (sendError) {
       // An unexpected transport/programming failure must not leave the record
-      // permanently QUEUED. The reason is normalized and never carries a
-      // credential-bearing payload; the original error is still surfaced.
-      await this.tryApplyOutcome(communicationId, {
-        status: 'FAILED',
-        failureReason:
-          error instanceof Error
-            ? `Unexpected send failure: ${error.message}`
-            : 'Unexpected send failure.',
-        providerMessageId: null,
-      });
+      // permanently QUEUED. The persisted reason is a stable constant: raw
+      // exception text can carry a credential-bearing URL or request body, so
+      // it is never written to history. The original error is preserved as a
+      // non-persisted diagnostic instead.
+      try {
+        await this.persistence.applyOutcome({
+          communicationId,
+          outcome: {
+            status: 'FAILED',
+            failureReason: 'Unexpected send failure.',
+            providerMessageId: null,
+          },
+        });
+      } catch (persistenceError) {
+        // Both failures are surfaced together so neither disappears, and the
+        // provider is never called again.
+        throw new CommunicationUnexpectedSendFailureError({
+          communicationId,
+          sendCause: sendError,
+          persistenceCause: persistenceError,
+        });
+      }
 
-      throw error;
+      throw sendError;
     }
 
     try {
@@ -132,8 +181,8 @@ export class CommunicationSendAndPersistService {
         outcome: buildOutcome({ result, now: this.now().toISOString() }),
       });
     } catch (error) {
-      // The message is already sent. Never send again automatically; surface
-      // the persistence failure explicitly instead.
+      // The provider already returned a result. Never send again
+      // automatically; surface the persistence failure explicitly instead.
       throw new CommunicationOutcomePersistenceError({
         communicationId,
         sendResult: result,
@@ -142,17 +191,5 @@ export class CommunicationSendAndPersistService {
     }
 
     return { communicationId, result };
-  }
-
-  private async tryApplyOutcome(
-    communicationId: string,
-    outcome: CommunicationRecordOutcome,
-  ): Promise<void> {
-    try {
-      await this.persistence.applyOutcome({ communicationId, outcome });
-    } catch {
-      // The send itself already failed and is being rethrown; a failing
-      // cleanup write must not mask that original error.
-    }
   }
 }

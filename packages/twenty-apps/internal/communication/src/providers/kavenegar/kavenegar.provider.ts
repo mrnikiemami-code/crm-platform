@@ -117,12 +117,13 @@ export class KavenegarCommunicationProvider implements CommunicationProvider {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });
-    } catch (error) {
+    } catch {
+      // Deliberately does not interpolate the thrown message: a transport
+      // error can embed the credential-bearing request URL. The raw error is
+      // not surfaced here because this result is persisted as history.
       return {
         status: 'FAILED',
-        failureReason: `Kavenegar request failed: ${
-          error instanceof Error ? error.message : 'unknown transport error'
-        }`,
+        failureReason: 'Kavenegar request failed.',
       };
     }
 

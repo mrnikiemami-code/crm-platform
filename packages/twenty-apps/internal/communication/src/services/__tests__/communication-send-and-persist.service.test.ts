@@ -13,6 +13,7 @@ import { type OutboundCommunication } from 'src/providers/types/outbound-communi
 import {
   CommunicationOutcomePersistenceError,
   CommunicationSendAndPersistService,
+  CommunicationUnexpectedSendFailureError,
 } from 'src/services/communication-send-and-persist.service';
 import { CommunicationSendService } from 'src/services/communication-send.service';
 
@@ -270,7 +271,7 @@ describe('CommunicationSendAndPersistService', () => {
     });
   });
 
-  it('turns an unexpected provider exception into FAILED without leaking secrets', async () => {
+  it('persists only a safe generic reason when the provider throws', async () => {
     const provider = buildProvider('razpayamak', () => {
       throw new Error('socket hang up');
     });
@@ -283,11 +284,68 @@ describe('CommunicationSendAndPersistService', () => {
 
     expect(persistence.outcomes[0].outcome).toEqual({
       status: 'FAILED',
-      failureReason: 'Unexpected send failure: socket hang up',
+      failureReason: 'Unexpected send failure.',
       providerMessageId: null,
     });
     // The record must never remain permanently QUEUED.
     expect(persistence.outcomes).toHaveLength(1);
+  });
+
+  it('never persists credential-bearing exception text', async () => {
+    const provider = buildProvider('razpayamak', () => {
+      throw new Error(
+        'connect failed for https://api.kavenegar.test/v1/SECRET-API-KEY/sms/send.json body {"password":"SECRET-PASSWORD"}',
+      );
+    });
+
+    const { service } = buildService({ providers: [provider], persistence });
+
+    await expect(
+      service.sendAndPersist({ message: MESSAGE, providerId: 'razpayamak' }),
+    ).rejects.toThrow();
+
+    const persisted = JSON.stringify(persistence.outcomes);
+
+    expect(persisted).not.toContain('SECRET-API-KEY');
+    expect(persisted).not.toContain('SECRET-PASSWORD');
+    expect(persisted).not.toContain('sms/send.json');
+    expect(persistence.outcomes[0].outcome).toEqual({
+      status: 'FAILED',
+      failureReason: 'Unexpected send failure.',
+      providerMessageId: null,
+    });
+  });
+
+  it('snapshots exactly the subject handed to the provider', async () => {
+    const provider = buildProvider('razpayamak', () => ({
+      status: 'SENT',
+      providerMessageId: '1',
+    }));
+
+    const { service } = buildService({ providers: [provider], persistence });
+
+    const message = { ...MESSAGE, subject: 'موضوع پیام' };
+
+    await service.sendAndPersist({ message, providerId: 'razpayamak' });
+
+    // The provider received the subject...
+    expect(provider.sent[0].subject).toBe('موضوع پیام');
+    // ...and history snapshots that exact same value.
+    expect(persistence.created[0].subject).toBe('موضوع پیام');
+    expect(persistence.created[0].subject).toBe(provider.sent[0].subject);
+  });
+
+  it('omits the subject from history when the message has none', async () => {
+    const provider = buildProvider('razpayamak', () => ({
+      status: 'SENT',
+      providerMessageId: '1',
+    }));
+
+    const { service } = buildService({ providers: [provider], persistence });
+
+    await service.sendAndPersist({ message: MESSAGE, providerId: 'razpayamak' });
+
+    expect(persistence.created[0]).not.toHaveProperty('subject');
   });
 
   it('does not call the provider when the initial record cannot be created', async () => {
@@ -328,6 +386,65 @@ describe('CommunicationSendAndPersistService', () => {
     ).rejects.toThrow(CommunicationOutcomePersistenceError);
 
     // Exactly one provider call: the failure is surfaced, never retried.
+    expect(provider.sent).toHaveLength(1);
+  });
+
+  it('uses truthful outcome-neutral wording for a normalized FAILED result', async () => {
+    const provider = buildProvider('kavenegar', () => ({
+      status: 'FAILED',
+      failureReason: 'Invalid receptor',
+    }));
+
+    const failingPersistence = buildPersistence({ failOutcome: true });
+
+    const { service } = buildService({
+      providers: [provider],
+      persistence: failingPersistence,
+    });
+
+    const caught = await service
+      .sendAndPersist({ message: MESSAGE, providerId: 'kavenegar' })
+      .then(() => undefined)
+      .catch((error: unknown) => error as Error);
+
+    expect(caught).toBeInstanceOf(CommunicationOutcomePersistenceError);
+    expect(caught?.message).toBe(
+      'The send outcome for communication communication-1 could not be persisted.',
+    );
+    // Must never claim the message was sent when the provider failed.
+    expect(caught?.message).not.toContain('was sent');
+    expect(provider.sent).toHaveLength(1);
+  });
+
+  it('surfaces both failures when the provider throws and the FAILED write also fails', async () => {
+    const provider = buildProvider('razpayamak', () => {
+      throw new Error('SECRET-API-KEY leaked in transport error');
+    });
+
+    const failingPersistence = buildPersistence({ failOutcome: true });
+
+    const { service } = buildService({
+      providers: [provider],
+      persistence: failingPersistence,
+    });
+
+    const caught = await service
+      .sendAndPersist({ message: MESSAGE, providerId: 'razpayamak' })
+      .then(() => undefined)
+      .catch((error: unknown) => error as Error);
+
+    expect(caught).toBeInstanceOf(CommunicationUnexpectedSendFailureError);
+
+    const combined = caught as CommunicationUnexpectedSendFailureError;
+
+    // Both causes are preserved as diagnostics.
+    expect(combined.sendCause).toBeInstanceOf(Error);
+    expect(combined.persistenceCause).toBeInstanceOf(Error);
+    // The persistence failure is not silently swallowed...
+    expect(combined.message).toContain('could not be persisted');
+    // ...and the persisted/normalized text never leaks the raw exception.
+    expect(combined.message).not.toContain('SECRET-API-KEY');
+    // Exactly one provider call: no automatic resend.
     expect(provider.sent).toHaveLength(1);
   });
 
