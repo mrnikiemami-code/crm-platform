@@ -1,16 +1,47 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-09-28
+Last updated: 2026-10-04
 
 ## Purpose
 
-This file is the recovery Source of Truth for the current Persianization / RTL / Jalali presentation work in the customized Twenty CRM fork.
+This file is the recovery Source of Truth for the customized Twenty CRM fork on branch `crm-platform`.
 
-If a chat/session is lost, start a new session and ask the assistant to read this file first, then continue from the **Current Checkpoint** section.
+If a chat/session is lost, start a new session, read this file first, then continue from the **Current Checkpoint** section.
 
-Repository: `mrnikiemami-code/crm-platform`  
-Primary branch: `crm-platform`  
+Repository: `mrnikiemami-code/crm-platform`
+Primary branch: `crm-platform`
 Local source path used during development: `D:\CrmSource\twenty`
+
+---
+
+# CURRENT CHECKPOINT
+
+Repository:
+`mrnikiemami-code/crm-platform`
+
+Branch:
+`crm-platform`
+
+HEAD:
+`831204b74a` — `fix(dev): use phased readiness so cold backend startup is not killed`
+
+Origin Sync:
+`HEAD == origin/crm-platform` (`831204b74a`) — verified in sync at the time of this update.
+
+Last Accepted Milestone:
+`CRM-PLATFORM-RECOVERY-SYNC-001` — recovery documentation synced to the real repository state.
+
+Current Development State:
+- Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
+- Persian / RTL foundation, Data Model localization, Record Detail localization, Navigation RTL, Kanban/system-status localization: COMPLETE / COMMITTED.
+- Settings / Experience Persian presentation: COMPLETE / COMMITTED.
+- Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
+- Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
+- Branding / white-label: PLANNED / NOT STARTED.
+- SMS: PLANNED / NOT IMPLEMENTED.
+
+Next Recommended Work:
+None fixed. Only optional, separately-scoped items remain (see Known Unverified / Pending Items). Do not start them automatically.
 
 ---
 
@@ -26,50 +57,55 @@ Local source path used during development: `D:\CrmSource\twenty`
 8. Prefer logical CSS (`start/end`, `inline-start/end`) over physical left/right for RTL fixes.
 9. Do not rename internal Twenty package/project identifiers merely for branding.
 10. No new date dependency unless a later phase proves it is necessary.
+11. **No Enterprise entitlement bypass in accepted architecture.** Any local override used for development/testing must stay out of accepted production behaviour.
+12. Prefer app-first / minimal-core-change direction.
 
 ---
 
-# Stable committed baseline
+# Architecture Decisions
 
-The following important work is committed on the `crm-platform` branch.
+- **Presentation-only localization.** All Persian/Jalali work is display/input layer; canonical storage stays UTC / ISO-8601 / Gregorian.
+- **Shared formatter architecture.** Central calendar-aware utilities (`formatDateISOStringToDate`, `formatDateISOStringToDateTime`, `formatDateTimeString`, `formatDateString`, `formatDateTimeForAppLocale`, `localizeDigitsForAppLocale`, the Jalali utilities, etc.) are the single path. No page-specific `Intl` code, no hardcoded Persian strings inside components.
+- **Read-time metadata localization.** Metadata labels/descriptions/options are translated by the **server at read time** through `resolveEffectiveEntityProperty` / `resolveEffectiveTranslatedFlatEntity`, and field-metadata `@ResolveField`s. Stored metadata is not rewritten into Persian.
+- **Cache-version strategy.** Because translation happens at read time, cached metadata collections must be refetched when the translation logic changes; this is controlled by `METADATA_LOCALIZATION_VERSION` (currently `4`).
+- **No transliteration into technical names.** Canonical object/field technical (API) names stay Latin; Persian goes to labels only.
+- **Logical CSS for RTL.** `inline-start/end`, `margin-inline-*`, `padding-inline-*`, `text-align: start`.
+- **Enterprise licensing is real.** SSO and most audit-log types are licence-gated; the accepted architecture does **not** bypass them.
+
+---
+
+# Stable committed baseline (early track)
+
+The following important early work is committed on `crm-platform`. All SHAs below were verified to exist in Git.
 
 ## Persian locale foundation
 
-Commit:
+Commit: `6cf109d9ace39b72e2f863c9a8b811b86bd10d8b`
 
-`6cf109d9ace39b72e2f863c9a8b811b86bd10d8b`
-
-Purpose:
 - fa-IR locale foundation
 - locale registration
-- date-fns/server/email locale wiring
+- date-fns / server / email locale wiring
 - RTL-related locale support
 
 ## Windows/source development reliability
 
-Commit:
+Commit: `4af6644215cf337e06ba8c1f50fcb347fbf027f9`
 
-`4af6644215cf337e06ba8c1f50fcb347fbf027f9`
-
-Purpose:
 - reliable Windows source startup
-- Nx/Nest/worker startup fixes
+- Nx / Nest / worker startup fixes
 - reduced worker/server race conditions
 - Windows-compatible scripts
 
 ## Professional Persian localization
 
-Commit:
+Commit: `550e15631e9b0454e522bac1d3ad2eb06bc01d5f`
 
-`550e15631e9b0454e522bac1d3ad2eb06bc01d5f`
-
-Purpose:
 - broad fa-IR translation coverage
 - terminology normalization
 - corrected CRM terminology
 - corrected impersonation wording
 
-Key terminology decisions include:
+Key terminology decisions:
 - Workspace → فضای کاری
 - Record → رکورد
 - Workflow → گردش‌کار
@@ -82,120 +118,84 @@ Key terminology decisions include:
 
 ## Danger-zone wording
 
-Commit:
+Commit: `23f717ed25b1e7cd235d942d4e84b82c33ec7eee`
 
-`23f717ed25b1e7cd235d942d4e84b82c33ec7eee`
-
-Persian user-facing wording uses:
-- `عملیات حساس`
+- Persian user-facing wording uses `عملیات حساس`.
 
 ## Record-table RTL resize
 
-Commit:
+Commit: `145845fbc9b2bbb78611cbac0c6045d7226068bd`
 
-`145845fbc9b2bbb78611cbac0c6045d7226068bd`
-
-Purpose:
 - correct RTL column-resize direction
 - shared pointer-delta direction helper
 - table and board resize behavior
 
 ## Record-table footer / tooltip / RTL
 
-Commit:
+Commit: `4f93e5005e49be49e0635b48cb7e7ec1170d6a61`
 
-`4f93e5005e49be49e0635b48cb7e7ec1170d6a61`
-
-Purpose:
 - aggregate footer logical alignment
 - Persian aggregate phrasing
 - truncated-text tooltip positioning
 - shared tooltip positioning correction
 
-The tooltip root fix changed the truncated-text tooltip positioning from document-relative `absolute` behavior to the safe shared `fixed` positioning path.
+The tooltip root fix changed the truncated-text tooltip positioning from document-relative `absolute` behaviour to the safe shared `fixed` positioning path.
 
 ## Timeline “You” localization + click-away reliability
 
-Commit:
+Commit: `fa37575870d84367495fea97d35d3896a7ffa54a`
 
-`fa37575870d84367495fea97d35d3896a7ffa54a`
-
-Purpose:
-- timeline current-user label `You` now goes through Lingui; fa-IR = `شما`
+- timeline current-user label `You` goes through Lingui; fa-IR = `شما`
 - shared click-outside listener moved to the correct window capture path
 - fixes first click-away being swallowed by d3/react-flow and requiring a second action
-- workflow title, record title, inline fields and dropdown/picker smoke-tested
 
 ---
 
-# Other accepted frontend fixes
+# Other accepted frontend fixes (early track)
 
-These were completed during the same Persian/RTL track and should be preserved when reconciling local work.
+## Theme summary localization — PASS
+Theme summary no longer exposes raw English values such as `Light`.
 
-## Theme summary localization
-
-Status: PASS
-
-The theme summary no longer exposes raw English values such as `Light`; display labels go through localization.
-
-## Settings Section RTL
-
-Status: PASS
-
+## Settings Section RTL — PASS
 Shared `Section.Root` alignment uses logical `text-align: start`.
 
-Important:
-Twenty front-end can consume `twenty-ui` from built `dist`, so after twenty-ui source changes a local `npx nx build twenty-ui` may be required before browser verification.
+Important: Twenty front-end can consume `twenty-ui` from built `dist`, so after twenty-ui source changes a local `npx nx build twenty-ui` may be required before browser verification.
 
-## TipTap placeholders
-
-Status: PASS
-
+## TipTap placeholders — PASS
 Shared placeholder positioning uses logical `inline-start` instead of physical left positioning.
 
-## Profile picture on Windows
+## Profile picture on Windows — CONFIRMED_COMPLETE
+Commit: `a9e3b0fbbf` — `fix(file): restore profile picture preview on Windows local storage` (2026-09-26, ancestor of HEAD).
 
-Status: implemented and validated locally before this recovery file.
-
-Root issue:
-Windows path separators were stored in file metadata, breaking folder lookup and signed image retrieval.
-
-Fix direction:
-- normalize persisted file entity paths to POSIX
-- tolerate legacy backslashes
-- make by-ID reads robust
-- reset ImageInput error state when URI changes
-
-Before modifying this area again, inspect the current branch/local diff because this work may not have been committed with the Jalali track.
+- normalizes persisted file entity paths to POSIX (`normalize-file-entity-path-to-posix.util.ts`)
+- tolerates legacy backslashes; robust by-ID reads (`is-file-entity-path-in-folder.util.ts`)
+- resets `ImageInput` error state when URI changes
+- touched `ImageInput.tsx`, `WorkspaceMemberPictureUploader.tsx`, file-storage/file services, plus unit tests
 
 ---
 
-# Branding / white-label
+# Persian / RTL
 
-Status: PLANNED / NOT STARTED
+Status: COMPLETE / COMMITTED (foundation) — ongoing incremental RTL polish commits exist through 2026-09-30.
 
-A local untracked planning file was reported as:
+- Persian locale foundation, terminology, danger-zone wording, RTL resize, footer/tooltip RTL, timeline “You”, theme summary, Settings section RTL, TipTap placeholders (see baseline above).
+- Record field value / icon overlap fix: `a4877ec4b9` — `fix(rtl): prevent record field values overlapping icons` (`MultiItemBaseInput.tsx`, `TextAreaInput.tsx`, + RTL test).
+- Timeline RTL gray activity-group bar aligned with the icon column: `a81ef48efb` — `fix(rtl): align timeline group bar with icon column` (`EventsGroup.tsx`).
 
-`docs/plans/branding-white-label.md`
+---
 
-It was intentionally not mixed into unrelated commits.
+# Navigation / folder RTL fixes
 
-Architecture direction:
-- create centralized instance-wide product branding configuration
-- workspace display name/logo remains tenant identity
-- do not rename technical package/project identifiers
+Status: COMPLETE / COMMITTED.
 
-Likely future fields:
-- PRODUCT_NAME
-- SHORT_PRODUCT_NAME
-- COMPANY_NAME
-- EMAIL_FROM_NAME
-- TOTP_ISSUER
-- SUPPORT_URL
-- WEBSITE_URL
-- brand logo / dark logo / favicon
-
-Do not start branding unless explicitly requested.
+- `baa6d7ce42` — `fix(rtl): prevent navigation actions overlapping labels`
+  - logical `inset-inline-end` for row actions; reserved action slot so actions no longer overlap the label
+  - `NavigationDrawerItem` uses `padding-inline-*` / `margin-inline-end`
+  - `data-row-actions` CSS reservation in `NavigationMenuItemEditable`
+  - static RTL guard test `navigationItemLogicalLayout.test.ts` (forbids physical left/right in the touched components)
+- `eb7db4492f` — `fix(rtl): stabilize editable navigation and folder naming`
+  - inline editor uses `text-align: start`; folder name input `shouldTrim={false}` so names with spaces («اطلاعات مشترک») are preserved; trims only on commit
+  - `NavigationMenuItemInlineEditor.test.tsx` covers typing with spaces, Enter/Escape, trim-on-commit, shared label slot
 
 ---
 
@@ -209,9 +209,7 @@ For `fa-IR`:
 - Persian digits for user-facing date/time text
 - true Jalali calendar selection where a calendar picker exists
 
-Canonical outbound values must remain ISO/Gregorian.
-
-The core model is:
+Canonical outbound values remain ISO/Gregorian. The core model is:
 
 ```
 Database / API / GraphQL
@@ -224,470 +222,309 @@ fa-IR → Persian/Jalali
 other locales → existing behavior
 ```
 
----
+## Status summary
 
-# Jalali Phase 1 — Foundation
+The Jalali Presentation Layer is **COMPLETE / ACCEPTED / COMMITTED** (Phases 1–5).
 
-Status: COMPLETE / ACCEPTED / CURRENTLY UNCOMMITTED LOCALLY
+- Phases 1–3B: `a842caff67` — `feat(i18n): complete Jalali presentation phases 1-3B`
+- Phase 4: `6a1a81800d` — `feat(i18n): add Jalali record calendar`
+- Phase 4 docs: `8aff38f8d0` — `docs: finalize Jalali phase 4 checkpoint`
+- Phase 5: `af2d0bb974` — `fix(i18n): complete Jalali presentation cleanup`
 
-Important:
-At the time this recovery file was created, Phase 1 changes existed in the developer's local working tree and had **not yet been committed**.
-
-Completed:
-- `CalendarSystem = 'persian' | 'gregory'`
-- `getCalendarSystemForLocale(locale)`
-  - exact `fa-IR` → `persian`
-  - everything else → `gregory`
-- `useDateTimeFormat()` exposes `calendar`
-- Temporal-based Jalali utility layer
-- ISO ↔ Persian PlainDate conversion
-- Persian month options
-- Jalali year range
-- Persian/Arabic digit normalization to ASCII
-- serialization guard ensures values leave the layer as ISO calendar values
-
-Verified examples:
-- 1405/01/01 = 2026-03-21
-- 1405/07/06 = 2026-09-28
-- leap/common Esfand behavior correct
-- no `[u-ca=persian]` leakage
-
-Live mismatch fixes:
-- Gregorian grids explicitly use Gregorian calendar labels even under fa-IR
-- January on Gregorian grid becomes `ژانویه`, not `دی`
-
-No dependency was added.
-
----
-
-# Jalali Phase 2 — Core Display
-
-Status: COMPLETE / ACCEPTED / CURRENTLY UNCOMMITTED LOCALLY
-
-Important:
-At recovery-file creation time, Phase 2 was still part of the same local uncommitted Jalali working tree.
-
-Central formatters now accept/use calendar-aware behavior:
-- `formatPlainDateISOString`
-- `formatDateISOStringToDate`
-- `formatDateISOStringToDateTime`
-- `formatDateISOStringToRelativeDate`
-- `formatDateISOStringToCustomUnicodeFormat`
-- dispatch through `formatDateString`
-- dispatch through `formatDateTimeString`
-
-Persian path:
-- explicit `fa-IR-u-ca-persian`
-- Persian digits
-- existing user timezone preserved
-- existing 12h / 24h preference preserved
-- `Intl.RelativeTimeFormat` for Persian relative time
-
-Verified display examples:
-- 2026-03-21 → `۱ فروردین ۱۴۰۵`
-- 2026-09-28 → `۶ مهر ۱۴۰۵`
-- 2026-09-28T10:00Z in Asia/Tehran → `۶ مهر ۱۴۰۵، ۱۳:۳۰`
-- relative examples: `امروز`, `دیروز`, `۳ ساعت پیش`
-
-Custom Unicode date formats:
-- existing custom patterns are date-fns/Gregorian-token based
-- under Persian calendar, do not fake Jalali token support
-- fall back to the user's standard localized date/date-time format
-
-Date-only safety:
-- date-only values retain UTC/plain-date semantics and do not shift a day
-
-Non-fa path:
-- current date-fns/Gregorian behavior preserved
-
-Known unrelated old test issue (RESOLVED in Phase 3B):
-- `src/utils/format/__tests__/formatDate.test.ts` had 3 old failures on Windows because its utility used `Intl.DateTimeFormat(undefined,...)` and therefore the host OS locale
-- this was not a Phase 2 regression
-- fixed in Phase 3B (explicit app locale, deterministic output)
-
----
-
-# Jalali Phase 3A — True Jalali Picker + Typed Input
-
-Status: COMPLETE / ACCEPTED / CURRENTLY UNCOMMITTED LOCALLY
-
-Important:
-At recovery-file creation time, Phase 3A was also still local and uncommitted.
-
-## Jalali grid
-
-New Twenty-owned Jalali calendar grid:
-- 7 columns
-- Temporal Persian calendar arithmetic
-- correct month length/leap year behavior
-- respects `calendarStartDay`
-- selected-day and today states
-- only used when `calendar === 'persian'`
-- non-fa path continues using existing `react-datepicker`
-
-## Month/year navigation
-
-- Persian month names
-- Jalali year list
-- Persian calendar previous/next arithmetic
-- Esfand ↔ Farvardin transitions work
-- no Gregorian Date arithmetic for Persian navigation
-
-## RTL
-
-- logical positioning
-- navigation chevrons mirror in RTL
-- numeric editable date/time inputs are explicitly LTR on the Persian path to prevent bidi reordering
-
-## DatePicker output
-
-Example:
-- `۱۴۰۵/۰۷/۰۶` / selected ۶ مهر ۱۴۰۵
-- emits canonical `2026-09-28`
-
-## DateTimePicker output
-
-- Jalali date + local time
-- existing timezone precedence preserved
-- output remains ISO-calendar `Temporal.ZonedDateTime`
-
-## Typed input
-
-Accepts:
-- Persian digits
-- Arabic-Indic digits
-- ASCII digits
-
-Validation:
-- real Jalali date validation
-- invalid dates emit nothing
-- no silent coercion
-
-Verified:
-- 1403/12/30 valid
-- 1404/12/30 invalid
-- 1404/12/29 valid
-- month 13 invalid
-- day 0 / month 0 invalid
-- Persian/Arabic/ASCII inputs round-trip correctly
-- no `[u-ca=` serialization leakage
-
-Manual smoke tests passed in fa-IR for:
-- DateTime record field
-- Date filter
-- Jalali month/year dropdowns
-- RTL navigation
-- invalid date handling
-- restoring original record/filter values afterward
-
-Known remaining visible gap (RESOLVED in Phase 3B):
-- filter chip could still display a Gregorian label such as `Oct 2, 2026`
-- fixed in Phase 3B; fa-IR chips now use Jalali shared formatting
-
----
-
-# Current Checkpoint
-
-Current accepted implementation checkpoint:
-
-`JALALI PRESENTATION LAYER COMPLETE`
-
-Jalali Phases 1–5 are all COMPLETE / ACCEPTED / COMMITTED:
-- Phases 1–3B: `a842caff67 feat(i18n): complete Jalali presentation phases 1-3B`
-- Phase 4: `6a1a81800d feat(i18n): add Jalali record calendar`
-- Phase 4 docs: `8aff38f8d0 docs: finalize Jalali phase 4 checkpoint`
-- Phase 5: `fix(i18n): complete Jalali presentation cleanup`
-
-No Jalali phase is pending. Do NOT repeat Phases 1–5.
+No Jalali phase is pending. **Do NOT repeat Phases 1–5.**
 No backend / DB / API / GraphQL / domain / workflow-engine / cron / canonical date semantic was changed by the Jalali program.
 
-The next workstream may return to broader UI/RTL improvements.
-Optional, separately-scoped presentation extras (not started, not required):
-- chart axis/tooltip date and number labels
-- email-rendered dates (server-side templates)
+## Phase 1 — Foundation
+- `CalendarSystem = 'persian' | 'gregory'`; `getCalendarSystemForLocale(locale)` (exact `fa-IR` → `persian`, else `gregory`)
+- `useDateTimeFormat()` exposes `calendar`
+- Temporal-based Jalali utility layer; ISO ↔ Persian `PlainDate` conversion; Persian month options; Jalali year range; Persian/Arabic digit normalization
+- serialization guard keeps values ISO; no `[u-ca=persian]` leakage
+- verified: 1405/01/01 = 2026-03-21, 1405/07/06 = 2026-09-28
 
-Before continuing in a recovered session:
-1. inspect `git status`
-2. inspect the local diff
-3. do not overwrite or regenerate Jalali files blindly
+## Phase 2 — Core Display
+- calendar-aware: `formatPlainDateISOString`, `formatDateISOStringToDate`, `formatDateISOStringToDateTime`, `formatDateISOStringToRelativeDate`, `formatDateISOStringToCustomUnicodeFormat`, `formatDateString`, `formatDateTimeString`
+- Persian path uses explicit `fa-IR-u-ca-persian`, Persian digits, existing timezone and 12h/24h preferences, `Intl.RelativeTimeFormat`
+- custom Unicode (date-fns/Gregorian-token) formats fall back to the user's standard localized format under Persian calendar (no fake Jalali tokens)
+- date-only values keep UTC/plain-date semantics (no day shift)
 
----
+## Phase 3A — True Jalali Picker + Typed Input
+- Twenty-owned Jalali grid (7 columns, Temporal Persian arithmetic, `calendarStartDay`, only when `calendar === 'persian'`)
+- Persian month/year navigation; Esfand ↔ Farvardin handled with Persian arithmetic
+- RTL logical positioning, mirrored chevrons; numeric inputs explicitly LTR on the Persian path
+- typed input accepts Persian/Arabic/ASCII digits; real Jalali validation; invalid dates emit nothing
+- verified leap/common Esfand (1403/12/30 valid, 1404/12/30 invalid, 1404/12/29 valid)
 
-# Jalali Phase 3B — Remaining frontend display paths
+## Phase 3B — Remaining frontend display paths
+- fa-IR filter chips use Jalali shared formatting (display only; filter values unchanged)
+- `beautify*` paths calendar-aware; `RecordIdentifierBarCreatedAt`, `EventRowDate`, timeline month grouping localized
+- host-locale dependency in `src/utils/format/formatDate.ts` fixed; previous 3 Windows `formatDate.test.ts` failures fixed
+- `TimeZoneAbbreviation` intentionally remains technical English / GMT offset
+- validation: 375 suites / 2277 tests PASS; 186 suites / 979 tests PASS; tsgo PASS; oxlint 0/0; oxfmt PASS
 
-Status: COMPLETE / ACCEPTED / COMMITTED (`a842caff67`, together with Phase 1, Phase 2 and Phase 3A)
+## Phase 4 — Record Calendar
+- fa-IR month grid from the Persian month (`getRecordCalendarDaysRange` with `calendar`), `calendarStartDay` respected
+- cells stay iso8601 `Temporal.PlainDate`; only boundaries/labels are Persian
+- top-bar titles assembled from parts (ICU fa-IR persian `dateStyle: 'full'` patterns are malformed)
+- Persian weekday headers + Persian-digit day numbers; RTL chevrons mirrored; logical properties replace physical ones
+- event placement unchanged (no timestamp conversion); weekend shading intentionally still Sat/Sun (product decision)
+- validation: record-calendar 12 suites / 70 tests; localization + date inputs + record-index 51 suites / 454 tests; object-record + localization + ui + utils 373 suites / 2116 tests; tsgo PASS; oxlint 0/0; oxfmt PASS; manual fa-IR smoke PASS
 
-## Phase 3B accepted results
+## Phase 5 — Final Presentation QA / Cleanup
+- shared helper `useFormatDateTimeForAppLocale` + `NUMERIC_DATE_FORMAT_OPTIONS` / `NUMERIC_DATE_TIME_FORMAT_OPTIONS`
+- admin panel surfaces, `SettingsEnterprise`, Settings → Applications dates, `SettingsDatePickerInput`, `groupThreadsByDate`, event-logs timestamp column, Settings → AI logs localized
+- `formatToHumanReadableDate` takes the user timezone (no host-timezone day shift)
+- durations: expiry logic separated from display; fa-IR digits localized at display only
+- filter chips: DATE `IS_BEFORE` / `IS_AFTER` regenerate the label from the canonical plain-date value for fa-IR; payload/value never rewritten
+- intentionally retained technical/Gregorian surfaces documented (AI prompt context, debug time, `TimeZoneAbbreviation`, gregorian branches, typed input masks, number formatting, weekend shading, out-of-frontend-scope chart/email/backend)
+- validation: focused 6 suites / 89 tests; regression 590 suites / 3513 tests; tsgo PASS; oxlint 0/0; oxfmt PASS; fa-IR + en manual smoke PASS
 
-- fa-IR filter chips use Jalali shared formatting (display only; filter values/boundaries unchanged)
-- legacy `beautify*` display paths are calendar-aware where appropriate (optional display context; non-fa output unchanged)
-- `RecordIdentifierBarCreatedAt` relative text + exact tooltip localized (fa-IR Persian calendar, user timezone, Persian digits)
-- `EventRowDate` localized (Persian relative time, Jalali exact tooltip, timezone preserved)
-- timeline grouping uses Persian year/month for fa-IR (client-side presentation only; non-fa Gregorian grouping unchanged)
-- direct user-facing `toLocale*` surfaces route through explicit app locale/timezone helpers
-- host-locale dependency in `src/utils/format/formatDate.ts` fixed
-- previous 3 Windows `formatDate.test.ts` failures fixed
-- `TimeZoneAbbreviation` intentionally remains technical English / GMT offset (ASCII, technically correct; Intl's fa-IR name embeds bidi marks)
-- no backend/server/email/chart/date semantics changed
-- no dependency added
-
-## Phase 3B validation
-
-- 375 suites / 2277 tests PASS
-- 186 suites / 979 tests PASS
-- tsgo PASS
-- oxlint 0 warnings / 0 errors
-- oxfmt PASS
-
-## Remaining frontend date gaps (NOT blockers for Phase 3B acceptance)
-
-All RESOLVED in Phase 4 / Phase 5 (see the Phase 5 section):
-- ~~Admin panel host-locale date surfaces~~
-- ~~`SettingsEnterprise`~~
-- ~~Settings Applications `toLocaleString` surfaces~~
-- ~~`SettingsDatePickerInput`~~
-- ~~`groupThreadsByDate`~~
-- ~~event-logs relative column~~
-- ~~Settings AI hardcoded en-US surfaces~~ (user-facing ones; AI prompt context intentionally kept)
-- ~~Calendar tab / `formatToHumanReadableDate` timezone caveat (host timezone)~~
-- ~~duration digit localization (`beautifyDateDiff` / `formatExpiration`)~~
-- ~~old persisted filter `displayValue` possibility~~
-- ~~Record Calendar grid + top bar (Phase 4)~~
-
-## Original Phase 3B scope (for reference)
-
-## Filter chip labels
-
-Known bug:
-A Jalali-selected date can still appear in a filter chip as Gregorian English text such as:
-
-`Oct 2, 2026`
-
-Fix display only. Do not change filter semantics or canonical values.
-
-## Legacy date helpers
-
-Audit/route through central calendar-aware formatting:
-- `beautifyExactDateTime`
-- `beautifyExactDate`
-- `beautifyPastDateRelativeToNow`
-- `beautifyDateDiff`
-- other user-facing helpers in `~/utils/date-utils.ts`
-
-## Record identifier created-at
-
-`RecordIdentifierBarCreatedAt` must respect:
-- app locale
-- Persian calendar for fa-IR
-- user timezone
-- Persian digits
-
-Both visible relative text and exact tooltip need coverage.
-
-## Timeline row dates
-
-`EventRowDate`:
-- Persian relative time
-- Jalali exact tooltip
-- existing timezone semantics
-
-## Timeline month grouping
-
-For fa-IR:
-- group visible timeline sections by Persian month/year
-- label using the same Persian month/year
-
-For non-fa:
-- preserve existing Gregorian grouping
-
-This is client-side presentation grouping only.
-
-## Direct locale bypasses
-
-Audit remaining user-facing:
-- `toLocaleDateString`
-- `toLocaleTimeString`
-- `toLocaleString`
-- `Intl.DateTimeFormat(undefined,...)`
-
-Known examples:
-- `CoreWorkflowVersionsListItem`
-- `WorkflowRunStepLogsEntries`
-- `CalendarEventsCardContent`
-- `getCoreWorkflowFilterChipLabel`
-- `TaskRow`
-
-Do not change technical/logging/AI-context formatting.
-
-## TimeZoneAbbreviation
-
-Current hard-coded English path must be reviewed.
-
-Do not invent misleading Persian timezone abbreviations.
-A technically correct GMT offset is preferable to an incorrect localization.
-
-## Host-locale utility
-
-Fix/isolate:
-
-`src/utils/format/formatDate.ts`
-
-Problem:
-- it uses `Intl.DateTimeFormat(undefined,...)`
-- output depends on the developer/server OS locale
-- this causes the 3 known Windows tests to fail under a fa-IR machine locale
-
-Goal:
-- deterministic explicit locale behavior
-- no host-machine locale dependency
+## Jalali date input presentation (post-Phase-5, still presentation-only)
+- `e449bb1937` — `fix(i18n): localize Persian date input masks` (`JalaliDateBlocks.ts`, jalali input-mask tests)
+- `2679bf3551` — `fix(i18n): complete Persian Jalali date input presentation` (`formatDigitsAsPersian.ts`, `getPersianDayPeriodLabels.ts`, `DatePickerInput.tsx`, `DateTimePickerHeader.tsx`)
+- `93cbacc11c` — `fix(i18n): align Persian date field display options`
+- `a17235d982` — `fix(i18n): hide unsupported custom date format in Persian` (Custom stays hidden in Persian-calendar mode)
 
 ---
 
-# Jalali Phase 4 — Record Calendar
+# Data Model localization
 
-Status: COMPLETE / ACCEPTED / COMMITTED (`feat(i18n): add Jalali record calendar`)
+Status: COMPLETE / COMMITTED.
 
-## Phase 4 accepted results
-
-- fa-IR month grid is built from the Persian month (`getRecordCalendarDaysRange` with `calendar`): Persian month start/end, leading/trailing cells, `calendarStartDay` respected (Saturday-first supported)
-- every grid cell stays an iso8601 `Temporal.PlainDate`; only boundaries and labels are Persian
-- week and day ranges are calendar-independent (identical days for both calendars)
-- top bar titles always match the grid: month `فروردین ۱۴۰۵`, week via Intl `formatRange` (`۲۴ اسفند ۱۴۰۴ تا ۱ فروردین ۱۴۰۵`), day `weekday، <formatPersianDate with user dateFormat>`
-- ICU fa-IR persian `dateStyle: 'full'` / month+year patterns are malformed (year-first, ASCII comma), so titles are assembled from parts
-- navigation: month steps use Persian arithmetic through `updateTemporalValueInCalendar` (`shiftRecordCalendarSelectedDate`); day/week are plain ISO steps; Today unchanged (`Temporal.Now.plainDateISO(user timezone)`)
-- Persian weekday headers and Persian-digit day numbers; `isOtherMonth` uses the Persian month
-- RTL: top-bar chevrons mirrored with `DATE_PICKER_NAVIGATION_BUTTON_CLASS_NAME`; physical `border-right` / `margin-left` / `padding-left` replaced with logical properties (identical in LTR)
-- top-bar dropdown `DatePickerWithoutCalendar` month/year handlers reuse `updateTemporalValueInCalendar` (gregorian path is a pass-through)
-- event placement unchanged: DATE via `PlainDate.from`, DATE_TIME via instant → user timezone → plain date; no timestamp conversion
-- fetch range still derives from the visible grid `firstDay`/`lastDay` (filter semantics unchanged; Persian month grids simply request the Persian-month grid range)
-- weekend shading intentionally still Sat/Sun (Iran's Friday weekend is a product decision, not calendar presentation)
-- `TimeZoneAbbreviation` intentionally unchanged
-- en / fr-FR output unchanged
-- no backend/DB/API/GraphQL/timestamp/timezone-precedence change, no dependency added
-
-## Phase 4 validation
-
-- record-calendar: 12 suites / 70 tests PASS
-- localization + date inputs + record-index: 51 suites / 454 tests PASS
-- object-record + localization + ui + utils: 373 suites / 2116 tests PASS
-- tsgo PASS
-- oxlint 0 warnings / 0 errors
-- oxfmt PASS
-- manual fa-IR browser smoke PASS (temporary Tasks calendar view, deleted afterwards): Mehr 1405 month grid, next month Aban 1405, Today, week `۵ تا ۱۱ مهر ۱۴۰۵`, day view, previous day, mirrored RTL chevrons, record placed on its user-timezone day
+- Custom object creation separates the Persian label from the canonical technical name: `9492167bcb` (`fix(i18n): separate technical name and localize custom object creation`).
+- Custom object name field localized at read time: `09af11c7a0` (`fix(i18n): localize custom object name field at read time`).
+- Custom object system UI completed in Persian: `583dfc6fcc`.
+- **No Persian transliteration into technical names.** Technical/API names remain canonical Latin.
+- Field creation flow localized for fa-IR + RTL: `d417565d74`; field configuration copy polished: `65a0528055`.
+- Field technical name shown for Persian labels: `af4ffe4790`; technical-name editing UX improved: `ed93888f25`; helper text refined: `762feb96bc`.
+- Persian technical-name validation copy: `f8a6e7095a` — CONFIRMED_COMPLETE (fa-IR.po + generated + tests).
+- Relation field technical names stabilized: `2424b82aaa` (front + server `compute-relation-target-field-name` tests).
+- System / default field labels + Select / Multi-select option labels localized at read time via server `@ResolveField options` and the canonical-label utilities:
+  - `localize-standard-field-options.util.ts`
+  - `get-standard-field-option-canonical-label-by-id.util.ts`
+  - preserves user-authored labels; restores canonical labels on submit (`restoreCanonicalStandardFieldOptionLabels`)
+- Duplicate select-option recovery: `8237626085` (`fix(settings): allow recovery from duplicate select options`).
+- Delete confirmation localization: `9bee4d30ac` — `fix(i18n): unify localized destructive confirmations` (all locales).
+- Kanban / system status options localized in Persian at read time: `f6205d9092` — `fix(i18n): localize system status options in Persian` (To do / In progress / Done → برای انجام / در حال انجام / انجام‌شده).
+- Metadata localization cache-version strategy: `bfaf4242de` — `fix(i18n): refresh localized metadata labels by locale`, controlled by `METADATA_LOCALIZATION_VERSION` (currently `4`).
 
 ---
 
-# Jalali Phase 5 — Final Presentation QA / Cleanup
+# Record Detail localization
 
-Status: COMPLETE / ACCEPTED / COMMITTED (`fix(i18n): complete Jalali presentation cleanup`)
+Status: COMPLETE / COMMITTED.
 
-## Phase 5 accepted results
-
-- shared helper: `useFormatDateTimeForAppLocale` (thin hook over `formatDateTimeForAppLocale` with app locale + user timezone) and `NUMERIC_DATE_FORMAT_OPTIONS` / `NUMERIC_DATE_TIME_FORMAT_OPTIONS` (same fields as the previous no-argument `toLocaleDateString()` / `toLocaleString()`, so en output is identical)
-- admin panel: queue jobs (Persian relative + Jalali full-time tooltip), chat message/thread rows, workspace/user detail created dates, workspace detail thread dates, maintenance-mode card, signing keys (exact + relative)
-- `SettingsEnterprise` license/subscription dates
-- Settings → Applications front-component / command-menu-item / connection detail dates (invalid values still fall back to the raw string)
-- `SettingsDatePickerInput` display value
-- `groupThreadsByDate`: fa-IR groups by Persian month/year with Persian label; non-fa month label no longer depends on the host locale
-- event-logs timestamp column: locale-aware relative text (`EventLogTimestampCell`)
-- Settings → AI agent logs tab + turn detail: app locale instead of hard-coded en-US
-- `formatToHumanReadableDate` takes the user timezone (blocklist, email sender/preview, unsubscribers, attachments); no more host-timezone day shift
-- durations: expiry logic separated from display — `isExpired` / `formatExpiration` use date arithmetic (`differenceInDays < 0`, identical one-full-day threshold) instead of parsing `-` in the rendered string; fa-IR digits localized at display only via `localizeDigitsForAppLocale` (fa-IR only; other locales unchanged; Lingui message IDs unchanged)
-- filter chips: DATE `IS_BEFORE` / `IS_AFTER` chips regenerate the label from the canonical plain-date value for fa-IR instead of showing a possibly stale persisted `displayValue`; payload/value/displayValue never rewritten; non-fa unchanged
-
-## Intentionally retained (technical / Gregorian / out of scope)
-
-- `SettingsAiPrompts` en-US current date (AI prompt context, machine-oriented)
-- `apollo/loggerLink` debug time, `navigator.language` detection fallbacks, `Intl.DateTimeFormat().resolvedOptions().timeZone` timezone detection
-- `TimeZoneAbbreviation` (ASCII GMT offset)
-- Gregorian branches: `getMonthSelectOptions`, `formatZonedDateTimeDatePart`, `RecordCalendarTopBar` gregorian title
-- typed date input masks (ASCII digits by Phase 2/3A design), `validateCustomDateFormat`, cron-to-human descriptors (already locale-aware)
-- number formatting (`formatNumber`, `QUERY_MAX_RECORDS`, `BackgroundMockTableRow`, `RoutingDebugDisplay`, subscription values)
-- weekend shading Sat/Sun (product decision)
-- out of frontend scope: chart axis labels, email-rendered dates, backend/server formatting
-
-## Phase 5 validation
-
-- focused Phase 5 suites: 6 suites / 89 tests PASS
-- regression (localization, ai, date inputs, record-calendar, activities, record-filter, object-filter-dropdown, advanced-filter, record-field, record-show, views, workflow, object-core, settings, pages/settings, utils): 590 suites / 3513 tests PASS, 0 failures
-- tsgo PASS
-- oxlint --type-aware 0 warnings / 0 errors
-- oxfmt --check PASS
-- manual fa-IR browser smoke PASS: admin user/workspace created `۱۴۰۵/۶/۳۱`, queue jobs `۱ دقیقه پیش` + tooltip `۱۴۰۵/۷/۶, ۲۰:۳۹:۰۰`, signing keys `۵ روز پیش`, opportunities DATE_TIME `بهمن ۱۱، ۱۴۰۴، ۷:۵۵ ب.ظ.`, filter chips `: مهر ۶، ۱۴۰۵` / `< مهر ۶، ۱۴۰۵، ۸:۴۲ ب.ظ.` (reset afterwards), Jalali DateTimePicker + RTL next/previous month (Mehr ↔ Aban), timeline month group `مهر ۱۴۰۵` + relative + Jalali tooltip, workflows `۲۴ ساعت پیش`, temporary Tasks calendar view month `مهر ۱۴۰۵` / week `۵ تا ۱۱ مهر ۱۴۰۵` / day `دوشنبه، مهر ۶، ۱۴۰۵` (deleted afterwards; 3 original views intact)
-- en path smoke PASS (language temporarily switched to English, then restored to فارسی): admin created `9/22/2026`, queue tooltip `9/28/2026, 8:47:00 PM` (identical to previous `toLocale*` output)
-- not exercisable with local data (unit-tested only): API key expiration, AI chat threads/agent turns, enterprise license dates, event logs (enterprise-gated), applications front components, DATE-only field chips (no DATE field in the workspace; schema not mutated for testing)
+- `7b484247d9` — `fix(i18n): complete Persian record detail UI` (tabs/widgets, command menu, Timeline/Tasks/Notes/Files/Fields copy across locales).
+- `a4877ec4b9` — `fix(rtl): prevent record field values overlapping icons` (RTL field value/icon overlap fix).
 
 ---
 
-# Remaining Jalali roadmap
+# Settings
 
-```
-Phase 3B — display stragglers   (COMPLETE, committed)
-        ↓
-Phase 4 — record calendar       (COMPLETE, committed)
-        ↓
-Phase 5 — final QA / cleanup    (COMPLETE, committed)
-        ↓
-Jalali Presentation Layer complete   (CURRENT STATE)
-```
+## Field-save navigation fix
 
-The Jalali presentation program is finished. The next workstream may return to broader UI/RTL improvements.
+`0d5b0b772d` — `fix(settings): return to object settings after editing a field` (2026-09-29).
+
+- `SettingsObjectFieldEdit.tsx` + `SettingsObjectFieldEdit.test.tsx` (269 lines of tests)
+- after saving a field edit, navigation returns to the object settings page instead of a dead-end
+
+## Experience settings (fa-IR presentation)
+
+`6fad08b92c` — `fix(settings): align Persian experience and self-hosted feature gates` (2026-09-30).
+
+- Settings → Experience date/time/number/timezone examples route through the **shared** formatter architecture:
+  - `formatDateISOStringToDate` (Jalali date previews)
+  - new `formatTimePreview` (Persian day period, Persian digits)
+  - new `formatNumberPreview` (Persian digits/separators)
+  - new `formatLocalizedTimeZoneLabel` (localized visible label; canonical IANA id unchanged)
+- `DateTimeSettingsDateFormatSelect`, `DateTimeSettingsTimeFormatSelect`, `DateTimeSettingsTimeZoneSelect`, `NumberFormatSelect` no longer call `formatInTimeZone` / raw `Intl` directly.
+- No hardcoded Persian strings in components; no second date-format system.
+- Custom date format stays hidden in Persian-calendar mode (unchanged policy).
+- Validation: `experiencePreviewFormatters.test.ts` + wider front suite (59 suites / 551 tests); server gate spec (2 suites / 22 tests); tsgo/oxlint/oxfmt PASS; live fa-IR smoke PASS.
+- **en-US output unchanged**; locale switching updates examples without cache clearing.
 
 ---
 
-# Current validation state for Jalali work
+# Enterprise / SSO / Logging
 
-Phase 1:
-- focused tests passed
-- tsgo passed
-- oxlint passed
-- oxfmt passed
+Status: findings documented. **No Enterprise licence bypass is part of the desired architecture.**
 
-Phase 2:
-- relevant formatter/display tests passed
-- tsgo passed
-- oxlint passed
-- oxfmt passed
-- only 3 known old host-locale-dependent `formatDate.test.ts` failures remained
+## Gate root causes (verified in source)
 
-Phase 3A:
-- picker/date-input tests: 169/169 passed
-- wider relevant run: 620 passed, same 3 old host-locale failures
-- tsgo passed
-- oxlint 0 warnings / 0 errors
-- oxfmt passed
-- manual fa-IR DatePicker/DateTimePicker smoke tests passed
+- **SSO** is gated by an Enterprise licence: `EnterpriseFeaturesEnabledGuard` (and other Enterprise checks) call `EnterprisePlanService.isValid()`, which requires a valid Enterprise validity token. `ENTERPRISE_KEY` / the validity token must be JWTs signed by Twenty's embedded public key. It is not a feature flag, migration, or UI-only lock.
+- **Audit logs** have two gates in `EventLogsService.validateAccess`:
+  1. ClickHouse must be configured via `CLICKHOUSE_URL`.
+  2. `WORKSPACE_EVENT`, `PAGEVIEW`, `OBJECT_EVENT`, `USAGE_EVENT` additionally require `isValid()` **and** the `AUDIT_LOGS` billing entitlement.
+  - `APPLICATION_LOG` has `requiresEntitlement: null` (free once ClickHouse is configured).
 
-Phase 3B:
-- 375 suites / 2277 tests passed
-- 186 suites / 979 tests passed
-- old 3 host-locale `formatDate.test.ts` failures fixed
-- tsgo passed
-- oxlint 0 warnings / 0 errors
-- oxfmt passed
+## Local configuration reality
 
-Phase 4:
-- record-calendar 12 suites / 70 tests passed
-- localization + date inputs + record-index 51 suites / 454 tests passed
-- object-record + localization + ui + utils 373 suites / 2116 tests passed
-- tsgo passed
-- oxlint 0 warnings / 0 errors
-- oxfmt passed
-- manual fa-IR record-calendar smoke test passed
+- `packages/twenty-server/.env`: `ENTERPRISE_KEY` is commented out; `CLICKHOUSE_URL` is commented out. So SSO and entitled log types are locked, and even free application logs need ClickHouse.
+- `IS_BILLING_ENABLED` is disabled locally; with billing off, `isEntitlementActive` reduces to `hasValidEnterprisePlan`.
 
-Phase 5:
-- focused Phase 5 suites 6 suites / 89 tests passed
-- regression 590 suites / 3513 tests passed
-- tsgo passed
-- oxlint --type-aware 0 warnings / 0 errors
-- oxfmt passed
-- manual fa-IR + en smoke tests passed
+## Enterprise override history (IMPORTANT)
+
+- A development-only override was briefly introduced in `enterprise-plan.service.ts` (`isDevelopmentTestingOverrideEnabled()`) and pushed by the user in `2fa6612392` (`change`).
+- It was then **disabled** in `272bfa0715` (`chore: disable enterprise development testing override`). Current HEAD has the method returning `false`, so `isValid()` depends on a real licence again.
+- The committed method is a no-op at `false`. It must **not** be turned into a permanent entitlement bypass.
+- **Accepted architecture = no licence bypass.** To enable Enterprise features legitimately, set a Twenty-issued `ENTERPRISE_KEY`; to enable free application logs, configure `CLICKHOUSE_URL`.
+
+---
+
+# Development Startup
+
+Status: COMPLETE / COMMITTED.
+
+## Root cause of the old failure
+
+The old `wait-for-server-http.mjs` used a **single flat 300-second deadline** (`Date.now() + 300_000`) measured from process start. A legitimate cold boot (compile ~9228 files → emit `dist` → DB migrations → Nest init → `/healthz`) can exceed 300s. When it did, the script threw, its `&&` branch exited non-zero, and `concurrently --kill-others` (root `yarn start`) tore down the **still-healthy** backend in the sibling branch.
+
+This was a **FALSE STARTUP FAILURE, NOT a startup performance problem.** Cold-start *performance* remains a separate, unstarted optimisation topic.
+
+## Startup chain
+
+- `yarn start` → `npx concurrently --kill-others "npx nx run-many -t start -p twenty-server twenty-front" "node packages/twenty-server/scripts/wait-for-server-http.mjs 3000 && npx nx run twenty-server:worker"`
+- Branch `[0]` `nx run-many -t start` serves `:3000` (`twenty-server:start` = `rimraf dist && … nest start --watch`) plus the frontend.
+- Branch `[1]` `wait-for-server-http.mjs 3000 && nx run twenty-server:worker` is the readiness gate that launches the queue worker.
+- Failure propagation: `concurrently --kill-others` SIGTERMs all siblings when any command exits non-zero.
+
+## Fix — phased readiness
+
+Commit: `831204b74a` — `fix(dev): use phased readiness so cold backend startup is not killed`
+File: `packages/twenty-server/scripts/wait-for-server-http.mjs` (only file changed).
+
+- **Cold-compile phase:** generous window (default 600s) while the entrypoints have not yet been freshly emitted. The phase boundary latches only on an absent→present transition of the entrypoints *in this run*, so a leftover stale `dist/` cannot skip the wait.
+- **Post-compile phase:** once entrypoints exist, a tighter bounded window (default 300s) for migrations + Nest init. A backend that has compiled but never becomes ready is a genuine failure.
+- Both windows are bounded (not infinite), so real startup errors are never hidden. Tunable via `TWENTY_DEV_COMPILE_TIMEOUT_MS` / `TWENTY_DEV_READY_TIMEOUT_MS`.
+- Failure detection preserved: a crashed backend is still torn down by `concurrently --kill-others`; a compiled-but-never-ready backend exits non-zero from the script.
+- Warm-start behaviour preserved.
+- Validation: hermetic focused test driving the real script in temp dirs — slow-but-healthy → exit 0; dead → non-zero; compiled-but-never-ready → non-zero (post-compile phase). `node --check`, `oxfmt --check`, `oxlint --type-aware` all clean.
+
+---
+
+# Multi-Workspace
+
+Status: CONFIRMED_COMPLETE (local development enablement).
+
+- `TWENTY-DEV-MULTIWORKSPACE-ENABLEMENT-001` enabled Multi-Workspace for the local development instance only, through the official runtime configuration path.
+- Confirmed variable: `IS_MULTIWORKSPACE_ENABLED` (boolean, default `false`, in `twenty-config/config-variables.ts`).
+- Config source for port 3000: `packages/twenty-server/.env` (loaded by `EnvironmentModule`; DB-stored config variables take precedence but no override row existed). The file is git-ignored and is **not** part of any commit.
+- Local `.env` now has `IS_MULTIWORKSPACE_ENABLED=true`.
+- Runtime evidence: `GET http://localhost:3000/client-config` → `isMultiWorkspaceEnabled: true`, `defaultSubdomain: "app"`; the frontend moved to `app.localhost:3001`.
+- "Create Workspace" visibility depends only on `isMultiWorkspaceEnabled` (and `IS_WORKSPACE_CREATION_LIMITED_TO_SERVER_ADMINS=false`), so it is allowed; no workspace was created.
+- No licence/edition/entitlement gate applies to Multi-Workspace.
+- Note: because the frontend moved to `*.localhost` subdomains, a fresh login at `app.localhost:3001` is required.
+
+---
+
+# Branding / white-label
+
+Status: **PLANNED / NOT STARTED**
+
+Planning file (untracked, intentionally not committed): `docs/plans/branding-white-label.md`.
+
+Architecture direction: **app-first / minimal-core-change.**
+- create a centralized instance-wide product-branding configuration
+- workspace display name/logo remains tenant identity (do NOT conflate with product brand)
+- do not rename technical package/project identifiers or `@twenty/*` imports
+- likely future fields: `PRODUCT_NAME`, `SHORT_PRODUCT_NAME`, `COMPANY_NAME`, `EMAIL_FROM_NAME`, `TOTP_ISSUER`, `SUPPORT_URL`, `WEBSITE_URL`, brand logo / dark logo / favicon
+
+Do not start branding unless explicitly requested.
+
+---
+
+# SMS
+
+Status: **PLANNED / NOT IMPLEMENTED**
+
+- No SMS production code exists. `ISmsProvider` does **not** exist in the source tree.
+- Current direction: a provider abstraction rather than vendor lock-in.
+- Candidate conceptual boundary: `ISmsProvider`.
+- Potential providers may include Iranian SMS providers, but:
+  - no provider has been selected
+  - no SMS implementation exists
+  - no SMS production code has been accepted
+
+---
+
+# Known Unverified / Pending Items
+
+| Item | Classification | Evidence |
+|------|----------------|----------|
+| Timeline RTL gray activity-group bar fix | CONFIRMED_COMPLETE | `a81ef48efb` (`EventsGroup.tsx`) |
+| Profile picture Windows path normalization | CONFIRMED_COMPLETE | `a9e3b0fbbf` (POSIX normalize util + tests; ancestor of HEAD) |
+| Persian technical/API-name validation copy | CONFIRMED_COMPLETE | `f8a6e7095a` (fa-IR.po + tests) |
+| Multi-workspace enablement | CONFIRMED_COMPLETE | local `.env` + `client-config` runtime evidence (no commit; git-ignored) |
+| ClickHouse setup | CONFIRMED_INCOMPLETE | `CLICKHOUSE_URL` commented out in `.env`; no ClickHouse running |
+| EnterprisePlanService / previous local entitlement override | CONFIRMED_COMPLETE (disabled) | override disabled in `272bfa0715`; method returns `false` at HEAD |
+| Old Settings stashes | UNVERIFIED | `stash@{0}` exists (4 files incl. enterprise-plan override) — do not pop/drop without user instruction |
+| Docker/source local-storage unification | UNVERIFIED | no dedicated unify commit found; `STORAGE_TYPE=local` available but commented; `docker-compose.dev.yml` is dev infra only (Postgres + Redis) |
+| `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
+| Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
+| Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
+| SMS | PLANNED / NOT IMPLEMENTED | no `ISmsProvider`, no SMS code |
+
+**Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
+
+---
+
+# Important Commits
+
+Jalali program:
+- `a842caff67` — feat(i18n): complete Jalali presentation phases 1-3B
+- `6a1a81800d` — feat(i18n): add Jalali record calendar
+- `8aff38f8d0` — docs: finalize Jalali phase 4 checkpoint
+- `af2d0bb974` — fix(i18n): complete Jalali presentation cleanup
+
+Persian / RTL / Data Model / Record Detail:
+- `9492167bcb`, `09af11c7a0`, `583dfc6fcc`, `d417565d74`, `65a0528055`, `762feb96bc`, `af4ffe4790`, `ed93888f25`, `f8a6e7095a`, `2424b82aaa`
+- `7b484247d9` — complete Persian record detail UI
+- `a4877ec4b9` — record field values vs icons (RTL)
+- `a81ef48efb` — timeline group bar alignment (RTL)
+- `a17235d982` — hide unsupported custom date format in Persian
+- `93cbacc11c` — align Persian date field display options
+- `e449bb1937` — localize Persian date input masks
+- `2679bf3551` — complete Persian Jalali date input presentation
+- `8237626085` — allow recovery from duplicate select options
+- `9bee4d30ac` — unify localized destructive confirmations
+- `bfaf4242de` — refresh localized metadata labels by locale
+- `f6205d9092` — localize system status options in Persian
+
+Navigation / Settings / Startup:
+- `baa6d7ce42` — prevent navigation actions overlapping labels
+- `eb7db4492f` — stabilize editable navigation and folder naming
+- `0d5b0b772d` — return to object settings after editing a field
+- `6fad08b92c` — align Persian experience and self-hosted feature gates
+- `272bfa0715` — disable enterprise development testing override
+- `831204b74a` — phased readiness so cold backend startup is not killed (HEAD)
+
+Windows / files:
+- `a9e3b0fbbf` — restore profile picture preview on Windows local storage
+- `4af6644215cf337e06ba8c1f50fcb347fbf027f9` — make Windows source startup reliable
+
+---
+
+# Recovery Instructions
+
+A future agent MUST:
+
+1. **Read this file first.**
+2. **Verify HEAD/origin before making changes** (`git rev-parse HEAD`, `git rev-parse origin/crm-platform`, `git status`, `git stash list`).
+3. **Never assume an UNVERIFIED item is complete.** Re-check the repository.
+4. **Work one bounded task at a time.** Do not continue automatically into the next task.
+5. **Implement → focused test → acceptance → commit → push → sync.**
+6. **Do not modify unrelated files.** Keep pre-existing/unrelated working-tree changes out of commits.
+7. **Preserve app-first / minimal-core-change architecture.**
+8. **Never introduce Enterprise entitlement bypasses** unless explicitly requested by the user.
+
+Additional reminders:
+- Do not pop/apply/drop stashes without explicit instruction.
+- Do not modify `.env`, DB, migrations, Docker, or dependencies for documentation/recovery work.
+- Do not rename internal Twenty identifiers for branding.
+- Keep any future date work presentation-only.
 
 ---
 
 # Recovery prompt for a new chat
-
-Use this message in a new chat if needed:
 
 ```
 We are continuing work on mrnikiemami-code/crm-platform, branch crm-platform.
@@ -698,13 +535,17 @@ Do not redo accepted work.
 
 First inspect the current repository/local state and reconcile it against the recovery file.
 
-Current accepted checkpoint should be:
-JALALI PRESENTATION LAYER COMPLETE (Jalali Phases 1–5 committed).
+Current accepted checkpoint:
+JALALI PRESENTATION LAYER COMPLETE (Jalali Phases 1–5 committed),
+plus Persian/RTL, Data Model, Record Detail, Navigation, Kanban/system-status,
+Settings/Experience, and development-startup fixes committed.
 
 The Jalali presentation program is complete; do not start another Jalali phase.
-The next workstream may return to broader UI/RTL improvements.
+Branding and SMS are PLANNED only — do not start them automatically.
 
-Any future date work must stay presentation-only. Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
+Any future date work must stay presentation-only.
+Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
+Do not introduce Enterprise entitlement bypasses unless explicitly requested.
 ```
 
 ---
@@ -716,4 +557,4 @@ Any future date work must stay presentation-only. Do not change DB/API/GraphQL/d
 - Audit → implement → validate → report → wait for acceptance.
 - Keep unrelated changes out of commits.
 - Preserve local user data during manual smoke tests and restore temporary edits.
-- Before committing any Jalali phase, inspect the complete diff and exclude unrelated files such as branding planning artifacts.
+- Before committing, inspect the complete diff and exclude unrelated files such as branding planning artifacts.
