@@ -632,13 +632,38 @@ This preserves the product rule: unsupported features must not appear as dead co
 
 W0 remains **NOT COMMITTED / NOT PUSHED** until this bounded correction is validated.
 
+## W0-R1 review — ACCEPTED / READY TO COMMIT
+
+Task: `CRM-COMMUNICATIONS-001-W0-R1`.
+
+Accepted correction:
+- `communication.channel` remains a generic/extensible SELECT.
+- only `SMS` is exposed in W0.
+- default remains `SMS`.
+- inert `WHATSAPP`, `TELEGRAM`, `INSTAGRAM`, `BALE` options were removed.
+- Person and WorkspaceMember relation pairs remain intact.
+- encrypted server-variable configuration seam remains intact.
+- app build/manifest validation PASS.
+- TypeScript PASS.
+- oxlint PASS.
+- core files changed by W0/W0-R1: ZERO.
+- no provider/send/workflow/timeline/webhook implementation exists yet.
+
+W0 + W0-R1 implementation scope remains exactly the 14 new files under:
+`packages/twenty-apps/internal/communication/`
+
+W0 is architecturally **ACCEPTED**. It still exists only in the local working tree until the scoped implementation commit is created and pushed.
+
 ## Next implementation wave
 
-Immediate next task: **W0-R1 — supported-channel option hygiene only**. Remove inert future channel options, rebuild/validate/typecheck/lint, report diff, and stop for review. No provider implementation yet.
+Immediate next task: **W0-COMMIT — commit/push accepted skeleton only**.
 
-After W0-R1 acceptance, commit/push the complete W0 app skeleton as one scoped commit. Only then advance to W1.
+The implementation commit must include only:
+`packages/twenty-apps/internal/communication/`
 
-Original W0 target: **W0 — App skeleton only**.
+Do not include the 24 pre-existing unrelated modified files, untracked `docs/`, stashes, or any other path.
+
+After W0-COMMIT is verified on origin, update this recovery checkpoint with the implementation SHA and only then advance to W1 (generic provider boundary + one SMS provider).
 
 W0 should create/install the internal `communication` app, define the generic `communication` workspace object + Person relation and encrypted configuration-variable seam, verify installation/object visibility, and stop. **No provider sending yet.**
 
