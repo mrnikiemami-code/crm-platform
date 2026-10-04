@@ -656,15 +656,17 @@ W0 is architecturally **ACCEPTED / COMMITTED / PUSHED**. Durable implementation 
 
 ## Next implementation wave
 
-Immediate next task: **W1 — generic provider boundary only** (target 15–30 minutes).
+W1 is **COMPLETE / COMMITTED / PUSHED** at `cf4d176d605c40e0b752efd55a19968c587dfb2f` (`feat(apps): add Communication provider boundary`). It added the app-local generic provider contract, minimal capabilities/input/result types, instance-based provider registry, typed missing-provider failure, and 5 focused deterministic tests. Core changes = ZERO.
 
-W1 must add the app-local `CommunicationProvider` contract, capabilities/result/input types, and a small registry/selection seam with focused deterministic unit tests. It must **not** select or call a real SMS vendor yet. This keeps the wave bounded and lets the provider integration be a separate W2.
+W2 is **COMPLETE / COMMITTED / PUSHED** at `f951459e5a9e194f7c09874aed7fa94f0c0c98fe` (`feat(apps): add Kavenegar communication provider`). It added the first SMS provider and shared send-service path. Kavenegar is retained as a valid provider implementation; it is not the user's intended primary SMS service.
 
-After successful focused validation, W1 itself must scope-check, commit, push, verify `HEAD == origin/crm-platform`, report, and stop. Commit/push are part of the same wave; never create a separate task merely for commit/push.
+Provider requirement clarified after W2: the intended SMS service is **RazPayamak / Smart Webservice** (official documentation supplied by the user at `http://razpayamak.ir/Files/webservice-Smart.pdf`). Do not replace Kavenegar merely because RazPayamak is added.
 
-W0 should create/install the internal `communication` app, define the generic `communication` workspace object + Person relation and encrypted configuration-variable seam, verify installation/object visibility, and stop. **No provider sending yet.**
+Architecture correction for the next wave: provider selection must support **multiple providers for the same channel** without channel-specific `if/else` branching. A registry keyed only by `channel` is insufficient once both Kavenegar and RazPayamak exist.
 
-No SMS provider has been selected. No Communication/SMS production implementation has yet been accepted.
+Immediate next task: evolve the app-local registry/selection model to support multiple providers per channel and add a RazPayamak/Smart provider from its official contract, with focused deterministic tests. Keep the task cohesive; do not split mechanically if implementation + validation remains reasonably bounded. Commit/push belong to the same task.
+
+Do not advance to communication persistence/UI/workflow/timeline until the multi-provider SMS selection seam is sound.
 
 ---
 
@@ -683,7 +685,7 @@ No SMS provider has been selected. No Communication/SMS production implementatio
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | PLANNED / NOT IMPLEMENTED | SMS-first, multi-channel architecture planned; no accepted implementation yet |
+| Communications / Messaging | ACTIVE — W0/W1/W2 IMPLEMENTED | W0 skeleton `bbddd56c73`; W1 provider boundary `cf4d176d60`; W2 Kavenegar/send path `f951459e5a`; next: multi-provider-per-channel + RazPayamak Smart |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -763,7 +765,7 @@ plus Persian/RTL, Data Model, Record Detail, Navigation, Kanban/system-status,
 Settings/Experience, and development-startup fixes committed.
 
 The Jalali presentation program is complete; do not start another Jalali phase.
-Branding and Communications / Messaging are PLANNED only — do not start them automatically. Communications is SMS-first but must remain multi-channel; the next planned step is analyze-only P0.
+Branding remains planned. Communications / Messaging is ACTIVE: W0 skeleton, W1 provider boundary, and W2 Kavenegar/send path are committed. The next Communications task is multi-provider-per-channel selection + RazPayamak Smart; do not redo P0/W0/W1/W2.
 
 Any future date work must stay presentation-only.
 Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
@@ -776,8 +778,8 @@ Do not introduce Enterprise entitlement bypasses unless explicitly requested.
 
 For CRM implementation work:
 
-- Target each task/wave at roughly **15–30 minutes**.
-- If reliable implementation + validation is likely to exceed ~30 minutes, split it into smaller waves before execution.
+- Use roughly **15–30 minutes as a sizing guide, not a mechanical hard limit**.
+- Balance cohesion, risk, and duration. If closely related work forms one natural low-risk unit, keep it together even if it may run somewhat beyond 30 minutes. Split only when the task becomes genuinely multi-concern, high-risk, or too long to validate confidently.
 - Prefer focused, deterministic, repeatable automated tests. Do not make screenshot/manual visual confirmation a required PASS criterion.
 - UI screenshot/manual smoke may be supplemental only when the change is inherently visual; it never replaces proper automated validation.
 - Run the smallest relevant test/typecheck/lint/build surface first. Do not run huge regression suites for small isolated changes unless the risk justifies them.
