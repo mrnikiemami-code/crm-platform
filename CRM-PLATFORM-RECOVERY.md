@@ -23,13 +23,13 @@ Branch:
 `crm-platform`
 
 HEAD:
-`831204b74a` — `fix(dev): use phased readiness so cold backend startup is not killed`
+`b34c641728c27b6d2c2c679b4cabeed10deb4e3f` — `docs(recovery): record communications P0 architecture`
 
 Origin Sync:
-`HEAD == origin/crm-platform` (`831204b74a`) — verified in sync at the time of this update.
+`origin/crm-platform` is at `b34c641728c27b6d2c2c679b4cabeed10deb4e3f` after the Communications P0 recovery update. A local Cursor checkout may still be behind these direct recovery-document commits; before the next implementation wave, fetch and fast-forward to origin without touching stashes/untracked files.
 
 Last Accepted Milestone:
-`CRM-PLATFORM-RECOVERY-SYNC-001` — recovery documentation synced to the real repository state.
+`CRM-COMMUNICATIONS-001-P0` — architecture audit accepted and persisted. No production implementation yet.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -41,7 +41,7 @@ Current Development State:
 - Communications / Messaging: PLANNED / NOT IMPLEMENTED. First delivery channel will be SMS; architecture is multi-channel from day one.
 
 Next Recommended Work:
-None fixed. Only optional, separately-scoped items remain (see Known Unverified / Pending Items). Do not start them automatically.
+`CRM-COMMUNICATIONS-001-W0` — create only the internal Communication App skeleton, generic communication workspace object + Person relation, and encrypted configuration-variable seam. No provider sending yet. Stop for review before commit.
 
 ---
 
