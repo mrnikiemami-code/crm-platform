@@ -11,18 +11,15 @@ export type SendCommunicationOptions = {
   providerId?: CommunicationProviderId;
 };
 
-// The single shared entry point for outbound communication. UI and Workflow
-// are expected to call this same service later, so it deliberately knows
-// nothing about either of them.
+// The provider-facing send step. UI and Workflow are expected to call the
+// durable orchestration (`CommunicationSendAndPersistService`) instead, so this
+// stays a thin, side-effect-free delegation.
 //
 // Provider selection is delegated entirely to the registry, and the default
 // provider comes from configuration. There is no `if (channel === 'SMS')` and
 // no `switch (provider)` here: adding a provider or a channel never touches
 // this file. It also never sees a provider URL, an auth format, or a
 // provider-specific request/response shape.
-//
-// It does not persist `communication` records — that is a separate integration
-// concern (status/timestamps/providerMessageId) owned by a later wave.
 export class CommunicationSendService {
   constructor(
     private readonly providerRegistry: CommunicationProviderRegistry,
@@ -32,21 +29,22 @@ export class CommunicationSendService {
     message: OutboundCommunication,
     options: SendCommunicationOptions = {},
   ): Promise<CommunicationSendResult> {
-    const providerId =
-      options.providerId ?? this.getConfiguredProviderId();
+    const providerId = options.providerId ?? getConfiguredProviderId();
 
     const provider = this.providerRegistry.resolve(providerId, message.channel);
 
     return provider.send(message);
   }
-
-  private getConfiguredProviderId(): CommunicationProviderId {
-    const selection = resolveConfiguredProviderId();
-
-    if (!selection.success) {
-      throw new Error(selection.error);
-    }
-
-    return selection.providerId;
-  }
 }
+
+// Shared by the plain send path and the durable orchestration so both resolve
+// the configured provider identically.
+export const getConfiguredProviderId = (): CommunicationProviderId => {
+  const selection = resolveConfiguredProviderId();
+
+  if (!selection.success) {
+    throw new Error(selection.error);
+  }
+
+  return selection.providerId;
+};

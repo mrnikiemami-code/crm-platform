@@ -8,7 +8,9 @@ import {
   COMMUNICATION_FAILURE_REASON_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_NAME_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_OBJECT_UNIVERSAL_IDENTIFIER,
+  COMMUNICATION_PROVIDER_ID_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_PROVIDER_MESSAGE_ID_FIELD_UNIVERSAL_IDENTIFIER,
+  COMMUNICATION_RECIPIENT_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_QUEUED_AT_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_SENT_AT_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_STATUS_FIELD_UNIVERSAL_IDENTIFIER,
@@ -149,6 +151,29 @@ export default defineObject({
           color: 'blue',
         },
       ],
+    },
+    {
+      // Send-time snapshot: the provider actually used. Stored so history stays
+      // truthful even if the configured default provider changes later.
+      universalIdentifier:
+        COMMUNICATION_PROVIDER_ID_FIELD_UNIVERSAL_IDENTIFIER,
+      type: FieldType.TEXT,
+      name: 'providerId',
+      label: 'Provider',
+      description: 'Provider that was selected for this send',
+      icon: 'IconPlugConnected',
+      isNullable: true,
+    },
+    {
+      // Send-time snapshot: the exact destination used. Stored so history stays
+      // meaningful even if the linked Person's phone number changes later.
+      universalIdentifier: COMMUNICATION_RECIPIENT_FIELD_UNIVERSAL_IDENTIFIER,
+      type: FieldType.TEXT,
+      name: 'recipient',
+      label: 'Recipient',
+      description: 'Destination address this communication was sent to',
+      icon: 'IconPhone',
+      isNullable: true,
     },
     {
       universalIdentifier:
