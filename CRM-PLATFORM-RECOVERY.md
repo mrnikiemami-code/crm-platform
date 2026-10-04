@@ -600,9 +600,45 @@ A registry selects the provider/channel driver. Do **not** extend `MessageOutbou
 - encryption key availability in deployment environment
 - timeline noise at high message volume
 
+## W0 implementation review — IMPLEMENTED / VALIDATED / NOT YET ACCEPTED
+
+Task: `CRM-COMMUNICATIONS-001-W0`.
+
+Implementation exists locally but is intentionally uncommitted pending review. Reported implementation is confined to:
+
+`packages/twenty-apps/internal/communication/`
+
+W0 evidence:
+- 14 new app-owned files; no tracked/core files modified by W0.
+- generic `communication` object created.
+- Person MANY_TO_ONE + inverse relation resolved in generated manifest.
+- WorkspaceMember sender relation is supported and resolved with inverse relation.
+- encrypted `serverVariables` seam created for future provider credentials/config.
+- no provider/send/workflow/timeline/webhook code added.
+- `dev:build`, TypeScript and oxlint reported PASS.
+- local app installation intentionally deferred because install requires an explicit remote/credentials and may mutate workspace metadata.
+- 24 pre-existing modified files plus pre-existing untracked `docs/` remain unrelated and must stay out of the Communication commit.
+
+### W0 review correction required before acceptance
+
+Do **not** expose unimplemented future channels as selectable values. The generic `channel` field remains extensible without predeclaring dead UI options.
+
+For W0, keep only the actually planned first channel option:
+- `SMS`
+
+Do not expose `WHATSAPP`, `TELEGRAM`, `INSTAGRAM`, or `BALE` until the corresponding channel is implemented/enabled. Adding a future SELECT option is an additive app change and does not require redesigning the Communication architecture.
+
+This preserves the product rule: unsupported features must not appear as dead controls.
+
+W0 remains **NOT COMMITTED / NOT PUSHED** until this bounded correction is validated.
+
 ## Next implementation wave
 
-Next planned task: **W0 — App skeleton only**.
+Immediate next task: **W0-R1 — supported-channel option hygiene only**. Remove inert future channel options, rebuild/validate/typecheck/lint, report diff, and stop for review. No provider implementation yet.
+
+After W0-R1 acceptance, commit/push the complete W0 app skeleton as one scoped commit. Only then advance to W1.
+
+Original W0 target: **W0 — App skeleton only**.
 
 W0 should create/install the internal `communication` app, define the generic `communication` workspace object + Person relation and encrypted configuration-variable seam, verify installation/object visibility, and stop. **No provider sending yet.**
 
