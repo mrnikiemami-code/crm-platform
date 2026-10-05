@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-04
+Last updated: 2026-10-05
 
 ## Purpose
 
@@ -23,13 +23,34 @@ Branch:
 `crm-platform`
 
 HEAD:
-`727cc5e06a7f8ba57198469cf58f1ba1784808cf` — `docs(recovery): record Communication W4-R1 certification`
+`cafce80a4e23fc5d817a56d80cb9e3e4dc1bd938` — `docs(recovery): record Communication W6-R2 native data path`
 
 Origin Sync:
-`HEAD == origin/crm-platform` at `727cc5e06a7f8ba57198469cf58f1ba1784808cf` before W5. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation. W5 then adds the Person send-message vertical slice (implementation commit recorded below).
+`HEAD == origin/crm-platform` at `cafce80a4e23fc5d817a56d80cb9e3e4dc1bd938`. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W4` + `W4-R1` — durable outbound send path accepted/architect-certified (`8c3866f5f5`, `f1469f4fb7`). W5 (Person send-message vertical slice) implemented and committed at `15ad660a648d8aa85eddfb904712d8ec04552afa`; see the W5 section below.
+`CRM-COMMUNICATIONS-001-W6` + `W6-R1` + `W6-R2` — Person timeline integration, **code-review accepted** (`b464171e2a` implementation, corrected by `fd9e0988c6` and `10af7c560f`).
+
+## Communications milestones — code-review acceptance
+
+Implementation SHAs and recovery-document SHAs are listed separately. "Code-review accepted" means the implementation and its focused tests were reviewed and accepted at code level; it does **not** mean live-verified (see the limitations below).
+
+| Wave | Implementation SHA(s) | Recovery-document SHA(s) | Status |
+|------|----------------------|--------------------------|--------|
+| W0 / W0-R1 | `bbddd56c73` | `c7c64342a9`, `cd1851d9fb`, `8dc72d0b5b` | code-review accepted |
+| W1 | `cf4d176d60` | `9a2da28810` | code-review accepted |
+| W2 | `f951459e5a` | `770a79e99e` | code-review accepted |
+| W3 | `b69c4a2ade` | `c311f43f3b` | code-review accepted |
+| W4 / W4-R1 | `8c3866f5f5`, `f1469f4fb7` | `b34c641728`, `cf961581dd` | code-review accepted |
+| W5 | `15ad660a64` | `0b987335f6` | code-review accepted |
+| W5-R1 | `0853765a98` | `badd9a0ca1` | code-review accepted |
+| W5-R2 | `defdc41e9d` | `d7bdbf60ce` | code-review accepted |
+| W5-R3 | `7b21608880` | `c9662cdb5a` | code-review accepted |
+| W6 | `b464171e2a` | `3014d5ece4` | code-review accepted |
+| W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
+| W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
+
+**Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -38,10 +59,19 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: ACTIVE. W0–W4 accepted/committed; W5 adds the first Person send-message vertical slice (command menu → composer front component → authenticated route logic function → certified durable orchestration). SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W6 implemented and code-review accepted (see the milestone table above). The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+
+## Communications — authoritative current behavior
+
+- **Timeline data path:** `timelineActivityId` → activity (`GET /rest/timelineActivities/<id>`) → `activity.linkedRecordId` → Communication (`GET /rest/communications/<id>`). The renderer context's `recordId` is **null** for a timeline renderer and is never used as the linked record.
+- **Activity label:** `communication` (outcome-neutral, so a QUEUED record never reads as sent).
+- **Status source:** the persisted Communication record, read at render time — never the activity's creation-time snapshot.
+- **Refresh:** **manual**, via a localized Refresh action shown on pending and unavailable cards. The card does **not** update automatically; no subscription or invalidation mechanism is exposed to the front-component sandbox.
+- **Unavailable reasons:** `NO_ACTIVITY_ID`, `ACTIVITY_NOT_FOUND`, `NO_LINKED_RECORD`, `LINKED_RECORD_NOT_COMMUNICATION`, `ERROR`. None renders as QUEUED or as success.
+- **One activity per Communication**, created on `communication.created` only; a status refresh renders the same card and never creates another activity or calls a provider.
 
 Next Recommended Work:
-`CRM-COMMUNICATIONS-001-W6` (not started) — remaining vertical-slice polish decided by the architect: timeline presentation, richer composer UX/localization, delivery status surfacing, or Workflow action reuse of the same durable path. Do not start automatically.
+`CRM-COMMUNICATIONS-001-W7` — **Workflow reuse of the certified durable send path** (`CommunicationSendAndPersistService`). **NOT STARTED.** Do not start automatically; it requires explicit assignment.
 
 ---
 
@@ -707,7 +737,9 @@ Immediate next task: build the first real **Person send-message vertical slice**
 
 # Communications W5 — Person send-message vertical slice
 
-Status: **IMPLEMENTED / COMMITTED** at `15ad660a648d8aa85eddfb904712d8ec04552afa` (`feat(apps): add person send-message slice`). **NOT yet live-verified** (see limitations).
+Status: **IMPLEMENTED / COMMITTED**, then corrected by **W5-R1**, **W5-R2** and **W5-R3**; **code-review accepted**. **NOT live-verified** (see limitations).
+
+> The W5-R1 / W5-R2 / W5-R3 subsections below are historical corrections applied to this slice. W5-R3 carries the current unknown-outcome wording and duplicate-submission behavior.
 
 ## Call path (native Twenty Apps patterns)
 
@@ -909,7 +941,9 @@ For CRM implementation work:
 
 # Communications W6 — Person timeline integration
 
-Status: **IMPLEMENTED / COMMITTED**, then corrected by **W6-R1** and **W6-R2**. Architect acceptance is **pending W6-R2 review**. **NOT live-verified** (see limitations).
+> **HISTORICAL RECORD.** This section describes W6 as originally implemented. It contains two superseded claims, both corrected by W6-R1 and W6-R2 and marked inline below. For the authoritative current behavior see **Communications — authoritative current behavior** in the Current Checkpoint, and the W6-R1 / W6-R2 sections.
+
+Status: **IMPLEMENTED / COMMITTED**, corrected by **W6-R1** and **W6-R2**; **code-review accepted**. **NOT live-verified** (see limitations).
 
 ## Mechanism (verified from source, not assumed)
 
@@ -930,7 +964,7 @@ communication row created (status QUEUED, providerId + recipient snapshotted)
   → createTimelineActivity                         (native SDK helper)
        target:   Person (targetPersonId)
        linked:   the Communication record
-  → timeline activity type communicationSent ("sent a message")
+  → timeline activity type communicationSent  [SUPERSEDED: the label was "sent a message" in W6; W6-R1 changed it to the outcome-neutral "communication"]
   → front component communication-timeline-card    (native renderer slot)
 ```
 
@@ -951,7 +985,9 @@ communication row created (status QUEUED, providerId + recipient snapshotted)
 - Channel is appended to the summary; the body is truncated to 140 characters.
 - Credentials and raw diagnostics are never copied into the activity (asserted).
 
-## W6-R1 — truthful renderer wiring and neutral label (IMPLEMENTED)
+## W6-R1 — truthful renderer wiring and neutral label (HISTORICAL CORRECTION)
+
+> Historical record of the first correction. Its renderer-wiring claim was itself superseded by W6-R2; the neutral label it introduced is still current.
 
 Status: **IMPLEMENTED / COMMITTED** at `fd9e0988c6af4eca3b0e52ad6a387f3989eb50ac` (`fix(apps): render truthful communication timeline status`).
 
@@ -966,9 +1002,9 @@ Also corrected: the activity type label changed from `"sent a message"` to the o
 
 The activity is still created only on `communication.created`, so a status refresh renders the same card with new data and never creates a second one. The timeline path reads through REST only: it does not import the provider registry, the send service, or the persistence orchestration, and it cannot trigger a send (asserted).
 
-## W6-R2 — native data path and explicit refresh (IMPLEMENTED)
+## W6-R2 — native data path and explicit refresh (CURRENT)
 
-Status: **IMPLEMENTED / COMMITTED** at `10af7c560f583acc8f08d9b4ba1b13f9a8a742d0` (`fix(apps): load timeline activity and refresh explicitly`).
+Status: **IMPLEMENTED / COMMITTED** at `10af7c560f583acc8f08d9b4ba1b13f9a8a742d0` (`fix(apps): load timeline activity and refresh explicitly`). This is the **authoritative** W6 behavior; the summaries in the Current Checkpoint restate it.
 
 Two more defects in the timeline card, both corrected here:
 
