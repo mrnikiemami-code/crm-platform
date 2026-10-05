@@ -56,7 +56,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
 | W10-R3 | `a791ca8762` (docs only — no app change) | `a791ca8762` | browser pass performed; its **"front-component rendering FAIL"** finding was **later proven wrong (session artifact)** — see W10-R4 |
 | W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED** (dependency layer cannot reach a package registry); **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; timeline card still not rendering |
-| W9-R2 | _pending commit_ | _this document_ | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed; **runtime execution isolation NOT PERFORMED** (registry blocked) |
+| W9-R2 | `b12a5c57f9` | `b12a5c57f9` (implementation + docs committed together) | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed; **runtime execution isolation NOT PERFORMED** (registry blocked) |
 
 **Evidence levels (do not conflate them):**
 
