@@ -909,7 +909,7 @@ For CRM implementation work:
 
 # Communications W6 — Person timeline integration
 
-Status: **IMPLEMENTED / COMMITTED** at `b464171e2aee5c143be1becd0bdbe8303ca612fe` (`feat(apps): surface communications in the person timeline`). **NOT live-verified** (see limitations).
+Status: **IMPLEMENTED / COMMITTED**, then **corrected by W6-R1**. Architect acceptance is **pending W6-R1 review**. **NOT live-verified** (see limitations).
 
 ## Mechanism (verified from source, not assumed)
 
@@ -951,22 +951,24 @@ communication row created (status QUEUED, providerId + recipient snapshotted)
 - Channel is appended to the summary; the body is truncated to 140 characters.
 - Credentials and raw diagnostics are never copied into the activity (asserted).
 
-## Known limitation: a QUEUED snapshot can persist
+## W6-R1 — truthful renderer wiring and neutral label (IMPLEMENTED)
 
-The activity is created once, from the creation-time snapshot, so a communication that is later updated to `SENT`/`DELIVERED`/`FAILED` can leave a card reading "Message queued". Adding an `updated` emit with `triggerFieldUniversalIdentifiers: [status]` would not fix this: the server keeps **only the diff** (`keepDiffOnly`) and an update that does not change `status` leaves nothing to merge, while merging would also *overwrite* the snapshot with the current values. A truthful refresh therefore needs either a dedicated status-change path that always writes properties, or a renderer that reads live status. This is reported rather than guessed at.
+Status: **IMPLEMENTED / COMMITTED** at `fd9e0988c6af4eca3b0e52ad6a387f3989eb50ac` (`fix(apps): render truthful communication timeline status`).
 
-## W6 verification — actual coverage vs. simulations
+W6 shipped two defects, both corrected here:
 
-- **Actual production coverage:** `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, blank normalization, no-credential guarantee, null when no target person) and `buildCommunicationTimelinePresentation` (QUEUED/SENT/DELIVERED/FAILED truthfulness, pending semantics, snapshot use, body truncation, defensive null handling) are the real shipped modules and are tested directly. 121 focused tests PASS.
-- **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual database-event delivery, and the live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
-- typecheck PASS; oxlint 0/0; app build PASS (11 files); manifest confirms 1 timeline activity type (no emit, renderer wired), 3 logic functions (1 database event + 2 routes) and 2 front components. W4/W5 modules unchanged.
+1. **The renderer contract was assumed, not verified.** A front component in the timeline renderer slot receives only `timelineActivityId` (and `recordId`) through the execution context — **the activity row and its `properties` are never injected as props**. The W6 card read `event.properties`, so it would have rendered nothing. The card now loads the linked Communication through the supported `RestApiClient` path (`GET /rest/communications/<id>`), which is how app front components read data (Slack precedent).
+2. **Status was frozen at creation time.** Because the card used the activity's creation snapshot, a communication that was later updated could keep showing "Message queued". The card now renders the **current persisted status** read from the record at render time, with explicit `LOADING` and `UNAVAILABLE` states. A missing or inaccessible record is reported as unavailable — **never as QUEUED and never as success**.
 
+Also corrected: the activity type label changed from `"sent a message"` to the outcome-neutral `"communication"`. The type exists for every recorded communication, so claiming "sent" was false while the outcome was still QUEUED. The **universal identifier is unchanged** (`a093b325-527d-4282-a0c9-9921745de0e2`).
 
-# Important working style
+### One activity per Communication, no provider involvement
 
-- Prefer one bounded phase at a time.
-- Do not continue automatically into the next phase.
-- Audit → implement → validate → report → wait for acceptance.
-- Keep unrelated changes out of commits.
-- Preserve local user data during manual smoke tests and restore temporary edits.
-- Before committing, inspect the complete diff and exclude unrelated files such as branding planning artifacts.
+The activity is still created only on `communication.created`, so a status refresh renders the same card with new data and never creates a second one. The timeline path reads through REST only: it does not import the provider registry, the send service, or the persistence orchestration, and it cannot trigger a send (asserted).
+
+## W6 / W6-R1 verification — actual coverage vs. simulations
+
+- **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, blank normalization, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineRecord` (load states, missing/inaccessible handling, no error leakage, read-only), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, `LOADING`/`UNAVAILABLE` states, snapshot use, body truncation). 131 focused tests PASS.
+- **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual REST round trip, database-event delivery, and live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
+- typecheck PASS; oxlint 0/0; app build PASS (11 files); manifest confirms 1 timeline activity type (label `communication`, no `emit`, renderer wired), 3 logic functions and 2 front components. W4/W5 modules unchanged; the timeline path cannot reach a provider.
+
