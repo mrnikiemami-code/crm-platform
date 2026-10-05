@@ -699,7 +699,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 CODE-REVIEW ACCEPTED (live verification pending) + W6 TIMELINE IMPLEMENTED | W0–W4 accepted; W5 slice `15ad660a64` with R1 `0853765a98`, R2 `defdc41e9d`, R3 `7b21608880` accepted at code-review level; W6 Person timeline integration implemented; live end-to-end verification still pending |
+| Communications / Messaging | ACTIVE — W5 CODE-REVIEW ACCEPTED; W6 + W6-R1 + W6-R2 TIMELINE IMPLEMENTED (acceptance pending W6-R2) | W0–W4 accepted; W5 slice `15ad660a64` with R1 `0853765a98`, R2 `defdc41e9d`, R3 `7b21608880`; W6 timeline `b464171e2a`, corrected by R1 `fd9e0988c6` and R2 `10af7c560f583acc8f08d9b4ba1b13f9a8a742d0`; live end-to-end verification still pending |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -909,7 +909,7 @@ For CRM implementation work:
 
 # Communications W6 — Person timeline integration
 
-Status: **IMPLEMENTED / COMMITTED**, then **corrected by W6-R1**. Architect acceptance is **pending W6-R1 review**. **NOT live-verified** (see limitations).
+Status: **IMPLEMENTED / COMMITTED**, then corrected by **W6-R1** and **W6-R2**. Architect acceptance is **pending W6-R2 review**. **NOT live-verified** (see limitations).
 
 ## Mechanism (verified from source, not assumed)
 
@@ -966,9 +966,32 @@ Also corrected: the activity type label changed from `"sent a message"` to the o
 
 The activity is still created only on `communication.created`, so a status refresh renders the same card with new data and never creates a second one. The timeline path reads through REST only: it does not import the provider registry, the send service, or the persistence orchestration, and it cannot trigger a send (asserted).
 
-## W6 / W6-R1 verification — actual coverage vs. simulations
+## W6-R2 — native data path and explicit refresh (IMPLEMENTED)
 
-- **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, blank normalization, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineRecord` (load states, missing/inaccessible handling, no error leakage, read-only), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, `LOADING`/`UNAVAILABLE` states, snapshot use, body truncation). 131 focused tests PASS.
-- **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual REST round trip, database-event delivery, and live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
-- typecheck PASS; oxlint 0/0; app build PASS (11 files); manifest confirms 1 timeline activity type (label `communication`, no `emit`, renderer wired), 3 logic functions and 2 front components. W4/W5 modules unchanged; the timeline path cannot reach a provider.
+Status: **IMPLEMENTED / COMMITTED** at `10af7c560f583acc8f08d9b4ba1b13f9a8a742d0` (`fix(apps): load timeline activity and refresh explicitly`).
+
+Two more defects in the timeline card, both corrected here:
+
+1. **Wrong linked-record source.** The host injects only `timelineActivityId`; `recordId` is `null` for a timeline renderer (`useFrontComponentExecutionContext` sets `recordId: selectedRecordIds?.length === 1 ? selectedRecordIds[0] : null`, and no selection is passed for a timeline). W6-R1 wrongly treated the context record as the linked Communication. The card now loads the **timeline activity** by `timelineActivityId` (`GET /rest/timelineActivities/<id>`), reads its `linkedRecordId`, and then loads that Communication (`GET /rest/communications/<id>`). `context.recordId` is no longer used at all.
+2. **The linked record is now validated.** A response without a `communication` payload means the linked id did not resolve to a Communication, which is reported as `LINKED_RECORD_NOT_COMMUNICATION` rather than rendered as a communication.
+
+### Refresh behavior — MANUAL, not automatic
+
+No subscription or invalidation mechanism is exposed to the front-component sandbox (the SDK exposes only host actions such as snackbars, navigation and clipboard — no query client or cache invalidation). The card therefore provides an explicit, localized **Refresh** action on pending or unavailable cards.
+
+- Refresh re-runs the same read-only chain; it never creates an activity and never reaches a provider.
+- A monotonically increasing request id discards stale responses, so a slow earlier load cannot overwrite a newer one.
+- Refreshing resets the card to its loading state, and the button is disabled while a refresh is in flight.
+- **The card does NOT update automatically.** A user must press Refresh to see a status change.
+
+### Unavailable reasons (each localized by the component)
+
+`NO_ACTIVITY_ID`, `ACTIVITY_NOT_FOUND`, `NO_LINKED_RECORD`, `LINKED_RECORD_NOT_COMMUNICATION`, `ERROR`. None of them renders as QUEUED or as success.
+
+## W6 / W6-R1 / W6-R2 verification — actual coverage vs. simulations
+
+- **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineState` (the full `timelineActivityId → activity → linked Communication → presentation` chain, with `recordId: null` in the context, every unavailable reason, no error leakage, and read-only access), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, unavailable states, snapshot use, body truncation). 136 focused tests PASS.
+- **Refresh coverage:** the tests drive the same Communication from QUEUED to SENT and to FAILED **through the implemented refresh path** (re-running the chain) and assert the rendered status changes while the activity id stays the same.
+- **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual REST round trips, database-event delivery, and live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
+- typecheck PASS; oxlint 0/0; app build PASS (11 files); manifest confirms 1 timeline activity type (label `communication`, no `emit`, renderer wired), 3 logic functions and 2 front components. W4/W5 modules unchanged; the timeline path cannot reach a provider and never uses `context.recordId`.
 
