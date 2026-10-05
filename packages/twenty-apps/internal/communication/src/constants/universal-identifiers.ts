@@ -66,6 +66,12 @@ export const ON_COMMUNICATION_CREATED_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
 export const SEND_COMMUNICATION_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER =
   'e55f7b79-cf61-45b4-a1c4-259fa7089b28';
 
-// Native settings entry (W9)
-export const COMMUNICATION_SETTINGS_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
-  'aba9d3ad-92fe-4c56-afc7-4ae8df92add6';
+// NOTE (W9-R1): a custom settings front component was registered in W9 and has
+// been RETIRED. Twenty's application settings page shows the Variables tab only
+// when no custom settings tab exists
+// (SettingsApplicationDetails.tsx: `!hasCustomSettingsTab`), so a custom tab
+// would have HIDDEN the native variables screen that owns credentials and the
+// default provider. The published SDK 2.35.0 exposes no app-side application
+// variable editor, so the native Variables tab stays authoritative and no
+// settings component is registered. No universal identifier is reserved here
+// because nothing was ever installed with one.

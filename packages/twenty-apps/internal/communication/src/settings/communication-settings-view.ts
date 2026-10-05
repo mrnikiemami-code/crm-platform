@@ -22,17 +22,21 @@ export type CommunicationProviderSettingsRow = {
   id: CommunicationProviderId;
   label: string;
   isDefault: boolean;
-  /** Whether the non-secret sender configuration for this provider is present. */
-  isConfigured: boolean;
+  /**
+   * Whether the **non-secret** configuration fields this app can observe are
+   * present. This is NOT a statement that the provider is usable: credentials
+   * are secret and are never visible to frontend code, and no connectivity
+   * check is performed.
+   */
+  hasVisibleConfiguration: boolean;
 };
 
 export type CommunicationSettingsView = {
   providerId: CommunicationProviderId | null;
   /** True when a known default provider is selected. */
   isProviderSelected: boolean;
-  /** True when the selected provider has its sender configuration present. */
-  isReady: boolean;
-  readinessMessage: string;
+  /** Plain statement of what was observed, with its limits spelled out. */
+  observation: string;
   providers: CommunicationProviderSettingsRow[];
   channels: string[];
 };
@@ -46,20 +50,28 @@ const isImplementedProviderId = (
   value !== null &&
   IMPLEMENTED_COMMUNICATION_PROVIDERS.some((provider) => provider.id === value);
 
-const buildReadinessMessage = ({
+/**
+ * Describes only what can actually be observed from the non-secret variables a
+ * front component may read.
+ *
+ * It deliberately does NOT report readiness: the presence of the visible fields
+ * says nothing about whether the secret credential is set, and nothing at all
+ * about connectivity to the provider. Both remain unverified.
+ */
+const buildObservation = ({
   isProviderSelected,
-  isReady,
+  hasVisibleConfiguration,
 }: {
   isProviderSelected: boolean;
-  isReady: boolean;
+  hasVisibleConfiguration: boolean;
 }): string => {
   if (!isProviderSelected) {
-    return 'No default provider is selected. Set COMMUNICATION_PROVIDER to an implemented provider.';
+    return 'No default provider is selected. Set COMMUNICATION_PROVIDER to an implemented provider in the Variables tab.';
   }
 
-  return isReady
-    ? 'Ready to send.'
-    : 'The selected provider is missing its sender configuration.';
+  return hasVisibleConfiguration
+    ? 'A default provider is selected and its non-secret configuration is present. Credential completeness and connectivity are NOT verified.'
+    : 'A default provider is selected but its non-secret configuration is incomplete.';
 };
 
 /**
@@ -68,7 +80,7 @@ const buildReadinessMessage = ({
  *
  * It deliberately never receives a credential: secret values are filtered out
  * server-side before reaching the sandbox, so only presence of the non-secret
- * sender configuration can be reported.
+ * configuration can be reported.
  */
 export const buildCommunicationSettingsView = (
   input: CommunicationSettingsInput,
@@ -78,17 +90,17 @@ export const buildCommunicationSettingsView = (
     ? providerIdRaw
     : null;
 
-  const isKavenegarConfigured =
+  const hasKavenegarConfiguration =
     readNonEmpty(input.kavenegar.endpoint) !== null &&
     readNonEmpty(input.kavenegar.sender) !== null;
 
-  const isRazpayamakConfigured =
+  const hasRazpayamakConfiguration =
     readNonEmpty(input.razpayamak.username) !== null &&
     readNonEmpty(input.razpayamak.sender) !== null;
 
   const configurationByProvider: Record<CommunicationProviderId, boolean> = {
-    kavenegar: isKavenegarConfigured,
-    razpayamak: isRazpayamakConfigured,
+    kavenegar: hasKavenegarConfiguration,
+    razpayamak: hasRazpayamakConfiguration,
   };
 
   const providers: CommunicationProviderSettingsRow[] =
@@ -96,17 +108,20 @@ export const buildCommunicationSettingsView = (
       id: provider.id,
       label: provider.label,
       isDefault: provider.id === providerId,
-      isConfigured: configurationByProvider[provider.id],
+      hasVisibleConfiguration: configurationByProvider[provider.id],
     }));
 
   const isProviderSelected = providerId !== null;
-  const isReady = isProviderSelected && configurationByProvider[providerId];
+  const hasVisibleConfiguration =
+    isProviderSelected && configurationByProvider[providerId];
 
   return {
     providerId,
     isProviderSelected,
-    isReady,
-    readinessMessage: buildReadinessMessage({ isProviderSelected, isReady }),
+    observation: buildObservation({
+      isProviderSelected,
+      hasVisibleConfiguration,
+    }),
     providers,
     channels: [...SUPPORTED_COMMUNICATION_CHANNELS],
   };

@@ -27,8 +27,9 @@ describe('buildCommunicationSettingsView', () => {
       'razpayamak',
       'kavenegar',
     ]);
-    // Nothing beyond the implemented set is ever offered.
-    expect(view.providers).toHaveLength(IMPLEMENTED_COMMUNICATION_PROVIDERS.length);
+    expect(view.providers).toHaveLength(
+      IMPLEMENTED_COMMUNICATION_PROVIDERS.length,
+    );
   });
 
   it('marks the configured default provider', () => {
@@ -47,18 +48,6 @@ describe('buildCommunicationSettingsView', () => {
     ).toBe(false);
   });
 
-  it('reports readiness when the default provider is configured', () => {
-    const view = buildCommunicationSettingsView({
-      provider: 'razpayamak',
-      kavenegar: configuredKavenegar,
-      razpayamak: configuredRazpayamak,
-    });
-
-    expect(view.isProviderSelected).toBe(true);
-    expect(view.isReady).toBe(true);
-    expect(view.readinessMessage).toBe('Ready to send.');
-  });
-
   it('reports a missing default provider', () => {
     const view = buildCommunicationSettingsView({
       provider: undefined,
@@ -68,8 +57,8 @@ describe('buildCommunicationSettingsView', () => {
 
     expect(view.providerId).toBeNull();
     expect(view.isProviderSelected).toBe(false);
-    expect(view.isReady).toBe(false);
-    expect(view.readinessMessage).toContain('No default provider is selected');
+    expect(view.observation).toContain('No default provider is selected');
+    expect(view.observation).toContain('Variables tab');
   });
 
   it('rejects an unknown provider id instead of offering it', () => {
@@ -80,23 +69,39 @@ describe('buildCommunicationSettingsView', () => {
     });
 
     expect(view.providerId).toBeNull();
-    expect(view.isReady).toBe(false);
     expect(JSON.stringify(view)).not.toContain('melipayamak');
   });
 
-  it('reports missing sender configuration for the selected provider', () => {
+  it('reports missing non-secret configuration for the selected provider', () => {
     const view = buildCommunicationSettingsView({
       provider: 'razpayamak',
       kavenegar: configuredKavenegar,
       razpayamak: { username: 'panel-user', sender: undefined },
     });
 
-    expect(view.isReady).toBe(false);
-    expect(view.readinessMessage).toContain('missing its sender configuration');
+    expect(view.observation).toContain('non-secret configuration is incomplete');
     expect(
       view.providers.find((provider) => provider.id === 'razpayamak')
-        ?.isConfigured,
+        ?.hasVisibleConfiguration,
     ).toBe(false);
+  });
+
+  it('never claims readiness even when every visible field is present', () => {
+    const view = buildCommunicationSettingsView({
+      provider: 'razpayamak',
+      kavenegar: configuredKavenegar,
+      razpayamak: configuredRazpayamak,
+    });
+
+    // All observable non-secret fields exist, but the secret credential is
+    // invisible to frontend code and no connectivity check runs, so readiness
+    // cannot be asserted.
+    expect(view.providers.every((provider) => provider.hasVisibleConfiguration)).toBe(
+      true,
+    );
+    expect(view.observation).not.toContain('Ready to send');
+    expect(view.observation).toContain('NOT verified');
+    expect(JSON.stringify(view)).not.toContain('isReady');
   });
 
   it('treats blank values as missing configuration', () => {
@@ -106,10 +111,9 @@ describe('buildCommunicationSettingsView', () => {
       razpayamak: { username: '', sender: '   ' },
     });
 
-    expect(view.isReady).toBe(false);
-    expect(view.providers.every((provider) => !provider.isConfigured)).toBe(
-      true,
-    );
+    expect(
+      view.providers.every((provider) => !provider.hasVisibleConfiguration),
+    ).toBe(true);
   });
 
   it('offers only implemented channels', () => {
@@ -129,7 +133,6 @@ describe('buildCommunicationSettingsView', () => {
       razpayamak: configuredRazpayamak,
     });
 
-    // Only presence is reported; the values themselves never leave the input.
     expect(JSON.stringify(view)).not.toContain('100020003000');
     expect(JSON.stringify(view)).not.toContain('10004346');
     expect(JSON.stringify(view)).not.toContain('api.kavenegar.test');
