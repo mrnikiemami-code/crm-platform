@@ -51,7 +51,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
 | W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted at dependency/build level** (Node-pin and live-install limitations retained) |
-| W9 / W9-R1 | `91961e601f` (+R1 `64cc23d55852bb65a32b6d530ebe55727b14906b`) | `55774de9ad`, `a7df6d1c89` (+R1 `0d7d232a50`) | **implemented but NOT ACCEPTED pending W9-R1** — custom settings tab retired; native Variables tab is authoritative |
+| W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
+| W10 | (none) | `W10_DOC_SHA` | **NOT PERFORMED — blocked**: no disposable instance available |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
@@ -75,7 +76,12 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-No wave assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 is accepted at dependency/build level. **W9/W9-R1 is implemented but NOT ACCEPTED** pending architect review. Remaining planned settings work: richer per-provider configuration UX once a supported editing mechanism exists. Do not start another wave automatically.
+No wave assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10 (installed-app verification) was NOT PERFORMED — blocked** on the prerequisites below. Do not start another wave automatically.
+
+**W10 blocker — exact prerequisites for installed verification:**
+1. A **disposable or test workspace** on a running instance, distinct from the user's real data. The only database available here is `localhost:5432/default` (Docker `twenty-db-1`), which holds the user's **single real workspace** ("4D", subdomain `radiant-cyan-dragon`) and is shared by the source dev `.env`; `docker exec twenty-db-1 psql -c "\\l"` lists only `default`, `postgres`, `template0`, `template1`. Creating one requires a new database or a fresh container — out of scope (no DB writes, no resets, no production installs).
+2. **Installation credentials** for that instance (a CLI remote/API key). `remote:list` shows only an unauthenticated `local http://localhost:2020 [none]`.
+3. A running server reachable by the CLI. The Docker instance on **:3002** runs image `twentycrm/twenty:latest` (built 2026-09-16, corresponding to server `v2.41.0`), while the app declares `>=2.35.0`; the source dev server on :3000 is **not running**.
 
 ---
 
@@ -1196,7 +1202,7 @@ A disposable copy outside the monorepo (`D:\twenty-iso-comm2`) containing **only
 
 ### REQUIRED NATIVE SETTINGS SURFACE — NATIVE VARIABLES TAB IS AUTHORITATIVE (W9-R1)
 
-> **Update (W9-R1):** the configuration surface is the **native Variables tab** at **Settings → Applications → Communication → Variables**, which manages the default provider and every provider credential. A custom settings tab was attempted in W9 and **retired**: Twenty hides the Variables tab whenever a custom settings tab exists (`SettingsApplicationDetails.tsx`), and no app-side application-variable editor is supported by the published SDK. Readiness feedback and richer per-provider configuration UX remain **PLANNED / NOT IMPLEMENTED**.
+> **Update (W10):** the retained `buildCommunicationSettingsView` mapper is **inactive in the UI** (no registered consumer). The configuration surface is the **native Variables tab** at **Settings → Applications → Communication → Variables**, which manages the default provider and every provider credential. A custom settings tab was attempted in W9 and **retired**: Twenty hides the Variables tab whenever a custom settings tab exists (`SettingsApplicationDetails.tsx`), and no app-side application-variable editor is supported by the published SDK. Readiness feedback and richer per-provider configuration UX remain **PLANNED / NOT IMPLEMENTED**.
 
 A durable product/architecture requirement (recorded here, **not implemented in this wave**):
 
@@ -1224,9 +1230,9 @@ Constraints that must hold when this is built:
 - Platform access stays behind app-local SDK adapters (`RestApiClient`, `CoreApiClient`, `MetadataApiClient`).
 - Stable universal identifiers unchanged; the Workflow entry remains **disabled and unregistered**.
 
-## W9 / W9-R1 — native settings path (IMPLEMENTED; NOT ACCEPTED pending review)
+## W9 / W9-R1 — native settings path (ACCEPTED at code level)
 
-Status: W9 implementation `91961e601f`, **corrected by W9-R1** `64cc23d55852bb65a32b6d530ebe55727b14906b`. **NOT ACCEPTED.** **Live navigation NOT verified.**
+Status: W9 implementation `91961e601f`, **corrected by W9-R1** `64cc23d55852bb65a32b6d530ebe55727b14906b`. **ACCEPTED at code level.** **Live navigation NOT verified.**
 
 ### W9-R1 correction 1 — the custom settings tab was retired
 
@@ -1239,7 +1245,7 @@ W9 registered a custom settings front component. That was **wrong**, and it is n
     : []),
   ```
   and `configurationTabId` becomes `CUSTOM_SETTINGS_TAB_ID` when one exists. A read-only custom tab therefore **replaced** the native variables screen that owns credentials and `COMMUNICATION_PROVIDER`. The W9 claim that both tabs coexist was **false**.
-- **No supported app-side editor exists:** the published `twenty-sdk@2.35.0` exposes only `getApplicationVariable` (a read of non-secret variables). `twenty-client-sdk@2.35.0`'s `metadata` and `core` entries declare **no** variable mutation, and **no app in this repository** edits application variables from settings. The only editor is the native `updateOneApplicationVariable` mutation, guarded by `SettingsPermissionGuard(PermissionFlagType.APPLICATIONS)` + `WorkspaceAuthGuard` in `application-variable.resolver.ts`.
+- **No supported app-side editor exists:** the published `twenty-sdk@2.35.0` exposes only `getApplicationVariable` (a read of non-secret variables). `twenty-client-sdk@2.35.0`'s `metadata` and `core` entries declare **no** variable mutation, and **no app in this repository** edits application variables from settings. The only editor is the native `updateOneApplicationVariable` mutation, guarded by `SettingsPermissionGuard(PermissionFlagType.APPLICATIONS)` + `WorkspaceAuthGuard` in `application-variable.resolver.ts`. **Scope of this limitation:** it was established against the **inspected published SDK 2.35.0**; a later SDK may expose an app-side editor, which would need re-inspection.
 - **Decision (smallest supported solution):** **remove the custom settings registration** so the native Variables tab remains visible. The component was **deleted** (`src/front-components/communication-settings.front-component.tsx` retired explicitly) and the reserved identifier was withdrawn — it was never installed anywhere, so nothing needed deprecating. A `settings-registration` test now locks this decision (no `settingsFrontComponent` in the manifest or config).
 
 ### Authoritative configuration path
@@ -1258,7 +1264,9 @@ That native tab manages, with no parallel system:
 
 W9 reported "Ready to send" and an `isReady` flag. That was **unproven**: presence of non-secret configuration says nothing about whether the secret credential is set, and nothing about connectivity. Both are now removed from the mapping.
 
-The retained mapping (`buildCommunicationSettingsView`) reports **only what is observable**:
+**The retained mapping is INACTIVE in the UI.** `buildCommunicationSettingsView` is a pure module with no registered consumer: it was written for the retired settings component, and nothing in the app renders it. It is kept as a tested specification of what may be observed; it is not part of any user-visible surface.
+
+The mapping reports **only what is observable**:
 
 - the selected default provider (rejected if it is not an implemented provider);
 - per-provider presence of the **non-secret** configuration fields;
@@ -1269,7 +1277,7 @@ When every visible field is present it states: *"A default provider is selected 
 ### Permissions and secrets (source-inspected)
 
 - **Authorization:** editing application variables goes through `WorkspaceAuthGuard` + `SettingsPermissionGuard(PermissionFlagType.APPLICATIONS)`. UI visibility is not treated as authorization; this app adds no authorization logic and exposes no privileged action.
-- **Secrets never reach the frontend:** `ApplicationVariableService` filters by `isSecret` before exposing variables, and `getApplicationVariable` reads only the sandbox's `process.env.applicationVariables`. Nothing in this app reads `KAVENEGAR_API_KEY` / `RAZPAYAMAK_API_KEY` or requests plaintext.
+- **Secrets never reach the frontend:** `ApplicationVariableService` filters by `isSecret` before exposing variables, and `getApplicationVariable` reads only the sandbox's `process.env.applicationVariables`. **Scoped claim:** nothing in this app's **frontend and settings code** reads `KAVENEGAR_API_KEY` / `RAZPAYAMAK_API_KEY` or requests plaintext. Provider drivers necessarily read their own credentials **server-side** when sending; that is unchanged and intended.
 - **No parallel storage:** configuration stays in the declared `serverVariables`; nothing is duplicated into Communication records, `localStorage`, frontend state or a new object.
 
 ### Validation
@@ -1282,6 +1290,58 @@ When every visible field is present it states: *"A default provider is selected 
 ### Remaining work
 
 Richer per-provider configuration UX (validation guidance, provider-specific fields, connection testing) is **PLANNED / NOT IMPLEMENTED** and is blocked on a supported app-side editing mechanism. Until then the native Variables tab is the single configuration surface.
+
+## W10 — installed-app verification (NOT PERFORMED — BLOCKED)
+
+Status: **NOT PERFORMED.** No disposable instance could be established within this task, so **no installed check was executed**. Unit/build evidence is **not** a substitute and none is claimed as such here.
+
+### Environment assessment (what was inspected)
+
+| Item | Observed |
+|------|----------|
+| Docker instance | `twenty-server-1` up 5 days, healthy, **:3002→3000**; image `twentycrm/twenty:latest` built **2026-09-16** (corresponds to server `v2.41.0`), against the app's declared `>=2.35.0` |
+| Other containers | `twenty-worker-1`, `twenty-db-1` (:5432), `twenty-redis-1` (:6379) |
+| Source dev server (:3000/:3001) | **NOT running** (no listener) |
+| Database | `localhost:5432/default` — `\l` lists only `default`, `postgres`, `template0`, `template1`; **no disposable/test database** |
+| Workspace | **one real workspace** — `radiant-cyan-dragon` / "4D" |
+| Source `.env` | `PG_DATABASE_URL=postgres://postgres:<redacted>@localhost:5432/default` — the source dev server **shares the same database** as the Docker instance, i.e. the user's real data |
+| Applications present | `Standard`, `Custom` only — the Communication app is **not installed** |
+| CLI remotes | `remote:list` → only `local http://localhost:2020 [none]` (unauthenticated) |
+| API keys | 1 exists in the database, but installing would target the **real workspace** |
+
+### Live checks
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | Install/sync the app on a disposable instance | **NOT PERFORMED** | No disposable database or workspace; the only database holds the user's single real workspace and is shared by the source dev env. Creating one would require a new database or container (DB writes / resets / production installs are out of scope) |
+| 2 | Authenticate the CLI to that instance | **NOT PERFORMED** | `remote:list` shows an unauthenticated `local http://localhost:2020 [none]`; no installation credentials were supplied |
+| 3 | Settings → Applications → Communication → Variables visible | **NOT PERFORMED** | Requires an installed app (check 1) |
+| 4 | Declared provider/default/sender variables available | **NOT PERFORMED** | Requires an installed app |
+| 5 | Stored secrets remain masked | **NOT PERFORMED** | Requires an installed app; **no secret value was read at any point** |
+| 6 | Person "Send message" entry opens the composer | **NOT PERFORMED** | Requires an installed app |
+| 7 | Authenticated phone-options route resolves a test Person | **NOT PERFORMED** | Requires an installed app and a test Person |
+| 8 | Controlled invalid/missing configuration fails safely without contacting a provider | **NOT PERFORMED** | Requires an installed app; no SMS provider was contacted |
+| 9 | No Workflow sending action advertised | **NOT PERFORMED (live)** | Manifest-level evidence only: the built manifest advertises **0** Workflow actions (see the W7-R2 section) |
+| 10 | Database-event delivery creates the timeline activity | **NOT PERFORMED** | Requires an installed app; no synthetic record was created |
+| 11 | Card resolves `timelineActivityId` → `activity.linkedRecordId` → Communication | **NOT PERFORMED (live)** | Only the pure chain is unit-tested; no real activity exists |
+| 12 | Refresh updates the same card without creating another activity | **NOT PERFORMED (live)** | Unit-tested through the implemented refresh path only |
+
+### Deliberately not done
+
+- **No real SMS** was sent and **no real provider credentials** were populated.
+- **No production fake provider** was introduced.
+- **No synthetic record** was written, because there is no disposable workspace to write it into; writing one into the real workspace would alter the user's data.
+- **No database writes, resets, or workspace changes** were performed.
+
+### What would unblock W10
+
+1. A disposable/test workspace on a running instance (new database or fresh container), distinct from the real workspace.
+2. Installation credentials (CLI remote + API key) for that instance.
+3. A running server reachable by the CLI; the app's declared range `>=2.35.0` is satisfied by the available `v2.41.0` image.
+
+### Retained limitations (unchanged)
+
+Real-provider sending, the exact Node 24.5.0 pin, future upstream upgrade compatibility, and W7 (disabled, blocked, not accepted) all remain **unverified / blocked**.
 
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 
