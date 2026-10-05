@@ -699,7 +699,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 + W5-R1 + W5-R2 IMPLEMENTED | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message slice `15ad660a64`; W5-R1 outcome-truth correction `0853765a98`; W5-R2 production submission helper + real-code tests `defdc41e9d41c2fe040ac857ae711b8a95b233e6`; see the W5 section below |
+| Communications / Messaging | ACTIVE — W5 + W5-R1 + W5-R2 + W5-R3 IMPLEMENTED | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message slice `15ad660a64`; W5-R1 outcome-truth correction `0853765a98`; W5-R2 production submission helper + real-code tests `defdc41e9d`; W5-R3 unknown-outcome wording + duplicate presentation `7b21608880556576c7a75ba0860dcda7e517d23c`; see the W5 section below |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -754,6 +754,21 @@ Two corrections on top of W5-R1, both inside the Communication app:
 
 1. **Truthful unknown-outcome presentation.** `submitPersonCommunication` is now the single production submission path used by the composer. It classifies a transport/response-parsing failure as `OUTCOME_UNKNOWN` with the message *"The message may or may not have been sent. Check the communication history before retrying."* — it never claims the message was not sent. Known outcomes are preserved unchanged (`SENT` / `DELIVERED` / `PROVIDER_FAILED` / `SENT_BUT_UNRECORDED` / `FAILED_BUT_UNRECORDED`), and raw exception text never appears in a response or in history.
 2. **Tests exercise production code, not a duplicate.** The earlier `composer-submit-guard.test.ts` re-implemented the guard inline; it has been **deleted**. The composer's real submission logic was extracted into `src/components/submit-person-communication.ts`, and `src/components/__tests__/submit-person-communication.test.ts` tests that exact shipped helper (with the transport injected). The React component now only renders the classified outcome (error vs. warning).
+
+## W5-R3 — unknown-outcome wording and duplicate presentation (IMPLEMENTED)
+
+Status: **IMPLEMENTED / COMMITTED** at `7b21608880556576c7a75ba0860dcda7e517d23c` (`fix(apps): correct unknown outcome and duplicate submission`).
+
+Two verified defects fixed:
+
+1. **Unknown-outcome wording.** `isOutcomeKnown: false` previously fell back to `data.error`, and the server's current payload asserts *"could not be sent"* — untruthful when the send may have happened. The classifier now **always** returns the canonical `OUTCOME_UNKNOWN` message and deliberately ignores `data.error` on that branch. Tests use the real server payload and assert the canonical wording is present and *"could not be sent"* is absent.
+2. **Duplicate submission presentation.** An ignored duplicate previously returned `OUTCOME_UNKNOWN`, which the composer rendered as a warning and whose `finally` block cleared the pending state of the still-running request. Duplicates now return a distinct `DUPLICATE_IGNORED` result that the composer never renders and never uses to clear `sending`. The composer also short-circuits before any UI state change when the guard is already held.
+
+### W5-R3 verification — actual coverage vs. simulations
+
+- **Actual production coverage:** the shipped classifier and submission helper are tested directly. New assertions: the real server payload maps to the canonical wording with no *"could not be sent"*; a **deferred first request** proves the second submission issues **no** transport call, returns `DUPLICATE_IGNORED` with **no** renderable message, and the **first request stays pending** (guard still held) until it settles.
+- **Still simulated / not covered:** the React render tree (button disabling, snackbar variant selection) is not rendered — it requires the front-component sandbox host. Provider HTTP is faked; no live workspace; no real SMS.
+- 105 focused tests PASS; typecheck PASS; oxlint 0/0 (55 files); app build PASS (7 files); W4 orchestration unchanged.
 
 ### W5-R2 verification — actual coverage vs. simulations
 
