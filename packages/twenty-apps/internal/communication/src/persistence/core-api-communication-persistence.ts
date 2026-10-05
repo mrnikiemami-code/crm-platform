@@ -8,8 +8,10 @@ import {
   type QueuedCommunicationRecord,
 } from 'src/persistence/communication-persistence.port';
 
+type CommunicationStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
+
 type CommunicationOutcomeFields = {
-  status: string;
+  status: CommunicationStatus;
   sentAt?: string;
   deliveredAt?: string;
   failureReason?: string | null;

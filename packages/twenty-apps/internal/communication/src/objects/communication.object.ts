@@ -105,28 +105,28 @@ export default defineObject({
       defaultValue: `'${CommunicationStatus.QUEUED}'`,
       options: [
         {
-          id: '65f60718-293a-44b5-d6c7-e8f901122334',
+          id: 'd2f48b26-2d20-4945-ae97-f671bcb34b91',
           value: CommunicationStatus.QUEUED,
           label: 'Queued',
           position: 0,
           color: 'gray',
         },
         {
-          id: '76071829-3a4b-45c6-e7d8-f90112233445',
+          id: '43aadda8-9626-425c-b82d-ab0282e089a3',
           value: CommunicationStatus.SENT,
           label: 'Sent',
           position: 1,
           color: 'blue',
         },
         {
-          id: '8718293a-4b5c-46d7-f8e9-011223344556',
+          id: 'a0d493c1-31b3-4390-98c9-93781752d311',
           value: CommunicationStatus.DELIVERED,
           label: 'Delivered',
           position: 2,
           color: 'green',
         },
         {
-          id: '98293a4b-5c6d-47e8-09fa-122334455667',
+          id: '2ee303bf-9ea2-4113-bb9f-62e52cd5e71e',
           value: CommunicationStatus.FAILED,
           label: 'Failed',
           position: 3,
@@ -144,7 +144,7 @@ export default defineObject({
       defaultValue: `'${CommunicationDirection.OUTBOUND}'`,
       options: [
         {
-          id: 'a93a4b5c-6d7e-4809-1a0b-233445566778',
+          id: 'e7224a85-9a18-4762-8c81-0327c681dbd5',
           value: CommunicationDirection.OUTBOUND,
           label: 'Outbound',
           position: 0,

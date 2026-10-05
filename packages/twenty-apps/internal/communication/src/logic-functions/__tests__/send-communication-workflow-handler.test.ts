@@ -8,19 +8,13 @@ import { type CommunicationSendResult } from 'src/providers/types/communication-
 const SAVED_ENV = { ...process.env };
 
 type QueryResult = {
-  person?: { edges?: { node: { id: string; phones: unknown } }[] };
+  person?: { id: string; phones: unknown } | null;
 };
 
 const PERSON_WITH_PHONE: QueryResult = {
   person: {
-    edges: [
-      {
-        node: {
-          id: 'person-1',
-          phones: { primaryPhoneNumber: '09120000000' },
-        },
-      },
-    ],
+    id: 'person-1',
+    phones: { primaryPhoneNumber: '09120000000' },
   },
 };
 
@@ -283,7 +277,7 @@ describe('sendCommunicationWorkflowHandler', () => {
 
   describe('target Person context', () => {
     it('validates Person access when a Person is supplied', async () => {
-      const { client } = buildFakeClient({ queryResult: { person: { edges: [] } } });
+      const { client } = buildFakeClient({ queryResult: { person: null } });
       const { registry, sent } = buildRegistry({
         status: 'SENT',
         providerMessageId: '1',

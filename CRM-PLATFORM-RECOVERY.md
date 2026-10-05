@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W9` + `W9-R1` — native settings path, **accepted at code level** (`91961e601f` implementation, corrected by `64cc23d558`). W10 (installed-app verification) is **NOT PERFORMED — BLOCKED** on a disposable instance.
+`CRM-COMMUNICATIONS-001-W10-R2` — the app is **installed and live-verified on the isolated instance** (registration → upload 14/14 → sync 92 entities), and the W10 installed checks were executed against it. Provider configuration was kept incomplete, so this is **synthetic integration evidence only** (no real SMS/provider request). The install also surfaced and fixed three real app defects (invalid option UUIDs, a wrong `person` query shape, an untyped status union). Earlier W10/W10-R1 claims of a "Windows CLI defect" and a "wrong upload host" are **corrected** in the W10 section below.
 
 ## Communications milestones — code-review acceptance
 
@@ -52,9 +52,10 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
 | W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted on dependency/build evidence only** — this is NOT server/runtime or live-install compatibility; Node-pin and live-install limitations retained |
 | W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
-| W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared** (isolated instance + test workspace + test key); installed checks **NOT PERFORMED — BLOCKED** on Windows CLI upload defects |
+| W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
+| W10-R2 | _pending commit_ | _this document_ | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
 
-**Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
+**Live verification: PERFORMED (synthetic integration only) as of W10-R2.** The Communication app is installed on the isolated instance `twenty-comm-test-app` (v2.41.0, workspace `apple`). Registration, upload (14/14 files), metadata sync (92 entities), the authenticated routes, database-event delivery and timeline rendering were all exercised with **synthetic** records. **No real provider request was ever made**, delivery receipts are unverified, and the composer's React render was not exercised in a signed-in browser. See the W10 / W10-R2 section for the exact evidence and the synthetic-vs-real separation.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -741,7 +742,9 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W6 code-review accepted; W8 dependency/version work under W8-R1 review; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (live verification NOT PERFORMED) | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`; no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 code-review accepted; **W10-R2 installed + live-verified (synthetic integration)**; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending and delivery receipts still NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 (this wave); no next wave assigned |
+| Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
+| Person composer React render | NOT PERFORMED | Registration is verified; opening the composer requires a signed-in browser session |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -927,11 +930,20 @@ Settings/Experience, and development-startup fixes committed.
 Communications / Messaging is ACTIVE. Code-review accepted through **W9-R1** (W7 is IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED):
 W0 app skeleton, W1 provider boundary, W2 Kavenegar, W3 multi-provider + RazPayamak,
 W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2/R3),
-W6 Person timeline integration (+ W6-R1/R2). Do NOT redo any of these waves.
+W6 Person timeline integration (+ W6-R1/R2), W10-R2 installed verification (synthetic).
+Do NOT redo any of these waves.
 
-INSTALLED VERIFICATION: a disposable instance was later created (W10-R1) and the app was
-installed, but metadata sync failed on Windows SDK defects, so no settings, Person, route or
-timeline check could run. **All live checks remain NOT PERFORMED.** Do not claim end-to-end completion.
+INSTALLED VERIFICATION: the app is now **installed and live-verified on the isolated instance**
+(W10-R2): registration, upload (14/14 files) and metadata sync (92 entities) all PASS, and all 8
+runtime checks PASS — native variables, secret masking (fake value), Person command-menu
+registration, the `/communication/person-phones` route, safe missing-config failure, live absence of
+the Workflow action, and a synthetic QUEUED→timeline→FAILED→refresh cycle. This is **synthetic
+integration evidence only**: provider config was kept incomplete and **no real SMS/provider request
+was made**; the composer's React render was not exercised in a signed-in browser. The install also
+fixed three real app defects (invalid option UUIDs, a wrong `person` query shape, an untyped status
+union). W10/W10-R1's "Windows CLI defect" and "wrong upload host" claims are corrected in the W10
+section: the upload-URL failure was a test-instance `SERVER_URL` misconfiguration, and the remaining
+upload failure was a CLI/server version mismatch on the file MIME constraint.
 
 W7 (Workflow reuse of CommunicationSendAndPersistService) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**: the native Workflow contract reports a business failure as a SUCCESS step, and no supported app-side mechanism exists to fail the step without risking a duplicate send. The Workflow action is therefore unregistered and its entry refuses to send. See the W7 section.
 
@@ -1291,70 +1303,85 @@ When every visible field is present it states: *"A default provider is selected 
 
 Richer per-provider configuration UX (validation guidance, provider-specific fields, connection testing) is **PLANNED / NOT IMPLEMENTED** and is blocked on a supported app-side editing mechanism. Until then the native Variables tab is the single configuration surface.
 
-## W10 / W10-R1 — installed-app verification
+## W10 / W10-R1 / W10-R2 — installed-app verification
 
-Status: environment **PREPARED**; installed checks **NOT PERFORMED — BLOCKED** on Windows SDK defects in the CLI's file upload.
+Status: **INSTALLED AND LIVE-VERIFIED (synthetic integration only)**. The app is registered, uploaded and metadata-synced on the isolated instance, and the installed runtime checks below were executed. Provider configuration was deliberately kept incomplete: **no real SMS or provider request was made**.
 
-### 1. Environment preparation (DONE — isolated and verified)
+### 1. Historical blockers — RESOLVED / CORRECTED
 
-A disposable local instance was created, entirely separate from the real stack:
+The W10 / W10-R1 claims are retained only as history; W10-R2 supersedes them with observed evidence.
+
+| Old claim (W10-R1) | W10-R2 finding |
+|--------------------|----------------|
+| "Windows CLI upload defect blocks all metadata sync" | The failure was **not** a Windows-only defect. Running the CLI from a Linux container still failed until the real causes were fixed (below). The backslash symptom is Windows-specific, but it was not the only blocker. |
+| "Second upload batch targets the wrong host (port 2020)" | **Corrected.** `file-upload-target.service.ts` builds `uploadUrl` from `SERVER_URL` (`${serverUrl}/${ApiPath.FileUpload}/${fileId}?token=…`). The test instance's `SERVER_URL` defaulted to `http://localhost:2020`, so the server itself handed out an unreachable upload URL. This is a **test-instance configuration** issue, not a CLI defect; it was fixed by setting a reachable `SERVER_URL`. |
+| "No environment prerequisite" | **Resolved.** A disposable Linux CLI environment and a reachable `SERVER_URL` now exist. |
+
+### 2. Toolchain — verified (executable path and version)
+
+| Tool | Path / version | Role |
+|------|----------------|------|
+| Workspace SDK (source, unused for the install) | `packages/twenty-sdk` — **2.42.0** | monorepo source; never used to apply the app |
+| App-locked published SDK | `twenty-sdk@2.35.0` (from the app's committed `yarn.lock`) | the dependency the app is pinned to |
+| Locked CLI (2.35.0) | `/work/app/node_modules/twenty-sdk/dist/cli.cjs` — **2.35.0** | used first; **failed** on the server's file constraint |
+| Install CLI (server-aligned) | `/usr/local/bin/twenty` — **2.41.0** (`npm i -g twenty-sdk@2.41.0`) | performed the successful upload + sync |
+| Node / Yarn (Linux) | `v24.21.0` / `1.22.22` | inside `node:24-bookworm` |
+
+The 2.35.0 CLI uses the legacy `uploadApplicationFile` mutation, which does not satisfy the v2.41.0 server's `CHK_FILE_PENDING_MIME_OCTET_STREAM` constraint (`status = 'PENDING'` requires `mimeType = 'application/octet-stream'`), producing `new row for relation "file" violates check constraint "CHK_FILE_PENDING_MIME_OCTET_STREAM"`. A published CLI at the server's own version (2.41.0) was used instead. **No app dependency was changed, no SDK source was patched, and no CLI was hand-modified.**
+
+### 3. Environment (isolated; real stack untouched)
 
 | Aspect | Value |
 |--------|-------|
-| Instance | `twenty-comm-test-app` (single all-in-one container), host port **3100** → container 2020 |
-| Image | `twentycrm/twenty-app-dev:v2.41.0`, digest `sha256:bb4a10e0b73b1d89f65b1410e94753d32cbbd3f35d85aa1e51bc635dbc2fefe7` (pinned; **not** `latest`) |
-| Server version | **v2.41.0** (`APP_VERSION` inside the container) — satisfies the app's declared `>=2.35.0` |
-| Volumes | `twenty-comm-test-app-data`, `twenty-comm-test-app-storage` (new, dedicated) |
-| Database / Redis | internal to the all-in-one container; **no shared database with the real stack** |
-| Test workspace | seeded dev workspace `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`) — the image's own seed, **not** copied from the real workspace |
-| Test credentials | a **new** API key minted through the supported `createApiKey` + `generateApiKeyToken` mutations; stored **outside the repo** at `D:/twenty-comm-test/.test-api-key` (git-ignored by location, never printed) |
-| CLI remote | a separate named remote `comm-test`; the user's original default remote was **restored** afterwards |
-| Node / Yarn | Node **v24.16.0**, Yarn **4.13.0** |
+| Instance | `twenty-comm-test-app`, host port **3100** → container 2020 |
+| Image | `twentycrm/twenty-app-dev:v2.41.0` (pinned digest), server **v2.41.0** |
+| Network | user-defined `twenty-comm-test-net`; instance reachable as `twenty-comm-test-app:2020` |
+| `SERVER_URL` | **`http://twenty-comm-test-app:2020`** (authorised config change on the isolated instance only) |
+| Volumes | `twenty-comm-test-app-data`, `twenty-comm-test-app-storage` (dedicated, preserved across the restart) |
+| CLI environment | container `twenty-comm-cli` (`node:24-bookworm`) on the same network; app copied **without** Windows `node_modules`/`dist`/`.twenty`; installed from the app's locked `yarn.lock` |
+| Workspace | seeded `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`) preserved (1 workspace before and after) |
+| Credentials | test API key kept outside Git at `D:/twenty-comm-test/.test-api-key`; never printed |
 
-**Isolation evidence:** the real stack (`twenty-server-1`, `twenty-worker-1`, `twenty-db-1`, `twenty-redis-1`) remained **Up 5 days (healthy)** throughout; the real database still holds exactly **1** workspace; the test instance uses its own container, volumes and port. No real data, credentials, `.env` or volume was read, copied, mounted, stopped or recreated.
+No change was made to the real stack, source `.env`, global host configuration, or the container's ports/volumes. **No proxy that rewrites signed URLs was created.**
 
-**Also verified in this environment:** the CLI connected successfully and reported the server version (`⚠ Local Twenty server is v2.41.0`), and the app **registered** as application `Communication` (`768bca20-0b81-4d33-a624-0a894a193ffd`, `sourceType: local`).
+### 4. Installation — registration → upload → sync (all three succeeded)
 
-### 2. Installed checks — every one NOT PERFORMED
+1. **Registration:** application `Communication` (`768bca20-0b81-4d33-a624-0a894a193ffd`).
+2. **Upload:** **14 / 14 files**.
+3. **Sync:** `Plan: 92 to add, 0 to change, 0 to destroy` → `✓ Synced Communication (14 files)`.
+
+Verified in the test database for application `Communication`: **1** object (`communication`), **4** logic functions, **1** timeline activity type, **2** front components, **1** command-menu item (`Send message`, `RECORD_SELECTION`), and **9** application-registration variables with correct secret flags.
+
+### 5. App defects found and fixed (W10-R2)
+
+Three real defects were found **by the install**, not by code review, and fixed in the app:
+
+| # | Defect | Fix |
+|---|--------|-----|
+| 1 | Five `communication` option ids were **not valid UUID v4** (wrong version/variant nibbles) → `INVALID_FIELD_INPUT: Option id is invalid` for `status` and `direction`. | Replaced with valid v4 ids in `communication.object.ts`. |
+| 2 | `find-person-phone-options.ts` queried `person` as a **connection** (`__args.first`, `edges.node`), but the workspace `person` field is **singular** and takes only `filter` → live `HTTP 500: no typing defined for argument 'first'`. | Query `person(filter: …) { id phones { … } }` and read `result.person`. Tests updated to the verified shape. |
+| 3 | `CommunicationOutcomeFields.status` was `string`, not the generated enum, so the app did not typecheck. | Typed as the `'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED'` union. |
+
+After the fixes: **typecheck PASS**, **177 focused tests PASS**, **oxlint 0 warnings / 0 errors**, and a re-sync of the two changed logic functions succeeded.
+
+### 6. Live runtime checks — actual results
 
 | # | Check | Result | Evidence |
 |---|-------|--------|----------|
-| 1 | Metadata sync of the app | **FAIL** | `twenty apply` → `Failed to upload 12 files: Resource path must not contain backslashes`; the app row exists but **0** objects, **0** logic functions, **0** application variables and **0** app timeline types were synced (verified in `core."objectMetadata"`, `core."logicFunction"`, `core."applicationVariable"`, `core."timelineActivityType"`) |
-| 2 | Settings → Applications → Communication → Variables visible | **NOT PERFORMED** | The app has no synced application variables, so the tab has nothing to show |
-| 3 | Declared provider/default/sender variables available | **NOT PERFORMED** | Same cause |
-| 4 | Stored secrets masked | **NOT PERFORMED** | No variable was ever populated; **no secret value was read or printed at any point** |
-| 5 | Person "Send message" entry opens the composer | **NOT PERFORMED** | The front component was never uploaded, so the command-menu item does not exist |
-| 6 | Authenticated phone-options route resolves a test Person | **NOT PERFORMED** | The route logic function was never uploaded |
-| 7 | Safe failure on missing configuration | **NOT PERFORMED** | Requires the route |
-| 8 | No Workflow sending action advertised | **NOT PERFORMED (live)** | Build-level evidence only: the built manifest advertises **0** Workflow actions |
-| 9 | Database-event delivery creates a timeline activity | **NOT PERFORMED** | The `communication` object and the `on-communication-created` function were never synced |
-| 10 | Card resolves `timelineActivityId` → `activity.linkedRecordId` → Communication | **NOT PERFORMED (live)** | No activity exists |
-| 11 | Refresh updates the same card without creating another activity | **NOT PERFORMED (live)** | No card exists |
+| 1 | Native Variables surface (declared variables readable) | **PASS** | `findApplicationRegistrationVariables` returns all 9 keys with `isSecret` correct |
+| 2 | Secret masking with a fake value | **PASS** | Set a fake `KAVENEGAR_API_KEY`; read-back is `•••••••••••••`, `isFilled: true`; the value is never echoed |
+| 3 | Person "Send message" composer registered for Person | **PASS (registration)** | front component `SendMessageComposer` + command-menu item `Send message` (`RECORD_SELECTION`, Person) synced. React render **NOT PERFORMED** (needs a signed-in browser session) |
+| 4 | Authenticated `/communication/person-phones` route | **PASS** | `HTTP 200 {"success":true,"phones":[{"id":"primary","value":"5552345678","isPrimary":true}]}` |
+| 5 | Safe failure with incomplete configuration | **PASS** | `HTTP 200 {"success":false,"failureCode":"UNEXPECTED_FAILURE","isOutcomeKnown":false}`; a recipient not owned by the Person returns `INVALID_INPUT`; **0** Communication records were created; no provider request |
+| 6 | Workflow sending action absent live | **PASS** | `workflowActionTriggerSettings` is empty for `communication-send-workflow-action`; the built manifest advertises **0** Workflow actions |
+| 7 | Synthetic `QUEUED` record → database-event delivery → timeline activity | **PASS (synthetic)** | A record created through the supported API produced exactly **1** timeline activity via the `communication.created` database event |
+| 8 | Update to `FAILED` → manual Refresh, same activity | **PASS (synthetic)** | Activity count stayed **1** after the update; the REST refresh chain `timelineActivities/<id>` → `linkedRecordId` → `communications/<id>` returned `status: FAILED` for the same activity |
 
-### 3. The blocker (precise, reproducible, app-independent)
+### 7. Synthetic evidence vs. real-provider proof
 
-Two defects in the **published Twenty CLI/SDK** (version `2.42.0` in this workspace), both on Windows:
+The evidence above is **synthetic integration evidence**: the record was created through supported APIs and no provider was contacted. It proves registration, upload, sync, route execution, database-event delivery and timeline rendering. It is **not** a real-provider end-to-end proof: no Kavenegar/RazPayamak request was made, delivery receipts are unverified, and the composer's React render was not exercised.
 
-1. **Backslash resource paths are rejected by the server.** `twenty apply` builds `builtHandlerPath` with `path.relative(...)`, which yields `src\\logic-functions\\x.ts` on Windows. The server's `validate-safe-relative-path.util.ts` explicitly rejects any path containing `\\` (`Resource path must not contain backslashes`). Twelve of the fourteen files failed this way. A POSIX normalizer exists on the server (`normalize-file-entity-path-to-posix`) but the **CLI does not apply it** before sending. This blocks **all** metadata sync on Windows, not just this app.
-2. **A second upload batch targets the wrong host.** The remaining two files (`package.json`, `yarn.lock`) failed with `connect ECONNREFUSED ::1:2020 / 127.0.0.1:2020` — the CLI's alternate upload path fell back to the default dev port instead of the selected remote (`localhost:3100`).
-
-Neither defect is in the Communication app, and neither can be fixed from inside it: the failing code lives in `packages/twenty-sdk/src/cli` (and the guard in `packages/twenty-server`), which is **core**, explicitly out of scope. No core edit, SDK upgrade, or workaround (such as writing to the database directly) was attempted.
-
-**Consequence:** the app is registered but has **no synced entities**, so no installed settings, Person, route, Workflow-absence or timeline check could run. Reporting any of them as PASS would be false.
-
-### 4. Deliberately not done
-
-- **No real SMS**, no real provider credentials, no production fake provider.
-- **No synthetic Communication record** was created: without the `communication` object there is nowhere to write it, and writing into the real workspace would alter user data.
-- No core/SDK change, no direct database writes to the test instance, no changes to the real stack.
-
-### 5. What would unblock the checks
-
-1. A CLI that sends **POSIX-normalized** resource paths (or a server that accepts Windows separators) — i.e. an upstream fix or a non-Windows host.
-2. The alternate upload path honouring the **selected remote's** host instead of port 2020.
-3. After that, the seeded `apple` workspace, the `comm-test` remote and the minted test API key are already in place, so the checks could run immediately.
-
-**Retained limitations:** real-provider sending, the exact Node 24.5.0 pin, future upstream upgrade compatibility, and W7 (disabled, blocked, not accepted) all remain unverified / blocked.
+**Retained limitations:** real-provider sending, delivery receipts, the exact Node 24.5.0 pin, future upstream upgrade compatibility, and W7 (disabled, blocked, not accepted) all remain unverified / blocked.
 
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 

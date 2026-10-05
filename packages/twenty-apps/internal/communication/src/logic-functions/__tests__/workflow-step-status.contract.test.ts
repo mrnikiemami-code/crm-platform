@@ -61,7 +61,7 @@ const buildRegistry = (
 };
 
 const buildClient = (failCreate = false) => ({
-  query: async () => ({ person: { edges: [] } }),
+  query: async () => ({ person: null }),
   mutation: async (payload: Record<string, Record<string, unknown>>) => {
     const [name] = Object.keys(payload);
 

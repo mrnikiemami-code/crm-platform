@@ -17,14 +17,22 @@ export const findPersonPhoneOptions = async ({
   client: Pick<CoreApiClient, 'query'>;
   personId: string;
 }): Promise<PersonPhoneOption[] | null> => {
+  // `person` is a singular workspace field that accepts a `filter` argument.
+  // It is NOT a connection, so it must never be queried with `first`/`edges`;
+  // doing so is rejected by the server with `Argument not allowed: first`.
   const result = await client.query({
     person: {
-      __args: { filter: { id: { eq: personId } }, first: 1 },
-      edges: { node: { id: true, phones: true } },
+      __args: { filter: { id: { eq: personId } } },
+      id: true,
+      phones: {
+        primaryPhoneNumber: true,
+        primaryPhoneCallingCode: true,
+        additionalPhones: { number: true },
+      },
     },
   });
 
-  const node = result.person?.edges?.[0]?.node;
+  const node = result.person;
 
   if (node === undefined || node === null) {
     return null;

@@ -13,22 +13,16 @@ const configureProvider = () => {
 };
 
 type QueryResult = {
-  person?: { edges?: { node: { id: string; phones: unknown } }[] };
+  person?: { id: string; phones: unknown } | null;
 };
 
 const PERSON_WITH_PHONE: QueryResult = {
   person: {
-    edges: [
-      {
-        node: {
-          id: 'person-1',
-          phones: {
-            primaryPhoneNumber: '09120000000',
-            additionalPhones: [{ number: '09350000000' }],
-          },
-        },
-      },
-    ],
+    id: 'person-1',
+    phones: {
+      primaryPhoneNumber: '09120000000',
+      additionalPhones: [{ number: '09350000000' }],
+    },
   },
 };
 
@@ -126,7 +120,7 @@ const buildThrowingRegistry = (
 
 describe('findPersonPhoneOptions', () => {
   it('returns null when the person is not accessible', async () => {
-    const { client } = buildFakeClient({ queryResult: { person: { edges: [] } } });
+    const { client } = buildFakeClient({ queryResult: { person: null } });
 
     expect(
       await findPersonPhoneOptions({ client: client as never, personId: 'p' }),
@@ -146,7 +140,7 @@ describe('findPersonPhoneOptions', () => {
 
   it('returns an empty list when the person has no phone number', async () => {
     const { client } = buildFakeClient({
-      queryResult: { person: { edges: [{ node: { id: 'p', phones: null } }] } },
+      queryResult: { person: { id: 'p', phones: null } },
     });
 
     expect(
@@ -209,7 +203,7 @@ describe('sendPersonCommunicationHandler', () => {
   });
 
   it('rejects an inaccessible person', async () => {
-    const { client } = buildFakeClient({ queryResult: { person: { edges: [] } } });
+    const { client } = buildFakeClient({ queryResult: { person: null } });
 
     expect(
       await sendPersonCommunicationHandler(validParameters, {
@@ -224,7 +218,7 @@ describe('sendPersonCommunicationHandler', () => {
 
   it('rejects a person with no phone number', async () => {
     const { client } = buildFakeClient({
-      queryResult: { person: { edges: [{ node: { id: 'p', phones: null } }] } },
+      queryResult: { person: { id: 'p', phones: null } },
     });
 
     expect(
