@@ -51,7 +51,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
 | W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted at dependency/build level** (Node-pin and live-install limitations retained) |
-| W9 | `91961e601f15689ce28bf5d6b55129d854731997` | `W9_DOC_SHA` | native settings entry (`defineSettingsFrontComponent`) |
+| W9 | `91961e601f15689ce28bf5d6b55129d854731997` | `55774de9ad` | native settings entry (`defineSettingsFrontComponent`) |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
