@@ -4,7 +4,6 @@ import { type CommunicationTimelineRecord } from 'src/timeline/communication-tim
 import {
   buildCommunicationTimelinePresentation,
   buildCommunicationTimelineView,
-  UNAVAILABLE_TITLE,
 } from 'src/timeline/communication-timeline-presentation';
 
 const baseRecord: CommunicationTimelineRecord = {
@@ -149,12 +148,29 @@ describe('buildCommunicationTimelineView', () => {
   it('reports an inaccessible record as unavailable, never as queued', () => {
     const view = buildCommunicationTimelineView({
       kind: 'UNAVAILABLE',
-      reason: 'NOT_FOUND',
+      reason: 'ACTIVITY_NOT_FOUND',
     });
 
-    expect(view).toEqual({ kind: 'UNAVAILABLE', title: UNAVAILABLE_TITLE });
+    expect(view).toEqual({
+      kind: 'UNAVAILABLE',
+      reason: 'ACTIVITY_NOT_FOUND',
+    });
     expect(JSON.stringify(view).toLowerCase()).not.toContain('queued');
     expect(JSON.stringify(view).toLowerCase()).not.toContain('sent');
+  });
+
+  it('carries the specific unavailable reason through for localization', () => {
+    for (const reason of [
+      'NO_ACTIVITY_ID',
+      'ACTIVITY_NOT_FOUND',
+      'NO_LINKED_RECORD',
+      'LINKED_RECORD_NOT_COMMUNICATION',
+      'ERROR',
+    ] as const) {
+      expect(buildCommunicationTimelineView({ kind: 'UNAVAILABLE', reason })).toEqual(
+        { kind: 'UNAVAILABLE', reason },
+      );
+    }
   });
 
   it('renders a loaded record with its current status', () => {

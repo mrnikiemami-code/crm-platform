@@ -8,13 +8,8 @@
 import {
   type CommunicationTimelineLoadState,
   type CommunicationTimelineRecord,
+  type CommunicationTimelineUnavailableReason,
 } from 'src/timeline/communication-timeline-record.type';
-
-export type CommunicationTimelineStatus =
-  | 'QUEUED'
-  | 'SENT'
-  | 'DELIVERED'
-  | 'FAILED';
 
 export type CommunicationTimelinePresentation = {
   /** Short, human-readable summary of what happened. */
@@ -37,13 +32,16 @@ export type CommunicationTimelinePresentation = {
 
 export type CommunicationTimelineView =
   | { kind: 'LOADING' }
-  | { kind: 'UNAVAILABLE'; title: string }
+  | { kind: 'UNAVAILABLE'; reason: CommunicationTimelineUnavailableReason }
   | ({ kind: 'READY' } & CommunicationTimelinePresentation);
 
 const BODY_PREVIEW_MAX_LENGTH = 140;
 
-const LOADING_TITLE = 'Loading communication…';
-const UNAVAILABLE_TITLE = 'Communication unavailable';
+// Localizable copy. The component passes these through `t()`; they are kept
+// here so the mapping stays pure and testable.
+export const LOADING_TITLE = 'Loading communication…';
+export const UNAVAILABLE_TITLE = 'Communication unavailable';
+export const REFRESH_LABEL = 'Refresh';
 
 const readNonEmpty = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -98,8 +96,10 @@ export const buildCommunicationTimelinePresentation = (
 };
 
 /**
- * Maps a load state to what the card renders. A missing or inaccessible record
- * is reported as unavailable — never as QUEUED, and never as success.
+ * Maps a load state to what the card renders. A missing or inaccessible
+ * activity or record is reported as unavailable — never as QUEUED, and never
+ * as success. The reason is carried through so the component can localize a
+ * specific message.
  */
 export const buildCommunicationTimelineView = (
   state: CommunicationTimelineLoadState,
@@ -109,7 +109,7 @@ export const buildCommunicationTimelineView = (
   }
 
   if (state.kind === 'UNAVAILABLE') {
-    return { kind: 'UNAVAILABLE', title: UNAVAILABLE_TITLE };
+    return { kind: 'UNAVAILABLE', reason: state.reason };
   }
 
   return {
@@ -117,5 +117,3 @@ export const buildCommunicationTimelineView = (
     ...buildCommunicationTimelinePresentation(state.record),
   };
 };
-
-export { LOADING_TITLE, UNAVAILABLE_TITLE };
