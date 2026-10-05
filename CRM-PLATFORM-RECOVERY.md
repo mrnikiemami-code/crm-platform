@@ -49,7 +49,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6 | `b464171e2a` | `3014d5ece4` | code-review accepted |
 | W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
-| W7 / W7-R1 | `d5a71d9232da973ffc8ab08e4488fdf041528734`, `8b58018393e167647a4b18580ef5809f08293a96` | `7f536725e6`, `dc37b1c47e`, `96432fb60a` | **BLOCKED / NOT ACCEPTED** — native Workflow failure handling unsupported |
+| W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `W7R2_DOC_SHA` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
@@ -70,10 +70,10 @@ Current Development State:
 - **Refresh:** **manual**, via a localized Refresh action shown on pending and unavailable cards. The card does **not** update automatically; no subscription or invalidation mechanism is exposed to the front-component sandbox.
 - **Unavailable reasons:** `NO_ACTIVITY_ID`, `ACTIVITY_NOT_FOUND`, `NO_LINKED_RECORD`, `LINKED_RECORD_NOT_COMMUNICATION`, `ERROR`. None renders as QUEUED or as success.
 - **One activity per Communication**, created on `communication.created` only; a status refresh renders the same card and never creates another activity or calls a provider.
-- **Workflow entry point:** one native Workflow action (`Send Communication`) registered through `workflowActionTriggerSettings` on an app logic function. It is a thin adapter over the same `CommunicationSendAndPersistService`; no HTTP route, no composer reuse, no provider branching. **Known blocker:** a failed/incomplete send cannot mark the Workflow step FAILED — see the W7 section.
+- **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-None assigned. W7 (Workflow reuse) is **BLOCKED / NOT ACCEPTED**: the native Workflow contract cannot surface a failed send as a failed step, and no supported app-side mechanism exists. Its independent corrections (unknown-outcome wording, subject coverage) are complete. Do not start another wave automatically.
+None assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**: the Workflow action is unregistered and its entry refuses to send, because the native contract cannot surface a failed send as a failed step. Do not start another wave automatically.
 
 ---
 
@@ -925,7 +925,7 @@ LIVE VERIFICATION IS STILL NOT PERFORMED for the Communications app: it has neve
 installed on a running instance, so no composer submission, provider call, database-event
 delivery or timeline activity has occurred end to end. Do not claim end-to-end completion.
 
-W7 (Workflow reuse of CommunicationSendAndPersistService) is IMPLEMENTED but **BLOCKED / NOT ACCEPTED**: the native Workflow contract reports a business failure as a SUCCESS step, and no supported app-side mechanism exists to fail the step without risking a duplicate send. See the W7 section.
+W7 (Workflow reuse of CommunicationSendAndPersistService) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**: the native Workflow contract reports a business failure as a SUCCESS step, and no supported app-side mechanism exists to fail the step without risking a duplicate send. The Workflow action is therefore unregistered and its entry refuses to send. See the W7 section.
 
 The Jalali presentation program is complete; do not start another Jalali phase.
 Branding remains planned. Do not start W7 or any other wave automatically.
@@ -1039,9 +1039,9 @@ No subscription or invalidation mechanism is exposed to the front-component sand
 
 `NO_ACTIVITY_ID`, `ACTIVITY_NOT_FOUND`, `NO_LINKED_RECORD`, `LINKED_RECORD_NOT_COMMUNICATION`, `ERROR`. None of them renders as QUEUED or as success.
 
-## W7 — Workflow entry point (IMPLEMENTED — BLOCKED / NOT ACCEPTED)
+## W7 — Workflow entry point (IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED)
 
-Status: implementation `d5a71d9232`, corrected by **W7-R1** `8b58018393e167647a4b18580ef5809f08293a96`. **BLOCKED / NOT ACCEPTED**: the native Workflow contract cannot surface a failed send as a failed step. **NOT live-verified.**
+Status: implementation `d5a71d9232`, corrected by **W7-R1** `8b58018393`, then **disabled by W7-R2** `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff`. **BLOCKED / NOT ACCEPTED.** **NOT live-verified.**
 
 ### Inspected native mechanism (source paths)
 
@@ -1073,6 +1073,25 @@ There is **no supported app-side mechanism** to fail a Workflow step:
 - The user-facing exception codes that would suppress retry (`WorkflowStepExecutorException`, `LogicFunctionException`) live in `twenty-server` and are **not importable from an app**; fabricating an exception name to imitate them is not supported.
 
 **Consequence:** returning `{ success: false }` reports the step as SUCCESS and lets downstream steps run; throwing instead risks Twenty's automatic step retry re-sending the message. Neither is acceptable, so W7 is **BLOCKED / NOT ACCEPTED** rather than shipped with a wrong contract.
+
+### W7-R2 — disabled to prevent an unsafe offer (completed)
+
+1. **Registration removed.** `workflowActionTriggerSettings` was deleted from `send-communication-workflow-action.ts`, so the built manifest no longer advertises a `Send Communication` action. Verified in the generated manifest: **zero** logic functions carry `workflowActionTriggerSettings`.
+2. **Production entry refuses.** The function keeps its **unchanged universal identifier** (`e55f7b79-cf61-45b4-a1c4-259fa7089b28`) but its handler now returns a constant, before constructing any client or resolving configuration:
+   ```
+   success: false
+   failureCode: 'WORKFLOW_ACTION_DISABLED'
+   error: 'Communication sending from Workflow is unavailable.'
+   ```
+   It performs no provider, persistence, Person or HTTP call.
+3. **Reusable code retained.** `sendCommunicationWorkflowHandler` and its focused tests remain for future work, but no trigger exposes them: the disabled entry never calls the handler (asserted with a spy).
+4. **No alternative entry.** No HTTP, tool, cron, database-event or server-route trigger was added, and no configurable bypass re-enables sending.
+
+#### Native behavior for existing Workflow steps (source-inspected, NOT live-verified)
+
+- `logic-function.workflow-action.ts` resolves the step's logic function from the workspace's flat maps and throws `WorkflowStepExecutorException(INVALID_STEP_TYPE)` when the function is **missing**, or when its `workflowActionTriggerSettings` is **not defined**: *"Logic function <name> is not exposed as a workflow action"*. `INVALID_STEP_TYPE` is in `USER_FACING_STEP_EXECUTOR_EXCEPTION_CODES`, so such a step fails as a **user-facing** error rather than a system error.
+- `from-logic-function-manifest-to-universal-flat-logic-function.util.ts` maps `logicFunctionManifest.workflowActionTriggerSettings ?? null`, so an app **upgrade/sync** writes `null` and the capability disappears for that workspace.
+- **Unverified:** whether an already-installed workspace's existing workflow steps are updated on sync, and what an existing step renders before/after. No installation exists here, so no workspace, workflow or database was touched and nothing is claimed beyond the source reading above.
 
 ### W7-R1 corrections (completed)
 
@@ -1114,8 +1133,9 @@ Workflow step "Send Communication"
 - **Refresh coverage:** the tests drive the same Communication from QUEUED to SENT and to FAILED **through the implemented refresh path** (re-running the chain) and assert the rendered status changes while the activity id stays the same.
 - **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual REST round trips, database-event delivery, and live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
 - **W7 runtime-boundary vs simulation:** `workflow-step-status.contract.test.ts` **simulates** the documented server mapping (`{ result }` ⇒ `StepStatus.SUCCESS`, `shouldProcessNextSteps: true`) to lock the consequence in code. It is **not** a runtime test: the Twenty server is never executed here. Live Workflow execution remains **NOT PERFORMED**.
-- **W7 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
+- **W7-R2 actual production coverage:** the shipped disabled entry is tested directly (valid input, empty and malformed input, and hostile input carrying senderId/workspaceId/enabled all return WORKFLOW_ACTION_DISABLED), together with configuration assertions (no workflowActionTriggerSettings, no alternative trigger, unchanged universal identifier) and a spy proving the reusable send handler is never called.
+- **W7-R1 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
 - **W7 still not verified:** live Workflow execution. The app is not installed, so the step has never run inside a real workflow; manifest registration is wiring evidence only, not proof of execution.
-- **Current validated totals (after W7-R1):** 157 focused tests PASS; typecheck PASS; oxlint 0/0 (73 files); app build PASS (**13 files**). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 workflow action `Send Communication`), **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired) and **9 server variables**.
+- **Current validated totals (after W7-R2):** 165 focused tests PASS; typecheck PASS; oxlint 0/0 (74 files); app build PASS (**13 files**). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired) and **9 server variables**.
 - W4 `CommunicationSendAndPersistService` unchanged; the timeline path cannot reach a provider and never uses `context.recordId`. **W7 did refactor the W5 Person handler** to use the shared validation.
 
