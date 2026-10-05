@@ -50,7 +50,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
-| W8 | `8ecbd449d633ddd248dfc08f3526fc34b0788cc0` | `cb7b067ed7` | dependency/build boundary + version compatibility |
+| W8 / W8-R1 | `8ecbd449d6` (+R1 `f61744436bd3fb88d22001d1bf6edba985878592`) | `cb7b067ed7`, `928645c3aa` (+R1 `W8R1_DOC_SHA`) | dependency/lockfile + version evidence; **architect review pending W8-R1** |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
@@ -74,7 +74,7 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-None assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**: the Workflow action is unregistered and its entry refuses to send, because the native contract cannot surface a failed send as a failed step. Do not start another wave automatically.
+No wave assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 dependency and compatibility evidence is complete but **under architect review**. The **native Communication settings surface is PLANNED / NOT IMPLEMENTED** (see the requirement in the W8 section). Do not start another wave automatically.
 
 ---
 
@@ -734,7 +734,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W6 + W8 code-review accepted; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (live verification NOT PERFORMED) | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`; no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W6 code-review accepted; W8 dependency/version work under W8-R1 review; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (live verification NOT PERFORMED) | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`; no next wave assigned |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -1149,31 +1149,70 @@ The app imported two packages it never declared, so both were supplied indirectl
 
 Also added `@typescript/native-preview` (`tsgo`), which the `typecheck` script needs, and a documented `build` script. **No business logic was rewritten and no framework was introduced.**
 
-### Version compatibility — corrected from evidence
+### Version compatibility — evidence separated by kind
 
-The declared versions were **wrong**: the app used APIs that do not exist in the version it declared.
+**A. Published SDK symbols and successful app compilation (verified).**
+The app imports `defineTimelineActivityType`, `createTimelineActivity`, `CreateTimelineActivityInput` and `useTimelineActivityId`. Published SDK versions were installed into throwaway directories and their `dist` typings inspected:
+- `2.30.0`, `2.31.0` (and `2.31.0-alpha.1`), `2.33.0` — **missing** these symbols.
+- `2.35.0` — **all present**; also verified present at 2.35.1, 2.37.0 and 2.38.0.
+- **Note the SDK tag list has gaps** (`sdk/v2.30.0`, `sdk/v2.31.0`, `sdk/v2.31.0-alpha.1`, `sdk/v2.33.0`, `sdk/v2.35.0`, `sdk/v2.35.1`, …). Because no `2.34.x` SDK was ever published, "**the earliest published SDK version tested successfully**" is the accurate claim — **not** "the first SDK version that could ever work".
+- The app **compiles and builds** against 2.35.0 (isolated build + full suite).
 
-- Declared before W8: `twenty-sdk` / `twenty-client-sdk` `2.31.0`, `engines.twenty` `>=2.19.0`.
-- The app imports `defineTimelineActivityType` (`twenty-sdk/define`), `createTimelineActivity` + `CreateTimelineActivityInput` (`twenty-sdk/logic-function`), and `useTimelineActivityId` (`twenty-sdk/front-component`).
-- **Probed published versions** (installed each into a throwaway directory and inspected its `dist` typings): `2.31.0` and `2.33.0` are **missing** all four symbols; **`2.35.0` is the first version where all are present** (also verified at 2.37.0 and 2.38.0).
-- The monorepo workspace SDK is `2.42.0`, which is why the monorepo build passed while the declared version could not: the app was silently resolving the workspace SDK rather than its declared one.
-- Corrected to `twenty-sdk` / `twenty-client-sdk` `2.35.0` and `engines.twenty` `>=2.35.0`. `engines.twenty` is copied verbatim into the manifest's `requiredServerVersionRange`, so this is the app's **declared** server range.
+**B. Minimum server version supporting those features (source + tag evidence).**
+The capability landed in a single commit, `2f27360df3` — *"Make timeline activity types a generic application contract (#24620)"* (2026-08-23). That commit added the manifest contract (`timelineActivityTypeManifestType.ts`), the server-side converter (`from-timeline-activity-type-manifest-to-universal-flat-timeline-activity-type.util.ts`), the SDK's `createTimelineActivity` helper, and the renderer-context field (`timelineActivityId`, wired from `EventRowDynamicComponent.tsx` as `timelineActivityId={event.id}`).
 
-**Distinguish the evidence levels:** `>=2.35.0` is *source-inspected and build-verified* (the isolated build and the full test suite pass at exactly 2.35.0). It is **not** live-installed compatibility, and it is **not** a claim about all future versions.
+Release-tag containment (`git tag --contains 2f27360df3`):
+- `sdk/v2.35.0` is the **first SDK tag** containing it.
+- `twenty/v2.34.0` is the **first `twenty/` (server) tag** containing it.
 
-### Isolated verification (performed)
+So the evidence-based **minimum server release is 2.34.0** (the first server tag containing the capability), which is **earlier than the SDK version the app must compile against** (2.35.0). `engines.twenty` therefore stays **`>=2.35.0`**: the app requires the SDK at 2.35.0+, and 2.35.0 is also a valid server release, so the range is conservative and defensible rather than minimal. The server minimum was **not** inferred from the SDK version alone.
 
-A disposable copy outside the monorepo (`D:\twenty-iso-communication`) was created containing **only** the app's source and configuration — no `node_modules`, no `dist`, no parent packages. Its `.nvmrc` pins Node 24.5.0, which is not installed on this machine, so the copy's `.nvmrc` was renamed **in the disposable directory only** (the real tree was untouched).
+**C. Live-installed compatibility (NOT verified).**
+The app has never been installed on a running instance, so no claim is made that a 2.35.0 SDK app runs against any particular live server.
 
-With only the declared dependencies installed from the public registry:
+**D. Future upgrade compatibility (NOT verified).**
+Nothing is claimed about 2.36.0+ server releases, future SDK majors, or upstream merge behavior.
 
-- `yarn install` → succeeded (no borrow from the monorepo).
+**Deployment note:** a real deployment must set a reachable `COMMUNICATION_PROVIDER` and the chosen provider's variables (see the settings requirement below); no live environment was configured in this wave.
+
+### Reproducibility — lockfile and exact environment
+
+- **Native convention:** every standalone app in `packages/twenty-apps` commits its **own `yarn.lock`** (verified with `git ls-files "*/yarn.lock"`: examples, fixtures, internal and public apps all do). W8-R1 adds the missing **app-local `yarn.lock`**. The root `yarn.lock` and root `package.json` are **untouched** (verified with `git status`).
+- **Exact environment used for isolated verification:** Node **v24.16.0**, Yarn **4.13.0**, resolved `twenty-sdk` **2.35.0**, `twenty-client-sdk` **2.35.0**.
+- **Node caveat (reported, not worked around):** every app's `.nvmrc` pins Node **24.5.0** (the root repo pins 24.16.0). **24.5.0 is not installed on this machine** (`nvm list` shows only 24.16.0), and installing a runtime or altering global configuration is out of scope. The isolated copy therefore ran on **24.16.0**; the declared Node pin could **not** be exercised. The `.nvmrc` itself was left in place and the working tree untouched.
+
+### Isolated verification (performed, with the lockfile)
+
+A disposable copy outside the monorepo (`D:\twenty-iso-comm2`) containing **only** the app's source and configuration plus the committed `yarn.lock` — no `node_modules`, no `dist`, no parent packages:
+
+- `yarn install --immutable` → **succeeded** (lockfile honoured; no borrow from the monorepo).
 - `yarn test` → **165/165 tests pass**.
-- `yarn typecheck` (`tsgo`) → **pass**.
+- `yarn typecheck` (`tsgo -p tsconfig.spec.json`) → **pass**; `tsc --noEmit -p tsconfig.json` → **pass** (both relevant typechecks).
 - `yarn lint` (`oxlint`) → **0 warnings / 0 errors**.
-- `twenty dev:build` → **build succeeded (14 files)**; manifest showed **0 Workflow actions**, 4 logic functions, 2 front components, 1 timeline activity type.
+- `twenty dev:build` → **build succeeded (14 files)**.
 
-This proves the app's dependency and build boundary is **independently reproducible**. The `.nvmrc` Node pin and the absence of a committed app-local lockfile are the two remaining reproducibility caveats.
+**Claim corrected:** W8 previously said the boundary was "independently reproducible". What is actually proven is that the app's **dependency and build boundary** installs and passes from its own declared dependencies and lockfile, on **Node 24.16.0 rather than the declared 24.5.0**. Exact-pin reproducibility is **not** verified.
+
+### REQUIRED NATIVE SETTINGS SURFACE — PLANNED / NOT IMPLEMENTED
+
+A durable product/architecture requirement (recorded here, **not implemented in this wave**):
+
+The Communication app must expose a **discoverable native settings entry** covering:
+
+1. **Connections and implemented providers** — the providers the workspace can actually send with.
+2. **Default provider selection** — the value of `COMMUNICATION_PROVIDER`, chosen from implemented providers only.
+3. **Channel-specific configuration** — sender identity and per-channel options for implemented channels.
+4. **Configuration readiness and safe validation feedback** — whether the app is ready to send, and clear messages for missing or invalid configuration, without echoing secret values.
+5. **Permission-controlled administration** — only authorised workspace members may view or change provider configuration.
+
+Constraints that must hold when this is built:
+
+- Use Twenty's **supported app/settings capabilities** (app roles/permissions, application variables, connection providers, and the app's own settings surface). **Do not** build a custom core Settings page or a parallel credential database.
+- **Secrets remain in native server-side secret storage** (`serverVariables` with `isSecret: true`, encrypted at rest). Stored secret values must **never** be returned to frontend code or written to record history — the UI may only learn whether a value is set.
+- **Only implemented capabilities appear as usable controls.** Unsupported channels/providers must not appear as selectable dead controls.
+- The disabled Workflow entry stays disabled; this requirement does not re-enable it.
+
+**Status: PLANNED / NOT IMPLEMENTED.** No SDK settings API is invented here, and no location is claimed to already exist — the exact supported surface must be confirmed against the SDK and server during that wave.
 
 ### Boundaries verified
 
@@ -1191,6 +1230,6 @@ This proves the app's dependency and build boundary is **independently reproduci
 - **W7-R2 actual production coverage:** the shipped disabled entry is tested directly (valid input, empty and malformed input, and hostile input carrying senderId/workspaceId/enabled all return WORKFLOW_ACTION_DISABLED), together with configuration assertions (no workflowActionTriggerSettings, no alternative trigger, unchanged universal identifier) and a spy proving the reusable send handler is never called.
 - **W7-R1 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
 - **W7 still not verified:** live Workflow execution. The app is not installed, so the step has never run inside a real workflow; manifest registration is wiring evidence only, not proof of execution.
-- **Current validated totals (after W8):** 165 focused tests PASS; typecheck PASS; oxlint 0/0 (74 files); app build PASS (13 files). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired), **9 server variables** and `requiredServerVersionRange` **`>=2.35.0`**.
+- **Current validated totals (after W8-R1):** 165 focused tests PASS; typecheck PASS (`tsgo` spec config **and** `tsc` app config); oxlint 0/0 (74 files); app build PASS (14 files). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired), **9 server variables** and `requiredServerVersionRange` **`>=2.35.0`**. An app-local `yarn.lock` is committed; the isolated `yarn install --immutable` run used Node 24.16.0 / Yarn 4.13.0 (declared Node 24.5.0 unavailable).
 - W4 `CommunicationSendAndPersistService` unchanged; the timeline path cannot reach a provider and never uses `context.recordId`. **W7 did refactor the W5 Person handler** to use the shared validation.
 
