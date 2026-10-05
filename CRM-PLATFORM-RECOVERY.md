@@ -52,7 +52,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
 | W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted on dependency/build evidence only** — this is NOT server/runtime or live-install compatibility; Node-pin and live-install limitations retained |
 | W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
-| W10 / W10-R1 | (none) | `W10R1_DOC_SHA` | environment **prepared** (isolated instance + test workspace + test key); installed checks **NOT PERFORMED — BLOCKED** on Windows CLI upload defects |
+| W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared** (isolated instance + test workspace + test key); installed checks **NOT PERFORMED — BLOCKED** on Windows CLI upload defects |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
