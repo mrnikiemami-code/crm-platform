@@ -1616,6 +1616,7 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 - **Stable identifiers added** — nine new UUIDs in `src/constants/universal-identifiers.ts`. A changed identifier is treated by the platform as a different variable, so these are pinned by test.
 - **`KAVENEGAR_API_KEY` and `RAZPAYAMAK_API_KEY` stay `isSecret: true`**; everything else is non-secret.
 - **Nothing is required** — an unused provider cannot block installation.
+- **`serverVariables: {}` — an explicit removal tombstone.** The platform only reconciles registration variables when the key is **present** (`application-registration.service.ts`: `if (isDefined(manifest.application.serverVariables))`), and `syncVariableSchemas` deletes every registration variable for the app when the declared set is empty. Omitting the key entirely would therefore **leave the previous shared rows behind**, so the app declares it empty and the sync removes them. This is removal through supported sync — never a direct DB write.
 - **No provider/orchestration code changed.** The providers already read `process.env[name]` (`src/providers/config/read-required-env.ts`), and the executor injects both maps into that environment, so only the declaration moved.
 
 ### 3. Verification
@@ -1627,9 +1628,9 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 | Lint | **PASS** — 0 warnings / 0 errors (78 files) |
 | App build | **PASS** — 14 files |
 | Immutable build | **PASS** — `yarn install --immutable` under the declared Yarn 4.13.0; lockfile unchanged (`aadbef644d43748b2c797751af6ef5c5`) |
-| Built manifest | `serverVariables` **absent**; `applicationVariables` **9**, correct `isSecret`, unique valid UUID v4 identifiers |
-| Sync (isolated only) | v2.41.0 instance: `9 to add, 2 to change`; v2.42.6 instance: `9 to add, 2 to change` |
-| DB (isolated) | `core.applicationVariable` = **9 rows**, all `workspaceId = 20202020-1c25-4d02-bf25-6aeccf7ea419`, `applicationId = 23f3ab89-…`; `core.applicationRegistrationVariable` for Communication = **0 rows** |
+| Built manifest | `serverVariables` **present and empty** (removal tombstone); `applicationVariables` **9**, correct `isSecret`, unique valid UUID v4 identifiers |
+| Sync (isolated only) | v2.41.0 instance: `9 to add, 2 to change` then `No changes`; v2.42.6 instance: same |
+| DB (isolated) | `core.applicationVariable` = **9 rows**, all `workspaceId = 20202020-1c25-4d02-bf25-6aeccf7ea419`, `applicationId = 23f3ab89-…`; `core.applicationRegistrationVariable` for Communication = **0 rows** (removed by the tombstone sync, verified on **both** instances) |
 | Native **Variables** tab (v2.42.6, signed-in browser) | **PRESENT** — "Variables / Set your application configuration variables" with all 9 keys and a `Save settings` button |
 | Secret masking (live) | Set a fake `KAVENEGAR_API_KEY`; read-back is **`F********`** (masked, not echoed); the unset `RAZPAYAMAK_API_KEY` reads empty |
 | Non-secret values readable | `COMMUNICATION_PROVIDER`, `KAVENEGAR_ENDPOINT/SENDER`, `RAZPAYAMAK_*` all readable and independently settable |
@@ -1644,7 +1645,7 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 
 - **Existing real installations:** **none were changed.** No real installation of this app was discovered, and only the two isolated test instances were synced.
 - **Isolated test installations (v2.41.0 and v2.42.6):** the sync **added 9 workspace variables** and **changed 2** objects. It did **not** copy registration credentials into the workspace: the previous registration rows were **empty**, and the new workspace rows were created with empty encrypted values.
-- **Shared declarations removed through supported sync:** the app no longer declares `serverVariables`, and `core.applicationRegistrationVariable` for this app is now **0 rows** — so a workspace can no longer inherit a shared credential.
+- **Shared declarations removed through supported sync:** the app declares `serverVariables: {}` as a removal tombstone, and `core.applicationRegistrationVariable` for this app is now **0 rows** on both isolated instances — so a workspace can no longer inherit a shared credential.
 - **Upgrading an installation that had *populated* registration values:** because the registration variable rows are removed by the same sync, such values would be **dropped, not migrated**. The operator must re-enter them once in the workspace Variables tab. This is intentional (the shared values were not workspace-owned and must not be silently promoted), and it must be communicated in any future release note.
 
 ### 5. Corrections to earlier claims

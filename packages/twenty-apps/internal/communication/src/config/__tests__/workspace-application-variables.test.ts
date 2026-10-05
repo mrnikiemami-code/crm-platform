@@ -43,11 +43,14 @@ describe('workspace application variable declaration (W9-R2)', () => {
     expect(declared).toEqual(Object.keys(EXPECTED_VARIABLES).sort());
   });
 
-  it('removes the shared registration-scoped declarations entirely', () => {
-    // Leaving any key in `serverVariables` would keep it shared across
-    // workspaces and, because the executor merges the registration map first,
-    // a stale shared value could shadow the workspace value.
-    expect(config.serverVariables ?? {}).toEqual({});
+  it('removes the shared registration-scoped declarations through an explicit tombstone', () => {
+    // The platform only reconciles registration variables when the key is
+    // PRESENT (`application-registration.service.ts`). Omitting `serverVariables`
+    // would leave the previous shared rows in place, so the app must declare it
+    // as an explicit empty object — which makes `syncVariableSchemas` delete
+    // them. This is removal through supported sync, never a direct DB write.
+    expect(config).toHaveProperty('serverVariables');
+    expect(config.serverVariables).toEqual({});
   });
 
   it('keeps the existing variable keys (no rename)', () => {

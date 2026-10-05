@@ -18,6 +18,15 @@ export default defineApplication({
   displayName: 'Communication',
   description:
     'Generic outbound communication for People. Records one outbound message independently of the channel it travels through, so new channels and providers can be added without changing the data model.',
+  // Explicit empty `serverVariables` is a **removal tombstone**, not a
+  // declaration. The platform only reconciles registration variables when the
+  // key is present (`application-registration.service.ts`:
+  // `if (isDefined(manifest.application.serverVariables))`), and
+  // `syncVariableSchemas` deletes every registration variable for the app when
+  // the declared set is empty. Omitting the key entirely would therefore leave
+  // the previous shared rows behind. Declaring it empty removes them through
+  // supported sync, so no workspace can inherit a shared credential.
+  serverVariables: {},
   // Provider credentials, sender identities and the default-provider selection
   // are declared as native **workspace** application variables.
   //
