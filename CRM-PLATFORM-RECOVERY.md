@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W6` + `W6-R1` + `W6-R2` — Person timeline integration, **code-review accepted** (`b464171e2a` implementation, corrected by `fd9e0988c6` and `10af7c560f`).
+`CRM-COMMUNICATIONS-001-W9` + `W9-R1` — native settings path, **accepted at code level** (`91961e601f` implementation, corrected by `64cc23d558`). W10 (installed-app verification) is **NOT PERFORMED — BLOCKED** on a disposable instance.
 
 ## Communications milestones — code-review acceptance
 
@@ -50,9 +50,9 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
-| W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted at dependency/build level** (Node-pin and live-install limitations retained) |
+| W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted on dependency/build evidence only** — this is NOT server/runtime or live-install compatibility; Node-pin and live-install limitations retained |
 | W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
-| W10 | (none) | `4aa2618bbb` | **NOT PERFORMED — blocked**: no disposable instance available |
+| W10 / W10-R1 | (none) | `W10R1_DOC_SHA` | environment **prepared** (isolated instance + test workspace + test key); installed checks **NOT PERFORMED — BLOCKED** on Windows CLI upload defects |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
@@ -76,7 +76,7 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-No wave assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10 (installed-app verification) was NOT PERFORMED — blocked** on the prerequisites below. Do not start another wave automatically.
+No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10/W10-R1**: the isolated test instance, test workspace, CLI remote and test API key are **prepared and still running**, but every installed check is **NOT PERFORMED — BLOCKED** on two Windows defects in the published CLI upload path (backslash resource paths rejected by the server; a second batch targeting port 2020). Fixing them requires an upstream/core change, which is out of scope. Do not start another wave automatically.
 
 **W10 blocker — exact prerequisites for installed verification:**
 1. A **disposable or test workspace** on a running instance, distinct from the user's real data. The only database available here is `localhost:5432/default` (Docker `twenty-db-1`), which holds the user's **single real workspace** ("4D", subdomain `radiant-cyan-dragon`) and is shared by the source dev `.env`; `docker exec twenty-db-1 psql -c "\\l"` lists only `default`, `postgres`, `template0`, `template1`. Creating one requires a new database or a fresh container — out of scope (no DB writes, no resets, no production installs).
@@ -924,14 +924,14 @@ JALALI PRESENTATION LAYER COMPLETE (Jalali Phases 1–5 committed),
 plus Persian/RTL, Data Model, Record Detail, Navigation, Kanban/system-status,
 Settings/Experience, and development-startup fixes committed.
 
-Communications / Messaging is ACTIVE and code-review accepted through W6-R2:
+Communications / Messaging is ACTIVE. Code-review accepted through **W9-R1** (W7 is IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED):
 W0 app skeleton, W1 provider boundary, W2 Kavenegar, W3 multi-provider + RazPayamak,
 W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2/R3),
 W6 Person timeline integration (+ W6-R1/R2). Do NOT redo any of these waves.
 
-LIVE VERIFICATION IS STILL NOT PERFORMED for the Communications app: it has never been
-installed on a running instance, so no composer submission, provider call, database-event
-delivery or timeline activity has occurred end to end. Do not claim end-to-end completion.
+INSTALLED VERIFICATION: a disposable instance was later created (W10-R1) and the app was
+installed, but metadata sync failed on Windows SDK defects, so no settings, Person, route or
+timeline check could run. **All live checks remain NOT PERFORMED.** Do not claim end-to-end completion.
 
 W7 (Workflow reuse of CommunicationSendAndPersistService) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**: the native Workflow contract reports a business failure as a SUCCESS step, and no supported app-side mechanism exists to fail the step without risking a duplicate send. The Workflow action is therefore unregistered and its entry refuses to send. See the W7 section.
 
@@ -1221,7 +1221,7 @@ Constraints that must hold when this is built:
 - **Only implemented capabilities appear as usable controls.** Unsupported channels/providers must not appear as selectable dead controls.
 - The disabled Workflow entry stays disabled; this requirement does not re-enable it.
 
-**Status: PLANNED / NOT IMPLEMENTED.** No SDK settings API is invented here, and no location is claimed to already exist — the exact supported surface must be confirmed against the SDK and server during that wave.
+**Status: LOCATION ESTABLISHED (W9-R1); richer UX PLANNED / NOT IMPLEMENTED.** The configuration surface is the **native Variables tab at Settings → Applications → Communication → Variables** (see the W9/W9-R1 section). A custom settings tab was attempted and retired, and no app-side application-variable editor is supported by the inspected SDK 2.35.0.
 
 ### Boundaries verified
 
@@ -1291,57 +1291,70 @@ When every visible field is present it states: *"A default provider is selected 
 
 Richer per-provider configuration UX (validation guidance, provider-specific fields, connection testing) is **PLANNED / NOT IMPLEMENTED** and is blocked on a supported app-side editing mechanism. Until then the native Variables tab is the single configuration surface.
 
-## W10 — installed-app verification (NOT PERFORMED — BLOCKED)
+## W10 / W10-R1 — installed-app verification
 
-Status: **NOT PERFORMED.** No disposable instance could be established within this task, so **no installed check was executed**. Unit/build evidence is **not** a substitute and none is claimed as such here.
+Status: environment **PREPARED**; installed checks **NOT PERFORMED — BLOCKED** on Windows SDK defects in the CLI's file upload.
 
-### Environment assessment (what was inspected)
+### 1. Environment preparation (DONE — isolated and verified)
 
-| Item | Observed |
-|------|----------|
-| Docker instance | `twenty-server-1` up 5 days, healthy, **:3002→3000**; image `twentycrm/twenty:latest` built **2026-09-16** (corresponds to server `v2.41.0`), against the app's declared `>=2.35.0` |
-| Other containers | `twenty-worker-1`, `twenty-db-1` (:5432), `twenty-redis-1` (:6379) |
-| Source dev server (:3000/:3001) | **NOT running** (no listener) |
-| Database | `localhost:5432/default` — `\l` lists only `default`, `postgres`, `template0`, `template1`; **no disposable/test database** |
-| Workspace | **one real workspace** — `radiant-cyan-dragon` / "4D" |
-| Source `.env` | `PG_DATABASE_URL=postgres://postgres:<redacted>@localhost:5432/default` — the source dev server **shares the same database** as the Docker instance, i.e. the user's real data |
-| Applications present | `Standard`, `Custom` only — the Communication app is **not installed** |
-| CLI remotes | `remote:list` → only `local http://localhost:2020 [none]` (unauthenticated) |
-| API keys | 1 exists in the database, but installing would target the **real workspace** |
+A disposable local instance was created, entirely separate from the real stack:
 
-### Live checks
+| Aspect | Value |
+|--------|-------|
+| Instance | `twenty-comm-test-app` (single all-in-one container), host port **3100** → container 2020 |
+| Image | `twentycrm/twenty-app-dev:v2.41.0`, digest `sha256:bb4a10e0b73b1d89f65b1410e94753d32cbbd3f35d85aa1e51bc635dbc2fefe7` (pinned; **not** `latest`) |
+| Server version | **v2.41.0** (`APP_VERSION` inside the container) — satisfies the app's declared `>=2.35.0` |
+| Volumes | `twenty-comm-test-app-data`, `twenty-comm-test-app-storage` (new, dedicated) |
+| Database / Redis | internal to the all-in-one container; **no shared database with the real stack** |
+| Test workspace | seeded dev workspace `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`) — the image's own seed, **not** copied from the real workspace |
+| Test credentials | a **new** API key minted through the supported `createApiKey` + `generateApiKeyToken` mutations; stored **outside the repo** at `D:/twenty-comm-test/.test-api-key` (git-ignored by location, never printed) |
+| CLI remote | a separate named remote `comm-test`; the user's original default remote was **restored** afterwards |
+| Node / Yarn | Node **v24.16.0**, Yarn **4.13.0** |
+
+**Isolation evidence:** the real stack (`twenty-server-1`, `twenty-worker-1`, `twenty-db-1`, `twenty-redis-1`) remained **Up 5 days (healthy)** throughout; the real database still holds exactly **1** workspace; the test instance uses its own container, volumes and port. No real data, credentials, `.env` or volume was read, copied, mounted, stopped or recreated.
+
+**Also verified in this environment:** the CLI connected successfully and reported the server version (`⚠ Local Twenty server is v2.41.0`), and the app **registered** as application `Communication` (`768bca20-0b81-4d33-a624-0a894a193ffd`, `sourceType: local`).
+
+### 2. Installed checks — every one NOT PERFORMED
 
 | # | Check | Result | Evidence |
 |---|-------|--------|----------|
-| 1 | Install/sync the app on a disposable instance | **NOT PERFORMED** | No disposable database or workspace; the only database holds the user's single real workspace and is shared by the source dev env. Creating one would require a new database or container (DB writes / resets / production installs are out of scope) |
-| 2 | Authenticate the CLI to that instance | **NOT PERFORMED** | `remote:list` shows an unauthenticated `local http://localhost:2020 [none]`; no installation credentials were supplied |
-| 3 | Settings → Applications → Communication → Variables visible | **NOT PERFORMED** | Requires an installed app (check 1) |
-| 4 | Declared provider/default/sender variables available | **NOT PERFORMED** | Requires an installed app |
-| 5 | Stored secrets remain masked | **NOT PERFORMED** | Requires an installed app; **no secret value was read at any point** |
-| 6 | Person "Send message" entry opens the composer | **NOT PERFORMED** | Requires an installed app |
-| 7 | Authenticated phone-options route resolves a test Person | **NOT PERFORMED** | Requires an installed app and a test Person |
-| 8 | Controlled invalid/missing configuration fails safely without contacting a provider | **NOT PERFORMED** | Requires an installed app; no SMS provider was contacted |
-| 9 | No Workflow sending action advertised | **NOT PERFORMED (live)** | Manifest-level evidence only: the built manifest advertises **0** Workflow actions (see the W7-R2 section) |
-| 10 | Database-event delivery creates the timeline activity | **NOT PERFORMED** | Requires an installed app; no synthetic record was created |
-| 11 | Card resolves `timelineActivityId` → `activity.linkedRecordId` → Communication | **NOT PERFORMED (live)** | Only the pure chain is unit-tested; no real activity exists |
-| 12 | Refresh updates the same card without creating another activity | **NOT PERFORMED (live)** | Unit-tested through the implemented refresh path only |
+| 1 | Metadata sync of the app | **FAIL** | `twenty apply` → `Failed to upload 12 files: Resource path must not contain backslashes`; the app row exists but **0** objects, **0** logic functions, **0** application variables and **0** app timeline types were synced (verified in `core."objectMetadata"`, `core."logicFunction"`, `core."applicationVariable"`, `core."timelineActivityType"`) |
+| 2 | Settings → Applications → Communication → Variables visible | **NOT PERFORMED** | The app has no synced application variables, so the tab has nothing to show |
+| 3 | Declared provider/default/sender variables available | **NOT PERFORMED** | Same cause |
+| 4 | Stored secrets masked | **NOT PERFORMED** | No variable was ever populated; **no secret value was read or printed at any point** |
+| 5 | Person "Send message" entry opens the composer | **NOT PERFORMED** | The front component was never uploaded, so the command-menu item does not exist |
+| 6 | Authenticated phone-options route resolves a test Person | **NOT PERFORMED** | The route logic function was never uploaded |
+| 7 | Safe failure on missing configuration | **NOT PERFORMED** | Requires the route |
+| 8 | No Workflow sending action advertised | **NOT PERFORMED (live)** | Build-level evidence only: the built manifest advertises **0** Workflow actions |
+| 9 | Database-event delivery creates a timeline activity | **NOT PERFORMED** | The `communication` object and the `on-communication-created` function were never synced |
+| 10 | Card resolves `timelineActivityId` → `activity.linkedRecordId` → Communication | **NOT PERFORMED (live)** | No activity exists |
+| 11 | Refresh updates the same card without creating another activity | **NOT PERFORMED (live)** | No card exists |
 
-### Deliberately not done
+### 3. The blocker (precise, reproducible, app-independent)
 
-- **No real SMS** was sent and **no real provider credentials** were populated.
-- **No production fake provider** was introduced.
-- **No synthetic record** was written, because there is no disposable workspace to write it into; writing one into the real workspace would alter the user's data.
-- **No database writes, resets, or workspace changes** were performed.
+Two defects in the **published Twenty CLI/SDK** (version `2.42.0` in this workspace), both on Windows:
 
-### What would unblock W10
+1. **Backslash resource paths are rejected by the server.** `twenty apply` builds `builtHandlerPath` with `path.relative(...)`, which yields `src\\logic-functions\\x.ts` on Windows. The server's `validate-safe-relative-path.util.ts` explicitly rejects any path containing `\\` (`Resource path must not contain backslashes`). Twelve of the fourteen files failed this way. A POSIX normalizer exists on the server (`normalize-file-entity-path-to-posix`) but the **CLI does not apply it** before sending. This blocks **all** metadata sync on Windows, not just this app.
+2. **A second upload batch targets the wrong host.** The remaining two files (`package.json`, `yarn.lock`) failed with `connect ECONNREFUSED ::1:2020 / 127.0.0.1:2020` — the CLI's alternate upload path fell back to the default dev port instead of the selected remote (`localhost:3100`).
 
-1. A disposable/test workspace on a running instance (new database or fresh container), distinct from the real workspace.
-2. Installation credentials (CLI remote + API key) for that instance.
-3. A running server reachable by the CLI; the app's declared range `>=2.35.0` is satisfied by the available `v2.41.0` image.
+Neither defect is in the Communication app, and neither can be fixed from inside it: the failing code lives in `packages/twenty-sdk/src/cli` (and the guard in `packages/twenty-server`), which is **core**, explicitly out of scope. No core edit, SDK upgrade, or workaround (such as writing to the database directly) was attempted.
 
-### Retained limitations (unchanged)
+**Consequence:** the app is registered but has **no synced entities**, so no installed settings, Person, route, Workflow-absence or timeline check could run. Reporting any of them as PASS would be false.
 
-Real-provider sending, the exact Node 24.5.0 pin, future upstream upgrade compatibility, and W7 (disabled, blocked, not accepted) all remain **unverified / blocked**.
+### 4. Deliberately not done
+
+- **No real SMS**, no real provider credentials, no production fake provider.
+- **No synthetic Communication record** was created: without the `communication` object there is nowhere to write it, and writing into the real workspace would alter user data.
+- No core/SDK change, no direct database writes to the test instance, no changes to the real stack.
+
+### 5. What would unblock the checks
+
+1. A CLI that sends **POSIX-normalized** resource paths (or a server that accepts Windows separators) — i.e. an upstream fix or a non-Windows host.
+2. The alternate upload path honouring the **selected remote's** host instead of port 2020.
+3. After that, the seeded `apple` workspace, the `comm-test` remote and the minted test API key are already in place, so the checks could run immediately.
+
+**Retained limitations:** real-provider sending, the exact Node 24.5.0 pin, future upstream upgrade compatibility, and W7 (disabled, blocked, not accepted) all remain unverified / blocked.
 
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 
