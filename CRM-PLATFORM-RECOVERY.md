@@ -50,7 +50,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
-| W8 / W8-R1 | `8ecbd449d6` (+R1 `f61744436bd3fb88d22001d1bf6edba985878592`) | `cb7b067ed7`, `928645c3aa` (+R1 `W8R1_DOC_SHA`) | dependency/lockfile + version evidence; **architect review pending W8-R1** |
+| W8 / W8-R1 | `8ecbd449d6` (+R1 `f61744436bd3fb88d22001d1bf6edba985878592`) | `cb7b067ed7`, `928645c3aa` (+R1 `832122c6ff`) | dependency/lockfile + version evidence; **architect review pending W8-R1** |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
