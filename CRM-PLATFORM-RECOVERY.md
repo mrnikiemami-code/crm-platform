@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W9-R2` — provider configuration is now **workspace-owned** via native `applicationVariables` (9 variables, stable identifiers, API keys secret). Verified at source, tests (184), typecheck, lint, build, immutable build, sync and the **native Variables tab** (with a fake secret masked as `F********`). **Runtime execution remains BLOCKED** (dependency layer cannot reach a package registry), so **per-workspace execution isolation is NOT PERFORMED**. Earlier W10-R4 findings stand: front components and the composer render; the timeline card render is unresolved; the app-registration `Config` → "Server Variables" screen is now the **historical shared route**.
+`CRM-COMMUNICATIONS-001-W10-R5` — the **timeline renderer is isolated and verified**. The card was always rendering: it is a **collapsed row by default**, and expanding it mounts the app's front component, which shows the persisted status. Browser checks **PASS**: status renders; QUEUED→FAILED becomes visible after the card's manual `Refresh`; the activity count stays **1**; and Refresh issues **0 writes** and exactly **2 reads**. No app change was required. `W9-R2` workspace-owned configuration stands (verified in the native Variables tab, secret masked). **Runtime execution remains BLOCKED** (registry access unavailable), so **per-workspace execution isolation is NOT PERFORMED**. The app-registration `Config` → "Server Variables" screen is the **historical shared route**.
 
 ## Communications milestones — code-review acceptance
 
@@ -55,17 +55,18 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
 | W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
 | W10-R3 | `a791ca8762` (docs only — no app change) | `a791ca8762` | browser pass performed; its **"front-component rendering FAIL"** finding was **later proven wrong (session artifact)** — see W10-R4 |
-| W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED** (dependency layer cannot reach a package registry); **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; timeline card still not rendering |
+| W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED** (dependency layer cannot reach a package registry); **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; its "timeline card still not rendering" finding was **later proven wrong (W10-R5)** |
+| W10-R5 | (docs only — no app change) | _this document_ | **timeline renderer isolated and VERIFIED**: the card was always rendering but is a **collapsed row by default**; status, QUEUED→FAILED via manual Refresh, single-activity and read-only-Refresh checks all **PASS** |
 | W9-R2 | `b12a5c57f9` + `3654e15e1c` | `e8023c9b2e`, `a305247a1e`, `3654e15e1c` | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed via an empty tombstone (0 registration rows on both instances); **runtime execution isolation NOT PERFORMED** (registry blocked) |
 
 **Evidence levels (do not conflate them):**
 
-1. **Registration / upload / sync — PASS.** 14/14 files, `Plan: 92 to add`, 1 object, 4 logic functions, 2 front components, 1 timeline type, 9 registration variables (re-verified on both the v2.41.0 and v2.42.6 instances).
-2. **API / event execution — HISTORICAL PASS (W10-R2), NOT REPRODUCIBLE NOW.** On the earlier v2.41.0 instance **while its dependency layer was cached**, the routes returned 200, secret masking worked, and a synthetic `QUEUED` record produced exactly **1** timeline activity. On a fresh instance the same routes return **HTTP 500** because the logic-function dependency layer needs the package registry, which the host DNS sinkhole makes unreachable. **Environment difference, not an app regression.**
-3. **Browser rendering — PASS for front components and the composer (W10-R4).** Stock `Hello World` renders (sandbox iframe) on **both** images; the Communication `Send message` composer renders with Channel/Phone/Message/Cancel/Send. The **timeline card** (timeline-renderer path) still does **not** render — isolated, not yet fixed.
+1. **Registration / upload / sync — PASS.** 14/14 files, `Plan: 92 to add`, 1 object, 4 logic functions, 2 front components, 1 timeline type, 9 **workspace** application variables (re-verified on both the v2.41.0 and v2.42.6 instances).
+2. **API / event execution — HISTORICAL PASS (W10-R2), NOT REPRODUCIBLE NOW.** On the earlier v2.41.0 instance **while its dependency layer was cached**, the routes returned 200, secret masking worked, and a synthetic `QUEUED` record produced exactly **1** timeline activity. On a fresh instance the same routes return **HTTP 500** because the logic-function dependency layer needs the package registry, which is **not reachable**. **Environment difference, not an app regression.**
+3. **Browser rendering — PASS for front components, the composer AND the timeline card (W10-R4/W10-R5).** Stock `Hello World` renders on both images; the Communication `Send message` composer renders; and the **timeline card renders its persisted status** — it is simply a **collapsed row by default** (expand the row to mount it). The W10-R3/W10-R4 "timeline card does not render" finding was **wrong**.
 4. **Real sending — NOT PERFORMED.** No Kavenegar/RazPayamak request, no delivery receipt, no real credentials.
 
-**Live verification: PARTIAL.** Registration/upload/sync and browser rendering are verified; **API/event execution is currently blocked by the host DNS sinkhole** and its only PASS evidence is historical. **No real provider request was ever made.**
+**Live verification: PARTIAL.** Registration/upload/sync and browser rendering (front components, composer and timeline card) are verified; **API/event execution is currently blocked (registry access unavailable)** and its only PASS evidence is historical. **No real provider request was ever made.**
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -74,7 +75,7 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** moved provider configuration to **workspace-owned native application variables** (verified in the native Variables tab, with secrets encrypted per workspace and masked). **W10-R4** proved front components and the composer render. **Current blockers:** logic-function execution (registry access blocked) and the timeline card render. The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** moved provider configuration to **workspace-owned native application variables** (verified in the native Variables tab, with secrets encrypted per workspace and masked). **W10-R4/R5** proved the front components, the composer **and the timeline card** render (the card is a collapsed row by default), with status, Refresh and single-activity checks passing. **Current blocker:** logic-function execution (registry access unavailable). The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
 
 ## Communications — authoritative current behavior
 
@@ -93,9 +94,10 @@ No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
 - `twenty-comm-test-app2` — **fresh `twentycrm/twenty-app-dev:v2.41.0`**, port **3101**, NEW volumes, workspace `apple`, the Communication app installed. This is the working front-end runtime.
 - `twenty-comm-test-app` — `twentycrm/twenty-app-dev:v2.42.6`, port 3100, preserved for diagnosis (its DB was migrated and cannot be downgraded).
 
-**Open blockers (both environment, not app):**
+**Open blocker (environment, not app):**
 1. **Logic-function execution** — `ensureDepsLayer` (Yarn 4.9.2) cannot reach a package registry; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Registry access is blocked.** Remedies beyond a host DNS change (a reachable registry mirror, a network policy change, a pre-seeded dependency layer) were **not** investigated.
-2. **Timeline card render** — the `communication` timeline row shows only its label; the timeline-renderer → front-component mount path is not isolated yet. (The command-menu path renders correctly.)
+
+**Resolved:** the **timeline card render** — W10-R5 proved the card renders; it is a **collapsed row by default** (expand to mount).
 
 **W10/W10-R1 "no environment" prerequisites — HISTORICAL / RESOLVED:**
 1. A disposable test workspace now exists: the isolated container `twenty-comm-test-app` with its own database, Redis and volumes, and the seeded workspace `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`). The real stack and its single workspace were never touched.
@@ -762,11 +764,11 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED** (native Variables tab, masked secret); front components + composer render (W10-R4); **logic-function execution BLOCKED** (registry access); timeline card render unresolved; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 (this wave); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED** (native Variables tab, masked secret); front components + composer + **timeline card** render (W10-R4/R5, with status/Refresh checks PASS); **logic-function execution BLOCKED** (registry access); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 (this wave); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
-| Timeline card status render + Refresh button | **NOT PERFORMED — NOT RENDERED** | The `communication` timeline row renders only its label (26 px) and no front-component iframe, even with a fresh session; the metadata (`timelineActivityType communicationSent` → `frontComponentUniversalIdentifier 762996db-…`) resolves correctly. Boundary between the timeline renderer selection and the front-component mount; **not isolated** (W10-R4 §6). |
+| Timeline card status render + Refresh button | **PASS (W10-R5)** | The card is a **collapsed row by default**; expanding it mounts the app's front component, which renders the persisted status (`Message failed · SMS / 5552345678 / … / W10-R5 refresh test failure`). QUEUED→FAILED became visible after clicking the card's `Refresh`; the activity count stayed **1**; Refresh issued **0** writes and exactly **2** reads. |
 | Logic-function execution on a fresh instance | **BLOCKED — host DNS** | `ensureDepsLayer` runs Yarn 4.9.2 to install the app dependency layer and fails `ECONNREFUSED 127.201.0.114:443`; `registry.yarnpkg.com`/`registry.npmjs.org` resolve to loopback **on the host** too. Requires a reachable registry (global host DNS change — out of scope). |
 | Settings → app-registration `Config` → "Server Variables" | **HISTORICAL — shared route, no longer used** | Renders the **registration-scoped** `serverVariables`, which are shared by every workspace. W9-R2 moved this app's configuration to workspace `applicationVariables`; the registration table is now empty for this app. Kept only as history. |
 | Settings → Applications → Communication → **Variables** | **PASS (W9-R2)** | Native workspace Variables tab ("Set your application configuration variables") lists all 9 workspace variables with a `Save settings` button; a fake `KAVENEGAR_API_KEY` reads back masked as `F********`. |
@@ -967,19 +969,28 @@ live absence of the Workflow action, and a synthetic QUEUED→timeline→FAILED�
 **synthetic integration evidence only**: provider config was kept incomplete and **no real
 SMS/provider request was made**.
 
-BROWSER VERIFICATION (W10-R3, CORRECTED BY W10-R4): the W10-R3 claim that "front components do not
-render" was **wrong** — it was an **expired browser session**. W10-R4 proved the stock `Hello World`
+BROWSER VERIFICATION (W10-R3, CORRECTED BY W10-R4 and W10-R5): the W10-R3 claim that "front components
+do not render" was **wrong** — it was an **expired browser session**. W10-R4 proved the stock `Hello World`
 front component renders on **both** the v2.41.0 and v2.42.6 images, and that the Communication
-`Send message` **composer renders** (Channel SMS / Phone number / Message / Cancel / Send). The
-**timeline card** still does not render (isolated).
+`Send message` **composer renders** (Channel SMS / Phone number / Message / Cancel / Send). W10-R5 then
+proved the **timeline card also renders** — it is a **collapsed row by default**; expanding it shows the
+persisted status, and its manual `Refresh` updates QUEUED→FAILED with the activity count staying one.
 
 CURRENT RUNTIME (W10-R4): a **fresh v2.41.0 instance** (`twenty-comm-test-app2`, port 3101, new
 volumes) was created; the migrated v2.42.6 instance is preserved. **Logic-function execution is
-BLOCKED by a host DNS sinkhole**: `registry.yarnpkg.com`/`registry.npmjs.org` resolve to
-`127.201.x.x` **on the host itself** (even via `8.8.8.8`), so the runtime dependency layer
+BLOCKED: registry access is unavailable** — `registry.yarnpkg.com`/`registry.npmjs.org` resolve to
+`127.201.x.x` on the host itself (even via `8.8.8.8`), so the runtime dependency layer
 (`ensureDepsLayer` → Yarn 4.9.2) cannot install and every route returns **HTTP 500**. The W10-R2
 API/event PASS results were obtained **while that dependency layer was still cached** and are
-therefore **historical**, not currently reproducible.
+therefore **historical**, not currently reproducible. Registry access being blocked is **not**
+claimed to have a single possible remedy.
+
+TIMELINE RENDERER (W10-R5): the timeline card **does** render — it is a **collapsed row by default**.
+Expanding the row mounts the app's front component, which shows the persisted status. Verified in the
+browser: status renders; QUEUED→FAILED becomes visible after the card's manual `Refresh`; the
+activity count stays **1**; Refresh issues **0 writes** and exactly **2 reads**
+(`/rest/timelineActivities/<id>` then `/rest/communications/<id>`). The earlier "timeline card does
+not render" claim was **wrong**; no app change was needed.
 
 SETTINGS CONTRACT (W10-R4, ownership corrected by W9-R2): provider configuration is
 **workspace-owned**. The authoritative surface is the app-detail **Variables** tab
@@ -1476,11 +1487,11 @@ So the install **did** honour the lockfile, and immutable reproducibility **is**
 |---|-------|--------|----------|
 | 1 | Settings → Apps → Communication opens | **PASS** | `/settings/applications/23f3ab89-3355-43a4-bf30-a0e9880e1840` rendered the app ("Generic outbound communication for People…", `0.1.0`, `Uninstall`) |
 | 2 | Declared variables editable / fake secrets masked — **native Variables tab** | **NOT PERFORMED — NOT PRESENT** | The deployed front (v2.41.0, and v2.42.6) renders **no Variables tab** for this app because the workspace `applicationVariables` list is **empty** (`core."applicationVariable"` = 0 rows) and `settingsCustomTabFrontComponentId` is null. Masking itself was verified at API level (W10-R2): a fake `KAVENEGAR_API_KEY` reads back as `•••••••••••••` |
-| 3 | Person **Send message** opens the actual composer | **PASS (opens) / FAIL (renders)** | The command menu lists `Send message · Communication`; clicking it opened a side panel titled `Send message`. The panel body was **empty** (no fields) |
-| 4 | Phone options appear from the authenticated route | **NOT PERFORMED (browser)** | The composer form never rendered, so the route could not be exercised from the UI. The route itself **PASSES** at API level (W10-R2): `{"success":true,"phones":[{"id":"primary","value":"5552345678","isPrimary":true}]}` |
-| 5 | Deliberate submission with incomplete config shows a safe result | **NOT PERFORMED (browser)** | No form to submit. The same behaviour **PASSES** at API level (W10-R2): safe `UNEXPECTED_FAILURE`, **0** Communication records, no provider call |
-| 6 | Timeline card renders the persisted status | **NOT PERFORMED — BLOCKED** | The Person timeline shows a `communication` activity, but the card row is 26 px tall and renders only the label (`Twenty | communication | about 2 hours ago`) — the front component body (body/status/Refresh) does not mount |
-| 7 | Update to `FAILED` → click Refresh → status changes, activity count stays 1 | **NOT PERFORMED (browser)** | There is no Refresh control to click. The underlying chain **PASSES** at API level (W10-R2): activity count stayed **1** and the REST chain returned `status: FAILED` |
+| 3 | Person **Send message** opens the actual composer | **PASS (opens + renders) — corrected by W10-R4** | The command menu lists `Send message · Communication`; clicking it opened a side panel titled `Send message`. In this session the panel body was empty (expired session); W10-R4 confirmed the composer **does** render (Channel SMS / Phone number / Message / Cancel / Send) |
+| 4 | Phone options appear from the authenticated route | **PASS (renders) / NOT PERFORMED (data) — corrected by W10-R4** | The composer form **does** render (W10-R4); its phone-options data call is blocked by the registry execution blocker |
+| 5 | Deliberate submission with incomplete config shows a safe result | **NOT PERFORMED (browser)** | Blocked by the registry execution blocker. The same behaviour **PASSES** at API level (W10-R2): safe `UNEXPECTED_FAILURE`, **0** Communication records, no provider call |
+| 6 | Timeline card renders the persisted status | **PASS — corrected by W10-R5** | The card is a **collapsed row by default** (26 px summary); expanding it mounts the front component, which renders the persisted status |
+| 7 | Update to `FAILED` → click Refresh → status changes, activity count stays 1 | **PASS — corrected by W10-R5** | QUEUED→FAILED became visible after the card's `Refresh`; activity count stayed **1**; Refresh issued **0** writes and exactly **2** reads |
 
 ### 4. The blocker claimed here (SUPERSEDED — see W10-R4)
 
@@ -1508,7 +1519,7 @@ The deployed front (v2.41.0) renders an application detail UI that predates the 
 
 ## W10-R4 — test-runtime restoration, front-component trace, settings contract
 
-Status: **runtime restored at the image level; logic-function execution BLOCKED by host DNS**; **front components PROVEN to render** (corrects W10-R3); **Communication composer renders**; **timeline card still not rendering (isolated)**; **settings contract resolved and verified live**.
+Status: **runtime restored at the image level; logic-function execution BLOCKED (registry access unavailable)**; **front components PROVEN to render** (corrects W10-R3); **Communication composer renders**; its "timeline card still not rendering" finding was **later proven wrong (W10-R5 — the card is a collapsed row by default)**; **settings contract resolved and verified live**.
 
 ### 1. Current runtime (established)
 
@@ -1524,7 +1535,7 @@ POST http://192.168.4.84:3101/s/communication/person-phones
 -> HTTP 500 {"code":"ROUTE_TRIGGER_PLATFORM_ERROR","messages":["Logic function execution failed for 73072230-..."]}
 ```
 
-**Root cause — host DNS sinkhole, not an app defect.** Inside the container the logic-function driver installs the app dependency layer with Yarn 4.9.2 and fails:
+**Root cause — registry access blocked (not an app defect).** Inside the container the logic-function driver installs the app dependency layer with Yarn 4.9.2 and fails:
 
 ```
 ➤ YN0001: │ RequestError: connect ECONNREFUSED 127.201.0.114:443
@@ -1580,15 +1591,66 @@ Two **separate** stores, exactly as the SDK types them:
 
 The W10-R2 API/event results were obtained on the **earlier** v2.41.0 instance **while its dependency layer was still cached** (the `deps-ready` sentinel existed, so `ensureDepsLayer` short-circuited and no registry fetch happened). Those results remain valid **as historical evidence**: routes returned 200, secret masking worked, and a synthetic `QUEUED` record produced exactly 1 timeline activity. They are **not** reproducible now, because the fresh instance has no deps layer and the registry is unreachable. This is an **environment** difference, not an app regression.
 
-### 6. Timeline card — still not rendering (isolated)
+### 6. Timeline card — CORRECTED by W10-R5
 
-On app1 (v2.42.6) the `communication` timeline row renders only its label (26 px) and **no** front-component iframe, even with a fresh session. The metadata the SPA resolves is correct: `timelineActivityType communicationSent` has `frontComponentUniversalIdentifier 762996db-…`, and `frontComponents` contains `communication-timeline-card` with that exact universal identifier. So the boundary is **between the timeline row's renderer selection and the front-component mount** for the timeline path (distinct from the command-menu path, which works). **Not yet fully isolated**; not compensated by changing the app.
+> **This section was incorrect.** W10-R5 proved the card **does** render: it is a **collapsed row by default** (26 px summary) and mounts its front component only when the row is expanded. The row resolved the renderer correctly all along; nothing was broken. See the W10-R5 section.
 
 ### 7. Configuration changes and remaining checks
 
 **Changes:** new volumes + a fresh v2.41.0 container (`twenty-comm-test-app2`, port 3101); `SERVER_URL=http://192.168.4.84:3101`; a test API key minted for `apple` and stored **outside Git** (`D:/twenty-comm-test/.test-api-key2`); a CLI remote `comm-test2`. The app1 instance and its volumes were **preserved untouched**; the real stack was not touched.
 
-**Remaining checks:** composer submission / safe missing-config failure in the UI (blocked by §1); timeline card status + Refresh (blocked by §6); real-provider sending (never performed).
+**Remaining checks:** composer submission / safe missing-config failure in the UI (blocked by §1); real-provider sending (never performed). The timeline card status + Refresh checks **PASS** (W10-R5).
+
+## W10-R5 — timeline renderer isolated and verified
+
+Status: **RESOLVED — the Communication timeline card DOES render.** The earlier "timeline card does not render" finding was **wrong**; the card is a **collapsed row by default** and mounts only when the row is expanded. No app change was needed and none was made. All four W10-R5 verification checks **PASS**.
+
+### 1. The failure boundary (concrete)
+
+The deployed v2.42.6 timeline row (`pjn`) does **all** of the following correctly:
+
+1. resolves the activity type (`PF`) → `frontComponentUniversalIdentifier = 762996db-f9e9-4781-8a88-3820b2943689`;
+2. looks the front component up in the `frontComponentsSelector` store (instrumented `Array.find` captured the real call: 5 components, `foundUid = 762996db-…`, `foundId = 02d42791-fc74-45e6-a624-9dfc1d552ba0`);
+3. builds `{ type: 'frontComponent', frontComponentId: '02d42791-…' }` (`ujn`) and passes it as `renderer` to `X9n`.
+
+The boundary is inside `X9n`: it renders the **collapsed summary row** first, and the card body is mounted only when the row is expanded (the row's own "Expand details" control). Nothing was failing — the renderer was simply not mounted while collapsed. The 26 px row observed in W10-R3/W10-R4 was the **collapsed summary**, not a broken renderer.
+
+### 2. Proof that the rendered card is the app's front component
+
+The visible text exists **only** in the app's component bundle, never in the deployed front bundle:
+
+| String | deployed `index-urwXLTGf.js` | app component `02d42791-…` |
+|--------|------------------------------|-----------------------------|
+| `Message failed` | 0 | 1 |
+| `Message sent` | 0 | 1 |
+| `Delivered` | 0 | 1 |
+| `Refresh` | 0 | 10 |
+
+So the timeline row **is** mounting `communication-timeline-card`; the native front has no such strings.
+
+### 3. Browser verification (actual, signed-in, fresh session)
+
+Instance: `twenty-comm-test-app` (v2.42.6), workspace `apple`, existing synthetic Communication `b4910847-5a18-4325-8672-1be56edf5073` and its existing activity `3265501c-0b41-4f41-a0d3-3a13836bfeb5`.
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | Reproduce with a fresh session | **DONE** | Row collapsed at 26 px, no iframe — reproduced |
+| 2 | Stock front component renders in the same session | **PASS** | `Hello World` renders (USER ID + EXECUTION CONTEXT JSON) |
+| 3 | Persisted status renders correctly | **PASS** | Expanded card: `Message failed · SMS / 5552345678 / W10-R2 synthetic integration record / W10-R2 synthetic failure` |
+| 4 | QUEUED → FAILED visible after manual Refresh | **PASS** | Before: `Message queued · SMS … Refresh` → after clicking the card's `Refresh`: `Message failed · SMS … W10-R5 refresh test failure` |
+| 5 | Same activity, count exactly one | **PASS** | DB: exactly **1** `timelineActivity` with `linkedRecordId = b4910847-…` (activity id unchanged) |
+| 6 | Refresh performs reads only, never sends | **PASS** | Network capture during Refresh: **0** writes; exactly **2** reads — `GET /rest/timelineActivities/3265501c-…` and `GET /rest/communications/b4910847-…` |
+
+The Refresh button is rendered only when the status is pending (`view.isPending`), which is the intended design: a failed/sent record has no re-read affordance.
+
+### 4. App change
+
+**None.** The timeline integration was already correct; the defect was in the **observation**, not the code. No core edit, no app workaround, no identifier change.
+
+### 5. Separated blockers
+
+- **Renderer:** **resolved** (this wave).
+- **Registry/logic-function execution:** **still blocked** — unchanged and unrelated. `ensureDepsLayer` installs the app dependency layer with Yarn 4.9.2 and cannot reach a package registry (`RequestError: connect ECONNREFUSED 127.201.0.114:443`). This does **not** affect rendering (front components load from `/rest/front-components/<id>`, which works) and is **not** claimed to have a single possible remedy.
 
 ## W9-R2 — workspace-owned provider configuration (native application variables)
 
@@ -1652,8 +1714,8 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 
 - **Ownership model corrected.** The authoritative configuration surface is the app-detail **Variables** tab (`Settings → Applications → Communication → Variables`), which edits **workspace** application variables. The **app-registration `Config` → "Server Variables"** screen is the **historical shared route** and must no longer be used for this app's configuration.
 - **Why workspace credentials must not use shared registration values:** `serverVariables` are stored once on the registration and are shared by every workspace that installs the app, so all workspaces would send with the same provider account and sender. Provider credentials and sender identities are per-workspace facts; sharing them is both a security and a correctness defect. Workspace values also override registration values in the execution context, so a leftover shared value would otherwise silently shadow the workspace value.
-- **Stale composer-rendering claim corrected:** W10-R3's "front components do not render" was an expired-session artifact (already corrected in W10-R4); the composer renders.
-- **Broad W0–W9 acceptance corrected:** "accepted at code level" never meant live-verified. The accurate position is: registration/upload/sync, the settings contract and the UI Variables tab are verified; **API/event execution is currently blocked**; the timeline card render is unresolved; real-provider sending is **NOT PERFORMED**.
+- **Stale composer-rendering claim corrected:** W10-R3's "front components do not render" was an expired-session artifact (corrected in W10-R4); the composer renders. Likewise W10-R3/W10-R4's "timeline card does not render" was wrong — the card renders and is simply **collapsed by default** (W10-R5).
+- **Broad W0–W9 acceptance corrected:** "accepted at code level" never meant live-verified. The accurate position is: registration/upload/sync, the settings contract, the UI Variables tab, the front components, the composer **and the timeline card** are verified; **API/event execution is currently blocked**; real-provider sending is **NOT PERFORMED**.
 - **Registry access:** reported as **blocked** (`ensureDepsLayer` cannot reach a package registry). This document does **not** claim that changing global DNS is the only possible remedy — the precise cause (a host-level resolver that returns loopback for the registry names) is recorded, but other remedies (a reachable registry mirror, a network policy change, or a pre-seeded dependency layer) were **not** investigated and remain open.
 - W8 remains **accepted at dependency/build level only**; W7 remains **disabled and blocked**.
 
