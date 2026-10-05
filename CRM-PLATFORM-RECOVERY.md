@@ -699,7 +699,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 + W5-R1 IMPLEMENTED | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message slice `15ad660a64`; W5-R1 outcome-truth + submit-guard correction `ee9c7b1a2f`; see the W5 section below |
+| Communications / Messaging | ACTIVE — W5 + W5-R1 IMPLEMENTED | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message slice `15ad660a64`; W5-R1 outcome-truth + submit-guard correction `0853765a9891b400aea20909cad62a17a18c4435`; see the W5 section below |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -730,7 +730,7 @@ Person record
 
 ## W5-R1 — outcome truth and submission guard (IMPLEMENTED)
 
-Status: **IMPLEMENTED / COMMITTED** at `ee9c7b1a2f` (`fix(apps): harden send outcome reporting`).
+Status: **IMPLEMENTED / COMMITTED** at `0853765a9891b400aea20909cad62a17a18c4435` (`fix(apps): harden send outcome reporting`).
 
 - **Outcome truth.** The handler now classifies failures instead of collapsing everything into "could not be sent":
   - `PROVIDER_FAILED` — the provider returned a normalized `FAILED` (with its declared reason).
