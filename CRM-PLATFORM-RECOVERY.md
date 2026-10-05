@@ -50,6 +50,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
+| W8 | `8ecbd449d633ddd248dfc08f3526fc34b0788cc0` | `W8_DOC_SHA` | dependency/build boundary + version compatibility |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
@@ -733,7 +734,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W6 CODE-REVIEW ACCEPTED (live verification NOT PERFORMED) | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`; next planned: W7 Workflow reuse (NOT STARTED) |
+| Communications / Messaging | ACTIVE — W0–W6 + W8 code-review accepted; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (live verification NOT PERFORMED) | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`; no next wave assigned |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -1099,7 +1100,7 @@ There is **no supported app-side mechanism** to fail a Workflow step:
 2. **Subject coverage.** The previous subject test only asserted `result.success`. It now captures the message received by the fake provider **and** the `createCommunication` payload, asserting both equal the input and each other, plus omission when no subject is supplied.
 3. **Shared validation.** W7 **refactored the Person handler** (`send-person-communication-handler.ts`) to use the new shared `validateCommunicationRequest`. W5's Person tests were updated accordingly — the W5 files were **not** left unchanged.
 
-### Call path (unchanged by W7-R1)
+### Call path — HISTORICAL / INACTIVE (kept for reference only)
 
 ```
 Workflow step "Send Communication"
@@ -1111,7 +1112,13 @@ Workflow step "Send Communication"
   → CommunicationSendService → ProviderRegistry → Kavenegar | RazPayamak
 ```
 
-### Outcome and retry semantics
+### Current behavior (authoritative)
+
+The Workflow entry is **disabled**: no trigger is registered, and the handler returns
+`{ success: false, failureCode: 'WORKFLOW_ACTION_DISABLED', error: 'Communication sending from Workflow is unavailable.' }`
+before constructing any client. Nothing below this line executes in production.
+
+### Outcome and retry semantics — HISTORICAL / INACTIVE (adapter retained for future work)
 
 - `success: true` only for a completed send whose outcome was durably recorded.
 - Normal `FAILED` → `PROVIDER_FAILED`, `isOutcomeKnown: true`.
@@ -1127,6 +1134,54 @@ Workflow step "Send Communication"
 - Author- or operator-initiated re-runs (retry workflow run) also send again.
 - Delivery has no evidence source yet, so `SENT` is never presented as `DELIVERED`.
 
+## W8 — dependency/build boundary and version compatibility
+
+Status: **IMPLEMENTED / COMMITTED** at `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`. Live installation still **NOT PERFORMED**.
+
+### Dependency findings
+
+The app imported two packages it never declared, so both were supplied indirectly by the monorepo:
+
+| Package | Where used | Correct scope | Why |
+|---------|-----------|---------------|-----|
+| `@sniptt/guards` | `isNonEmptyString` in production code | **`dependencies`** | Bundled into the logic-function runtime, so it must be a runtime dependency (matches Fathom / Call-recorder / Fireflies / Slack precedent, which all declare it in `dependencies`) |
+| `vitest` | test files | **`devDependencies`** | Test-only (matches every app that ships tests) |
+
+Also added `@typescript/native-preview` (`tsgo`), which the `typecheck` script needs, and a documented `build` script. **No business logic was rewritten and no framework was introduced.**
+
+### Version compatibility — corrected from evidence
+
+The declared versions were **wrong**: the app used APIs that do not exist in the version it declared.
+
+- Declared before W8: `twenty-sdk` / `twenty-client-sdk` `2.31.0`, `engines.twenty` `>=2.19.0`.
+- The app imports `defineTimelineActivityType` (`twenty-sdk/define`), `createTimelineActivity` + `CreateTimelineActivityInput` (`twenty-sdk/logic-function`), and `useTimelineActivityId` (`twenty-sdk/front-component`).
+- **Probed published versions** (installed each into a throwaway directory and inspected its `dist` typings): `2.31.0` and `2.33.0` are **missing** all four symbols; **`2.35.0` is the first version where all are present** (also verified at 2.37.0 and 2.38.0).
+- The monorepo workspace SDK is `2.42.0`, which is why the monorepo build passed while the declared version could not: the app was silently resolving the workspace SDK rather than its declared one.
+- Corrected to `twenty-sdk` / `twenty-client-sdk` `2.35.0` and `engines.twenty` `>=2.35.0`. `engines.twenty` is copied verbatim into the manifest's `requiredServerVersionRange`, so this is the app's **declared** server range.
+
+**Distinguish the evidence levels:** `>=2.35.0` is *source-inspected and build-verified* (the isolated build and the full test suite pass at exactly 2.35.0). It is **not** live-installed compatibility, and it is **not** a claim about all future versions.
+
+### Isolated verification (performed)
+
+A disposable copy outside the monorepo (`D:\twenty-iso-communication`) was created containing **only** the app's source and configuration — no `node_modules`, no `dist`, no parent packages. Its `.nvmrc` pins Node 24.5.0, which is not installed on this machine, so the copy's `.nvmrc` was renamed **in the disposable directory only** (the real tree was untouched).
+
+With only the declared dependencies installed from the public registry:
+
+- `yarn install` → succeeded (no borrow from the monorepo).
+- `yarn test` → **165/165 tests pass**.
+- `yarn typecheck` (`tsgo`) → **pass**.
+- `yarn lint` (`oxlint`) → **0 warnings / 0 errors**.
+- `twenty dev:build` → **build succeeded (14 files)**; manifest showed **0 Workflow actions**, 4 logic functions, 2 front components, 1 timeline activity type.
+
+This proves the app's dependency and build boundary is **independently reproducible**. The `.nvmrc` Node pin and the absence of a committed app-local lockfile are the two remaining reproducibility caveats.
+
+### Boundaries verified
+
+- No production imports from `twenty-server` / `twenty-front` internals (the only match is a comment in a test naming the verified source file).
+- No raw DB access; no `twenty-shared` imports.
+- Platform access stays behind app-local SDK adapters (`RestApiClient`, `CoreApiClient`, `MetadataApiClient`).
+- Stable universal identifiers unchanged; the Workflow entry remains **disabled and unregistered**.
+
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 
 - **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineState` (the full `timelineActivityId → activity → linked Communication → presentation` chain, with `recordId: null` in the context, every unavailable reason, no error leakage, and read-only access), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, unavailable states, snapshot use, body truncation). 136 focused tests PASS.
@@ -1136,6 +1191,6 @@ Workflow step "Send Communication"
 - **W7-R2 actual production coverage:** the shipped disabled entry is tested directly (valid input, empty and malformed input, and hostile input carrying senderId/workspaceId/enabled all return WORKFLOW_ACTION_DISABLED), together with configuration assertions (no workflowActionTriggerSettings, no alternative trigger, unchanged universal identifier) and a spy proving the reusable send handler is never called.
 - **W7-R1 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
 - **W7 still not verified:** live Workflow execution. The app is not installed, so the step has never run inside a real workflow; manifest registration is wiring evidence only, not proof of execution.
-- **Current validated totals (after W7-R2):** 165 focused tests PASS; typecheck PASS; oxlint 0/0 (74 files); app build PASS (**13 files**). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired) and **9 server variables**.
+- **Current validated totals (after W8):** 165 focused tests PASS; typecheck PASS; oxlint 0/0 (74 files); app build PASS (13 files). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired), **9 server variables** and `requiredServerVersionRange` **`>=2.35.0`**.
 - W4 `CommunicationSendAndPersistService` unchanged; the timeline path cannot reach a provider and never uses `context.recordId`. **W7 did refactor the W5 Person handler** to use the shared validation.
 
