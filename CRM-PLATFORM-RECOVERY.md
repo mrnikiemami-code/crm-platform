@@ -53,7 +53,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted on dependency/build evidence only** — this is NOT server/runtime or live-install compatibility; Node-pin and live-install limitations retained |
 | W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
 | W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
-| W10-R2 | _pending commit_ | _this document_ | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
+| W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
 
 **Live verification: PERFORMED (synthetic integration only) as of W10-R2.** The Communication app is installed on the isolated instance `twenty-comm-test-app` (v2.41.0, workspace `apple`). Registration, upload (14/14 files), metadata sync (92 entities), the authenticated routes, database-event delivery and timeline rendering were all exercised with **synthetic** records. **No real provider request was ever made**, delivery receipts are unverified, and the composer's React render was not exercised in a signed-in browser. See the W10 / W10-R2 section for the exact evidence and the synthetic-vs-real separation.
 
