@@ -22,11 +22,11 @@ Repository:
 Branch:
 `crm-platform`
 
-HEAD:
+Verified baseline (before this documentation commit):
 `cafce80a4e23fc5d817a56d80cb9e3e4dc1bd938` — `docs(recovery): record Communication W6-R2 native data path`
 
 Origin Sync:
-`HEAD == origin/crm-platform` at `cafce80a4e23fc5d817a56d80cb9e3e4dc1bd938`. Direct recovery-document commits may subsequently move origin ahead; each task must fetch/read Recovery and fast-forward safely before implementation.
+At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
 `CRM-COMMUNICATIONS-001-W6` + `W6-R1` + `W6-R2` — Person timeline integration, **code-review accepted** (`b464171e2a` implementation, corrected by `fd9e0988c6` and `10af7c560f`).
@@ -630,11 +630,13 @@ A registry selects the provider/channel driver. Do **not** extend `MessageOutbou
 - encryption key availability in deployment environment
 - timeline noise at high message volume
 
-## W0 implementation review — IMPLEMENTED / VALIDATED / NOT YET ACCEPTED
+## W0 implementation review — HISTORICAL (superseded; W0 is code-review accepted)
+
+> Historical record written before W0 was reviewed. W0 and W0-R1 are now **code-review accepted** (implementation `bbddd56c73`); see the milestone table in the Current Checkpoint. Nothing below is pending.
 
 Task: `CRM-COMMUNICATIONS-001-W0`.
 
-Implementation exists locally but is intentionally uncommitted pending review. Reported implementation is confined to:
+At the time this was written the implementation existed locally and was uncommitted pending review. It has since been committed as `bbddd56c73`. Reported implementation is confined to:
 
 `packages/twenty-apps/internal/communication/`
 
@@ -660,7 +662,7 @@ Do not expose `WHATSAPP`, `TELEGRAM`, `INSTAGRAM`, or `BALE` until the correspon
 
 This preserves the product rule: unsupported features must not appear as dead controls.
 
-W0 remains **NOT COMMITTED / NOT PUSHED** until this bounded correction is validated.
+**HISTORICAL:** W0 was not committed until this bounded correction was validated; it is now committed and pushed (`bbddd56c73`, `W0-R1`).
 
 ## W0-R1 review — ACCEPTED / READY TO COMMIT
 
@@ -710,7 +712,7 @@ Certified architecture: one `CommunicationSendAndPersistService` owns QUEUED→o
 
 Known accepted limitations: no distributed atomicity between provider and workspace DB; a double failure can still leave the durable row QUEUED but is now explicit/diagnosable; recipient is not normalized; provider-declared response messages are persisted as failureReason; no live-workspace end-to-end smoke yet.
 
-Immediate next task: build the first real **Person send-message vertical slice** using Twenty Apps native server logic-function + command/front-component patterns. The UI must call the same certified durable orchestration; secrets/provider HTTP remain server-side. Keep unsupported channels hidden. Do not duplicate send logic in the UI.
+> **HISTORICAL W4 CHECKPOINT — SUPERSEDED.** The "immediate next task" recorded here (build the Person send-message vertical slice) was **completed** by W5, corrected by W5-R1/R2/R3, and the timeline was added by W6/W6-R1/W6-R2. All are code-review accepted. Nothing here is pending.
 
 ---
 
@@ -729,7 +731,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 CODE-REVIEW ACCEPTED; W6 + W6-R1 + W6-R2 TIMELINE IMPLEMENTED (acceptance pending W6-R2) | W0–W4 accepted; W5 slice `15ad660a64` with R1 `0853765a98`, R2 `defdc41e9d`, R3 `7b21608880`; W6 timeline `b464171e2a`, corrected by R1 `fd9e0988c6` and R2 `10af7c560f583acc8f08d9b4ba1b13f9a8a742d0`; live end-to-end verification still pending |
+| Communications / Messaging | ACTIVE — W0–W6 CODE-REVIEW ACCEPTED (live verification NOT PERFORMED) | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`; next planned: W7 Workflow reuse (NOT STARTED) |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -833,7 +835,7 @@ Two verified defects fixed:
 ## Known limitations
 
 - No live end-to-end smoke (app not installed).
-- No timeline presentation yet (deliberately out of scope).
+- ~~No timeline presentation yet (deliberately out of scope).~~ **HISTORICAL W5 LIMITATION — RESOLVED at code level by W6-R2** (the card loads `timelineActivityId` → activity → Communication and renders the persisted status with a manual Refresh). **Live Timeline rendering remains unverified.**
 - Recipient numbers are not normalized (out of scope).
 - Composer UI is functional but minimal (no RTL/i18n polish beyond `useTranslate`).
 
@@ -867,7 +869,7 @@ Navigation / Settings / Startup:
 - `0d5b0b772d` — return to object settings after editing a field
 - `6fad08b92c` — align Persian experience and self-hosted feature gates
 - `272bfa0715` — disable enterprise development testing override
-- `831204b74a` — phased readiness so cold backend startup is not killed (HEAD)
+- `831204b74a` — phased readiness so cold backend startup is not killed
 
 Windows / files:
 - `a9e3b0fbbf` — restore profile picture preview on Windows local storage
@@ -912,8 +914,20 @@ JALALI PRESENTATION LAYER COMPLETE (Jalali Phases 1–5 committed),
 plus Persian/RTL, Data Model, Record Detail, Navigation, Kanban/system-status,
 Settings/Experience, and development-startup fixes committed.
 
+Communications / Messaging is ACTIVE and code-review accepted through W6-R2:
+W0 app skeleton, W1 provider boundary, W2 Kavenegar, W3 multi-provider + RazPayamak,
+W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2/R3),
+W6 Person timeline integration (+ W6-R1/R2). Do NOT redo any of these waves.
+
+LIVE VERIFICATION IS STILL NOT PERFORMED for the Communications app: it has never been
+installed on a running instance, so no composer submission, provider call, database-event
+delivery or timeline activity has occurred end to end. Do not claim end-to-end completion.
+
+Next planned task (NOT STARTED, requires explicit assignment): CRM-COMMUNICATIONS-001-W7 —
+Workflow reuse of the certified durable send path (CommunicationSendAndPersistService).
+
 The Jalali presentation program is complete; do not start another Jalali phase.
-Branding remains planned. Communications / Messaging is ACTIVE: W0 skeleton, W1 provider boundary, and W2 Kavenegar/send path are committed. The next Communications task is multi-provider-per-channel selection + RazPayamak Smart; do not redo P0/W0/W1/W2.
+Branding remains planned. Do not start W7 or any other wave automatically.
 
 Any future date work must stay presentation-only.
 Do not change DB/API/GraphQL/domain/workflow-engine/cron canonical date semantics.
