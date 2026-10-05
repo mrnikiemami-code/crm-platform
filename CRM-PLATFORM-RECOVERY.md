@@ -51,7 +51,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
 | W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted at dependency/build level** (Node-pin and live-install limitations retained) |
-| W9 / W9-R1 | `91961e601f` (+R1 `64cc23d55852bb65a32b6d530ebe55727b14906b`) | `55774de9ad`, `a7df6d1c89` (+R1 `W9R1_DOC_SHA`) | **implemented but NOT ACCEPTED pending W9-R1** — custom settings tab retired; native Variables tab is authoritative |
+| W9 / W9-R1 | `91961e601f` (+R1 `64cc23d55852bb65a32b6d530ebe55727b14906b`) | `55774de9ad`, `a7df6d1c89` (+R1 `0d7d232a50`) | **implemented but NOT ACCEPTED pending W9-R1** — custom settings tab retired; native Variables tab is authoritative |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
