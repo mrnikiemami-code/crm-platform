@@ -182,6 +182,10 @@ export const sendCommunicationWorkflowHandler = async (
       };
     }
 
+    // This catch also covers an unexpected provider throw followed by a
+    // SUCCESSFUL FAILED-state write. A definite non-send therefore cannot be
+    // inferred: the failure may have happened after the provider accepted the
+    // message. Only uncertainty is truthful.
     console.warn(
       '[communication] workflow send failed',
       JSON.stringify({
@@ -190,9 +194,13 @@ export const sendCommunicationWorkflowHandler = async (
       }),
     );
 
-    return fail('The message could not be sent.', 'UNEXPECTED_FAILURE', {
+    return {
+      success: false,
+      failureCode: 'UNEXPECTED_FAILURE',
       isOutcomeKnown: false,
-    });
+      error:
+        'The message may or may not have been sent. Check the communication history before re-running this step.',
+    };
   }
 
   if (result.status === 'FAILED') {

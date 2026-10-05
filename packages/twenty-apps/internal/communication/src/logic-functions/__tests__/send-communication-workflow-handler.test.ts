@@ -143,19 +143,82 @@ describe('sendCommunicationWorkflowHandler', () => {
     });
   });
 
-  it('preserves the subject from the single source of truth', async () => {
-    const { client } = buildFakeClient();
-    const { registry } = buildRegistry({
-      status: 'SENT',
-      providerMessageId: '42',
-    });
+  it('sends and persists exactly the supplied subject', async () => {
+    const { client, mutations } = buildFakeClient();
+    const providerMessages: { subject?: string }[] = [];
+
+    const provider: CommunicationProvider = {
+      id: 'razpayamak',
+      channel: 'SMS',
+      capabilities: () => ({
+        supportsSubject: false,
+        supportsDeliveryReceipt: false,
+      }),
+      send: async (message) => {
+        providerMessages.push({ ...(message.subject === undefined ? {} : { subject: message.subject }) });
+
+        return { status: 'SENT', providerMessageId: '42' };
+      },
+    };
+
+    const registry = new CommunicationProviderRegistry();
+
+    registry.register(provider);
 
     const result = await sendCommunicationWorkflowHandler(
-      { ...baseParameters, subject: 'موضوع' },
+      { ...baseParameters, subject: 'موضوع پیام' },
       { client: client as never, registry },
     );
 
     expect(result.success).toBe(true);
+
+    const created = mutations.find(
+      (mutation) => mutation.mutationName === 'createCommunication',
+    );
+    const persistedSubject = (
+      created?.args.data as Record<string, unknown>
+    ).subject;
+
+    // The provider received the subject...
+    expect(providerMessages[0].subject).toBe('موضوع پیام');
+    // ...and history snapshotted that exact same value.
+    expect(persistedSubject).toBe('موضوع پیام');
+    expect(persistedSubject).toBe(providerMessages[0].subject);
+  });
+
+  it('omits the subject when none is supplied', async () => {
+    const { client, mutations } = buildFakeClient();
+    const providerMessages: Record<string, unknown>[] = [];
+
+    const provider: CommunicationProvider = {
+      id: 'razpayamak',
+      channel: 'SMS',
+      capabilities: () => ({
+        supportsSubject: false,
+        supportsDeliveryReceipt: false,
+      }),
+      send: async (message) => {
+        providerMessages.push({ ...message });
+
+        return { status: 'SENT', providerMessageId: '42' };
+      },
+    };
+
+    const registry = new CommunicationProviderRegistry();
+
+    registry.register(provider);
+
+    await sendCommunicationWorkflowHandler(baseParameters, {
+      client: client as never,
+      registry,
+    });
+
+    const created = mutations.find(
+      (mutation) => mutation.mutationName === 'createCommunication',
+    );
+
+    expect(providerMessages[0]).not.toHaveProperty('subject');
+    expect(created?.args.data).not.toHaveProperty('subject');
   });
 
   it('rejects an unsupported channel without sending', async () => {
@@ -319,13 +382,70 @@ describe('sendCommunicationWorkflowHandler', () => {
       registry,
     });
 
-    expect(result).toEqual({
-      success: false,
-      failureCode: 'UNEXPECTED_FAILURE',
-      isOutcomeKnown: false,
-      error: 'The message could not be sent.',
-    });
+    expect(result.success).toBe(false);
+    expect(result.failureCode).toBe('UNEXPECTED_FAILURE');
+    expect(result.isOutcomeKnown).toBe(false);
+    // A definite non-send cannot be claimed even here: the status is unknown.
+    expect(result.error).toContain('may or may not have been sent');
+    expect(result.error).not.toContain('could not be sent');
+    // Nothing was sent, and no record survived.
     expect(sent).toHaveLength(0);
+  });
+
+  describe('unexpected provider throw', () => {
+    it('stays uncertain when the FAILED state was written successfully', async () => {
+      const { client, mutations } = buildFakeClient();
+      const { registry, sent } = buildRegistry(() => {
+        throw new Error('SECRET-API-KEY in transport error');
+      });
+
+      const result = await sendCommunicationWorkflowHandler(baseParameters, {
+        client: client as never,
+        registry,
+      });
+
+      // A stored FAILED status does NOT prove external non-delivery.
+      expect(result).toEqual({
+        success: false,
+        failureCode: 'UNEXPECTED_FAILURE',
+        isOutcomeKnown: false,
+        error:
+          'The message may or may not have been sent. Check the communication history before re-running this step.',
+      });
+      expect(result.error).not.toContain('could not be sent');
+      expect(JSON.stringify(result)).not.toContain('SECRET-API-KEY');
+      // Exactly one provider call.
+      expect(sent).toHaveLength(1);
+      // The FAILED state was recorded.
+      const outcomeUpdate = mutations.find(
+        (mutation) => mutation.mutationName === 'updateCommunication',
+      );
+
+      expect(outcomeUpdate?.args).toMatchObject({ data: { status: 'FAILED' } });
+    });
+
+    it('stays uncertain when the FAILED write also fails', async () => {
+      const { client } = buildFakeClient({ failOutcomeUpdate: true });
+      const { registry, sent } = buildRegistry(() => {
+        throw new Error('SECRET-API-KEY in transport error');
+      });
+
+      const result = await sendCommunicationWorkflowHandler(baseParameters, {
+        client: client as never,
+        registry,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        communicationId: 'communication-1',
+        failureCode: 'UNEXPECTED_FAILURE',
+        isOutcomeKnown: false,
+        error:
+          'The send outcome is unknown. Check the communication history before re-running this step.',
+      });
+      expect(JSON.stringify(result)).not.toContain('SECRET-API-KEY');
+      expect(sent).toHaveLength(1);
+    });
   });
 
   it('stays truthful when a SENT outcome cannot be persisted', async () => {
