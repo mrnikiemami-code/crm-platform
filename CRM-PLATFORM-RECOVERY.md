@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W10-R2` — the app is **installed and live-verified on the isolated instance** (registration → upload 14/14 → sync 92 entities), and the W10 installed checks were executed against it. Provider configuration was kept incomplete, so this is **synthetic integration evidence only** (no real SMS/provider request). The install also surfaced and fixed three real app defects (invalid option UUIDs, a wrong `person` query shape, an untyped status union). Earlier W10/W10-R1 claims of a "Windows CLI defect" and a "wrong upload host" are **corrected** in the W10 section below.
+`CRM-COMMUNICATIONS-001-W10-R3` — the app is **installed and live-verified on the isolated instance** (registration → upload 14/14 → sync 92 entities; W10-R2), and a **signed-in browser** pass was performed (W10-R3). Browser findings: the app's Settings page, the `Send message` command and the `Hello World` sample command all open correctly, but **front components do not render in this environment** (the lazy `FrontComponentRenderer` chunk is never requested) — so the composer form and the timeline card status/Refresh could not be verified. Provider configuration was kept incomplete: **synthetic integration evidence only, no real SMS/provider request**. Earlier W10/W10-R1 claims of a "Windows CLI defect" and a "wrong upload host" are **corrected** in the W10 section below.
 
 ## Communications milestones — code-review acceptance
 
@@ -54,8 +54,16 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
 | W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
 | W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
+| W10-R3 | `_pending commit_` | `_this document_` | **signed-in browser verification**: UI navigation **PASS**; **in-app front-component rendering FAIL (environment)**; timeline card status render + Refresh **NOT PERFORMED — BLOCKED** |
 
-**Live verification: PERFORMED (synthetic integration only) as of W10-R2.** The Communication app is installed on the isolated instance `twenty-comm-test-app` (v2.41.0, workspace `apple`). Registration, upload (14/14 files), metadata sync (92 entities), the authenticated routes, database-event delivery and timeline rendering were all exercised with **synthetic** records. **No real provider request was ever made**, delivery receipts are unverified, and the composer's React render was not exercised in a signed-in browser. See the W10 / W10-R2 section for the exact evidence and the synthetic-vs-real separation.
+**Evidence levels (do not conflate them):**
+
+1. **Registration / upload / sync — PASS (W10-R2).** 14/14 files, `Plan: 92 to add`, 1 object, 4 logic functions, 2 front components, 1 timeline type, 9 registration variables.
+2. **API / event execution — PASS (synthetic, W10-R2).** Authenticated routes (`/s/communication/person-phones`, `/s/communication/send`) executed correctly; a synthetic `QUEUED` record produced exactly **1** timeline activity via the `communication.created` database event, and a `FAILED` update kept the count at 1. This is **not** real-provider proof.
+3. **Browser rendering — PARTIAL (W10-R3).** Signed-in browser: Settings → Apps → Communication opened, the app's `Send message` command and `Hello World` command both opened a panel, but the **front components did not render** and the timeline card showed only the label. See the W10-R3 section.
+4. **Real sending — NOT PERFORMED.** No Kavenegar/RazPayamak request, no delivery receipt, no real credentials.
+
+**Live verification: PERFORMED (synthetic integration only) as of W10-R2**, with the browser-rendering caveat above. The Communication app is installed on the isolated instance `twenty-comm-test-app` (workspace `apple`). **No real provider request was ever made** and delivery receipts are unverified.
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -64,7 +72,7 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: ACTIVE. W0–W6 implemented and code-review accepted (see the milestone table above). The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W9 implemented and code-review accepted; **W10-R2** installed the app on the isolated instance and verified the API/event path (synthetic); **W10-R3** performed a signed-in browser pass (UI navigation PASS; front-component rendering blocked by the environment). The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
 
 ## Communications — authoritative current behavior
 
@@ -77,12 +85,14 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10/W10-R1**: the isolated test instance, test workspace, CLI remote and test API key are **prepared and still running**, but every installed check is **NOT PERFORMED — BLOCKED** on two Windows defects in the published CLI upload path (backslash resource paths rejected by the server; a second batch targeting port 2020). Fixing them requires an upstream/core change, which is out of scope. Do not start another wave automatically.
+No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10-R2** installed the app on the isolated instance (registration → upload 14/14 → sync 92 entities) and exercised the runtime checks (synthetic). **W10-R3** performed a signed-in browser pass: UI navigation **PASS**, but **front components do not render in this environment** (confirmed with a stock sample app), so the composer form and the timeline card status/Refresh are **NOT PERFORMED**. Do not start another wave automatically.
 
-**W10 blocker — exact prerequisites for installed verification:**
-1. A **disposable or test workspace** on a running instance, distinct from the user's real data. The only database available here is `localhost:5432/default` (Docker `twenty-db-1`), which holds the user's **single real workspace** ("4D", subdomain `radiant-cyan-dragon`) and is shared by the source dev `.env`; `docker exec twenty-db-1 psql -c "\\l"` lists only `default`, `postgres`, `template0`, `template1`. Creating one requires a new database or a fresh container — out of scope (no DB writes, no resets, no production installs).
-2. **Installation credentials** for that instance (a CLI remote/API key). `remote:list` shows only an unauthenticated `local http://localhost:2020 [none]`.
-3. A running server reachable by the CLI. The Docker instance on **:3002** runs image `twentycrm/twenty:latest` (built 2026-09-16, corresponding to server `v2.41.0`), while the app declares `>=2.35.0`; the source dev server on :3000 is **not running**.
+**W10/W10-R1 "no environment" prerequisites — HISTORICAL / RESOLVED:**
+1. A disposable test workspace now exists: the isolated container `twenty-comm-test-app` with its own database, Redis and volumes, and the seeded workspace `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`). The real stack and its single workspace were never touched.
+2. Installation credentials exist: a test API key minted for `apple`, stored **outside Git** at `D:/twenty-comm-test/.test-api-key`, and a CLI remote `comm-test`.
+3. A CLI-reachable server exists. `SERVER_URL` is set to `http://192.168.4.84:3100` so both the host browser and the Linux CLI container reach the same origin. The isolated instance currently runs **v2.42.6** (the v2.41.0 instance that W10-R2 verified cannot be restored after the 2.42.6 DB migration); v2.42.6 executes logic functions through an offline dependency-layer install and is therefore limited for runtime execution — see the W10-R3 section.
+
+The old Windows CLI defects are **HISTORICAL**: the backslash symptom is real on Windows but was bypassed by running the CLI in Linux, and the "port 2020" upload failure was a **test-instance `SERVER_URL` misconfiguration**, corrected in the W10 section. Do not restate them as current blockers.
 
 ---
 
@@ -742,9 +752,11 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 code-review accepted; **W10-R2 installed + live-verified (synthetic integration)**; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending and delivery receipts still NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 (this wave); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 code-review accepted; **W10-R2 installed + live-verified (synthetic integration)**; **W10-R3 browser checks: UI navigation PASS, in-app front-component rendering FAIL (environment), timeline card status NOT PERFORMED**; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending and delivery receipts still NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 (this wave); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
-| Person composer React render | NOT PERFORMED | Registration is verified; opening the composer requires a signed-in browser session |
+| Person composer React render | **NOT PERFORMED — ENVIRONMENT BLOCKER** | W10-R3 opened the actual composer and the sample "Hello World" app command in a signed-in browser; in **both** cases the panel stayed empty and the lazy `FrontComponentRenderer` chunk was never requested. Front-component rendering is broken instance-wide, not app-specific. See W10-R3. |
+| Timeline card status render + Refresh button | **NOT PERFORMED — ENVIRONMENT BLOCKER** | The card row renders only the label at 26 px height; the front component does not mount, so no status/body and no Refresh control exist to click. See W10-R3. |
+| Isolated instance dependency-layer install | BLOCKED | v2.42.6's logic-function driver runs `yarn install` for the app layer at first execution and the container cannot reach package registries (`registry.yarnpkg.com`/`registry.npmjs.org` resolve to loopback). v2.41.0 executes logic functions directly and was therefore used for the runtime checks. |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -806,7 +818,7 @@ Two corrections on top of W5-R1, both inside the Communication app:
 
 W5 + W5-R1 + W5-R2 + W5-R3 are **ACCEPTED at code-review level** (`7b21608880556576c7a75ba0860dcda7e517d23c`). The composer slice, its truthful outcome classification, and its synchronous submission guard are implemented and covered by focused tests against the shipped modules.
 
-**Live verification is still pending.** The app has never been installed on a running instance in this environment, so composer → route → provider remains unverified end-to-end. Do not treat W5 as live-verified.
+**Live verification (HISTORICAL — superseded by W10-R2/W10-R3).** At W5 the app had never been installed anywhere, so `composer → route → provider` was unverified end-to-end. That is no longer true: the app is now installed on the isolated instance (W10-R2) and the authenticated routes were exercised (synthetic integration). The composer's **React render** specifically remains **NOT PERFORMED** — see W10-R3. Real-provider sending is still unverified.
 
 ## W5-R3 — unknown-outcome wording and duplicate presentation (IMPLEMENTED)
 
@@ -933,17 +945,28 @@ W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2
 W6 Person timeline integration (+ W6-R1/R2), W10-R2 installed verification (synthetic).
 Do NOT redo any of these waves.
 
-INSTALLED VERIFICATION: the app is now **installed and live-verified on the isolated instance**
+INSTALLED VERIFICATION: the app is **installed and live-verified on the isolated instance**
 (W10-R2): registration, upload (14/14 files) and metadata sync (92 entities) all PASS, and all 8
-runtime checks PASS — native variables, secret masking (fake value), Person command-menu
-registration, the `/communication/person-phones` route, safe missing-config failure, live absence of
-the Workflow action, and a synthetic QUEUED→timeline→FAILED→refresh cycle. This is **synthetic
-integration evidence only**: provider config was kept incomplete and **no real SMS/provider request
-was made**; the composer's React render was not exercised in a signed-in browser. The install also
-fixed three real app defects (invalid option UUIDs, a wrong `person` query shape, an untyped status
-union). W10/W10-R1's "Windows CLI defect" and "wrong upload host" claims are corrected in the W10
-section: the upload-URL failure was a test-instance `SERVER_URL` misconfiguration, and the remaining
-upload failure was a CLI/server version mismatch on the file MIME constraint.
+runtime checks PASS at API/event level — native variables, secret masking (fake value), Person
+command-menu registration, the `/communication/person-phones` route, safe missing-config failure,
+live absence of the Workflow action, and a synthetic QUEUED→timeline→FAILED→refresh cycle. This is
+**synthetic integration evidence only**: provider config was kept incomplete and **no real
+SMS/provider request was made**.
+
+BROWSER VERIFICATION (W10-R3): a signed-in browser pass was performed. Settings → Apps →
+Communication opens (**PASS**), and the app's `Send message` command and the stock `Hello World`
+sample command both open a panel — but **front components do not render in this environment** (the
+lazy `FrontComponentRenderer` chunk is never requested; the sample app fails identically), so the
+composer form, the phone-options UI and the timeline card status/Refresh are **NOT PERFORMED**. The
+native Variables tab is **not present** because the workspace `applicationVariables` list is empty
+(the app declares registration-scoped `serverVariables`). No app change was made — the blocker is
+environment-wide.
+
+The install also fixed three real app defects (invalid option UUIDs, a wrong `person` query shape,
+an untyped status union). W10/W10-R1's "Windows CLI defect" and "wrong upload host" claims are
+corrected in the W10 section: the upload-URL failure was a test-instance `SERVER_URL`
+misconfiguration, and the remaining upload failure was a CLI/server version mismatch on the file
+MIME constraint.
 
 W7 (Workflow reuse of CommunicationSendAndPersistService) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**: the native Workflow contract reports a business failure as a SUCCESS step, and no supported app-side mechanism exists to fail the step without risking a duplicate send. The Workflow action is therefore unregistered and its entry refuses to send. See the W7 section.
 
@@ -1186,8 +1209,8 @@ Release-tag containment (`git tag --contains 2f27360df3`):
 
 So the evidence-based **minimum server release is 2.34.0** (the first server tag containing the capability), which is **earlier than the SDK version the app must compile against** (2.35.0). `engines.twenty` therefore stays **`>=2.35.0`**: the app requires the SDK at 2.35.0+, and 2.35.0 is also a valid server release, so the range is conservative and defensible rather than minimal. The server minimum was **not** inferred from the SDK version alone.
 
-**C. Live-installed compatibility (NOT verified).**
-The app has never been installed on a running instance, so no claim is made that a 2.35.0 SDK app runs against any particular live server.
+**C. Live-installed compatibility (PARTIALLY verified — W10-R2/W10-R3).**
+The app **has** been installed and executed on the isolated instance (`twenty-comm-test-app`). The W10-R2 run installed it against **server v2.41.0** with the locked **2.35.0** app dependencies and its logic functions/routes executed (synthetic). A **v2.42.6** instance was also tried: it registered and served the app but could not execute logic functions because its dependency-layer install requires registry access (unavailable here). No claim is made about other live server versions.
 
 **D. Future upgrade compatibility (NOT verified).**
 Nothing is claimed about 2.36.0+ server releases, future SDK majors, or upstream merge behavior.
@@ -1305,7 +1328,7 @@ Richer per-provider configuration UX (validation guidance, provider-specific fie
 
 ## W10 / W10-R1 / W10-R2 — installed-app verification
 
-Status: **INSTALLED AND LIVE-VERIFIED (synthetic integration only)**. The app is registered, uploaded and metadata-synced on the isolated instance, and the installed runtime checks below were executed. Provider configuration was deliberately kept incomplete: **no real SMS or provider request was made**.
+Status: **INSTALLED AND LIVE-VERIFIED at API/event level (synthetic integration only)**; **browser rendering PARTIAL** (see W10-R3). The app is registered, uploaded and metadata-synced on the isolated instance, and the installed runtime checks below were executed. Provider configuration was deliberately kept incomplete: **no real SMS or provider request was made**.
 
 ### 1. Historical blockers — RESOLVED / CORRECTED
 
@@ -1325,7 +1348,7 @@ The W10 / W10-R1 claims are retained only as history; W10-R2 supersedes them wit
 | App-locked published SDK | `twenty-sdk@2.35.0` (from the app's committed `yarn.lock`) | the dependency the app is pinned to |
 | Locked CLI (2.35.0) | `/work/app/node_modules/twenty-sdk/dist/cli.cjs` — **2.35.0** | used first; **failed** on the server's file constraint |
 | Install CLI (server-aligned) | `/usr/local/bin/twenty` — **2.41.0** (`npm i -g twenty-sdk@2.41.0`) | performed the successful upload + sync |
-| Node / Yarn (Linux) | `v24.21.0` / `1.22.22` | inside `node:24-bookworm` |
+| Node / Yarn (Linux) | `v24.21.0` / **4.13.0 in-app** (the W10-R2 report's "1.22.22" was read outside the app; see W10-R3 §1) | inside `node:24-bookworm` |
 
 The 2.35.0 CLI uses the legacy `uploadApplicationFile` mutation, which does not satisfy the v2.41.0 server's `CHK_FILE_PENDING_MIME_OCTET_STREAM` constraint (`status = 'PENDING'` requires `mimeType = 'application/octet-stream'`), producing `new row for relation "file" violates check constraint "CHK_FILE_PENDING_MIME_OCTET_STREAM"`. A published CLI at the server's own version (2.41.0) was used instead. **No app dependency was changed, no SDK source was patched, and no CLI was hand-modified.**
 
@@ -1383,11 +1406,80 @@ The evidence above is **synthetic integration evidence**: the record was created
 
 **Retained limitations:** real-provider sending, delivery receipts, the exact Node 24.5.0 pin, future upstream upgrade compatibility, and W7 (disabled, blocked, not accepted) all remain unverified / blocked.
 
+## W10-R3 — signed-in browser verification and evidence reconciliation
+
+Status: **browser pass PERFORMED**. UI navigation **PASS**; **in-app front-component rendering FAIL (environment)**; timeline card status render + Refresh **NOT PERFORMED — BLOCKED**. No app defect was fixed in this wave (see §6).
+
+### 1. Deployed toolchain — recorded and distinguished
+
+| Role | Tool | Version |
+|------|------|---------|
+| Build SDK (app's locked published SDK) | `twenty-sdk` (devDependency, from the app's `yarn.lock`) | **2.35.0** |
+| Generated client | `twenty-client-sdk` (from the same lockfile) | **2.35.0** |
+| Installation CLI (locked, first attempt) | `twenty-sdk` **2.35.0** — failed on the server file constraint | **2.35.0** |
+| Installation CLI (successful) | `npm i -g twenty-sdk@2.41.0` → `/usr/local/bin/twenty` | **2.41.0** |
+| Install-time Node / Yarn | `node:24-bookworm` | Node **v24.21.0**, Yarn **4.13.0** |
+| Server (isolated instance) | `twentycrm/twenty-app-dev` | **v2.41.0** (used for W10-R2 runtime checks); **v2.42.6** was also tried (see §5) |
+
+**Yarn reconciliation (corrects a W10-R2 ambiguity).** The app declares `packageManager: yarn@4.13.0` and its `yarn.lock` is a Berry lockfile (`__metadata.version: 8`). The W10-R2 report's "Yarn 1.22.22" was read **outside** the app directory (`/work`), where Corepack had not yet switched; it was **not** the Yarn used to install the app. Re-established inside the app:
+
+- `cd /work/app && yarn --version` → **4.13.0** (the declared version).
+- `yarn install --immutable` → **success**, lockfile **unchanged** (MD5 `aadbef644d43748b2c797751af6ef5c5`, identical to the committed lockfile and unmodified in git).
+
+So the install **did** honour the lockfile, and immutable reproducibility **is** established for the declared toolchain. (The successful `twenty apply` was executed with `twenty-sdk@2.41.0` as a **global** CLI; it read the app's `package.json`/`yarn.lock` and uploaded them, and the resolved in-app `twenty-sdk`/`twenty-client-sdk` remained **2.35.0**.)
+
+### 2. Test browser and instance configuration
+
+- Signed in to the **isolated** instance with the seeded workspace account `tim@apple.dev` (workspace `apple`).
+- `SERVER_URL` was set to `http://192.168.4.84:3100` (the host LAN address) so the **host browser** and the **Linux CLI container** both reach the same origin. A Docker-only hostname (`http://twenty-comm-test-app:2020`) is **not** reachable from the host browser and was therefore not used for the browser pass.
+- Volumes preserved throughout; workspace `apple` and all data survived each restart (verified: 1 workspace, 1 `communication` object, 4 logic functions, 2 front components, 9 registration variables, 3 timeline activities).
+
+### 3. Signed-in browser checks — actual results
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1 | Settings → Apps → Communication opens | **PASS** | `/settings/applications/23f3ab89-3355-43a4-bf30-a0e9880e1840` rendered the app ("Generic outbound communication for People…", `0.1.0`, `Uninstall`) |
+| 2 | Declared variables editable / fake secrets masked — **native Variables tab** | **NOT PERFORMED — NOT PRESENT** | The deployed front (v2.41.0, and v2.42.6) renders **no Variables tab** for this app because the workspace `applicationVariables` list is **empty** (`core."applicationVariable"` = 0 rows) and `settingsCustomTabFrontComponentId` is null. Masking itself was verified at API level (W10-R2): a fake `KAVENEGAR_API_KEY` reads back as `•••••••••••••` |
+| 3 | Person **Send message** opens the actual composer | **PASS (opens) / FAIL (renders)** | The command menu lists `Send message · Communication`; clicking it opened a side panel titled `Send message`. The panel body was **empty** (no fields) |
+| 4 | Phone options appear from the authenticated route | **NOT PERFORMED (browser)** | The composer form never rendered, so the route could not be exercised from the UI. The route itself **PASSES** at API level (W10-R2): `{"success":true,"phones":[{"id":"primary","value":"5552345678","isPrimary":true}]}` |
+| 5 | Deliberate submission with incomplete config shows a safe result | **NOT PERFORMED (browser)** | No form to submit. The same behaviour **PASSES** at API level (W10-R2): safe `UNEXPECTED_FAILURE`, **0** Communication records, no provider call |
+| 6 | Timeline card renders the persisted status | **NOT PERFORMED — BLOCKED** | The Person timeline shows a `communication` activity, but the card row is 26 px tall and renders only the label (`Twenty | communication | about 2 hours ago`) — the front component body (body/status/Refresh) does not mount |
+| 7 | Update to `FAILED` → click Refresh → status changes, activity count stays 1 | **NOT PERFORMED (browser)** | There is no Refresh control to click. The underlying chain **PASSES** at API level (W10-R2): activity count stayed **1** and the REST chain returned `status: FAILED` |
+
+### 4. The blocker (concrete, reproducible, instance-wide — NOT app-specific)
+
+In a signed-in browser, front components **do not mount** on this instance:
+
+- The lazy chunk `assets/FrontComponentRenderer-*.js` is **never requested** (confirmed via `performance.getEntriesByType('resource')` before and after opening the composer).
+- No iframe is created, no Web Worker is started, no console error is logged, and the front-component bundle endpoint itself works (`GET /rest/front-components/<id>` → **200**, `application/javascript`, ~371 KB).
+- **Control test:** the workspace's own sample app command **"Hello World"** was run the same way and its panel was **also empty**. The failure is therefore **environment-wide**, not a Communication-app defect.
+
+Candidate environmental causes (not fully isolated): the front-component host requires a functions/public-domain configuration that is empty here (`publicFunctionDomain: ""`), and the deployment exposes no dedicated front-component host. Because the failure reproduces on a stock sample app, **no app change is justified**.
+
+### 5. Server-version attempt and why v2.41.0 was retained
+
+The deployed front (v2.41.0) renders an application detail UI that predates the native Variables tab. A newer image **v2.42.6** was tried (volumes preserved, `appVersion: v2.42.6`, data intact). Findings:
+
+- The v2.42.6 front bundle **does** contain the application Variables tab (`SettingsApplicationDetails-*.js` reads `applicationVariables` and gates the tab on a non-empty list) — but it is still **hidden here** because the workspace variable list is empty.
+- v2.42.6's logic-function driver installs the app dependency layer at first execution via **Yarn 4.9.2**, and the container **cannot reach package registries** (`registry.yarnpkg.com` / `registry.npmjs.org` resolve to loopback inside the container), so every logic-function execution fails with `connect ECONNREFUSED`. v2.41.0 executes logic functions directly and therefore remains the working, W10-R2-verified runtime.
+- v2.41.0 **cannot** be restored after the 2.42.6 migration (the DB migration is not backward-compatible), so the instance stays on v2.42.6 with the dependency-layer limitation documented above.
+
+### 6. App changes in this wave
+
+**None.** No app-local defect was directly exposed: the only failures were environment-wide (front-component rendering) or require a hosted functions domain. No core edit, SDK upgrade, new channel, or Workflow enablement was made. The front-component sample control proves the blocker is not ours, so patching the app would be unfounded.
+
+### 7. Remaining limitations
+
+- Real-provider end-to-end sending and delivery receipts: **UNVERIFIED** (no provider credentials, no request).
+- Native Variables tab visibility: blocked by the empty workspace `applicationVariables` list; the app declares `serverVariables` (registration-scoped). Whether the deployed server is meant to mirror `serverVariables` into workspace `applicationVariables` is **not established**.
+- Front-component rendering, and therefore the composer form and the timeline card body/Refresh button: **NOT PERFORMED** (environment).
+- v2.42.6 logic-function dependency-layer install: **BLOCKED** offline.
+
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 
 - **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineState` (the full `timelineActivityId → activity → linked Communication → presentation` chain, with `recordId: null` in the context, every unavailable reason, no error leakage, and read-only access), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, unavailable states, snapshot use, body truncation). 136 focused tests PASS.
 - **Refresh coverage:** the tests drive the same Communication from QUEUED to SENT and to FAILED **through the implemented refresh path** (re-running the chain) and assert the rendered status changes while the activity id stays the same.
-- **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual REST round trips, database-event delivery, and live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
+- **Still not verified (updated by W10-R2/W10-R3):** the **React render tree** of `communication-timeline-card` and the composer is **still NOT PERFORMED** — the front component does not mount on the isolated instance (environment-wide; see W10-R3). What **is** now verified: the actual **REST round trips** (`GET /rest/timelineActivities/<id>` → `linkedRecordId` → `GET /rest/communications/<id>`), **database-event delivery**, and that a timeline activity **is** produced in a real workspace — all exercised in W10-R2 with synthetic data.
 - **W7 runtime-boundary vs simulation:** `workflow-step-status.contract.test.ts` **simulates** the documented server mapping (`{ result }` ⇒ `StepStatus.SUCCESS`, `shouldProcessNextSteps: true`) to lock the consequence in code. It is **not** a runtime test: the Twenty server is never executed here. Live Workflow execution remains **NOT PERFORMED**.
 - **W7-R2 actual production coverage:** the shipped disabled entry is tested directly (valid input, empty and malformed input, and hostile input carrying senderId/workspaceId/enabled all return WORKFLOW_ACTION_DISABLED), together with configuration assertions (no workflowActionTriggerSettings, no alternative trigger, unchanged universal identifier) and a spy proving the reusable send handler is never called.
 - **W7-R1 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
