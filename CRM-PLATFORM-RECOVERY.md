@@ -55,7 +55,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
 | W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
 | W10-R3 | `a791ca8762` (docs only — no app change) | `a791ca8762` | browser pass performed; its **"front-component rendering FAIL"** finding was **later proven wrong (session artifact)** — see W10-R4 |
-| W10-R4 | _pending commit_ | _this document_ | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED by host DNS**; **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; **settings contract resolved** (registration `Config` tab); timeline card still not rendering |
+| W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED by host DNS**; **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; **settings contract resolved** (registration `Config` tab); timeline card still not rendering |
 
 **Evidence levels (do not conflate them):**
 
