@@ -8,6 +8,7 @@ import {
   useTranslate,
 } from 'twenty-sdk/front-component';
 
+import { submitPersonCommunication } from 'src/components/submit-person-communication';
 import { SEND_MESSAGE_COMPOSER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 
 // Channels the composer offers. Mirrors the implemented channels only; future
@@ -115,64 +116,78 @@ const SendMessageComposer = () => {
     trimmedBody.length > 0;
 
   const handleSubmit = async () => {
-    // The ref check runs synchronously, before any await, so a second
-    // immediate submission is rejected in the same tick.
-    if (isSubmittingRef.current || !canSubmit || personId === null) {
+    // The guard check runs synchronously, before any await, so a second
+    // immediate submission is rejected in the same tick. It is owned by the
+    // shared submission helper so the shipped behavior is exactly what the
+    // focused tests exercise.
+    if (!canSubmit || personId === null) {
       return;
     }
 
-    isSubmittingRef.current = true;
     setSending(true);
     setError(null);
 
-    try {
-      const { data } = await callAppRoute('/communication/send', 'POST', {
+    const outcomeResult = await submitPersonCommunication(
+      {
         personId,
         channel,
         recipient: selectedPhone,
         body: trimmedBody,
-      });
+      },
+      {
+        isSubmittingRef,
+        transport: async (request) => {
+          const response = await callAppRoute(
+            '/communication/send',
+            'POST',
+            request,
+          );
 
-      if (data.success !== true) {
-        const failureMessage =
-          typeof data.error === 'string'
-            ? data.error
-            : t("The message could not be sent.");
+          return response;
+        },
+      },
+    );
 
-        setError(failureMessage);
+    try {
+      switch (outcomeResult.kind) {
+        case 'SENT':
+        case 'DELIVERED': {
+          const successMessage =
+            outcomeResult.kind === 'DELIVERED'
+              ? t("Message delivered.")
+              : t("Message sent.");
 
-        // A sent-but-unrecorded message is not a plain failure, and an unknown
-        // outcome must not read like a definite one. Both are warnings so the
-        // user does not retry a message that may already have been delivered.
-        const isSentButUnrecorded =
-          data.failureCode === 'OUTCOME_NOT_PERSISTED' &&
-          data.status !== 'FAILED';
-        const isOutcomeUnknown = data.isOutcomeKnown === false;
+          setOutcome(successMessage);
+          await enqueueSnackbar({
+            message: successMessage,
+            variant: 'success',
+          });
 
-        await enqueueSnackbar({
-          message: failureMessage,
-          variant:
-            isSentButUnrecorded || isOutcomeUnknown ? 'warning' : 'error',
-        });
+          break;
+        }
+        case 'PROVIDER_FAILED':
+        case 'INVALID_INPUT': {
+          setError(outcomeResult.message);
+          await enqueueSnackbar({
+            message: outcomeResult.message,
+            variant: 'error',
+          });
 
-        return;
+          break;
+        }
+        default: {
+          // The message was sent (or may have been), but the result is not a
+          // plain failure. A warning tells the user not to retry blindly.
+          setError(outcomeResult.message);
+          await enqueueSnackbar({
+            message: outcomeResult.message,
+            variant: 'warning',
+          });
+
+          break;
+        }
       }
-
-      // Only ever reports the truthful provider outcome.
-      setOutcome(
-        data.status === 'DELIVERED' ? t("Message delivered.") : t("Message sent."),
-      );
-      await enqueueSnackbar({
-        message:
-          data.status === 'DELIVERED' ? t("Message delivered.") : t("Message sent."),
-        variant: 'success',
-      });
-    } catch {
-      setError(t("The message could not be sent."));
     } finally {
-      // Released only after the request settles, so no automatic resend can
-      // occur from this guard.
-      isSubmittingRef.current = false;
       setSending(false);
     }
   };
