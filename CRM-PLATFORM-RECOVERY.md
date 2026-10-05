@@ -699,7 +699,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 + W5-R1 + W5-R2 + W5-R3 IMPLEMENTED | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message slice `15ad660a64`; W5-R1 outcome-truth correction `0853765a98`; W5-R2 production submission helper + real-code tests `defdc41e9d`; W5-R3 unknown-outcome wording + duplicate presentation `7b21608880556576c7a75ba0860dcda7e517d23c`; see the W5 section below |
+| Communications / Messaging | ACTIVE — W5 CODE-REVIEW ACCEPTED (live verification pending) + W6 TIMELINE IMPLEMENTED | W0–W4 accepted; W5 slice `15ad660a64` with R1 `0853765a98`, R2 `defdc41e9d`, R3 `7b21608880` accepted at code-review level; W6 Person timeline integration implemented; live end-to-end verification still pending |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -754,6 +754,12 @@ Two corrections on top of W5-R1, both inside the Communication app:
 
 1. **Truthful unknown-outcome presentation.** `submitPersonCommunication` is now the single production submission path used by the composer. It classifies a transport/response-parsing failure as `OUTCOME_UNKNOWN` with the message *"The message may or may not have been sent. Check the communication history before retrying."* — it never claims the message was not sent. Known outcomes are preserved unchanged (`SENT` / `DELIVERED` / `PROVIDER_FAILED` / `SENT_BUT_UNRECORDED` / `FAILED_BUT_UNRECORDED`), and raw exception text never appears in a response or in history.
 2. **Tests exercise production code, not a duplicate.** The earlier `composer-submit-guard.test.ts` re-implemented the guard inline; it has been **deleted**. The composer's real submission logic was extracted into `src/components/submit-person-communication.ts`, and `src/components/__tests__/submit-person-communication.test.ts` tests that exact shipped helper (with the transport injected). The React component now only renders the classified outcome (error vs. warning).
+
+## W5 code-review acceptance
+
+W5 + W5-R1 + W5-R2 + W5-R3 are **ACCEPTED at code-review level** (`7b21608880556576c7a75ba0860dcda7e517d23c`). The composer slice, its truthful outcome classification, and its synchronous submission guard are implemented and covered by focused tests against the shipped modules.
+
+**Live verification is still pending.** The app has never been installed on a running instance in this environment, so composer → route → provider remains unverified end-to-end. Do not treat W5 as live-verified.
 
 ## W5-R3 — unknown-outcome wording and duplicate presentation (IMPLEMENTED)
 
@@ -900,6 +906,61 @@ For CRM implementation work:
 - Recovery/audit/architecture decisions are maintained separately in this Source of Truth and should not require implementation agents to create documentation-only waves.
 
 ---
+
+# Communications W6 — Person timeline integration
+
+Status: **IMPLEMENTED / COMMITTED** at `b464171e2aee5c143be1becd0bdbe8303ca612fe` (`feat(apps): surface communications in the person timeline`). **NOT live-verified** (see limitations).
+
+## Mechanism (verified from source, not assumed)
+
+The Person timeline is **not** updated automatically by the `communication.targetPerson` relation. `buildDirectRelationTargetShape` only matches a rule whose **source** object is the record being created — so a relation on the app object cannot emit an activity onto the Person. Two native mechanisms were verified instead:
+
+- `defineTimelineActivityType` (`twenty-sdk/define`) declares the app-owned activity type. Its optional `emit` block is for automatic source-object events; this type deliberately has **no `emit`**.
+- `createTimelineActivity` (`twenty-sdk/logic-function`) creates the activity explicitly, resolving the target field natively (`target<ObjectSingular>Id`) from universal identifiers.
+
+Precedent: `packages/twenty-apps/fixtures/rich-app` (`post-card-created.timeline-activity-type.ts` with no `emit` + `on-post-card-created.function.ts` calling `createTimelineActivity`).
+
+## Event / render path
+
+```
+communication row created (status QUEUED, providerId + recipient snapshotted)
+  → database event trigger  communication.created
+  → logic function on-communication-created        (databaseEventTriggerSettings)
+  → buildCommunicationTimelineActivityInput        (pure; snapshot only)
+  → createTimelineActivity                         (native SDK helper)
+       target:   Person (targetPersonId)
+       linked:   the Communication record
+  → timeline activity type communicationSent ("sent a message")
+  → front component communication-timeline-card    (native renderer slot)
+```
+
+- **One activity per Communication.** It is created only on `created`, so a QUEUED creation and a later outcome update do not produce two cards.
+- **Status is a snapshot**, read from the persisted activity properties — never from the live Communication row and never from current Person/config values.
+- **Recipient and provider come from the persisted send-time snapshots.**
+- **Timeline failure is isolated:** the handler catches, logs a stable classification server-side, and returns `processed: false`. It never changes the send outcome, never calls the provider, and duplicates no send/persistence orchestration.
+- **No `emit` block**, so the platform does not create additional activities for this type.
+
+## Status truth (presentation mapping)
+
+`buildCommunicationTimelinePresentation` is a pure, tested function:
+
+- `QUEUED` (or a missing status) → "Message queued", `isPending: true`; never reads as sent.
+- `SENT` → "Message sent"; never reads as delivered.
+- `DELIVERED` → "Message delivered" — the only status that sets `isDelivered`.
+- `FAILED` → "Message failed" and exposes the stored failure reason; the reason is hidden for every other status.
+- Channel is appended to the summary; the body is truncated to 140 characters.
+- Credentials and raw diagnostics are never copied into the activity (asserted).
+
+## Known limitation: a QUEUED snapshot can persist
+
+The activity is created once, from the creation-time snapshot, so a communication that is later updated to `SENT`/`DELIVERED`/`FAILED` can leave a card reading "Message queued". Adding an `updated` emit with `triggerFieldUniversalIdentifiers: [status]` would not fix this: the server keeps **only the diff** (`keepDiffOnly`) and an update that does not change `status` leaves nothing to merge, while merging would also *overwrite* the snapshot with the current values. A truthful refresh therefore needs either a dedicated status-change path that always writes properties, or a renderer that reads live status. This is reported rather than guessed at.
+
+## W6 verification — actual coverage vs. simulations
+
+- **Actual production coverage:** `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, blank normalization, no-credential guarantee, null when no target person) and `buildCommunicationTimelinePresentation` (QUEUED/SENT/DELIVERED/FAILED truthfulness, pending semantics, snapshot use, body truncation, defensive null handling) are the real shipped modules and are tested directly. 121 focused tests PASS.
+- **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual database-event delivery, and the live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
+- typecheck PASS; oxlint 0/0; app build PASS (11 files); manifest confirms 1 timeline activity type (no emit, renderer wired), 3 logic functions (1 database event + 2 routes) and 2 front components. W4/W5 modules unchanged.
+
 
 # Important working style
 
