@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W10-R4` — the test runtime was restored at the image level (a **fresh v2.41.0 instance** on new volumes, the migrated v2.42.6 instance preserved), and the front-component failure was diagnosed. **Corrections:** front components **do** render (the W10-R3 "do not render" finding was an **expired-session artifact**); the Communication **composer renders**; and the **settings contract is the app-registration `Config` tab → "Server Variables"** (not a per-workspace Variables tab). **Blockers:** logic-function execution is blocked by a **host DNS sinkhole** (`registry.yarnpkg.com`/`registry.npmjs.org` resolve to `127.201.x.x`, even via `8.8.8.8`), so the runtime dependency layer cannot install; the timeline card still does not render (isolated). **Synthetic integration only — no real SMS/provider request.**
+`CRM-COMMUNICATIONS-001-W9-R2` — provider configuration is now **workspace-owned** via native `applicationVariables` (9 variables, stable identifiers, API keys secret). Verified at source, tests (184), typecheck, lint, build, immutable build, sync and the **native Variables tab** (with a fake secret masked as `F********`). **Runtime execution remains BLOCKED** (dependency layer cannot reach a package registry), so **per-workspace execution isolation is NOT PERFORMED**. Earlier W10-R4 findings stand: front components and the composer render; the timeline card render is unresolved; the app-registration `Config` → "Server Variables" screen is now the **historical shared route**.
 
 ## Communications milestones — code-review acceptance
 
@@ -55,7 +55,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
 | W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
 | W10-R3 | `a791ca8762` (docs only — no app change) | `a791ca8762` | browser pass performed; its **"front-component rendering FAIL"** finding was **later proven wrong (session artifact)** — see W10-R4 |
-| W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED by host DNS**; **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; **settings contract resolved** (registration `Config` tab); timeline card still not rendering |
+| W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED** (dependency layer cannot reach a package registry); **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; timeline card still not rendering |
+| W9-R2 | _pending commit_ | _this document_ | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed; **runtime execution isolation NOT PERFORMED** (registry blocked) |
 
 **Evidence levels (do not conflate them):**
 
@@ -73,7 +74,7 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: ACTIVE. W0–W9 implemented and code-review accepted. **W10-R2** installed the app (synthetic API/event PASS, now historical). **W10-R4** restored a fresh v2.41.0 test runtime and proved the **front components and the Communication composer render**; the settings contract is the app-registration `Config` → "Server Variables" screen. **Current blockers:** logic-function execution (host DNS sinkhole) and the timeline card render. The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** moved provider configuration to **workspace-owned native application variables** (verified in the native Variables tab, with secrets encrypted per workspace and masked). **W10-R4** proved front components and the composer render. **Current blockers:** logic-function execution (registry access blocked) and the timeline card render. The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
 
 ## Communications — authoritative current behavior
 
@@ -93,7 +94,7 @@ No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
 - `twenty-comm-test-app` — `twentycrm/twenty-app-dev:v2.42.6`, port 3100, preserved for diagnosis (its DB was migrated and cannot be downgraded).
 
 **Open blockers (both environment, not app):**
-1. **Logic-function execution** — `ensureDepsLayer` (Yarn 4.9.2) cannot reach the package registry because the **host DNS** maps `registry.yarnpkg.com`/`registry.npmjs.org` to `127.201.x.x`. Needs a reachable registry; a global host DNS change is out of scope.
+1. **Logic-function execution** — `ensureDepsLayer` (Yarn 4.9.2) cannot reach a package registry; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Registry access is blocked.** Remedies beyond a host DNS change (a reachable registry mirror, a network policy change, a pre-seeded dependency layer) were **not** investigated.
 2. **Timeline card render** — the `communication` timeline row shows only its label; the timeline-renderer → front-component mount path is not isolated yet. (The command-menu path renders correctly.)
 
 **W10/W10-R1 "no environment" prerequisites — HISTORICAL / RESOLVED:**
@@ -675,7 +676,7 @@ W0 evidence:
 - generic `communication` object created.
 - Person MANY_TO_ONE + inverse relation resolved in generated manifest.
 - WorkspaceMember sender relation is supported and resolved with inverse relation.
-- encrypted `serverVariables` seam created for future provider credentials/config.
+- encrypted application-variable seam created for future provider credentials/config (later moved from `serverVariables` to workspace `applicationVariables` in W9-R2).
 - no provider/send/workflow/timeline/webhook code added.
 - `dev:build`, TypeScript and oxlint reported PASS.
 - local app installation intentionally deferred because install requires an explicit remote/credentials and may mutate workspace metadata.
@@ -761,14 +762,15 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 code-review accepted; **installed (W10-R2)**; **browser rendering PASS for front components + composer (W10-R4)**; **API/event execution BLOCKED on a fresh instance by host DNS** (historical PASS only); **timeline card not rendering (isolated)**; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 (this wave); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED** (native Variables tab, masked secret); front components + composer render (W10-R4); **logic-function execution BLOCKED** (registry access); timeline card render unresolved; **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 (this wave); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
 | Timeline card status render + Refresh button | **NOT PERFORMED — NOT RENDERED** | The `communication` timeline row renders only its label (26 px) and no front-component iframe, even with a fresh session; the metadata (`timelineActivityType communicationSent` → `frontComponentUniversalIdentifier 762996db-…`) resolves correctly. Boundary between the timeline renderer selection and the front-component mount; **not isolated** (W10-R4 §6). |
 | Logic-function execution on a fresh instance | **BLOCKED — host DNS** | `ensureDepsLayer` runs Yarn 4.9.2 to install the app dependency layer and fails `ECONNREFUSED 127.201.0.114:443`; `registry.yarnpkg.com`/`registry.npmjs.org` resolve to loopback **on the host** too. Requires a reachable registry (global host DNS change — out of scope). |
-| Settings → Server Variables screen | **PASS (W10-R4)** | `/settings/applications/registrations/<id>` → `Config` tab renders a "Server Variables" section with all 9 Communication variables editable and the secret masked as `•••••••••••••`. |
-| Workspace Variables tab | **NOT PRESENT (by design)** | `SettingsApplicationDetails` shows it only when `applicationVariables` is non-empty; the app declares `serverVariables` instead. Declaring `applicationVariables` is supported by SDK 2.35.0 but was **not** done. |
+| Settings → app-registration `Config` → "Server Variables" | **HISTORICAL — shared route, no longer used** | Renders the **registration-scoped** `serverVariables`, which are shared by every workspace. W9-R2 moved this app's configuration to workspace `applicationVariables`; the registration table is now empty for this app. Kept only as history. |
+| Settings → Applications → Communication → **Variables** | **PASS (W9-R2)** | Native workspace Variables tab ("Set your application configuration variables") lists all 9 workspace variables with a `Save settings` button; a fake `KAVENEGAR_API_KEY` reads back masked as `F********`. |
+| Workspace `Variables` tab before W9-R2 | **NOT PRESENT (historical)** | `SettingsApplicationDetails` shows it only when `applicationVariables` is non-empty; before W9-R2 the app declared only `serverVariables`, so the tab was correctly hidden. |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -979,11 +981,20 @@ BLOCKED by a host DNS sinkhole**: `registry.yarnpkg.com`/`registry.npmjs.org` re
 API/event PASS results were obtained **while that dependency layer was still cached** and are
 therefore **historical**, not currently reproducible.
 
-SETTINGS CONTRACT (W10-R4): the supported screen that edits this app's credentials is
-**Settings → Apps → [app registration] → `Config` → "Server Variables"**
-(`/settings/applications/registrations/:id`). It renders all 9 variables and masks the stored secret.
-The per-workspace `Variables` tab requires declaring `application.applicationVariables` (supported by
-SDK 2.35.0 but **not** done) and is correctly hidden for a `serverVariables`-only app.
+SETTINGS CONTRACT (W10-R4, ownership corrected by W9-R2): provider configuration is
+**workspace-owned**. The authoritative surface is the app-detail **Variables** tab
+(`Settings → Applications → Communication → Variables`), which edits native workspace
+`applicationVariables`. The app-registration **`Config` → "Server Variables"** screen is the
+**historical shared route** and is no longer used (the registration variable table is empty for this
+app). W9-R2 moved all 9 variables to `applicationVariables` with stable identifiers; the API keys
+stay secret and are encrypted per workspace, and a fake value reads back masked (`F********`).
+**Per-workspace execution isolation is NOT PERFORMED** because logic-function execution is blocked.
+
+RUNTIME BLOCKER: logic-function execution is blocked — `ensureDepsLayer` installs the app dependency
+layer with Yarn 4.9.2 and cannot reach a package registry (`RequestError: connect ECONNREFUSED
+127.201.0.114:443`; a controlled request returns HTTP 500). Registry access is **blocked**; the exact
+cause is a host-level resolver returning loopback for the registry names. Other remedies (a reachable
+registry mirror, a network policy change, a pre-seeded dependency layer) were **not** investigated.
 
 The install also fixed three real app defects (invalid option UUIDs, a wrong `person` query shape,
 an untyped status union). W10/W10-R1's "Windows CLI defect" and "wrong upload host" claims are
@@ -1258,9 +1269,9 @@ A disposable copy outside the monorepo (`D:\twenty-iso-comm2`) containing **only
 
 **Claim corrected:** W8 previously said the boundary was "independently reproducible". What is actually proven is that the app's **dependency and build boundary** installs and passes from its own declared dependencies and lockfile, on **Node 24.16.0 rather than the declared 24.5.0**. Exact-pin reproducibility is **not** verified.
 
-### REQUIRED NATIVE SETTINGS SURFACE — NATIVE VARIABLES TAB IS AUTHORITATIVE (W9-R1)
+### REQUIRED NATIVE SETTINGS SURFACE — NATIVE VARIABLES TAB IS AUTHORITATIVE (W9-R1, ownership corrected by W9-R2)
 
-> **Update (W10):** the retained `buildCommunicationSettingsView` mapper is **inactive in the UI** (no registered consumer). The configuration surface is the **native Variables tab** at **Settings → Applications → Communication → Variables**, which manages the default provider and every provider credential. A custom settings tab was attempted in W9 and **retired**: Twenty hides the Variables tab whenever a custom settings tab exists (`SettingsApplicationDetails.tsx`), and no app-side application-variable editor is supported by the published SDK. Readiness feedback and richer per-provider configuration UX remain **PLANNED / NOT IMPLEMENTED**.
+> **Update (W9-R2):** the authoritative surface is the app-detail **Variables** tab at **Settings → Applications → Communication → Variables**, and it now edits **workspace** application variables (the app declares `applicationVariables`, not `serverVariables`). The app-registration `Config` → "Server Variables" screen is the **historical shared route** and is no longer used. A custom settings tab remains **retired** (Twenty hides the Variables tab whenever a custom settings tab exists, and the published SDK exposes no app-side variable editor). The retained `buildCommunicationSettingsView` mapper is still **inactive in the UI** (no registered consumer). Readiness feedback and richer per-provider UX remain **PLANNED / NOT IMPLEMENTED**.
 
 A durable product/architecture requirement (recorded here, **not implemented in this wave**):
 
@@ -1275,7 +1286,7 @@ The Communication app must expose a **discoverable native settings entry** cover
 Constraints that must hold when this is built:
 
 - Use Twenty's **supported app/settings capabilities** (app roles/permissions, application variables, connection providers, and the app's own settings surface). **Do not** build a custom core Settings page or a parallel credential database.
-- **Secrets remain in native server-side secret storage** (`serverVariables` with `isSecret: true`, encrypted at rest). Stored secret values must **never** be returned to frontend code or written to record history — the UI may only learn whether a value is set.
+- **Secrets remain in native server-side secret storage** (`applicationVariables` with `isSecret: true`, encrypted per workspace). Stored secret values must **never** be returned to frontend code or written to record history — the UI may only learn whether a value is set.
 - **Only implemented capabilities appear as usable controls.** Unsupported channels/providers must not appear as selectable dead controls.
 - The disabled Workflow entry stays disabled; this requirement does not re-enable it.
 
@@ -1336,7 +1347,7 @@ When every visible field is present it states: *"A default provider is selected 
 
 - **Authorization:** editing application variables goes through `WorkspaceAuthGuard` + `SettingsPermissionGuard(PermissionFlagType.APPLICATIONS)`. UI visibility is not treated as authorization; this app adds no authorization logic and exposes no privileged action.
 - **Secrets never reach the frontend:** `ApplicationVariableService` filters by `isSecret` before exposing variables, and `getApplicationVariable` reads only the sandbox's `process.env.applicationVariables`. **Scoped claim:** nothing in this app's **frontend and settings code** reads `KAVENEGAR_API_KEY` / `RAZPAYAMAK_API_KEY` or requests plaintext. Provider drivers necessarily read their own credentials **server-side** when sending; that is unchanged and intended.
-- **No parallel storage:** configuration stays in the declared `serverVariables`; nothing is duplicated into Communication records, `localStorage`, frontend state or a new object.
+- **No parallel storage:** configuration stays in the declared native application variables (workspace `applicationVariables` since W9-R2); nothing is duplicated into Communication records, `localStorage`, frontend state or a new object.
 
 ### Validation
 
@@ -1490,8 +1501,9 @@ The deployed front (v2.41.0) renders an application detail UI that predates the 
 ### 7. Remaining limitations
 
 - Real-provider end-to-end sending and delivery receipts: **UNVERIFIED** (no provider credentials, no request).
-- Native Variables tab visibility: blocked by the empty workspace `applicationVariables` list; the app declares `serverVariables` (registration-scoped). Whether the deployed server is meant to mirror `serverVariables` into workspace `applicationVariables` is **not established**.
-- Front-component rendering, and therefore the composer form and the timeline card body/Refresh button: **NOT PERFORMED** (environment).
+- Native Variables tab visibility: **RESOLVED by W9-R2** — the app now declares workspace `applicationVariables`, and the tab renders all 9 variables (verified live on v2.42.6). Runtime execution of the configured values is still blocked by the registry issue.
+- Per-workspace **execution** isolation (two live workspaces with distinct configuration and no cross-workspace inheritance): **NOT PERFORMED** — logic-function execution is blocked, so it could not be exercised end-to-end. Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) **is** verified.
+- Front-component rendering, and therefore the timeline card body/Refresh button: **NOT PERFORMED** (the composer and stock front components do render — W10-R4).
 - v2.42.6 logic-function dependency-layer install: **BLOCKED** offline.
 
 ## W10-R4 — test-runtime restoration, front-component trace, settings contract
@@ -1522,7 +1534,7 @@ POST http://192.168.4.84:3101/s/communication/person-phones
 - `registry.yarnpkg.com` → `127.201.0.114` and `registry.npmjs.org` → `127.201.0.55` **inside the container** — because the **host itself** resolves them to loopback: `Resolve-DnsName` on the Windows host returns the same `127.201.x.x`, and even a direct query to `8.8.8.8`/`1.1.1.1` returns loopback (the resolver answer is rewritten upstream). `github.com` resolves correctly (`140.82.121.4`), so the filter is **selective**, not a total network outage.
 - The container has only Docker's internal resolver (`nameserver 127.0.0.11`, `ExtServers: [host(192.168.65.7)]`) and therefore inherits the host's rewritten answers. There is **no `/etc/hosts` entry** and **no container-level override** to change.
 
-**Concrete blocker:** restoring logic-function execution requires a package-registry host that actually resolves (a real, reachable registry). Changing that is **global host DNS**, which is out of scope; no global DNS edit, verification disabling, or dependency patching was performed. **The v2.41.0 image is not itself broken** — it fails for the same DNS reason now (see §5).
+**Concrete blocker:** restoring logic-function execution requires a package-registry host that actually resolves (a real, reachable registry). **Registry access is blocked.** This document does **not** claim that changing global host DNS is the only possible remedy — the precise cause (a host-level resolver returning loopback for the registry names) is recorded, but other remedies (a reachable registry mirror, a network policy change, or a pre-seeded dependency layer) were **not** investigated and remain open. No global DNS edit, verification disabling, or dependency patching was performed. **The v2.41.0 image is not itself broken** — it fails for the same registry reason now (see §5).
 
 ### 2. Front-component trace — stock `Hello World` (signed-in browser)
 
@@ -1577,6 +1589,70 @@ On app1 (v2.42.6) the `communication` timeline row renders only its label (26 px
 **Changes:** new volumes + a fresh v2.41.0 container (`twenty-comm-test-app2`, port 3101); `SERVER_URL=http://192.168.4.84:3101`; a test API key minted for `apple` and stored **outside Git** (`D:/twenty-comm-test/.test-api-key2`); a CLI remote `comm-test2`. The app1 instance and its volumes were **preserved untouched**; the real stack was not touched.
 
 **Remaining checks:** composer submission / safe missing-config failure in the UI (blocked by §1); timeline card status + Refresh (blocked by §6); real-provider sending (never performed).
+
+## W9-R2 — workspace-owned provider configuration (native application variables)
+
+Status: **IMPLEMENTED / VERIFIED at source + build + UI level**. Provider credentials, sender identities and the default-provider selection are now **workspace-owned** native application variables. **Runtime execution (logic functions) remains BLOCKED**, so per-workspace *execution* isolation is **NOT PERFORMED**.
+
+### 1. Native contract (verified in the locked SDK 2.35.0 and the server source)
+
+| Aspect | Finding |
+|--------|---------|
+| Type (SDK 2.35.0) | `applicationVariables?: ApplicationVariables`, where `ApplicationVariable = SecretApplicationVariable \| NonSecretApplicationVariable`. Both require `universalIdentifier` (`SyncableEntityOptions`). `TypedApplicationVariable` adds `type?`, `options?`, `isDeprecated?`. Secret: `{ isSecret: true }`. Non-secret: `{ value?, isSecret?: false }`. |
+| No `isRequired` | The application-variable contract has **no** `isRequired` field (only `serverVariables` does). Optional provider configuration is therefore optional by construction. |
+| Materialisation | `compute-application-manifest-all-universal-flat-entity-maps.service.ts` iterates `manifest.application.applicationVariables`, encrypts each value with `secretEncryptionService.encryptVersioned(rawValue, { workspaceId })`, and creates a workspace-scoped `core.applicationVariable` row keyed by `universalIdentifier`. |
+| Secret storage | `isSecret: true` → the stored value is `''` (never the plaintext); the entity enforces `CHECK ("value" LIKE 'enc:v2:%')`. The platform masks stored secrets (`getDisplayValue`). |
+| Permission-controlled editing | `ApplicationVariableEntityResolver` is guarded by `WorkspaceAuthGuard` + `SettingsPermissionGuard(PermissionFlagType.APPLICATIONS)`; editing is the native `updateOneApplicationVariable(key, value, applicationId)` mutation. |
+| Execution-context injection | The logic-function executor merges `{ ...serverVariables, ...workspaceVariables }` — registration values first, **workspace values win** — and only for the running workspace's own map. |
+| Precedence (confirmed) | Workspace `applicationVariables` **override** registration `serverVariables` with the same key. |
+
+**No app precedent exists in this repository** for editing application variables from app code: the only editor is the native settings surface. That is why the app declares the variables and lets the platform render them.
+
+### 2. Implementation
+
+Moved all nine variables from `serverVariables` to `applicationVariables` in `src/application.config.ts`:
+
+- **Keys unchanged** (`COMMUNICATION_PROVIDER`, `KAVENEGAR_ENDPOINT`, `KAVENEGAR_API_KEY`, `KAVENEGAR_SENDER`, `RAZPAYAMAK_USERNAME`, `RAZPAYAMAK_API_KEY`, `RAZPAYAMAK_SENDER`, `RAZPAYAMAK_BACKUP_SENDER_ONE`, `RAZPAYAMAK_BACKUP_SENDER_TWO`).
+- **Stable identifiers added** — nine new UUIDs in `src/constants/universal-identifiers.ts`. A changed identifier is treated by the platform as a different variable, so these are pinned by test.
+- **`KAVENEGAR_API_KEY` and `RAZPAYAMAK_API_KEY` stay `isSecret: true`**; everything else is non-secret.
+- **Nothing is required** — an unused provider cannot block installation.
+- **No provider/orchestration code changed.** The providers already read `process.env[name]` (`src/providers/config/read-required-env.ts`), and the executor injects both maps into that environment, so only the declaration moved.
+
+### 3. Verification
+
+| Check | Result |
+|-------|--------|
+| Focused tests | **184 PASS** (22 files), incl. 7 new contract tests |
+| Typechecks | **PASS** (`tsgo -p tsconfig.spec.json` and the app config) |
+| Lint | **PASS** — 0 warnings / 0 errors (78 files) |
+| App build | **PASS** — 14 files |
+| Immutable build | **PASS** — `yarn install --immutable` under the declared Yarn 4.13.0; lockfile unchanged (`aadbef644d43748b2c797751af6ef5c5`) |
+| Built manifest | `serverVariables` **absent**; `applicationVariables` **9**, correct `isSecret`, unique valid UUID v4 identifiers |
+| Sync (isolated only) | v2.41.0 instance: `9 to add, 2 to change`; v2.42.6 instance: `9 to add, 2 to change` |
+| DB (isolated) | `core.applicationVariable` = **9 rows**, all `workspaceId = 20202020-1c25-4d02-bf25-6aeccf7ea419`, `applicationId = 23f3ab89-…`; `core.applicationRegistrationVariable` for Communication = **0 rows** |
+| Native **Variables** tab (v2.42.6, signed-in browser) | **PRESENT** — "Variables / Set your application configuration variables" with all 9 keys and a `Save settings` button |
+| Secret masking (live) | Set a fake `KAVENEGAR_API_KEY`; read-back is **`F********`** (masked, not echoed); the unset `RAZPAYAMAK_API_KEY` reads empty |
+| Non-secret values readable | `COMMUNICATION_PROVIDER`, `KAVENEGAR_ENDPOINT/SENDER`, `RAZPAYAMAK_*` all readable and independently settable |
+| No silent inheritance of shared credentials | Registration variable table is **empty** for this app, so there is nothing to inherit; and workspace values take precedence anyway |
+| **Per-workspace execution isolation** | **NOT PERFORMED** — see below |
+
+**Runtime isolation is NOT PERFORMED.** The v2.41.0 and v2.42.6 instances both fail logic-function execution because the local driver installs the app dependency layer with Yarn 4.9.2 and **cannot reach a package registry** (`ensureDepsLayer` → `RequestError: connect ECONNREFUSED 127.201.0.114:443`, one controlled request → HTTP 500). Therefore two live workspaces with distinct non-secret configuration could not be exercised end-to-end. What **is** established: the variables are physically scoped by `workspaceId` in the DB, encrypted with the workspace key, and the executor reads only the running workspace's map — i.e. **data-model isolation is verified; execution isolation is not**.
+
+### 4. Migration behaviour
+
+- **Existing real installations:** **none were changed.** No real installation of this app was discovered, and only the two isolated test instances were synced.
+- **Isolated test installations (v2.41.0 and v2.42.6):** the sync **added 9 workspace variables** and **changed 2** objects. It did **not** copy registration credentials into the workspace: the previous registration rows were **empty**, and the new workspace rows were created with empty encrypted values.
+- **Shared declarations removed through supported sync:** the app no longer declares `serverVariables`, and `core.applicationRegistrationVariable` for this app is now **0 rows** — so a workspace can no longer inherit a shared credential.
+- **Upgrading an installation that had *populated* registration values:** because the registration variable rows are removed by the same sync, such values would be **dropped, not migrated**. The operator must re-enter them once in the workspace Variables tab. This is intentional (the shared values were not workspace-owned and must not be silently promoted), and it must be communicated in any future release note.
+
+### 5. Corrections to earlier claims
+
+- **Ownership model corrected.** The authoritative configuration surface is the app-detail **Variables** tab (`Settings → Applications → Communication → Variables`), which edits **workspace** application variables. The **app-registration `Config` → "Server Variables"** screen is the **historical shared route** and must no longer be used for this app's configuration.
+- **Why workspace credentials must not use shared registration values:** `serverVariables` are stored once on the registration and are shared by every workspace that installs the app, so all workspaces would send with the same provider account and sender. Provider credentials and sender identities are per-workspace facts; sharing them is both a security and a correctness defect. Workspace values also override registration values in the execution context, so a leftover shared value would otherwise silently shadow the workspace value.
+- **Stale composer-rendering claim corrected:** W10-R3's "front components do not render" was an expired-session artifact (already corrected in W10-R4); the composer renders.
+- **Broad W0–W9 acceptance corrected:** "accepted at code level" never meant live-verified. The accurate position is: registration/upload/sync, the settings contract and the UI Variables tab are verified; **API/event execution is currently blocked**; the timeline card render is unresolved; real-provider sending is **NOT PERFORMED**.
+- **Registry access:** reported as **blocked** (`ensureDepsLayer` cannot reach a package registry). This document does **not** claim that changing global DNS is the only possible remedy — the precise cause (a host-level resolver that returns loopback for the registry names) is recorded, but other remedies (a reachable registry mirror, a network policy change, or a pre-seeded dependency layer) were **not** investigated and remain open.
+- W8 remains **accepted at dependency/build level only**; W7 remains **disabled and blocked**.
 
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 

@@ -66,6 +66,32 @@ export const ON_COMMUNICATION_CREATED_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
 export const SEND_COMMUNICATION_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER =
   'e55f7b79-cf61-45b4-a1c4-259fa7089b28';
 
+// Workspace application variables (W9-R2)
+// Provider credentials, sender identities and default-provider selection are
+// workspace-owned: they are declared as native `applicationVariables`, which the
+// platform materialises per workspace, encrypts per workspace, and exposes to
+// logic functions through the workspace-scoped execution context. Each variable
+// needs a stable universal identifier; these are generated once and must never
+// change, because a changed identifier is treated as a different variable.
+export const COMMUNICATION_PROVIDER_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '477dc6e2-ddfb-4e72-9e67-cc87d240f160';
+export const KAVENEGAR_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '3d567260-3825-4faa-ae86-280e02b0e32d';
+export const KAVENEGAR_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '076e58cb-5ab7-409c-8253-4afcc8ef0de2';
+export const KAVENEGAR_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '4db6a8af-2612-4465-acae-f15b8e3da085';
+export const RAZPAYAMAK_USERNAME_VARIABLE_UNIVERSAL_IDENTIFIER =
+  'bb7d473c-e4ba-4440-92bc-24ce5709d374';
+export const RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER =
+  'ac7a5ffa-4a4f-4c7a-a092-5504319f0bdc';
+export const RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER =
+  'da25b771-9e4e-4d2f-8fb3-0f5e6e40e79f';
+export const RAZPAYAMAK_BACKUP_SENDER_ONE_VARIABLE_UNIVERSAL_IDENTIFIER =
+  'e469abb7-fae1-48f9-a5e5-16eb45e49683';
+export const RAZPAYAMAK_BACKUP_SENDER_TWO_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '8d0985d9-f096-4d58-8ae5-739ed3e5822b';
+
 // NOTE (W9-R1): a custom settings front component was registered in W9 and has
 // been RETIRED. Twenty's application settings page shows the Variables tab only
 // when no custom settings tab exists
