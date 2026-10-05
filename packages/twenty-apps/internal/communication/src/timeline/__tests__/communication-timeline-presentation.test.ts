@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCommunicationTimelinePresentation } from 'src/timeline/communication-timeline-presentation';
+import { type CommunicationTimelineRecord } from 'src/timeline/communication-timeline-record.type';
+import {
+  buildCommunicationTimelinePresentation,
+  buildCommunicationTimelineView,
+  UNAVAILABLE_TITLE,
+} from 'src/timeline/communication-timeline-presentation';
 
-const baseProperties = {
+const baseRecord: CommunicationTimelineRecord = {
   channel: 'SMS',
   recipient: '09120000000',
   providerId: 'razpayamak',
@@ -13,7 +18,7 @@ describe('buildCommunicationTimelinePresentation', () => {
   describe('status truthfulness', () => {
     it('never claims a queued message was sent', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'QUEUED',
       });
 
@@ -21,12 +26,11 @@ describe('buildCommunicationTimelinePresentation', () => {
       expect(presentation.title).toContain('queued');
       expect(presentation.title).not.toContain('sent');
       expect(presentation.title).not.toContain('delivered');
-      expect(presentation.isDelivered).toBe(false);
     });
 
     it('never claims a sent message was delivered', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'SENT',
       });
 
@@ -38,7 +42,7 @@ describe('buildCommunicationTimelinePresentation', () => {
 
     it('only reports delivered when the persisted status is DELIVERED', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'DELIVERED',
       });
 
@@ -49,7 +53,7 @@ describe('buildCommunicationTimelinePresentation', () => {
 
     it('reflects a stored failure and exposes its reason', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'FAILED',
         failureReason: 'Invalid receptor',
       });
@@ -59,17 +63,9 @@ describe('buildCommunicationTimelinePresentation', () => {
       expect(presentation.failureReason).toBe('Invalid receptor');
     });
 
-    it('treats a missing status as pending, never as success', () => {
-      const presentation = buildCommunicationTimelinePresentation(baseProperties);
-
-      expect(presentation.isPending).toBe(true);
-      expect(presentation.title).not.toContain('sent');
-      expect(presentation.title).not.toContain('delivered');
-    });
-
     it('hides the failure reason unless the record actually failed', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'SENT',
         failureReason: 'should not be shown',
       });
@@ -78,10 +74,40 @@ describe('buildCommunicationTimelinePresentation', () => {
     });
   });
 
+  describe('status refresh (same activity, updated record)', () => {
+    it('shows the refreshed outcome instead of the creation-time QUEUED state', () => {
+      // The same activity is rendered against the record as it is now.
+      const queued = buildCommunicationTimelinePresentation({
+        ...baseRecord,
+        status: 'QUEUED',
+      });
+      const delivered = buildCommunicationTimelinePresentation({
+        ...baseRecord,
+        status: 'DELIVERED',
+      });
+
+      expect(queued.title).toContain('queued');
+      expect(delivered.title).toContain('delivered');
+      expect(delivered.isPending).toBe(false);
+    });
+
+    it('shows a later failure instead of a stale queued state', () => {
+      const failed = buildCommunicationTimelinePresentation({
+        ...baseRecord,
+        status: 'FAILED',
+        failureReason: 'Rejected',
+      });
+
+      expect(failed.isPending).toBe(false);
+      expect(failed.isFailed).toBe(true);
+      expect(failed.title).not.toContain('queued');
+    });
+  });
+
   describe('snapshot usage', () => {
-    it('uses the persisted recipient and provider, not current values', () => {
+    it('uses the persisted recipient and provider', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'SENT',
         recipient: '09351112233',
         providerId: 'kavenegar',
@@ -93,7 +119,7 @@ describe('buildCommunicationTimelinePresentation', () => {
 
     it('summarizes the channel alongside the outcome', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'SENT',
       });
 
@@ -102,40 +128,42 @@ describe('buildCommunicationTimelinePresentation', () => {
 
     it('truncates a long body instead of dumping it', () => {
       const presentation = buildCommunicationTimelinePresentation({
-        ...baseProperties,
+        ...baseRecord,
         status: 'SENT',
         body: 'x'.repeat(500),
       });
 
-      expect(presentation.bodyPreview).not.toBeNull();
       expect(presentation.bodyPreview?.length).toBeLessThanOrEqual(140);
       expect(presentation.bodyPreview?.endsWith('…')).toBe(true);
     });
   });
+});
 
-  describe('defensive handling', () => {
-    it('handles a missing properties payload', () => {
-      const presentation = buildCommunicationTimelinePresentation(null);
+describe('buildCommunicationTimelineView', () => {
+  it('reports loading explicitly', () => {
+    expect(buildCommunicationTimelineView({ kind: 'LOADING' })).toEqual({
+      kind: 'LOADING',
+    });
+  });
 
-      expect(presentation.isPending).toBe(true);
-      expect(presentation.recipient).toBeNull();
-      expect(presentation.providerId).toBeNull();
-      expect(presentation.failureReason).toBeNull();
+  it('reports an inaccessible record as unavailable, never as queued', () => {
+    const view = buildCommunicationTimelineView({
+      kind: 'UNAVAILABLE',
+      reason: 'NOT_FOUND',
     });
 
-    it('ignores blank snapshot values', () => {
-      const presentation = buildCommunicationTimelinePresentation({
-        channel: '   ',
-        status: 'SENT',
-        recipient: '',
-        providerId: '  ',
-        body: '   ',
-      });
+    expect(view).toEqual({ kind: 'UNAVAILABLE', title: UNAVAILABLE_TITLE });
+    expect(JSON.stringify(view).toLowerCase()).not.toContain('queued');
+    expect(JSON.stringify(view).toLowerCase()).not.toContain('sent');
+  });
 
-      expect(presentation.recipient).toBeNull();
-      expect(presentation.providerId).toBeNull();
-      expect(presentation.bodyPreview).toBeNull();
-      expect(presentation.title).toBe('Message sent');
+  it('renders a loaded record with its current status', () => {
+    const view = buildCommunicationTimelineView({
+      kind: 'LOADED',
+      record: { ...baseRecord, status: 'SENT' },
     });
+
+    expect(view.kind).toBe('READY');
+    expect(view.kind === 'READY' && view.title).toBe('Message sent · SMS');
   });
 });

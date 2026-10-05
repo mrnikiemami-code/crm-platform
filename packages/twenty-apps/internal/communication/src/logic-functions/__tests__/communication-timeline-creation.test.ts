@@ -70,6 +70,22 @@ describe('buildCommunicationTimelineActivityInput', () => {
     expect(properties.failureReason).toBeNull();
   });
 
+  it('keeps one activity per communication (creation only)', () => {
+    // The builder is a pure function of one creation event: calling it again
+    // for the same record yields the same single activity input, and nothing
+    // here reacts to status updates.
+    const first = buildCommunicationTimelineActivityInput(RECORD);
+    const second = buildCommunicationTimelineActivityInput({
+      ...RECORD,
+      status: 'DELIVERED',
+    });
+
+    expect(first?.linkedRecordId).toBe('communication-1');
+    expect(second?.linkedRecordId).toBe('communication-1');
+    // A status change only alters the snapshot, never creates a second target.
+    expect(first?.targetRecordId).toBe(second?.targetRecordId);
+  });
+
   it('never copies credentials or diagnostics into the activity', () => {
     const input = buildCommunicationTimelineActivityInput(RECORD);
 

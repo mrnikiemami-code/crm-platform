@@ -14,7 +14,9 @@ export default defineTimelineActivityType({
   universalIdentifier:
     COMMUNICATION_TIMELINE_ACTIVITY_TYPE_UNIVERSAL_IDENTIFIER,
   name: 'communicationSent',
-  label: 'sent a message',
+  // Outcome-neutral: the activity exists for every recorded communication, so
+  // claiming "sent" would be false while the outcome is still QUEUED.
+  label: 'communication',
   icon: 'IconSend',
   frontComponentUniversalIdentifier:
     COMMUNICATION_TIMELINE_RENDERER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
