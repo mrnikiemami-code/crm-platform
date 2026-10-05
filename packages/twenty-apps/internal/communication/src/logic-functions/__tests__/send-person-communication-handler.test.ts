@@ -37,9 +37,11 @@ type MutationCall = { mutationName: string; args: Record<string, unknown> };
 const buildFakeClient = ({
   queryResult,
   failCreate = false,
+  failOutcomeUpdate = false,
 }: {
   queryResult: QueryResult;
   failCreate?: boolean;
+  failOutcomeUpdate?: boolean;
 }) => {
   const mutations: MutationCall[] = [];
 
@@ -57,6 +59,10 @@ const buildFakeClient = ({
         }
 
         return { createCommunication: { id: 'communication-1' } };
+      }
+
+      if (failOutcomeUpdate) {
+        throw new Error('updateCommunication failed');
       }
 
       return { updateCommunication: { id: 'communication-1' } };
@@ -82,6 +88,32 @@ const buildRegistryWithStubProvider = (
       sent.push(1);
 
       return result;
+    },
+  };
+
+  const registry = new CommunicationProviderRegistry();
+
+  registry.register(provider);
+
+  return { registry, sent };
+};
+
+const buildThrowingRegistry = (
+  error: Error,
+): { registry: CommunicationProviderRegistry; sent: number[] } => {
+  const sent: number[] = [];
+
+  const provider: CommunicationProvider = {
+    id: 'razpayamak',
+    channel: 'SMS',
+    capabilities: () => ({
+      supportsSubject: false,
+      supportsDeliveryReceipt: false,
+    }),
+    send: async () => {
+      sent.push(1);
+
+      throw error;
     },
   };
 
@@ -143,7 +175,11 @@ describe('sendPersonCommunicationHandler', () => {
         ...validParameters,
         channel: 'TELEGRAM' as never,
       }),
-    ).toEqual({ success: false, error: 'Unsupported channel "TELEGRAM".' });
+    ).toEqual({
+      success: false,
+      failureCode: 'INVALID_INPUT',
+      error: 'Unsupported channel "TELEGRAM".',
+    });
   });
 
   it('rejects an empty body', async () => {
@@ -152,7 +188,11 @@ describe('sendPersonCommunicationHandler', () => {
         ...validParameters,
         body: '   ',
       }),
-    ).toEqual({ success: false, error: 'Message body is required.' });
+    ).toEqual({
+      success: false,
+      failureCode: 'INVALID_INPUT',
+      error: 'Message body is required.',
+    });
   });
 
   it('rejects an empty recipient', async () => {
@@ -161,7 +201,11 @@ describe('sendPersonCommunicationHandler', () => {
         ...validParameters,
         recipient: '  ',
       }),
-    ).toEqual({ success: false, error: 'Recipient is required.' });
+    ).toEqual({
+      success: false,
+      failureCode: 'INVALID_INPUT',
+      error: 'Recipient is required.',
+    });
   });
 
   it('rejects an inaccessible person', async () => {
@@ -171,7 +215,11 @@ describe('sendPersonCommunicationHandler', () => {
       await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
       }),
-    ).toEqual({ success: false, error: 'Person not found or not accessible.' });
+    ).toEqual({
+      success: false,
+      failureCode: 'PERSON_NOT_ACCESSIBLE',
+      error: 'Person not found or not accessible.',
+    });
   });
 
   it('rejects a person with no phone number', async () => {
@@ -183,7 +231,11 @@ describe('sendPersonCommunicationHandler', () => {
       await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
       }),
-    ).toEqual({ success: false, error: 'This person has no phone number.' });
+    ).toEqual({
+      success: false,
+      failureCode: 'INVALID_INPUT',
+      error: 'This person has no phone number.',
+    });
   });
 
   it('rejects a recipient that does not belong to the person', async () => {
@@ -196,6 +248,7 @@ describe('sendPersonCommunicationHandler', () => {
       ),
     ).toEqual({
       success: false,
+      failureCode: 'INVALID_INPUT',
       error: 'Selected phone number does not belong to this person.',
     });
   });
@@ -269,6 +322,8 @@ describe('sendPersonCommunicationHandler', () => {
       success: false,
       status: 'FAILED',
       communicationId: 'communication-1',
+      failureCode: 'PROVIDER_FAILED',
+      isOutcomeKnown: true,
       error: 'Invalid receptor',
     });
   });
@@ -290,6 +345,8 @@ describe('sendPersonCommunicationHandler', () => {
 
     expect(result).toEqual({
       success: false,
+      failureCode: 'UNEXPECTED_FAILURE',
+      isOutcomeKnown: false,
       error: 'The message could not be sent.',
     });
     // A message that cannot be recorded must never be sent.
@@ -307,7 +364,94 @@ describe('sendPersonCommunicationHandler', () => {
 
     expect(result).toEqual({
       success: false,
+      failureCode: 'UNEXPECTED_FAILURE',
+      isOutcomeKnown: false,
       error: 'The message could not be sent.',
+    });
+  });
+
+  describe('outcome persistence failures', () => {
+    it('reports a known SENT outcome instead of claiming the message was not sent', async () => {
+      const { client } = buildFakeClient({
+        queryResult: PERSON_WITH_PHONE,
+        failOutcomeUpdate: true,
+      });
+      const { registry, sent } = buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: '42',
+      });
+
+      const result = await sendPersonCommunicationHandler(validParameters, {
+        client: client as never,
+        registry,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        status: 'SENT',
+        communicationId: 'communication-1',
+        failureCode: 'OUTCOME_NOT_PERSISTED',
+        isOutcomeKnown: true,
+        error:
+          'The message was sent but its result could not be recorded. Do not retry automatically.',
+      });
+      // The provider is never called a second time.
+      expect(sent).toHaveLength(1);
+    });
+
+    it('distinguishes a FAILED provider outcome from a history-write failure', async () => {
+      const { client } = buildFakeClient({
+        queryResult: PERSON_WITH_PHONE,
+        failOutcomeUpdate: true,
+      });
+      const { registry, sent } = buildRegistryWithStubProvider({
+        status: 'FAILED',
+        failureReason: 'Invalid receptor',
+      });
+
+      const result = await sendPersonCommunicationHandler(validParameters, {
+        client: client as never,
+        registry,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        status: 'FAILED',
+        communicationId: 'communication-1',
+        failureCode: 'OUTCOME_NOT_PERSISTED',
+        isOutcomeKnown: true,
+        error:
+          'The provider rejected the message and the failure could not be recorded. Do not retry automatically.',
+      });
+      expect(sent).toHaveLength(1);
+    });
+
+    it('reports an unknown outcome when the send throws and the FAILED write also fails', async () => {
+      const { client } = buildFakeClient({
+        queryResult: PERSON_WITH_PHONE,
+        failOutcomeUpdate: true,
+      });
+      const { registry, sent } = buildThrowingRegistry(
+        new Error('SECRET-API-KEY leaked in transport error'),
+      );
+
+      const result = await sendPersonCommunicationHandler(validParameters, {
+        client: client as never,
+        registry,
+      });
+
+      expect(result).toEqual({
+        success: false,
+        communicationId: 'communication-1',
+        failureCode: 'UNEXPECTED_FAILURE',
+        isOutcomeKnown: false,
+        error:
+          'The message could not be sent and its state could not be recorded. Do not retry automatically.',
+      });
+      // No secret or raw cause ever reaches the caller.
+      expect(JSON.stringify(result)).not.toContain('SECRET-API-KEY');
+      // Exactly one provider call: no automatic resend.
+      expect(sent).toHaveLength(1);
     });
   });
 });

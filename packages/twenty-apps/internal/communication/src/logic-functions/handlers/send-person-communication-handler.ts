@@ -3,11 +3,18 @@ import { CoreApiClient } from 'twenty-client-sdk/core';
 
 import { findPersonPhoneOptions } from 'src/logic-functions/data/find-person-phone-options';
 import { SUPPORTED_COMMUNICATION_CHANNELS } from 'src/logic-functions/types/communication-channel-option.type';
-import { type SendPersonCommunicationResponse } from 'src/logic-functions/types/send-person-communication-input.type';
+import {
+  type SendPersonCommunicationFailureCode,
+  type SendPersonCommunicationResponse,
+} from 'src/logic-functions/types/send-person-communication-input.type';
 import { CoreApiCommunicationPersistence } from 'src/persistence/core-api-communication-persistence';
 import { createCommunicationProviderRegistry } from 'src/providers/register-communication-providers';
 import { type CommunicationChannel } from 'src/providers/types/communication-channel.type';
-import { CommunicationSendAndPersistService } from 'src/services/communication-send-and-persist.service';
+import {
+  CommunicationOutcomePersistenceError,
+  CommunicationSendAndPersistService,
+  CommunicationUnexpectedSendFailureError,
+} from 'src/services/communication-send-and-persist.service';
 import { CommunicationSendService } from 'src/services/communication-send.service';
 
 export type SendPersonCommunicationParameters = {
@@ -35,8 +42,14 @@ export type SendPersonCommunicationDependencies = {
   registry?: ReturnType<typeof createCommunicationProviderRegistry>;
 };
 
-const fail = (error: string): SendPersonCommunicationResponse => ({
+const fail = (
+  error: string,
+  failureCode: SendPersonCommunicationFailureCode,
+  extra: Partial<SendPersonCommunicationResponse> = {},
+): SendPersonCommunicationResponse => ({
   success: false,
+  failureCode,
+  ...extra,
   error,
 });
 
@@ -48,15 +61,18 @@ export const sendPersonCommunicationHandler = async (
   dependencies: SendPersonCommunicationDependencies = {},
 ): Promise<SendPersonCommunicationResponse> => {
   if (!SUPPORTED_COMMUNICATION_CHANNELS.includes(parameters.channel)) {
-    return fail(`Unsupported channel "${parameters.channel}".`);
+    return fail(
+      `Unsupported channel "${parameters.channel}".`,
+      'INVALID_INPUT',
+    );
   }
 
   if (!isNonEmptyString(parameters.body.trim())) {
-    return fail('Message body is required.');
+    return fail('Message body is required.', 'INVALID_INPUT');
   }
 
   if (!isNonEmptyString(parameters.recipient.trim())) {
-    return fail('Recipient is required.');
+    return fail('Recipient is required.', 'INVALID_INPUT');
   }
 
   const client = dependencies.client ?? new CoreApiClient();
@@ -69,15 +85,18 @@ export const sendPersonCommunicationHandler = async (
   });
 
   if (phoneOptions === null) {
-    return fail('Person not found or not accessible.');
+    return fail('Person not found or not accessible.', 'PERSON_NOT_ACCESSIBLE');
   }
 
   if (phoneOptions.length === 0) {
-    return fail('This person has no phone number.');
+    return fail('This person has no phone number.', 'INVALID_INPUT');
   }
 
   if (!phoneOptions.some((option) => option.value === parameters.recipient)) {
-    return fail('Selected phone number does not belong to this person.');
+    return fail(
+      'Selected phone number does not belong to this person.',
+      'INVALID_INPUT',
+    );
   }
 
   const registry =
@@ -91,8 +110,11 @@ export const sendPersonCommunicationHandler = async (
 
   const subject = parameters.subject?.trim();
 
+  let communicationId: string;
+  let result;
+
   try {
-    const { communicationId, result } = await orchestration.sendAndPersist({
+    ({ communicationId, result } = await orchestration.sendAndPersist({
       message: {
         channel: parameters.channel,
         recipient: parameters.recipient,
@@ -103,29 +125,97 @@ export const sendPersonCommunicationHandler = async (
       ...(isNonEmptyString(parameters.workspaceMemberId)
         ? { senderId: parameters.workspaceMemberId }
         : {}),
-    });
+    }));
+  } catch (error) {
+    // The provider outcome is known for CommunicationOutcomePersistenceError:
+    // the send did happen, only history could not be written. Report the real
+    // outcome and make clear that retrying would send a duplicate.
+    if (error instanceof CommunicationOutcomePersistenceError) {
+      const outcome = error.sendResult;
 
-    if (result.status === 'FAILED') {
+      console.warn(
+        '[communication] send outcome could not be persisted',
+        JSON.stringify({
+          classification: 'OUTCOME_NOT_PERSISTED',
+          communicationId: error.communicationId,
+          providerOutcome: outcome.status,
+        }),
+      );
+
       return {
         success: false,
-        status: 'FAILED',
-        communicationId,
-        error: result.failureReason,
+        status: outcome.status,
+        communicationId: error.communicationId,
+        failureCode: 'OUTCOME_NOT_PERSISTED',
+        isOutcomeKnown: true,
+        error:
+          outcome.status === 'FAILED'
+            ? 'The provider rejected the message and the failure could not be recorded. Do not retry automatically.'
+            : 'The message was sent but its result could not be recorded. Do not retry automatically.',
       };
     }
 
-    return {
-      success: true,
-      status: result.status,
-      communicationId,
-      message:
-        result.status === 'DELIVERED'
-          ? 'Message delivered.'
-          : 'Message sent.',
-    };
-  } catch {
-    // Configuration, provider or persistence failures are surfaced as a safe
-    // application failure. Raw exception text is never returned to the client.
-    return fail('The message could not be sent.');
+    // Both the send and the FAILED write failed, so the outcome is genuinely
+    // unknown. The full causes are logged server-side (never returned, never
+    // persisted), and the caller gets a stable classification.
+    if (error instanceof CommunicationUnexpectedSendFailureError) {
+      console.warn(
+        '[communication] unexpected send failure with persistence failure',
+        JSON.stringify({
+          classification: 'UNEXPECTED_FAILURE',
+          communicationId: error.communicationId,
+          sendCause:
+            error.sendCause instanceof Error
+              ? error.sendCause.name
+              : 'unknown',
+          persistenceCause:
+            error.persistenceCause instanceof Error
+              ? error.persistenceCause.name
+              : 'unknown',
+        }),
+      );
+
+      return {
+        success: false,
+        communicationId: error.communicationId,
+        failureCode: 'UNEXPECTED_FAILURE',
+        isOutcomeKnown: false,
+        error:
+          'The message could not be sent and its state could not be recorded. Do not retry automatically.',
+      };
+    }
+
+    // Configuration, provider or programming failures before/around the
+    // orchestration. Raw exception text is never returned to the client.
+    console.warn(
+      '[communication] send failed',
+      JSON.stringify({
+        classification: 'UNEXPECTED_FAILURE',
+        errorType: error instanceof Error ? error.name : 'unknown',
+      }),
+    );
+
+    return fail('The message could not be sent.', 'UNEXPECTED_FAILURE', {
+      isOutcomeKnown: false,
+    });
   }
+
+  if (result.status === 'FAILED') {
+    return {
+      success: false,
+      status: 'FAILED',
+      communicationId,
+      failureCode: 'PROVIDER_FAILED',
+      isOutcomeKnown: true,
+      error: result.failureReason,
+    };
+  }
+
+  return {
+    success: true,
+    status: result.status,
+    communicationId,
+    message:
+      result.status === 'DELIVERED' ? 'Message delivered.' : 'Message sent.',
+  };
 };

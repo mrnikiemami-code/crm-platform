@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { defineFrontComponent } from 'twenty-sdk/define';
 import {
   closeSidePanel,
@@ -61,6 +61,12 @@ const SendMessageComposer = () => {
   const [outcome, setOutcome] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Synchronous in-flight guard. React state updates are not visible to a
+  // second click in the same tick, so two rapid clicks could otherwise fire
+  // two requests. The ref flips immediately; `sending` still drives the
+  // visual pending state.
+  const isSubmittingRef = useRef(false);
+
   const loadPhones = useCallback(async () => {
     if (!personId) {
       setLoadingPhones(false);
@@ -109,11 +115,13 @@ const SendMessageComposer = () => {
     trimmedBody.length > 0;
 
   const handleSubmit = async () => {
-    if (!canSubmit || personId === null) {
+    // The ref check runs synchronously, before any await, so a second
+    // immediate submission is rejected in the same tick.
+    if (isSubmittingRef.current || !canSubmit || personId === null) {
       return;
     }
 
-    // Guards against duplicate submission while the request is in flight.
+    isSubmittingRef.current = true;
     setSending(true);
     setError(null);
 
@@ -132,7 +140,20 @@ const SendMessageComposer = () => {
             : t("The message could not be sent.");
 
         setError(failureMessage);
-        await enqueueSnackbar({ message: failureMessage, variant: 'error' });
+
+        // A sent-but-unrecorded message is not a plain failure, and an unknown
+        // outcome must not read like a definite one. Both are warnings so the
+        // user does not retry a message that may already have been delivered.
+        const isSentButUnrecorded =
+          data.failureCode === 'OUTCOME_NOT_PERSISTED' &&
+          data.status !== 'FAILED';
+        const isOutcomeUnknown = data.isOutcomeKnown === false;
+
+        await enqueueSnackbar({
+          message: failureMessage,
+          variant:
+            isSentButUnrecorded || isOutcomeUnknown ? 'warning' : 'error',
+        });
 
         return;
       }
@@ -149,6 +170,9 @@ const SendMessageComposer = () => {
     } catch {
       setError(t("The message could not be sent."));
     } finally {
+      // Released only after the request settles, so no automatic resend can
+      // occur from this guard.
+      isSubmittingRef.current = false;
       setSending(false);
     }
   };

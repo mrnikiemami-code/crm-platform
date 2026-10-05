@@ -699,7 +699,7 @@ Immediate next task: build the first real **Person send-message vertical slice**
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W5 IMPLEMENTED (Person send-message slice) | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message vertical slice committed at `15ad660a648d8aa85eddfb904712d8ec04552afa`; see the W5 section below |
+| Communications / Messaging | ACTIVE — W5 + W5-R1 IMPLEMENTED | W0–W4 accepted; W4 `8c3866f5f5` + W4-R1 `f1469f4fb7` certified; W5 Person send-message slice `15ad660a64`; W5-R1 outcome-truth + submit-guard correction `ee9c7b1a2f`; see the W5 section below |
 
 **Rule:** never assume an UNVERIFIED item is complete. Re-check the repository before acting on any of these.
 
@@ -725,8 +725,26 @@ Person record
 - Person access and recipient ownership are validated server-side before any send.
 - The front component imports **no** provider/config/persistence modules; provider HTTP and secrets stay server-side.
 - Only implemented channels are offered (`SUPPORTED_COMMUNICATION_CHANNELS = ['SMS']`).
-- Duplicate submission is prevented while a request is in flight; there is no automatic resend/retry.
+- Duplicate submission is prevented while a request is in flight (see W5-R1 for the synchronous guard); there is no automatic resend/retry.
 - SENT is never presented as DELIVERED; a normalized `FAILED` result is reported truthfully with its provider-declared reason.
+
+## W5-R1 — outcome truth and submission guard (IMPLEMENTED)
+
+Status: **IMPLEMENTED / COMMITTED** at `ee9c7b1a2f` (`fix(apps): harden send outcome reporting`).
+
+- **Outcome truth.** The handler now classifies failures instead of collapsing everything into "could not be sent":
+  - `PROVIDER_FAILED` — the provider returned a normalized `FAILED` (with its declared reason).
+  - `OUTCOME_NOT_PERSISTED` — the send outcome is **known** but history could not be written. The real provider outcome (`SENT` / `DELIVERED` / `FAILED`) is preserved and returned, so a successful send is never reported as "not sent". The message tells the user not to retry automatically.
+  - `UNEXPECTED_FAILURE` with `isOutcomeKnown: false` — the send threw and the FAILED-state write also failed, so the outcome is genuinely unknown. Diagnosability is preserved **server-side** via `console.warn` with a stable classification, `communicationId`, and only the error *names* — never raw messages, secrets, URLs or request bodies.
+  - `INVALID_INPUT` / `PERSON_NOT_ACCESSIBLE` — validation failures.
+- **Submission guard.** The composer uses a synchronous `useRef` in-flight guard checked before any `await`, so two immediate clicks produce exactly one outbound request. React state still drives the visual pending state, and the guard is released only after the request settles (no automatic resend).
+- **Unchanged:** the certified W4 orchestration (`CommunicationSendAndPersistService`) is untouched; provider is never retried.
+
+### W5-R1 verification
+
+- 94 focused tests PASS (68 W4 baseline preserved + W5 + W5-R1 additions).
+- New regression coverage: SENT + persistence failure reports a known SENT outcome with one provider call; FAILED + persistence failure is distinguished from a plain provider failure; unexpected send + FAILED-write double failure returns a safe classification with no secret leakage and one provider call; two immediate submissions produce one request; the guard is released after failure without resending.
+- typecheck PASS; oxlint 0/0 (54 files); app build PASS (7 files); manifest wiring unchanged.
 
 ## New files (all under `packages/twenty-apps/internal/communication/`)
 
