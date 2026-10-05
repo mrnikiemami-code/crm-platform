@@ -50,7 +50,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W6-R1 | `fd9e0988c6` | `1a61f6c4bf` | code-review accepted |
 | W6-R2 | `10af7c560f` | `cafce80a4e` | code-review accepted |
 | W7 / W7-R1 / W7-R2 | `d5a71d9232`, `8b58018393`, `ce2cc9e0d1a08368efafdbf1a1ba9764dd3bccff` | `7f536725e6`, `dc37b1c47e`, `96432fb60a`, `c399ee8587`, `1acc4430d2` | **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** |
-| W8 / W8-R1 | `8ecbd449d6` (+R1 `f61744436bd3fb88d22001d1bf6edba985878592`) | `cb7b067ed7`, `928645c3aa` (+R1 `832122c6ff`) | dependency/lockfile + version evidence; **architect review pending W8-R1** |
+| W8 / W8-R1 | `8ecbd449d6`, `f61744436b` | `cb7b067ed7`, `928645c3aa`, `832122c6ff`, `fa8a454755` | **accepted at dependency/build level** (Node-pin and live-install limitations retained) |
+| W9 | `91961e601f15689ce28bf5d6b55129d854731997` | `W9_DOC_SHA` | native settings entry (`defineSettingsFrontComponent`) |
 
 **Live verification: NOT PERFORMED** for every Communications wave. The Communication app has never been installed on a running instance in this environment, so no composer submission, no provider call, no database-event delivery and no timeline activity has ever occurred end to end.
 
@@ -74,7 +75,7 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-No wave assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 dependency and compatibility evidence is complete but **under architect review**. The **native Communication settings surface is PLANNED / NOT IMPLEMENTED** (see the requirement in the W8 section). Do not start another wave automatically.
+No wave assigned. W7 (Workflow reuse) is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 dependency and compatibility work is **accepted at dependency/build level**. W9 provides the native settings entry. Remaining planned work on the settings surface: readiness feedback polish and richer per-provider configuration UX. Do not start another wave automatically.
 
 ---
 
@@ -1193,7 +1194,9 @@ A disposable copy outside the monorepo (`D:\twenty-iso-comm2`) containing **only
 
 **Claim corrected:** W8 previously said the boundary was "independently reproducible". What is actually proven is that the app's **dependency and build boundary** installs and passes from its own declared dependencies and lockfile, on **Node 24.16.0 rather than the declared 24.5.0**. Exact-pin reproducibility is **not** verified.
 
-### REQUIRED NATIVE SETTINGS SURFACE — PLANNED / NOT IMPLEMENTED
+### REQUIRED NATIVE SETTINGS SURFACE — ENTRY IMPLEMENTED (W9); richer UX PLANNED
+
+> **Update (W9):** the native settings **entry** now exists — `defineSettingsFrontComponent` registered as `settingsFrontComponent`, rendered at **Settings → Applications → Communication**, with the native Variables tab covering credentials and default provider. Readiness feedback and richer per-provider configuration UX remain **PLANNED / NOT IMPLEMENTED**.
 
 A durable product/architecture requirement (recorded here, **not implemented in this wave**):
 
@@ -1221,6 +1224,40 @@ Constraints that must hold when this is built:
 - Platform access stays behind app-local SDK adapters (`RestApiClient`, `CoreApiClient`, `MetadataApiClient`).
 - Stable universal identifiers unchanged; the Workflow entry remains **disabled and unregistered**.
 
+## W9 — native settings entry (IMPLEMENTED; live navigation NOT verified)
+
+Status: **IMPLEMENTED / COMMITTED** at `91961e601f15689ce28bf5d6b55129d854731997`. **Live navigation NOT verified** (app not installed).
+
+### Supported settings location (source-backed)
+
+- **SDK mechanism:** `defineSettingsFrontComponent` from `twenty-sdk/define` — **present in the published 2.35.0** this app declares (verified by inspecting the installed package's `dist/define/index.d.ts`; the app also compiles against it in isolation). The manifest exposes it as `settingsFrontComponent`.
+- **Native precedents:** `packages/twenty-apps/public/last-contact/src/front-components/last-contact-settings.tsx`, `public/teams/src/front-components/settings.front-component.tsx`, `public/granola`, `public/companion`.
+- **Where it renders:** `packages/twenty-front/src/pages/settings/applications/SettingsApplicationDetails.tsx` reads the application's `settingsFrontComponent` and renders it in the **application settings page** as the custom settings tab.
+- **Exact navigation path:** **Settings → Applications → Communication** (route shape `SettingsPath.ApplicationDetail` = `applications/:applicationId`). The native **Variables** tab of that same page is where an administrator edits the declared application variables, so credentials, sender values and `COMMUNICATION_PROVIDER` are all managed in one native place.
+
+### What this wave implemented vs. what Twenty already supplies
+
+- **Implemented here:** a `communication-settings` front component registered via `defineSettingsFrontComponent`, plus a pure mapping module (`buildCommunicationSettingsView`) that reports the configured default provider, the implemented providers (RazPayamak, Kavenegar), per-provider sender-configuration presence, readiness messaging, and the implemented channels.
+- **Already supplied by Twenty (not reimplemented):** the application settings page itself, the **native variables screen** with secret masking, and the permission checks that guard application administration.
+
+### Permissions and secrets (source-inspected)
+
+- **Authorization:** the native application settings surface is behind the platform's admin/full-admin-panel permission checks (`canAccessFullAdminPanel`, `SystemPermissionFlag` are exported by the SDK); UI visibility is not treated as authorization here. This component adds **no** authorization logic and exposes **no** privileged action.
+- **Secrets never reach the frontend:** `ApplicationVariableService` filters variables by `isSecret` (`flatApplicationVariables.filter(({ isSecret }) => !isSecret)`) before they are exposed, and `getApplicationVariable` reads only the sandbox's `process.env.applicationVariables`. **The settings component reads no secret variable** (`KAVENEGAR_API_KEY` / `RAZPAYAMAK_API_KEY` are never referenced), never requests plaintext, and shows credential presence only via the native masked variables screen.
+- **No parallel storage:** configuration stays in the existing declared `serverVariables`; nothing is duplicated into Communication records, `localStorage`, frontend state or a new object.
+
+### Validation
+
+- **Production-code tests:** `src/settings/__tests__/communication-settings-view.test.ts` (9 tests) covers the shipped mapping — implemented providers only, default marking, readiness and missing-configuration messaging, unknown provider ids rejected, blank values treated as missing, implemented channels only, and an assertion that no credential value appears in the output. **174 tests / 20 files PASS.**
+- **Manifest/build wiring:** app build PASS (**16 files**); manifest carries `settingsFrontComponent.universalIdentifier` = `aba9d3ad-92fe-4c56-afc7-4ae8df92add6`, **3 front components**, **0 Workflow actions**.
+- **Isolated validation** against published `twenty-sdk@2.35.0` with the committed lockfile: `yarn install --immutable`, `yarn test` (174/174), `yarn typecheck`, `yarn lint` (0/0) and `twenty dev:build` all **pass**.
+- **Live navigation: NOT verified.** The app is not installed, so the Settings → Applications → Communication entry and its rendered tab have never been seen at runtime. **This is not settings-UI completion** — only the component, its mapping, and its manifest registration are verified.
+
+### Remaining work on the settings surface
+
+- Readiness feedback is read-only; editing is delegated to the native variables screen. A richer per-provider configuration UX (validation guidance, provider-specific fields) is **PLANNED / NOT IMPLEMENTED**.
+- No provider connection test, SMS send, credential logging or external request is performed.
+
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 
 - **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineState` (the full `timelineActivityId → activity → linked Communication → presentation` chain, with `recordId: null` in the context, every unavailable reason, no error leakage, and read-only access), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, unavailable states, snapshot use, body truncation). 136 focused tests PASS.
@@ -1230,6 +1267,6 @@ Constraints that must hold when this is built:
 - **W7-R2 actual production coverage:** the shipped disabled entry is tested directly (valid input, empty and malformed input, and hostile input carrying senderId/workspaceId/enabled all return WORKFLOW_ACTION_DISABLED), together with configuration assertions (no workflowActionTriggerSettings, no alternative trigger, unchanged universal identifier) and a spy proving the reusable send handler is never called.
 - **W7-R1 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
 - **W7 still not verified:** live Workflow execution. The app is not installed, so the step has never run inside a real workflow; manifest registration is wiring evidence only, not proof of execution.
-- **Current validated totals (after W8-R1):** 165 focused tests PASS; typecheck PASS (`tsgo` spec config **and** `tsc` app config); oxlint 0/0 (74 files); app build PASS (14 files). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired), **9 server variables** and `requiredServerVersionRange` **`>=2.35.0`**. An app-local `yarn.lock` is committed; the isolated `yarn install --immutable` run used Node 24.16.0 / Yarn 4.13.0 (declared Node 24.5.0 unavailable).
+- **Current validated totals (after W9):** 174 focused tests PASS; typecheck PASS (`tsgo` spec config **and** `tsc` app config); oxlint 0/0 (77 files); app build PASS (16 files). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 **trigger-less disabled** function), **0 Workflow actions advertised**, **3 front components** (composer, timeline card, settings), **1 timeline activity type** (label `communication`, no `emit`, renderer wired), **1 settings front component** and **9 server variables** with `requiredServerVersionRange` **`>=2.35.0`**. An app-local `yarn.lock` is committed; isolated runs used Node 24.16.0 / Yarn 4.13.0 (declared Node 24.5.0 unavailable).
 - W4 `CommunicationSendAndPersistService` unchanged; the timeline path cannot reach a provider and never uses `context.recordId`. **W7 did refactor the W5 Person handler** to use the shared validation.
 
