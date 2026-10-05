@@ -54,7 +54,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W9 / W9-R1 | `91961e601f`, `64cc23d558` | `55774de9ad`, `a7df6d1c89`, `0d7d232a50`, `bacdf3f5c2` | **accepted at code level** (live navigation NOT verified) |
 | W10 / W10-R1 | (none) | `f6630ef5dd` | environment **prepared**; installed checks **NOT PERFORMED** (historical — superseded by W10-R2) |
 | W10-R2 | `526997b77e` | `526997b77e` (implementation + docs committed together) | **installed + live-verified (synthetic integration)**; registration/upload/sync **PASS**, all 8 runtime checks **PASS**, 3 app defects fixed |
-| W10-R3 | `_pending commit_` | `_this document_` | **signed-in browser verification**: UI navigation **PASS**; **in-app front-component rendering FAIL (environment)**; timeline card status render + Refresh **NOT PERFORMED — BLOCKED** |
+| W10-R3 | `a791ca8762` (docs only — no app change) | `a791ca8762` | **signed-in browser verification**: UI navigation **PASS**; **in-app front-component rendering FAIL (environment)**; timeline card status render + Refresh **NOT PERFORMED — BLOCKED** |
 
 **Evidence levels (do not conflate them):**
 
