@@ -124,6 +124,12 @@ const SendMessageComposer = () => {
       return;
     }
 
+    // A duplicate is dropped before any UI state changes, so it cannot clear
+    // the pending state of the request that is still in flight.
+    if (isSubmittingRef.current) {
+      return;
+    }
+
     setSending(true);
     setError(null);
 
@@ -147,6 +153,12 @@ const SendMessageComposer = () => {
         },
       },
     );
+
+    // A duplicate is not a result: render nothing and leave the pending state
+    // of the in-flight request untouched.
+    if (outcomeResult.kind === 'DUPLICATE_IGNORED') {
+      return;
+    }
 
     try {
       switch (outcomeResult.kind) {

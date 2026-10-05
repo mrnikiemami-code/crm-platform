@@ -76,9 +76,12 @@ describe('classifySubmitResponse', () => {
     expect(outcome.kind).toBe('FAILED_BUT_UNRECORDED');
   });
 
-  it('maps an unknown outcome to OUTCOME_UNKNOWN', () => {
+  it('uses the canonical wording for the actual server payload of an unknown outcome', () => {
+    // This is exactly what the server currently returns for the double-failure
+    // case: its own text asserts "could not be sent", which is not truthful.
     const outcome = classifySubmitResponse({
       success: false,
+      communicationId: 'communication-1',
       failureCode: 'UNEXPECTED_FAILURE',
       isOutcomeKnown: false,
       error:
@@ -86,7 +89,10 @@ describe('classifySubmitResponse', () => {
     });
 
     expect(outcome.kind).toBe('OUTCOME_UNKNOWN');
-    expect(JSON.stringify(outcome)).toContain('could not be sent');
+    expect(JSON.stringify(outcome)).toContain('may or may not have been sent');
+    expect(JSON.stringify(outcome)).toContain('Check the communication history');
+    // The server's "could not be sent" wording must never be reused.
+    expect(JSON.stringify(outcome)).not.toContain('could not be sent');
   });
 
   it('never claims a definite non-send when the outcome is unknown', () => {
@@ -98,6 +104,7 @@ describe('classifySubmitResponse', () => {
     expect(outcome.kind).toBe('OUTCOME_UNKNOWN');
     expect(JSON.stringify(outcome)).toContain('may or may not have been sent');
     expect(JSON.stringify(outcome)).toContain('Check the communication history');
+    expect(JSON.stringify(outcome)).not.toContain('could not be sent');
   });
 });
 
@@ -119,6 +126,7 @@ describe('submitPersonCommunication', () => {
 
     expect(outcome.kind).toBe('OUTCOME_UNKNOWN');
     expect(JSON.stringify(outcome)).toContain('may or may not have been sent');
+    expect(JSON.stringify(outcome)).not.toContain('could not be sent');
     // No raw exception text ever reaches the caller.
     expect(JSON.stringify(outcome)).not.toContain('SECRET-API-KEY');
   });
@@ -135,7 +143,7 @@ describe('submitPersonCommunication', () => {
     expect(JSON.stringify(outcome)).not.toContain('Unexpected token');
   });
 
-  it('issues exactly one request for two immediate submissions', async () => {
+  it('issues exactly one request for two immediate submissions and reports the duplicate distinctly', async () => {
     const transport = transportReturning({ success: true, status: 'SENT' });
     const isSubmittingRef = { current: false };
 
@@ -145,10 +153,54 @@ describe('submitPersonCommunication', () => {
     ]);
 
     expect(transport).toHaveBeenCalledTimes(1);
-    // The duplicate is ignored rather than silently reported as a second send.
+    // The duplicate is reported as its own kind, never as an outcome the UI
+    // could render as a warning or error.
     expect([first.kind, second.kind].sort()).toEqual(
-      ['OUTCOME_UNKNOWN', 'SENT'].sort(),
+      ['DUPLICATE_IGNORED', 'SENT'].sort(),
     );
+    expect(second.kind).toBe('DUPLICATE_IGNORED');
+    // It carries no message, so nothing can be displayed for it.
+    expect(JSON.stringify(second)).not.toContain('message');
+  });
+
+  it('leaves the first request pending until it settles when a duplicate arrives', async () => {
+    const isSubmittingRef = { current: false };
+
+    let releaseFirst: (() => void) | undefined;
+    const firstRequestGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    const transport = vi.fn(async () => {
+      await firstRequestGate;
+
+      return { ok: true, status: 200, data: { success: true, status: 'SENT' } };
+    }) as unknown as SubmitTransport;
+
+    const first = submitPersonCommunication(REQUEST, {
+      transport,
+      isSubmittingRef,
+    });
+
+    // While the first request is in flight the guard is held.
+    expect(isSubmittingRef.current).toBe(true);
+
+    const second = await submitPersonCommunication(REQUEST, {
+      transport,
+      isSubmittingRef,
+    });
+
+    // The duplicate issued no request and is not a renderable outcome.
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(second.kind).toBe('DUPLICATE_IGNORED');
+
+    // The first request is still pending and still holds the guard.
+    expect(isSubmittingRef.current).toBe(true);
+
+    releaseFirst?.();
+
+    expect((await first).kind).toBe('SENT');
+    expect(isSubmittingRef.current).toBe(false);
   });
 
   it('releases the guard after a failure without resending', async () => {

@@ -33,7 +33,13 @@ export type SubmitPersonCommunicationOutcome =
   /** The send may or may not have happened; verify history before retrying. */
   | { kind: 'OUTCOME_UNKNOWN'; message: string }
   /** Rejected before any send was attempted. */
-  | { kind: 'INVALID_INPUT'; message: string };
+  | { kind: 'INVALID_INPUT'; message: string }
+  /**
+   * The submission was dropped because an identical one is already in flight.
+   * It is not a result: the composer must not render it and must not let it
+   * clear the pending state of the request that is still running.
+   */
+  | { kind: 'DUPLICATE_IGNORED' };
 
 const OUTCOME_UNKNOWN_MESSAGE =
   'The message may or may not have been sent. Check the communication history before retrying.';
@@ -75,7 +81,10 @@ export const classifySubmitResponse = (
   }
 
   if (data.isOutcomeKnown === false) {
-    return { kind: 'OUTCOME_UNKNOWN', message: message ?? OUTCOME_UNKNOWN_MESSAGE };
+    // Always the canonical wording. `data.error` is deliberately ignored here:
+    // the server's current message asserts "could not be sent", which is not
+    // truthful when the send may have happened.
+    return { kind: 'OUTCOME_UNKNOWN', message: OUTCOME_UNKNOWN_MESSAGE };
   }
 
   return {
@@ -105,8 +114,10 @@ export const submitPersonCommunication = async (
   const guard = dependencies.isSubmittingRef;
 
   if (guard?.current === true) {
-    // A duplicate submission is ignored; the caller keeps its pending UI.
-    return { kind: 'OUTCOME_UNKNOWN', message: OUTCOME_UNKNOWN_MESSAGE };
+    // A duplicate is ignored before any state change or transport call, and is
+    // reported distinctly so the caller renders nothing and leaves the pending
+    // request's UI untouched.
+    return { kind: 'DUPLICATE_IGNORED' };
   }
 
   if (guard !== undefined) {
