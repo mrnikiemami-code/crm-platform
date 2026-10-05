@@ -70,10 +70,10 @@ Current Development State:
 - **Refresh:** **manual**, via a localized Refresh action shown on pending and unavailable cards. The card does **not** update automatically; no subscription or invalidation mechanism is exposed to the front-component sandbox.
 - **Unavailable reasons:** `NO_ACTIVITY_ID`, `ACTIVITY_NOT_FOUND`, `NO_LINKED_RECORD`, `LINKED_RECORD_NOT_COMMUNICATION`, `ERROR`. None renders as QUEUED or as success.
 - **One activity per Communication**, created on `communication.created` only; a status refresh renders the same card and never creates another activity or calls a provider.
-- **Workflow entry point:** one native Workflow action (`Send Communication`) registered through `workflowActionTriggerSettings` on an app logic function. It is a thin adapter over the same `CommunicationSendAndPersistService`; no HTTP route, no composer reuse, no provider branching.
+- **Workflow entry point:** one native Workflow action (`Send Communication`) registered through `workflowActionTriggerSettings` on an app logic function. It is a thin adapter over the same `CommunicationSendAndPersistService`; no HTTP route, no composer reuse, no provider branching. **Known blocker:** a failed/incomplete send cannot mark the Workflow step FAILED — see the W7 section.
 
 Next Recommended Work:
-None assigned. W7 (Workflow reuse) is implemented and awaiting architect review. Do not start another wave automatically.
+None assigned. W7 (Workflow reuse) is **BLOCKED / NOT ACCEPTED**: the native Workflow contract cannot surface a failed send as a failed step, and no supported app-side mechanism exists. Its independent corrections (unknown-outcome wording, subject coverage) are complete. Do not start another wave automatically.
 
 ---
 
@@ -925,8 +925,7 @@ LIVE VERIFICATION IS STILL NOT PERFORMED for the Communications app: it has neve
 installed on a running instance, so no composer submission, provider call, database-event
 delivery or timeline activity has occurred end to end. Do not claim end-to-end completion.
 
-Next planned task (NOT STARTED, requires explicit assignment): CRM-COMMUNICATIONS-001-W7 —
-Workflow reuse of the certified durable send path (CommunicationSendAndPersistService).
+W7 (Workflow reuse of CommunicationSendAndPersistService) is IMPLEMENTED but **BLOCKED / NOT ACCEPTED**: the native Workflow contract reports a business failure as a SUCCESS step, and no supported app-side mechanism exists to fail the step without risking a duplicate send. See the W7 section.
 
 The Jalali presentation program is complete; do not start another Jalali phase.
 Branding remains planned. Do not start W7 or any other wave automatically.
@@ -1040,22 +1039,48 @@ No subscription or invalidation mechanism is exposed to the front-component sand
 
 `NO_ACTIVITY_ID`, `ACTIVITY_NOT_FOUND`, `NO_LINKED_RECORD`, `LINKED_RECORD_NOT_COMMUNICATION`, `ERROR`. None of them renders as QUEUED or as success.
 
-## W7 — Workflow entry point (IMPLEMENTED, pending review)
+## W7 — Workflow entry point (IMPLEMENTED — BLOCKED / NOT ACCEPTED)
 
-Status: **IMPLEMENTED / COMMITTED** at `d5a71d9232da973ffc8ab08e4488fdf041528734` (`feat(apps): expose communication sending to workflows`). **NOT live-verified.**
+Status: implementation `d5a71d9232`, corrected by **W7-R1** `8b58018393e167647a4b18580ef5809f08293a96`. **BLOCKED / NOT ACCEPTED**: the native Workflow contract cannot surface a failed send as a failed step. **NOT live-verified.**
 
 ### Inspected native mechanism (source paths)
 
-- `packages/twenty-shared/src/application/workflowActionTriggerSettingsType.ts` — `workflowActionTriggerSettings` accepts `label`, `icon`, `inputSchema`, `outputSchema`. This is the supported way to expose an app logic function as a Workflow step; **no core change is required**.
-- `packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/logic-function/logic-function.workflow-action.ts` — the executor runs the logic function with `{ ...getUserFromAuthContext(authContext) }`, i.e. the trusted `userId`/`userWorkspaceId`, and converts a returned `{ error }` into `{ error }` (not an exception).
-- `packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts` — retry/error handling:
-  - A **thrown** exception becomes `{ error: error.message, isUserError }` (line ~509).
-  - `if (isDefined(actionOutput.error) && !actionOutput.isUserError)` the executor **retries** the step while `stepHasRetryAttemptsLeft` (lines ~156–172).
-  - Retry attempts come from the **author's step settings** (`settings.errorHandlingOptions.retryOnFailure.value`, default `0`), capped at `STEP_RETRY_DELAYS_MS.length` = 3 (`twenty-shared/src/workflow/constants/StepRetryDelaysMs.ts`).
-- `packages/twenty-server/src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.service.ts` — `buildExecutionContext` resolves `workspaceMemberId` server-side from the triggering user and passes it as the handler's second argument. It is **null** for a run with no human behind it.
-- Precedent: `packages/twenty-apps/public/discord/src/logic-functions/discord-post-message.ts` (workflow action + input/output schema) and `packages/twenty-apps/fixtures/rich-app`.
+- `packages/twenty-shared/src/application/workflowActionTriggerSettingsType.ts` — `workflowActionTriggerSettings` (`label`, `icon`, `inputSchema`, `outputSchema`) exposes an app logic function as a Workflow step. **No core change is required.**
+- `packages/twenty-server/src/modules/workflow/workflow-executor/workflow-actions/logic-function/logic-function.workflow-action.ts` — result mapping:
+  ```ts
+  if (result.error) { return { error: result.error.errorMessage }; }
+  return { result: result.data || {} };
+  ```
+  A returned `{ success: false, error }` therefore arrives as `actionOutput.result` (defined).
+- `packages/twenty-server/src/modules/workflow/workflow-executor/workspace-services/workflow-executor.workspace-service.ts` — `processStepExecutionResult`:
+  ```ts
+  const isSuccess = isDefined(actionOutput.result);
+  ...
+  } else if (isSuccess) { stepInfo = { status: StepStatus.SUCCESS, result: actionOutput.result }; }
+  ...
+  return { shouldProcessNextSteps: isSuccess || isStopped || isSkipped || isFailedSafely };
+  ```
+  So a defined `result` ⇒ **step SUCCESS and downstream steps continue**.
+- Same file, retry machinery: a thrown exception becomes `{ error, isUserError }`; then `if (isDefined(actionOutput.error) && !actionOutput.isUserError)` the executor retries while `stepHasRetryAttemptsLeft` (attempts from the author's `settings.errorHandlingOptions.retryOnFailure.value`, default `0`, capped at 3 by `STEP_RETRY_DELAYS_MS`).
+- `logic-function-executor.service.ts` → `local.driver.ts` — a handler that **throws** yields `{ data: null, error: { errorType, errorMessage }, status: ERROR }`; the workflow action turns that into `{ error }`.
 
-### Call path
+### The blocker (concrete)
+
+There is **no supported app-side mechanism** to fail a Workflow step:
+
+- `WorkflowActionOutput` (`shouldFailSafely`, `isUserError`, `shouldEndWorkflowRun`, …) is **server-internal**; it is not exported by `twenty-sdk` or `twenty-shared` and no app in the repository returns it.
+- The only paths to `actionOutput.error` are (a) the logic function throwing, or (b) `result.error` from the driver. Both routes also feed the **retry** machinery.
+- The user-facing exception codes that would suppress retry (`WorkflowStepExecutorException`, `LogicFunctionException`) live in `twenty-server` and are **not importable from an app**; fabricating an exception name to imitate them is not supported.
+
+**Consequence:** returning `{ success: false }` reports the step as SUCCESS and lets downstream steps run; throwing instead risks Twenty's automatic step retry re-sending the message. Neither is acceptable, so W7 is **BLOCKED / NOT ACCEPTED** rather than shipped with a wrong contract.
+
+### W7-R1 corrections (completed)
+
+1. **Unknown outcome wording.** The generic catch also covers "provider threw, then the FAILED-state write succeeded". A definite non-send cannot be inferred from that, and a stored `FAILED` status does **not** prove external non-delivery. It now returns the canonical uncertainty wording: *"The message may or may not have been sent. Check the communication history before re-running this step."* Both throw variants (FAILED write succeeds / fails) are tested.
+2. **Subject coverage.** The previous subject test only asserted `result.success`. It now captures the message received by the fake provider **and** the `createCommunication` payload, asserting both equal the input and each other, plus omission when no subject is supplied.
+3. **Shared validation.** W7 **refactored the Person handler** (`send-person-communication-handler.ts`) to use the new shared `validateCommunicationRequest`. W5's Person tests were updated accordingly — the W5 files were **not** left unchanged.
+
+### Call path (unchanged by W7-R1)
 
 ```
 Workflow step "Send Communication"
@@ -1065,41 +1090,32 @@ Workflow step "Send Communication"
       optional Person access + recipient-ownership validation
   → CommunicationSendAndPersistService.sendAndPersist       (certified durable path)
   → CommunicationSendService → ProviderRegistry → Kavenegar | RazPayamak
-  → typed result { success, status, communicationId, failureCode, isOutcomeKnown, message|error }
 ```
 
-### Extension boundaries
+### Outcome and retry semantics
 
-- The adapter contains **no provider-specific branching**; provider selection goes through the existing registry/configuration (optional explicit `providerId`).
-- Only implemented channels are offered (`enum: ['SMS']` in the input schema, plus the shared channel allow-list).
-- No duplicated send or outcome-persistence logic: the same `CommunicationSendAndPersistService` is used.
-- Secrets and provider HTTP stay server-side; the adapter never imports a provider driver.
-- Validation is shared with the composer route (`validateCommunicationRequest`), so both entry points enforce the same rules.
-- Sender identity comes from the trusted execution context (`context.workspaceMemberId`); it is **not** a Workflow input. When absent, no member is fabricated and the send proceeds with no sender recorded.
-- Subject has a single source of truth: `OutboundCommunication.subject`.
+- `success: true` only for a completed send whose outcome was durably recorded.
+- Normal `FAILED` → `PROVIDER_FAILED`, `isOutcomeKnown: true`.
+- Known outcome, persistence failed → `OUTCOME_NOT_PERSISTED`, real `status` preserved.
+- Provider threw (either FAILED-write variant) → `UNEXPECTED_FAILURE`, `isOutcomeKnown: false`, canonical uncertainty wording.
+- Errors are returned as **data**, never thrown, so the adapter itself never triggers native retry.
 
-### Outcome and retry behavior
+### Retry / replay limitations (precise)
 
-- `success: true` is returned **only** for a completed send whose outcome was durably recorded.
-- Normal provider `FAILED` → `success: false`, `status: 'FAILED'`, `failureCode: 'PROVIDER_FAILED'`, `isOutcomeKnown: true`, with the provider-declared reason.
-- Known outcome whose persistence failed → `failureCode: 'OUTCOME_NOT_PERSISTED'`, the real `status` preserved, `isOutcomeKnown: true`, and wording warning that re-running would send again.
-- Unknown outcome (send threw **and** the FAILED write failed) → `failureCode: 'UNEXPECTED_FAILURE'`, `isOutcomeKnown: false`, wording telling the author to check history before re-running.
-- The adapter returns errors as **data**, never as thrown exceptions, so it never triggers Twenty's automatic step retry.
-- Raw exception messages, credentials, URLs and request bodies are never returned; only stable classifications and error *names* are logged server-side.
-
-### Replay limitations (not claimed as solved)
-
-- **There is no durable idempotency.** "One provider call per invocation" only holds within a single execution.
-- If a Workflow step is re-executed — by the author's `retryOnFailure` setting, by a manual run retry, or by any future replay — the adapter **will send again**. This wave does not implement an outbox, queue, or idempotency key.
-- A step that returns a non-success result is recorded as a failed step; because the adapter returns errors as data, Twenty's automatic retry does not fire. The residual risk is therefore **author- or operator-initiated re-runs**, not silent platform retries.
+- **No durable idempotency.** "One provider call per invocation" holds only within a single execution.
+- Because a failed step is reported as SUCCESS, **downstream steps continue** after a failed or unknown send.
+- **Runtime timeout or a lost execution response after a possible provider send**: if the handler exceeds `timeoutSeconds` (30) or the execution response is lost, the platform records an execution error and the author's `retryOnFailure` can re-run the step — the adapter cannot observe or prevent that, and a duplicate message is possible.
+- Author- or operator-initiated re-runs (retry workflow run) also send again.
 - Delivery has no evidence source yet, so `SENT` is never presented as `DELIVERED`.
 
-## W6 / W6-R1 / W6-R2 / W7 verification — actual coverage vs. simulations
+## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
 
 - **Actual production coverage:** the shipped modules are tested directly — `buildCommunicationTimelineActivityInput` (Person linkage, snapshot mapping, no-credential guarantee, `null` when no target person, one activity per communication), `loadCommunicationTimelineState` (the full `timelineActivityId → activity → linked Communication → presentation` chain, with `recordId: null` in the context, every unavailable reason, no error leakage, and read-only access), and `buildCommunicationTimelinePresentation` / `buildCommunicationTimelineView` (QUEUED/SENT/DELIVERED/FAILED truthfulness, refreshed status replacing the creation-time state, unavailable states, snapshot use, body truncation). 136 focused tests PASS.
 - **Refresh coverage:** the tests drive the same Communication from QUEUED to SENT and to FAILED **through the implemented refresh path** (re-running the chain) and assert the rendered status changes while the activity id stays the same.
 - **Still not verified:** the React render tree of `communication-timeline-card` (it needs the front-component sandbox host), the actual REST round trips, database-event delivery, and live timeline rendering in a workspace. The app is not installed anywhere, so no timeline activity has ever been produced end to end.
+- **W7 runtime-boundary vs simulation:** `workflow-step-status.contract.test.ts` **simulates** the documented server mapping (`{ result }` ⇒ `StepStatus.SUCCESS`, `shouldProcessNextSteps: true`) to lock the consequence in code. It is **not** a runtime test: the Twenty server is never executed here. Live Workflow execution remains **NOT PERFORMED**.
 - **W7 actual production coverage:** the shipped `sendCommunicationWorkflowHandler` and the shared `validateCommunicationRequest` are tested directly with injected client and registry — valid mapping reaching the durable service exactly once, subject preservation, unsupported channel / empty body / empty recipient preventing any send, Person access and recipient-ownership validation, normalized `FAILED`, initial-persistence failure preventing the send, `SENT` + outcome-persistence failure staying truthful, unknown double-failure staying unknown with no secret leakage, no automatic resend, and the absence of a required workspace member. 151 focused tests PASS.
 - **W7 still not verified:** live Workflow execution. The app is not installed, so the step has never run inside a real workflow; manifest registration is wiring evidence only, not proof of execution.
-- typecheck PASS; oxlint 0/0; app build PASS (11 files); manifest confirms 1 timeline activity type (label `communication`, no `emit`, renderer wired), 3 logic functions and 2 front components. W4/W5 modules unchanged; the timeline path cannot reach a provider and never uses `context.recordId`.
+- **Current validated totals (after W7-R1):** 157 focused tests PASS; typecheck PASS; oxlint 0/0 (73 files); app build PASS (**13 files**). Manifest confirms **1 object** (13 fields), **4 relation fields**, **4 logic functions** (1 database event `communication.created`, 2 HTTP routes, 1 workflow action `Send Communication`), **2 front components**, **1 timeline activity type** (label `communication`, no `emit`, renderer wired) and **9 server variables**.
+- W4 `CommunicationSendAndPersistService` unchanged; the timeline path cannot reach a provider and never uses `context.recordId`. **W7 did refactor the W5 Person handler** to use the shared validation.
 
