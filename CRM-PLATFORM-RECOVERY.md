@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W10-R5` — the **timeline renderer is isolated and verified**. The card was always rendering: it is a **collapsed row by default**, and expanding it mounts the app's front component, which shows the persisted status. Browser checks **PASS**: status renders; QUEUED→FAILED becomes visible after the card's manual `Refresh`; the activity count stays **1**; and Refresh issues **0 writes** and exactly **2 reads**. No app change was required. `W9-R2` workspace-owned configuration stands (verified in the native Variables tab, secret masked). **Runtime execution remains BLOCKED** (registry access unavailable), so **per-workspace execution isolation is NOT PERFORMED**. The app-registration `Config` → "Server Variables" screen is the **historical shared route**.
+`CRM-COMMUNICATIONS-001-W10-R6` — **isolated logic-function execution is RESTORED** on the v2.41.0 instance via a **container-scoped DNS override** (`--add-host` for the two registry names; no core, SDK, generated-code or global-DNS change). The Person composer was then verified through its real routes: phone options populate, submitting with incomplete config returns a **safe, truthful** result with **0** records and **no** provider request, and the instance still advertises **0** Workflow actions. `W10-R5` timeline verification and `W9-R2` workspace-owned configuration stand. **Per-workspace execution isolation is still NOT PERFORMED** (needs two configured workspaces).
 
 ## Communications milestones — code-review acceptance
 
@@ -57,13 +57,14 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10-R3 | `a791ca8762` (docs only — no app change) | `a791ca8762` | browser pass performed; its **"front-component rendering FAIL"** finding was **later proven wrong (session artifact)** — see W10-R4 |
 | W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED** (dependency layer cannot reach a package registry); **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; its "timeline card still not rendering" finding was **later proven wrong (W10-R5)** |
 | W10-R5 | `8c15ea8668` (docs only — no app change) | `8c15ea8668` | **timeline renderer isolated and VERIFIED**: the card was always rendering but is a **collapsed row by default**; status, QUEUED→FAILED via manual Refresh, single-activity and read-only-Refresh checks all **PASS** |
+| W10-R6 | (docs + container config only — no app change) | _this document_ | **logic-function execution RESTORED** on the isolated v2.41.0 instance via a container-scoped `--add-host` DNS override; routes, composer, safe-failure and zero-Workflow checks **PASS**; dependency install verified; per-workspace execution isolation **NOT PERFORMED** |
 | W9-R2 | `b12a5c57f9` + `3654e15e1c` | `e8023c9b2e`, `a305247a1e`, `3654e15e1c` | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed via an empty tombstone (0 registration rows on both instances); **runtime execution isolation NOT PERFORMED** (registry blocked) |
 
 **Evidence levels (do not conflate them):**
 
 1. **Registration / upload / sync — PASS.** 14/14 files, `Plan: 92 to add`, 1 object, 4 logic functions, 2 front components, 1 timeline type, 9 **workspace** application variables (re-verified on both the v2.41.0 and v2.42.6 instances).
-2. **API / event execution — HISTORICAL PASS (W10-R2), NOT REPRODUCIBLE NOW.** On the earlier v2.41.0 instance **while its dependency layer was cached**, the routes returned 200, secret masking worked, and a synthetic `QUEUED` record produced exactly **1** timeline activity. On a fresh instance the same routes return **HTTP 500** because the logic-function dependency layer needs the package registry, which is **not reachable**. **Environment difference, not an app regression.**
-3. **Browser rendering — PASS for front components, the composer AND the timeline card (W10-R4/W10-R5).** Stock `Hello World` renders on both images; the Communication `Send message` composer renders; and the **timeline card renders its persisted status** — it is simply a **collapsed row by default** (expand the row to mount it). The W10-R3/W10-R4 "timeline card does not render" finding was **wrong**.
+2. **API / event execution — PASS on the isolated v2.41.0 instance (W10-R6).** After the container-scoped DNS fix, the dependency layer installed and the routes executed: `/communication/person-phones` → 200 with the real phone, `/communication/send` with incomplete config → a safe truthful failure with **0** records and **no** provider request. The earlier W10-R2 API results were obtained while the dependency layer was cached; the unchanged v2.42.6 instance still returns **HTTP 500**.
+3. **Browser rendering — PASS for front components, the composer AND the timeline card (W10-R4/R5/R6).** Stock `Hello World` renders on both images; the composer renders and now shows **populated phone options** (W10-R6); the timeline card renders its persisted status — it is a **collapsed row by default**.
 4. **Real sending — NOT PERFORMED.** No Kavenegar/RazPayamak request, no delivery receipt, no real credentials.
 
 **Live verification: PARTIAL.** Registration/upload/sync and browser rendering (front components, composer and timeline card) are verified; **API/event execution is currently blocked (registry access unavailable)** and its only PASS evidence is historical. **No real provider request was ever made.**
@@ -75,7 +76,7 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** moved provider configuration to **workspace-owned native application variables** (verified in the native Variables tab, with secrets encrypted per workspace and masked). **W10-R4/R5** proved the front components, the composer **and the timeline card** render (the card is a collapsed row by default), with status, Refresh and single-activity checks passing. **Current blocker:** logic-function execution (registry access unavailable). The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** workspace-owned provider configuration (verified in the native Variables tab, secrets encrypted per workspace and masked); **W10-R4/R5** front components, composer and timeline card all render (the card is a collapsed row by default); **W10-R6** restored **logic-function execution** on the isolated v2.41.0 instance via a scoped container DNS override and verified the composer's real routes, with a safe truthful failure and zero records/provider requests. The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
 
 ## Communications — authoritative current behavior
 
@@ -95,9 +96,9 @@ No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
 - `twenty-comm-test-app` — `twentycrm/twenty-app-dev:v2.42.6`, port 3100, preserved for diagnosis (its DB was migrated and cannot be downgraded).
 
 **Open blocker (environment, not app):**
-1. **Logic-function execution** — `ensureDepsLayer` (Yarn 4.9.2) cannot reach a package registry; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Registry access is blocked.** Remedies beyond a host DNS change (a reachable registry mirror, a network policy change, a pre-seeded dependency layer) were **not** investigated.
+1. **Logic-function execution on the v2.42.6 instance** — `ensureDepsLayer` (Yarn 4.9.2) cannot resolve a package registry there; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Restored on the isolated v2.41.0 instance by a container-scoped `--add-host` (W10-R6)**; the v2.42.6 instance was deliberately left unchanged as the control. This is **not** a global-DNS problem: egress works, only DNS is sinkholed, and the fix is scoped to one container.
 
-**Resolved:** the **timeline card render** — W10-R5 proved the card renders; it is a **collapsed row by default** (expand to mount).
+**Resolved:** the **timeline card render** (W10-R5 — it is a **collapsed row by default**) and **logic-function execution on the isolated v2.41.0 instance** (W10-R6).
 
 **W10/W10-R1 "no environment" prerequisites — HISTORICAL / RESOLVED:**
 1. A disposable test workspace now exists: the isolated container `twenty-comm-test-app` with its own database, Redis and volumes, and the seeded workspace `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`). The real stack and its single workspace were never touched.
@@ -764,12 +765,12 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED** (native Variables tab, masked secret); front components + composer + **timeline card** render (W10-R4/R5, with status/Refresh checks PASS); **logic-function execution BLOCKED** (registry access); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 (this wave); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified; per-workspace execution isolation NOT PERFORMED | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 (this wave); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
 | Timeline card status render + Refresh button | **PASS (W10-R5)** | The card is a **collapsed row by default**; expanding it mounts the app's front component, which renders the persisted status (`Message failed · SMS / 5552345678 / … / W10-R5 refresh test failure`). QUEUED→FAILED became visible after clicking the card's `Refresh`; the activity count stayed **1**; Refresh issued **0** writes and exactly **2** reads. |
-| Logic-function execution on a fresh instance | **BLOCKED — host DNS** | `ensureDepsLayer` runs Yarn 4.9.2 to install the app dependency layer and fails `ECONNREFUSED 127.201.0.114:443`; `registry.yarnpkg.com`/`registry.npmjs.org` resolve to loopback **on the host** too. Requires a reachable registry (global host DNS change — out of scope). |
+| Logic-function execution on a fresh instance | **RESTORED (W10-R6)** | `ensureDepsLayer` runs Yarn 4.9.2 to install the app dependency layer. It failed `ECONNREFUSED 127.201.0.114:443` because the registry names resolved to loopback. **Fixed with a container-scoped `--add-host` on the isolated v2.41.0 instance only** — egress works, so no global DNS change was needed. The unchanged v2.42.6 instance still returns HTTP 500 (control). |
 | Settings → app-registration `Config` → "Server Variables" | **HISTORICAL — shared route, no longer used** | Renders the **registration-scoped** `serverVariables`, which are shared by every workspace. W9-R2 moved this app's configuration to workspace `applicationVariables`; the registration table is now empty for this app. Kept only as history. |
 | Settings → Applications → Communication → **Variables** | **PASS (W9-R2)** | Native workspace Variables tab ("Set your application configuration variables") lists all 9 workspace variables with a `Save settings` button; a fake `KAVENEGAR_API_KEY` reads back masked as `F********`. |
 | Workspace `Variables` tab before W9-R2 | **NOT PRESENT (historical)** | `SettingsApplicationDetails` shows it only when `applicationVariables` is non-empty; before W9-R2 the app declared only `serverVariables`, so the tab was correctly hidden. |
@@ -976,14 +977,16 @@ front component renders on **both** the v2.41.0 and v2.42.6 images, and that the
 proved the **timeline card also renders** — it is a **collapsed row by default**; expanding it shows the
 persisted status, and its manual `Refresh` updates QUEUED→FAILED with the activity count staying one.
 
-CURRENT RUNTIME (W10-R4): a **fresh v2.41.0 instance** (`twenty-comm-test-app2`, port 3101, new
-volumes) was created; the migrated v2.42.6 instance is preserved. **Logic-function execution is
-BLOCKED: registry access is unavailable** — `registry.yarnpkg.com`/`registry.npmjs.org` resolve to
-`127.201.x.x` on the host itself (even via `8.8.8.8`), so the runtime dependency layer
-(`ensureDepsLayer` → Yarn 4.9.2) cannot install and every route returns **HTTP 500**. The W10-R2
-API/event PASS results were obtained **while that dependency layer was still cached** and are
-therefore **historical**, not currently reproducible. Registry access being blocked is **not**
-claimed to have a single possible remedy.
+CURRENT RUNTIME (W10-R6): **logic-function execution is RESTORED** on the isolated v2.41.0 instance
+(`twenty-comm-test-app2`, port 3101) via a **container-scoped DNS override** — two `--add-host`
+entries pinning `registry.npmjs.org` and `registry.yarnpkg.com` to their real CDN IPs. This is
+reversible by recreating the container without those flags. No host DNS, core source, SDK version,
+generated dependency code or cache marker was changed. The unchanged v2.42.6 instance still returns
+HTTP 500, which is the control. Verified after the fix: the dependency layer installs
+(`.twenty-layer-ready`), `/communication/person-phones` → 200 with the real phone, the composer shows
+populated phone options, and submitting with incomplete config returns a safe truthful result with
+**0** records and **no** provider request. **Per-workspace execution isolation is still NOT PERFORMED**
+(only one workspace is configured).
 
 TIMELINE RENDERER (W10-R5): the timeline card **does** render — it is a **collapsed row by default**.
 Expanding the row mounts the app's front component, which shows the persisted status. Verified in the
@@ -999,7 +1002,7 @@ SETTINGS CONTRACT (W10-R4, ownership corrected by W9-R2): provider configuration
 **historical shared route** and is no longer used (the registration variable table is empty for this
 app). W9-R2 moved all 9 variables to `applicationVariables` with stable identifiers; the API keys
 stay secret and are encrypted per workspace, and a fake value reads back masked (`F********`).
-**Per-workspace execution isolation is NOT PERFORMED** because logic-function execution is blocked.
+**Per-workspace execution isolation is NOT PERFORMED** because only one workspace is configured (execution itself is now restored on the isolated v2.41.0 instance — W10-R6).
 
 RUNTIME BLOCKER: logic-function execution is blocked — `ensureDepsLayer` installs the app dependency
 layer with Yarn 4.9.2 and cannot reach a package registry (`RequestError: connect ECONNREFUSED
@@ -1373,7 +1376,7 @@ Richer per-provider configuration UX (validation guidance, provider-specific fie
 
 ## W10 / W10-R1 / W10-R2 — installed-app verification
 
-Status: **INSTALLED; API/event PASS evidence is HISTORICAL** (obtained while the dependency layer was cached — see W10-R4; a fresh instance currently returns HTTP 500 due to the host DNS sinkhole). Browser rendering is **PASS** (W10-R4). The app is registered, uploaded and metadata-synced on the isolated instance. Provider configuration was deliberately kept incomplete: **no real SMS or provider request was made**.
+Status: **INSTALLED; API/event execution VERIFIED on the isolated v2.41.0 instance after the W10-R6 registry fix** (the unchanged v2.42.6 instance still returns HTTP 500). Browser rendering is **PASS** (W10-R4/R5). The app is registered, uploaded and metadata-synced on the isolated instance. Provider configuration was deliberately kept incomplete: **no real SMS or provider request was made**.
 
 ### 1. Historical blockers — RESOLVED / CORRECTED
 
@@ -1502,7 +1505,7 @@ So the install **did** honour the lockfile, and immutable reproducibility **is**
 The deployed front (v2.41.0) renders an application detail UI that predates the native Variables tab. A newer image **v2.42.6** was tried (volumes preserved, `appVersion: v2.42.6`, data intact). Findings:
 
 - The v2.42.6 front bundle **does** contain the application Variables tab (`SettingsApplicationDetails-*.js` reads `applicationVariables` and gates the tab on a non-empty list) — but it is still **hidden here** because the workspace variable list is empty.
-- v2.42.6's logic-function driver installs the app dependency layer at first execution via **Yarn 4.9.2**, and the container **cannot reach package registries** (`registry.yarnpkg.com` / `registry.npmjs.org` resolve to loopback inside the container), so every logic-function execution fails with `connect ECONNREFUSED`. v2.41.0 executes logic functions directly and therefore remains the working, W10-R2-verified runtime.
+- v2.42.6's logic-function driver installs the app dependency layer at first execution via **Yarn 4.9.2**, and the container **cannot reach package registries** (`registry.yarnpkg.com` / `registry.npmjs.org` resolve to loopback inside the container), so every logic-function execution fails with `connect ECONNREFUSED`. **SUPERSEDED (W10-R6):** the earlier claim that "v2.41.0 executes logic functions directly" was **wrong** — v2.41.0 uses the *same* `ensureDepsLayer` dependency-layer install and fails identically without registry access; it only succeeded in W10-R2 because its layer was already cached.
 - v2.41.0 **cannot** be restored after the 2.42.6 migration (the DB migration is not backward-compatible), so the instance stays on v2.42.6 with the dependency-layer limitation documented above.
 
 ### 6. App changes in this wave
@@ -1512,10 +1515,10 @@ The deployed front (v2.41.0) renders an application detail UI that predates the 
 ### 7. Remaining limitations
 
 - Real-provider end-to-end sending and delivery receipts: **UNVERIFIED** (no provider credentials, no request).
-- Native Variables tab visibility: **RESOLVED by W9-R2** — the app now declares workspace `applicationVariables`, and the tab renders all 9 variables (verified live on v2.42.6). Runtime execution of the configured values is still blocked by the registry issue.
-- Per-workspace **execution** isolation (two live workspaces with distinct configuration and no cross-workspace inheritance): **NOT PERFORMED** — logic-function execution is blocked, so it could not be exercised end-to-end. Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) **is** verified.
-- Front-component rendering, and therefore the timeline card body/Refresh button: **NOT PERFORMED** (the composer and stock front components do render — W10-R4).
-- v2.42.6 logic-function dependency-layer install: **BLOCKED** offline.
+- Native Variables tab visibility: **RESOLVED by W9-R2** — the app now declares workspace `applicationVariables`, and the tab renders all 9 variables (verified live on v2.42.6). Runtime execution of configured values is now **restored on the isolated v2.41.0 instance (W10-R6)**.
+- Per-workspace **execution** isolation (two live workspaces with distinct configuration and no cross-workspace inheritance): **NOT PERFORMED** — it requires **two configured workspaces**; only `apple` is configured. Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) **is** verified.
+- Front-component rendering, and therefore the timeline card body/Refresh button: **PASS** (the composer, stock front components and the timeline card all render — W10-R4/R5).
+- v2.42.6 logic-function dependency-layer install: **BLOCKED** (registry names sinkholed; no scoped fix applied to that instance).
 
 ## W10-R4 — test-runtime restoration, front-component trace, settings contract
 
@@ -1545,7 +1548,7 @@ POST http://192.168.4.84:3101/s/communication/person-phones
 - `registry.yarnpkg.com` → `127.201.0.114` and `registry.npmjs.org` → `127.201.0.55` **inside the container** — because the **host itself** resolves them to loopback: `Resolve-DnsName` on the Windows host returns the same `127.201.x.x`, and even a direct query to `8.8.8.8`/`1.1.1.1` returns loopback (the resolver answer is rewritten upstream). `github.com` resolves correctly (`140.82.121.4`), so the filter is **selective**, not a total network outage.
 - The container has only Docker's internal resolver (`nameserver 127.0.0.11`, `ExtServers: [host(192.168.65.7)]`) and therefore inherits the host's rewritten answers. There is **no `/etc/hosts` entry** and **no container-level override** to change.
 
-**Concrete blocker:** restoring logic-function execution requires a package-registry host that actually resolves (a real, reachable registry). **Registry access is blocked.** This document does **not** claim that changing global host DNS is the only possible remedy — the precise cause (a host-level resolver returning loopback for the registry names) is recorded, but other remedies (a reachable registry mirror, a network policy change, or a pre-seeded dependency layer) were **not** investigated and remain open. No global DNS edit, verification disabling, or dependency patching was performed. **The v2.41.0 image is not itself broken** — it fails for the same registry reason now (see §5).
+**Concrete blocker (SUPERSEDED by W10-R6):** restoring logic-function execution requires a package-registry host that actually resolves (a real, reachable registry). **Registry access was blocked by the host resolver.** This document did **not** claim that changing global host DNS is the required remedy, and W10-R6 confirmed it was **not** — a **container-scoped `--add-host`** pointing the two registry names at their real CDN IPs restored the install while leaving host DNS untouched. No global DNS edit, verification disabling, or dependency patching was performed. **The v2.41.0 image is not itself broken** — it fails for the same registry reason now (see §5).
 
 ### 2. Front-component trace — stock `Hello World` (signed-in browser)
 
@@ -1600,6 +1603,56 @@ The W10-R2 API/event results were obtained on the **earlier** v2.41.0 instance *
 **Changes:** new volumes + a fresh v2.41.0 container (`twenty-comm-test-app2`, port 3101); `SERVER_URL=http://192.168.4.84:3101`; a test API key minted for `apple` and stored **outside Git** (`D:/twenty-comm-test/.test-api-key2`); a CLI remote `comm-test2`. The app1 instance and its volumes were **preserved untouched**; the real stack was not touched.
 
 **Remaining checks:** composer submission / safe missing-config failure in the UI (blocked by §1); real-provider sending (never performed). The timeline card status + Refresh checks **PASS** (W10-R5).
+
+## W10-R6 — isolated logic-function execution restored
+
+Status: **RESOLVED — logic-function execution is restored on the isolated v2.41.0 instance**, and the Person composer was verified end-to-end through its real routes. The fix is a **container-scoped DNS override**; no core source, SDK version, generated dependency code or global DNS was touched.
+
+### 1. What `ensureDepsLayer` actually needs (deployed v2.41.0)
+
+`LocalLayerManagerService.ensureDepsLayer` (`/app/packages/twenty-server/dist/.../local/services/local-layer-manager.service.js`):
+
+1. builds the layer at `/tmp/logic-function-executor-tmpdir/deps/<yarnLockChecksum>` (`get-local-deps-layer-path.util.js`);
+2. short-circuits if the sentinel `.twenty-layer-ready` exists;
+3. otherwise copies the app's `package.json` + `yarn.lock`, then runs `copyYarnEngineAndBuildDependencies`, which executes **Yarn 4.9.2** (`execFile(process.execPath, [localYarnPath, 'workspaces', 'focus', '--all', '--production'])`) with the inherited environment.
+
+The dependency set is the app's own: `@sniptt/guards` (the only runtime dependency). Registry addresses are **Yarn's defaults** — `registry.yarnpkg.com` (and `registry.npmjs.org` for `npm` metadata) — with **no configurable registry override** in the driver. Configuration scope is therefore the **container's name resolution**, not the app.
+
+### 2. The scoped solution
+
+- **Diagnosis:** every package registry (`registry.npmjs.org`, `registry.yarnpkg.com`, `registry.npmmirror.com`, `npm.pkg.github.com`, `registry.npmjs.cf`) resolved to `127.201.x.x` from both the host and the container, while `github.com` resolved correctly. However, **egress to the real registry was fully functional**: `curl --resolve registry.npmjs.org:443:104.16.24.34 https://registry.npmjs.org/twenty-sdk` returned **HTTP 200** with correct metadata and valid TLS — so only **DNS** was broken.
+- **Fix (native, container-scoped, reversible):** recreate only the isolated instance with two host entries — `--add-host registry.npmjs.org:104.16.24.34 --add-host registry.yarnpkg.com:104.16.24.34`. TLS verification and Yarn's integrity checks are **untouched** (real CDN hosts, real certificates). No `/etc/hosts` edit on the host, no DNS server change, no cache marker fabricated, no dependency code modified.
+- **Applied to:** `twenty-comm-test-app2` only. **`twenty-comm-test-app` (v2.42.6) was left completely unchanged** (`ExtraHosts: null`) as the control.
+
+### 3. Evidence — distinct levels
+
+| Level | Result | Evidence |
+|-------|--------|----------|
+| **Network access** | **PASS** | From the container: `registry.npmjs.org` and `registry.yarnpkg.com` → HTTP 200 (previously `127.201.x.x`, HTTP 000) |
+| **Dependency installation** | **PASS** | `/tmp/logic-function-executor-tmpdir/deps/aadbef644d43748b2c797751af6ef5c5/.twenty-layer-ready` created and `node_modules/@sniptt` installed |
+| **Route execution** | **PASS** | `POST /s/communication/person-phones` → **HTTP 200** `{"success":true,"phones":[{"id":"primary","value":"5552345678","isPrimary":true}]}`. Control: the unchanged v2.42.6 instance returns **HTTP 500** `ROUTE_TRIGGER_PLATFORM_ERROR` for the same request |
+| **Browser submission** | **PASS** | Composer rendered `Channel SMS / Phone number 5552345678 / Message / Cancel / Send`; submitting with incomplete config produced the truthful result *"The message may or may not have been sent. Check the communication history before retrying."* |
+| **Provider sending** | **NOT PERFORMED** | **0** Communication records created by that attempt; **no** provider request in the logs (`kavenegar`/`payamak` absent); all nine workspace variables are **empty** (no credentials) |
+
+Additional route check: `POST /s/communication/send` with a recipient not owned by the Person → `{"success":false,"failureCode":"INVALID_INPUT","error":"Selected phone number does not belong to this person."}`.
+
+### 4. Workflow actions — still zero
+
+The test instance advertises **0** Workflow actions: `core."logicFunction"` rows with a non-null `workflowActionTriggerSettings` = **0**, and all four Communication logic functions have an **empty** `workflowActionTriggerSettings`. W7 remains disabled; no fake production provider was added.
+
+### 5. Environment change and how to reverse it
+
+| Aspect | Value |
+|--------|-------|
+| Container | `twenty-comm-test-app2` (isolated) |
+| Change | `HostConfig.ExtraHosts = ["registry.npmjs.org:104.16.24.34","registry.yarnpkg.com:104.16.24.34"]` |
+| Preserved | image `twentycrm/twenty-app-dev:v2.41.0`, `SERVER_URL`, port `3101:2020`, network `twenty-comm-test-net`, volumes `twenty-comm-test-app2-data` + `twenty-comm-test-app2-storage` (data intact) |
+| **Reversal** | recreate the container **without** the two `--add-host` flags (the volumes keep the data; the installed dependency layer lives in the container's `/tmp` and is rebuilt on demand) |
+| Not changed | host DNS, core source, app SDK versions, generated dependency code, the v2.42.6 instance, the real stack |
+
+### 6. Boundary — not a per-workspace isolation claim
+
+The registry fix restores **execution** for the single `apple` workspace on app2. It does **not** demonstrate per-workspace execution isolation; that still requires **two** configured workspaces and remains **NOT PERFORMED**.
 
 ## W10-R5 — timeline renderer isolated and verified
 
@@ -1715,8 +1768,8 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 - **Ownership model corrected.** The authoritative configuration surface is the app-detail **Variables** tab (`Settings → Applications → Communication → Variables`), which edits **workspace** application variables. The **app-registration `Config` → "Server Variables"** screen is the **historical shared route** and must no longer be used for this app's configuration.
 - **Why workspace credentials must not use shared registration values:** `serverVariables` are stored once on the registration and are shared by every workspace that installs the app, so all workspaces would send with the same provider account and sender. Provider credentials and sender identities are per-workspace facts; sharing them is both a security and a correctness defect. Workspace values also override registration values in the execution context, so a leftover shared value would otherwise silently shadow the workspace value.
 - **Stale composer-rendering claim corrected:** W10-R3's "front components do not render" was an expired-session artifact (corrected in W10-R4); the composer renders. Likewise W10-R3/W10-R4's "timeline card does not render" was wrong — the card renders and is simply **collapsed by default** (W10-R5).
-- **Broad W0–W9 acceptance corrected:** "accepted at code level" never meant live-verified. The accurate position is: registration/upload/sync, the settings contract, the UI Variables tab, the front components, the composer **and the timeline card** are verified; **API/event execution is currently blocked**; real-provider sending is **NOT PERFORMED**.
-- **Registry access:** reported as **blocked** (`ensureDepsLayer` cannot reach a package registry). This document does **not** claim that changing global DNS is the only possible remedy — the precise cause (a host-level resolver that returns loopback for the registry names) is recorded, but other remedies (a reachable registry mirror, a network policy change, or a pre-seeded dependency layer) were **not** investigated and remain open.
+- **Broad W0–W9 acceptance corrected:** "accepted at code level" never meant live-verified. The accurate position is: registration/upload/sync, the settings contract, the UI Variables tab, the front components, the composer **and the timeline card** are verified; **API/event execution is verified on the isolated v2.41.0 instance (W10-R6)**; real-provider sending is **NOT PERFORMED**.
+- **Registry access:** was **blocked** by name resolution (`ensureDepsLayer` could not reach a package registry). W10-R6 proved that a **global DNS change was not required**: egress worked and a **container-scoped `--add-host`** restored the install. No global DNS, core source, SDK version, generated dependency code or cache marker was changed.
 - W8 remains **accepted at dependency/build level only**; W7 remains **disabled and blocked**.
 
 ## W6 / W6-R1 / W6-R2 / W7 / W7-R1 verification — actual coverage vs. simulations
