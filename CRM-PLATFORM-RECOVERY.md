@@ -1788,7 +1788,7 @@ Isolation probes (all through authenticated API-key contexts). Config reads are 
 
 **The witness does NOT extend to endpoint consumption.** The earlier R2 probe also set a distinct dead `KAVENEGAR_ENDPOINT` per workspace, but per the app source (`razpayamak.config.ts`: `RAZPAYAMAK_SMART_SEND_URL` is a **constant**, "the REST base is fixed by the document; only credentials vary") the RazPayamak provider never reads `KAVENEGAR_ENDPOINT` — so the Beta run cannot have consumed Beta's endpoint value. No endpoint-consumption claim is made for either workspace.
 
-**Where the failure occurred (from source + observed output; no new sends were run):** the observed response is `{"success":false,"failureCode":"UNEXPECTED_FAILURE","isOutcomeKnown":false,"error":"The message could not be sent."}`, and the persisted records are `FAILED` with `failureReason: "Unexpected send failure."`. Per the deployed source this maps to the orchestration path in `communication-send-and-persist.service.ts`: `createQueued` persisted the record (so the record exists), then `sendService.send` → the provider's `resolveConfig()` threw — with all credentials empty, `readRequiredEnv` treats `''` as unset and `getKavenegarConfig`/`getRazpayamakConfig` return a missing-config error **before any HTTP call** — and the provider-FAILED write then also failed (that is why the reason is the orchestration constant `Unexpected send failure.`, not a provider reason like "Kavenegar request failed."). The failure is therefore **pre-HTTP (provider configuration resolution), not an HTTP-time failure**; no request reached any provider transport.
+**Where the failure occurred (from source + observed output; no new sends were run):** the observed response is `{"success":false,"failureCode":"UNEXPECTED_FAILURE","isOutcomeKnown":false,"error":"The message could not be sent."}`, and the persisted records are `FAILED` with `failureReason: "Unexpected send failure."`. Per the deployed source this maps to the orchestration path in `communication-send-and-persist.service.ts`: `createQueued` persisted the record (so the record exists), then `sendService.send` → the provider's `resolveConfig()` threw — with all credentials empty, `readRequiredEnv` treats `''` as unset and `getKavenegarConfig`/`getRazpayamakConfig` return a missing-config error **before any HTTP call** — the catch block then **successfully** persisted the FAILED state with the orchestration constant `Unexpected send failure.` (the persisted `FAILED` records with exactly that reason are the evidence that this write succeeded), and finally the original error was **re-thrown** (`throw sendError`), landing in the handler's generic catch, which returns the safe `UNEXPECTED_FAILURE` response. (The `CommunicationUnexpectedSendFailureError` path — which reports "…its state could not be recorded." — would only apply if the FAILED write itself had failed; the observed response and the persisted reason show it did not.) The failure is therefore **pre-HTTP (provider configuration resolution), not an HTTP-time failure**; no request reached any provider transport.
 
 **Server-response wording (kept distinct from the composer text):** the send route responds `{"success":false,"failureCode":"UNEXPECTED_FAILURE","isOutcomeKnown":false,"error":"The message could not be sent."}`. The composer front component renders its own user-facing localized wording; the raw route JSON above is a server API observation, not the UI text.
 
@@ -1828,6 +1828,37 @@ Isolation probes (all through authenticated API-key contexts). Config reads are 
 | New app row | `5c02bf29-…` in Beta (removable via the native `uninstallApplication` mutation) |
 | Variables | apple `COMMUNICATION_PROVIDER=kavenegar`, Beta `razpayamak` (non-secret; restorable to `""` by the same native mutation) |
 | Unchanged | host DNS, core source, SDK versions, generated dependency code, DB schema, `apple` data, both volumes |
+
+### 8. Real-SMS test preparation (READY — NOT PERFORMED; app2 only, no auto-retry, W7 stays disabled)
+
+Scope: **one manual send** from the native Person composer, then history/`providerMessageId`/single-timeline-card inspection. **`SENT` = the provider accepted the message; it is NOT delivery proof** (neither driver wires delivery receipts — both `supportsDeliveryReceipt: false`).
+
+**Provider prerequisites (per the deployed provider source, pick ONE provider per workspace):**
+
+| Provider | Required `applicationVariables` (per workspace) | Notes |
+|----------|--------------------------------------------------|-------|
+| `kavenegar` | `KAVENEGAR_API_KEY` (**secret** — path parameter), `KAVENEGAR_ENDPOINT` (e.g. `https://api.kavenegar.com/v1`), `KAVENEGAR_SENDER` (approved sender line) | `buildSendUrl` puts the key in the URL path; a transport error is deliberately **not** interpolated into history |
+| `razpayamak` | `RAZPAYAMAK_USERNAME`, `RAZPAYAMAK_API_KEY` (**secret** — SmartSMS `password` field), `RAZPAYAMAK_SENDER` (primary line); optional `RAZPAYAMAK_BACKUP_SENDER_ONE/TWO` | REST base `RAZPAYAMAK_SMART_SEND_URL` is a **hardcoded constant** (`https://rest.payamak-panel.com/api/SmartSMS/Send`) — no endpoint variable exists for this provider |
+
+**Workspace configuration (one of the two installs on app2):**
+
+| Aspect | Requirement |
+|--------|-------------|
+| Workspace | `apple` (app `23121baf-…`) or `Isolation Beta` (app `5c02bf29-…`) — both installed and execution-verified |
+| `COMMUNICATION_PROVIDER` | must match the chosen provider's variable set (`kavenegar` ↔ KAVENEGAR_*, `razpayamak` ↔ RAZPAYAMAK_*); invalid/empty → pre-HTTP failure, no record |
+| Secrets entry | via the native **Variables** tab (Settings → Applications → Communication → Variables) so values are workspace-encrypted; **never committed to Git, never echoed into logs/history** |
+| Recipient | a Person **owned by the same workspace** with a real phone number (route enforces recipient-ownership: "Selected phone number does not belong to this person."); an unowned foreign record is rejected (`Record not found`) |
+| Network | outbound HTTPS from the app2 container to `api.kavenegar.com` / `rest.payamak-panel.com` (general egress is available; the `--add-host` pins are registry-only and irrelevant here) |
+
+**Scenario (manual, no auto-retry):**
+
+1. Sign in to the chosen workspace; open a Person record → command menu → **Send message** (composer front component).
+2. Fill Channel/Phone/Message; **Send** once. Expected live path: composer → `/s/communication/send` route → `createQueued` (record `QUEUED`) → provider HTTP call → outcome write (`SENT`/`FAILED` + `failureReason`/`providerMessageId`).
+3. **History check:** the Communication record's `status`/`providerMessageId`/`failureReason` (provider-accepted → `SENT`; provider-rejected → `FAILED` with the provider's own reason — that difference is itself evidence the HTTP call happened).
+4. **Timeline check:** exactly **one** activity card on the Person timeline (created on `communication.created` only); the card shows the persisted status; the manual `Refresh` re-reads without extra writes/activities.
+5. **Acceptance wording:** record `SENT` + `providerMessageId` = **provider acceptance**; delivery/`DELIVERED` is NOT claimed (receipts unwired). A retry/duplicate is never triggered automatically; the composer is not resubmitted.
+
+**Explicitly out of scope for this preparation:** sending now, auto-retry, code/SDK changes, enabling W7, and any change to app1/v2.42.6.
 
 ## W10-R6 — isolated logic-function execution restored
 
