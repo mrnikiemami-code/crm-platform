@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W10-R6` — **isolated logic-function execution is RESTORED** on the v2.41.0 instance via a **container-scoped DNS override** (`--add-host` for the two registry names; no core, SDK, generated-code or global-DNS change). The Person composer was then verified through its real routes: phone options populate, submitting with incomplete config returns a **safe, truthful** result with **0** records and **no** provider request, and the instance still advertises **0** Workflow actions. `W10-R5` timeline verification and `W9-R2` workspace-owned configuration stand. **Per-workspace execution isolation is still NOT PERFORMED** (needs two configured workspaces).
+`CRM-COMMUNICATIONS-001-W10-R7` — **workspace configuration isolation examined on the working test instance.** A second disposable workspace was created and activated natively; **data-model isolation PASS** (variables keyed by `workspaceId`; 0 shared registration variables); **execution-time configuration observed** (the persisted record's `providerId` follows the workspace's `COMMUNICATION_PROVIDER`, and an invalid/empty provider creates **no** record). **True two-workspace execution isolation is NOT PERFORMED** — a **LOCAL app registration is owned by one workspace**, so the app cannot be registered/installed into a second workspace. `W10-R6` execution restoration and `W10-R5` timeline verification stand. **No real credentials/SMS; W7 disabled.**
 
 ## Communications milestones — code-review acceptance
 
@@ -58,6 +58,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10-R4 | `521000b709` (docs only — no app change) | `521000b709` | **runtime restored at image level** (fresh v2.41.0 instance, new volumes); **logic-function execution BLOCKED** (dependency layer cannot reach a package registry); **front components PROVEN to render** (Hello World on both images); **Communication composer renders**; its "timeline card still not rendering" finding was **later proven wrong (W10-R5)** |
 | W10-R5 | `8c15ea8668` (docs only — no app change) | `8c15ea8668` | **timeline renderer isolated and VERIFIED**: the card was always rendering but is a **collapsed row by default**; status, QUEUED→FAILED via manual Refresh, single-activity and read-only-Refresh checks all **PASS** |
 | W10-R6 | `ce3b9fb297` (docs + container config only — no app change) | `ce3b9fb297` | **logic-function execution RESTORED** on the isolated v2.41.0 instance via a container-scoped `--add-host` DNS override; routes, composer, safe-failure and zero-Workflow checks **PASS**; dependency install verified; per-workspace execution isolation **NOT PERFORMED** |
+| W10-R7 | (docs + container config only — no app change) | _this document_ | **workspace configuration isolation**: a second disposable workspace was created and activated; **data-model isolation PASS**; **execution-time configuration observed** (`providerId` follows `COMMUNICATION_PROVIDER`; invalid/empty creates no record); **true two-workspace execution isolation NOT PERFORMED** — a LOCAL app registration is owned by one workspace |
 | W9-R2 | `b12a5c57f9` + `3654e15e1c` | `e8023c9b2e`, `a305247a1e`, `3654e15e1c` | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed via an empty tombstone (0 registration rows on both instances); **runtime execution isolation NOT PERFORMED** (registry blocked) |
 
 **Evidence levels (do not conflate them):**
@@ -67,7 +68,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 3. **Browser rendering — PASS for front components, the composer AND the timeline card (W10-R4/R5/R6).** Stock `Hello World` renders on both images; the composer renders and now shows **populated phone options** (W10-R6); the timeline card renders its persisted status — it is a **collapsed row by default**.
 4. **Real sending — NOT PERFORMED.** No Kavenegar/RazPayamak request, no delivery receipt, no real credentials.
 
-**Live verification: PARTIAL.** Registration/upload/sync and browser rendering (front components, composer and timeline card) are verified; **API/event execution is currently blocked (registry access unavailable)** and its only PASS evidence is historical. **No real provider request was ever made.**
+**Live verification: PASS for registration/upload/sync, browser rendering (front components, composer, timeline card), and API/event execution on the isolated v2.41.0 instance (W10-R6).** **Data-model isolation is verified and one workspace's execution-time configuration was observed live (W10-R7).** **NOT PERFORMED:** true two-workspace execution isolation (a LOCAL app registration is owned by one workspace), and real-provider sending. **No real provider request was ever made.**
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -95,10 +96,13 @@ No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
 - `twenty-comm-test-app2` — **fresh `twentycrm/twenty-app-dev:v2.41.0`**, port **3101**, NEW volumes, workspace `apple`, the Communication app installed. This is the working front-end runtime.
 - `twenty-comm-test-app` — `twentycrm/twenty-app-dev:v2.42.6`, port 3100, preserved for diagnosis (its DB was migrated and cannot be downgraded).
 
-**Open blocker (environment, not app):**
-1. **Logic-function execution on the v2.42.6 instance** — `ensureDepsLayer` (Yarn 4.9.2) cannot resolve a package registry there; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Restored on the isolated v2.41.0 instance by a container-scoped `--add-host` (W10-R6)**; the v2.42.6 instance was deliberately left unchanged as the control. This is **not** a global-DNS problem: egress works, only DNS is sinkholed, and the fix is scoped to one container.
+**Open blocker (environment/platform, not app):**
+1. **True two-workspace execution isolation (W10-R7)** — a **LOCAL app registration is owned by one workspace**, so the Communication app cannot be registered or installed into a second workspace (`twenty apply` → *"registered to another workspace"*; the install runner logs *"Skipping install for LOCAL app 768bca20-…"*). The app therefore executes in one workspace only.
+2. **Logic-function execution on the v2.42.6 instance** — `ensureDepsLayer` (Yarn 4.9.2) cannot resolve a package registry there; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Restored on the isolated v2.41.0 instance by a container-scoped `--add-host` (W10-R6)**; the v2.42.6 instance was deliberately left unchanged as the control. This is **not** a global-DNS problem: egress works, only DNS is sinkholed, and the fix is scoped to one container.
 
 **Resolved:** the **timeline card render** (W10-R5 — it is a **collapsed row by default**) and **logic-function execution on the isolated v2.41.0 instance** (W10-R6).
+
+**Registry IP pins are temporary test configuration** — they pin a CDN IP that can change, are **not** a production deployment recommendation and carry **no availability guarantee**. Reversal: recreate the container without the `--add-host` flags.
 
 **W10/W10-R1 "no environment" prerequisites — HISTORICAL / RESOLVED:**
 1. A disposable test workspace now exists: the isolated container `twenty-comm-test-app` with its own database, Redis and volumes, and the seeded workspace `apple` (`20202020-1c25-4d02-bf25-6aeccf7ea419`). The real stack and its single workspace were never touched.
@@ -977,16 +981,24 @@ front component renders on **both** the v2.41.0 and v2.42.6 images, and that the
 proved the **timeline card also renders** — it is a **collapsed row by default**; expanding it shows the
 persisted status, and its manual `Refresh` updates QUEUED→FAILED with the activity count staying one.
 
-CURRENT RUNTIME (W10-R6): **logic-function execution is RESTORED** on the isolated v2.41.0 instance
+CURRENT RUNTIME (W10-R6/R7): **logic-function execution is RESTORED** on the isolated v2.41.0 instance
 (`twenty-comm-test-app2`, port 3101) via a **container-scoped DNS override** — two `--add-host`
-entries pinning `registry.npmjs.org` and `registry.yarnpkg.com` to their real CDN IPs. This is
-reversible by recreating the container without those flags. No host DNS, core source, SDK version,
-generated dependency code or cache marker was changed. The unchanged v2.42.6 instance still returns
-HTTP 500, which is the control. Verified after the fix: the dependency layer installs
+entries pinning `registry.npmjs.org` and `registry.yarnpkg.com` to their real CDN IPs (**temporary test
+configuration; not a production recommendation and no availability guarantee**). This is reversible by
+recreating the container without those flags. No host DNS, core source, SDK version, generated
+dependency code or cache marker was changed. The unchanged v2.42.6 instance still returns HTTP 500,
+which is the control. Verified after the fix: the dependency layer installs
 (`.twenty-layer-ready`), `/communication/person-phones` → 200 with the real phone, the composer shows
 populated phone options, and submitting with incomplete config returns a safe truthful result with
-**0** records and **no** provider request. **Per-workspace execution isolation is still NOT PERFORMED**
-(only one workspace is configured).
+**0** records and **no** provider request.
+
+WORKSPACE ISOLATION (W10-R7): a second disposable workspace (`isolation-beta`) was created and
+activated natively. **Data-model isolation PASS** (variables keyed by `workspaceId`; 0 shared
+registration variables). **Execution-time configuration observed**: the persisted record's
+`providerId` follows the workspace's `COMMUNICATION_PROVIDER`, and an invalid/empty provider creates
+**no** record and contacts no provider. **True two-workspace execution isolation is NOT PERFORMED** — a
+**LOCAL app registration is owned by one workspace**, so the app cannot be registered or installed
+into the second workspace.
 
 TIMELINE RENDERER (W10-R5): the timeline card **does** render — it is a **collapsed row by default**.
 Expanding the row mounts the app's front component, which shows the persisted status. Verified in the
@@ -1002,7 +1014,7 @@ SETTINGS CONTRACT (W10-R4, ownership corrected by W9-R2): provider configuration
 **historical shared route** and is no longer used (the registration variable table is empty for this
 app). W9-R2 moved all 9 variables to `applicationVariables` with stable identifiers; the API keys
 stay secret and are encrypted per workspace, and a fake value reads back masked (`F********`).
-**Per-workspace execution isolation is NOT PERFORMED** because only one workspace is configured (execution itself is now restored on the isolated v2.41.0 instance — W10-R6).
+**Per-workspace execution isolation is NOT PERFORMED.** A second disposable workspace was created and activated (W10-R7), but the app cannot be installed there: a **LOCAL app registration is owned by one workspace**, so the app executes in a single workspace. Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) **is** verified, and one workspace's execution-time configuration was observed live.
 
 RUNTIME BLOCKER: logic-function execution is blocked — `ensureDepsLayer` installs the app dependency
 layer with Yarn 4.9.2 and cannot reach a package registry (`RequestError: connect ECONNREFUSED
@@ -1516,7 +1528,7 @@ The deployed front (v2.41.0) renders an application detail UI that predates the 
 
 - Real-provider end-to-end sending and delivery receipts: **UNVERIFIED** (no provider credentials, no request).
 - Native Variables tab visibility: **RESOLVED by W9-R2** — the app now declares workspace `applicationVariables`, and the tab renders all 9 variables (verified live on v2.42.6). Runtime execution of configured values is now **restored on the isolated v2.41.0 instance (W10-R6)**.
-- Per-workspace **execution** isolation (two live workspaces with distinct configuration and no cross-workspace inheritance): **NOT PERFORMED** — it requires **two configured workspaces**; only `apple` is configured. Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) **is** verified.
+- Per-workspace **execution** isolation (two live workspaces with distinct configuration and no cross-workspace inheritance): **NOT PERFORMED** — a second workspace **was** created and activated (W10-R7), but the app cannot be installed there because a **LOCAL app registration is owned by one workspace**. Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) **is** verified, and one workspace's execution-time configuration was observed live.
 - Front-component rendering, and therefore the timeline card body/Refresh button: **PASS** (the composer, stock front components and the timeline card all render — W10-R4/R5).
 - v2.42.6 logic-function dependency-layer install: **BLOCKED** (registry names sinkholed; no scoped fix applied to that instance).
 
@@ -1603,6 +1615,88 @@ The W10-R2 API/event results were obtained on the **earlier** v2.41.0 instance *
 **Changes:** new volumes + a fresh v2.41.0 container (`twenty-comm-test-app2`, port 3101); `SERVER_URL=http://192.168.4.84:3101`; a test API key minted for `apple` and stored **outside Git** (`D:/twenty-comm-test/.test-api-key2`); a CLI remote `comm-test2`. The app1 instance and its volumes were **preserved untouched**; the real stack was not touched.
 
 **Remaining checks:** composer submission / safe missing-config failure in the UI (blocked by §1); real-provider sending (never performed). The timeline card status + Refresh checks **PASS** (W10-R5).
+
+## W10-R7 — workspace configuration isolation on the working test instance
+
+Status: **data-model isolation VERIFIED; true two-workspace execution isolation NOT PERFORMED** — blocked by a native restriction (a LOCAL app registration is owned by one workspace). One workspace's **execution-time configuration** was observed live.
+
+### 1. Workspace creation and configuration (scoped to app2)
+
+| Aspect | Value |
+|--------|-------|
+| Instance | `twenty-comm-test-app2` (isolated, v2.41.0, port 3101) |
+| New workspace | **Isolation Beta** `67f6d395-ecf7-415e-9ba6-827a35fc2c35`, subdomain `isolation-beta` (ACTIVE, own schema) |
+| Removed | **Isolation Gamma** `31b5b8db-…` — an accidental second workspace created while probing the token path; **suspended** with its Communication app never installed |
+| Preserved | `apple`, the v2.42.6 instance, both volumes, all unrelated changes |
+
+Creation used only native operations: `signUpInNewWorkspace` → `activateWorkspace` (native workspace activation, which provisions the schema and pre-installed apps). No raw DB writes.
+
+### 2. Configuration — workspace ownership and independent editing
+
+- **Native Variables surface:** each workspace's app-detail **Variables** tab reads that workspace's own `applicationVariables`.
+- **Independent editing (PASS):** `updateOneApplicationVariable` set `COMMUNICATION_PROVIDER` in the `apple` workspace and the change was visible **only** there; `isolation-beta` reported its own (empty) values.
+- **No shared Communication registration variables (PASS):** the app declares `serverVariables: {}` (removal tombstone), so `core."applicationRegistrationVariable"` for Communication is **0 rows** — there is nothing to inherit.
+- **Data-model isolation (PASS):** `core."applicationVariable"` rows are keyed by `workspaceId`; the `apple` workspace has 9, and the beta workspace has none (its app is not installed — see §3).
+- All credentials remain absent (every value empty); no real credential was used.
+
+### 3. The blocker for true two-workspace execution isolation
+
+**A LOCAL application registration is owned by one workspace.** Registering/installing the Communication app into a second workspace is refused by the platform:
+
+```
+twenty apply (remote = isolation-beta):
+  "768bca20-0b81-4d33-a624-0a894a193ffd" is registered to another workspace.
+  Change the universalIdentifier in your manifest, or transfer the registration
+  from the owning workspace.
+```
+
+The same restriction appears through the native mutation path: `installApplication(universalIdentifier)` returns `APPLICATION_NOT_FOUND`, and the install runner logs **`Skipping install for LOCAL app 768bca20-…`** for the new workspace. `installMarketplaceApp` is not applicable either — the app is not listed in the marketplace.
+
+Consequently the beta workspace has **no Communication app**, no Communication logic functions and no Communication variables, so the app's execution cannot be driven there. **The claim "changing A does not change B" and "empty configuration in B does not inherit A's values" cannot be established through the app's own execution**, because B cannot host the app. Marked **NOT VERIFIED**; the missing observation is *a second workspace able to execute the app*.
+
+The observed production constraint is itself the relevant isolation evidence: there is **no cross-workspace fallback** — a workspace either owns the app (with its own configuration) or does not have it at all.
+
+### 4. Observable execution-time configuration (one workspace)
+
+Using only supported APIs and observable production behavior (no diagnostic route, no executor patch, no simulation):
+
+| Probe | `COMMUNICATION_PROVIDER` | Result | Persisted record `providerId` |
+|-------|--------------------------|--------|-------------------------------|
+| 1 | `razpayamak` | `UNEXPECTED_FAILURE` (no credentials) | **`razpayamak`** |
+| 2 | `kavenegar` | `UNEXPECTED_FAILURE` | **`kavenegar`** |
+| 3 | `bogus` | `UNEXPECTED_FAILURE` | **no record created** |
+| 4 | *(cleared)* | `UNEXPECTED_FAILURE` | **no record created** |
+
+The persisted `providerId` is written by `CommunicationSendAndPersistService.createQueued` **before** the provider call, so it is a genuine execution-time observation of the workspace's configuration. Probes 3–4 show that an invalid or absent provider is rejected **before** a record is created, so **no record is fabricated and no provider is contacted**. `COMMUNICATION_PROVIDER` was restored to empty afterwards.
+
+- **No provider request occurred:** the logs contain no `kavenegar`/`payamak` outbound attempt.
+- **Person access stays workspace-scoped (PASS by data model):** Person rows live in each workspace's own schema (`workspace_1wgvd1injqtife6y4rvfbu3h5` vs `workspace_65ksfbjdat77zkiyuzx3gbrjp`), and the route resolves the workspace from the authenticated context.
+- **Workflow:** **0** advertised actions (`core."logicFunction"` with non-null `workflowActionTriggerSettings` = 0); W7 remains disabled.
+
+### 5. Evidence levels
+
+| Level | Result |
+|-------|--------|
+| Network access (registry) | **PASS** (container-scoped `--add-host`, W10-R6) |
+| Dependency installation | **PASS** (`.twenty-layer-ready`) |
+| Route execution | **PASS** (one workspace) |
+| Browser submission | **PASS** (W10-R6) |
+| Provider sending | **NOT PERFORMED** (no credentials) |
+| **Two-workspace execution isolation** | **NOT PERFORMED — blocked by LOCAL-registration ownership** |
+| Data-model isolation | **PASS** |
+
+### 6. Environment changes and reversal
+
+| Aspect | Value |
+|--------|-------|
+| Container | `twenty-comm-test-app2` (isolated only) |
+| Config added | `IS_MULTIWORKSPACE_ENABLED=true`, `FRONTEND_URL=http://localhost:3101` |
+| Registry pins | `--add-host registry.npmjs.org:104.16.24.34`, `--add-host registry.yarnpkg.com:104.16.24.34` — **temporary test configuration**: they pin a CDN IP that can change, are **not** a production recommendation and carry **no availability guarantee** |
+| Data | `apple` preserved; `isolation-beta` created (ACTIVE); `isolation-gamma` created then suspended |
+| **Reversal** | recreate the container without the two `-e` flags and without the two `--add-host` flags (volumes keep the data); delete the `isolation-beta` workspace through `deleteCurrentWorkspace` if it is no longer wanted |
+| Not changed | host DNS, core source, SDK versions, generated dependency code, the real stack |
+
+**`FRONTEND_URL` note:** setting it to a hostname is what allows per-workspace subdomain origins (`<subdomain>.localhost:3101`) to resolve. With the bare-IP front URL the server cannot parse a subdomain origin at all (Node's `URL` rejects `<subdomain>.<ipv4>`), which blocks every workspace-scoped token path. This is a test-instance configuration detail, not a production recommendation.
 
 ## W10-R6 — isolated logic-function execution restored
 
