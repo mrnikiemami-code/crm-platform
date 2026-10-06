@@ -60,7 +60,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10-R6 | `ce3b9fb297` (docs + container config only — no app change) | `ce3b9fb297` | **logic-function execution RESTORED** on the isolated v2.41.0 instance via a container-scoped `--add-host` DNS override; routes, composer, safe-failure and zero-Workflow checks **PASS**; dependency install verified; per-workspace execution isolation **NOT PERFORMED** |
 | W10-R7 | `aceb78f228` (docs + container config only — no app change) | `aceb78f228` | **workspace configuration isolation**: a second disposable workspace was created and activated; **data-model isolation PASS**; **execution-time configuration observed** (`providerId` follows `COMMUNICATION_PROVIDER`; invalid/empty creates no record); **true two-workspace execution isolation NOT PERFORMED** — a LOCAL app registration is owned by one workspace |
 | W9-R2 | `b12a5c57f9` + `3654e15e1c` | `e8023c9b2e`, `a305247a1e`, `3654e15e1c` | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed via an empty tombstone (0 registration rows on both instances); **runtime execution isolation NOT PERFORMED** (registry blocked) |
-| W10-R8-R1 | (docs only — no app change) | (pending) | **native tarball distribution PROVEN on app2**: the unchanged Communication package was built with the native `twenty dev:build --tarball` (CLI 2.41.0), uploaded with `apple` auth via the native `uploadAppTarball` mutation (registration `e71d0025-…` converted LOCAL → **TARBALL**, UID/ownership/`isListed=false` preserved), and **installed into Isolation Beta** with Beta auth via the native `installApplication` mutation (new app row `5c02bf29-…` v0.1.0). **Two-workspace execution isolation PASS** (distinct providers observed through real routes; change-A/didn't-move-B; clear-B/no-inheritance; foreign Person rejected both directions); **no real provider request was made** |
+| W10-R8-R1 | (docs only — no app change) | `348606e2e2` | **native tarball distribution PROVEN on app2**: the unchanged Communication package was built with the native `twenty dev:build --tarball` (CLI 2.41.0), uploaded with `apple` auth via the native `uploadAppTarball` mutation (registration `e71d0025-…` converted LOCAL → **TARBALL**, UID/ownership/`isListed=false` preserved), and **installed into Isolation Beta** with Beta auth via the native `installApplication` mutation (new app row `5c02bf29-…` v0.1.0). **Beta installation PASS**; two-workspace **configuration** isolation PASS (storage witness); execution-time provider consumption NOT yet evidenced in R1; **no real provider request was made** |
+| W10-R8-R2 | (docs only — no app change) | (this commit) | **evidence gaps closed**: two-workspace **execution isolation PASS with an execution witness** — distinct non-secret `KAVENEGAR_ENDPOINT` per workspace, real `/s/communication/send` executed in both workspaces in the same second, persisted `providerId` follows each workspace's own config (`kavenegar` vs `razpayamak`), two separate `LogicFunctionTriggerJob` runs observed; config re-test re-run in registered order with a third marker value; `workflowActionTriggerSettings` verified **null for all 4 functions in the manifest AND both installs' metadata** (W7 disabled at registration level, not merely workflow-row absence); upgrade-job state audited (no upgrade queue, `autoUpgrade=false`, TARBALL registration invisible to the NPM catalog sync); Recovery reconciled (install ≠ isolation, server JSON ≠ composer text, source/build evidence ≠ runtime evidence, `isListed=false` is a listing flag not privacy) |
 
 **Evidence levels (do not conflate them):**
 
@@ -69,7 +70,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 3. **Browser rendering — PASS for front components, the composer AND the timeline card (W10-R4/R5/R6).** Stock `Hello World` renders on both images; the composer renders and now shows **populated phone options** (W10-R6); the timeline card renders its persisted status — it is a **collapsed row by default**.
 4. **Real sending — NOT PERFORMED.** No Kavenegar/RazPayamak request, no delivery receipt, no real credentials.
 
-**Live verification: PASS for registration/upload/sync, browser rendering (front components, composer, timeline card), and API/event execution on the isolated v2.41.0 instance (W10-R6).** **Data-model isolation is verified and one workspace's execution-time configuration was observed live (W10-R7).** **Two-workspace execution isolation is now PASS via the native tarball path (W10-R8-R1)** — the same app (unchanged universalIdentifier) is installed and executing in both `apple` and `Isolation Beta` on app2. **NOT PERFORMED:** real-provider sending. **No real provider request was ever made.**
+**Live verification: PASS for registration/upload/sync, browser rendering (front components, composer, timeline card), and API/event execution on the isolated v2.41.0 instance (W10-R6).** **Data-model isolation is verified and one workspace's execution-time configuration was observed live (W10-R7).** **Two-workspace distribution is PASS via the native tarball path (W10-R8-R1): the same app (unchanged universalIdentifier) is installed in both `apple` and `Isolation Beta` on app2 — installation and isolation are separate claims.** **Two-workspace execution isolation is PASS (W10-R8-R2) with an execution witness: each workspace's real send route consumed its own non-secret config, producing per-workspace persisted `providerId` values — still without any real provider request.** **NOT PERFORMED:** real-provider sending. **No real provider request was ever made.**
 
 Current Development State:
 - Jalali Presentation Layer: COMPLETE / ACCEPTED / COMMITTED (Phases 1–5).
@@ -78,7 +79,7 @@ Current Development State:
 - Enterprise / SSO / ClickHouse findings documented; NO Enterprise licence bypass is part of the desired architecture.
 - Development startup reliability fixed (phased readiness); cold-start *performance* remains a separate, unstarted topic.
 - Branding / white-label: PLANNED / NOT STARTED.
-- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** workspace-owned provider configuration (verified in the native Variables tab, secrets encrypted per workspace and masked); **W10-R4/R5** front components, composer and timeline card all render (the card is a collapsed row by default); **W10-R6** restored **logic-function execution** on the isolated v2.41.0 instance via a scoped container DNS override and verified the composer's real routes, with a safe truthful failure and zero records/provider requests. The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
+- Communications / Messaging: ACTIVE. W0–W9 implemented; **W9-R2** workspace-owned provider configuration (verified in the native Variables tab, secrets encrypted per workspace and masked); **W10-R4/R5** front components, composer and timeline card all render (the card is a collapsed row by default); **W10-R6** restored **logic-function execution** on the isolated v2.41.0 instance via a scoped container DNS override and verified the composer's real routes, with a safe truthful failure and zero records/provider requests; **W10-R8-R1** distributed the unchanged app to a second workspace via the native tarball path; **W10-R8-R2** evidenced two-workspace execution isolation with per-workspace provider consumption through the real send route. The Person send-message slice (command menu → composer front component → authenticated route logic function → certified durable orchestration) and the Person timeline integration both exist. SMS via Kavenegar or RazPayamak; architecture is multi-channel from day one.
 
 ## Communications — authoritative current behavior
 
@@ -91,17 +92,17 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10-R2** installed the app (registration → upload 14/14 → sync 92 entities) and its API/event checks passed **while the dependency layer was cached** (now historical). **W10-R3**'s browser pass was corrected by **W10-R4**, which proved front components and the composer **do render**. **W10-R4**'s two blockers are both resolved (W10-R6 execution, W10-R5 timeline card), and **W10-R8-R1** resolved the two-workspace blocker via the native tarball path. Do not start another wave automatically.
+No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10-R2** installed the app (registration → upload 14/14 → sync 92 entities) and its API/event checks passed **while the dependency layer was cached** (now historical). **W10-R3**'s browser pass was corrected by **W10-R4**, which proved front components and the composer **do render**. **W10-R4**'s two blockers are both resolved (W10-R6 execution, W10-R5 timeline card), **W10-R8-R1** resolved the two-workspace blocker via the native tarball path, and **W10-R8-R2** closed the evidence gaps (execution witness, per-install workflow-trigger verification, upgrade-job audit, Recovery reconciliation). Do not start another wave automatically.
 
 **Current test runtimes:**
 - `twenty-comm-test-app2` — **fresh `twentycrm/twenty-app-dev:v2.41.0`**, port **3101**, NEW volumes, workspaces `apple` and `Isolation Beta`, the Communication app installed in **both** (native tarball path, W10-R8-R1). This is the working front-end runtime.
 - `twenty-comm-test-app` — `twentycrm/twenty-app-dev:v2.42.6`, port 3100, preserved for diagnosis (its DB was migrated and cannot be downgraded).
 
 **Open blocker (environment/platform, not app):**
-1. ~~**True two-workspace execution isolation (W10-R7)**~~ — **RESOLVED by W10-R8-R1.** The LOCAL-registration ownership limit blocked only the *LOCAL dev-sync path* (`twenty apply` → *"registered to another workspace"*; install runner logs *"Skipping install for LOCAL app 768bca20-…"*). The platform's **native packaged path does not have this limit**: `uploadAppTarball` (with the owner's auth) converts the same registration to `sourceType: TARBALL` preserving the universalIdentifier and ownership, and `installApplication` (with the second workspace's auth) then installs the app there. `ensureDepsLayer` is unrelated to this chain — it is a *runtime dependency-layer* step that already worked on app2 (W10-R6) and fired once per workspace on first execution. See the W10-R8-R1 section for the live two-workspace evidence.
+1. ~~**True two-workspace execution isolation (W10-R7)**~~ — **RESOLVED by W10-R8-R1 (distribution) + W10-R8-R2 (execution evidence).** The LOCAL-registration ownership limit blocked only the *LOCAL dev-sync path* (`twenty apply` → *"registered to another workspace"*; install runner logs *"Skipping install for LOCAL app 768bca20-…"*). The platform's **native packaged path does not have this limit**: `uploadAppTarball` (with the owner's auth) converts the same registration to `sourceType: TARBALL` preserving the universalIdentifier and ownership, and `installApplication` (with the second workspace's auth) then installs the app there. `ensureDepsLayer` is unrelated to this chain — it is a *runtime dependency-layer* step that already worked on app2 (W10-R6) and fired once per workspace on first execution. See the W10-R8-R1/R2 sections for the live two-workspace evidence (installation is a separate claim from execution isolation; each is evidenced on its own).
 2. **Logic-function execution on the v2.42.6 instance** — `ensureDepsLayer` (Yarn 4.9.2) cannot resolve a package registry there; the host resolver returns loopback for `registry.yarnpkg.com`/`registry.npmjs.org`. **Restored on the isolated v2.41.0 instance by a container-scoped `--add-host` (W10-R6)**; the v2.42.6 instance was deliberately left unchanged as the control. This is **not** a global-DNS problem: egress works, only DNS is sinkholed, and the fix is scoped to one container.
 
-**Resolved:** the **timeline card render** (W10-R5 — it is a **collapsed row by default**), **logic-function execution on the isolated v2.41.0 instance** (W10-R6), and **true two-workspace execution isolation via native tarball distribution** (W10-R8-R1).
+**Resolved:** the **timeline card render** (W10-R5 — it is a **collapsed row by default**), **logic-function execution on the isolated v2.41.0 instance** (W10-R6), **two-workspace app distribution via the native tarball path** (W10-R8-R1 — installation), and **two-workspace execution isolation with a real execution witness** (W10-R8-R2 — a separate, later-evidenced claim).
 
 **Registry IP pins are temporary test configuration** — they pin a CDN IP that can change, are **not** a production deployment recommendation and carry **no availability guarantee**. Reversal: recreate the container without the `--add-host` flags.
 
@@ -770,7 +771,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace execution isolation PASS via native tarball distribution** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, distinct non-secret config, foreign Person access rejected, `isListed=false` preserved — a listing flag, not a privacy guarantee); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**; real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 (this wave); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: per-workspace provider consumption through the real send route; foreign Person access rejected); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 (this wave); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
@@ -996,13 +997,14 @@ populated phone options, and submitting with incomplete config returns a safe tr
 `installApplication` path (registration converted LOCAL → TARBALL, identity/ownership/`isListed=false`
 preserved) — with independently-set non-secret configuration and per-workspace record scoping.
 
-WORKSPACE ISOLATION (W10-R7): a second disposable workspace (`isolation-beta`) was created and
-activated natively. **Data-model isolation PASS** (variables keyed by `workspaceId`; 0 shared
+WORKSPACE ISOLATION (W10-R7 → W10-R8-R1/R2): a second disposable workspace (`isolation-beta`) was
+created and activated natively. **Data-model isolation PASS** (variables keyed by `workspaceId`; 0 shared
 registration variables). **Execution-time configuration observed**: the persisted record's
 `providerId` follows the workspace's `COMMUNICATION_PROVIDER`, and an invalid/empty provider creates
-**no** record and contacts no provider. **True two-workspace execution isolation is NOT PERFORMED** — a
-**LOCAL app registration is owned by one workspace**, so the app cannot be registered or installed
-into the second workspace.
+**no** record and contacts no provider. The W10-R7-era blocker ("a LOCAL app registration is owned by
+one workspace") limited only the LOCAL dev-sync path: **W10-R8-R1** installed the same app into the
+second workspace through the native tarball path, and **W10-R8-R2** provided the two-workspace
+execution witness (per-workspace `providerId` through the real send route, no real provider request).
 
 TIMELINE RENDERER (W10-R5): the timeline card **does** render — it is a **collapsed row by default**.
 Expanding the row mounts the app's front component, which shows the persisted status. Verified in the
@@ -1702,9 +1704,9 @@ The persisted `providerId` is written by `CommunicationSendAndPersistService.cre
 
 **`FRONTEND_URL` note:** setting it to a hostname is what allows per-workspace subdomain origins (`<subdomain>.localhost:3101`) to resolve. With the bare-IP front URL the server cannot parse a subdomain origin at all (Node's `URL` rejects `<subdomain>.<ipv4>`), which blocks every workspace-scoped token path. This is a test-instance configuration detail, not a production recommendation.
 
-## W10-R8-R1 — native tarball distribution and two-workspace execution isolation on app2
+## W10-R8-R1 — native tarball distribution on app2 (completed by W10-R8-R2 execution evidence)
 
-Status: **PROVEN LIVE on the isolated v2.41.0 instance (app2).** The unchanged Communication app was distributed to a second workspace entirely through the platform's **native packaged path** — no npm publication, no ownership transfer, no universalIdentifier change, no direct `sourceType` DB edit, no core/SDK change, and no real provider request.
+Status: **PROVEN LIVE on the isolated v2.41.0 instance (app2).** The unchanged Communication app was distributed to a second workspace entirely through the platform's **native packaged path** — no npm publication, no ownership transfer, no universalIdentifier change, no direct `sourceType` DB edit, no core/SDK change, and no real provider request. **R1 proved the distribution (Beta install) and configuration-isolation storage witness; R2 added the execution witness and reconciled this document.** Source/build findings below are **static evidence**; runtime findings are labeled as such.
 
 ### 0. The contract (verified from the deployed v2.41.0 source before any action)
 
@@ -1752,7 +1754,7 @@ mutation { installApplication(universalIdentifier: "768bca20-0b81-4d33-a624-0a89
 - Beta (`67f6d395-ecf7-415e-9ba6-827a35fc2c35`) now has the app with its **own** application row; all 9 `applicationVariables` were created fresh with **empty** values (no inheritance from apple — the 2×9 row set is verified distinct in `core."applicationVariable"` with per-workspace `workspaceId`s and different ciphertext lengths).
 - `apple`'s app row (`23121baf-…` v0.1.0) is **untouched**; `autoUpgrade` remains `false` on both workspaces, so no auto-upgrade job can move either install.
 
-### 4. Two-workspace execution isolation (live, through the app's real routes)
+### 4. Two-workspace isolation (live, through the app's real routes — completed by W10-R8-R2)
 
 Non-secret configuration set distinctly; all credentials left **empty**:
 
@@ -1761,35 +1763,55 @@ Non-secret configuration set distinctly; all credentials left **empty**:
 | apple | `kavenegar` | **200** `{"success":true,"phones":[{"value":"5552345678",…}]}` (own person) |
 | Isolation Beta | `razpayamak` | **200** `{"success":true,"phones":[{"value":"882261739",…}]}` (own person) |
 
-Isolation probes (all through authenticated API-key contexts):
+Isolation probes (all through authenticated API-key contexts). Config reads are the **storage witness**; the send route is the **execution witness**:
 
 | Probe | Result |
 |-------|--------|
-| Change A (apple → `razpayamak`), re-read B | **B stayed `razpayamak`** — A's change did not move B (an earlier single-run apparent leak was a test-sequence artifact: B had been set to `razpayamak` earlier in the same session; a clean re-run with delays showed no movement) |
-| Clear B (`""`), re-read A and B | A unchanged, **B stays empty** — no inheritance of A's value |
+| Registered order A=`kavenegar` / B=`razpayamak` (re-run W10-R8-R2, storage read-back) | both read back as set |
+| Change **only** A → third marker `isolation-probe-a` (distinct from B), storage read-back | apple=`isolation-probe-a`, **beta stayed `razpayamak`** — A's change did not move B |
+| Clear **only** B → `""`, storage read-back | **B empty**, apple unchanged — B does not inherit A's value |
 | Beta auth → apple's Person (`20202020-b225-…`) via real route | **rejected**: HTTP 500 `Record not found` |
 | Apple auth → Beta's Person (`7a93d1e5-…`) | **rejected**: HTTP 500 `Record not found` |
 | Beta auth reading apple's app by id | **`APPLICATION_NOT_FOUND`** — the app row itself is workspace-scoped |
 
-- `/s/communication/send` with incomplete config on both workspaces → safe truthful failure (`UNEXPECTED_FAILURE`, "The message could not be sent.", `isOutcomeKnown:false`), **0 records**, **no provider request** (same contract as W10-R6/R7).
-- **W7 remains disabled**: the packaged manifest declares **no workflows** (no `workflows` manifest key), `core.workflow` has 0 rows linked to either Communication app row, and only the two stock sample workflows exist per workspace. The "Send message" **command menu item** is the W10-era composer entry (present and active in both workspaces, as designed).
+**Execution-time provider consumption (W10-R8-R2, no real provider contacted):** each workspace was given a distinct dead `KAVENEGAR_ENDPOINT` (`http://127.0.0.1:1/v1` for apple, `http://127.0.0.2:1/v1` for Beta) and the real `/s/communication/send` route was executed in both workspaces in the same second. Each workspace's persisted record shows **its own** provider through the real execution path, and the server log shows two separate `LogicFunctionTriggerJob` runs, one per workspace, in that second:
 
-### 5. Evidence levels after W10-R8-R1
+| Evidence (W10-R8-R2) | apple | Isolation Beta |
+|----------------------|-------|----------------|
+| Persisted record `providerId` (execution witness) | **`kavenegar`** (record `91375b5d-…`, `2026-10-06T16:02:03.503Z`) | **`razpayamak`** (record `e85b48b9-…`, `2026-10-06T16:02:03.696Z`) |
+| `LogicFunctionTriggerJob` in server log | job 8, `workspace=20202020-1c25-…` at 4:02:03 PM | job 9, `workspace=67f6d395-…` at 4:02:03 PM |
+| DB rows (per-workspace schema) | `workspace_1wgvd1injqtife6y4rvfbu3h5._communication`: `kavenegar|FAILED|16:02:03.50` | `workspace_65ksfbjdat77zkiyuzx3gbrjp._communication`: `razpayamak|FAILED|16:02:03.69` |
+
+The execution witnesses are **not secrets**: `KAVENEGAR_ENDPOINT` is non-secret, and the endpoints were loopback ports that refuse immediately — the outbound attempt fails inside the instance without any real provider (or any external host) being contacted. Both workspaces returned the safe truthful failure (`UNEXPECTED_FAILURE`, `isOutcomeKnown:false`), and both `KAVENEGAR_ENDPOINT` values were restored to empty afterwards.
+
+**Server-response wording (kept distinct from the composer text):** the send route responds `{"success":false,"failureCode":"UNEXPECTED_FAILURE","isOutcomeKnown":false,"error":"The message could not be sent."}`. The composer front component renders its own user-facing localized wording; the raw route JSON above is a server API observation, not the UI text.
+
+- `/s/communication/send` with incomplete config on both workspaces → safe truthful failure, **0 records**, **no provider request** (same contract as W10-R6/R7).
+- **W7 remains disabled — verified in the manifest and the metadata of BOTH installs (W10-R8-R2):** the packaged manifest carries **4 logic functions, all with `workflowActionTriggerSettings: null`** — including `communication-send-workflow-action` (`e55f7b79-cf61-45b4-a1c4-259fa7089b28`), whose source declares the deterministic refusal (`WORKFLOW_ACTION_DISABLED`, "Communication sending from Workflow is unavailable.") with no trigger of any kind; the deployed `from-logic-function-manifest-to-universal-flat-logic-function.util.js` maps a missing setting to `null`; and the GraphQL metadata of both the apple and Beta installs reports `workflowActionTriggerSettings: null` on all 4 functions. Additionally `core.workflow` has 0 rows linked to either Communication app row (only the two stock sample workflows exist per workspace), and `WorkflowCronTriggerCronJob` logs `Cache rebuilt with 0 cron triggers`. The "Send message" **command menu item** is the W10-era composer entry (present and active in both workspaces, as designed) — workflow rows are absent **because the action registration is null in both installs**, not merely because no workflow was created.
+
+### 5. Evidence levels after W10-R8-R1/R2
 
 | Level | Result |
 |-------|--------|
 | Native tarball package build (CLI 2.41.0, locked deps) | **PASS** |
 | Owner-authenticated `uploadAppTarball` (LOCAL → TARBALL, identity preserved) | **PASS** |
 | Second-workspace `installApplication` | **PASS** (Beta) |
-| Two-workspace execution isolation (distinct config + foreign-record rejection) | **PASS** |
-| Provider sending | **NOT PERFORMED** (no credentials, no real provider HTTP request) |
+| Two-workspace **configuration** isolation (distinct storage values; change-A doesn't move B; clear-B doesn't inherit) | **PASS** (storage witness; W10-R8-R2 re-run in registered order with a third marker value) |
+| Two-workspace **execution** isolation (real send-route consumption of each workspace's own config) | **PASS** (execution witness W10-R8-R2: distinct dead-endpoint `KAVENEGAR_ENDPOINT` per workspace, same-second executions, per-workspace persisted `providerId` `kavenegar` vs `razpayamak`, two separate `LogicFunctionTriggerJob` runs) |
+| Person access across workspaces | **REJECTED** both directions (HTTP 500 `Record not found`) |
+| Provider sending | **NOT PERFORMED** (no credentials, no real provider HTTP request; execution witnesses used non-secret loopback endpoints that refuse immediately) |
 | Marketplace/npm publication | **NOT PERFORMED** (out of scope; `app:publish` npm path deliberately not run) |
 
 ### 6. Corrections to prior records
 
 - **W10-R7 §3 correction:** the LOCAL-install refusal (`registered to another workspace` / `Skipping install for LOCAL app`) proves a limit of the **LOCAL dev-sync path only**, not the absence of a runtime fallback. The native **tarball path** installs the same app into a second workspace without ownership transfer — proven live above.
 - **W10-R7 §2 correction:** "the beta workspace has no Communication app / its app is not installed" is now historical: Beta hosts the app since W10-R8-R1, with its own 9 variables.
-- **Gamma status:** `Isolation Gamma` (`31b5b8db-571e-4fce-b2d8-99ff030036a9`) is **suspended** (deactivated via the native workspace-activation flow), **not deleted** — its workspace row and schema remain on app2 with 2 stock workflows and no Communication app.
+- **Gamma status:** `Isolation Gamma` (`31b5b8db-571e-4fce-b2d8-99ff030036a9`) is **suspended** (deactivated via the native workspace-activation flow), **not deleted** — its workspace row and schema remain on app2 with 2 stock workflows and no Communication app (its schema `workspace_2xy1z2a8jfaqeofqunkf8c1ih` has no `_communication` table at all — the app was never installed there).
+
+### 6b. Upgrade-job status and the no-rollback claim (W10-R8-R2)
+
+- **Upgrade jobs:** `autoUpgrade` is `false` on both installs (apple `23121baf-…` v0.1.0 and Beta `5c02bf29-…` v0.1.0). The Redis audit of app2 shows **no upgrade queue at all** (queues present: ai, billing, calendar, campaign, contact-creation, cron, delayed-jobs, delete-cascade, email, entity-events-to-db, logic-function, messaging, task-assigned, trigger, webhook, workflow, workspace — no `application-upgrade`), and the registration's `latestAvailableVersion` equals the installed `0.1.0`, so no upgrade job is pending or enqueued for either workspace. `MarketplaceCatalogSyncCronJob` runs hourly but only syncs **NPM** catalog entries; the Communication registration is `sourceType: TARBALL`, which the catalog upsert skips (`Skipping catalog entry from package …: universal identifier … is registered from source TARBALL` — the deployed guard rejects any non-NPM existing registration for catalog updates).
+- **"Rollback to LOCAL" claim scope:** the documented reversal — re-uploading via `uploadAppTarball` or re-registering — keeps the registration in the **native TARBALL channel**; `assertTarballCanReplaceRegistration` (deployed source) accepts only LOCAL and TARBALL as the existing source for a tarball upload, and there is **no observed native operation that converts TARBALL back to LOCAL**. The registration therefore stays TARBALL; no rollback, uninstall or re-registration was performed for testing, and the Beta install was preserved.
 
 ### 7. Environment changes and reversal
 
@@ -1951,7 +1973,7 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 
 **Note — `twenty apply` rewrites the app's generated API client.** Running `twenty apply` against a server whose schema differs from the app's locked `twenty-client-sdk@2.35.0` overwrote `node_modules/twenty-client-sdk`'s generated schema with that server's schema, which broke typecheck (`createCommunication`, `updateCommunication`, `person` "do not exist"). Restoring the pristine locked package from the offline Yarn cache (`yarn install --immutable`) returned typecheck to **PASS**. The committed app is unaffected (the client is a dependency, not app source), but a **local install can be left broken by a sync against a mismatched server**, so run `yarn install --immutable` before typechecking after any `twenty apply`.
 
-**Runtime execution is VERIFIED per workspace (updated by W10-R6 and W10-R8-R1).** Logic-function execution was first restored on the v2.41.0 instance via the W10-R6 registry fix; as of W10-R8-R1 the app executes in **both** `apple` and `Isolation Beta` with independently-set non-secret configuration, and cross-workspace record access is rejected through the app's real routes. The variables are physically scoped by `workspaceId` in the DB (distinct rows and ciphertexts per workspace), encrypted with the workspace key, and the executor reads only the running workspace's map. Real-provider sending remains **NOT PERFORMED**.
+**Runtime execution is VERIFIED per workspace (updated by W10-R6 and W10-R8-R2).** Logic-function execution was first restored on the v2.41.0 instance via the W10-R6 registry fix; as of W10-R8-R1/R2 the app is installed in **both** `apple` and `Isolation Beta`, executes with independently-set non-secret configuration in each, and cross-workspace record access is rejected through the app's real routes. The W10-R8-R2 execution witness: distinct non-secret `KAVENEGAR_ENDPOINT` per workspace, real send-route executions in the same second, and persisted `providerId` (`kavenegar` in apple, `razpayamak` in Beta) each following its own workspace's configuration. The variables are physically scoped by `workspaceId` in the DB (distinct rows and ciphertexts per workspace), encrypted with the workspace key, and the executor reads only the running workspace's map. Real-provider sending remains **NOT PERFORMED**.
 
 ### 4. Migration behaviour
 
