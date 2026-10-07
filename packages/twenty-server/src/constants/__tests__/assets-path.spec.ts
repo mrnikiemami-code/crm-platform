@@ -6,13 +6,36 @@ import {
   resolveAssetPath,
 } from 'src/constants/assets-path';
 
-// Normalize to forward slashes so suffix assertions are readable on any platform.
-const toPosix = (filePath: string): string =>
-  filePath.split(path.sep).join('/');
+// Host-independent normalization: both separators are folded to `/` so a
+// Windows-style string is still comparable when the suite runs on POSIX.
+const toPosix = (filePath: string): string => filePath.replace(/[\\/]/g, '/');
+
+// Host-native absolute directories built from real-looking segments, so
+// `path.resolve` behaves exactly as it would for a real build/source tree on
+// whichever platform the suite runs on.
+const nativeDir = (...segments: string[]): string =>
+  path.resolve(path.parse(process.cwd()).root, ...segments);
+
+const NATIVE_BUILT_DIR = nativeDir(
+  'app',
+  'packages',
+  'twenty-server',
+  'dist',
+  'constants',
+);
+const NATIVE_SOURCE_DIR = nativeDir(
+  'app',
+  'packages',
+  'twenty-server',
+  'src',
+  'constants',
+);
 
 describe('assets-path', () => {
   describe('isBuiltThroughTestingModule', () => {
-    it('detects the dist build on a POSIX path (forward slashes)', () => {
+    // Pure string inspection: these inputs are literal path strings, not
+    // host-resolved paths, so they are meaningful on every platform.
+    it('detects a dist build written with POSIX separators', () => {
       expect(
         isBuiltThroughTestingModule(
           '/app/packages/twenty-server/dist/constants',
@@ -20,7 +43,7 @@ describe('assets-path', () => {
       ).toBe(false);
     });
 
-    it('detects the dist build on a Windows path (backslashes)', () => {
+    it('detects a dist build written with Windows separators', () => {
       expect(
         isBuiltThroughTestingModule(
           'D:\\CrmSource\\twenty\\packages\\twenty-server\\dist\\constants',
@@ -28,7 +51,7 @@ describe('assets-path', () => {
       ).toBe(false);
     });
 
-    it('treats a source/testing path as not built (POSIX)', () => {
+    it('treats a source path as not built (POSIX separators)', () => {
       expect(
         isBuiltThroughTestingModule(
           '/app/packages/twenty-server/src/constants',
@@ -36,7 +59,7 @@ describe('assets-path', () => {
       ).toBe(true);
     });
 
-    it('treats a source/testing path as not built (Windows)', () => {
+    it('treats a source path as not built (Windows separators)', () => {
       expect(
         isBuiltThroughTestingModule(
           'D:\\CrmSource\\twenty\\packages\\twenty-server\\src\\constants',
@@ -44,8 +67,7 @@ describe('assets-path', () => {
       ).toBe(true);
     });
 
-    it('does not match a bare "dist" segment without surrounding slashes', () => {
-      // A trailing folder named `dist` (no closing slash) is not a build path.
+    it('ignores a trailing folder merely named "dist" without a closing slash', () => {
       expect(
         isBuiltThroughTestingModule(
           '/app/packages/twenty-server/src/constants/dist',
@@ -53,73 +75,78 @@ describe('assets-path', () => {
       ).toBe(true);
     });
 
-    it('does not match a folder whose name merely contains "dist"', () => {
+    it('does not treat a folder whose name contains "dist" as a build path', () => {
       expect(
         isBuiltThroughTestingModule(
           '/app/packages/twenty-server/src/distribution/constants',
         ),
       ).toBe(true);
     });
+
+    it('detects the build marker in the middle of the path', () => {
+      expect(
+        isBuiltThroughTestingModule('/app/packages/twenty-server/dist/engine'),
+      ).toBe(false);
+    });
   });
 
   describe('resolveAssetPath', () => {
-    // Assertions use normalized suffixes: an absolute POSIX input resolved on a
-    // Windows host gains a drive prefix, so exact string equality would test the
-    // host platform rather than the module's logic.
-    it('appends the assets segment when built, regardless of separators', () => {
-      const posixInput = toPosix(
-        resolveAssetPath('/app/packages/twenty-server/dist/constants'),
-      );
-      const windowsInput = toPosix(
-        resolveAssetPath(
-          'D:\\CrmSource\\twenty\\packages\\twenty-server\\dist\\constants',
-        ),
-      );
+    // Only host-native paths are passed to `path.resolve`: a Windows-style
+    // string would be interpreted as a single filename on POSIX and vice versa,
+    // which would assert the host platform instead of the module's logic.
+    it('appends the assets segment for a built tree', () => {
+      const resolved = resolveAssetPath(NATIVE_BUILT_DIR);
 
-      expect(posixInput.endsWith('/dist/assets')).toBe(true);
-      expect(windowsInput.endsWith('/dist/assets')).toBe(true);
+      expect(resolved).toBe(path.resolve(NATIVE_BUILT_DIR, '../assets'));
+      expect(path.basename(resolved)).toBe('assets');
+      expect(path.basename(path.dirname(resolved))).toBe('dist');
     });
 
-    it('does not append the assets segment when running from source', () => {
-      const posixInput = toPosix(
-        resolveAssetPath('/app/packages/twenty-server/src/constants'),
-      );
-      const windowsInput = toPosix(
-        resolveAssetPath(
-          'D:\\CrmSource\\twenty\\packages\\twenty-server\\src\\constants',
-        ),
-      );
+    it('resolves to the parent directory for a source tree', () => {
+      const resolved = resolveAssetPath(NATIVE_SOURCE_DIR);
 
-      expect(posixInput.endsWith('/src')).toBe(true);
-      expect(posixInput.endsWith('/assets')).toBe(false);
-      expect(windowsInput.endsWith('/src')).toBe(true);
-      expect(windowsInput.endsWith('/assets')).toBe(false);
+      expect(resolved).toBe(path.resolve(NATIVE_SOURCE_DIR, '..'));
+      expect(path.basename(resolved)).toBe('src');
+      expect(path.basename(resolved)).not.toBe('assets');
     });
 
-    it('resolves the constants parent directory when running from source', () => {
-      const resolved = toPosix(
-        resolveAssetPath('/app/packages/twenty-server/src/constants'),
+    it('produces different results for the built and source trees', () => {
+      expect(resolveAssetPath(NATIVE_BUILT_DIR)).not.toBe(
+        resolveAssetPath(NATIVE_SOURCE_DIR),
       );
+    });
 
-      expect(resolved.endsWith('/twenty-server/src')).toBe(true);
+    it('adds exactly one path segment in the built case', () => {
+      const built = resolveAssetPath(NATIVE_BUILT_DIR).split(path.sep);
+      const source = resolveAssetPath(NATIVE_SOURCE_DIR).split(path.sep);
+
+      // Both inputs sit at the same depth (.../twenty-server/{dist|src}/constants);
+      // the built result gains the extra `assets` segment.
+      expect(built).toHaveLength(source.length + 1);
+      expect(built[built.length - 1]).toBe('assets');
     });
   });
 
   describe('ASSET_PATH (module-level export)', () => {
-    it('follows the same rule as resolveAssetPath for the running directory', () => {
-      // Under jest the module is compiled from src, so this asserts the exported
-      // constant is consistent with the directory it was evaluated in.
-      const isDist = __dirname.split(/[\\/]/).includes('dist');
+    it('is consistent with resolveAssetPath for the module own directory', () => {
+      const moduleDirectory = path.dirname(
+        require.resolve('src/constants/assets-path'),
+      );
 
-      expect(toPosix(ASSET_PATH).endsWith('/assets')).toBe(isDist);
+      expect(ASSET_PATH).toBe(resolveAssetPath(moduleDirectory));
     });
 
-    it('resolves next to the compiled constants directory when built', () => {
-      if (!__dirname.split(/[\\/]/).includes('dist')) {
-        return;
-      }
+    it('has the shape implied by the directory it was evaluated in', () => {
+      const moduleDirectory = path.dirname(
+        require.resolve('src/constants/assets-path'),
+      );
+      const isBuilt = !isBuiltThroughTestingModule(moduleDirectory);
 
-      expect(ASSET_PATH).toBe(path.resolve(__dirname, '../assets'));
+      expect(path.basename(ASSET_PATH)).toBe(isBuilt ? 'assets' : 'src');
+    });
+
+    it('does not resolve inside the test directory', () => {
+      expect(toPosix(ASSET_PATH)).not.toContain('/__tests__');
     });
   });
 });
