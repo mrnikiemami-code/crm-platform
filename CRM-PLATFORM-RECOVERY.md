@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-06 (W10-R8-R2 `bbb1b5cb18`)
+Last updated: 2026-10-07 (W11-MOCK-UI `fff3cee41f`)
 
 ## Purpose
 
@@ -23,7 +23,7 @@ Branch:
 `crm-platform`
 
 Verified baseline (before this documentation commit):
-`bbb1b5cb1819f202bfe629dc31193d2e5c5f4e3f` — `docs(recovery): close W10-R8 evidence gaps and reconcile (W10-R8-R2)`
+`fff3cee41f24514fad017b24be31c727aafff8f4` — `docs(recovery): browser-composer mock run verified (W11-MOCK-UI)`
 
 Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
@@ -66,8 +66,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W9-R2 | `b12a5c57f9` + `3654e15e1c` | `e8023c9b2e`, `a305247a1e`, `3654e15e1c` | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed via an empty tombstone (0 registration rows on both instances); **runtime execution isolation NOT PERFORMED** (registry blocked) *(historical — superseded by W10-R6 execution restoration and W10-R8-R1/R2 isolation evidence)* |
 | W10-R8-R1 | (docs only — no app change) | `348606e2e2` | **native tarball distribution PROVEN on app2**: the unchanged Communication package was built with the native `twenty dev:build --tarball` (CLI 2.41.0), uploaded with `apple` auth via the native `uploadAppTarball` mutation (registration `e71d0025-…` converted LOCAL → **TARBALL**, UID/ownership/`isListed=false` preserved), and **installed into Isolation Beta** with Beta auth via the native `installApplication` mutation (new app row `5c02bf29-…` v0.1.0). **Beta installation PASS**; two-workspace **configuration** isolation PASS (storage witness); provider-selection execution witness NOT yet evidenced in R1; **no real provider request was made** |
 | W10-R8-R2 | (docs only — no app change) | `bbb1b5cb18` | **evidence gaps closed**: two-workspace **execution isolation PASS with an execution witness** — the real `/s/communication/send` executed in both workspaces in the same second, persisted `providerId` follows each workspace's own `COMMUNICATION_PROVIDER` (`kavenegar` vs `razpayamak`), two separate `LogicFunctionTriggerJob` runs observed; config re-test re-run in registered order with a third marker value; `workflowActionTriggerSettings` verified **null for all 4 functions in the manifest AND both installs' metadata** (W7 disabled at registration level, not merely workflow-row absence); upgrade-job state audited (no upgrade queue, `autoUpgrade=false`, TARBALL registration invisible to the NPM catalog sync); Recovery reconciled (install ≠ isolation, server JSON ≠ composer text, source/build evidence ≠ runtime evidence, `isListed=false` is a listing flag not privacy) |
-| W11-MOCK | (docs only — no app change) | (this commit) | **HTTP Mock integration PASS at the API level on app2/apple** — the path `authenticated send route → durable service → HTTP Mock` was exercised with a temporary in-network mock (no host port, no external call) via **direct route calls**: two sends gave **SENT** (`providerMessageId=999001`) and **FAILED** (`mock rejection`, provider's own reason), **exactly one mock request each**, **exactly one app activity per Communication**. Prior variables restored exactly, mock stopped. **Mock acceptance only — no real send, no delivery, Kavenegar path only; W7 disabled** |
-| W11-MOCK-UI | (docs only — no app change) | (this commit) | **browser-composer run PASS** — the same mock + W11-MOCK Person, but both scenarios driven **only by clicking Send in the real composer**: success toast **"Message sent."** and error **"mock rejection"**; records `c9ee6377-…` (SENT, id `999001`) and `6a37d3e9-…` (FAILED); **exactly one mock request each** (log 2→3→4); **exactly one activity each** (`fe89391e-…`, `78e05a2c-…`); timeline cards opened and captured (`s1-card-sent.png`, `s2-card-failed.png`); variables restored, mock stopped. **Closes the earlier browser gap.** Mock acceptance only; Refresh still NOT TESTED |
+| W11-MOCK | (docs only — no app change) | `f844cb334e` | **HTTP Mock integration PASS at the API level on app2/apple** — the path `authenticated send route → durable service → HTTP Mock` was exercised with a temporary in-network mock (no host port, no external call) via **direct route calls**: two sends gave **SENT** (`providerMessageId=999001`) and **FAILED** (`mock rejection`, provider's own reason), **exactly one mock request each**, **exactly one app activity per Communication**. Prior variables restored exactly, mock stopped. **Mock acceptance only — no real send, no delivery, Kavenegar path only; W7 disabled** (evidence-scope correction committed later as `9ecf0a70e1`) |
+| W11-MOCK-UI | (docs only — no app change) | `fff3cee41f` | **browser-composer run PASS** — the same mock + W11-MOCK Person, but both scenarios driven **only by clicking Send in the real composer**: success toast **"Message sent."** and error **"mock rejection"**; records `c9ee6377-…` (SENT, id `999001`) and `6a37d3e9-…` (FAILED); **exactly one mock request each** (log 2→3→4); **exactly one activity each** (`fe89391e-…`, `78e05a2c-…`); timeline cards opened and captured (`s1-card-sent.png`, `s2-card-failed.png`); variables restored, mock stopped. **Closes the earlier browser gap.** Mock acceptance only; Refresh still NOT TESTED |
 
 **Evidence levels (do not conflate them):**
 
@@ -777,7 +777,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK + W11-MOCK-UI (this wave); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ evidence-scope fix `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`; no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
@@ -972,6 +972,9 @@ Communications / Messaging is ACTIVE. Code-review accepted through **W9-R1** (W7
 W0 app skeleton, W1 provider boundary, W2 Kavenegar, W3 multi-provider + RazPayamak,
 W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2/R3),
 W6 Person timeline integration (+ W6-R1/R2), W10-R2 installed verification (synthetic).
+W10-R6/R7/R8-R1/R8-R2 (isolated execution, workspace isolation, native tarball two-workspace
+distribution) and W11-MOCK / W11-MOCK-UI (HTTP Mock integration, API then browser) are also
+recorded; see the milestone table.
 Do NOT redo any of these waves.
 
 INSTALLED VERIFICATION (W10-R2 — **historical**: superseded by W10-R6 execution restoration and
@@ -1007,8 +1010,12 @@ preserved) — with independently-set non-secret configuration and per-workspace
 WORKSPACE ISOLATION (W10-R7 → W10-R8-R1/R2): a second disposable workspace (`isolation-beta`) was
 created and activated natively. **Data-model isolation PASS** (variables keyed by `workspaceId`; 0 shared
 registration variables). **Execution-time configuration observed**: the persisted record's
-`providerId` follows the workspace's `COMMUNICATION_PROVIDER`, and an invalid/empty provider creates
-**no** record and contacts no provider. The W10-R7-era blocker ("a LOCAL app registration is owned by
+`providerId` follows the workspace's `COMMUNICATION_PROVIDER`. **Two distinct failure shapes — do not
+conflate them:** an **invalid/empty provider** fails at `getConfiguredProviderId()` **before** `createQueued`,
+so it creates **0 records** and contacts no provider; whereas **incomplete credentials with a valid
+provider** pass `createQueued` (a record IS created) and then fail at the provider's `resolveConfig()`,
+leaving a **FAILED** record whose reason is the orchestration constant `Unexpected send failure.` — so
+"incomplete credentials" does **not** imply "no record". The W10-R7-era blocker ("a LOCAL app registration is owned by
 one workspace") limited only the LOCAL dev-sync path: **W10-R8-R1** installed the same app into the
 second workspace through the native tarball path, and **W10-R8-R2** provided the two-workspace
 execution witness (per-workspace `providerId` through the real send route, no real provider request).
@@ -1028,6 +1035,17 @@ SETTINGS CONTRACT (W10-R4, ownership corrected by W9-R2): provider configuration
 app). W9-R2 moved all 9 variables to `applicationVariables` with stable identifiers; the API keys
 stay secret and are encrypted per workspace, and a fake value reads back masked (`F********`).
 **Per-workspace execution isolation is VERIFIED (W10-R8-R2; the W10-R7-era "NOT PERFORMED" statement below was historical).** A second disposable workspace was created and activated (W10-R7); the W10-R7-era claim that "the app cannot be installed there" was **superseded by W10-R8-R1** (native tarball path), and **W10-R8-R2** evidenced the isolation: each workspace's real send route selects its own configured provider (persisted `providerId` `kavenegar` vs `razpayamak`; the observed failures occurred pre-HTTP at provider config resolution, so no real provider request was made). Data-model isolation (`workspaceId`-scoped rows, workspace-key encryption, workspace-only env map) is verified.
+
+HTTP MOCK INTEGRATION (W11-MOCK API level `f844cb334e` → W11-MOCK-UI browser level `fff3cee41f`): the full
+send path was exercised against a **temporary in-network Kavenegar mock** (no host port, no external call),
+first by **direct route calls** (API level) and then **only by clicking Send in the real browser composer**.
+Both runs are **mock acceptance only — NOT a real send, NOT delivery proof, and Kavenegar only**
+(RazPayamak was not exercised). Browser run: success toast **"Message sent."** with record
+`c9ee6377-…` (SENT, `providerMessageId=999001`) and error **"mock rejection"** with record `6a37d3e9-…`
+(FAILED), **exactly one mock request each** and **exactly one activity each** (`fe89391e-…`, `78e05a2c-…`);
+the SENT/FAILED timeline cards were opened and captured. The **Refresh action is NOT TESTED** (both cards
+were terminal, so no Refresh button renders — that absence is a source-level fact, not a test result).
+Variables were restored exactly and the mock stopped; test records/person were retained. W7 stays disabled.
 
 RUNTIME BLOCKER (W10-R2-era — **historical**: the v2.42.6 control instance is still blocked this way,
 but the isolated v2.41.0 instance (app2) was RESTORED by W10-R6's container-scoped DNS override):
@@ -1923,16 +1941,18 @@ Dedicated Person created for the test: **`W11-MOCK Test`** (`8d3dd9dc-7438-4f28-
 - Mock stopped; port `18080` confirmed free (`NO_LISTENER_18080`); its script removed.
 - **Test artifacts intentionally retained (not deleted):** Person `8d3dd9dc-…`; records `85715b96-…` and `a6a30c40-…`; their two Person activities. No permanent deletion or general cleanup was performed.
 
-### 7. Scope, verification status and limitations
+### 7. Scope, verification status and limitations — **HISTORICAL (first API-level run only)**
 
-| Item | Status |
+> **This subsection describes the FIRST W11-MOCK run (API level, direct route calls) as it stood before the browser run.** Its "browser composer … NOT VERIFIED" row is **superseded** by §8 (W11-MOCK-UI), where the browser path was verified. Read §7 as the historical record of the API-only run; read §8 for the current browser-verified status.
+
+| Item | Status (as of the first API-level run) |
 |------|--------|
 | Route → durable service → HTTP Mock (success) | **VERIFIED (API level)** |
 | Route → durable service → HTTP Mock (rejection) | **VERIFIED (API level)** |
 | Exactly one mock request per send; Persian text + recipient match | **VERIFIED (mock log)** |
 | Persisted record `SENT` + `providerMessageId`; `FAILED` + provider reason | **VERIFIED (record read-back)** |
 | Exactly one app activity per Communication on the Person timeline | **VERIFIED (record + activity read-back)** |
-| Browser composer form / Send click / success-error toast / opened SENT-FAILED card | **NOT VERIFIED — no browser evidence captured** |
+| Browser composer form / Send click / success-error toast / opened SENT-FAILED card | **NOT VERIFIED at the time — closed by §8 (W11-MOCK-UI)** |
 | Refresh action behavior | **NOT TESTED** (asserted from source only; no PENDING/UNAVAILABLE card opened) |
 
 - **Mock acceptance, not real sending.** The success `SENT` + `providerMessageId=999001` is a **simulated** provider response; no SMS was sent, no delivery occurred, and `DELIVERED` was never produced (the mock never returns that status, matching the real drivers which have `supportsDeliveryReceipt:false`).
