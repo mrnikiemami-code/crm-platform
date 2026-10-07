@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-07 (W11-MAIN-R3 — runtime fix applied; new Windows blocker)
+Last updated: 2026-10-07 (W11-MAIN-R4-PREP — symlink blocker root cause identified)
 
 ## Purpose
 
@@ -29,24 +29,65 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W11-MAIN-R3` — **the reviewed `assets-path` fix is now applied to the running main server (build/restart performed), and it removed the `yarn-engine` `ENOENT` — but main-instance logic-function execution is STILL BLOCKED by a new, different Windows limitation.** Communication remains installed in the main workspace **4D** (`radiant-cyan-dragon`, v2.42.0); **no message was sent and no data or configuration was changed.**
+`CRM-COMMUNICATIONS-001-W11-MAIN-R4-PREP` — **the `assets-path` fix remains applied and the `ENOENT` stays resolved, but main-instance logic-function execution is STILL BLOCKED; its permission cause is characterized and remains UNDER INVESTIGATION.** Communication remains installed in the main workspace **4D** (`radiant-cyan-dragon`, v2.42.0); **no message was sent and no data or configuration was changed.**
 
 - **Applied (R3):** the API was restarted through the project's standard `nest start --watch` (the watcher rebuilt `dist` from the fixed source and respawned `dist/main`). API health is **200**. The former failure — `ENOENT … dist\engine\…\constants\yarn-engine` — **no longer occurs** (the compiled `ASSET_PATH` now resolves to `dist\assets`, verified in a fresh process; the layer sentinel exists).
-- **New blocker (first failure boundary):** logic-function execution now fails with
+- **Blocker (first failure boundary, characterized in R4-PREP):** logic-function execution fails with
   `EPERM: operation not permitted, symlink …deps\…\node_modules\.yarn-state.yml -> …lambda-build-…\node_modules\.yarn-state.yml`
-  at `LocalChildProcessRunnerService.assembleNodeModules` (`local-child-process-runner.service.ts:53`), surfaced as `Logic function execution failed … driver=LocalDriver, mode=LIVE`. **Root cause:** the local driver symlinks the dependency layer into the execution directory, and this Windows host **cannot create symlinks** (`fs.symlinkSync` → `EPERM`; Windows Developer Mode is off and the process lacks `SeCreateSymbolicLinkPrivilege`). This is a **platform/environment** limitation, independent of the app and of the `assets-path` fix. **Not auto-fixed** — it is outside this task's scope and would need a separate decision (e.g. enabling Developer Mode / elevation, or a different driver).
+  at `LocalChildProcessRunnerService.assembleNodeModules` (`local-child-process-runner.service.ts:53`), surfaced as `Logic function execution failed … driver=LocalDriver, mode=LIVE`. The local driver **symlinks** each deps-layer entry into the execution directory; an isolated capability test (same Node binary, same user) shows **file, directory and auto symlinks all fail with `EPERM`**, while a **junction** and a **hard link** succeed. The process runs at **Medium** integrity, its token has **no `SeCreateSymbolicLinkPrivilege`**, and the **Developer Mode values are unset**. **The permission cause is UNDER INVESTIGATION / not resolved.** No Developer Mode, policy, registry value or privilege was changed; the server was not run elevated; no core/dependency change, no restart, no message send. See §8b for the exact call path and test matrix.
 - **Route result:** the real `POST /s/communication/person-phones` for an existing Person with a phone (`7a93d1e5-…`, `882261739`) still returns **HTTP 500** (`ROUTE_TRIGGER_PLATFORM_ERROR`) — **not** because of the app, but because the executor cannot assemble the dependency layer.
 - **Composer UI:** the `Send message` composer opens in the main workspace (Persian/RTL chrome), but because the route fails it shows the Phone number select as **"No phone number"**. Evidence: `D:\twenty-main-backup\w11-main-evidence\r3-composer-no-phone.png`.
 - **Still open (unchanged):** composer labels remain hardcoded **English**; the "No phone number" fallback on route failure is a **separate UI defect** (not fixed); provider configuration is still **empty** (settings raw); **W7 disabled**; **real sending NOT PERFORMED**.
+- **Reviewed baseline for R3:** `10e8e9420c5bdf8daa641d37d237727aaf090f11` (the R2 recovery-doc commit) — **not** an older R2 baseline.
+
+### 8b. R4-PREP — the symlink blocker, characterized (permission cause UNDER INVESTIGATION)
+
+**Exact call path** — `packages/twenty-server/src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/services/local-child-process-runner.service.ts`, `LocalChildProcessRunnerService.assembleNodeModules` (lines ~36–60):
+
+```ts
+const execNodeModules = join(sourceTemporaryDir, 'node_modules');
+await fs.mkdir(execNodeModules, { recursive: true });
+const entries = await fs.readdir(depsNodeModules, { withFileTypes: true });
+await Promise.all(
+  entries
+    .filter((entry) => entry.name !== 'twenty-client-sdk')
+    .map((entry) =>
+      fs.symlink(
+        join(depsNodeModules, entry.name),        // target  = deps layer entry
+        join(execNodeModules, entry.name),        // link    = exec dir entry
+        entry.isDirectory() ? 'dir' : 'file',     // type    = dir for folders, file otherwise
+      ),
+    ),
+);
+await fs.symlink(join(sdkNodeModules, 'twenty-client-sdk'), join(execNodeModules, 'twenty-client-sdk'), 'dir');
+```
+
+So the **target** is each entry inside `<depsLayer>/node_modules` (both files such as `.yarn-state.yml` and directories such as the dependency folders), the **link path** is `<executionDir>/node_modules/<name>`, and the **type** is `'dir'` for directory entries and `'file'` otherwise.
+
+**Isolated capability test** (dedicated temp directory, same Node binary and same Windows user `User` that runs the API; artifacts of this test only were removed afterwards):
+
+| Attempt | type | Result |
+|---------|------|--------|
+| symlink `.yarn-state.yml` | `file` | **EPERM** (`errno -4048`, `syscall symlink`) |
+| symlink a plain `.txt` file | `file` | **EPERM** |
+| symlink a directory | `dir` | **EPERM** |
+| symlink without an explicit type | (auto) | **EPERM** |
+| **junction** (dir) | `junction` | **OK** |
+| **hard link** (file) | — | **OK** |
+
+**Environment evidence (read-only, nothing changed):** the process runs as `desktop-kl07dfq\user` at **Medium** integrity, its token holds **no `SeCreateSymbolicLinkPrivilege`** (`whoami /priv` shows no symbolic-link privilege), and the `HKLM\…\AppModelUnlock` **Developer Mode values are unset** (`AllowDevelopmentWithoutDevLicense` empty). That combination is exactly why ordinary symlinks are refused while `junction`/hard link are allowed.
+
+**Status: the permission cause is UNDER INVESTIGATION / not resolved.** No Developer Mode, policy, registry value, or privilege was changed; the server was **not** run elevated; no core or dependency change was made; no restart and no message send occurred. A decision on any environment-level remedy is left to the architect.
 
 Commit SHAs (kept separate):
 - **code fix (R1):** `00b69db9bb` — `fix(server): detect dist build path on Windows separators`
 - **portable tests (R2):** `bff48ff4ca` — `test(server): make assets-path specs host-portable`
 - **Recovery doc (R1):** `fb49f6bbc3`
 - **Recovery doc (R2):** `10e8e9420c`
-- **Recovery doc (R3):** this commit
+- **Recovery doc (R3):** `37140cc5b9`
+- **Recovery doc (R4-PREP):** this commit
 
-R1/R2 **code acceptance** is separate from **R3 runtime verification**: the fix was reviewed and accepted at code level (R1/R2); R3 applied it and confirmed the `yarn-engine` error is gone, while a **new** environment blocker remains.
+R1/R2 **code acceptance** is separate from **R3 runtime verification** (which applied the fix and confirmed the `yarn-engine` error is gone) and from **R4-PREP** (which characterized, but did not resolve, the remaining symlink permission blocker).
 
 Earlier milestone: `CRM-COMMUNICATIONS-001-W11-MOCK-UI` — HTTP Mock integration on app2, browser-composer verified.
 
@@ -87,7 +128,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W11-MOCK-UI | (docs only — no app change) | `fff3cee41f` | **browser-composer run PASS** — the same mock + W11-MOCK Person, but both scenarios driven **only by clicking Send in the real composer**: success toast **"Message sent."** and error **"mock rejection"**; records `c9ee6377-…` (SENT, id `999001`) and `6a37d3e9-…` (FAILED); **exactly one mock request each** (log 2→3→4); **exactly one activity each** (`fe89391e-…`, `78e05a2c-…`); timeline cards opened and captured (`s1-card-sent.png`, `s2-card-failed.png`); variables restored, mock stopped. **Closes the earlier browser gap.** Mock acceptance only; Refresh still NOT TESTED |
 | W11-MAIN-R1 | `00b69db9bb` (**core change — the first CORE_CHANGE_COUNT exception**) | `fb49f6bbc3` | **main-instance install PASS + Windows assets-path fix prepared (architect review pending)**: Communication installed into the main workspace **4D** (`radiant-cyan-dragon`) on **v2.42.0** via the native tarball path (registration `050704a1-…`, app `7c7b25f9-…`, UID unchanged, 9 variables created empty, W7 disabled), after a **restore-verified** backup; main-instance **logic-function execution BLOCKED** by a Windows-only `assets-path` bug (`ENOENT … yarn-engine`); minimal fix committed + unit-verified, **NOT applied to the running server** (no restart, no dist edit); composer labels remain hardcoded English and the "No phone number" fallback is a separate unfixed UI defect |
 | W11-MAIN-R2 | `bff48ff4ca` (test-only — no production change) | `10e8e9420c` | **portable assets-path specs**: removed the host-dependent helpers (path.sep folding, Windows strings passed to `path.resolve` on POSIX), replaced the silently-skipped compiled-case assertion with a module-directory comparison plus a shape check, and kept production logic untouched; **14/14 tests pass**, lint 0/0, format clean, typecheck exit 0 |
-| W11-MAIN-R3 | (docs only — no code change) | (this commit) | **reviewed fix APPLIED to the running main server** via the standard watcher (`nest start --watch` rebuild + respawn); API health 200; the `yarn-engine` `ENOENT` is **resolved** (compiled `ASSET_PATH` → `dist\assets`, verified in a fresh process); **execution STILL BLOCKED by a NEW boundary** — `EPERM … symlink … .yarn-state.yml` at `LocalChildProcessRunnerService.assembleNodeModules` (this Windows host cannot create symlinks; Developer Mode off), **not auto-fixed**; real `person-phones` route still HTTP 500; composer shows "No phone number". No send, no reinstall, no migration, no data/config change |
+| W11-MAIN-R3 | (docs only — no code change) | `37140cc5b9` | **reviewed fix APPLIED to the running main server** via the standard watcher (`nest start --watch` rebuild + respawn); API health 200; the `yarn-engine` `ENOENT` is **resolved** (compiled `ASSET_PATH` → `dist\assets`, verified in a fresh process); **execution STILL BLOCKED by a NEW boundary** — `EPERM … symlink … .yarn-state.yml` at `LocalChildProcessRunnerService.assembleNodeModules` (this Windows host cannot create symlinks; Developer Mode off), **not auto-fixed**; real `person-phones` route still HTTP 500; composer shows "No phone number". No send, no reinstall, no migration, no data/config change |
+| W11-MAIN-R4-PREP | (docs only — no code change) | (this commit) | **symlink blocker characterized**: exact call path recorded (target = deps-layer entry, link = exec `node_modules/<name>`, type = `dir`/`file`); isolated capability test (same Node/user) shows **file, dir and auto symlinks all EPERM** while **junction and hard link succeed**; environment evidence: Medium integrity, **no `SeCreateSymbolicLinkPrivilege`**, Developer Mode values unset. **Permission cause UNDER INVESTIGATION**; no policy/registry/privilege change, no elevated run, no restart |
 
 **Evidence levels (do not conflate them):**
 
@@ -798,7 +840,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **installed on the main instance (workspace 4D, v2.42.0) via the native tarball path, but main-instance logic-function execution is BLOCKED** by a Windows `assets-path` bug (W11-MAIN-R1 — minimal fix prepared `00b69db9bb`, unit-verified, not yet applied to the server); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`, W11-MAIN-R1 `00b69db9bb` (core fix) + `fb49f6bbc3` (docs), W11-MAIN-R2 `bff48ff4ca` (portable tests) + `10e8e9420c` (docs), W11-MAIN-R3 (docs; runtime fix applied); no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **installed on the main instance (workspace 4D, v2.42.0) via the native tarball path, but main-instance logic-function execution is BLOCKED** by a Windows `assets-path` bug (W11-MAIN-R1 — minimal fix prepared `00b69db9bb`, unit-verified, not yet applied to the server); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`, W11-MAIN-R1 `00b69db9bb` (core fix) + `fb49f6bbc3` (docs), W11-MAIN-R2 `bff48ff4ca` (portable tests) + `10e8e9420c` (docs), W11-MAIN-R3 `37140cc5b9` (docs; runtime fix applied), W11-MAIN-R4-PREP (docs; symlink cause under investigation); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
@@ -994,9 +1036,9 @@ W0 app skeleton, W1 provider boundary, W2 Kavenegar, W3 multi-provider + RazPaya
 W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2/R3),
 W6 Person timeline integration (+ W6-R1/R2), W10-R2 installed verification (synthetic).
 W10-R6/R7/R8-R1/R8-R2 (isolated execution, workspace isolation, native tarball two-workspace
-distribution), W11-MOCK / W11-MOCK-UI (HTTP Mock integration, API then browser) and W11-MAIN-R1/R2/R3
-(main-instance install + the one recorded core assets-path exception, applied in R3; a new Windows symlink
-limitation remains) are also recorded; see the milestone table.
+distribution), W11-MOCK / W11-MOCK-UI (HTTP Mock integration, API then browser) and W11-MAIN-R1/R2/R3/R4-PREP
+(main-instance install + the one recorded core assets-path exception, applied in R3; a host symlink-privilege
+blocker remains under investigation) are also recorded; see the milestone table.
 Do NOT redo any of these waves.
 
 INSTALLED VERIFICATION (W10-R2 — **historical**: superseded by W10-R6 execution restoration and
@@ -1069,19 +1111,20 @@ the SENT/FAILED timeline cards were opened and captured. The **Refresh action is
 were terminal, so no Refresh button renders — that absence is a source-level fact, not a test result).
 Variables were restored exactly and the mock stopped; test records/person were retained. W7 stays disabled.
 
-MAIN INSTANCE (W11-MAIN-R1/R2/R3 `00b69db9bb` + `bff48ff4ca`): Communication is **installed** in the main
+MAIN INSTANCE (W11-MAIN-R1/R2/R3/R4-PREP `00b69db9bb` + `bff48ff4ca`): Communication is **installed** in the main
 workspace **4D** (`radiant-cyan-dragon`) on server **v2.42.0** via the native tarball path (registration
 `050704a1-…`, app `7c7b25f9-…`, UID unchanged, 9 variables created empty, W7 disabled), after a
 **restore-verified** backup at `D:\twenty-main-backup\pre-w11-20261007-113035\`. The reviewed `assets-path`
 fix was **applied to the running server in R3** through the standard watcher (API health 200) and it
 **removed the earlier `yarn-engine` `ENOENT`**; **but main-instance logic-function execution is STILL
-BLOCKED by a new, different Windows limitation:** the local driver symlinks the dependency layer and this
-host cannot create symlinks (`EPERM … symlink … .yarn-state.yml`; Developer Mode off) — an
-**environment/platform** issue, **not auto-fixed**. The real `person-phones` route therefore still returns
-HTTP 500 and the composer shows "No phone number". **This main install is NOT two-workspace evidence on
-v2.42.0** — that remains the app2 v2.41.0 run (W10-R8-R1/R2). The composer labels are still hardcoded
-English (unlocalized), provider settings are still empty, and the "No phone number" fallback is a
-**separate, unfixed UI defect**. W7 disabled; real sending **NOT PERFORMED**.
+BLOCKED** because the local driver **symlinks** the dependency layer and this host refuses symlinks
+(`EPERM`; no `SeCreateSymbolicLinkPrivilege`, Developer Mode unset — R4-PREP confirmed file/dir/auto
+symlinks all fail while junction and hard link succeed). **The permission cause is UNDER INVESTIGATION and
+was not auto-fixed.** The real `person-phones` route therefore still returns HTTP 500 and the composer
+shows "No phone number". **This main install is NOT two-workspace evidence on v2.42.0** — that remains the
+app2 v2.41.0 run (W10-R8-R1/R2). The composer labels are still hardcoded English (unlocalized), provider
+settings are still empty, and the "No phone number" fallback is a **separate, unfixed UI defect**. W7
+disabled; real sending **NOT PERFORMED**. Reviewed baseline for R3: `10e8e9420c`.
 
 RUNTIME BLOCKER (W10-R2-era — **historical**: the v2.42.6 control instance is still blocked this way,
 but the isolated v2.41.0 instance (app2) was RESTORED by W10-R6's container-scoped DNS override):
@@ -2088,7 +2131,7 @@ ENOENT: no such file or directory, lstat
 | Composer localization | **NOT DONE** (labels hardcoded English) |
 | Main-instance logic-function execution | **BLOCKED** (Windows assets-path bug) |
 | assets-path fix | **R1/R2 code acceptance PASS; R3 applied to the running server and verified to remove the `yarn-engine` ENOENT** |
-| Main-instance logic-function execution (after R3) | **STILL BLOCKED — new first failure boundary:** `EPERM … symlink … .yarn-state.yml` at `LocalChildProcessRunnerService.assembleNodeModules` (this Windows host cannot create symlinks; Developer Mode off). **Not auto-fixed.** |
+| Main-instance logic-function execution (after R3) | **STILL BLOCKED — first failure boundary:** `EPERM … symlink … .yarn-state.yml` at `LocalChildProcessRunnerService.assembleNodeModules`. **R4-PREP:** confirmed as a host symlink-privilege limit (file/dir/auto symlinks all EPERM; junction + hard link OK; no `SeCreateSymbolicLinkPrivilege`, Developer Mode off). **Permission cause UNDER INVESTIGATION; not auto-fixed.** |
 | Real `person-phones` route (after R3) | **HTTP 500** — a consequence of the executor's dependency-layer failure, not of the app |
 
 **Scope note:** this main-instance install is **not** two-workspace evidence on v2.42.0. The only two-workspace evidence (same app in two workspaces with independent configuration) remains the app2 run on **v2.41.0** (W10-R8-R1/R2). No real provider request was made in this task, and no message was sent.
