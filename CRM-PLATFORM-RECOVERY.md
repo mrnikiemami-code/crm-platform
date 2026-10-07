@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-07 (W11-MOCK-UI `fff3cee41f`)
+Last updated: 2026-10-07 (W11-MAIN-R1 `00b69db9bb`)
 
 ## Purpose
 
@@ -23,15 +23,15 @@ Branch:
 `crm-platform`
 
 Verified baseline (before this documentation commit):
-`fff3cee41f24514fad017b24be31c727aafff8f4` — `docs(recovery): browser-composer mock run verified (W11-MOCK-UI)`
+`00b69db9bb` — `fix(server): detect dist build path on Windows separators` (W11-MAIN-R1)
 
 Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W11-MOCK-UI` — **HTTP Mock integration on app2/apple, browser-composer verified.** Two scenarios were driven **only by clicking Send in the real composer** against a **temporary in-network mock** (no host port, no redirect, no external call): acceptance produced the UI toast **"Message sent."** and record `c9ee6377-…` (**SENT**, `providerMessageId=999001`); rejection produced the UI error **"mock rejection"** and record `6a37d3e9-…` (**FAILED**, provider's own reason) — with **exactly one mock request per scenario** (log 2→3→4), **exactly one app activity each** on the Person timeline (`fe89391e-…`, `78e05a2c-…`), and the SENT/FAILED timeline cards opened and captured. Prior workspace variables were restored exactly and the mock stopped. **This is mock acceptance only: no real send, no delivery proof, and Kavenegar path only (RazPayamak not exercised). The Refresh action remains NOT TESTED (both cards terminal, so no Refresh button renders).** W7 remains **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
+`CRM-COMMUNICATIONS-001-W11-MAIN-R1` — **Communication installed on the main instance (workspace 4D / `radiant-cyan-dragon`, v2.42.0) and a Windows assets-path fix prepared.** Install used the native tarball path after a **restore-verified** backup (registration `050704a1-…`, app `7c7b25f9-…`, UID unchanged, 9 variables created empty, W7 disabled). **Main-instance logic-function execution is BLOCKED** by a pre-existing Windows-only core bug (`assets-path.ts` checked `'/dist/'` against a backslash path, so `yarn-engine` was unfindable → every logic function 500s). A minimal fix is committed (`00b69db9bb`) with 11 passing tests and clean lint/format/typecheck, **but it has NOT been applied to the running server** (no restart, no dist edit). Composer labels are still hardcoded English and the "No phone number" fallback on route failure is a **separate, unfixed UI defect**. This main install is **NOT** two-workspace evidence on v2.42.0 — that remains the app2 v2.41.0 run (W10-R8-R1/R2). No real provider request; no message sent.
 
-Earlier milestone: `CRM-COMMUNICATIONS-001-W11-MOCK` — same integration at the API level (direct route calls).
+Earlier milestone: `CRM-COMMUNICATIONS-001-W11-MOCK-UI` — HTTP Mock integration on app2, browser-composer verified.
 
 Earlier milestone: `CRM-COMMUNICATIONS-001-W10-R8-R2` — native tarball two-workspace distribution and execution-isolation evidence (install in `apple` + `Isolation Beta`; independent provider selection per workspace).
 
@@ -68,6 +68,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W10-R8-R2 | (docs only — no app change) | `bbb1b5cb18` | **evidence gaps closed**: two-workspace **execution isolation PASS with an execution witness** — the real `/s/communication/send` executed in both workspaces in the same second, persisted `providerId` follows each workspace's own `COMMUNICATION_PROVIDER` (`kavenegar` vs `razpayamak`), two separate `LogicFunctionTriggerJob` runs observed; config re-test re-run in registered order with a third marker value; `workflowActionTriggerSettings` verified **null for all 4 functions in the manifest AND both installs' metadata** (W7 disabled at registration level, not merely workflow-row absence); upgrade-job state audited (no upgrade queue, `autoUpgrade=false`, TARBALL registration invisible to the NPM catalog sync); Recovery reconciled (install ≠ isolation, server JSON ≠ composer text, source/build evidence ≠ runtime evidence, `isListed=false` is a listing flag not privacy) |
 | W11-MOCK | (docs only — no app change) | `f844cb334e` | **HTTP Mock integration PASS at the API level on app2/apple** — the path `authenticated send route → durable service → HTTP Mock` was exercised with a temporary in-network mock (no host port, no external call) via **direct route calls**: two sends gave **SENT** (`providerMessageId=999001`) and **FAILED** (`mock rejection`, provider's own reason), **exactly one mock request each**, **exactly one app activity per Communication**. Prior variables restored exactly, mock stopped. **Mock acceptance only — no real send, no delivery, Kavenegar path only; W7 disabled** (evidence-scope correction committed later as `9ecf0a70e1`) |
 | W11-MOCK-UI | (docs only — no app change) | `fff3cee41f` | **browser-composer run PASS** — the same mock + W11-MOCK Person, but both scenarios driven **only by clicking Send in the real composer**: success toast **"Message sent."** and error **"mock rejection"**; records `c9ee6377-…` (SENT, id `999001`) and `6a37d3e9-…` (FAILED); **exactly one mock request each** (log 2→3→4); **exactly one activity each** (`fe89391e-…`, `78e05a2c-…`); timeline cards opened and captured (`s1-card-sent.png`, `s2-card-failed.png`); variables restored, mock stopped. **Closes the earlier browser gap.** Mock acceptance only; Refresh still NOT TESTED |
+| W11-MAIN-R1 | `00b69db9bb` (**core change — the first CORE_CHANGE_COUNT exception**) | (this commit) | **main-instance install PASS + Windows assets-path fix PREPARED**: Communication installed into the main workspace **4D** (`radiant-cyan-dragon`) on **v2.42.0** via the native tarball path (registration `050704a1-…`, app `7c7b25f9-…`, UID unchanged, 9 variables created empty, W7 disabled), after a **restore-verified** backup; main-instance **logic-function execution BLOCKED** by a Windows-only `assets-path` bug (`ENOENT … yarn-engine`); minimal fix committed with 11 passing tests + lint/fmt/typecheck clean, **NOT applied to the running server**; composer labels remain hardcoded English and the "No phone number" fallback is a separate unfixed UI defect |
 
 **Evidence levels (do not conflate them):**
 
@@ -135,6 +136,7 @@ The old Windows CLI defects are **HISTORICAL**: the backslash symptom is real on
 10. No new date dependency unless a later phase proves it is necessary.
 11. **No Enterprise entitlement bypass in accepted architecture.** Any local override used for development/testing must stay out of accepted production behaviour.
 12. Prefer app-first / minimal-core-change direction.
+13. **CORE_CHANGE_COUNT is no longer zero.** One bounded core exception exists: `packages/twenty-server/src/constants/assets-path.ts` (`00b69db9bb`, W11-MAIN-R1). It only normalizes path separators before the `/dist/` check so the built `dist/assets` layout is found on Windows; it introduces no fixed path, no manual asset copy, no new dependency, and no Communication logic change, and it is behaviour-preserving on POSIX and for source/testing runs. It is a **build/runtime path-correctness fix**, not an architecture change. Any further core change requires its own explicit, recorded exception.
 
 ---
 
@@ -777,7 +779,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ evidence-scope fix `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`; no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **installed on the main instance (workspace 4D, v2.42.0) via the native tarball path, but main-instance logic-function execution is BLOCKED** by a Windows `assets-path` bug (W11-MAIN-R1 — minimal fix prepared `00b69db9bb`, unit-verified, not yet applied to the server); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`, W11-MAIN-R1 `00b69db9bb` (core fix); no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
@@ -973,7 +975,8 @@ W0 app skeleton, W1 provider boundary, W2 Kavenegar, W3 multi-provider + RazPaya
 W4 durable send/persist path (+ W4-R1), W5 Person send-message slice (+ W5-R1/R2/R3),
 W6 Person timeline integration (+ W6-R1/R2), W10-R2 installed verification (synthetic).
 W10-R6/R7/R8-R1/R8-R2 (isolated execution, workspace isolation, native tarball two-workspace
-distribution) and W11-MOCK / W11-MOCK-UI (HTTP Mock integration, API then browser) are also
+distribution), W11-MOCK / W11-MOCK-UI (HTTP Mock integration, API then browser) and W11-MAIN-R1
+(main-instance install + the one recorded core assets-path exception) are also
 recorded; see the milestone table.
 Do NOT redo any of these waves.
 
@@ -1046,6 +1049,19 @@ Both runs are **mock acceptance only — NOT a real send, NOT delivery proof, an
 the SENT/FAILED timeline cards were opened and captured. The **Refresh action is NOT TESTED** (both cards
 were terminal, so no Refresh button renders — that absence is a source-level fact, not a test result).
 Variables were restored exactly and the mock stopped; test records/person were retained. W7 stays disabled.
+
+MAIN INSTANCE (W11-MAIN-R1 `00b69db9bb`): Communication is **installed** in the main workspace **4D**
+(`radiant-cyan-dragon`) on server **v2.42.0** via the native tarball path (registration `050704a1-…`,
+app `7c7b25f9-…`, UID unchanged, 9 variables created empty, W7 disabled), after a **restore-verified**
+backup at `D:\twenty-main-backup\pre-w11-20261007-113035\`. **Main-instance logic-function execution is
+BLOCKED** by a pre-existing Windows-only core bug: `assets-path.ts` checked `'/dist/'` against a
+backslash `__dirname`, so `ASSET_PATH` pointed at `dist/` instead of `dist/assets/` and the `yarn-engine`
+asset was unfindable (`ENOENT … yarn-engine` → every logic function 500s). A **minimal fix is committed
+(`00b69db9bb`) with 11 passing tests and clean lint/format/typecheck, but it has NOT been applied to the
+running server** (no restart, no manual dist edit). **This main install is NOT two-workspace evidence on
+v2.42.0** — that remains the app2 v2.41.0 run (W10-R8-R1/R2). The composer labels are still hardcoded
+English (unlocalized) and the Phone-number select shows "No phone number" on route failure — a **separate,
+unfixed UI defect**. No real provider request; no message sent.
 
 RUNTIME BLOCKER (W10-R2-era — **historical**: the v2.42.6 control instance is still blocked this way,
 but the isolated v2.41.0 instance (app2) was RESTORED by W10-R6's container-scoped DNS override):
@@ -1974,6 +1990,85 @@ Status: **PASS — the browser composer path is now VERIFIED.** Two scenarios we
 - **Evidence images** (outside Git, under `D:\twenty-comm-test\w11-mock-evidence\`): `s1-form.png`, `s1-form-filled.png`, `s1-card-sent.png`, `s2-form-filled.png`, `s2-error-ui.png`, `s2-card-failed.png`. **Secrets were never printed**; only fake values were used.
 - **Restore/teardown:** the four variables were returned exactly to the prior state (`COMMUNICATION_PROVIDER=kavenegar`; the three Kavenegar values empty) and the mock was stopped (port `18080` free, app2 gets `Connection refused`). Test records/activities/person were retained, not deleted.
 - **Scope:** still **mock acceptance only** (no real send, no delivery, Kavenegar only); the Refresh action remains **NOT TESTED** (both cards were terminal, so no Refresh button renders). No app/core/SDK change, no W7 activation, no app1/v2.42.6 change, no auto-retry.
+
+## W11-MAIN-R1 — main-instance install of Communication + Windows assets-path fix
+
+Status: **install PASS on the main instance; logic-function execution BLOCKED there; a minimal core fix is prepared and unit-verified but NOT yet applied to the running server.**
+
+### 1. Environment verified before installing (main instance, port 3001)
+
+| Aspect | Finding |
+|--------|---------|
+| Frontend / API | Vite frontend on `:3001`; API on `:3000` (repo source, `NODE_ENV=development`) |
+| Database / Redis | docker `twenty-db-1` → `localhost:5432/default`; Redis `localhost:6379` |
+| **Server version** | **v2.42.0** (latest instance command `2.42.0_AddIsRequiredToApplicationVariablesFastInstanceCommand`; local `twenty-sdk` also 2.42.0) — newer than app2's v2.41.0 |
+| Target workspace | `radiant-cyan-dragon` (display name **4D**), ACTIVE, id `49d84129-4776-4917-8059-2649e836d492` |
+| Pre-install state | Communication **not present** (0 rows in `core.applicationRegistration` and `core.application` for UID `768bca20-…`) |
+| Package compatibility | same UID `768bca20-0b81-4d33-a624-0a894a193ffd`, `engines.twenty >=2.35.0`; the 2.42.0 install contract is equivalent (LOCAL → skip, TARBALL → install; `uploadAppTarball` / `installApplication` / manifest schema all present) |
+
+### 2. Backup created and **restore-verified**
+
+| Aspect | Value |
+|--------|-------|
+| Location | `D:\twenty-main-backup\pre-w11-20261007-113035\` (**outside the repo**) |
+| Contents | `main-default.dump` (`pg_dump -Fc`, 1,295,608 bytes) + a copy of `packages/twenty-server/.local-storage` (23,143,654 bytes) |
+| Restorability | `pg_restore -l` archive valid (1175 TOC entries) **and** a real restore into a scratch database succeeded; row counts matched live (1 workspace, 1 user, 35 registrations, 2 applications, 206 upgrade migrations). The scratch database was dropped afterwards. |
+
+### 3. Install performed via the native packaged path
+
+| Step | Result |
+|------|--------|
+| Package | `communication-0.1.0.tgz`, `sha256 94649588360e3491d3426590a765b5bc0d5504c262b2e3608630eb0df11974c8` (same verified package used on app2) |
+| `uploadAppTarball` | registration **`050704a1-2694-43ab-bb46-ba0b9415bdaa`** — UID unchanged `768bca20-…`, `sourceType=tarball`, `latestAvailableVersion=0.1.0`, `isListed=false` |
+| `installApplication` | application **`7c7b25f9-2044-44b1-82f2-d0a832fd132c`** v0.1.0 in `radiant-cyan-dragon` |
+| Variables | 9 workspace `applicationVariable` rows created **empty** — no credentials were transferred; `applicationRegistrationVariable` = 0 rows |
+| Metadata | 4 logic functions, 2 front components (`send-message-composer`, `communication-timeline-card`), command menu **`Send message`** (active), and **`workflowActionTriggerSettings: null` on all 4 functions** (W7 stays disabled) |
+| Workspace schema | `workspace_4ddu4de0hmz1dxiq9o5mkdtw2` now contains the `_communication` table |
+
+### 4. Browser verification (Persian / RTL)
+
+- The CRM UI renders in **Persian** (افراد / خط زمانی / تنظیمات / اعلانها / «هر چیزی بنویسید…»), RTL.
+- `Send message` is discoverable in the Person command menu and the **composer opens** (Channel / Phone number / Message / Cancel / Send) with `direction: rtl`.
+- **Two separate UI gaps (NOT fixed in this task):**
+  1. The composer's own labels are **hardcoded English** ("Send message / Channel / Phone number / Message / Cancel / Send") inside an otherwise Persian UI — the composer is not localized.
+  2. When the phone-options route fails, the Phone number select displays **"No phone number"** — a misleading fallback that conflates a route failure with an absent phone. This is a **separate UI defect** and is intentionally left unfixed here.
+- Evidence image (outside Git): `D:\twenty-main-backup\w11-main-evidence\composer-open.png`.
+
+### 5. Blocking finding — logic-function execution fails on the main instance
+
+`POST /s/communication/person-phones` → **HTTP 500 `ROUTE_TRIGGER_PLATFORM_ERROR`** (`Logic function execution failed for 71603d5c-…`). Server log (13 occurrences):
+
+```
+ENOENT: no such file or directory, lstat
+'D:\CrmSource\twenty\packages\twenty-server\dist\engine\core-modules\application\application-package\constants\yarn-engine'
+    at LocalLayerManagerService.ensureDepsLayer (...local-layer-manager.service.ts:49)
+    at LocalDriver.execute (...local.driver.ts:129)
+```
+
+**Root cause (a core, Windows-only path bug, pre-existing and independent of the install):** `src/constants/assets-path.ts` decided the built-vs-source layout with `!__dirname.includes('/dist/')`. Windows `__dirname` uses `\`, so the marker never matched, `ASSET_PATH` resolved to `dist/` instead of `dist/assets/`, and the yarn-engine asset (which *is* present at `dist/assets/.../constants/yarn-engine/.yarn/releases/yarn-4.9.2.cjs`) became unreachable. `ensureDepsLayer` then fails for **every** logic function.
+
+### 6. Prepared fix (commit `00b69db9bb`) — NOT yet applied to the running server
+
+- File changed: `packages/twenty-server/src/constants/assets-path.ts` — normalize separators before the `/dist/` check and expose the decision as pure functions (`isBuiltThroughTestingModule`, `resolveAssetPath`). **No fixed path, no manual asset copy, no new dependency, no Communication logic change.**
+- New test: `packages/twenty-server/src/constants/__tests__/assets-path.spec.ts` — 11 tests exercising the real exported functions (Windows backslash path, POSIX slash path, built → `dist/assets`, source/testing → previous behaviour, and that a bare `dist` segment does not match). **PASS (11/11).**
+- Checks: `oxlint --type-aware` → 0 warnings / 0 errors; `oxfmt --check` → clean; `tsgo --noEmit -p tsconfig.json` → exit 0.
+- **Not verified on the running server:** the main server was **not restarted**, `dist` was **not** hand-edited, and no reinstall/migration/message send/Workflow activation was performed. Applying the fix requires a rebuild+restart, which is out of scope for this task.
+
+### 7. Evidence levels
+
+| Item | Status |
+|------|--------|
+| Pre-flight environment/version/compat check | **PASS** |
+| Backup created + restore-verified | **PASS** |
+| Native tarball upload + install into `radiant-cyan-dragon` | **PASS** |
+| Variables created empty (no credential transfer) | **PASS** |
+| W7 disabled (`workflowActionTriggerSettings: null` ×4) | **PASS** |
+| Browser: Persian/RTL UI, composer opens | **PASS** |
+| Composer localization | **NOT DONE** (labels hardcoded English) |
+| Main-instance logic-function execution | **BLOCKED** (Windows assets-path bug) |
+| assets-path fix | **PREPARED + unit-verified; NOT applied to the server** |
+
+**Scope note:** this main-instance install is **not** two-workspace evidence on v2.42.0. The only two-workspace evidence (same app in two workspaces with independent configuration) remains the app2 run on **v2.41.0** (W10-R8-R1/R2). No real provider request was made in this task, and no message was sent.
 
 ## W10-R6 — isolated logic-function execution restored
 
