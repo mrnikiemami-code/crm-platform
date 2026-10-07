@@ -4,10 +4,16 @@ import {
   closeSidePanel,
   enqueueSnackbar,
   unmountFrontComponent,
+  useLocale,
   useRecordId,
   useTranslate,
 } from 'twenty-sdk/front-component';
 
+import {
+  isPhoneSelectionReady,
+  type PhoneOptionsLoadState,
+  resolvePhoneOptionsLoadState,
+} from 'src/components/phone-options-load-state';
 import { submitPersonCommunication } from 'src/components/submit-person-communication';
 import { SEND_MESSAGE_COMPOSER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 
@@ -15,11 +21,12 @@ import { SEND_MESSAGE_COMPOSER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/
 // channels become selectable when their provider ships.
 const SUPPORTED_CHANNELS = ['SMS'] as const;
 
-type PhoneOption = {
-  id: string;
-  value: string;
-  isPrimary: boolean;
-};
+// RTL languages, by ISO 639-1 subtag. Kept local because the app bundle cannot
+// depend on `twenty-shared`; mirrors the platform's own list.
+const RIGHT_TO_LEFT_LANGUAGES = ['ar', 'dv', 'fa', 'he', 'ps', 'sd', 'ug', 'ur', 'yi'];
+
+const getTextDirection = (locale: string): 'rtl' | 'ltr' =>
+  RIGHT_TO_LEFT_LANGUAGES.includes(locale.split('-')[0]) ? 'rtl' : 'ltr';
 
 const callAppRoute = async (
   path: string,
@@ -51,12 +58,16 @@ const callAppRoute = async (
 
 const SendMessageComposer = () => {
   const { t } = useTranslate();
+  const locale = useLocale();
   const personId = useRecordId();
 
+  const direction = getTextDirection(locale);
+
   const [channel, setChannel] = useState<string>(SUPPORTED_CHANNELS[0]);
-  const [phones, setPhones] = useState<PhoneOption[]>([]);
+  const [phonesState, setPhonesState] = useState<PhoneOptionsLoadState>({
+    kind: 'LOADING',
+  });
   const [selectedPhone, setSelectedPhone] = useState('');
-  const [loadingPhones, setLoadingPhones] = useState(true);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<string | null>(null);
@@ -69,37 +80,37 @@ const SendMessageComposer = () => {
   const isSubmittingRef = useRef(false);
 
   const loadPhones = useCallback(async () => {
+    // Reset to LOADING and drop any previously selected number: after a failed
+    // reload, stale data must not survive.
+    setPhonesState({ kind: 'LOADING' });
+    setSelectedPhone('');
+
     if (!personId) {
-      setLoadingPhones(false);
-      setError(t("No person is selected."));
+      setPhonesState({ kind: 'ERROR' });
+      setError(t('No person is selected.'));
 
       return;
     }
 
-    setLoadingPhones(true);
-
     try {
-      const { data } = await callAppRoute('/communication/person-phones', 'POST', {
+      const response = await callAppRoute('/communication/person-phones', 'POST', {
         personId,
       });
 
-      if (data.success !== true) {
-        setError(typeof data.error === 'string' ? data.error : t("Unable to load phone numbers."));
+      const nextState = resolvePhoneOptionsLoadState({
+        ok: response.ok,
+        data: response.data,
+      });
 
-        return;
-      }
+      setPhonesState(nextState);
 
-      const fetched: PhoneOption[] = data.phones ?? [];
-
-      setPhones(fetched);
-
-      if (fetched.length > 0) {
-        setSelectedPhone(fetched[0].value);
+      if (nextState.kind === 'READY') {
+        setSelectedPhone(nextState.selectedPhone);
       }
     } catch {
-      setError(t("Unable to load phone numbers."));
-    } finally {
-      setLoadingPhones(false);
+      // HTTP, network or body-parsing failure: the numbers may still exist, so
+      // this is an ERROR, never an empty result.
+      setPhonesState({ kind: 'ERROR' });
     }
   }, [personId, t]);
 
@@ -110,8 +121,8 @@ const SendMessageComposer = () => {
   const trimmedBody = body.trim();
   const canSubmit =
     !sending &&
-    !loadingPhones &&
     personId !== null &&
+    isPhoneSelectionReady(phonesState) &&
     selectedPhone.length > 0 &&
     trimmedBody.length > 0;
 
@@ -166,8 +177,8 @@ const SendMessageComposer = () => {
         case 'DELIVERED': {
           const successMessage =
             outcomeResult.kind === 'DELIVERED'
-              ? t("Message delivered.")
-              : t("Message sent.");
+              ? t('Message delivered.')
+              : t('Message sent.');
 
           setOutcome(successMessage);
           await enqueueSnackbar({
@@ -209,29 +220,48 @@ const SendMessageComposer = () => {
     closeSidePanel();
   };
 
+  const containerStyle = {
+    padding: 16,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 12,
+    fontFamily: 'Inter, system-ui, sans-serif',
+    direction,
+    textAlign: 'start' as const,
+  };
+
+  // Numbers are a technical identifier: keep them left-to-right even inside an
+  // RTL form, matching how the CRM renders phone values elsewhere.
+  const phoneValueStyle = {
+    direction: 'ltr' as const,
+    unicodeBidi: 'plaintext' as const,
+  };
+
   if (outcome !== null) {
     return (
-      <div style={{ padding: 16, fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={containerStyle}>
         <p style={{ margin: '0 0 12px' }}>{outcome}</p>
         <button type="button" onClick={handleClose}>
-          {t("Close")}
+          {t('Close')}
         </button>
       </div>
     );
   }
 
+  const isPhoneSelectDisabled =
+    phonesState.kind !== 'READY' || phonesState.phones.length === 0;
+
+  const phonePlaceholder =
+    phonesState.kind === 'LOADING'
+      ? t('Loading phone numbers…')
+      : phonesState.kind === 'ERROR'
+        ? t('Unable to load phone numbers.')
+        : t('No phone number is recorded for this person.');
+
   return (
-    <div
-      style={{
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        fontFamily: 'Inter, system-ui, sans-serif',
-      }}
-    >
+    <div style={containerStyle}>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span>{t("Channel")}</span>
+        <span>{t('Channel')}</span>
         <select value={channel} onChange={(event) => setChannel(event.target.value)}>
           {SUPPORTED_CHANNELS.map((supportedChannel) => (
             <option key={supportedChannel} value={supportedChannel}>
@@ -242,26 +272,27 @@ const SendMessageComposer = () => {
       </label>
 
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span>{t("Phone number")}</span>
+        <span>{t('Phone number')}</span>
         <select
           value={selectedPhone}
           onChange={(event) => setSelectedPhone(event.target.value)}
-          disabled={loadingPhones || phones.length === 0}
+          disabled={isPhoneSelectDisabled}
+          style={phoneValueStyle}
         >
-          {phones.length === 0 ? (
-            <option value="">{t("No phone number")}</option>
-          ) : (
-            phones.map((phone) => (
+          {phonesState.kind === 'READY' ? (
+            phonesState.phones.map((phone) => (
               <option key={phone.id} value={phone.value}>
                 {phone.value}
               </option>
             ))
+          ) : (
+            <option value="">{phonePlaceholder}</option>
           )}
         </select>
       </label>
 
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span>{t("Message")}</span>
+        <span>{t('Message')}</span>
         <textarea
           value={body}
           onChange={(event) => setBody(event.target.value)}
@@ -273,10 +304,10 @@ const SendMessageComposer = () => {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button type="button" onClick={handleClose} disabled={sending}>
-          {t("Cancel")}
+          {t('Cancel')}
         </button>
         <button type="button" onClick={handleSubmit} disabled={!canSubmit}>
-          {sending ? t("Sending...") : t("Send")}
+          {sending ? t('Sending...') : t('Send')}
         </button>
       </div>
     </div>

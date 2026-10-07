@@ -1,0 +1,16 @@
+{
+  "Send message": "ارسال پیام",
+  "Channel": "کانال",
+  "Phone number": "شماره تلفن",
+  "Message": "متن پیام",
+  "Send": "ارسال",
+  "Sending...": "در حال ارسال…",
+  "Cancel": "انصراف",
+  "Close": "بستن",
+  "Loading phone numbers…": "در حال دریافت شماره‌ها…",
+  "No phone number is recorded for this person.": "شماره‌ای برای این شخص ثبت نشده است.",
+  "Unable to load phone numbers.": "دریافت شماره‌ها ناموفق بود.",
+  "No person is selected.": "شخصی انتخاب نشده است.",
+  "Message sent.": "پیام ارسال شد.",
+  "Message delivered.": "پیام تحویل داده شد."
+}
