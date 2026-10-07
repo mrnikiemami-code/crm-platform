@@ -32,7 +32,12 @@ export type CommunicationTimelinePresentation = {
 
 export type CommunicationTimelineView =
   | { kind: 'LOADING' }
-  | { kind: 'UNAVAILABLE'; reason: CommunicationTimelineUnavailableReason }
+  | {
+      kind: 'UNAVAILABLE';
+      reason: CommunicationTimelineUnavailableReason;
+      /** Specific, safe reason text; the component localizes it. */
+      reasonTitle: string;
+    }
   | ({ kind: 'READY' } & CommunicationTimelinePresentation);
 
 const BODY_PREVIEW_MAX_LENGTH = 140;
@@ -42,6 +47,19 @@ const BODY_PREVIEW_MAX_LENGTH = 140;
 export const LOADING_TITLE = 'Loading communication…';
 export const UNAVAILABLE_TITLE = 'Communication unavailable';
 export const REFRESH_LABEL = 'Refresh';
+
+// Specific, safe reasons for an unavailable card. The reason is carried through
+// so the component localizes a precise message instead of a generic one.
+export const UNAVAILABLE_REASON_TITLES: Record<
+  CommunicationTimelineUnavailableReason,
+  string
+> = {
+  NO_ACTIVITY_ID: 'This activity could not be loaded.',
+  ACTIVITY_NOT_FOUND: 'This activity could not be found.',
+  NO_LINKED_RECORD: 'The related communication could not be found.',
+  LINKED_RECORD_NOT_COMMUNICATION: 'The related record is not a communication.',
+  ERROR: 'The communication could not be loaded.',
+};
 
 const readNonEmpty = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -109,7 +127,11 @@ export const buildCommunicationTimelineView = (
   }
 
   if (state.kind === 'UNAVAILABLE') {
-    return { kind: 'UNAVAILABLE', reason: state.reason };
+    return {
+      kind: 'UNAVAILABLE',
+      reason: state.reason,
+      reasonTitle: UNAVAILABLE_REASON_TITLES[state.reason],
+    };
   }
 
   return {

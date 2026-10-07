@@ -46,6 +46,12 @@ export default defineObject({
   description:
     'One outbound communication, independent of the channel or provider it travels through.',
   icon: 'IconSend',
+  // Records are written by the send flow, never hand-authored. Disabling the
+  // generic create affordance removes the "create a Communication" form that
+  // could be mistaken for sending a message; the native send path and the
+  // logic functions are unaffected. The sidebar view is read-only history.
+  isUICreatable: false,
+  isUIEditable: false,
   labelIdentifierFieldMetadataUniversalIdentifier:
     COMMUNICATION_NAME_FIELD_UNIVERSAL_IDENTIFIER,
   fields: [

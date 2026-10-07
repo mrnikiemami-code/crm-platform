@@ -1,5 +1,6 @@
 {
-  "Send message": "ارسال پیام",
+  "Send SMS": "ارسال پیامک",
+  "Sends an SMS to the selected number.": "یک پیامک به شمارهٔ انتخاب‌شده ارسال می‌کند.",
   "Channel": "کانال",
   "Phone number": "شماره تلفن",
   "Message": "متن پیام",
@@ -12,5 +13,60 @@
   "Unable to load phone numbers.": "دریافت شماره‌ها ناموفق بود.",
   "No person is selected.": "شخصی انتخاب نشده است.",
   "Message sent.": "پیام ارسال شد.",
-  "Message delivered.": "پیام تحویل داده شد."
+  "Message delivered.": "پیام تحویل داده شد.",
+  "Loading communication…": "در حال بارگذاری ارتباط…",
+  "Communication unavailable": "ارتباط در دسترس نیست",
+  "This activity could not be loaded.": "بارگذاری این فعالیت ممکن نشد.",
+  "The related communication could not be found.": "ارتباط مرتبط پیدا نشد.",
+  "You do not have access to this communication.": "به این ارتباط دسترسی ندارید.",
+  "The communication could not be loaded.": "بارگذاری ارتباط ممکن نشد.",
+  "Refresh": "به‌روزرسانی",
+  "Message delivered": "پیام تحویل داده شد",
+  "Message sent": "پیام ارسال شد",
+  "Message failed": "ارسال پیام ناموفق بود",
+  "Message queued": "پیام در صف قرار گرفت",
+  "Communication": "ارتباط",
+  "objectMetadata.labelSingular": {
+    "Communication": "ارتباط"
+  },
+  "objectMetadata.labelPlural": {
+    "Communications": "ارتباطات"
+  },
+  "objectMetadata.description": {
+    "One outbound communication, independent of the channel or provider it travels through.": "یک ارتباط خروجی، مستقل از کانال یا سرویس‌دهنده‌ای که از آن ارسال می‌شود."
+  },
+  "fieldMetadata.label": {
+    "Name": "نام",
+    "Channel": "کانال",
+    "Body": "متن",
+    "Subject": "موضوع",
+    "Status": "وضعیت",
+    "Direction": "جهت",
+    "Provider": "سرویس‌دهنده",
+    "Recipient": "گیرنده",
+    "Provider message ID": "شناسه پیام سرویس‌دهنده",
+    "Failure reason": "دلیل خطا",
+    "Queued at": "زمان صف",
+    "Sent at": "زمان ارسال",
+    "Delivered at": "زمان تحویل",
+    "Person": "شخص",
+    "Communications": "ارتباطات",
+    "Sender": "فرستنده",
+    "Sent communications": "ارتباطات ارسالی"
+  },
+  "commandMenuItem.label": {
+    "Send SMS": "ارسال پیامک"
+  },
+  "commandMenuItem.shortLabel": {
+    "Send SMS": "ارسال پیامک"
+  },
+  "navigationMenuItem.name": {
+    "Communications": "ارتباطات"
+  },
+  "timelineActivityType.label": {
+    "communication": "ارتباط"
+  },
+  "view.name": {
+    "Communications": "ارتباطات"
+  }
 }

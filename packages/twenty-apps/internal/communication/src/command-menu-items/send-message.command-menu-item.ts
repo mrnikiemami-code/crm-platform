@@ -10,8 +10,10 @@ import {
 
 export default defineCommandMenuItem({
   universalIdentifier: SEND_MESSAGE_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER,
-  label: 'Send message',
-  shortLabel: 'Send message',
+  // Names the actual capability, so it is not confused with creating a record.
+  // Translated through the app catalog (`commandMenuItem.label`/`shortLabel`).
+  label: 'Send SMS',
+  shortLabel: 'Send SMS',
   // The icon comes from the application, so it is intentionally not set here.
   isPinned: false,
   availabilityType: 'RECORD_SELECTION',

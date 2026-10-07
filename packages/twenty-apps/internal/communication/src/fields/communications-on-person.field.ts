@@ -28,5 +28,8 @@ export default defineField({
   universalSettings: {
     relationType: RelationType.ONE_TO_MANY,
   },
+  // The reverse relation is a read-only history surface: no field editor, and
+  // no way to add a Communication from the Person record (which would bypass
+  // the send flow).
   isUIEditable: false,
 });

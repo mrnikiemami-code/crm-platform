@@ -108,13 +108,15 @@ const CommunicationTimelineCard = () => {
   }
 
   if (view.kind === 'UNAVAILABLE') {
-    // Missing data is reported as unavailable — never as QUEUED or success.
+    // Missing data is reported as unavailable — never as QUEUED or success —
+    // with the specific, safe reason when one is known.
     return (
       <div
         data-communication-timeline-activity-id={timelineActivityId ?? ''}
         style={containerStyle}
       >
         <span style={{ opacity: 0.6 }}>{t(UNAVAILABLE_TITLE)}</span>
+        <span style={{ opacity: 0.6 }}>{t(view.reasonTitle)}</span>
         {refreshButton}
       </div>
     );

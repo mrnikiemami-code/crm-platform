@@ -56,11 +56,20 @@ export const LIST_PERSON_PHONE_OPTIONS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
 
 // Timeline integration (W6)
 export const COMMUNICATION_TIMELINE_ACTIVITY_TYPE_UNIVERSAL_IDENTIFIER =
-  'a093b325-527d-4282-a0c9-9921745de0e2';
-export const COMMUNICATION_TIMELINE_RENDERER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'a093b325-527d-4282-a0c9-9921745de0e2';export const COMMUNICATION_TIMELINE_RENDERER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
   '762996db-f9e9-4781-8a88-3820b2943689';
 export const ON_COMMUNICATION_CREATED_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   'ca2d8874-c451-4d79-84a1-b0b807ea8f88';
+
+// Records discoverability (W13). A manifest view is always an ADDITIONAL view
+// (the engine reserves the default views), and a navigation item exposes the
+// object in the sidebar so a recorded communication is findable without the
+// Person record. The object is NOT creatable/editable through the generic UI
+// (`isUICreatable: false`), so this view is read-only history.
+export const COMMUNICATIONS_VIEW_UNIVERSAL_IDENTIFIER =
+  'b5c2f7a8-6d31-4e90-8a2b-7c1d9e3f4a50';
+export const COMMUNICATIONS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  'c6d3a8b9-7e42-4fa1-9b3c-8d2e0f4a5b61';
 
 // Workflow action (W7)
 export const SEND_COMMUNICATION_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER =

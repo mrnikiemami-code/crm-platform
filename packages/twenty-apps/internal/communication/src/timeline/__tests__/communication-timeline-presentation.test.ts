@@ -4,6 +4,7 @@ import { type CommunicationTimelineRecord } from 'src/timeline/communication-tim
 import {
   buildCommunicationTimelinePresentation,
   buildCommunicationTimelineView,
+  UNAVAILABLE_REASON_TITLES,
 } from 'src/timeline/communication-timeline-presentation';
 
 const baseRecord: CommunicationTimelineRecord = {
@@ -154,6 +155,7 @@ describe('buildCommunicationTimelineView', () => {
     expect(view).toEqual({
       kind: 'UNAVAILABLE',
       reason: 'ACTIVITY_NOT_FOUND',
+      reasonTitle: UNAVAILABLE_REASON_TITLES.ACTIVITY_NOT_FOUND,
     });
     expect(JSON.stringify(view).toLowerCase()).not.toContain('queued');
     expect(JSON.stringify(view).toLowerCase()).not.toContain('sent');
@@ -168,7 +170,7 @@ describe('buildCommunicationTimelineView', () => {
       'ERROR',
     ] as const) {
       expect(buildCommunicationTimelineView({ kind: 'UNAVAILABLE', reason })).toEqual(
-        { kind: 'UNAVAILABLE', reason },
+        { kind: 'UNAVAILABLE', reason, reasonTitle: UNAVAILABLE_REASON_TITLES[reason] },
       );
     }
   });
