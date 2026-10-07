@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { defineFrontComponent } from 'twenty-sdk/define';
 import {
   closeSidePanel,
@@ -10,8 +10,9 @@ import {
 } from 'twenty-sdk/front-component';
 
 import {
-  createPhoneOptionsLoader,
+  createPhoneOptionsConnection,
   isPhoneSelectionReady,
+  type PhoneOptionsConnection,
   type PhoneOptionsLoadState,
 } from 'src/components/phone-options-load-state';
 import { submitPersonCommunication } from 'src/components/submit-person-communication';
@@ -79,12 +80,15 @@ const SendMessageComposer = () => {
   // visual pending state.
   const isSubmittingRef = useRef(false);
 
-  const loadPhones = useCallback(async () => {
-    // A monotonic request id guarantees a slow earlier response cannot
-    // overwrite a newer one; the loader drops stale results and stale failures
-    // entirely, and always resets the selected number to match its state.
-    const loader = createPhoneOptionsLoader({
-      transport: async () => {
+  // One connection for the component's lifetime: its request-id counter is
+  // shared across every load, so a newer request (or a cleanup invalidation)
+  // silences an older one. Recreating it per call would give each request its
+  // own counter and defeat the guard.
+  const phonesConnectionRef = useRef<PhoneOptionsConnection | null>(null);
+
+  if (phonesConnectionRef.current === null) {
+    phonesConnectionRef.current = createPhoneOptionsConnection({
+      transport: (personId) => {
         if (!personId) {
           throw new Error('No person is selected.');
         }
@@ -98,13 +102,19 @@ const SendMessageComposer = () => {
         setSelectedPhone(selected);
       },
     });
-
-    await loader.load();
-  }, [personId]);
+  }
 
   useEffect(() => {
-    loadPhones();
-  }, [loadPhones]);
+    const connection = phonesConnectionRef.current;
+
+    connection?.start(personId);
+
+    // Cleanup runs on unmount and before the next effect when `personId`
+    // changes, so a response for the previous Person can never publish state.
+    return () => {
+      connection?.invalidate();
+    };
+  }, [personId]);
 
   const trimmedBody = body.trim();
   const canSubmit =

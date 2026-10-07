@@ -102,13 +102,19 @@ export type PhoneOptionsTransport = () => Promise<{
 export type PhoneOptionsLoader = {
   /** Starts a load. Returns a promise that settles when this request does. */
   load: () => Promise<void>;
+  /**
+   * Invalidates any in-flight request so its eventual response (or failure) can
+   * no longer publish state. Used on unmount / Person change cleanup.
+   */
+  invalidate: () => void;
 };
 
 /**
  * Wraps the person-phones request with a monotonic request id so a slow earlier
  * response cannot overwrite the state produced by a newer request. Only the
  * latest request is allowed to publish state or change `selectedPhone`; a stale
- * result (or a stale failure) is dropped entirely.
+ * result (or a stale failure) is dropped entirely. `invalidate()` bumps the id
+ * without starting a request, so cleanup can silence an in-flight load.
  *
  * The callback receives the new state together with the number to select, so
  * the caller never has to reconcile a stale selection itself.
@@ -118,6 +124,10 @@ export const createPhoneOptionsLoader = (options: {
   onState: (state: PhoneOptionsLoadState, selectedPhone: string) => void;
 }): PhoneOptionsLoader => {
   let latestRequestId = 0;
+
+  const invalidate = (): void => {
+    latestRequestId += 1;
+  };
 
   const load = async (): Promise<void> => {
     latestRequestId += 1;
@@ -147,5 +157,47 @@ export const createPhoneOptionsLoader = (options: {
     }
   };
 
-  return { load };
+  return { load, invalidate };
+};
+
+export type PhoneOptionsConnection = {
+  /**
+   * Mirrors the component's effect run: starts a load for this Person. The
+   * previous Person's in-flight request is silenced by the cleanup call that
+   * precedes it.
+   */
+  start: (personId: string | null) => Promise<void>;
+  /**
+   * Mirrors the component's effect cleanup: runs on unmount and before the next
+   * effect when the Person changes, silencing any in-flight request.
+   */
+  invalidate: () => void;
+};
+
+/**
+ * The composer's real phone-loading wiring, extracted so the exact production
+ * connection (one stable loader for the component's lifetime + cleanup
+ * invalidation) can be exercised without the sandbox. The component creates one
+ * of these per mount and calls `start` in its effect and `invalidate` in the
+ * cleanup.
+ */
+export const createPhoneOptionsConnection = (options: {
+  transport: (personId: string | null) => Promise<{ ok: boolean; data: unknown }>;
+  onState: (state: PhoneOptionsLoadState, selectedPhone: string) => void;
+}): PhoneOptionsConnection => {
+  let currentPersonId: string | null = null;
+
+  const loader = createPhoneOptionsLoader({
+    transport: () => options.transport(currentPersonId),
+    onState: options.onState,
+  });
+
+  return {
+    start: (personId) => {
+      currentPersonId = personId;
+
+      return loader.load();
+    },
+    invalidate: () => loader.invalidate(),
+  };
 };

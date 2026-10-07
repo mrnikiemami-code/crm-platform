@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createPhoneOptionsConnection,
   createPhoneOptionsLoader,
   isPhoneSelectionReady,
   resolvePhoneOptionsLoadState,
@@ -346,5 +347,175 @@ describe('createPhoneOptionsLoader (stale-response protection)', () => {
       },
       selected: '09120000003',
     });
+  });
+
+  it('invalidate() silences an in-flight request', async () => {
+    const pending = deferred();
+    const published: Array<{ state: unknown; selected: string }> = [];
+    const loader = createPhoneOptionsLoader({
+      transport: () => pending.promise,
+      onState: (state, selected) => published.push({ state, selected }),
+    });
+
+    const load = loader.load();
+    loader.invalidate();
+    pending.resolve(successWith('09120000001'));
+    await load;
+
+    // Only the LOADING emission is allowed; the invalidated result is dropped.
+    expect(published).toEqual([{ state: { kind: 'LOADING' }, selected: '' }]);
+  });
+});
+
+describe('createPhoneOptionsConnection (the composer real wiring)', () => {
+  const deferred = () => {
+    let resolve: (value: { ok: boolean; data: unknown }) => void = () => {};
+    let reject: (reason?: unknown) => void = () => {};
+
+    const promise = new Promise<{ ok: boolean; data: unknown }>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    return { promise, resolve, reject };
+  };
+
+  const successWith = (value: string) => ({
+    ok: true,
+    data: {
+      success: true,
+      phones: [{ id: 'primary', value, isPrimary: true }],
+    },
+  });
+
+  it('ignores the previous Person response after the Person changes', async () => {
+    // Two requests, one per Person, in the order the component effect runs:
+    // start(personA) -> cleanup invalidate -> start(personB).
+    const personA = deferred();
+    const personB = deferred();
+    const calls: Array<{ personId: string | null; promise: Promise<{ ok: boolean; data: unknown }> }> = [];
+    let call = 0;
+
+    const published: Array<{ state: unknown; selected: string }> = [];
+    const connection = createPhoneOptionsConnection({
+      transport: (personId) => {
+        calls.push({ personId, promise: [personA.promise, personB.promise][call] });
+        call += 1;
+
+        return calls[calls.length - 1].promise;
+      },
+      onState: (state, selected) => published.push({ state, selected }),
+    });
+
+    const firstStart = connection.start('person-a');
+    // Effect cleanup for person-a, then effect run for person-b.
+    connection.invalidate();
+    const secondStart = connection.start('person-b');
+
+    // Person B resolves, then the stale Person A response arrives.
+    personB.resolve(successWith('09120000002'));
+    await secondStart;
+    personA.resolve(successWith('09120000001'));
+    await firstStart;
+
+    expect(calls[0].personId).toBe('person-a');
+    expect(calls[1].personId).toBe('person-b');
+
+    const ready = published.filter(
+      (entry) => (entry.state as { kind: string }).kind === 'READY',
+    );
+
+    expect(ready).toHaveLength(1);
+    expect((ready[0].state as { selectedPhone: string }).selectedPhone).toBe(
+      '09120000002',
+    );
+    expect(published.some((entry) => entry.selected === '09120000001')).toBe(
+      false,
+    );
+  });
+
+  it('ignores the previous Person failure after the Person changes', async () => {
+    const personA = deferred();
+    const personB = deferred();
+    let call = 0;
+
+    const published: Array<{ state: unknown; selected: string }> = [];
+    const connection = createPhoneOptionsConnection({
+      transport: () => [personA.promise, personB.promise][call++],
+      onState: (state, selected) => published.push({ state, selected }),
+    });
+
+    const firstStart = connection.start('person-a');
+    connection.invalidate();
+    const secondStart = connection.start('person-b');
+
+    personB.resolve(successWith('09120000009'));
+    await secondStart;
+    personA.reject(new Error('stale failure for the previous person'));
+    await firstStart;
+
+    expect(
+      published.some((entry) => (entry.state as { kind: string }).kind === 'ERROR'),
+    ).toBe(false);
+    expect(published[published.length - 1]).toEqual({
+      state: {
+        kind: 'READY',
+        phones: [{ id: 'primary', value: '09120000009', isPrimary: true }],
+        selectedPhone: '09120000009',
+      },
+      selected: '09120000009',
+    });
+  });
+
+  it('unmount invalidation prevents any state from an in-flight request', async () => {
+    const pending = deferred();
+    const published: Array<{ state: unknown; selected: string }> = [];
+    const connection = createPhoneOptionsConnection({
+      transport: () => pending.promise,
+      onState: (state, selected) => published.push({ state, selected }),
+    });
+
+    const start = connection.start('person-a');
+    connection.invalidate(); // unmount
+    pending.resolve(successWith('09120000007'));
+    await start;
+
+    expect(published).toEqual([{ state: { kind: 'LOADING' }, selected: '' }]);
+  });
+
+  it('the newest Person wins when requests resolve out of order', async () => {
+    const personA = deferred();
+    const personB = deferred();
+    const personC = deferred();
+    const promises = [personA.promise, personB.promise, personC.promise];
+    let call = 0;
+
+    const published: Array<{ state: unknown; selected: string }> = [];
+    const connection = createPhoneOptionsConnection({
+      transport: () => promises[call++],
+      onState: (state, selected) => published.push({ state, selected }),
+    });
+
+    const a = connection.start('person-a');
+    connection.invalidate();
+    const b = connection.start('person-b');
+    connection.invalidate();
+    const c = connection.start('person-c');
+
+    personC.resolve(successWith('09120000003'));
+    await c;
+    personA.resolve(successWith('09120000001'));
+    await a;
+    personB.resolve(successWith('09120000002'));
+    await b;
+
+    const ready = published.filter(
+      (entry) => (entry.state as { kind: string }).kind === 'READY',
+    );
+
+    expect(ready).toHaveLength(1);
+    expect((ready[0].state as { selectedPhone: string }).selectedPhone).toBe(
+      '09120000003',
+    );
   });
 });
