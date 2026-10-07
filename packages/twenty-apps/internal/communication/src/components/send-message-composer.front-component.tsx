@@ -17,11 +17,17 @@ import {
 } from 'src/components/phone-options-load-state';
 import { submitPersonCommunication } from 'src/components/submit-person-communication';
 import { SEND_MESSAGE_COMPOSER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
-import { isPersianLocale, useAppTranslate } from 'src/i18n/app-translate';
 
 // Channels the composer offers. Mirrors the implemented channels only; future
 // channels become selectable when their provider ships.
 const SUPPORTED_CHANNELS = ['SMS'] as const;
+
+// RTL languages, by ISO 639-1 subtag. Kept local because the app bundle cannot
+// depend on `twenty-shared`; mirrors the platform's own list.
+const RIGHT_TO_LEFT_LANGUAGES = ['ar', 'dv', 'fa', 'he', 'ps', 'sd', 'ug', 'ur', 'yi'];
+
+const getTextDirection = (locale: string): 'rtl' | 'ltr' =>
+  RIGHT_TO_LEFT_LANGUAGES.includes(locale.split('-')[0]) ? 'rtl' : 'ltr';
 
 const callAppRoute = async (
   path: string,
@@ -52,14 +58,11 @@ const callAppRoute = async (
 };
 
 const SendMessageComposer = () => {
-  const { t: sdkTranslate } = useTranslate();
+  const { t } = useTranslate();
   const locale = useLocale();
-  // Persian is translated by the app-owned catalog (the build tool does not
-  // bake `fa-IR`); every other locale keeps the SDK's own `t`.
-  const { t } = useAppTranslate({ locale, sdkTranslate });
   const personId = useRecordId();
 
-  const direction: 'rtl' | 'ltr' = isPersianLocale(locale) ? 'rtl' : 'ltr';
+  const direction = getTextDirection(locale);
 
   const [channel, setChannel] = useState<string>(SUPPORTED_CHANNELS[0]);
   const [phonesState, setPhonesState] = useState<PhoneOptionsLoadState>({

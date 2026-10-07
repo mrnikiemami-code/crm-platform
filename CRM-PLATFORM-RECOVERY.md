@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-07 (W12-R4-APP-LOCAL-I18N — app-owned Persian catalog, independent of SDK fa-IR support; Linux package built on the app's locked 2.35 SDK)
+Last updated: 2026-10-07 (W12-R5-NATIVE-I18N — R4 superseded; native Twenty translation via a fork-built SDK artifact, verified on Linux)
 
 ## Purpose
 
@@ -23,25 +23,27 @@ Branch:
 `crm-platform`
 
 Verified baseline (before this documentation commit):
-- current baseline (this task): `8c27c95c6b` — the W12-R3 commit
-- previous code-verified baseline: `4e53e29f31` — the W12-R2 commit
+- current baseline (this task): `61ecc50f31` — the W12-R4 commit
+- previous code-verified baseline: `8c27c95c6b` — the W12-R3 commit
 
 Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W11-MAIN-R4-VERIFY` — **Windows symlink blocker resolved; main route PASS.** This is the last **wave** an architect accepted. The **W12** line (`W12-COMPOSER-UX`, `W12-R1`, `W12-R2`, `W12-R3-BUILD-BOUNDARY`, `W12-R4-APP-LOCAL-I18N`) remains **REVIEW PENDING** as a wave — it is recorded as work-in-review, **not** as an accepted milestone.
+`CRM-COMMUNICATIONS-001-W11-MAIN-R4-VERIFY` — **Windows symlink blocker resolved; main route PASS.** This is the last **wave** an architect accepted. The **W12** line (`W12-COMPOSER-UX`, `W12-R1`, `W12-R2`, `W12-R3-BUILD-BOUNDARY`, `W12-R4-APP-LOCAL-I18N`, `W12-R5-NATIVE-I18N`) remains **REVIEW PENDING** as a wave — it is recorded as work-in-review, **not** as an accepted milestone.
 
-- **W12-R4 — app-owned Persian translation (the R3 boundary is now closed):** the composer no longer depends on the build tool supporting `fa-IR`. A small **app-owned** module `src/i18n/app-translate.ts` imports the app's own `locales/fa-IR.json` (esbuild inlines it) and applies it when the host locale is `fa`/`fa-IR`; **every other locale defers to the SDK's own `t`**; a key missing from the catalog falls back to the **source string**. No SDK global is written and no new translation framework is introduced. The composer consumes this module; the RTL/LTR direction, LTR phone values, the stale-response guard and the send flow are unchanged.
-- **W12-R4 — the SDK/banner witness was replaced** by a test of this **real app module** (`src/i18n/__tests__/app-translate.test.ts`) covering Persian, the bare `fa` locale, English/other-locale SDK deferral, the missing-key fallback, and that the SDK `t` is **not** called for Persian. The R3 `.twenty`-bundle banner witness was **removed**.
-- **W12-R4 — Linux package built on the app's locked SDK 2.35:** in a clean container copy (own lockfile, `--immutable`) with `twenty-sdk@2.35.0`, the app builds (`✓ 14 files`), and `dev:build --tarball` produces `communication-0.1.2.tgz` with **forward-slash paths** and the **Persian catalog inlined** into the composer bundle. This **proves the app no longer needs the fork's `twenty-shared`** to ship Persian — unlike R3, where the published CLI baked nothing. The `fa-IR.json` "not a supported locale" message still appears, but it is **no longer on the Persian path** (the app-owned catalog is used instead).
-- **W12-R4 checks:** monorepo **214/214** tests, both typechecks exit 0, lint 0/0; clean copy outside the monorepo (SDK **2.35.0**) **214/214**, both typechecks exit 0, lint 0/0; Linux container (SDK **2.35.0**) **214/214**, both typechecks exit 0, lint 0/0, tarball `sha256 2FF4748E…`.
+- **DECISION (W12-R5): translation uses the native Twenty mechanism.** The R4 app-owned translator is **SUPERSEDED / NOT ACCEPTED**; its package was **not installed**. Only the R4 *translator* was reverted — the Persian catalog, the EMPTY/ERROR fix, the stable phone-load connection and its cleanup/invalidate are **preserved**.
+- **W12-R5 — the native path already exists in this fork (not reimplemented):** the fork adds `fa-IR` to **`twenty-shared`'s `APP_LOCALES`** (`packages/twenty-shared/src/translations/constants/AppLocales.ts`, fork commit `6cf109d9ac`). `twenty-shared` is a **devDependency** of `twenty-sdk`, and the SDK build **bundles** it (no runtime `twenty-shared` dependency), so the fork's `fa-IR` support ships inside `twenty-sdk`'s own `dist/login-*.mjs` chunk (which contains both `fa-IR` and the `Skipping translation file` message). The CLI's `loadFrontComponentTranslationCatalogs` therefore **accepts** `fa-IR` and bakes it into the front-component banner.
+- **W12-R5 — build tool (this fork, packaged independently):** the fork's `twenty-sdk@2.42.0` and `twenty-client-sdk@2.42.0` were packed with the project's own `yarn pack`, installed with `npm` into a clean dir **outside the monorepo**, and used with `NODE_PATH` to build the app. Source SHA `61ecc50f31`; `twenty-sdk-2.42.0.tgz` `sha256 885696F1C3C802234F058F4FF975920A19CB9FE985FAE182D5FE525AFA65503F`; `twenty-client-sdk-2.42.0.tgz` `sha256 93C94D5A6C7C2F8D3AB4095A31FD2EFA1746970506A3D123DFD6D8CBA5F1314F`. The tool has **no `twenty-shared`** and borrows nothing from the monorepo.
+- **W12-R5 — Communication built on Linux with that tool:** `dev:build --tarball` in a `node:24-bookworm` container produced `communication-0.1.2.tgz` with **forward-slash paths** and the **native** banner `globalThis["__twentySdkFrontComponentTranslations__"]={"fa-IR":{…}}` — the catalog enters the bundle **through the SDK's native mechanism**, with **no** "Skipping translation file" message. Tarball `sha256 E051618531C733453B5BB93F94FE8DC1050075FA693C7ACF8A7302DE9BEB3F1D`.
+- **W12-R5 — the R3 native-banner witness is back and green:** `sdk-translation-probe.test.ts` drives the real `t` runtime against the produced bundle's banner and passes (Persian + English fallback).
+- **W12-R5 checks:** monorepo **213/213** tests, both typechecks exit 0, lint 0/0; Linux container **213/213**, both typechecks exit 0, lint 0/0, native build + tarball.
 - **Persian browser render remains NOT VERIFIED** — no Persian host UI has been observed (the app2 frontend offers no `fa-IR`). The package was **not installed** anywhere.
 - **EMPTY vs ERROR (W12-R1, unchanged):** EMPTY is reserved for a **genuinely empty** `phones` list; a **non-empty** list whose entries are all unusable (e.g. `[null]`, `[{}]`) is **ERROR**.
-- **Untouched:** core, SDK version (app and lockfile), providers, send/persist path, duplicate-submit guard, universal identifiers, Workflow (still disabled). No main-instance install, no setting change, no message sent.
+- **Untouched:** core, server, SDK version (app and lockfile), providers, send/persist path, duplicate-submit guard, universal identifiers, Workflow (still disabled). No main-instance install, no setting change, no message sent.
 - **"Phone numbers load" PASS is NOT "a message was sent" PASS** — provider settings remain **empty** and real sending remains **NOT PERFORMED**.
 
-Work in review (NOT accepted): the **W12** line — `CRM-COMMUNICATIONS-001-W12-COMPOSER-UX`, `W12-R1`, `W12-R2`, `W12-R3-BUILD-BOUNDARY`, `W12-R4-APP-LOCAL-I18N` — Persian composer, honest phone-load states, the production-connection stale-response guard, and the **app-owned Persian translation** that no longer depends on the SDK supporting `fa-IR`. Status: **REVIEW PENDING**. The **Persian browser render is NOT verified** and the **main-instance install of the W12 package is NOT performed**.
+Work in review (NOT accepted): the **W12** line — `CRM-COMMUNICATIONS-001-W12-COMPOSER-UX`, `W12-R1`, `W12-R2`, `W12-R3-BUILD-BOUNDARY`, `W12-R4-APP-LOCAL-I18N` (**superseded / not accepted**), `W12-R5-NATIVE-I18N` — Persian composer, honest phone-load states, the production-connection stale-response guard, and **native Twenty Persian translation via a fork-built SDK artifact**. Status: **REVIEW PENDING**. The **Persian browser render is NOT verified** and the **main-instance install of the W12 package is NOT performed**.
 
 **Historical corrections (superseded claims):** the W10-R3-era "front components do not render" and the W10-R4-era "timeline card still not rendering" findings were **wrong** (an expired session and a collapsed-by-default row respectively); the composer and timeline card **do render** (W10-R4/R5). Those sections are historical.
 
@@ -157,7 +159,8 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W12-R1 | `1a9c2805dd` (app-only — no core change) | `1a7dc81981` | **REVIEW PENDING — NOT an accepted milestone.** **EMPTY/ERROR correctness + first stale-response guard + SDK catalog findings**: (1) a **non-empty** `phones` list whose entries are all unusable is now **ERROR**, and EMPTY is reserved for a genuinely empty list — with direct tests for `[null]` and `[{}]`; (2) phone loading was guarded by a monotonic request id in the helper; (3) the **locked SDK 2.35** exports `useTranslate` at runtime but its **`APP_LOCALES` has no `fa-IR`** and its CLI has **no catalog-baking** step, while the **workspace build SDK is 2.42.0** and does bake `locales/*.json`. **Main-instance install NOT performed; architect review pending** |
 | W12-R2 | `4e53e29f31` (app + docs) | (this docs commit) | **REVIEW PENDING — NOT an accepted milestone, but its behavior IS accepted as-is in R3.** **Real composer connection invalidation + runtime witness:** (1) the stale-response guard lives in the **actual production wiring** — the composer keeps **one** `createPhoneOptionsConnection` for its lifetime (shared request-id counter; the previous per-call loader had its own counter and could not guard across overlapping loads) and its effect cleanup calls `invalidate()`, so a **Person change or unmount silences the previous in-flight request** (its success **or** failure can no longer set state or `selectedPhone`); the deferred tests drive this exact `start`/`invalidate` connection, not a standalone helper; (2) the translation test drives the **real `t` from the built `twenty-sdk/front-component` runtime** against the app's own **build output** banner. `vitest run` → 215/215 at the time; both typechecks exit 0; oxlint 0/0. **No core/provider/send-persist/Workflow/identifier change; no main install, no setting change, no send** |
 | W12-R3-BUILD-BOUNDARY | `8c27c95c6b` (test + docs) | `8c27c95c6b` | **REVIEW PENDING.** **Standalone build/translation boundary:** the app was copied **outside the monorepo** (tracked files only) and installed with its **own lockfile** (`yarn install --immutable` OK); the app's own SDK resolves to **2.35.0**. A **separate, exactly-pinned `twenty-sdk@2.42.0`** build tool was installed **outside the app**. The **hidden `twenty-shared` test dependency was removed**. **Boundary finding:** the upstream 2.42 CLI **skips `fa-IR`** (*"not a supported locale"*) and bakes **no** banner, because `fa-IR` exists only in the **fork's `twenty-shared`** (fork commit `6cf109d9ac`) while the published CLI bundles upstream `twenty-shared`. The witness **cannot skip silently**. **Standalone:** 209/213 (only the witness tests fail, by design). **App SDK/lockfile NOT upgraded** |
-| W12-R4-APP-LOCAL-I18N | (this commit — app + test + docs) | (this docs commit) | **REVIEW PENDING.** **App-owned Persian translation — closes the R3 boundary.** A small app module `src/i18n/app-translate.ts` imports the app's own `locales/fa-IR.json` (esbuild **inlines** it) and applies it for `fa`/`fa-IR`; **other locales defer to the SDK's own `t`**; a missing key falls back to the **source string**. No SDK global is written, no new framework. The composer consumes it (RTL/LTR, LTR phone values, request guard, send flow, message meanings unchanged). The R3 **bundle-banner witness was removed** and replaced by a test of this **real module** (Persian, bare `fa`, English/other-locale deferral, missing-key fallback, SDK not called for Persian). **Linux package on the app's locked SDK 2.35:** clean container copy (`--immutable`) builds (`✓ 14 files`) and `dev:build --tarball` produces `communication-0.1.2.tgz` with **forward-slash paths** and the **Persian catalog inlined** — proving Persian ships **without** the fork's `twenty-shared` (unlike R3). **Checks:** monorepo **214/214**, both typechecks exit 0, lint 0/0; clean copy (SDK 2.35) **214/214**, both typechecks exit 0, lint 0/0; Linux container (SDK 2.35) **214/214**, both typechecks exit 0, lint 0/0, tarball `sha256 2FF4748E378B607D472204939BA6BF9517F3F40319EE1E37C737D6DA27F572DA`. **Persian browser render NOT VERIFIED; package NOT installed. No core/SDK/provider/send-persist/Workflow/identifier change; no main install, no setting change, no send** |
+| W12-R4-APP-LOCAL-I18N | `61ecc50f31` (app + test + docs) | `61ecc50f31` | **SUPERSEDED / NOT ACCEPTED (W12-R5 decision).** **App-owned Persian translation** — a module `src/i18n/app-translate.ts` imported the app's own `locales/fa-IR.json` and applied it for `fa`/`fa-IR` (other locales deferred to the SDK `t`). The decision is to use the **native Twenty mechanism** instead, so this translator was **reverted**; **its package was NOT installed**. The Persian catalog, the EMPTY/ERROR fix, the stable phone-load connection and its cleanup/invalidate are **preserved** (R5) |
+| W12-R5-NATIVE-I18N | (this commit — app revert + docs) | (this docs commit) | **REVIEW PENDING.** **Native Twenty translation.** Only the R4 translator was reverted — the composer is back on `useTranslate`, and the catalog / EMPTY-ERROR fix / stable phone-load connection + cleanup are preserved. **The native path already exists in this fork (not reimplemented):** `fa-IR` is in `twenty-shared`'s `APP_LOCALES` (fork commit `6cf109d9ac`); `twenty-shared` is a **devDependency** of `twenty-sdk` and is **bundled** by its build, so the fork's `fa-IR` support ships inside `twenty-sdk`'s `dist/login-*.mjs` (which holds both `fa-IR` and the `Skipping translation file` message). **Build tool:** the fork's `twenty-sdk@2.42.0` + `twenty-client-sdk@2.42.0` were packed with the project's own `yarn pack`, installed with `npm` **outside the monorepo** (no `twenty-shared`, nothing borrowed), source SHA `61ecc50f31`; `twenty-sdk` `sha256 885696F1…`, `twenty-client-sdk` `sha256 93C94D5A…`. **Linux build:** `dev:build --tarball` on `node:24-bookworm` produced `communication-0.1.2.tgz` with forward-slash paths and the **native** banner `globalThis["__twentySdkFrontComponentTranslations__"]={"fa-IR":{…}}` (**no** "Skipping" message) — the catalog enters via the SDK's own mechanism. The R3 **native-banner witness is back and green**. **Checks:** monorepo **213/213**, both typechecks exit 0, lint 0/0; Linux container **213/213**, both typechecks exit 0, lint 0/0, tarball `sha256 E051618531C733453B5BB93F94FE8DC1050075FA693C7ACF8A7302DE9BEB3F1D`. **Persian browser render NOT VERIFIED; package NOT installed. No core/server/SDK/provider/send-persist/Workflow/identifier change; no main install, no setting change, no send** |
 
 **Evidence levels (do not conflate them):**
 
@@ -868,7 +871,7 @@ Known accepted limitations: no distributed atomicity between provider and worksp
 | `2fa6612392` (`change`) intent | UNVERIFIED | user-pushed commit adding 15 lines to `enterprise-plan.service.ts`; later superseded by `272bfa0715` |
 | Cold-start performance | PLANNED | explicitly out of scope for `831204b74a` (that fixed false failure, not speed) |
 | Branding / white-label | PLANNED / NOT STARTED | `docs/plans/branding-white-label.md` untracked |
-| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **installed on the main instance (workspace 4D, v2.42.0) via the native tarball path, with main-instance logic-function execution now PASSING after the Windows symlink blocker was resolved** (W11-MAIN-R1..R4); **composer localized with an app-owned Persian catalog (independent of SDK `fa-IR` support) and honest LOADING/READY/EMPTY/ERROR phone states, with the stale-response guard in the real composer connection (shared loader + cleanup invalidation); a Linux package builds on the app's locked 2.35 SDK with the Persian catalog inlined** (**W12-COMPOSER-UX / W12-R1 / W12-R2 / W12-R3-BUILD-BOUNDARY / W12-R4-APP-LOCAL-I18N — REVIEW PENDING, not accepted**; package 0.1.2 prepared, main install pending review; **Persian browser render NOT verified**); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`, W11-MAIN-R1 `00b69db9bb` (core fix) + `fb49f6bbc3` (docs), W11-MAIN-R2 `bff48ff4ca` (portable tests) + `10e8e9420c` (docs), W11-MAIN-R3 `37140cc5b9` (docs; runtime fix applied), W11-MAIN-R4-PREP `38e6427fa0` + R4-VERIFY `0bf47cba7f` (docs; blocker resolved), W12-COMPOSER-UX `f3db45b583` (app) + `93d3607d88` (docs), W12-R1 `1a9c2805dd` (app) + `1a7dc81981` (docs), W12-R2 `4e53e29f31` (app + docs), W12-R3-BUILD-BOUNDARY `8c27c95c6b` (test + docs), W12-R4-APP-LOCAL-I18N (app + test + this docs commit); **last accepted milestone = W11-MAIN-R4-VERIFY**; no next wave assigned |
+| Communications / Messaging | ACTIVE — W0–W9 implemented; **W9-R2 workspace-owned configuration VERIFIED**; front components + composer + timeline card render (W10-R4/R5); **logic-function execution RESTORED on the isolated v2.41.0 instance** (W10-R6, scoped container DNS); **two-workspace distribution PASS via native tarball** (W10-R8-R1: the same app installed in `apple` + `Isolation Beta`, `isListed=false` preserved — a listing flag, not a privacy guarantee); **two-workspace execution isolation PASS with an execution witness** (W10-R8-R2: independent provider selection per workspace through the real send route — failures pre-HTTP, no real provider request; foreign Person access rejected); **HTTP Mock integration PASS at API level then browser-composer level** (W11-MOCK/W11-MOCK-UI: mock acceptance only, Kavenegar only, no real send); **installed on the main instance (workspace 4D, v2.42.0) via the native tarball path, with main-instance logic-function execution now PASSING after the Windows symlink blocker was resolved** (W11-MAIN-R1..R4); **composer localized with NATIVE Twenty translation (the fork's `fa-IR` in `twenty-shared` bundled into `twenty-sdk`, baked via a fork-built SDK artifact) and honest LOADING/READY/EMPTY/ERROR phone states, with the stale-response guard in the real composer connection (shared loader + cleanup invalidation); a Linux package builds with the native `fa-IR` banner baked in** (**W12-COMPOSER-UX / W12-R1 / W12-R2 / W12-R3-BUILD-BOUNDARY / W12-R4-APP-LOCAL-I18N [SUPERSEDED] / W12-R5-NATIVE-I18N — REVIEW PENDING, not accepted**; package 0.1.2 prepared, main install pending review; **Persian browser render NOT verified**); **W7 IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** (`workflowActionTriggerSettings: null` on all 4 functions in the manifest and both installs); real-provider sending NOT verified | W0 `bbddd56c73`, W1 `cf4d176d60`, W2 `f951459e5a`, W3 `b69c4a2ade`, W4 `8c3866f5f5`+R1 `f1469f4fb7`, W5 `15ad660a64`+R1 `0853765a98`+R2 `defdc41e9d`+R3 `7b21608880`, W6 `b464171e2a`+R1 `fd9e0988c6`+R2 `10af7c560f`, W7 `d5a71d9232`+R1 `8b58018393`+R2 `ce2cc9e0d1` (disabled), W8 `8ecbd449d633ddd248dfc08f3526fc34b0788cc0`, W10-R2 `526997b77e`, W10-R3 `a791ca8762`, W10-R4 `521000b709`, W9-R2 `b12a5c57f9`+`3654e15e1c`, W10-R5 `8c15ea8668`, W10-R6 `ce3b9fb297`, W10-R7 `aceb78f228`, W10-R8-R1 `348606e2e2`, W10-R8-R2 `bbb1b5cb18`, W11-MOCK `f844cb334e` (+ `9ecf0a70e1`), W11-MOCK-UI `fff3cee41f`, W11-MAIN-R1 `00b69db9bb` (core fix) + `fb49f6bbc3` (docs), W11-MAIN-R2 `bff48ff4ca` (portable tests) + `10e8e9420c` (docs), W11-MAIN-R3 `37140cc5b9` (docs; runtime fix applied), W11-MAIN-R4-PREP `38e6427fa0` + R4-VERIFY `0bf47cba7f` (docs; blocker resolved), W12-COMPOSER-UX `f3db45b583` (app) + `93d3607d88` (docs), W12-R1 `1a9c2805dd` (app) + `1a7dc81981` (docs), W12-R2 `4e53e29f31` (app + docs), W12-R3-BUILD-BOUNDARY `8c27c95c6b` (test + docs), W12-R4-APP-LOCAL-I18N `61ecc50f31` (**superseded**), W12-R5-NATIVE-I18N (app revert + this docs commit); **last accepted milestone = W11-MAIN-R4-VERIFY**; no next wave assigned |
 | Real-provider end-to-end send | UNVERIFIED | Only synthetic integration was exercised; no Kavenegar/RazPayamak request was made and no delivery receipt was observed |
 | Person composer React render | **PASS (W10-R4)** | The Communication `Send message` composer renders on the fresh v2.41.0 instance (Channel SMS / Phone number / Message / Cancel / Send). Its phone-options data call is blocked by the host DNS runtime blocker. |
 | Front-component rendering (general) | **PASS (W10-R4)** | Stock `Hello World` renders in a sandbox iframe on **both** v2.41.0 and v2.42.6. The W10-R3 "do not render" claim was an expired-session artifact. |
@@ -1067,10 +1070,10 @@ W10-R6/R7/R8-R1/R8-R2 (isolated execution, workspace isolation, native tarball t
 distribution), W11-MOCK / W11-MOCK-UI (HTTP Mock integration, API then browser), W11-MAIN-R1..R4-VERIFY
 (main-instance install + the one recorded core assets-path exception, applied in R3; the host symlink
 blocker resolved in R4-VERIFY by enabling Developer Mode) are also recorded; see the milestone table.
-The whole **W12 line** (W12-COMPOSER-UX, W12-R1, W12-R2, W12-R3-BUILD-BOUNDARY, W12-R4-APP-LOCAL-I18N — Persian
-composer, honest phone-load states, the production-connection stale-response guard, and the app-owned Persian
-translation that no longer depends on the SDK supporting `fa-IR`) is **REVIEW PENDING** and **NOT an accepted
-milestone**. See its sections.
+The whole **W12 line** (W12-COMPOSER-UX, W12-R1, W12-R2, W12-R3-BUILD-BOUNDARY, W12-R4-APP-LOCAL-I18N
+[superseded], W12-R5-NATIVE-I18N — Persian composer, honest phone-load states, the production-connection
+stale-response guard, and **native Twenty Persian translation** via a fork-built SDK artifact) is
+**REVIEW PENDING** and **NOT an accepted milestone**. See its sections.
 Do NOT redo any of these waves.
 
 INSTALLED VERIFICATION (W10-R2 — **historical**: superseded by W10-R6 execution restoration and
@@ -1157,7 +1160,7 @@ two-workspace evidence on v2.42.0** — that remains the app2 v2.41.0 run (W10-R
 settings are **empty** and **real sending is NOT PERFORMED**; W7 disabled.
 Reviewed baseline for R3: `10e8e9420c`.
 
-COMPOSER UX (W12-COMPOSER-UX / W12-R1 / W12-R2 / W12-R3-BUILD-BOUNDARY / W12-R4-APP-LOCAL-I18N — **REVIEW PENDING, not accepted**): the composer is **RTL for Persian and
+COMPOSER UX (W12-COMPOSER-UX / W12-R1 / W12-R2 / W12-R3-BUILD-BOUNDARY / W12-R4-APP-LOCAL-I18N [superseded] / W12-R5-NATIVE-I18N — **REVIEW PENDING, not accepted**): the composer is **RTL for Persian and
 LTR for English** with phone values kept LTR, and maps person-phones to **four distinct states** (LOADING /
 READY / EMPTY / ERROR): only a **genuinely empty** successful list reads "no number"; a **non-empty** list
 with no usable entry and any HTTP/network/JSON failure read "could not load" and **disable Send**. The
@@ -1165,18 +1168,15 @@ stale-response guard is in the **real composer connection**: one `createPhoneOpt
 mount (shared request-id counter) whose effect cleanup calls `invalidate()`, so a **Person change or
 unmount silences the previous in-flight request** (success **or** failure). Verified on the test
 instance (app2, apple): English composer LTR with the loaded number, and the ERROR state (route blocked in
-the browser only) with Send disabled. **Translation is app-owned (W12-R4):** `src/i18n/app-translate.ts`
-imports the app's own `locales/fa-IR.json` (inlined at build) and applies it for `fa`/`fa-IR`; other locales
-defer to the SDK's `t`; a missing key falls back to the source string. No SDK global is written, so Persian
-no longer needs the build tool to support `fa-IR`. **SDK / build boundary:** the app's own locked SDK is
-**2.35.0** and the **app does not depend on `twenty-shared`**. The R3 finding still holds — the published CLI
-**skips `fa-IR`** (*"not a supported locale"*) because `fa-IR` exists only in the **fork's `twenty-shared`**
-(fork commit `6cf109d9ac`) — but with the app-owned catalog this is **no longer on the Persian path**: a Linux
-`dev:build --tarball` on the app's **locked 2.35 SDK** produces `communication-0.1.2.tgz` (forward-slash
-paths) with the **Persian catalog inlined**. The app SDK/lockfile were **not** upgraded. **A Persian file in
-the package is NOT proof of Persian rendering** — the Persian host render is NOT VERIFIED. **New Windows
-finding:** a Windows-built tarball embeds backslash handler paths and is rejected by the server, so the
-deployable package is built on Linux. **W12 remains architect-review-pending; the main-instance install is NOT
+the browser only) with Send disabled. **Translation is NATIVE (W12-R5):** the composer uses the SDK's
+`useTranslate`; `fa-IR` is in the fork's `twenty-shared` `APP_LOCALES` (fork commit `6cf109d9ac`) and the
+SDK build **bundles** `twenty-shared`, so the fork's `fa-IR` support ships inside `twenty-sdk`'s own
+`dist/login-*.mjs`. A fork-built `twenty-sdk` artifact (packed with the project's own `yarn pack`, installed
+outside the monorepo) bakes `globalThis["__twentySdkFrontComponentTranslations__"]={"fa-IR":{…}}` into the
+front-component bundle on Linux — **no** "Skipping translation file" message. **A Persian file in the package
+is NOT proof of Persian rendering** — the Persian host render is NOT VERIFIED. **New Windows finding:** a
+Windows-built tarball embeds backslash handler paths and is rejected by the server, so the deployable package
+is built on Linux. **W12 remains architect-review-pending; the main-instance install is NOT
 performed. "Phone numbers load" PASS is NOT "message sent" PASS** — provider settings are still empty and
 real sending NOT PERFORMED; W7 disabled.
 
@@ -2350,7 +2350,7 @@ No core change, no SDK-version change (app or lockfile), no provider change, no 
 
 ## W12-R4-APP-LOCAL-I18N — app-owned Persian translation, independent of SDK `fa-IR`
 
-Status: **REVIEW PENDING; app + test + docs; the R3 build boundary is closed for Persian. No main-instance install.**
+Status: **SUPERSEDED / NOT ACCEPTED (W12-R5 decision). The R4 package was NOT installed. Historical record below.**
 
 ### 1. Why app-owned
 
@@ -2401,6 +2401,55 @@ This is the key difference from R3: **the app now ships Persian without the fork
 ### 7. Untouched
 
 No core change, no SDK-version change (app or lockfile), no provider change, no send/persist change, no Workflow change, no universal-identifier change. No main-instance install, no setting change, no message sent. **Persian browser render remains NOT VERIFIED.**
+
+## W12-R5-NATIVE-I18N — native Twenty translation via a fork-built SDK artifact
+
+Status: **REVIEW PENDING; the R4 translator was reverted and R4 is SUPERSEDED / NOT ACCEPTED; no main-instance install.**
+
+### 1. The decision and the minimal revert
+
+Translation is done with the **native Twenty mechanism**. Only the R4 *translator* was removed:
+
+- `send-message-composer.front-component.tsx` is back on `useTranslate()` and its local `getTextDirection` (RTL/LTR) helper;
+- `src/i18n/app-translate.ts` and `src/i18n/__tests__/app-translate.test.ts` were **deleted**;
+- `tsconfig.spec.json` and the R3 `sdk-translation-probe.test.ts` were **restored** to their R3 state.
+
+**Preserved:** the Persian catalog `locales/fa-IR.json`, the EMPTY/ERROR fix, the stable phone-load connection (`createPhoneOptionsConnection`) and its cleanup/invalidate, and the send flow. No unrelated change was touched.
+
+### 2. The native path already exists in this fork (not reimplemented)
+
+The fork adds `fa-IR` to `twenty-shared`'s `APP_LOCALES` (`packages/twenty-shared/src/translations/constants/AppLocales.ts`, fork commit `6cf109d9ac`). `twenty-shared` is a **devDependency** of `twenty-sdk` (not a runtime dependency), and the SDK build **bundles** it — the fork's `fa-IR` support ships inside `twenty-sdk`'s own `dist/login-*.mjs` chunk, which contains **both** `fa-IR` **and** the `Skipping translation file` message. The CLI's `loadFrontComponentTranslationCatalogs` therefore **accepts** `fa-IR` and bakes it into the front-component banner. No new capability was implemented.
+
+### 3. Build tool — the fork, packaged independently
+
+| Item | Value |
+|------|-------|
+| Source SHA | `61ecc50f31` |
+| Packaging method | the project's own `yarn pack` on each workspace package |
+| `twenty-sdk-2.42.0.tgz` | `sha256 885696F1C3C802234F058F4FF975920A19CB9FE985FAE182D5FE525AFA65503F` (6,630,341 bytes) |
+| `twenty-client-sdk-2.42.0.tgz` | `sha256 93C94D5A6C7C2F8D3AB4095A31FD2EFA1746970506A3D123DFD6D8CBA5F1314F` (244,120 bytes) |
+| Install | `npm install <tarballs>` in a clean dir **outside the monorepo** |
+| Dependencies | **no `twenty-shared`**; nothing borrowed from the monorepo |
+
+### 4. Communication built on Linux with that tool
+
+In a `node:24-bookworm` container, the app was installed from its **own lockfile** (`--immutable`) and built with the fork tool via `NODE_PATH`:
+
+- `dev:build --tarball` → `✓ Build succeeded (14 files)`; **no** "Skipping translation file" message;
+- the composer bundle's first line is the **native** banner:
+  `globalThis["__twentySdkFrontComponentTranslations__"]={"fa-IR":{"pi1oME":"ارسال پیام",…}}`;
+- the produced `communication-0.1.2.tgz` has **forward-slash paths** (`package/src/…`);
+- tarball `sha256 E051618531C733453B5BB93F94FE8DC1050075FA693C7ACF8A7302DE9BEB3F1D` (1,132,674 bytes).
+
+The catalog enters the bundle **through the SDK's native mechanism**, unlike R4.
+
+### 5. Runtime translation witness (real `t`)
+
+The R3 `sdk-translation-probe.test.ts` drives the **real `t`** from `twenty-sdk/front-component` against the produced bundle's baked banner and **passes** (real Persian keys + English fallback). The suite is **213/213** in both the monorepo and the Linux container; both typechecks exit 0 and `oxlint` is 0/0 in both.
+
+### 6. Untouched / not verified
+
+No core, server, SDK-version (app or lockfile), provider, send/persist, Workflow or universal-identifier change. No main-instance install, no setting change, no message sent. **The package was NOT installed anywhere, and the Persian browser render remains NOT VERIFIED.**
 
 ## W10-R6 — isolated logic-function execution restored
 
