@@ -29,7 +29,7 @@ Origin Sync:
 At that baseline `HEAD == origin/crm-platform`. This SHA is the **verified baseline the document was reconciled against**, not necessarily the current HEAD: each documentation commit moves the branch forward. Always run `git rev-parse HEAD` / `git rev-parse origin/crm-platform` yourself and fetch/fast-forward safely before acting.
 
 Last Accepted Milestone:
-`CRM-COMMUNICATIONS-001-W11-MOCK` — **HTTP Mock integration on app2/apple.** The full path `composer route → durable service → HTTP Mock` was exercised end-to-end with a **temporary in-network mock** (no host port, no redirect, no external call): two independent sends produced **SENT** (`providerMessageId=999001`) and **FAILED** with the mock's own reason (`mock rejection`) — the latter evidencing a real HTTP-time rejection path — with **exactly one mock request per send**, the Persian text and recipient matching the form verbatim, **exactly one app activity per Communication** on the Person timeline, and **no Refresh button** on the terminal cards (matches the deployed front-component source, where Refresh renders only for PENDING/UNAVAILABLE). Prior workspace variables were restored exactly and the mock stopped. **This is mock acceptance only: no real send, no delivery proof, and Kavenegar path only (RazPayamak not exercised).** W7 remains **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
+`CRM-COMMUNICATIONS-001-W11-MOCK` — **HTTP Mock integration on app2/apple, at the API level only.** The path `authenticated send route → durable service → HTTP Mock` was exercised end-to-end with a **temporary in-network mock** (no host port, no redirect, no external call): two sends issued by **direct route calls** produced **SENT** (`providerMessageId=999001`) and **FAILED** with the mock's own reason (`mock rejection`) — the latter evidencing a real HTTP-time rejection path — with **exactly one mock request per send**, the Persian text and recipient matching verbatim, and **exactly one app activity per Communication** on the Person timeline. Prior workspace variables were restored exactly and the mock stopped. **The browser composer path (form, Send click, success/error UI, opened SENT/FAILED card) is NOT VERIFIED (no browser evidence), and the Refresh action was NOT TESTED (asserted from source only).** **This is mock acceptance only: no real send, no delivery proof, and Kavenegar path only (RazPayamak not exercised).** W7 remains **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**.
 
 Earlier milestone: `CRM-COMMUNICATIONS-001-W10-R8-R2` — native tarball two-workspace distribution and execution-isolation evidence (install in `apple` + `Isolation Beta`; independent provider selection per workspace).
 
@@ -64,7 +64,7 @@ Implementation SHAs and recovery-document SHAs are listed separately. "Code-revi
 | W9-R2 | `b12a5c57f9` + `3654e15e1c` | `e8023c9b2e`, `a305247a1e`, `3654e15e1c` | **workspace-owned provider configuration** via native `applicationVariables` (9 vars, stable ids, secrets encrypted per workspace); native **Variables tab** verified with masked fake secret; registration `serverVariables` removed via an empty tombstone (0 registration rows on both instances); **runtime execution isolation NOT PERFORMED** (registry blocked) *(historical — superseded by W10-R6 execution restoration and W10-R8-R1/R2 isolation evidence)* |
 | W10-R8-R1 | (docs only — no app change) | `348606e2e2` | **native tarball distribution PROVEN on app2**: the unchanged Communication package was built with the native `twenty dev:build --tarball` (CLI 2.41.0), uploaded with `apple` auth via the native `uploadAppTarball` mutation (registration `e71d0025-…` converted LOCAL → **TARBALL**, UID/ownership/`isListed=false` preserved), and **installed into Isolation Beta** with Beta auth via the native `installApplication` mutation (new app row `5c02bf29-…` v0.1.0). **Beta installation PASS**; two-workspace **configuration** isolation PASS (storage witness); provider-selection execution witness NOT yet evidenced in R1; **no real provider request was made** |
 | W10-R8-R2 | (docs only — no app change) | `bbb1b5cb18` | **evidence gaps closed**: two-workspace **execution isolation PASS with an execution witness** — the real `/s/communication/send` executed in both workspaces in the same second, persisted `providerId` follows each workspace's own `COMMUNICATION_PROVIDER` (`kavenegar` vs `razpayamak`), two separate `LogicFunctionTriggerJob` runs observed; config re-test re-run in registered order with a third marker value; `workflowActionTriggerSettings` verified **null for all 4 functions in the manifest AND both installs' metadata** (W7 disabled at registration level, not merely workflow-row absence); upgrade-job state audited (no upgrade queue, `autoUpgrade=false`, TARBALL registration invisible to the NPM catalog sync); Recovery reconciled (install ≠ isolation, server JSON ≠ composer text, source/build evidence ≠ runtime evidence, `isListed=false` is a listing flag not privacy) |
-| W11-MOCK | (docs only — no app change) | (this commit) | **HTTP Mock integration PASS on app2/apple** — the full path `composer route → durable service → HTTP Mock` was exercised with a temporary in-network mock (no host port, no external call): two independent sends gave **SENT** (`providerMessageId=999001`) and **FAILED** (`mock rejection`, provider's own reason), **exactly one mock request each**, **exactly one app activity per Communication** on the Person timeline, and no Refresh button on the terminal cards (matches source); prior variables restored exactly, mock stopped. **Mock acceptance only — no real send, no delivery, Kavenegar path only; W7 disabled** |
+| W11-MOCK | (docs only — no app change) | (this commit) | **HTTP Mock integration PASS at the API level on app2/apple** — the path `authenticated send route → durable service → HTTP Mock` was exercised with a temporary in-network mock (no host port, no external call) via **direct route calls** (not composer clicks): two sends gave **SENT** (`providerMessageId=999001`) and **FAILED** (`mock rejection`, provider's own reason), **exactly one mock request each**, **exactly one app activity per Communication** on the Person timeline. **Browser composer path NOT VERIFIED (no browser evidence); Refresh NOT TESTED (source-only).** Prior variables restored exactly, mock stopped. **Mock acceptance only — no real send, no delivery, Kavenegar path only; W7 disabled** |
 
 **Evidence levels (do not conflate them):**
 
@@ -1863,9 +1863,9 @@ Scope: **one manual send** from the native Person composer, then history/`provid
 
 **Explicitly out of scope for this preparation:** sending now, auto-retry, code/SDK changes, enabling W7, and any change to app1/v2.42.6.
 
-## W11-MOCK — HTTP Mock integration on app2 (apple workspace)
+## W11-MOCK — HTTP Mock integration on app2 (apple workspace) — **API level only**
 
-Status: **PERFORMED and PASS — the full path `composer route → durable service → HTTP Mock` was exercised end-to-end with a temporary local mock; no real provider was contacted.** This is **mock acceptance only** — it is **not** a real send, **not** delivery proof, and it covers **Kavenegar only** (RazPayamak was not exercised; its provider never reads `KAVENEGAR_ENDPOINT`). W7 stays disabled. app1/v2.42.6 untouched.
+Status: **PERFORMED and PASS at the API level** — the path `authenticated send route → durable service → HTTP Mock` was exercised end-to-end with a temporary local mock; no real provider was contacted. **This is API-level evidence only: the sends were issued by direct `POST /s/communication/send` calls with an API key, NOT by clicking Send in the browser composer.** No browser evidence (form, success/error toast, opened SENT/FAILED card) was captured, so the browser-level integration remains **NOT VERIFIED**. This is **mock acceptance only** — it is **not** a real send, **not** delivery proof, and it covers **Kavenegar only** (RazPayamak was not exercised; its provider never reads `KAVENEGAR_ENDPOINT`). W7 stays disabled. app1/v2.42.6 untouched.
 
 ### 1. Prior state recorded before any change (presence only, no secret was read)
 
@@ -1893,14 +1893,16 @@ Status: **PERFORMED and PASS — the full path `composer route → durable servi
 
 Dedicated Person created for the test: **`W11-MOCK Test`** (`8d3dd9dc-7438-4f28-a092-0ed3b1c18ed9`), fake phone `9120000000` (IR).
 
-### 4. Two independent sends (through the real composer route `/s/communication/send`)
+### 4. Two independent sends — **direct route calls** (`POST /s/communication/send`, API key), not composer clicks
 
 | # | Body | Route result | Communication record | Provider id |
 |---|------|--------------|----------------------|-------------|
 | 1 | `تست اتصال پیامک CRM` | `{"success":true,"status":"SENT",…,"message":"Message sent."}` | `85715b96-a26b-4e40-8f86-15bd7c8e150b` — `status=SENT`, `providerMessageId=999001` | `kavenegar` |
 | 2 | `تست اتصال پیامک CRM - رد` | `{"success":false,"status":"FAILED","failureCode":"PROVIDER_FAILED","isOutcomeKnown":true,"error":"mock rejection"}` | `a6a30c40-963c-41b6-b039-7a1a4a229cac` — `status=FAILED`, `failureReason="mock rejection"` | `kavenegar` |
 
-**Mock received exactly one request per send** (its log): two `GET /v1/fake-mock-key/sms/send.json` entries, with `receptor=9120000000`, `sender=fake-sender`, and `message` matching the form text exactly (Persian preserved verbatim). No third request. The `FAILED` record carries the **provider's own reason** (`mock rejection`), which is direct evidence the HTTP call actually happened (a pre-HTTP config failure would instead show the orchestration constant).
+**Invocation method (disclosed):** both sends were issued by **direct HTTP calls to the authenticated route** (`POST http://192.168.4.84:3101/s/communication/send` with the `apple` API key and a JSON body `{personId, channel:"SMS", recipient, body}`). They were **not** performed by clicking the Send button in the browser composer. The composer's own UI path therefore remains **NOT VERIFIED** (see §7).
+
+**Mock received exactly one request per send** (retained log `/tmp/w11-mock-requests.jsonl`): two `GET /v1/fake-mock-key/sms/send.json` entries, with `receptor=9120000000`, `sender=fake-sender`, and `message` matching the submitted text exactly (Persian preserved verbatim). No third request. The `FAILED` record carries the **provider's own reason** (`mock rejection`), which is direct evidence the HTTP call actually happened (a pre-HTTP config failure would instead show the orchestration constant).
 
 ### 5. Timeline activities and Refresh
 
@@ -1908,15 +1910,25 @@ Dedicated Person created for the test: **`W11-MOCK Test`** (`8d3dd9dc-7438-4f28-
   - `bd852f61-d36c-446b-baa9-cd74f8fb7bfe` → record `85715b96…` (status snapshot `QUEUED`)
   - `6a452a07-fa65-4ac7-8412-52ddd1d462d2` → record `a6a30c40…` (status snapshot `QUEUED`)
 - **Note (correcting a reading pitfall):** each Communication *also* has **two generic Twenty audit activities** attached directly to the record (a create entry and an update entry, the latter with a `diff` property). Those are Twenty's own record history, **not** the app's timeline card; the app creates exactly one activity, on the Person, on `communication.created` only.
-- **Refresh button:** per the deployed front-component source (`communication-timeline-card.front-component.tsx`), the Refresh action renders **only** when the view is `PENDING` (QUEUED) or `UNAVAILABLE`. On the final `SENT` and `FAILED` cards **no Refresh button appears** — so no Refresh was exercised here, which is correct behavior, not a gap.
+- **Refresh button — source-level finding, and a separate non-test.** Per the deployed front-component source (`communication-timeline-card.front-component.tsx`), the Refresh action renders **only** when the view is `PENDING` (QUEUED) or `UNAVAILABLE`; on terminal `SENT`/`FAILED` cards it does not render. This is a **source-reading observation**, distinct from any behavioral test: **the Refresh action was NOT exercised** (no PENDING/UNAVAILABLE card was opened in the browser, and no Refresh click was performed). The absence of a Refresh button on terminal cards is therefore **asserted from source, not verified live**.
 
 ### 6. Restore and teardown (finally)
 
-- All four variables restored **exactly** to the recorded prior state (`KAVENEGAR_API_KEY`/`ENDPOINT`/`SENDER` → empty; `COMMUNICATION_PROVIDER` → `kavenegar`).
+- All four variables restored **exactly** to the recorded prior state (`KAVENEGAR_API_KEY`/`ENDPOINT`/`SENDER` → empty; `COMMUNICATION_PROVIDER` → `kavenegar`). Restore read-back (presence only, no secret printed): `COMMUNICATION_PROVIDER: PRESENT`; `KAVENEGAR_API_KEY: empty`; `KAVENEGAR_ENDPOINT: empty`; `KAVENEGAR_SENDER: empty`.
 - Mock stopped; port `18080` confirmed free (`NO_LISTENER_18080`); its script removed.
 - **Test artifacts intentionally retained (not deleted):** Person `8d3dd9dc-…`; records `85715b96-…` and `a6a30c40-…`; their two Person activities. No permanent deletion or general cleanup was performed.
 
-### 7. Scope and limitations
+### 7. Scope, verification status and limitations
+
+| Item | Status |
+|------|--------|
+| Route → durable service → HTTP Mock (success) | **VERIFIED (API level)** |
+| Route → durable service → HTTP Mock (rejection) | **VERIFIED (API level)** |
+| Exactly one mock request per send; Persian text + recipient match | **VERIFIED (mock log)** |
+| Persisted record `SENT` + `providerMessageId`; `FAILED` + provider reason | **VERIFIED (record read-back)** |
+| Exactly one app activity per Communication on the Person timeline | **VERIFIED (record + activity read-back)** |
+| Browser composer form / Send click / success-error toast / opened SENT-FAILED card | **NOT VERIFIED — no browser evidence captured** |
+| Refresh action behavior | **NOT TESTED** (asserted from source only; no PENDING/UNAVAILABLE card opened) |
 
 - **Mock acceptance, not real sending.** The success `SENT` + `providerMessageId=999001` is a **simulated** provider response; no SMS was sent, no delivery occurred, and `DELIVERED` was never produced (the mock never returns that status, matching the real drivers which have `supportsDeliveryReceipt:false`).
 - **Kavenegar path only.** RazPayamak was not exercised and is not claimed.
