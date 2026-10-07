@@ -10,9 +10,9 @@ import {
 } from 'twenty-sdk/front-component';
 
 import {
+  createPhoneOptionsLoader,
   isPhoneSelectionReady,
   type PhoneOptionsLoadState,
-  resolvePhoneOptionsLoadState,
 } from 'src/components/phone-options-load-state';
 import { submitPersonCommunication } from 'src/components/submit-person-communication';
 import { SEND_MESSAGE_COMPOSER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
@@ -80,39 +80,27 @@ const SendMessageComposer = () => {
   const isSubmittingRef = useRef(false);
 
   const loadPhones = useCallback(async () => {
-    // Reset to LOADING and drop any previously selected number: after a failed
-    // reload, stale data must not survive.
-    setPhonesState({ kind: 'LOADING' });
-    setSelectedPhone('');
+    // A monotonic request id guarantees a slow earlier response cannot
+    // overwrite a newer one; the loader drops stale results and stale failures
+    // entirely, and always resets the selected number to match its state.
+    const loader = createPhoneOptionsLoader({
+      transport: async () => {
+        if (!personId) {
+          throw new Error('No person is selected.');
+        }
 
-    if (!personId) {
-      setPhonesState({ kind: 'ERROR' });
-      setError(t('No person is selected.'));
+        return callAppRoute('/communication/person-phones', 'POST', {
+          personId,
+        });
+      },
+      onState: (state, selected) => {
+        setPhonesState(state);
+        setSelectedPhone(selected);
+      },
+    });
 
-      return;
-    }
-
-    try {
-      const response = await callAppRoute('/communication/person-phones', 'POST', {
-        personId,
-      });
-
-      const nextState = resolvePhoneOptionsLoadState({
-        ok: response.ok,
-        data: response.data,
-      });
-
-      setPhonesState(nextState);
-
-      if (nextState.kind === 'READY') {
-        setSelectedPhone(nextState.selectedPhone);
-      }
-    } catch {
-      // HTTP, network or body-parsing failure: the numbers may still exist, so
-      // this is an ERROR, never an empty result.
-      setPhonesState({ kind: 'ERROR' });
-    }
-  }, [personId, t]);
+    await loader.load();
+  }, [personId]);
 
   useEffect(() => {
     loadPhones();

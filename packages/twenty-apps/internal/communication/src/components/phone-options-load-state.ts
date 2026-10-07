@@ -69,12 +69,19 @@ export const resolvePhoneOptionsLoadState = (response: {
     return { kind: 'ERROR' };
   }
 
+  // EMPTY is reserved for a genuinely empty list. A list that carries entries
+  // but none of them is a usable phone number is a malformed response, not an
+  // absence of numbers.
+  if (payload.phones.length === 0) {
+    return { kind: 'EMPTY' };
+  }
+
   const phones = payload.phones
     .map(toPhoneOption)
     .filter((phone): phone is PhoneOption => phone !== null);
 
   if (phones.length === 0) {
-    return { kind: 'EMPTY' };
+    return { kind: 'ERROR' };
   }
 
   const primary = phones.find((phone) => phone.isPrimary) ?? phones[0];
@@ -86,3 +93,59 @@ export const resolvePhoneOptionsLoadState = (response: {
 export const isPhoneSelectionReady = (
   state: PhoneOptionsLoadState,
 ): boolean => state.kind === 'READY' && state.selectedPhone.length > 0;
+
+export type PhoneOptionsTransport = () => Promise<{
+  ok: boolean;
+  data: unknown;
+}>;
+
+export type PhoneOptionsLoader = {
+  /** Starts a load. Returns a promise that settles when this request does. */
+  load: () => Promise<void>;
+};
+
+/**
+ * Wraps the person-phones request with a monotonic request id so a slow earlier
+ * response cannot overwrite the state produced by a newer request. Only the
+ * latest request is allowed to publish state or change `selectedPhone`; a stale
+ * result (or a stale failure) is dropped entirely.
+ *
+ * The callback receives the new state together with the number to select, so
+ * the caller never has to reconcile a stale selection itself.
+ */
+export const createPhoneOptionsLoader = (options: {
+  transport: PhoneOptionsTransport;
+  onState: (state: PhoneOptionsLoadState, selectedPhone: string) => void;
+}): PhoneOptionsLoader => {
+  let latestRequestId = 0;
+
+  const load = async (): Promise<void> => {
+    latestRequestId += 1;
+    const requestId = latestRequestId;
+
+    options.onState({ kind: 'LOADING' }, '');
+
+    try {
+      const response = await options.transport();
+
+      if (requestId !== latestRequestId) {
+        return;
+      }
+
+      const nextState = resolvePhoneOptionsLoadState(response);
+
+      options.onState(
+        nextState,
+        nextState.kind === 'READY' ? nextState.selectedPhone : '',
+      );
+    } catch {
+      if (requestId !== latestRequestId) {
+        return;
+      }
+
+      options.onState({ kind: 'ERROR' }, '');
+    }
+  };
+
+  return { load };
+};
