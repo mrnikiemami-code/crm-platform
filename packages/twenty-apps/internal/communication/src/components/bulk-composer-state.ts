@@ -97,6 +97,42 @@ const toStringArray = (value: unknown): string[] =>
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
 
+const toInvalidOverrideReason = (value: unknown): InvalidOverrideReason =>
+  value === 'EMPTY_SELECTION' || value === 'INVALID_TYPE'
+    ? value
+    : 'NOT_OWNED_BY_PERSON';
+
+// Accepts the server's `{ personId, reason }` entries. For robustness a bare
+// string id (an older shape) is also accepted, defaulting to the
+// NOT_OWNED_BY_PERSON reason.
+const toInvalidOverride = (value: unknown): InvalidOverrideEntry | null => {
+  if (typeof value === 'string' && value.length > 0) {
+    return { personId: value, reason: 'NOT_OWNED_BY_PERSON' };
+  }
+
+  if (value === null || typeof value !== 'object') {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (!isNonEmptyString(record.personId)) {
+    return null;
+  }
+
+  return {
+    personId: record.personId,
+    reason: toInvalidOverrideReason(record.reason),
+  };
+};
+
+const toInvalidOverrides = (value: unknown): InvalidOverrideEntry[] =>
+  Array.isArray(value)
+    ? value
+        .map(toInvalidOverride)
+        .filter((entry): entry is InvalidOverrideEntry => entry !== null)
+    : [];
+
 const toSharedPhoneWarnings = (value: unknown): SharedPhoneWarning[] => {
   if (!Array.isArray(value)) {
     return [];
@@ -196,10 +232,20 @@ export type PreviewLoadState =
       readyCount: number;
       sharedPhoneWarnings: SharedPhoneWarning[];
       duplicatePersonIds: string[];
-      /** Person ids whose phone override was rejected by the server. */
-      invalidOverrides: string[];
+      /** Every invalid override the server reported, with its reason. */
+      invalidOverrides: InvalidOverrideEntry[];
     }
   | { kind: 'ERROR' };
+
+export type InvalidOverrideReason =
+  | 'EMPTY_SELECTION'
+  | 'INVALID_TYPE'
+  | 'NOT_OWNED_BY_PERSON';
+
+export type InvalidOverrideEntry = {
+  personId: string;
+  reason: InvalidOverrideReason;
+};
 
 const toIssue = (value: unknown): PreviewIssue | null => {
   if (value === null || typeof value !== 'object') {
@@ -287,7 +333,7 @@ export const resolvePreviewLoadState = (response: {
         : previews.filter((preview) => preview.isReadyToSend).length,
     sharedPhoneWarnings: toSharedPhoneWarnings(payload.sharedPhoneWarnings),
     duplicatePersonIds: toStringArray(payload.duplicatePersonIds),
-    invalidOverrides: toStringArray(payload.invalidOverrides),
+    invalidOverrides: toInvalidOverrides(payload.invalidOverrides),
   };
 };
 

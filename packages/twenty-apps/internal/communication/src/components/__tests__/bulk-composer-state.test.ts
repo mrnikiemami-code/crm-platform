@@ -130,7 +130,7 @@ describe('resolvePreviewLoadState', () => {
         ],
         isBodyEmpty: true,
         readyCount: 0,
-        invalidOverrides: ['p2'],
+        invalidOverrides: [{ personId: 'p2', reason: 'NOT_OWNED_BY_PERSON' }],
         sharedPhoneWarnings: [{ phone: '09120000001', personIds: ['p1', 'p3'] }],
       },
     });
@@ -139,9 +139,34 @@ describe('resolvePreviewLoadState', () => {
 
     if (state.kind === 'READY') {
       expect(state.isBodyEmpty).toBe(true);
-      expect(state.invalidOverrides).toEqual(['p2']);
+      expect(state.invalidOverrides).toEqual([
+        { personId: 'p2', reason: 'NOT_OWNED_BY_PERSON' },
+      ]);
       expect(state.sharedPhoneWarnings).toEqual([
         { phone: '09120000001', personIds: ['p1', 'p3'] },
+      ]);
+    }
+  });
+
+  it('parses invalidOverrides entries with their reasons (and tolerates a bare id)', () => {
+    const state = resolvePreviewLoadState({
+      ok: true,
+      data: {
+        success: true,
+        previews: [],
+        invalidOverrides: [
+          { personId: 'p1', reason: 'EMPTY_SELECTION' },
+          { personId: 'p2', reason: 'INVALID_TYPE' },
+          'p3',
+        ],
+      },
+    });
+
+    if (state.kind === 'READY') {
+      expect(state.invalidOverrides).toEqual([
+        { personId: 'p1', reason: 'EMPTY_SELECTION' },
+        { personId: 'p2', reason: 'INVALID_TYPE' },
+        { personId: 'p3', reason: 'NOT_OWNED_BY_PERSON' },
       ]);
     }
   });

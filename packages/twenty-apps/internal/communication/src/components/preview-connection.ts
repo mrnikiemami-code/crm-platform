@@ -6,7 +6,11 @@ import {
 export type PreviewRequest = {
   body: string;
   personIds: string[];
-  phoneOverrides: Record<string, string>;
+  /**
+   * Present keys are explicit choices and are validated by the server (an empty
+   * or invalid value is reported, never replaced by the Person's own number).
+   */
+  phoneOverrides: Record<string, unknown>;
 };
 
 export type PreviewTransport = (

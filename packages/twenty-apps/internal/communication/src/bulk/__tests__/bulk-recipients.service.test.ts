@@ -190,14 +190,14 @@ describe('previewTemplate', () => {
     }
   });
 
-  it('ignores a phone override that does not belong to the person', async () => {
+  it('invalidates a phone override that does not belong to the person (no fallback, not ready)', async () => {
     const { client } = buildFakeClient([
       { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
     ]);
 
     const result = await previewTemplate({
       client,
-      body: '@name',
+      body: 'یک پیام ساده',
       personIds: ['p1'],
       phoneOverrides: { p1: '09999999999' },
     });
@@ -205,7 +205,13 @@ describe('previewTemplate', () => {
     expect(result.success).toBe(true);
 
     if (result.success) {
-      expect(result.previews[0].phone).toBe('09120000001');
+      expect(result.invalidOverrides).toEqual([
+        { personId: 'p1', reason: 'NOT_OWNED_BY_PERSON' },
+      ]);
+      // No destination: neither the bogus number nor the primary is used.
+      expect(result.previews[0].phone).toBeNull();
+      expect(result.previews[0].isReadyToSend).toBe(false);
+      expect(result.readyCount).toBe(0);
     }
   });
 
@@ -222,7 +228,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
-      body: '@name',
+      body: 'یک پیام ساده',
       personIds: ['p1'],
       phoneOverrides: { p1: '09350000001' },
     });
@@ -230,28 +236,121 @@ describe('previewTemplate', () => {
     expect(result.success).toBe(true);
 
     if (result.success) {
+      expect(result.invalidOverrides).toEqual([]);
       expect(result.previews[0].phone).toBe('09350000001');
+      expect(result.previews[0].isReadyToSend).toBe(true);
     }
   });
 
-  it('reports an invalid override explicitly and keeps the person number (never silent substitution)', async () => {
+  it('treats an explicit EMPTY override as invalid and never falls back to the primary', async () => {
     const { client } = buildFakeClient([
       { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
     ]);
 
     const result = await previewTemplate({
       client,
-      body: '@name',
+      body: 'یک پیام ساده',
       personIds: ['p1'],
-      phoneOverrides: { p1: '09999999999' },
+      phoneOverrides: { p1: '' },
     });
 
     expect(result.success).toBe(true);
 
     if (result.success) {
-      expect(result.invalidOverrides).toEqual(['p1']);
-      // The recipient keeps its OWN number; the bogus number is not used.
-      expect(result.previews[0].phone).toBe('09120000001');
+      expect(result.invalidOverrides).toEqual([
+        { personId: 'p1', reason: 'EMPTY_SELECTION' },
+      ]);
+      expect(result.previews[0].phone).toBeNull();
+      expect(result.previews[0].isReadyToSend).toBe(false);
+      expect(result.readyCount).toBe(0);
+    }
+  });
+
+  it('treats an INVALID-TYPE override as invalid and never falls back to the primary', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+    ]);
+
+    const result = await previewTemplate({
+      client,
+      body: 'یک پیام ساده',
+      personIds: ['p1'],
+      phoneOverrides: { p1: 12345 },
+    });
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      expect(result.invalidOverrides).toEqual([
+        { personId: 'p1', reason: 'INVALID_TYPE' },
+      ]);
+      expect(result.previews[0].phone).toBeNull();
+      expect(result.previews[0].isReadyToSend).toBe(false);
+      expect(result.readyCount).toBe(0);
+    }
+  });
+
+  it('keeps the primary for an ABSENT key while invalidating another recipient', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+      { id: 'p2', phones: { primaryPhoneNumber: '09120000002' } },
+    ]);
+
+    // p1 has no key (keeps its primary); p2 has an invalid override.
+    const result = await previewTemplate({
+      client,
+      body: 'یک پیام ساده',
+      personIds: ['p1', 'p2'],
+      phoneOverrides: { p2: '09999999999' },
+    });
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      const byPerson = new Map(
+        result.previews.map((preview) => [preview.personId, preview]),
+      );
+
+      expect(byPerson.get('p1')?.phone).toBe('09120000001');
+      expect(byPerson.get('p1')?.isReadyToSend).toBe(true);
+      expect(byPerson.get('p2')?.phone).toBeNull();
+      expect(byPerson.get('p2')?.isReadyToSend).toBe(false);
+      expect(result.readyCount).toBe(1);
+    }
+  });
+
+  it('leaves a VALID recipient ready when another recipient is invalid', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+      {
+        id: 'p2',
+        phones: {
+          primaryPhoneNumber: '09120000002',
+          additionalPhones: [{ number: '09350000002' }],
+        },
+      },
+    ]);
+
+    const result = await previewTemplate({
+      client,
+      body: 'یک پیام ساده',
+      personIds: ['p1', 'p2'],
+      phoneOverrides: { p1: '09999999999', p2: '09350000002' },
+    });
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      const byPerson = new Map(
+        result.previews.map((preview) => [preview.personId, preview]),
+      );
+
+      expect(byPerson.get('p1')?.phone).toBeNull();
+      expect(byPerson.get('p1')?.isReadyToSend).toBe(false);
+      // The valid recipient's chosen number is applied and unchanged.
+      expect(byPerson.get('p2')?.phone).toBe('09350000002');
+      expect(byPerson.get('p2')?.isReadyToSend).toBe(true);
+      expect(result.readyCount).toBe(1);
     }
   });
 

@@ -186,7 +186,16 @@ describe('applyPhoneOverrides', () => {
     expect(applied.recipients[0].selectedPhone).toBe('09350000001');
   });
 
-  it('reports an invalid override and leaves the person number untouched (no silent substitution)', () => {
+  it('keeps the person default when the key is ABSENT (no choice expressed)', () => {
+    const recipients = [buildRecipient('p1', '09120000001')];
+
+    const applied = applyPhoneOverrides({ recipients, overrides: {} });
+
+    expect(applied.invalidOverrides).toEqual([]);
+    expect(applied.recipients[0].selectedPhone).toBe('09120000001');
+  });
+
+  it('reports a NOT_OWNED_BY_PERSON override and leaves NO number (never the primary)', () => {
     const recipients = [buildRecipient('p1', '09120000001')];
 
     const applied = applyPhoneOverrides({
@@ -194,9 +203,58 @@ describe('applyPhoneOverrides', () => {
       overrides: { p1: '09999999999' },
     });
 
-    expect(applied.invalidOverrides).toEqual(['p1']);
-    // The recipient keeps its OWN number; the bogus number is not used.
-    expect(applied.recipients[0].selectedPhone).toBe('09120000001');
+    expect(applied.invalidOverrides).toEqual([
+      { personId: 'p1', reason: 'NOT_OWNED_BY_PERSON' },
+    ]);
+    // The bogus number is not used AND the primary is not substituted for it.
+    expect(applied.recipients[0].selectedPhone).toBeNull();
+  });
+
+  it('reports an explicit EMPTY_SELECTION and leaves NO number (never the primary)', () => {
+    const recipients = [buildRecipient('p1', '09120000001')];
+
+    const applied = applyPhoneOverrides({
+      recipients,
+      overrides: { p1: '' },
+    });
+
+    expect(applied.invalidOverrides).toEqual([
+      { personId: 'p1', reason: 'EMPTY_SELECTION' },
+    ]);
+    expect(applied.recipients[0].selectedPhone).toBeNull();
+  });
+
+  it('reports an INVALID_TYPE override and leaves NO number (never the primary)', () => {
+    const recipients = [buildRecipient('p1', '09120000001')];
+
+    const applied = applyPhoneOverrides({
+      recipients,
+      overrides: { p1: 12345 },
+    });
+
+    expect(applied.invalidOverrides).toEqual([
+      { personId: 'p1', reason: 'INVALID_TYPE' },
+    ]);
+    expect(applied.recipients[0].selectedPhone).toBeNull();
+  });
+
+  it('leaves a VALID recipient untouched when another recipient is invalid', () => {
+    const recipients = [
+      buildRecipient('p1', '09120000001'),
+      buildRecipient('p2', '09120000002', ['09120000002', '09350000002']),
+    ];
+
+    const applied = applyPhoneOverrides({
+      recipients,
+      overrides: { p1: '09999999999', p2: '09350000002' },
+    });
+
+    expect(applied.invalidOverrides).toEqual([
+      { personId: 'p1', reason: 'NOT_OWNED_BY_PERSON' },
+    ]);
+    // p1 is invalidated; p2's valid choice is applied and unchanged.
+    expect(applied.recipients[0].selectedPhone).toBeNull();
+    expect(applied.recipients[1].selectedPhone).toBe('09350000002');
   });
 });
 

@@ -184,16 +184,17 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     [visibleRecipients, phoneSelections],
   );
 
-  // Every sendable recipient's CURRENT number is sent as an override, so the
-  // server evaluates exactly the numbers the user sees. A value the server does
-  // not recognise as belonging to that Person is reported as invalid.
-  const buildPhoneOverrides = (): Record<string, string> => {
-    const overrides: Record<string, string> = {};
+  // Every sendable recipient's CURRENT selection is sent as an override, so the
+  // server evaluates exactly what the user sees. An EXPLICITLY empty selection
+  // is sent as an empty string (not omitted) so the server reports it as an
+  // invalid override instead of falling back to the Person's own number.
+  const buildPhoneOverrides = (): Record<string, unknown> => {
+    const overrides: Record<string, unknown> = {};
 
     for (const recipient of sendableRecipients) {
       const chosen = chosenPhoneByPersonId.get(recipient.personId);
 
-      if (typeof chosen === 'string' && chosen.length > 0) {
+      if (typeof chosen === 'string') {
         overrides[recipient.personId] = chosen;
       }
     }
@@ -455,8 +456,14 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
               {t('Some selected numbers were invalid and were ignored:')}{' '}
               {previewState.invalidOverrides
                 .map(
-                  (personId) =>
-                    displayNameByPersonId.get(personId) ?? personId,
+                  (entry) =>
+                    `${displayNameByPersonId.get(entry.personId) ?? entry.personId} (${t(
+                      entry.reason === 'NOT_OWNED_BY_PERSON'
+                        ? 'not a number of this person'
+                        : entry.reason === 'EMPTY_SELECTION'
+                          ? 'no number selected'
+                          : 'invalid value',
+                    )})`,
                 )
                 .join(', ')}
             </p>

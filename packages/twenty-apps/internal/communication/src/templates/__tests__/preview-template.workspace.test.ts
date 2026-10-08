@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { previewTemplate } from 'src/templates/preview-template.service';
+import {
+  previewTemplate,
+  readPhoneOverrides,
+} from 'src/templates/preview-template.service';
 
 // Every recipient value the preview uses comes from the workspace-scoped read.
 // A Person id that belongs to another workspace is simply not returned by the
@@ -65,5 +68,30 @@ describe('previewTemplate workspace separation', () => {
     };
 
     expect(payload.people.__args.filter.id.in).toEqual(['mine']);
+  });
+});
+
+describe('readPhoneOverrides (absent key vs explicit invalid choice)', () => {
+  it('keeps an explicitly empty string so it can be reported, not dropped', () => {
+    expect(readPhoneOverrides({ p1: '' })).toEqual({ p1: '' });
+  });
+
+  it('keeps an invalid-typed value so it can be reported, not dropped', () => {
+    expect(readPhoneOverrides({ p1: 12345 })).toEqual({ p1: 12345 });
+  });
+
+  it('does not invent a key the caller never sent', () => {
+    expect(readPhoneOverrides({ p1: '09120000001' })).toEqual({
+      p1: '09120000001',
+    });
+    expect(Object.prototype.hasOwnProperty.call(readPhoneOverrides({}), 'p1')).toBe(
+      false,
+    );
+  });
+
+  it('returns an empty map for a non-object input', () => {
+    expect(readPhoneOverrides(null)).toEqual({});
+    expect(readPhoneOverrides('x')).toEqual({});
+    expect(readPhoneOverrides([])).toEqual({});
   });
 });

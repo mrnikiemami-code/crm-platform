@@ -33,8 +33,29 @@ export type BulkRecipient = {
   status: BulkRecipientStatus;
   /** Selectable numbers, primary first. Empty when none or inaccessible. */
   phones: PersonPhoneOption[];
-  /** Default selection: the primary number, or `null` when not sendable. */
+  /**
+   * The number that would be used, or `null` when the recipient cannot be sent
+   * to. `null` covers both "no number at all" and "the caller selected a number
+   * that does not belong to this Person" — in neither case is a number invented.
+   */
   selectedPhone: string | null;
+};
+
+/** Why a phone override was rejected. */
+export type InvalidOverrideReason =
+  | 'EMPTY_SELECTION'
+  | 'INVALID_TYPE'
+  | 'NOT_OWNED_BY_PERSON';
+
+export type InvalidPhoneOverride = {
+  personId: string;
+  reason: InvalidOverrideReason;
+};
+
+/** A key the caller did not supply at all, as opposed to an explicit choice. */
+export type PhoneOverrides = {
+  /** Only keys the caller actually supplied; an absent key is not listed. */
+  present: Record<string, unknown>;
 };
 
 export type { SharedPhoneWarning };
@@ -81,42 +102,70 @@ export const recomputeSharedPhoneWarnings = (
 export type PhoneOverrideApplication = {
   recipients: BulkRecipient[];
   /**
-   * Person ids whose override was NOT one of that Person's own numbers. An
-   * invalid override is reported and the recipient is left unchanged — the
-   * primary number is never silently substituted for an invalid choice.
+   * Every override the caller supplied that was NOT a valid number of that
+   * Person, with the specific reason. The recipient is set to `selectedPhone:
+   * null` (never the primary, never the bogus value) and is therefore not ready
+   * to send and excluded from `readyCount`.
    */
-  invalidOverrides: string[];
+  invalidOverrides: InvalidPhoneOverride[];
 };
 
 /**
- * Applies per-recipient phone overrides. Only a number that actually belongs to
- * the Person is accepted; any other value is reported as invalid and ignored.
+ * Applies per-recipient phone overrides.
+ *
+ * Distinguishes an ABSENT key (the caller expressed no choice → keep the
+ * recipient's own default) from an EXPLICIT choice that is empty, of an invalid
+ * type, or not a number of that Person. An explicit invalid choice is reported
+ * and the recipient is left with NO destination (`selectedPhone: null`) — the
+ * primary number is never substituted for it. A valid override changes only its
+ * own recipient.
  */
 export const applyPhoneOverrides = ({
   recipients,
   overrides,
 }: {
   recipients: readonly BulkRecipient[];
-  overrides: Record<string, string>;
+  overrides: Record<string, unknown>;
 }): PhoneOverrideApplication => {
-  const invalidOverrides: string[] = [];
+  const invalidOverrides: InvalidPhoneOverride[] = [];
 
   const nextRecipients = recipients.map((recipient) => {
+    if (!Object.prototype.hasOwnProperty.call(overrides, recipient.personId)) {
+      return recipient;
+    }
+
     const override = overrides[recipient.personId];
 
-    if (override === undefined) {
-      return recipient;
+    if (typeof override !== 'string') {
+      invalidOverrides.push({
+        personId: recipient.personId,
+        reason: 'INVALID_TYPE',
+      });
+
+      return { ...recipient, selectedPhone: null };
     }
 
-    const isAllowed = recipient.phones.some((phone) => phone.value === override);
+    if (override.trim().length === 0) {
+      invalidOverrides.push({
+        personId: recipient.personId,
+        reason: 'EMPTY_SELECTION',
+      });
 
-    if (!isAllowed) {
-      invalidOverrides.push(recipient.personId);
-
-      return recipient;
+      return { ...recipient, selectedPhone: null };
     }
 
-    return { ...recipient, selectedPhone: override };
+    const trimmed = override.trim();
+
+    if (!recipient.phones.some((phone) => phone.value === trimmed)) {
+      invalidOverrides.push({
+        personId: recipient.personId,
+        reason: 'NOT_OWNED_BY_PERSON',
+      });
+
+      return { ...recipient, selectedPhone: null };
+    }
+
+    return { ...recipient, selectedPhone: trimmed };
   });
 
   return { recipients: nextRecipients, invalidOverrides };
