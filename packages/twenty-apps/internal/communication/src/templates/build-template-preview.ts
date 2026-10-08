@@ -14,8 +14,13 @@ export type TemplateRecipientPreview = {
   previewText: string;
   /** True when any placeholder was unknown or an empty field. */
   hasUnresolvedVariables: boolean;
+  /** True when the body is empty or whitespace only. */
+  isBodyEmpty: boolean;
   issues: TemplateInterpolationIssue[];
-  /** A recipient can only be ready when it has a phone AND no open issues. */
+  /**
+   * A recipient is ready only when it has a phone, the body is not blank, and
+   * no variable is unresolved.
+   */
   isReadyToSend: boolean;
 };
 
@@ -23,7 +28,9 @@ export type TemplatePreview = {
   previews: TemplateRecipientPreview[];
   /** True when ANY recipient has an unresolved variable. */
   hasUnresolvedVariables: boolean;
-  /** Number of recipients ready to send (phone + no open issues). */
+  /** True when the body is empty or whitespace only. */
+  isBodyEmpty: boolean;
+  /** Number of recipients ready to send (phone + non-blank body + no issues). */
   readyCount: number;
 };
 
@@ -42,6 +49,10 @@ export const buildTemplatePreview = ({
   recipients: BulkRecipient[];
   recipientData: Map<string, TemplateRecipientData>;
 }): TemplatePreview => {
+  // An empty (or whitespace-only) body is never a message: every recipient is
+  // reported as not ready, regardless of phone or variables.
+  const isBodyEmpty = body.trim().length === 0;
+
   const previews: TemplateRecipientPreview[] = recipients.map((recipient) => {
     const data = recipientData.get(recipient.personId) ?? {
       firstName: null,
@@ -59,9 +70,11 @@ export const buildTemplatePreview = ({
       phone: recipient.selectedPhone,
       previewText: interpolated.text,
       hasUnresolvedVariables: interpolated.hasUnresolvedVariables,
+      isBodyEmpty,
       issues: interpolated.issues,
-      // An unresolved variable must NEVER be presented as ready to send.
-      isReadyToSend: hasPhone && !interpolated.hasUnresolvedVariables,
+      // An unresolved variable or a blank body must NEVER be ready to send.
+      isReadyToSend:
+        hasPhone && !interpolated.hasUnresolvedVariables && !isBodyEmpty,
     };
   });
 
@@ -70,6 +83,7 @@ export const buildTemplatePreview = ({
     hasUnresolvedVariables: previews.some(
       (preview) => preview.hasUnresolvedVariables,
     ),
+    isBodyEmpty,
     readyCount: previews.filter((preview) => preview.isReadyToSend).length,
   };
 };

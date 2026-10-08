@@ -39,8 +39,11 @@ describe('normalizePersonIds', () => {
     expect(normalizePersonIds(null)).toBeNull();
   });
 
-  it('trims, drops empties and de-duplicates', () => {
+  it('trims, drops empties and PRESERVES duplicates for the report', () => {
+    // Duplicates are intentionally kept: the resolver reports them. Removing
+    // them here would silently erase the duplicate report.
     expect(normalizePersonIds([' p1 ', 'p1', '', 'p2', 42])).toEqual([
+      'p1',
       'p1',
       'p2',
     ]);
@@ -96,6 +99,24 @@ describe('listBulkRecipients', () => {
     const result = await listBulkRecipients({ client, personIds: [] });
 
     expect(result).toEqual({ success: false, error: '`personIds` is required.' });
+  });
+
+  it('reports duplicates from the raw selection instead of pre-removing them', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+    ]);
+
+    const result = await listBulkRecipients({
+      client,
+      personIds: ['p1', 'p1', 'p1'],
+    });
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      expect(result.duplicatePersonIds).toEqual(['p1']);
+      expect(result.recipients.map((r) => r.personId)).toEqual(['p1']);
+    }
   });
 });
 
@@ -211,5 +232,131 @@ describe('previewTemplate', () => {
     if (result.success) {
       expect(result.previews[0].phone).toBe('09350000001');
     }
+  });
+
+  it('reports an invalid override explicitly and keeps the person number (never silent substitution)', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+    ]);
+
+    const result = await previewTemplate({
+      client,
+      body: '@name',
+      personIds: ['p1'],
+      phoneOverrides: { p1: '09999999999' },
+    });
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      expect(result.invalidOverrides).toEqual(['p1']);
+      // The recipient keeps its OWN number; the bogus number is not used.
+      expect(result.previews[0].phone).toBe('09120000001');
+    }
+  });
+
+  it('never marks an empty or whitespace-only body ready', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+    ]);
+
+    for (const body of ['', '   ', '\n\t ']) {
+      const result = await previewTemplate({
+        client,
+        body,
+        personIds: ['p1'],
+        phoneOverrides: {},
+      });
+
+      expect(result.success).toBe(true);
+
+      if (result.success) {
+        expect(result.isBodyEmpty).toBe(true);
+        expect(result.readyCount).toBe(0);
+        expect(result.previews[0].isReadyToSend).toBe(false);
+      }
+    }
+  });
+
+  it('recomputes the shared-number warning from the numbers used AFTER overrides', async () => {
+    const { client } = buildFakeClient([
+      {
+        id: 'p1',
+        phones: {
+          primaryPhoneNumber: '09120000001',
+          // A second number that is ALSO p2's primary, so switching p1 to it
+          // creates a shared number that the server must report.
+          additionalPhones: [{ number: '09120000002' }],
+        },
+      },
+      { id: 'p2', phones: { primaryPhoneNumber: '09120000002' } },
+    ]);
+
+    // Without an override the two people use different numbers.
+    const before = await previewTemplate({
+      client,
+      body: '@name',
+      personIds: ['p1', 'p2'],
+      phoneOverrides: {},
+    });
+
+    expect(before.success).toBe(true);
+
+    if (before.success) {
+      expect(before.sharedPhoneWarnings).toEqual([]);
+    }
+
+    // Overriding p1 to p2's number CREATES a shared number, which the server
+    // must report because it recomputes after applying overrides.
+    const after = await previewTemplate({
+      client,
+      body: '@name',
+      personIds: ['p1', 'p2'],
+      phoneOverrides: { p1: '09120000002' },
+    });
+
+    expect(after.success).toBe(true);
+
+    if (after.success) {
+      expect(after.sharedPhoneWarnings).toEqual([
+        { phone: '09120000002', personIds: ['p1', 'p2'] },
+      ]);
+    }
+  });
+
+  it('reports duplicates the caller sent instead of silently collapsing them first', async () => {
+    const { client } = buildFakeClient([
+      { id: 'p1', phones: { primaryPhoneNumber: '09120000001' } },
+    ]);
+
+    const result = await previewTemplate({
+      client,
+      body: '@name',
+      personIds: ['p1', 'p1', 'p1'],
+      phoneOverrides: {},
+    });
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      expect(result.duplicatePersonIds).toEqual(['p1']);
+    }
+  });
+
+  it('applies the 200 cap to the preview route', async () => {
+    const { client } = buildFakeClient([]);
+    const tooMany = Array.from({ length: 201 }, (_, index) => `p${index}`);
+
+    const result = await previewTemplate({
+      client,
+      body: '@name',
+      personIds: tooMany,
+      phoneOverrides: {},
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Select at most 200 people at once.',
+    });
   });
 });

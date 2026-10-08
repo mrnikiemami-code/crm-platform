@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   closeSidePanel,
   unmountFrontComponent,
@@ -12,8 +12,8 @@ import {
   type PreviewLoadState,
   type TemplatesLoadState,
   describeSharedPhoneWarnings,
+  recomputeVisibleSharedPhoneWarnings,
   resolveBulkRecipientsLoadState,
-  resolvePreviewLoadState,
   resolveTemplatesLoadState,
 } from 'src/components/bulk-composer-state';
 import {
@@ -22,6 +22,10 @@ import {
   getTextDirection,
   phoneValueStyle,
 } from 'src/components/composer-shared';
+import {
+  createPreviewConnection,
+  type PreviewConnection,
+} from 'src/components/preview-connection';
 
 // The bulk form. W15-A is PREVIEW ONLY: it resolves recipients, lets a user
 // pick a template, choose a number per person, remove recipients and see a
@@ -47,14 +51,12 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
   const [previewState, setPreviewState] = useState<PreviewLoadState>({
     kind: 'IDLE',
   });
-  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Monotonic request ids: a slow earlier response can never overwrite a newer
-  // one for either read-only route.
+  // Monotonic request id for the recipients read, so a slow earlier response
+  // cannot overwrite a newer one.
   const recipientsRequestIdRef = useRef(0);
-  const previewRequestIdRef = useRef(0);
 
   // The selection is passed as a stable string key so the load effect depends on
   // its VALUE, not on a new array identity on every render (which would loop).
@@ -102,6 +104,19 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     }
   }, []);
 
+  // One preview connection for the component's lifetime. Its request-id counter
+  // is shared across every preview, so `invalidate()` can silence an in-flight
+  // request and only the latest one may publish state.
+  const previewConnectionRef = useRef<PreviewConnection | null>(null);
+
+  if (previewConnectionRef.current === null) {
+    previewConnectionRef.current = createPreviewConnection({
+      transport: (request) =>
+        callAppRoute('/communication/preview-template', 'POST', request),
+      onState: (state) => setPreviewState(state),
+    });
+  }
+
   useEffect(() => {
     void loadRecipients();
   }, [loadRecipients]);
@@ -109,6 +124,23 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
   useEffect(() => {
     void loadTemplates();
   }, [loadTemplates]);
+
+  // A change to the message, template, numbers, recipient set or selection
+  // makes the previous preview stale: it is voided immediately and any in-flight
+  // request is silenced, so an old preview can never reappear.
+  useEffect(() => {
+    previewConnectionRef.current?.invalidate();
+    setPreviewState({ kind: 'IDLE' });
+  }, [body, selectedTemplateId, phoneSelections, removedPersonIds, personIdsKey]);
+
+  // Cleanup on unmount: silence any in-flight preview for good.
+  useEffect(() => {
+    const connection = previewConnectionRef.current;
+
+    return () => {
+      connection?.invalidate();
+    };
+  }, []);
 
   const allRecipients: BulkRecipient[] =
     recipientsState.kind === 'READY' ? recipientsState.recipients : [];
@@ -129,15 +161,39 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     (recipient) => recipient.status !== 'SENDABLE',
   );
 
-  // A caller may have chosen an alternate number for a person. Only the changed
-  // ones are sent as overrides.
+  // The number each remaining recipient would actually use right now: the
+  // chosen alternate when present, otherwise the default.
+  const chosenPhoneByPersonId = new Map<string, string | null>(
+    visibleRecipients.map((recipient) => [
+      recipient.personId,
+      phoneSelections[recipient.personId] ?? recipient.selectedPhone,
+    ]),
+  );
+
+  // Recomputed from the CURRENT numbers and the REMAINING recipients, so the
+  // warning updates live as recipients are removed or numbers are switched.
+  const liveSharedPhoneWarnings = useMemo(
+    () =>
+      recomputeVisibleSharedPhoneWarnings(
+        visibleRecipients.map((recipient) => ({
+          personId: recipient.personId,
+          selectedPhone:
+            phoneSelections[recipient.personId] ?? recipient.selectedPhone,
+        })),
+      ),
+    [visibleRecipients, phoneSelections],
+  );
+
+  // Every sendable recipient's CURRENT number is sent as an override, so the
+  // server evaluates exactly the numbers the user sees. A value the server does
+  // not recognise as belonging to that Person is reported as invalid.
   const buildPhoneOverrides = (): Record<string, string> => {
     const overrides: Record<string, string> = {};
 
-    for (const recipient of visibleRecipients) {
-      const chosen = phoneSelections[recipient.personId];
+    for (const recipient of sendableRecipients) {
+      const chosen = chosenPhoneByPersonId.get(recipient.personId);
 
-      if (chosen !== undefined && chosen !== recipient.selectedPhone) {
+      if (typeof chosen === 'string' && chosen.length > 0) {
         overrides[recipient.personId] = chosen;
       }
     }
@@ -183,36 +239,11 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
       return;
     }
 
-    previewRequestIdRef.current += 1;
-    const requestId = previewRequestIdRef.current;
-
-    setPreviewError(null);
-    setPreviewState({ kind: 'LOADING' });
-
-    try {
-      const response = await callAppRoute(
-        '/communication/preview-template',
-        'POST',
-        {
-          body,
-          personIds: effectivePersonIds,
-          phoneOverrides: buildPhoneOverrides(),
-        },
-      );
-
-      if (requestId !== previewRequestIdRef.current) {
-        return;
-      }
-
-      setPreviewState(resolvePreviewLoadState(response));
-    } catch {
-      if (requestId !== previewRequestIdRef.current) {
-        return;
-      }
-
-      setPreviewError(t('Unable to build the preview.'));
-      setPreviewState({ kind: 'ERROR' });
-    }
+    await previewConnectionRef.current?.start({
+      body,
+      personIds: effectivePersonIds,
+      phoneOverrides: buildPhoneOverrides(),
+    });
   };
 
   const handleClose = () => {
@@ -227,8 +258,26 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
       ? t('Loading recipients…')
       : t('Unable to load recipients.');
 
-  const templates = templatesState.kind === 'READY' ? templatesState.templates : [];
-  const variables = templatesState.kind === 'READY' ? templatesState.variables : [];
+  const templates =
+    templatesState.kind === 'READY' ? templatesState.templates : [];
+  const variables =
+    templatesState.kind === 'READY' || templatesState.kind === 'EMPTY'
+      ? templatesState.variables
+      : [];
+
+  const templatesPlaceholder =
+    templatesState.kind === 'LOADING'
+      ? t('Loading templates…')
+      : templatesState.kind === 'ERROR'
+        ? t('Unable to load templates.')
+        : t('No templates available');
+
+  const displayNameByPersonId = new Map(
+    visibleRecipients.map((recipient) => [
+      recipient.personId,
+      recipient.displayName,
+    ]),
+  );
 
   return (
     <div style={containerStyle}>
@@ -250,10 +299,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
           <ul style={styles.recipientList}>
             {visibleRecipients.map((recipient) => {
               const isSendable = recipient.status === 'SENDABLE';
-              const chosen =
-                phoneSelections[recipient.personId] ??
-                recipient.selectedPhone ??
-                '';
+              const chosen = chosenPhoneByPersonId.get(recipient.personId) ?? '';
 
               return (
                 <li key={recipient.personId} style={styles.recipientRow}>
@@ -311,15 +357,12 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
             </p>
           )}
 
-        {recipientsState.kind === 'READY' &&
-          recipientsState.sharedPhoneWarnings.length > 0 && (
-            <p style={styles.warning}>
-              {t('Some people share the same number:')}{' '}
-              {describeSharedPhoneWarnings(
-                recipientsState.sharedPhoneWarnings,
-              ).join(', ')}
-            </p>
-          )}
+        {liveSharedPhoneWarnings.length > 0 && (
+          <p style={styles.warning}>
+            {t('Some people share the same number:')}{' '}
+            {describeSharedPhoneWarnings(liveSharedPhoneWarnings).join(', ')}
+          </p>
+        )}
       </div>
 
       <label style={styles.field}>
@@ -341,7 +384,9 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
           style={styles.control}
         >
           <option value="">
-            {templates.length === 0 ? t('No templates available') : t('Choose a template')}
+            {templates.length === 0
+              ? templatesPlaceholder
+              : t('Choose a template')}
           </option>
           {templates.map((template) => (
             <option key={template.id} value={template.id}>
@@ -349,6 +394,9 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
             </option>
           ))}
         </select>
+        {templatesState.kind === 'ERROR' && (
+          <p style={styles.error}>{t('Unable to load templates.')}</p>
+        )}
       </label>
 
       <div style={styles.field}>
@@ -381,7 +429,9 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
         />
       </label>
 
-      {previewError !== null && <p style={styles.error}>{previewError}</p>}
+      {previewState.kind === 'ERROR' && (
+        <p style={styles.error}>{t('Unable to build the preview.')}</p>
+      )}
 
       {previewState.kind === 'READY' && (
         <div style={styles.field}>
@@ -390,9 +440,34 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
             {previewState.previews.length}
           </span>
 
+          {previewState.isBodyEmpty && (
+            <p style={styles.warning}>{t('The message is empty.')}</p>
+          )}
+
           {previewState.hasUnresolvedVariables && (
             <p style={styles.warning}>
               {t('Some variables could not be resolved and are not ready to send.')}
+            </p>
+          )}
+
+          {previewState.invalidOverrides.length > 0 && (
+            <p style={styles.warning}>
+              {t('Some selected numbers were invalid and were ignored:')}{' '}
+              {previewState.invalidOverrides
+                .map(
+                  (personId) =>
+                    displayNameByPersonId.get(personId) ?? personId,
+                )
+                .join(', ')}
+            </p>
+          )}
+
+          {previewState.sharedPhoneWarnings.length > 0 && (
+            <p style={styles.warning}>
+              {t('Some people share the same number:')}{' '}
+              {describeSharedPhoneWarnings(
+                previewState.sharedPhoneWarnings,
+              ).join(', ')}
             </p>
           )}
 

@@ -2,6 +2,13 @@
 // the React component so the shipped behavior can be unit-tested without the
 // front-component sandbox.
 
+import {
+  computeSharedPhoneWarnings,
+  type SharedPhoneWarning,
+} from 'src/bulk/shared-phone-warnings';
+
+export type { SharedPhoneWarning };
+
 export type BulkRecipientStatus = 'SENDABLE' | 'NO_PHONE' | 'NOT_ACCESSIBLE';
 
 export type BulkPhoneOption = {
@@ -16,11 +23,6 @@ export type BulkRecipient = {
   status: BulkRecipientStatus;
   phones: BulkPhoneOption[];
   selectedPhone: string | null;
-};
-
-export type SharedPhoneWarning = {
-  phone: string;
-  personIds: string[];
 };
 
 export type BulkRecipientsLoadState =
@@ -189,9 +191,13 @@ export type PreviewLoadState =
       kind: 'READY';
       previews: RecipientPreview[];
       hasUnresolvedVariables: boolean;
+      /** True when the body the server evaluated was empty/whitespace. */
+      isBodyEmpty: boolean;
       readyCount: number;
       sharedPhoneWarnings: SharedPhoneWarning[];
       duplicatePersonIds: string[];
+      /** Person ids whose phone override was rejected by the server. */
+      invalidOverrides: string[];
     }
   | { kind: 'ERROR' };
 
@@ -274,12 +280,14 @@ export const resolvePreviewLoadState = (response: {
     hasUnresolvedVariables: previews.some(
       (preview) => preview.hasUnresolvedVariables,
     ),
+    isBodyEmpty: payload.isBodyEmpty === true,
     readyCount:
       typeof payload.readyCount === 'number'
         ? payload.readyCount
         : previews.filter((preview) => preview.isReadyToSend).length,
     sharedPhoneWarnings: toSharedPhoneWarnings(payload.sharedPhoneWarnings),
     duplicatePersonIds: toStringArray(payload.duplicatePersonIds),
+    invalidOverrides: toStringArray(payload.invalidOverrides),
   };
 };
 
@@ -299,6 +307,8 @@ export type TemplatesLoadState =
       templates: MessageTemplate[];
       variables: TemplateVariable[];
     }
+  /** The request succeeded but the workspace has no templates. */
+  | { kind: 'EMPTY'; variables: TemplateVariable[] }
   | { kind: 'ERROR' };
 
 const toTemplate = (value: unknown): MessageTemplate | null => {
@@ -348,17 +358,23 @@ export const resolveTemplatesLoadState = (response: {
     return { kind: 'ERROR' };
   }
 
-  return {
-    kind: 'READY',
-    templates: payload.templates
-      .map(toTemplate)
-      .filter((template): template is MessageTemplate => template !== null),
-    variables: Array.isArray(payload.variables)
-      ? payload.variables
-          .map(toVariable)
-          .filter((variable): variable is TemplateVariable => variable !== null)
-      : [],
-  };
+  const templates = payload.templates
+    .map(toTemplate)
+    .filter((template): template is MessageTemplate => template !== null);
+
+  const variables = Array.isArray(payload.variables)
+    ? payload.variables
+        .map(toVariable)
+        .filter((variable): variable is TemplateVariable => variable !== null)
+    : [];
+
+  // An empty workspace is EMPTY, not ERROR: a genuinely empty list is an honest
+  // result, while a failure is a different state entirely.
+  if (templates.length === 0) {
+    return { kind: 'EMPTY', variables };
+  }
+
+  return { kind: 'READY', templates, variables };
 };
 
 // A shared number means two distinct recipients would receive the same message
@@ -368,4 +384,19 @@ export const describeSharedPhoneWarnings = (
 ): string[] =>
   warnings.map(
     (warning) => `${warning.phone} (${warning.personIds.length} recipients)`,
+  );
+
+// Recomputes the shared-number warning on the CLIENT from the recipients still
+// in the form and the number each currently resolves to. This is what the user
+// sees live as they remove recipients or pick an alternate number; the server
+// recomputes the same rule after applying overrides for its authoritative
+// response.
+export const recomputeVisibleSharedPhoneWarnings = (
+  recipients: readonly { personId: string; selectedPhone: string | null }[],
+): SharedPhoneWarning[] =>
+  computeSharedPhoneWarnings(
+    recipients.map((recipient) => ({
+      personId: recipient.personId,
+      phone: recipient.selectedPhone,
+    })),
   );

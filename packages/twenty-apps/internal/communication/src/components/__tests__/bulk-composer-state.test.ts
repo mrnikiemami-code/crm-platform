@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   describeSharedPhoneWarnings,
+  recomputeVisibleSharedPhoneWarnings,
   resolveBulkRecipientsLoadState,
   resolvePreviewLoadState,
   resolveTemplatesLoadState,
@@ -111,6 +112,40 @@ describe('resolvePreviewLoadState', () => {
     }
   });
 
+  it('surfaces isBodyEmpty, invalidOverrides and recomputed shared warnings', () => {
+    const state = resolvePreviewLoadState({
+      ok: true,
+      data: {
+        success: true,
+        previews: [
+          {
+            personId: 'p1',
+            displayName: 'سارا',
+            phone: '09120000001',
+            previewText: '',
+            hasUnresolvedVariables: false,
+            issues: [],
+            isReadyToSend: false,
+          },
+        ],
+        isBodyEmpty: true,
+        readyCount: 0,
+        invalidOverrides: ['p2'],
+        sharedPhoneWarnings: [{ phone: '09120000001', personIds: ['p1', 'p3'] }],
+      },
+    });
+
+    expect(state.kind).toBe('READY');
+
+    if (state.kind === 'READY') {
+      expect(state.isBodyEmpty).toBe(true);
+      expect(state.invalidOverrides).toEqual(['p2']);
+      expect(state.sharedPhoneWarnings).toEqual([
+        { phone: '09120000001', personIds: ['p1', 'p3'] },
+      ]);
+    }
+  });
+
   it('never marks a recipient with an unresolved variable as ready', () => {
     const state = resolvePreviewLoadState({
       ok: true,
@@ -163,6 +198,38 @@ describe('resolveTemplatesLoadState', () => {
       expect(state.variables[0].token).toBe('@name');
     }
   });
+
+  it('is EMPTY (not ERROR) when the workspace has no templates, keeping variables', () => {
+    const state = resolveTemplatesLoadState({
+      ok: true,
+      data: {
+        success: true,
+        templates: [],
+        variables: [{ token: '@name', label: 'First name' }],
+      },
+    });
+
+    expect(state.kind).toBe('EMPTY');
+
+    if (state.kind === 'EMPTY') {
+      expect(state.variables).toEqual([{ token: '@name', label: 'First name' }]);
+    }
+  });
+
+  it('keeps LOADING, EMPTY and ERROR as three separate states', () => {
+    expect(resolveTemplatesLoadState({ ok: false, data: {} })).toEqual({
+      kind: 'ERROR',
+    });
+    expect(
+      resolveTemplatesLoadState({ ok: true, data: { templates: [] } }),
+    ).toEqual({ kind: 'ERROR' });
+    expect(
+      resolveTemplatesLoadState({
+        ok: true,
+        data: { success: true, templates: [] },
+      }).kind,
+    ).toBe('EMPTY');
+  });
 });
 
 describe('describeSharedPhoneWarnings', () => {
@@ -172,5 +239,43 @@ describe('describeSharedPhoneWarnings', () => {
         { phone: '09120000001', personIds: ['p1', 'p2'] },
       ]),
     ).toEqual(['09120000001 (2 recipients)']);
+  });
+});
+
+describe('recomputeVisibleSharedPhoneWarnings (live, from remaining recipients)', () => {
+  it('warns when two remaining recipients use the same number', () => {
+    expect(
+      recomputeVisibleSharedPhoneWarnings([
+        { personId: 'p1', selectedPhone: '09120000001' },
+        { personId: 'p2', selectedPhone: '09120000001' },
+      ]),
+    ).toEqual([{ phone: '09120000001', personIds: ['p1', 'p2'] }]);
+  });
+
+  it('drops the warning once one recipient is removed', () => {
+    // p2 was removed, so only p1 remains on that number.
+    expect(
+      recomputeVisibleSharedPhoneWarnings([
+        { personId: 'p1', selectedPhone: '09120000001' },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('reflects a number SWITCH (override) that creates a shared number', () => {
+    expect(
+      recomputeVisibleSharedPhoneWarnings([
+        { personId: 'p1', selectedPhone: '09120000002' },
+        { personId: 'p2', selectedPhone: '09120000002' },
+      ]),
+    ).toEqual([{ phone: '09120000002', personIds: ['p1', 'p2'] }]);
+  });
+
+  it('ignores null numbers (unsendable recipients)', () => {
+    expect(
+      recomputeVisibleSharedPhoneWarnings([
+        { personId: 'p1', selectedPhone: null },
+        { personId: 'p2', selectedPhone: null },
+      ]),
+    ).toEqual([]);
   });
 });

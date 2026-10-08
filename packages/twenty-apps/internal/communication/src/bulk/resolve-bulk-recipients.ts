@@ -1,4 +1,8 @@
 import {
+  computeSharedPhoneWarnings,
+  type SharedPhoneWarning,
+} from 'src/bulk/shared-phone-warnings';
+import {
   buildPersonPhoneOptions,
   type PersonPhoneOption,
   type PersonPhones,
@@ -33,11 +37,7 @@ export type BulkRecipient = {
   selectedPhone: string | null;
 };
 
-export type SharedPhoneWarning = {
-  phone: string;
-  /** The distinct recipients that resolve to the same number. */
-  personIds: string[];
-};
+export type { SharedPhoneWarning };
 
 export type BulkRecipientResolution = {
   recipients: BulkRecipient[];
@@ -62,6 +62,65 @@ const buildFullName = (record: BulkPersonRecord): string | null => {
 
 const buildDisplayName = (record: BulkPersonRecord): string =>
   buildFullName(record) ?? record.id;
+
+/**
+ * Recomputes shared-number warnings from a set of recipients and the number
+ * each currently resolves to. Callers pass the CURRENT selections so the
+ * warning always reflects what would actually be sent.
+ */
+export const recomputeSharedPhoneWarnings = (
+  recipients: readonly BulkRecipient[],
+): SharedPhoneWarning[] =>
+  computeSharedPhoneWarnings(
+    recipients.map((recipient) => ({
+      personId: recipient.personId,
+      phone: recipient.selectedPhone,
+    })),
+  );
+
+export type PhoneOverrideApplication = {
+  recipients: BulkRecipient[];
+  /**
+   * Person ids whose override was NOT one of that Person's own numbers. An
+   * invalid override is reported and the recipient is left unchanged — the
+   * primary number is never silently substituted for an invalid choice.
+   */
+  invalidOverrides: string[];
+};
+
+/**
+ * Applies per-recipient phone overrides. Only a number that actually belongs to
+ * the Person is accepted; any other value is reported as invalid and ignored.
+ */
+export const applyPhoneOverrides = ({
+  recipients,
+  overrides,
+}: {
+  recipients: readonly BulkRecipient[];
+  overrides: Record<string, string>;
+}): PhoneOverrideApplication => {
+  const invalidOverrides: string[] = [];
+
+  const nextRecipients = recipients.map((recipient) => {
+    const override = overrides[recipient.personId];
+
+    if (override === undefined) {
+      return recipient;
+    }
+
+    const isAllowed = recipient.phones.some((phone) => phone.value === override);
+
+    if (!isAllowed) {
+      invalidOverrides.push(recipient.personId);
+
+      return recipient;
+    }
+
+    return { ...recipient, selectedPhone: override };
+  });
+
+  return { recipients: nextRecipients, invalidOverrides };
+};
 
 /**
  * Resolves a raw multi-record selection into per-recipient rows.
@@ -133,28 +192,6 @@ export const resolveBulkRecipients = ({
     });
   }
 
-  // A number is "shared" when two or more DISTINCT recipients resolve to it.
-  const personIdsByPhone = new Map<string, string[]>();
-
-  for (const recipient of recipients) {
-    if (recipient.status !== 'SENDABLE' || recipient.selectedPhone === null) {
-      continue;
-    }
-
-    const existing = personIdsByPhone.get(recipient.selectedPhone) ?? [];
-
-    existing.push(recipient.personId);
-    personIdsByPhone.set(recipient.selectedPhone, existing);
-  }
-
-  const sharedPhoneWarnings: SharedPhoneWarning[] = [];
-
-  for (const [phone, personIds] of personIdsByPhone) {
-    if (personIds.length > 1) {
-      sharedPhoneWarnings.push({ phone, personIds });
-    }
-  }
-
   const sendableCount = recipients.filter(
     (recipient) => recipient.status === 'SENDABLE',
   ).length;
@@ -162,7 +199,7 @@ export const resolveBulkRecipients = ({
   return {
     recipients,
     duplicatePersonIds,
-    sharedPhoneWarnings,
+    sharedPhoneWarnings: recomputeSharedPhoneWarnings(recipients),
     sendableCount,
     unsendableCount: recipients.length - sendableCount,
   };

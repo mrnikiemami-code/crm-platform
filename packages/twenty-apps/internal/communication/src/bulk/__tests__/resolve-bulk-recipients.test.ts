@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveBulkRecipients } from 'src/bulk/resolve-bulk-recipients';
+import {
+  applyPhoneOverrides,
+  recomputeSharedPhoneWarnings,
+  resolveBulkRecipients,
+  type BulkRecipient,
+} from 'src/bulk/resolve-bulk-recipients';
 
 const person = (
   id: string,
@@ -147,5 +152,69 @@ describe('resolveBulkRecipients', () => {
     });
 
     expect(resolution.sharedPhoneWarnings).toEqual([]);
+  });
+});
+
+const buildRecipient = (
+  personId: string,
+  selectedPhone: string | null,
+  phoneValues: string[] = selectedPhone === null ? [] : [selectedPhone],
+): BulkRecipient => ({
+  personId,
+  displayName: personId,
+  status: selectedPhone === null ? 'NO_PHONE' : 'SENDABLE',
+  phones: phoneValues.map((value, index) => ({
+    id: index === 0 ? 'primary' : `additional-${index}`,
+    value,
+    isPrimary: index === 0,
+  })),
+  selectedPhone,
+});
+
+describe('applyPhoneOverrides', () => {
+  it('accepts an override that is one of the person numbers', () => {
+    const recipients = [
+      buildRecipient('p1', '09120000001', ['09120000001', '09350000001']),
+    ];
+
+    const applied = applyPhoneOverrides({
+      recipients,
+      overrides: { p1: '09350000001' },
+    });
+
+    expect(applied.invalidOverrides).toEqual([]);
+    expect(applied.recipients[0].selectedPhone).toBe('09350000001');
+  });
+
+  it('reports an invalid override and leaves the person number untouched (no silent substitution)', () => {
+    const recipients = [buildRecipient('p1', '09120000001')];
+
+    const applied = applyPhoneOverrides({
+      recipients,
+      overrides: { p1: '09999999999' },
+    });
+
+    expect(applied.invalidOverrides).toEqual(['p1']);
+    // The recipient keeps its OWN number; the bogus number is not used.
+    expect(applied.recipients[0].selectedPhone).toBe('09120000001');
+  });
+});
+
+describe('recomputeSharedPhoneWarnings', () => {
+  it('reflects the CURRENT selections, not the defaults', () => {
+    const recipients = [
+      buildRecipient('p1', '09120000002', ['09120000001', '09120000002']),
+      buildRecipient('p2', '09120000002'),
+    ];
+
+    expect(recomputeSharedPhoneWarnings(recipients)).toEqual([
+      { phone: '09120000002', personIds: ['p1', 'p2'] },
+    ]);
+  });
+
+  it('drops the warning when only one recipient remains on a number', () => {
+    const recipients = [buildRecipient('p1', '09120000001')];
+
+    expect(recomputeSharedPhoneWarnings(recipients)).toEqual([]);
   });
 });
