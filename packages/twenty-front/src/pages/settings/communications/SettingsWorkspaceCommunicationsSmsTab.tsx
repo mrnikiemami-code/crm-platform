@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@apollo/client/react';
 import { useLingui } from '@lingui/react/macro';
 import { styled } from '@linaria/react';
 import { isNonEmptyString } from '@sniptt/guards';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 import { Section } from 'twenty-ui/components';
 import { Info, useToast } from 'twenty-ui/primitives/feedback';
@@ -11,6 +11,18 @@ import { Button, Radio, RadioGroup } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { TextInput } from '@/ui/input/components/TextInput';
 import { UpdateOneApplicationVariableDocument } from '~/generated-metadata/graphql';
+import {
+  applySecretDraftChange,
+  type CommunicationSmsLoadState,
+  dropSucceededDrafts,
+  requestSecretClear,
+  type SaveOutcome,
+  type SecretFieldState,
+  resolveCommunicationSmsLoadState,
+  resolveSecretIntent,
+  resolveSecretWriteValue,
+  summarizeSaveOutcome,
+} from '~/pages/settings/communications/utils/communicationSmsSettingsState';
 
 // The Communication application is resolved by its STABLE universal
 // identifier, never by an install UUID, display name or workspace id, so the
@@ -119,6 +131,11 @@ const StyledStatus = styled.span`
   font-size: ${themeCssVariables.font.size.xs};
 `;
 
+const StyledWarningStatus = styled.span`
+  color: ${themeCssVariables.color.orange};
+  font-size: ${themeCssVariables.font.size.xs};
+`;
+
 const StyledLtrTextInput = styled(TextInput)`
   direction: ltr;
 `;
@@ -127,10 +144,13 @@ type SmsProviderSectionProps = {
   config: SmsProviderConfig;
   values: Record<string, string>;
   secretPresence: Record<string, boolean>;
+  secretClearRequested: Record<string, boolean>;
   isDefault: boolean;
   isSaving: boolean;
+  isAnySaveInFlight: boolean;
   onValueChange: (key: string, value: string) => void;
   onRequestClearSecret: (key: string) => void;
+  onCancelClearSecret: (key: string) => void;
   onSave: () => void;
 };
 
@@ -138,10 +158,13 @@ const SmsProviderSection = ({
   config,
   values,
   secretPresence,
+  secretClearRequested,
   isDefault,
   isSaving,
+  isAnySaveInFlight,
   onValueChange,
   onRequestClearSecret,
+  onCancelClearSecret,
   onSave,
 }: SmsProviderSectionProps) => {
   const { t } = useLingui();
@@ -162,6 +185,7 @@ const SmsProviderSection = ({
 
       {config.fields.map((field) => {
         const isConfigured = secretPresence[field.key] === true;
+        const isClearPending = secretClearRequested[field.key] === true;
 
         return (
           <StyledField key={field.key}>
@@ -181,7 +205,7 @@ const SmsProviderSection = ({
                 fullWidth
                 autoComplete="off"
               />
-              {field.isSecret && isConfigured && (
+              {field.isSecret && isConfigured && !isClearPending && (
                 <Button
                   variant="outline"
                   color="danger"
@@ -191,13 +215,25 @@ const SmsProviderSection = ({
                   {t`Clear`}
                 </Button>
               )}
+              {field.isSecret && isClearPending && (
+                <Button
+                  variant="outline"
+                  color="neutral"
+                  size="sm"
+                  onClick={() => onCancelClearSecret(field.key)}
+                >
+                  {t`Cancel clear`}
+                </Button>
+              )}
             </StyledFieldRow>
             <StyledFieldDescription>{field.description}</StyledFieldDescription>
             {field.isSecret && (
               <StyledStatus>
-                {isConfigured
-                  ? t`A value is configured. Enter a new value to replace it, or leave it empty to keep it.`
-                  : t`No value is configured.`}
+                {isClearPending
+                  ? t`Will be cleared on save. Type a new value to keep it instead.`
+                  : isConfigured
+                    ? t`A value is configured. Enter a new value to replace it, or leave it empty to keep it.`
+                    : t`No value is configured.`}
               </StyledStatus>
             )}
           </StyledField>
@@ -210,7 +246,7 @@ const SmsProviderSection = ({
           color="accent"
           size="sm"
           onClick={onSave}
-          disabled={isSaving}
+          disabled={isAnySaveInFlight}
           loading={isSaving}
         >
           {t`Save`}
@@ -224,7 +260,7 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
   const { t } = useLingui();
   const { enqueueToast } = useToast();
 
-  const { data, loading, refetch } = useQuery<
+  const { data, loading, error, refetch } = useQuery<
     CommunicationAppForSmsSettingsQuery,
     CommunicationAppForSmsSettingsVariables
   >(FIND_COMMUNICATION_APP_FOR_SMS_SETTINGS, {
@@ -240,17 +276,50 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
   const [draftValueByKey, setDraftValueByKey] = useState<
     Record<string, string>
   >({});
-  // A secret is cleared only through the explicit Clear action: an empty
-  // secret input means "keep the existing value", so "empty" and "clear" must
-  // be tracked as two different intents.
-  const [secretKeysToClear, setSecretKeysToClear] = useState<
-    Record<string, boolean>
+  // Secret intent per key: KEEP (absent), REPLACE (a typed replacement) or
+  // CLEAR (explicitly requested). An empty input is KEEP, never CLEAR.
+  const [secretFieldStateByKey, setSecretFieldStateByKey] = useState<
+    Record<string, SecretFieldState>
   >({});
   const [savingProviderId, setSavingProviderId] = useState<string | null>(null);
+  const [failedProviderId, setFailedProviderId] = useState<string | null>(null);
+
+  // One synchronous lock for every write (provider selection and both saves),
+  // so a fast double click cannot fire two overlapping requests. A ref, not
+  // state: the guard must flip in the same tick the click is handled.
+  // oxlint-disable-next-line twenty/no-state-useref
+  const isWriteInFlightRef = useRef(false);
 
   const application = data?.findOneApplication ?? null;
 
-  if (loading) {
+  const loadState: CommunicationSmsLoadState = resolveCommunicationSmsLoadState(
+    {
+      loading,
+      hasError: isDefined(error),
+      hasApplication: isDefined(application),
+    },
+  );
+
+  const runExclusive = useCallback(
+    async <TResult,>(
+      action: () => Promise<TResult>,
+    ): Promise<TResult | undefined> => {
+      if (isWriteInFlightRef.current) {
+        return undefined;
+      }
+
+      isWriteInFlightRef.current = true;
+
+      try {
+        return await action();
+      } finally {
+        isWriteInFlightRef.current = false;
+      }
+    },
+    [],
+  );
+
+  if (loadState.kind === 'LOADING') {
     return (
       <Section.Root>
         <StyledStatus>{t`Loading…`}</StyledStatus>
@@ -258,7 +327,18 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
     );
   }
 
-  if (!isDefined(application)) {
+  if (loadState.kind === 'ERROR') {
+    return (
+      <Section.Root>
+        <Info
+          accent="danger"
+          text={t`The SMS settings could not be loaded. Check your access and connection, then reload.`}
+        />
+      </Section.Root>
+    );
+  }
+
+  if (loadState.kind === 'NOT_INSTALLED' || !isDefined(application)) {
     return (
       <Section.Root>
         <Info
@@ -301,79 +381,109 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
   };
 
   const handleSelectDefaultProvider = async (providerId: string) => {
-    try {
-      await persistVariable(COMMUNICATION_PROVIDER_VARIABLE_KEY, providerId);
-      await refetch();
-      enqueueToast({
-        variant: 'success',
-        children: t`Default provider saved.`,
-      });
-    } catch {
-      enqueueToast({
-        variant: 'error',
-        children: t`Failed to save the default provider.`,
-      });
+    if (providerId === selectedProviderId) {
+      return;
     }
+
+    await runExclusive(async () => {
+      try {
+        await persistVariable(COMMUNICATION_PROVIDER_VARIABLE_KEY, providerId);
+        await refetch();
+        enqueueToast({
+          variant: 'success',
+          children: t`Default provider saved.`,
+        });
+      } catch {
+        enqueueToast({
+          variant: 'error',
+          children: t`Failed to save the default provider.`,
+        });
+      }
+    });
   };
 
   const handleSaveProvider = async (config: SmsProviderConfig) => {
-    setSavingProviderId(config.id);
+    await runExclusive(async () => {
+      setSavingProviderId(config.id);
+      setFailedProviderId(null);
 
-    const pendingWrites: { key: string; value: string }[] = [];
+      const pendingWrites: { key: string; value: string }[] = [];
 
-    for (const field of config.fields) {
-      const draftValue = draftValueByKey[field.key];
+      for (const field of config.fields) {
+        if (field.isSecret) {
+          const secretWriteValue = resolveSecretWriteValue(
+            secretFieldStateByKey[field.key],
+          );
 
-      if (field.isSecret) {
-        if (secretKeysToClear[field.key] === true) {
-          pendingWrites.push({ key: field.key, value: '' });
-        } else if (isNonEmptyString(draftValue)) {
+          // KEEP writes nothing, so the stored secret stays untouched.
+          if (isDefined(secretWriteValue)) {
+            pendingWrites.push({ key: field.key, value: secretWriteValue });
+          }
+          continue;
+        }
+
+        const draftValue = draftValueByKey[field.key];
+
+        if (
+          isDefined(draftValue) &&
+          draftValue !== storedValueByKey[field.key]
+        ) {
           pendingWrites.push({ key: field.key, value: draftValue });
         }
-        continue;
       }
 
-      if (isDefined(draftValue) && draftValue !== storedValueByKey[field.key]) {
-        pendingWrites.push({ key: field.key, value: draftValue });
-      }
-    }
+      // Every write is attempted, even if an earlier one fails, so the outcome
+      // can be reported per-write instead of guessed.
+      const results = await Promise.allSettled(
+        pendingWrites.map((write) => persistVariable(write.key, write.value)),
+      );
 
-    try {
-      for (const write of pendingWrites) {
-        await persistVariable(write.key, write.value);
-      }
+      const succeededCount = results.filter(
+        (result) => result.status === 'fulfilled',
+      ).length;
+      const outcome: SaveOutcome = summarizeSaveOutcome({
+        succeededCount,
+        totalCount: pendingWrites.length,
+      });
 
+      // Re-read before clearing anything, so the form shows what actually
+      // landed rather than what was intended.
       await refetch();
 
-      setDraftValueByKey((previous) => {
-        const next = { ...previous };
-        for (const field of config.fields) {
-          delete next[field.key];
-        }
-        return next;
-      });
-      setSecretKeysToClear((previous) => {
-        const next = { ...previous };
-        for (const field of config.fields) {
-          delete next[field.key];
-        }
-        return next;
-      });
+      // Only the keys whose write succeeded are dropped; a failed key keeps its
+      // draft so the user can retry, and an edit made while saving is preserved.
+      const succeededKeys = pendingWrites
+        .filter((_, index) => results[index].status === 'fulfilled')
+        .map((write) => write.key);
 
-      enqueueToast({
-        variant: 'success',
-        children: t`Settings saved.`,
-      });
-    } catch {
-      // A partial write must not read as a full success: the drafts are kept so
-      // the user can retry, and the failure is stated plainly.
-      enqueueToast({
-        variant: 'error',
-        children: t`Some settings could not be saved. Nothing else was changed.`,
-      });
-    } finally {
+      setDraftValueByKey((previous) =>
+        dropSucceededDrafts(previous, succeededKeys),
+      );
+      setSecretFieldStateByKey((previous) =>
+        dropSucceededDrafts(previous, succeededKeys),
+      );
+
+      if (outcome === 'ALL_SAVED') {
+        enqueueToast({
+          variant: 'success',
+          children: t`Settings saved.`,
+        });
+      } else if (outcome === 'PARTIAL') {
+        setFailedProviderId(config.id);
+        enqueueToast({
+          variant: 'error',
+          children: t`Some settings were saved and the rest failed to save.`,
+        });
+      } else {
+        setFailedProviderId(config.id);
+        enqueueToast({
+          variant: 'error',
+          children: t`The settings could not be saved.`,
+        });
+      }
+
       setSavingProviderId(null);
-    }
+    });
   };
 
   // Only providers this app actually implements. RazPayamak's REST base is a
@@ -444,6 +554,8 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
     },
   ];
 
+  const isAnySaveInFlight = savingProviderId !== null;
+
   return (
     <StyledContainer>
       <Section.Root>
@@ -460,7 +572,7 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
         >
           {providerConfigs.map((config) => (
             <StyledProviderOption key={config.id}>
-              <Radio value={config.id} />
+              <Radio value={config.id} disabled={isAnySaveInFlight} />
               <StyledFieldLabel>{config.label}</StyledFieldLabel>
             </StyledProviderOption>
           ))}
@@ -482,23 +594,63 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
               .filter((field) => field.isSecret)
               .map((field) => [
                 field.key,
-                secretPresenceByKey[field.key] === true &&
-                  secretKeysToClear[field.key] !== true,
+                secretPresenceByKey[field.key] === true,
+              ]),
+          )}
+          secretClearRequested={Object.fromEntries(
+            config.fields
+              .filter((field) => field.isSecret)
+              .map((field) => [
+                field.key,
+                resolveSecretIntent(secretFieldStateByKey[field.key]) ===
+                  'CLEAR',
               ]),
           )}
           isDefault={selectedProviderId === config.id}
           isSaving={savingProviderId === config.id}
-          onValueChange={(key, value) =>
-            setDraftValueByKey((previous) => ({ ...previous, [key]: value }))
-          }
+          isAnySaveInFlight={isAnySaveInFlight}
+          onValueChange={(key, value) => {
+            const isSecretField = config.fields.some(
+              (field) => field.key === key && field.isSecret,
+            );
+
+            if (isSecretField) {
+              setSecretFieldStateByKey((previous) => ({
+                ...previous,
+                [key]: applySecretDraftChange({
+                  previous: previous[key],
+                  text: value,
+                }),
+              }));
+              return;
+            }
+
+            setDraftValueByKey((previous) => ({ ...previous, [key]: value }));
+          }}
           onRequestClearSecret={(key) =>
-            setSecretKeysToClear((previous) => ({ ...previous, [key]: true }))
+            setSecretFieldStateByKey((previous) => ({
+              ...previous,
+              [key]: requestSecretClear(),
+            }))
+          }
+          onCancelClearSecret={(key) =>
+            setSecretFieldStateByKey((previous) => {
+              const next = { ...previous };
+              delete next[key];
+              return next;
+            })
           }
           onSave={() => {
             void handleSaveProvider(config);
           }}
         />
       ))}
+
+      {failedProviderId !== null && (
+        <StyledWarningStatus>
+          {t`Some settings may not have been saved. Reload to see the saved values.`}
+        </StyledWarningStatus>
+      )}
 
       <StyledStatus>
         {t`Saved values are stored per workspace. Secrets are never displayed again once saved. No connection is verified here.`}

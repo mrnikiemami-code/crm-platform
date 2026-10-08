@@ -16,6 +16,7 @@ import {
   type PhoneOptionsLoadState,
 } from 'src/components/phone-options-load-state';
 import { submitPersonCommunication } from 'src/components/submit-person-communication';
+import { resolveSubmitOutcomePresentation } from 'src/components/submit-outcome-variant';
 import { SEND_MESSAGE_COMPOSER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 
 // Channels the composer offers. Mirrors the implemented channels only; future
@@ -269,50 +270,29 @@ const SendMessageComposer = () => {
     }
 
     try {
-      switch (outcomeResult.kind) {
-        case 'SENT':
-        case 'DELIVERED': {
-          const successMessage =
-            outcomeResult.kind === 'DELIVERED'
-              ? t('Message delivered.')
-              : t('Message sent.');
+      // One shared mapping decides success/error/warning, so the shipped
+      // severity and the tested severity cannot drift.
+      const presentation = resolveSubmitOutcomePresentation(outcomeResult);
 
-          setOutcome(successMessage);
-          await enqueueSnackbar({
-            message: successMessage,
-            variant: 'success',
-          });
+      if (presentation.variant === 'success') {
+        const successMessage =
+          outcomeResult.kind === 'DELIVERED'
+            ? t('Message delivered.')
+            : t('Message sent.');
 
-          break;
-        }
-        case 'PROVIDER_FAILED':
-        case 'INVALID_INPUT': {
-          // The provider's own reason is shown verbatim; only the app's own
-          // fallback wording is translated, so a real backend reason is never
-          // replaced by a translated generic.
-          const failureMessage = t(outcomeResult.message);
+        setOutcome(successMessage);
+        await enqueueSnackbar({
+          message: successMessage,
+          variant: 'success',
+        });
+      } else {
+        // The provider's own reason is shown verbatim; only the app's own
+        // fallback wording is translated, so a real backend reason is never
+        // replaced by a translated generic.
+        const message = t(presentation.message);
 
-          setError(failureMessage);
-          await enqueueSnackbar({
-            message: failureMessage,
-            variant: 'error',
-          });
-
-          break;
-        }
-        default: {
-          // The message was sent (or may have been), but the result is not a
-          // plain failure. A warning tells the user not to retry blindly.
-          const warningMessage = t(outcomeResult.message);
-
-          setError(warningMessage);
-          await enqueueSnackbar({
-            message: warningMessage,
-            variant: 'warning',
-          });
-
-          break;
-        }
+        setError(message);
+        await enqueueSnackbar({ message, variant: presentation.variant });
       }
     } finally {
       setSending(false);

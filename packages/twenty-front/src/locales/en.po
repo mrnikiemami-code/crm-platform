@@ -24350,3 +24350,33 @@ msgstr "Saved values are stored per workspace. Secrets are never displayed again
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "Only the variables of the selected provider need to be filled in."
 msgstr "Only the variables of the selected provider need to be filled in."
+
+#. js-lingui-id: CgngZ2
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The SMS settings could not be loaded. Check your access and connection, then reload."
+msgstr "The SMS settings could not be loaded. Check your access and connection, then reload."
+
+#. js-lingui-id: NYBRhQ
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Cancel clear"
+msgstr "Cancel clear"
+
+#. js-lingui-id: jy3cZo
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Will be cleared on save. Type a new value to keep it instead."
+msgstr "Will be cleared on save. Type a new value to keep it instead."
+
+#. js-lingui-id: +AUTAZ
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Some settings were saved and the rest failed to save."
+msgstr "Some settings were saved and the rest failed to save."
+
+#. js-lingui-id: PlmIId
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The settings could not be saved."
+msgstr "The settings could not be saved."
+
+#. js-lingui-id: 42rqdC
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Some settings may not have been saved. Reload to see the saved values."
+msgstr "Some settings may not have been saved. Reload to see the saved values."

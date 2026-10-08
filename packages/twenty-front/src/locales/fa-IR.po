@@ -24300,3 +24300,33 @@ msgstr "مقادیر ذخیره‌شده در هر فضای کاری نگه‌د
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "Only the variables of the selected provider need to be filled in."
 msgstr "فقط متغیرهای سرویس‌دهندهٔ انتخاب‌شده باید تکمیل شوند."
+
+#. js-lingui-id: CgngZ2
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The SMS settings could not be loaded. Check your access and connection, then reload."
+msgstr "تنظیمات پیامک بارگذاری نشد. دسترسی و اتصال خود را بررسی کنید و صفحه را دوباره بارگذاری کنید."
+
+#. js-lingui-id: NYBRhQ
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Cancel clear"
+msgstr "لغو پاک‌کردن"
+
+#. js-lingui-id: jy3cZo
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Will be cleared on save. Type a new value to keep it instead."
+msgstr "هنگام ذخیره پاک می‌شود. برای حفظ آن، مقدار جدیدی وارد کنید."
+
+#. js-lingui-id: +AUTAZ
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Some settings were saved and the rest failed to save."
+msgstr "بخشی از تنظیمات ذخیره شد؛ ذخیرهٔ بقیه ناموفق بود."
+
+#. js-lingui-id: PlmIId
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The settings could not be saved."
+msgstr "تنظیمات ذخیره نشد."
+
+#. js-lingui-id: 42rqdC
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Some settings may not have been saved. Reload to see the saved values."
+msgstr "ممکن است برخی تنظیمات ذخیره نشده باشند. برای دیدن مقادیر ذخیره‌شده، صفحه را دوباره بارگذاری کنید."
