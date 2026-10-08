@@ -4,6 +4,14 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  BULK_RESULT_LABELS,
+  BULK_STATUS_DELIVERED,
+  BULK_STOPPED_UNKNOWN_MESSAGE,
+  BULK_STOPPED_UNKNOWN_TITLE,
+  BULK_STOPPED_USER_MESSAGE,
+  BULK_STOPPED_USER_TITLE,
+} from 'src/components/bulk-send-presentation';
+import {
   LOADING_TITLE,
   REFRESH_LABEL,
   UNAVAILABLE_REASON_TITLES,
@@ -96,6 +104,21 @@ describe('fa-IR catalog covers every fixed production message', () => {
 
     for (const message of fixed) {
       expect(isTranslated(message), `presentation: "${message}"`).toBe(true);
+    }
+  });
+
+  it('translates every bulk send result label and stop notice', () => {
+    const fixed = [
+      ...Object.values(BULK_RESULT_LABELS),
+      BULK_STATUS_DELIVERED,
+      BULK_STOPPED_UNKNOWN_TITLE,
+      BULK_STOPPED_UNKNOWN_MESSAGE,
+      BULK_STOPPED_USER_TITLE,
+      BULK_STOPPED_USER_MESSAGE,
+    ];
+
+    for (const message of fixed) {
+      expect(isTranslated(message), `bulk send: "${message}"`).toBe(true);
     }
   });
 

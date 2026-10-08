@@ -16,6 +16,16 @@ import {
   resolveBulkRecipientsLoadState,
   resolveTemplatesLoadState,
 } from 'src/components/bulk-composer-state';
+import { buildBulkConfirmationPlan } from 'src/components/bulk-confirmation-plan';
+import {
+  createBulkSendConnection,
+  type BulkSendConnection,
+  type BulkSendProgressState,
+} from 'src/components/bulk-send-connection';
+import {
+  buildBulkResultPresentation,
+  buildBulkSummaryPresentation,
+} from 'src/components/bulk-send-presentation';
 import {
   callAppRoute,
   composerStyles as styles,
@@ -27,10 +37,9 @@ import {
   type PreviewConnection,
 } from 'src/components/preview-connection';
 
-// The bulk form. W15-A is PREVIEW ONLY: it resolves recipients, lets a user
-// pick a template, choose a number per person, remove recipients and see a
-// per-recipient preview. The bulk send action is deliberately disabled until
-// the safe bulk execution path ships in W15-B.
+// The bulk form. W15-A previews the group; W15-B sends it. The send button is
+// enabled only for a CURRENT, VALID preview, and sends the confirmed recipients
+// ONE BY ONE through the existing send route (never batched).
 export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
   const { t } = useTranslate();
   const locale = useLocale();
@@ -50,6 +59,16 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [previewState, setPreviewState] = useState<PreviewLoadState>({
     kind: 'IDLE',
+  });
+  // The confirmation panel is shown for a current, valid preview.
+  const [isConfirming, setIsConfirming] = useState(false);
+  // A shared number needs its own explicit acknowledgement before sending.
+  const [hasAcknowledgedSharedNumber, setHasAcknowledgedSharedNumber] =
+    useState(false);
+  const [sendState, setSendState] = useState<BulkSendProgressState>({
+    isRunning: false,
+    results: [],
+    summary: null,
   });
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
@@ -117,6 +136,17 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     });
   }
 
+  // One send connection for the component's lifetime: the SAME object the send
+  // button calls, so the button and the coordinator cannot drift.
+  const sendConnectionRef = useRef<BulkSendConnection | null>(null);
+
+  if (sendConnectionRef.current === null) {
+    sendConnectionRef.current = createBulkSendConnection({
+      transport: (request) => callAppRoute('/communication/send', 'POST', request),
+      onState: (state) => setSendState(state),
+    });
+  }
+
   useEffect(() => {
     void loadRecipients();
   }, [loadRecipients]);
@@ -127,18 +157,25 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
 
   // A change to the message, template, numbers, recipient set or selection
   // makes the previous preview stale: it is voided immediately and any in-flight
-  // request is silenced, so an old preview can never reappear.
+  // request is silenced, so an old preview can never reappear. A stale preview
+  // also closes the confirmation panel and resets the shared-number consent.
   useEffect(() => {
     previewConnectionRef.current?.invalidate();
     setPreviewState({ kind: 'IDLE' });
+    setIsConfirming(false);
+    setHasAcknowledgedSharedNumber(false);
   }, [body, selectedTemplateId, phoneSelections, removedPersonIds, personIdsKey]);
 
-  // Cleanup on unmount: silence any in-flight preview for good.
+  // Cleanup on unmount: silence any in-flight preview AND stop the group. The
+  // send connection's invalidate also clears pending results, so a closed form
+  // can never re-run a stale group.
   useEffect(() => {
-    const connection = previewConnectionRef.current;
+    const preview = previewConnectionRef.current;
+    const send = sendConnectionRef.current;
 
     return () => {
-      connection?.invalidate();
+      preview?.invalidate();
+      send?.invalidate();
     };
   }, []);
 
@@ -206,6 +243,69 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     setPhoneSelections((current) => ({ ...current, [personId]: phone }));
   };
 
+  // The confirmed group: built ONLY from the current READY preview, so an
+  // invalid or stale preview can never be sent. `null` when there is nothing to
+  // confirm.
+  const confirmationPlan = useMemo(() => {
+    if (previewState.kind !== 'READY') {
+      return null;
+    }
+
+    return buildBulkConfirmationPlan({
+      recipients: visibleRecipients,
+      previews: previewState.previews,
+    });
+  }, [previewState, visibleRecipients]);
+
+  const canOpenConfirmation =
+    !sendState.isRunning &&
+    confirmationPlan !== null &&
+    confirmationPlan.sendable.length > 0;
+
+  const hasSharedNumber = (confirmationPlan?.sharedNumbers.length ?? 0) > 0;
+
+  const isSendEnabled =
+    canOpenConfirmation &&
+    !sendState.isRunning &&
+    (!hasSharedNumber || hasAcknowledgedSharedNumber);
+
+  const handleOpenConfirmation = () => {
+    if (!canOpenConfirmation) {
+      return;
+    }
+
+    setHasAcknowledgedSharedNumber(false);
+    setIsConfirming(true);
+  };
+
+  const handleCancelConfirmation = () => {
+    if (sendState.isRunning) {
+      return;
+    }
+
+    setIsConfirming(false);
+  };
+
+  const handleSend = async () => {
+    if (!isSendEnabled || confirmationPlan === null) {
+      return;
+    }
+
+    // The plan is already a fresh snapshot of the confirmed numbers and texts;
+    // inputs are locked from here (the panel is replaced by the results view),
+    // so nothing can change what is sent.
+    setIsConfirming(false);
+
+    await sendConnectionRef.current?.send({
+      recipients: confirmationPlan.sendable,
+      channel: 'SMS',
+    });
+  };
+
+  const handleStop = () => {
+    sendConnectionRef.current?.stop();
+  };
+
   const handleRemoveRecipient = (personId: string) => {
     setRemovedPersonIds((current) =>
       current.includes(personId) ? current : [...current, personId],
@@ -248,9 +348,15 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
   };
 
   const handleClose = () => {
+    // Closing the form prevents the NEXT request; the one in flight is never
+    // relabelled. `unmountFrontComponent` runs the cleanup, which also clears
+    // the pending results.
+    sendConnectionRef.current?.stop();
     unmountFrontComponent();
     closeSidePanel();
   };
+
+  const isLocked = sendState.isRunning || sendState.summary !== null;
 
   const containerStyle = { ...styles.container, direction };
 
@@ -285,7 +391,9 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
       <div style={styles.field}>
         <p style={styles.heading}>{t('Send SMS to multiple people')}</p>
         <p style={styles.hint}>
-          {t('Preview only. Bulk sending is not available yet.')}
+          {isLocked
+            ? t('Sending. Inputs are locked until the group finishes.')
+            : t('Preview the group, then confirm to send to each person individually.')}
         </p>
       </div>
 
@@ -317,6 +425,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
                       type="button"
                       style={styles.secondaryButton}
                       onClick={() => handleRemoveRecipient(recipient.personId)}
+                      disabled={isLocked}
                     >
                       {t('Remove')}
                     </button>
@@ -328,6 +437,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
                       onChange={(event) =>
                         handleSelectPhone(recipient.personId, event.target.value)
                       }
+                      disabled={isLocked}
                       style={{ ...styles.control, ...phoneValueStyle }}
                     >
                       {recipient.phones.map((phone) => (
@@ -381,7 +491,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
               setBody(template.body);
             }
           }}
-          disabled={templates.length === 0}
+          disabled={templates.length === 0 || isLocked}
           style={styles.control}
         >
           <option value="">
@@ -426,6 +536,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
           value={body}
           onChange={(event) => setBody(event.target.value)}
           rows={5}
+          disabled={isLocked}
           style={{ ...styles.control, resize: 'vertical' }}
         />
       </label>
@@ -512,32 +623,177 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
         </div>
       )}
 
+      {sendState.summary !== null && (
+        <div style={styles.field}>
+          <span style={styles.label}>{t('Results')}</span>
+
+          {buildBulkSummaryPresentation(sendState.summary).stopNotice !==
+            null && (
+            <p style={styles.warning}>
+              <strong>
+                {t(
+                  buildBulkSummaryPresentation(sendState.summary).stopNotice
+                    ?.title ?? '',
+                )}
+              </strong>{' '}
+              {t(
+                buildBulkSummaryPresentation(sendState.summary).stopNotice
+                  ?.message ?? '',
+              )}
+            </p>
+          )}
+
+          <p style={styles.muted}>
+            {t('Accepted')}: {sendState.summary.acceptedCount} ·{' '}
+            {t('Failed')}: {sendState.summary.definiteFailureCount} ·{' '}
+            {t('Unknown')}: {sendState.summary.unknownCount} ·{' '}
+            {t('Not started')}: {sendState.summary.notStartedCount}
+          </p>
+
+          <ul style={styles.recipientList}>
+            {buildBulkResultPresentation(sendState.results).map((result) => (
+              <li key={result.personId} style={styles.recipientRow}>
+                <div style={styles.recipientHeader}>
+                  <span style={styles.recipientName}>{result.displayName}</span>
+                  <span style={styles.recipientBadge}>
+                    {t(result.label)}
+                  </span>
+                </div>
+                <span style={{ ...styles.muted, ...phoneValueStyle }}>
+                  {result.recipient}
+                </span>
+                {result.detail !== null && (
+                  <p style={styles.muted}>{t(result.detail)}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div style={styles.actions}>
         <button
           type="button"
           style={styles.secondaryButton}
           onClick={handleClose}
         >
-          {t('Cancel')}
+          {t('Close')}
         </button>
-        <button
-          type="button"
-          style={styles.secondaryButton}
-          onClick={handlePreview}
-          disabled={
-            previewState.kind === 'LOADING' || effectivePersonIds.length === 0
-          }
-        >
-          {previewState.kind === 'LOADING' ? t('Loading...') : t('Preview')}
-        </button>
-        <button
-          type="button"
-          style={{ ...styles.primaryButton, ...styles.primaryButtonDisabled }}
-          disabled
-        >
-          {t('Bulk sending is not available yet.')}
-        </button>
+
+        {sendState.isRunning && (
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={handleStop}
+          >
+            {t('Stop after current')}
+          </button>
+        )}
+
+        {!isLocked && (
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={handlePreview}
+            disabled={
+              previewState.kind === 'LOADING' || effectivePersonIds.length === 0
+            }
+          >
+            {previewState.kind === 'LOADING' ? t('Loading...') : t('Preview')}
+          </button>
+        )}
+
+        {!isLocked && (
+          <button
+            type="button"
+            style={{
+              ...styles.primaryButton,
+              ...(isSendEnabled ? {} : styles.primaryButtonDisabled),
+            }}
+            onClick={handleOpenConfirmation}
+            disabled={!isSendEnabled}
+          >
+            {t('Review and send')}
+          </button>
+        )}
       </div>
+
+      {isConfirming && confirmationPlan !== null && (
+        <div style={styles.field}>
+          <span style={styles.label}>{t('Confirm sending')}</span>
+
+          <p style={styles.muted}>
+            {t('Recipients to send')}: {confirmationPlan.sendable.length} /{' '}
+            {confirmationPlan.totalRecipients}
+          </p>
+
+          {confirmationPlan.excluded.length > 0 && (
+            <p style={styles.warning}>
+              {t('Recipients set aside')}: {confirmationPlan.excluded.length}
+              {' — '}
+              {confirmationPlan.excluded
+                .map((entry) => `${entry.displayName} (${t(entry.reason)})`)
+                .join(', ')}
+            </p>
+          )}
+
+          {hasSharedNumber && (
+            <div style={styles.warning}>
+              <p style={styles.muted}>
+                {t('Some people share the same number:')}{' '}
+                {confirmationPlan.sharedNumbers.join(', ')}
+              </p>
+              <label style={styles.field}>
+                <input
+                  type="checkbox"
+                  checked={hasAcknowledgedSharedNumber}
+                  onChange={(event) =>
+                    setHasAcknowledgedSharedNumber(event.target.checked)
+                  }
+                />
+                <span style={styles.muted}>
+                  {t('I understand these people share a number and want to continue.')}
+                </span>
+              </label>
+            </div>
+          )}
+
+          <ul style={styles.recipientList}>
+            {confirmationPlan.sendable.map((entry) => (
+              <li key={entry.personId} style={styles.recipientRow}>
+                <div style={styles.recipientHeader}>
+                  <span style={styles.recipientName}>{entry.displayName}</span>
+                  <span style={{ ...styles.muted, ...phoneValueStyle }}>
+                    {entry.recipient}
+                  </span>
+                </div>
+                <p style={styles.preview}>{entry.body}</p>
+              </li>
+            ))}
+          </ul>
+
+          <div style={styles.actions}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={handleCancelConfirmation}
+            >
+              {t('Cancel')}
+            </button>
+            <button
+              type="button"
+              style={{
+                ...styles.primaryButton,
+                ...(isSendEnabled ? {} : styles.primaryButtonDisabled),
+              }}
+              onClick={handleSend}
+              disabled={!isSendEnabled}
+            >
+              {t('Send to each person')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
