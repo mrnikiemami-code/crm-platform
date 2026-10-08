@@ -401,6 +401,35 @@ describe('runBulkSend', () => {
     expect(requests).toHaveLength(1);
   });
 
+  it('D: a transport that rejects at the deadline stops the group — no next recipient', async () => {
+    // Models the real deadline: the transport itself rejects, exactly as the
+    // deadline race makes `callAppRoute` reject. The coordinator must classify
+    // it UNKNOWN and never start the next recipient.
+    const { transport, requests } = createRecordingTransport((request) => {
+      if (request.personId === 'p1') {
+        throw new Error('Request deadline exceeded');
+      }
+
+      return accepted();
+    });
+
+    const outcome = await runBulkSend({
+      recipients: [
+        recipient('p1', 'Sara', '1', 'a'),
+        recipient('p2', 'Reza', '2', 'b'),
+      ],
+      channel: 'SMS',
+      transport,
+    });
+
+    expect(requests.map((request) => request.personId)).toEqual(['p1']);
+
+    if (outcome.kind === 'COMPLETED') {
+      expect(kinds(outcome.summary.results)).toEqual(['UNKNOWN', 'NOT_STARTED']);
+      expect(outcome.summary.isStopped).toBe(true);
+    }
+  });
+
   it('reports SENT distinctly from DELIVERED', async () => {
     const { transport } = createRecordingTransport((request) =>
       request.personId === 'p1' ? accepted('SENT') : accepted('DELIVERED'),

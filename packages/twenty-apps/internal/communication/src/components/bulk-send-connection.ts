@@ -37,6 +37,13 @@ export type BulkSendConnection = {
    * the caller's state.
    */
   invalidate: () => void;
+  /**
+   * Discards a FINISHED run so the SAME live connection can start a new one.
+   * Unlike `invalidate()` this does NOT dispose: the connection stays usable, so
+   * a fresh preview + explicit confirmation can send again. It is a no-op while
+   * a run is in flight.
+   */
+  reset: () => void;
 };
 
 /**
@@ -132,5 +139,17 @@ export const createBulkSendConnection = (options: {
     isDisposed = true;
   };
 
-  return { send, stop, invalidate };
+  const reset = (): void => {
+    // Only a finished run can be discarded; an in-flight run keeps ownership of
+    // its state. `latestRunId` is bumped so any late publication from the run
+    // that was just discarded is dropped, WITHOUT disposing the connection.
+    if (isRunningRef.current) {
+      return;
+    }
+
+    latestRunId += 1;
+    stopRequested = false;
+  };
+
+  return { send, stop, invalidate, reset };
 };

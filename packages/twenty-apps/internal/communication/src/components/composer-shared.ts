@@ -27,15 +27,28 @@ export const BULK_SEND_DEADLINE_MS = 60_000;
 
 export type CallAppRouteOptions = {
   /**
-   * When set, the request is abandoned after this many milliseconds. The
-   * default (undefined) keeps the original behavior with no deadline, so the
-   * single-send path is unchanged.
+   * When set to a POSITIVE FINITE number, the request is abandoned after this
+   * many milliseconds. The default (undefined) keeps the original behavior with
+   * no deadline, so the single-send path is unchanged. An invalid value (<= 0,
+   * NaN, Infinity) is ignored rather than creating an immediate or unbounded
+   * accidental timeout.
    */
   timeoutMs?: number;
 };
 
+const normalizeTimeoutMs = (value: number | undefined): number | null =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : null;
+
 // Calls one of the app's own authenticated logic-function routes. The base URL
 // and token come from the trusted execution context, never from user input.
+//
+// When `timeoutMs` is set, the returned promise settles as a REJECTION at the
+// deadline INDEPENDENTLY of the transport: a `fetch` or `response.text()` that
+// ignores AbortSignal can never keep the caller waiting. AbortController is kept
+// only as a best-effort cancellation signal — it is NOT what guarantees
+// settlement, and an abort is never proof the server/provider cancelled the send.
 export const callAppRoute = async (
   path: string,
   method: 'GET' | 'POST',
@@ -50,19 +63,51 @@ export const callAppRoute = async (
     throw new Error('API configuration missing');
   }
 
-  const timeoutMs = options?.timeoutMs;
+  const timeoutMs = normalizeTimeoutMs(options?.timeoutMs);
+
+  if (timeoutMs === null) {
+    const response = await fetch(`${apiBaseUrl}/s${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+
+    const text = await response.text();
+    const parsed = text.length > 0 ? JSON.parse(text) : {};
+
+    return { ok: response.ok, status: response.status, data: parsed };
+  }
+
   const controller =
-    timeoutMs !== undefined && typeof AbortController !== 'undefined'
-      ? new AbortController()
-      : null;
+    typeof AbortController !== 'undefined' ? new AbortController() : null;
+
+  // A monotonic start/deadline pair: the same clock the timer uses decides
+  // whether a parsed result completed in time.
+  const startMs = Date.now();
+  const deadlineMs = startMs + timeoutMs;
 
   let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
 
-  if (controller !== null && timeoutMs !== undefined) {
-    deadlineTimer = setTimeout(() => controller.abort(), timeoutMs);
-  }
+  // A timer whose rejection is RACED against the work. It is disposed on every
+  // terminal path so a settled request leaves nothing behind.
+  const deadlinePromise = new Promise<never>((_resolve, reject) => {
+    deadlineTimer = setTimeout(() => {
+      controller?.abort();
+      reject(new Error('Request deadline exceeded'));
+    }, timeoutMs);
+  });
 
-  try {
+  const dispose = (): void => {
+    if (deadlineTimer !== null) {
+      clearTimeout(deadlineTimer);
+      deadlineTimer = null;
+    }
+  };
+
+  const work = (async () => {
     const response = await fetch(`${apiBaseUrl}/s${path}`, {
       method,
       headers: {
@@ -73,23 +118,33 @@ export const callAppRoute = async (
       ...(controller !== null ? { signal: controller.signal } : {}),
     });
 
-    // The body read is inside the deadline: aborting rejects it too.
     const text = await response.text();
 
-    // Parsing is synchronous and cannot be interrupted, so refuse to parse once
-    // the deadline has already elapsed instead of returning a stale result.
-    if (controller?.signal.aborted === true) {
+    // Refuse to parse once the deadline has already elapsed (the timer callback
+    // may not have run yet if the JS thread was busy).
+    if (Date.now() >= deadlineMs) {
       throw new Error('Request deadline exceeded');
     }
 
     const parsed = text.length > 0 ? JSON.parse(text) : {};
 
-    return { ok: response.ok, status: response.status, data: parsed };
-  } finally {
-    // Always dispose the timer so a settled request leaves nothing behind.
-    if (deadlineTimer !== null) {
-      clearTimeout(deadlineTimer);
+    // A synchronous parse can itself cross the deadline without the timer
+    // callback ever running: discard a result that finished too late.
+    if (Date.now() >= deadlineMs) {
+      throw new Error('Request deadline exceeded');
     }
+
+    return { ok: response.ok, status: response.status, data: parsed };
+  })();
+
+  // The late work is observed so a settlement after the race cannot become an
+  // unhandled rejection.
+  work.catch(() => {});
+
+  try {
+    return await Promise.race([work, deadlinePromise]);
+  } finally {
+    dispose();
   }
 };
 

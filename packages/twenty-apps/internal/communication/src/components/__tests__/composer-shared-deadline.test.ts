@@ -5,9 +5,9 @@ import {
   callAppRoute,
 } from 'src/components/composer-shared';
 
-// Real deadline behavior for the bulk transport. The fetch is faked at the
-// global boundary (the only external dependency), so the PRODUCTION
-// `callAppRoute` — including its AbortController, timer and body read — runs.
+// Real deadline behavior for the bulk transport. Only the global `fetch` is
+// faked (the single external dependency); the PRODUCTION `callAppRoute` — its
+// independent deadline race, timer and parse checks — runs unchanged.
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
 
@@ -16,7 +16,20 @@ const setEnv = () => {
   process.env.TWENTY_APP_ACCESS_TOKEN = 'test-token';
 };
 
-describe('callAppRoute bulk deadline', () => {
+// Records unhandled rejections so a late settlement can be proven harmless.
+const trackUnhandled = () => {
+  const unhandled: unknown[] = [];
+  const handler = (reason: unknown) => unhandled.push(reason);
+
+  process.on('unhandledRejection', handler);
+
+  return {
+    unhandled,
+    stop: () => process.off('unhandledRejection', handler),
+  };
+};
+
+describe('callAppRoute independent deadline', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     setEnv();
@@ -28,22 +41,21 @@ describe('callAppRoute bulk deadline', () => {
     process.env = { ...originalEnv };
   });
 
-  it('has a documented 60-second deadline', () => {
+  it('documents a 60-second deadline', () => {
     expect(BULK_SEND_DEADLINE_MS).toBe(60_000);
   });
 
-  it('stops waiting and rejects when fetch never resolves', async () => {
+  // B. fetch ignores AbortSignal and never resolves ---------------------------
+
+  it('B: rejects at the deadline even when fetch NEVER resolves and IGNORES AbortSignal', async () => {
     let capturedSignal: AbortSignal | undefined;
 
+    // Deliberately does NOT subscribe to the signal.
     globalThis.fetch = vi.fn((_url: string, init?: RequestInit) => {
       capturedSignal = init?.signal ?? undefined;
 
-      // Real fetch rejects when its signal aborts; the fake must too, or the
-      // production code would wait forever.
-      return new Promise((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () =>
-          reject(new Error('aborted')),
-        );
+      return new Promise(() => {
+        // Never settles.
       });
     }) as unknown as typeof fetch;
 
@@ -51,20 +63,29 @@ describe('callAppRoute bulk deadline', () => {
       timeoutMs: BULK_SEND_DEADLINE_MS,
     });
 
-    const outcome = pending.then(
-      () => 'resolved',
-      () => 'rejected',
-    );
+    let rejected = false;
+    const observed = pending.catch(() => {
+      rejected = true;
+    });
 
-    expect(capturedSignal?.aborted).toBe(false);
+    // Before the deadline nothing has settled.
+    await vi.advanceTimersByTimeAsync(BULK_SEND_DEADLINE_MS - 1);
+    expect(rejected).toBe(false);
 
-    await vi.advanceTimersByTimeAsync(BULK_SEND_DEADLINE_MS);
+    await vi.advanceTimersByTimeAsync(1);
+    await observed;
 
+    // The PUBLIC promise rejected at the deadline without any transport help.
+    expect(rejected).toBe(true);
+    // AbortSignal was still used as a best-effort cancellation signal.
     expect(capturedSignal?.aborted).toBe(true);
-    await expect(outcome).resolves.toBe('rejected');
+    // No pending deadline timer remains.
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('stops waiting when fetch resolves but response.text() never resolves', async () => {
+  // C. response.text ignores AbortSignal and never resolves -------------------
+
+  it('C: rejects at the deadline when response.text() NEVER resolves and IGNORES AbortSignal', async () => {
     let capturedSignal: AbortSignal | undefined;
 
     globalThis.fetch = vi.fn((_url: string, init?: RequestInit) => {
@@ -74,10 +95,8 @@ describe('callAppRoute bulk deadline', () => {
         ok: true,
         status: 200,
         text: () =>
-          new Promise((_resolve, reject) => {
-            init?.signal?.addEventListener('abort', () =>
-              reject(new Error('aborted')),
-            );
+          new Promise(() => {
+            // The body read never settles and does not subscribe to the signal.
           }),
       });
     }) as unknown as typeof fetch;
@@ -86,27 +105,29 @@ describe('callAppRoute bulk deadline', () => {
       timeoutMs: BULK_SEND_DEADLINE_MS,
     });
 
-    const outcome = pending.then(
-      () => 'resolved',
-      () => 'rejected',
-    );
+    let rejected = false;
+    const observed = pending.catch(() => {
+      rejected = true;
+    });
 
     await vi.advanceTimersByTimeAsync(BULK_SEND_DEADLINE_MS);
+    await observed;
 
+    expect(rejected).toBe(true);
     expect(capturedSignal?.aborted).toBe(true);
-    await expect(outcome).resolves.toBe('rejected');
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('ignores a late success after the deadline already expired', async () => {
+  // D. Late completion --------------------------------------------------------
+
+  it('D: a late success after the deadline stays rejected and produces no unhandled rejection', async () => {
+    const tracker = trackUnhandled();
     let resolveText: ((value: string) => void) | null = null;
 
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         status: 200,
-        // Deliberately does NOT reject on abort: it stays pending until the
-        // late resolve, so the production "already aborted" check is what must
-        // reject it.
         text: () =>
           new Promise<string>((resolve) => {
             resolveText = resolve;
@@ -124,16 +145,59 @@ describe('callAppRoute bulk deadline', () => {
     );
 
     await vi.advanceTimersByTimeAsync(BULK_SEND_DEADLINE_MS);
+    await expect(outcome).resolves.toBe('rejected');
 
-    // The late response arrives AFTER the deadline.
-    const lateResolve = resolveText as ((value: string) => void) | null;
-    lateResolve?.('{"success":true,"status":"SENT"}');
+    // The late response arrives with a SUCCESS payload.
+    (resolveText as ((value: string) => void) | null)?.(
+      '{"success":true,"status":"SENT"}',
+    );
     await vi.advanceTimersByTimeAsync(0);
 
+    // The public result stays rejected; nothing is resurrected.
     await expect(outcome).resolves.toBe('rejected');
+
+    tracker.stop();
+    expect(tracker.unhandled).toEqual([]);
   });
 
-  it('resolves normally when the response settles before the deadline', async () => {
+  // E. Parsing crosses the deadline -------------------------------------------
+
+  it('E: a parse that finishes AFTER the deadline is discarded as deadline-expired', async () => {
+    // A clock that jumps past the deadline exactly when the parse runs, so the
+    // POST-PARSE elapsed check is what rejects the result.
+    let clockMs = 0;
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => clockMs);
+
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"success":true,"status":"SENT"}'),
+      }),
+    ) as unknown as typeof fetch;
+
+    const pending = callAppRoute('/communication/send', 'POST', {}, {
+      timeoutMs: BULK_SEND_DEADLINE_MS,
+    });
+
+    const outcome = pending.then(
+      () => 'resolved',
+      (error: Error) => error.message,
+    );
+
+    // Let fetch + text settle while the clock is still before the deadline, but
+    // move the clock past it before the parse's elapsed check runs.
+    clockMs = BULK_SEND_DEADLINE_MS + 1;
+    await vi.advanceTimersByTimeAsync(0);
+
+    await expect(outcome).resolves.toBe('Request deadline exceeded');
+
+    dateSpy.mockRestore();
+  });
+
+  // F. Normal and no-deadline paths -------------------------------------------
+
+  it('F: a response fully settled before the deadline succeeds and leaves no timer', async () => {
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
@@ -148,25 +212,30 @@ describe('callAppRoute bulk deadline', () => {
 
     expect(result.ok).toBe(true);
     expect(result.data).toEqual({ success: true, status: 'SENT' });
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('leaves no pending timers after completion', async () => {
+  it('F: malformed JSON is NOT treated as a definite provider failure', async () => {
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         status: 200,
-        text: () => Promise.resolve('{}'),
+        text: () => Promise.resolve('not-json'),
       }),
     ) as unknown as typeof fetch;
 
-    await callAppRoute('/communication/send', 'POST', {}, {
-      timeoutMs: BULK_SEND_DEADLINE_MS,
-    });
+    // A parse error propagates as a rejection (the coordinator maps it to
+    // UNKNOWN), never as a `{ success: false }` payload.
+    await expect(
+      callAppRoute('/communication/send', 'POST', {}, {
+        timeoutMs: BULK_SEND_DEADLINE_MS,
+      }),
+    ).rejects.toThrow();
 
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('keeps the original no-deadline behavior when no timeout is given', async () => {
+  it('F: omitting the timeout keeps the original no-deadline behavior', async () => {
     let capturedSignal: AbortSignal | undefined;
 
     globalThis.fetch = vi.fn((_url: string, init?: RequestInit) => {
@@ -183,5 +252,24 @@ describe('callAppRoute bulk deadline', () => {
 
     expect(capturedSignal).toBeUndefined();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('F: an invalid timeout is ignored (never an immediate or unbounded timeout)', async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"success":true}'),
+      }),
+    ) as unknown as typeof fetch;
+
+    for (const invalid of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const result = await callAppRoute('/communication/send', 'POST', {}, {
+        timeoutMs: invalid,
+      });
+
+      expect(result.data).toEqual({ success: true });
+      expect(vi.getTimerCount()).toBe(0);
+    }
   });
 });

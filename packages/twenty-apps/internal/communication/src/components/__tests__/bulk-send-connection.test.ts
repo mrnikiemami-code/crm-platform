@@ -120,6 +120,52 @@ describe('createBulkSendConnection (the button-to-coordinator wiring)', () => {
     expect(states.length).toBe(countAfterRun);
   });
 
+  it('reset() discards a FINISHED run but keeps the connection usable for a NEW run', async () => {
+    const { connection, requests } = buildConnection(() => accepted());
+
+    await connection.send({
+      recipients: [recipient('p1', '1', 'a')],
+      channel: 'SMS',
+    });
+
+    connection.reset();
+
+    // A NEW run on the SAME connection is allowed and makes its own request.
+    const outcome = await connection.send({
+      recipients: [recipient('p2', '2', 'b')],
+      channel: 'SMS',
+    });
+
+    expect(outcome.kind).toBe('COMPLETED');
+    expect(requests).toEqual(['p1', 'p2']);
+  });
+
+  it('reset() is a no-op while a run is in flight', async () => {
+    let release: (() => void) | null = null;
+
+    const connection = createBulkSendConnection({
+      transport: () =>
+        new Promise((resolve) => {
+          release = () => resolve(accepted() as never);
+        }),
+      onState: () => {},
+    });
+
+    const run = connection.send({
+      recipients: [recipient('p1', '1', 'a')],
+      channel: 'SMS',
+    });
+
+    // A reset mid-flight must not clear the in-flight run's ownership.
+    connection.reset();
+
+    const releaseFn = release as (() => void) | null;
+    releaseFn?.();
+    const outcome = await run;
+
+    expect(outcome.kind).toBe('COMPLETED');
+  });
+
   it('a disposed connection refuses a new run', async () => {
     const { connection, requests } = buildConnection(() => accepted());
 

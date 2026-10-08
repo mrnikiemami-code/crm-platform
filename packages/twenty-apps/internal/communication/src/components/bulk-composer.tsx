@@ -327,9 +327,11 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
       return;
     }
 
-    // Discarding the finished run disposes it: results disappear and a new run
-    // requires a FRESH preview and confirmation.
-    sendConnectionRef.current?.invalidate();
+    // Discarding a FINISHED run must NOT dispose the live connection: the same
+    // mounted composer may start a NEW run after a fresh preview and explicit
+    // confirmation. `reset()` only voids the finished run's pending
+    // publications; permanent disposal stays reserved for unmount/close.
+    sendConnectionRef.current?.reset();
     setSendState({
       isRunning: false,
       results: [],

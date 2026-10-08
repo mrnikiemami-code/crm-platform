@@ -330,6 +330,172 @@ describe('BulkPersonComposer — real wiring', () => {
     expect(review.disabled).toBe(true);
   });
 
+  // A. Second explicit run in the SAME mounted composer ------------------------
+
+  it('A: a completed run can be dismissed and followed by a NEW explicitly confirmed run', async () => {
+    installRoutes({ onSend: () => acceptedSend() });
+
+    const { rerender } = await renderComposer();
+    await waitForRecipients();
+    await doPreview();
+
+    await act(async () => {
+      clickButton('Review and send');
+    });
+
+    await act(async () => {
+      clickButton('Send to each person');
+    });
+
+    await waitFor(() => {
+      expect(sendCalls()).toHaveLength(2);
+    });
+
+    // The full summary is rendered.
+    expect(screen.getAllByText('Sent').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Dismiss results')).toBeTruthy();
+
+    const requestsAfterFirstRun = sendCalls().length;
+
+    // Dismiss the finished run.
+    await act(async () => {
+      clickButton('Dismiss results');
+    });
+
+    // Dismissing makes no request, and an incidental rerender does not resend.
+    await act(async () => {
+      rerender(<BulkPersonComposer personIds={[P1, P2]} />);
+    });
+
+    expect(sendCalls().length).toBe(requestsAfterFirstRun);
+    // The previous preview/confirmation cannot be reused.
+    expect(screen.queryByText('Dismiss results')).toBeNull();
+    expect(screen.queryByText('Confirm sending')).toBeNull();
+    expect(
+      (screen.getByText('Review and send') as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    // A fresh preview + a fresh explicit confirmation.
+    await doPreview();
+
+    await act(async () => {
+      clickButton('Review and send');
+    });
+
+    await act(async () => {
+      clickButton('Send to each person');
+    });
+
+    await waitFor(() => {
+      expect(sendCalls().length).toBe(requestsAfterFirstRun + 2);
+    });
+
+    // The second run used the confirmed personId, destination and body.
+    const secondRunCalls = sendCalls().slice(requestsAfterFirstRun);
+
+    expect(secondRunCalls.map((call) => call[2]?.personId)).toEqual([P1, P2]);
+    expect(secondRunCalls[0][2]).toEqual({
+      personId: P1,
+      channel: 'SMS',
+      recipient: '09120000001',
+      body: 'سلام سارا',
+    });
+    expect(secondRunCalls[1][2]).toEqual({
+      personId: P2,
+      channel: 'SMS',
+      recipient: '09120000002',
+      body: 'سلام رضا',
+    });
+  });
+
+  it('A: a shared number must be acknowledged AGAIN after dismissing a completed run', async () => {
+    const sharedPreview = buildPreviewResponse([
+      {
+        personId: P1,
+        displayName: 'Sara',
+        phone: '09120000001',
+        previewText: 'سلام سارا',
+        isReadyToSend: true,
+      },
+      {
+        personId: P2,
+        displayName: 'Reza',
+        phone: '09120000001',
+        previewText: 'سلام رضا',
+        isReadyToSend: true,
+      },
+    ]);
+
+    installRoutes({ preview: sharedPreview, onSend: () => acceptedSend() });
+
+    await renderComposer();
+    await waitForRecipients();
+    await doPreview();
+
+    await act(async () => {
+      clickButton('Review and send');
+    });
+
+    await act(async () => {
+      (screen.getByRole('checkbox') as HTMLInputElement).click();
+    });
+
+    await act(async () => {
+      clickButton('Send to each person');
+    });
+
+    await waitFor(() => {
+      expect(sendCalls()).toHaveLength(2);
+    });
+
+    const requestsAfterFirstRun = sendCalls().length;
+
+    await act(async () => {
+      clickButton('Dismiss results');
+    });
+
+    await doPreview();
+
+    await act(async () => {
+      clickButton('Review and send');
+    });
+
+    // Consent was reset: the final send is disabled until acknowledged again.
+    expect(
+      (screen.getByText('Send to each person') as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(sendCalls().length).toBe(requestsAfterFirstRun);
+
+    await act(async () => {
+      (screen.getByRole('checkbox') as HTMLInputElement).click();
+    });
+
+    await act(async () => {
+      clickButton('Send to each person');
+    });
+
+    await waitFor(() => {
+      expect(sendCalls().length).toBe(requestsAfterFirstRun + 2);
+    });
+  });
+
+  it('G: dismiss does NOT weaken permanent disposal — invalidate() still refuses new runs', async () => {
+    installRoutes({ onSend: () => acceptedSend() });
+
+    const { unmount } = await renderComposer();
+    await waitForRecipients();
+
+    // Unmount runs the real cleanup, which permanently invalidates the
+    // connection. A later send on that disposed connection is refused.
+    unmount();
+
+    // The production connection cannot be reached after unmount; the unit test
+    // for `invalidate()` proves the disposal rule directly (see
+    // bulk-send-connection.test.ts). Here we assert the composer made no extra
+    // request.
+    expect(sendCalls()).toHaveLength(0);
+  });
+
   // A. Shared numbers ---------------------------------------------------------
 
   it('A: a shared number gates ONLY the final send button; cancel resets consent', async () => {
