@@ -25,11 +25,11 @@ export const SidePanelFrontComponentPage = () => {
     return null;
   }
 
-  const selectedRecordIds = isDefined(
-    viewableFrontComponentRecordContext?.recordId,
-  )
-    ? [viewableFrontComponentRecordContext.recordId]
-    : undefined;
+  // The FULL selection is forwarded. An empty selection is `[]` (not
+  // `undefined`), so the renderer can distinguish "nothing selected" from "no
+  // record context at all"; the single-record path stays a one-element array.
+  const selectedRecordIds =
+    viewableFrontComponentRecordContext?.selectedRecordIds;
 
   return (
     <Suspense fallback={<FrontComponentSkeletonLoader />}>

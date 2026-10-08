@@ -746,7 +746,10 @@ describe('useFrontComponentExecutionContext', () => {
         pageTitle: 'My Component',
         pageIcon: 'icon-IconBolt',
         resetNavigationStack: undefined,
-        recordContext: { recordId: 'lead-1', objectNameSingular: 'lead' },
+        recordContext: {
+          selectedRecordIds: ['lead-1'],
+          objectNameSingular: 'lead',
+        },
       });
     });
   });

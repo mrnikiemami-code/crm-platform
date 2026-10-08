@@ -22,7 +22,12 @@ export const useOpenFrontComponentInSidePanel = () => {
     pageIcon: IconComponent;
     resetNavigationStack?: boolean;
     recordContext?: {
-      recordId: string;
+      /**
+       * Every record the command was invoked on, in order. The caller passes
+       * the ids it already resolved from the command context — the panel never
+       * reads them from the DOM. An empty array is a real "no selection".
+       */
+      selectedRecordIds: string[];
       objectNameSingular: string;
     };
   }) => {

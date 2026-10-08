@@ -341,7 +341,10 @@ export const useFrontComponentExecutionContext = ({
         const recordContext =
           isDefined(params.recordId) && isDefined(params.objectNameSingular)
             ? {
-                recordId: params.recordId,
+                // The SDK's ViewFrontComponent params carry a single recordId;
+                // it becomes a one-element array so the panel/renderer contract
+                // stays uniform. (No SDK change.)
+                selectedRecordIds: [params.recordId],
                 objectNameSingular: params.objectNameSingular,
               }
             : undefined;

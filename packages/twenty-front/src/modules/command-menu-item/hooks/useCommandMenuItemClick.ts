@@ -112,8 +112,10 @@ export const useCommandMenuItemClick = ({
     if (isFrontComponent && isDefined(item.frontComponentId)) {
       const { selectedRecords, objectMetadataItem } = commandMenuContextApi;
 
-      const recordId =
-        selectedRecords.length === 1 ? selectedRecords[0].id : undefined;
+      // Forward the WHOLE selection, in the order the context resolved it. The
+      // front component branches on the count itself (one → single form, many →
+      // bulk form), so the host must not collapse it to a single id.
+      const selectedRecordIds = selectedRecords.map((record) => record.id);
 
       const objectNameSingular = objectMetadataItem.nameSingular as
         | string
@@ -125,10 +127,9 @@ export const useCommandMenuItemClick = ({
         frontComponentId: item.frontComponentId,
         pageTitle: label,
         pageIcon: Icon,
-        recordContext:
-          isDefined(recordId) && isDefined(objectNameSingular)
-            ? { recordId, objectNameSingular }
-            : undefined,
+        recordContext: isDefined(objectNameSingular)
+          ? { selectedRecordIds, objectNameSingular }
+          : undefined,
       });
     }
   };
