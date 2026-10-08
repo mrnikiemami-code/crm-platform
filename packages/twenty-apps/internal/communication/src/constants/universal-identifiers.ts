@@ -101,6 +101,33 @@ export const RAZPAYAMAK_BACKUP_SENDER_ONE_VARIABLE_UNIVERSAL_IDENTIFIER =
 export const RAZPAYAMAK_BACKUP_SENDER_TWO_VARIABLE_UNIVERSAL_IDENTIFIER =
   '8d0985d9-f096-4d58-8ae5-739ed3e5822b';
 
+// Message templates (W15-A)
+// A workspace-owned, hand-authored message template. It is a native app object
+// (no parallel storage): created/edited/selected through the app's own object
+// and permissions, exactly like the Communication object. The template holds
+// only the body text with `@variable` placeholders; recipient data is NEVER
+// stored on the template, and evaluation happens server-side at preview time.
+export const MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER =
+  '96ca95ed-5b34-41be-9b11-12dbca202a39';
+export const MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER =
+  'f9a8126d-f459-43d1-86e1-20214d8685e9';
+export const MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER =
+  '26d00981-f355-4b9a-8d36-6cea6dc0c370';
+export const MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER =
+  '4d4075b4-48bd-46f4-8d79-7305a770519f';
+export const MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER =
+  'f6d4d1ff-adea-420f-aa1c-97e5d14663b1';
+
+// Bulk selection + template preview routes (W15-A). These are READ-ONLY server
+// routes: they resolve the authorized recipients of a selection and produce a
+// per-recipient preview. No route in W15-A sends anything.
+export const LIST_BULK_RECIPIENTS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '80dc66a8-decc-4340-84d6-6419e64f0c66';
+export const PREVIEW_TEMPLATE_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '42ed78ee-eafc-4d57-861f-174093147c01';
+export const LIST_MESSAGE_TEMPLATES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '86f19d25-2946-4272-8baf-6d335b6217b1';
+
 // NOTE (W9-R1): a custom settings front component was registered in W9 and has
 // been RETIRED. Twenty's application settings page shows the Variables tab only
 // when no custom settings tab exists

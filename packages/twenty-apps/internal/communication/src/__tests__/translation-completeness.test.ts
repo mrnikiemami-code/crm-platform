@@ -37,15 +37,37 @@ const extractLiteralTranslations = (relativePath: string): string[] => {
 };
 
 describe('fa-IR catalog covers every fixed production message', () => {
-  it('translates every literal t() string in the composer', () => {
+  it('translates every literal t() string in the single-person composer', () => {
     const messages = extractLiteralTranslations(
-      'src/components/send-message-composer.front-component.tsx',
+      'src/components/single-person-composer.tsx',
     );
 
     expect(messages.length).toBeGreaterThan(0);
 
     for (const message of messages) {
-      expect(isTranslated(message), `composer: "${message}"`).toBe(true);
+      expect(isTranslated(message), `single composer: "${message}"`).toBe(true);
+    }
+  });
+
+  it('translates every literal t() string in the bulk composer', () => {
+    const messages = extractLiteralTranslations(
+      'src/components/bulk-composer.tsx',
+    );
+
+    expect(messages.length).toBeGreaterThan(0);
+
+    for (const message of messages) {
+      expect(isTranslated(message), `bulk composer: "${message}"`).toBe(true);
+    }
+  });
+
+  it('translates every literal t() string in the composer entry point', () => {
+    const messages = extractLiteralTranslations(
+      'src/components/send-message-composer.front-component.tsx',
+    );
+
+    for (const message of messages) {
+      expect(isTranslated(message), `composer entry: "${message}"`).toBe(true);
     }
   });
 

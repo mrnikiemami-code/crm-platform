@@ -33,13 +33,16 @@
   "Message queued": "پیام در صف قرار گرفت",
   "Communication": "ارتباط",
   "objectMetadata.labelSingular": {
-    "Communication": "ارتباط"
+    "Communication": "ارتباط",
+    "Message template": "الگوی پیام"
   },
   "objectMetadata.labelPlural": {
-    "Communications": "ارتباطات"
+    "Communications": "ارتباطات",
+    "Message templates": "الگوهای پیام"
   },
   "objectMetadata.description": {
-    "One outbound communication, independent of the channel or provider it travels through.": "یک ارتباط خروجی، مستقل از کانال یا سرویس‌دهنده‌ای که از آن ارسال می‌شود."
+    "One outbound communication, independent of the channel or provider it travels through.": "یک ارتباط خروجی، مستقل از کانال یا سرویس‌دهنده‌ای که از آن ارسال می‌شود.",
+    "A reusable message body with @variable placeholders, owned by this workspace.": "یک متن پیام قابل استفادهٔ مجدد با جای‌نگهدارهای @متغیر، متعلق به این فضای کاری."
   },
   "fieldMetadata.label": {
     "Name": "نام",
@@ -58,7 +61,8 @@
     "Person": "شخص",
     "Communications": "ارتباطات",
     "Sender": "فرستنده",
-    "Sent communications": "ارتباطات ارسالی"
+    "Sent communications": "ارتباطات ارسالی",
+    "Title": "عنوان"
   },
   "commandMenuItem.label": {
     "Send SMS": "ارسال پیامک"
@@ -73,6 +77,37 @@
     "communication": "ارتباط"
   },
   "view.name": {
-    "Communications": "ارتباطات"
-  }
+    "Communications": "ارتباطات",
+    "Message templates": "الگوهای پیام"
+  },
+  "Send SMS to multiple people": "ارسال پیامک به چند نفر",
+  "Preview only. Bulk sending is not available yet.": "فقط پیش‌نمایش. ارسال گروهی هنوز در دسترس نیست.",
+  "Recipients": "گیرندگان",
+  "Loading recipients…": "در حال دریافت گیرندگان…",
+  "Unable to load recipients.": "دریافت گیرندگان ناموفق بود.",
+  "No phone number": "بدون شماره تلفن",
+  "Not accessible": "بدون دسترسی",
+  "Remove": "حذف",
+  "Sendable": "قابل ارسال",
+  "Unsendable": "غیرقابل ارسال",
+  "Duplicate selections were removed:": "انتخاب‌های تکراری حذف شدند:",
+  "Some people share the same number:": "برخی افراد شمارهٔ مشترک دارند:",
+  "Template": "الگو",
+  "No templates available": "الگویی موجود نیست",
+  "Choose a template": "انتخاب الگو",
+  "Variables": "متغیرها",
+  "Variables are resolved on the server for each recipient.": "متغیرها برای هر گیرنده در سرور جای‌گذاری می‌شوند.",
+  "Unable to build the preview.": "ساخت پیش‌نمایش ناموفق بود.",
+  "Preview": "پیش‌نمایش",
+  "Ready": "آماده",
+  "Some variables could not be resolved and are not ready to send.": "برخی متغیرها حل نشدند و آمادهٔ ارسال نیستند.",
+  "Not ready": "آماده نیست",
+  "Empty field": "فیلد خالی",
+  "Unknown variable": "متغیر ناشناخته",
+  "Loading...": "در حال بارگذاری…",
+  "Bulk sending is not available yet.": "ارسال گروهی هنوز در دسترس نیست.",
+  "First name": "نام",
+  "Last name": "نام خانوادگی",
+  "Full name": "نام کامل",
+  "Company": "شرکت"
 }
