@@ -24185,3 +24185,168 @@ msgstr "The labels contain non-Latin characters. Enter the technical name in Lat
 #: src/modules/settings/data-model/fields/preview/utils/getLabelIdentifierPreviewPlaceholder.ts
 msgid "Sample {objectLabelSingular} name"
 msgstr "Sample {objectLabelSingular} name"
+
+#. js-lingui-id: 4p1eeL
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "SMS system"
+msgstr "SMS system"
+
+#. js-lingui-id: Urrgcj
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "SMS provider"
+msgstr "SMS provider"
+
+#. js-lingui-id: Vp/hI8
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Default SMS provider"
+msgstr "Default SMS provider"
+
+#. js-lingui-id: tF8hTM
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Default provider"
+msgstr "Default provider"
+
+#. js-lingui-id: 6q7by9
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Only the selected provider is used when sending."
+msgstr "Only the selected provider is used when sending."
+
+#. js-lingui-id: ePM51/
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Send an SMS from a person's page to record it here."
+msgstr "Send an SMS from a person's page to record it here."
+
+#. js-lingui-id: 519zTO
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Settings saved."
+msgstr "Settings saved."
+
+#. js-lingui-id: /BcXx0
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Some settings could not be saved. Nothing else was changed."
+msgstr "Some settings could not be saved. Nothing else was changed."
+
+#. js-lingui-id: RNIro6
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Default provider saved."
+msgstr "Default provider saved."
+
+#. js-lingui-id: 0hXAk4
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Failed to save the default provider."
+msgstr "Failed to save the default provider."
+
+#. js-lingui-id: skIAey
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The Communication module is not installed in this workspace."
+msgstr "The Communication module is not installed in this workspace."
+
+#. js-lingui-id: i1TLHT
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Send SMS through the Kavenegar service."
+msgstr "Send SMS through the Kavenegar service."
+
+#. js-lingui-id: HWxIbt
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Send SMS through the RazPayamak SmartSMS service."
+msgstr "Send SMS through the RazPayamak SmartSMS service."
+
+#. js-lingui-id: Yh/xs+
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Kavenegar API key. Stored encrypted per workspace and never shown again."
+msgstr "Kavenegar API key. Stored encrypted per workspace and never shown again."
+
+#. js-lingui-id: oBhslL
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "RazPayamak API key issued under the developer menu. Stored encrypted per workspace and never shown again."
+msgstr "RazPayamak API key issued under the developer menu. Stored encrypted per workspace and never shown again."
+
+#. js-lingui-id: RrAETR
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "API endpoint"
+msgstr "API endpoint"
+
+#. js-lingui-id: /6NPz5
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Kavenegar API base endpoint, for example https://api.kavenegar.com/v1."
+msgstr "Kavenegar API base endpoint, for example https://api.kavenegar.com/v1."
+
+#. js-lingui-id: p49Lj1
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Sender line"
+msgstr "Sender line"
+
+#. js-lingui-id: 0gBHms
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Kavenegar sender line the message is sent from."
+msgstr "Kavenegar sender line the message is sent from."
+
+#. js-lingui-id: 9PTxQe
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Panel username"
+msgstr "Panel username"
+
+#. js-lingui-id: 26+90U
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "RazPayamak panel username used by the SmartSMS service."
+msgstr "RazPayamak panel username used by the SmartSMS service."
+
+#. js-lingui-id: hMJhIn
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Primary sender"
+msgstr "Primary sender"
+
+#. js-lingui-id: gXDFzH
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "RazPayamak primary sender number."
+msgstr "RazPayamak primary sender number."
+
+#. js-lingui-id: gycOM/
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Backup sender one"
+msgstr "Backup sender one"
+
+#. js-lingui-id: Oi0TS9
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Optional backup sender used when the primary line fails."
+msgstr "Optional backup sender used when the primary line fails."
+
+#. js-lingui-id: PcUV6E
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Backup sender two"
+msgstr "Backup sender two"
+
+#. js-lingui-id: jalKA3
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Optional second backup sender."
+msgstr "Optional second backup sender."
+
+#. js-lingui-id: 9UmFff
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Configured — leave empty to keep"
+msgstr "Configured — leave empty to keep"
+
+#. js-lingui-id: tZYv0E
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "A value is configured. Enter a new value to replace it, or leave it empty to keep it."
+msgstr "A value is configured. Enter a new value to replace it, or leave it empty to keep it."
+
+#. js-lingui-id: L3E7Cb
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "No value is configured."
+msgstr "No value is configured."
+
+#. js-lingui-id: yWg3QZ
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Choose the default SMS provider. Each provider keeps its own settings; selecting a default does not erase the other provider's settings."
+msgstr "Choose the default SMS provider. Each provider keeps its own settings; selecting a default does not erase the other provider's settings."
+
+#. js-lingui-id: zzP5hx
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Saved values are stored per workspace. Secrets are never displayed again once saved. No connection is verified here."
+msgstr "Saved values are stored per workspace. Secrets are never displayed again once saved. No connection is verified here."
+
+#. js-lingui-id: TNZRHA
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Only the variables of the selected provider need to be filled in."
+msgstr "Only the variables of the selected provider need to be filled in."

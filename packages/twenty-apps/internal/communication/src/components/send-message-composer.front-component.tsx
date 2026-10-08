@@ -287,9 +287,14 @@ const SendMessageComposer = () => {
         }
         case 'PROVIDER_FAILED':
         case 'INVALID_INPUT': {
-          setError(outcomeResult.message);
+          // The provider's own reason is shown verbatim; only the app's own
+          // fallback wording is translated, so a real backend reason is never
+          // replaced by a translated generic.
+          const failureMessage = t(outcomeResult.message);
+
+          setError(failureMessage);
           await enqueueSnackbar({
-            message: outcomeResult.message,
+            message: failureMessage,
             variant: 'error',
           });
 
@@ -298,9 +303,11 @@ const SendMessageComposer = () => {
         default: {
           // The message was sent (or may have been), but the result is not a
           // plain failure. A warning tells the user not to retry blindly.
-          setError(outcomeResult.message);
+          const warningMessage = t(outcomeResult.message);
+
+          setError(warningMessage);
           await enqueueSnackbar({
-            message: outcomeResult.message,
+            message: warningMessage,
             variant: 'warning',
           });
 
