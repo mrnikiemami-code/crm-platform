@@ -13,15 +13,15 @@ import { TextInput } from '@/ui/input/components/TextInput';
 import { UpdateOneApplicationVariableDocument } from '~/generated-metadata/graphql';
 import {
   applySecretDraftChange,
+  buildSmsProviderPendingWrites,
   type CommunicationSmsLoadState,
   dropUnchangedSucceededDrafts,
   requestSecretClear,
   type SaveOutcome,
   type SecretFieldState,
   resolveCommunicationSmsLoadState,
-  resolveSecretInputValue,
   resolveSecretIntent,
-  resolveSecretWriteValue,
+  resolveSmsFieldInputValue,
   summarizeSaveOutcome,
 } from '~/pages/settings/communications/utils/communicationSmsSettingsState';
 
@@ -365,11 +365,16 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
   );
 
   // A secret field shows ONLY the replacement the user typed, never the stored
-  // or masked value, so a saved secret can never leak back into the input.
-  const readValue = (key: string): string =>
-    secretPresenceByKey[key] === true
-      ? resolveSecretInputValue(secretFieldStateByKey[key])
-      : (draftValueByKey[key] ?? storedValueByKey[key] ?? '');
+  // or masked value. The decision comes from the FIELD's `isSecret` flag, not
+  // from whether a value is currently present, so an unset secret still reads
+  // from the secret draft state instead of the stored-value branch.
+  const readValue = (field: SmsProviderField): string =>
+    resolveSmsFieldInputValue({
+      field,
+      draftValueByKey,
+      storedValueByKey,
+      secretFieldStateByKey,
+    });
 
   const selectedProviderId =
     storedValueByKey[COMMUNICATION_PROVIDER_VARIABLE_KEY] ?? '';
@@ -437,30 +442,12 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
         const draftsAtSaveStart = draftValueByKey;
         const secretFieldsAtSaveStart = secretFieldStateByKey;
 
-        const pendingWrites: { key: string; value: string }[] = [];
-
-        for (const field of config.fields) {
-          if (field.isSecret) {
-            const secretWriteValue = resolveSecretWriteValue(
-              secretFieldsAtSaveStart[field.key],
-            );
-
-            // KEEP writes nothing, so the stored secret stays untouched.
-            if (isDefined(secretWriteValue)) {
-              pendingWrites.push({ key: field.key, value: secretWriteValue });
-            }
-            continue;
-          }
-
-          const draftValue = draftsAtSaveStart[field.key];
-
-          if (
-            isDefined(draftValue) &&
-            draftValue !== storedValueByKey[field.key]
-          ) {
-            pendingWrites.push({ key: field.key, value: draftValue });
-          }
-        }
+        const pendingWrites = buildSmsProviderPendingWrites({
+          fields: config.fields,
+          draftValueByKey: draftsAtSaveStart,
+          storedValueByKey,
+          secretFieldStateByKey: secretFieldsAtSaveStart,
+        });
 
         // Every write is attempted, even if an earlier one fails, so the
         // outcome can be reported per-write instead of guessed. A rejection is
@@ -647,7 +634,7 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
           key={config.id}
           config={config}
           values={Object.fromEntries(
-            config.fields.map((field) => [field.key, readValue(field.key)]),
+            config.fields.map((field) => [field.key, readValue(field)]),
           )}
           secretPresence={Object.fromEntries(
             config.fields

@@ -1,5 +1,6 @@
 import {
   applySecretDraftChange,
+  buildSmsProviderPendingWrites,
   dropUnchangedSucceededDrafts,
   EMPTY_SECRET_FIELD_STATE,
   requestSecretClear,
@@ -7,6 +8,7 @@ import {
   resolveSecretInputValue,
   resolveSecretIntent,
   resolveSecretWriteValue,
+  resolveSmsFieldInputValue,
   summarizeSaveOutcome,
 } from '~/pages/settings/communications/utils/communicationSmsSettingsState';
 
@@ -140,6 +142,116 @@ describe('communicationSmsSettingsState', () => {
 
       expect(resolveSecretInputValue(state)).toBe('a-long-secret-key-123');
       expect(resolveSecretWriteValue(state)).toBe('a-long-secret-key-123');
+    });
+  });
+
+  describe('form connection: field input and the value sent to the mutation', () => {
+    const SECRET_KEY = 'KAVENEGAR_API_KEY';
+    const SECRET_FIELD = { key: SECRET_KEY, isSecret: true };
+    const NORMAL_FIELD = { key: 'KAVENEGAR_SENDER', isSecret: false };
+    const FAKE_SECRET = 'fake-secret-value-xyz-123';
+
+    it('keeps the typed multi-character value in the input when the stored secret is EMPTY', () => {
+      // Stored secret is empty, so there is nothing to fall through to.
+      const secretFieldStateByKey = {
+        [SECRET_KEY]: applySecretDraftChange({
+          previous: EMPTY_SECRET_FIELD_STATE,
+          text: FAKE_SECRET,
+        }),
+      };
+
+      const inputValue = resolveSmsFieldInputValue({
+        field: SECRET_FIELD,
+        draftValueByKey: {},
+        storedValueByKey: { [SECRET_KEY]: '' },
+        secretFieldStateByKey,
+      });
+
+      expect(inputValue).toBe(FAKE_SECRET);
+    });
+
+    it('shows ONLY the typed value even when a stored (masked) secret exists', () => {
+      // A stored, masked secret must never be what the input displays.
+      const maskedStoredValue = 'f********';
+      const secretFieldStateByKey = {
+        [SECRET_KEY]: applySecretDraftChange({
+          previous: EMPTY_SECRET_FIELD_STATE,
+          text: FAKE_SECRET,
+        }),
+      };
+
+      const inputValue = resolveSmsFieldInputValue({
+        field: SECRET_FIELD,
+        draftValueByKey: {},
+        storedValueByKey: { [SECRET_KEY]: maskedStoredValue },
+        secretFieldStateByKey,
+      });
+
+      expect(inputValue).toBe(FAKE_SECRET);
+      expect(inputValue).not.toBe(maskedStoredValue);
+    });
+
+    it('sends the full typed value to the mutation for an empty stored secret', () => {
+      const secretFieldStateByKey = {
+        [SECRET_KEY]: applySecretDraftChange({
+          previous: EMPTY_SECRET_FIELD_STATE,
+          text: FAKE_SECRET,
+        }),
+      };
+
+      const pendingWrites = buildSmsProviderPendingWrites({
+        fields: [SECRET_FIELD],
+        draftValueByKey: {},
+        storedValueByKey: { [SECRET_KEY]: '' },
+        secretFieldStateByKey,
+      });
+
+      expect(pendingWrites).toEqual([{ key: SECRET_KEY, value: FAKE_SECRET }]);
+    });
+
+    it('never sends the masked value, and sends nothing for an untouched secret', () => {
+      const maskedStoredValue = 'f********';
+
+      // Untouched: KEEP writes nothing, so the stored secret stays intact.
+      expect(
+        buildSmsProviderPendingWrites({
+          fields: [SECRET_FIELD],
+          draftValueByKey: {},
+          storedValueByKey: { [SECRET_KEY]: maskedStoredValue },
+          secretFieldStateByKey: {},
+        }),
+      ).toEqual([]);
+    });
+
+    it('still reads a normal field from its draft, not the secret state', () => {
+      expect(
+        resolveSmsFieldInputValue({
+          field: NORMAL_FIELD,
+          draftValueByKey: { KAVENEGAR_SENDER: 'fake-sender' },
+          storedValueByKey: {},
+          secretFieldStateByKey: {},
+        }),
+      ).toBe('fake-sender');
+    });
+
+    it('writes a normal field only when its draft differs from what is stored', () => {
+      expect(
+        buildSmsProviderPendingWrites({
+          fields: [NORMAL_FIELD],
+          draftValueByKey: { KAVENEGAR_SENDER: 'fake-sender' },
+          storedValueByKey: { KAVENEGAR_SENDER: 'fake-sender' },
+          secretFieldStateByKey: {},
+        }),
+      ).toEqual([]);
+
+      expect(
+        buildSmsProviderPendingWrites({
+          fields: [NORMAL_FIELD],
+          draftValueByKey: { KAVENEGAR_SENDER: 'fake-sender-new' },
+          storedValueByKey: { KAVENEGAR_SENDER: 'fake-sender' },
+          secretFieldStateByKey: {},
+        }),
+      ).toEqual([{ key: 'KAVENEGAR_SENDER', value: 'fake-sender-new' }]);
     });
   });
 

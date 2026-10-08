@@ -156,6 +156,67 @@ export const summarizeSaveOutcome = ({
 };
 
 /**
+ * The value a provider field's input must show. A SECRET field reads ONLY from
+ * the secret draft state (its typed replacement, or empty) — the decision comes
+ * from the field's own `isSecret` flag, never from whether a value is present,
+ * so an unset secret can never fall through to the stored-value branch.
+ */
+export const resolveSmsFieldInputValue = ({
+  field,
+  draftValueByKey,
+  storedValueByKey,
+  secretFieldStateByKey,
+}: {
+  field: { key: string; isSecret: boolean };
+  draftValueByKey: Record<string, string>;
+  storedValueByKey: Record<string, string>;
+  secretFieldStateByKey: Record<string, SecretFieldState>;
+}): string =>
+  field.isSecret
+    ? resolveSecretInputValue(secretFieldStateByKey[field.key])
+    : (draftValueByKey[field.key] ?? storedValueByKey[field.key] ?? '');
+
+/**
+ * The writes a provider save must issue, in order. A secret writes only when
+ * its intent is REPLACE (the typed value) or CLEAR (empty); KEEP writes
+ * nothing. A non-secret writes only when its draft differs from what is stored.
+ */
+export const buildSmsProviderPendingWrites = ({
+  fields,
+  draftValueByKey,
+  storedValueByKey,
+  secretFieldStateByKey,
+}: {
+  fields: { key: string; isSecret: boolean }[];
+  draftValueByKey: Record<string, string>;
+  storedValueByKey: Record<string, string>;
+  secretFieldStateByKey: Record<string, SecretFieldState>;
+}): { key: string; value: string }[] => {
+  const pendingWrites: { key: string; value: string }[] = [];
+
+  for (const field of fields) {
+    if (field.isSecret) {
+      const secretWriteValue = resolveSecretWriteValue(
+        secretFieldStateByKey[field.key],
+      );
+
+      if (isDefined(secretWriteValue)) {
+        pendingWrites.push({ key: field.key, value: secretWriteValue });
+      }
+      continue;
+    }
+
+    const draftValue = draftValueByKey[field.key];
+
+    if (isDefined(draftValue) && draftValue !== storedValueByKey[field.key]) {
+      pendingWrites.push({ key: field.key, value: draftValue });
+    }
+  }
+
+  return pendingWrites;
+};
+
+/**
  * Removes only the keys whose draft is UNCHANGED since the save started. A
  * field edited while the save was in flight (a newer revision) keeps its draft,
  * and a field whose write failed keeps its draft for a retry. Comparing
