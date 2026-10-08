@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   runBulkSend,
+  type BulkSendProgress,
   type BulkSendRecipient,
   type BulkSendRecipientResult,
   type BulkSendTransport,
@@ -339,7 +340,7 @@ describe('runBulkSend', () => {
       request.personId === 'p2' ? unknownOutcome() : accepted(),
     );
 
-    const snapshots: BulkSendRecipientResult[][] = [];
+    const snapshots: BulkSendProgress[] = [];
 
     const outcome = await runBulkSend({
       recipients: [
@@ -349,15 +350,25 @@ describe('runBulkSend', () => {
       ],
       channel: 'SMS',
       transport,
-      onProgress: (results) => snapshots.push(results.map((r) => ({ ...r }))),
+      onProgress: (progress) =>
+        snapshots.push({
+          results: progress.results.map((r) => ({ ...r })),
+          currentPersonId: progress.currentPersonId,
+        }),
     });
 
     // Progress starts with everyone not started, then updates per recipient.
-    expect(kinds(snapshots[0])).toEqual([
+    expect(kinds(snapshots[0].results)).toEqual([
       'NOT_STARTED',
       'NOT_STARTED',
       'NOT_STARTED',
     ]);
+
+    // The in-flight recipient is ANNOUNCED before its request resolves, so the
+    // UI can show SENDING rather than leaving it looking not-started.
+    expect(snapshots.some((snapshot) => snapshot.currentPersonId === 'p1')).toBe(
+      true,
+    );
 
     if (outcome.kind === 'COMPLETED') {
       expect(kinds(outcome.summary.results)).toEqual([
@@ -368,7 +379,12 @@ describe('runBulkSend', () => {
     }
 
     const lastSnapshot = snapshots[snapshots.length - 1];
-    expect(kinds(lastSnapshot)).toEqual(['ACCEPTED', 'UNKNOWN', 'NOT_STARTED']);
+    expect(kinds(lastSnapshot.results)).toEqual([
+      'ACCEPTED',
+      'UNKNOWN',
+      'NOT_STARTED',
+    ]);
+    expect(lastSnapshot.currentPersonId).toBeNull();
   });
 
   it('does not retry a recipient after an unknown outcome', async () => {

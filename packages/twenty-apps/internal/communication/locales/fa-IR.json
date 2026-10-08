@@ -142,5 +142,8 @@
   "No valid preview for this recipient.": "پیش‌نمایش معتبری برای این گیرنده وجود ندارد.",
   "The preview is not ready to send.": "این پیش‌نمایش آمادهٔ ارسال نیست.",
   "No phone number selected.": "شماره‌ای انتخاب نشده است.",
-  "The message text is empty for this recipient.": "متن پیام برای این گیرنده خالی است."
+  "The message text is empty for this recipient.": "متن پیام برای این گیرنده خالی است.",
+  "Sending…": "در حال ارسال…",
+  "The group has finished. Review the results below.": "گروه به پایان رسید. نتایج را در پایین بررسی کنید.",
+  "Dismiss results": "بستن نتایج"
 }

@@ -69,6 +69,26 @@ describe('produced bundle translation (build-boundary witness)', () => {
     );
   });
 
+  it('translates the bulk-send copy through the produced bundle and real runtime', () => {
+    setRuntime('fa-IR', readBakedCatalogs());
+
+    // Result labels and the in-flight label.
+    expect(sdkTranslate('Sending…')).toBe('در حال ارسال…');
+    expect(sdkTranslate('Sent')).toBe('ارسال شد');
+    expect(sdkTranslate('Delivered')).toBe('تحویل داده شد');
+    expect(sdkTranslate('Outcome unknown')).toBe('نتیجه نامعلوم');
+    expect(sdkTranslate('Result not recorded')).toBe('نتیجه ثبت نشد');
+    expect(sdkTranslate('Not started')).toBe('شروع‌نشده');
+    // The fixed exclusion reason.
+    expect(sdkTranslate('The preview is not ready to send.')).toBe(
+      'این پیش‌نمایش آمادهٔ ارسال نیست.',
+    );
+    // The timeout / stop warning.
+    expect(sdkTranslate('One result is unknown. Check the communication history before sending again.')).toBe(
+      'یک نتیجه نامعلوم است. پیش از ارسال دوباره، سابقهٔ ارتباطات را بررسی کنید.',
+    );
+  });
+
   it('keeps the English source fallback for an untranslated key', () => {
     setRuntime('fa-IR', readBakedCatalogs());
 

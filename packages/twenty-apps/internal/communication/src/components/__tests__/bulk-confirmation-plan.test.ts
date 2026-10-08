@@ -57,10 +57,11 @@ describe('buildBulkConfirmationPlan', () => {
     expect(plan.sendable.map((entry) => entry.personId)).toEqual(['p1']);
     expect(plan.excluded).toHaveLength(1);
     expect(plan.excluded[0].personId).toBe('p2');
-    expect(plan.excluded[0].reason).toContain('No valid preview');
+    expect(plan.excluded[0].reasonCode).toBe('NOT_IN_PREVIEW');
+    expect(plan.excluded[0].tokens).toEqual([]);
   });
 
-  it('sets aside a not-ready recipient and names the unresolved tokens', () => {
+  it('sets aside a not-ready recipient and reports the tokens SEPARATELY', () => {
     const plan = buildBulkConfirmationPlan({
       recipients: [recipient('p1', 'Sara', '09120000001')],
       previews: [
@@ -73,7 +74,9 @@ describe('buildBulkConfirmationPlan', () => {
     });
 
     expect(plan.sendable).toEqual([]);
-    expect(plan.excluded[0].reason).toContain('@company');
+    expect(plan.excluded[0].reasonCode).toBe('NOT_READY');
+    // The token is DATA, never concatenated into the reason.
+    expect(plan.excluded[0].tokens).toEqual(['@company']);
   });
 
   it('sets aside a recipient with no phone', () => {
@@ -84,6 +87,7 @@ describe('buildBulkConfirmationPlan', () => {
 
     expect(plan.sendable).toEqual([]);
     expect(plan.excluded).toHaveLength(1);
+    expect(plan.excluded[0].reasonCode).toBe('NO_PHONE');
   });
 
   it('sets aside a recipient whose confirmed text is empty', () => {
@@ -93,7 +97,7 @@ describe('buildBulkConfirmationPlan', () => {
     });
 
     expect(plan.sendable).toEqual([]);
-    expect(plan.excluded[0].reason).toContain('empty');
+    expect(plan.excluded[0].reasonCode).toBe('NO_BODY');
   });
 
   it('reports numbers shared by two or more sendable recipients (never silently drops)', () => {

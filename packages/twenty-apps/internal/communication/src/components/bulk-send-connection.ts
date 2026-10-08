@@ -12,6 +12,8 @@ export type BulkSendProgressState = {
   isRunning: boolean;
   /** Every confirmed recipient, with its current truthful result. */
   results: BulkSendRecipientResult[];
+  /** The recipient whose request is in flight, or `null` between requests. */
+  currentPersonId: string | null;
   /** Present only once the run has finished. */
   summary: BulkSendSummary | null;
 };
@@ -30,17 +32,20 @@ export type BulkSendConnection = {
    */
   stop: () => void;
   /**
-   * Used when the form closes/unmounts: same as `stop`, and it also clears any
-   * pending results so a stale group can never be re-run by a later render.
+   * Used when the form closes/unmounts: same as `stop`, and it also DISPOSES the
+   * connection so no later publication (not even the in-flight run's) can reach
+   * the caller's state.
    */
   invalidate: () => void;
 };
 
 /**
  * The composer's real bulk-send wiring: the same object the send button calls.
- * It owns the synchronous in-flight guard and the stop flag, and delegates the
- * actual sequencing to `runBulkSend`, so the button and the coordinator cannot
- * drift.
+ *
+ * It owns the synchronous in-flight guard and the stop flag, delegates the
+ * sequencing to `runBulkSend`, and adds a MONOTONIC run id so a superseded run
+ * can never publish over a newer one or after disposal. This is what keeps the
+ * button, the coordinator and the UI from drifting.
  */
 export const createBulkSendConnection = (options: {
   transport: BulkSendTransport;
@@ -51,6 +56,18 @@ export const createBulkSendConnection = (options: {
   const isRunningRef = { current: false };
   // Set by `stop()`/`invalidate()`; checked before each NEXT recipient.
   let stopRequested = false;
+  // Every run gets a new id; only the LATEST run may publish state.
+  let latestRunId = 0;
+  // Once disposed (unmount/close), no publication is allowed at all.
+  let isDisposed = false;
+
+  const publish = (runId: number, state: BulkSendProgressState): void => {
+    if (isDisposed || runId !== latestRunId) {
+      return;
+    }
+
+    options.onState(state);
+  };
 
   const send: BulkSendConnection['send'] = async ({
     recipients,
@@ -58,13 +75,21 @@ export const createBulkSendConnection = (options: {
   }) => {
     // Checked BEFORE publishing anything: a second click in the same tick must
     // not reset the in-flight state of the run that is already going.
-    if (isRunningRef.current) {
+    if (isRunningRef.current || isDisposed) {
       return { kind: 'DUPLICATE_IGNORED' };
     }
 
+    latestRunId += 1;
+    const runId = latestRunId;
+
     stopRequested = false;
 
-    options.onState({ isRunning: true, results: [], summary: null });
+    publish(runId, {
+      isRunning: true,
+      results: [],
+      currentPersonId: null,
+      summary: null,
+    });
 
     const outcome = await runBulkSend({
       recipients,
@@ -72,8 +97,13 @@ export const createBulkSendConnection = (options: {
       transport: options.transport,
       isRunningRef,
       shouldStop: () => stopRequested,
-      onProgress: (results) =>
-        options.onState({ isRunning: true, results, summary: null }),
+      onProgress: (progress) =>
+        publish(runId, {
+          isRunning: true,
+          results: progress.results,
+          currentPersonId: progress.currentPersonId,
+          summary: null,
+        }),
     });
 
     if (outcome.kind === 'DUPLICATE_IGNORED') {
@@ -81,9 +111,12 @@ export const createBulkSendConnection = (options: {
       return outcome;
     }
 
-    options.onState({
+    // The FINAL publication keeps the last results visible even when stopped,
+    // and attaches the summary so the UI can switch to the finished view.
+    publish(runId, {
       isRunning: false,
       results: outcome.summary.results,
+      currentPersonId: null,
       summary: outcome.summary,
     });
 
@@ -96,7 +129,7 @@ export const createBulkSendConnection = (options: {
 
   const invalidate = (): void => {
     stopRequested = true;
-    options.onState({ isRunning: false, results: [], summary: null });
+    isDisposed = true;
   };
 
   return { send, stop, invalidate };

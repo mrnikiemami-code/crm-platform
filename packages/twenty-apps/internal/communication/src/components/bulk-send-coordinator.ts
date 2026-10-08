@@ -155,13 +155,24 @@ const summarize = ({
   stopReason,
 });
 
+export type BulkSendProgress = {
+  /** Every confirmed recipient, with its current truthful result. */
+  results: BulkSendRecipientResult[];
+  /**
+   * The recipient whose request is in flight, or `null` between requests. The
+   * UI shows this one as SENDING; it must never be labelled NOT_STARTED while a
+   * request is actually running.
+   */
+  currentPersonId: string | null;
+};
+
 export type RunBulkSendParameters = {
   /** The confirmed recipients, in the order they must be attempted. */
   recipients: readonly BulkSendRecipient[];
   channel: string;
   transport: BulkSendTransport;
   /** Called with a fresh snapshot of the results after every change. */
-  onProgress?: (results: BulkSendRecipientResult[]) => void;
+  onProgress?: (progress: BulkSendProgress) => void;
   /**
    * Checked SYNCHRONOUSLY before each recipient. Returning true stops before the
    * NEXT request; the in-flight one is never relabelled as cancelled.
@@ -205,11 +216,14 @@ export const runBulkSend = async (
 
     const results: BulkSendRecipientResult[] = snapshot.map(buildNotStarted);
 
-    const publish = (): void => {
-      parameters.onProgress?.(results.map((result) => ({ ...result })));
+    const publish = (currentPersonId: string | null): void => {
+      parameters.onProgress?.({
+        results: results.map((result) => ({ ...result })),
+        currentPersonId,
+      });
     };
 
-    publish();
+    publish(null);
 
     for (let index = 0; index < snapshot.length; index += 1) {
       // A user stop (or a closed form) prevents the NEXT request only.
@@ -221,6 +235,10 @@ export const runBulkSend = async (
       }
 
       const recipient = snapshot[index];
+
+      // Announce the in-flight recipient so the UI can show SENDING instead of
+      // leaving it looking not-started.
+      publish(recipient.personId);
 
       let outcome: ReturnType<typeof classifySubmitResponse>;
 
@@ -234,12 +252,13 @@ export const runBulkSend = async (
 
         outcome = classifySubmitResponse(response.data);
       } catch {
-        // A timeout / network failure means the send may have happened.
+        // A deadline, timeout, malformed body or network failure means the send
+        // may have happened. It is UNKNOWN, never a definite failure.
         outcome = { kind: 'OUTCOME_UNKNOWN', message: UNKNOWN_MESSAGE };
       }
 
       results[index] = toRecipientResult({ recipient, outcome });
-      publish();
+      publish(null);
 
       if (doesResultStopGroup(results[index].kind)) {
         return {

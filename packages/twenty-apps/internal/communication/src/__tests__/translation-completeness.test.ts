@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BULK_RESULT_LABELS,
+  BULK_SENDING_LABEL,
   BULK_STATUS_DELIVERED,
   BULK_STOPPED_UNKNOWN_MESSAGE,
   BULK_STOPPED_UNKNOWN_TITLE,
@@ -111,6 +112,7 @@ describe('fa-IR catalog covers every fixed production message', () => {
     const fixed = [
       ...Object.values(BULK_RESULT_LABELS),
       BULK_STATUS_DELIVERED,
+      BULK_SENDING_LABEL,
       BULK_STOPPED_UNKNOWN_TITLE,
       BULK_STOPPED_UNKNOWN_MESSAGE,
       BULK_STOPPED_USER_TITLE,

@@ -104,7 +104,7 @@ describe('createBulkSendConnection (the button-to-coordinator wiring)', () => {
     }
   });
 
-  it('invalidate() clears pending results so a closed form cannot re-run them', async () => {
+  it('invalidate() disposes the connection so no later state is published', async () => {
     const { connection, states } = buildConnection(() => accepted());
 
     await connection.send({
@@ -112,10 +112,26 @@ describe('createBulkSendConnection (the button-to-coordinator wiring)', () => {
       channel: 'SMS',
     });
 
+    const countAfterRun = states.length;
+
     connection.invalidate();
 
-    const last = states[states.length - 1];
-    expect(last).toEqual({ isRunning: false, results: [], summary: null });
+    // No further publication, not even a cleared state.
+    expect(states.length).toBe(countAfterRun);
+  });
+
+  it('a disposed connection refuses a new run', async () => {
+    const { connection, requests } = buildConnection(() => accepted());
+
+    connection.invalidate();
+
+    const outcome = await connection.send({
+      recipients: [recipient('p1', '1', 'a')],
+      channel: 'SMS',
+    });
+
+    expect(outcome).toEqual({ kind: 'DUPLICATE_IGNORED' });
+    expect(requests).toEqual([]);
   });
 
   it('a new send starts a fresh run with no leftover results', async () => {

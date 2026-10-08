@@ -3,25 +3,40 @@ import {
   type BulkSendRecipientResultKind,
   type BulkSendSummary,
 } from 'src/components/bulk-send-coordinator';
+import {
+  BULK_EXCLUSION_REASON_KEYS,
+  type BulkExcludedRecipient,
+} from 'src/components/bulk-confirmation-plan';
 
 // Presentation mapping for the bulk send results. Pure and deterministic, so
 // the truthfulness rules are testable without the front-component sandbox. The
 // component passes the labels through `t()`; the mapping itself never invents a
 // success.
 
-export type BulkRecipientResultPresentation = {
+export type BulkRecipientVariant =
+  | 'success'
+  | 'error'
+  | 'warning'
+  | 'neutral';
+
+export type BulkRecipientDisplay = {
   personId: string;
   displayName: string;
   recipient: string;
-  /** Localizable status label (source string). */
+  /** Localizable status label (source string) — always app copy. */
   label: string;
   /**
    * Only ACCEPTED is a success; UNKNOWN/RECORDING_PROBLEM are warnings;
-   * DEFINITE_FAILURE is an error; NOT_STARTED is neutral.
+   * DEFINITE_FAILURE is an error; NOT_STARTED/SENDING are neutral.
    */
-  variant: 'success' | 'error' | 'warning' | 'neutral';
-  /** The server's own reason, verbatim, when one was reported. */
+  variant: BulkRecipientVariant;
+  /**
+   * The detail line. `isProviderText` is true when this is the PROVIDER's own
+   * wording (a definite failure reason): it is shown verbatim and must NOT be
+   * passed through `t()`. When false it is app copy and IS translated.
+   */
   detail: string | null;
+  isProviderText: boolean;
 };
 
 // Localizable copy. Kept here so the mapping stays pure and the component
@@ -35,6 +50,7 @@ export const BULK_RESULT_LABELS: Record<BulkSendRecipientResultKind, string> = {
 };
 
 export const BULK_STATUS_DELIVERED = 'Delivered';
+export const BULK_SENDING_LABEL = 'Sending…';
 
 export const BULK_STOPPED_UNKNOWN_TITLE = 'The group was stopped.';
 export const BULK_STOPPED_UNKNOWN_MESSAGE =
@@ -43,9 +59,7 @@ export const BULK_STOPPED_USER_TITLE = 'Sending was stopped.';
 export const BULK_STOPPED_USER_MESSAGE =
   'Recipients that were not reached are marked as not started.';
 
-const toVariant = (
-  kind: BulkSendRecipientResultKind,
-): BulkRecipientResultPresentation['variant'] => {
+const toVariant = (kind: BulkSendRecipientResultKind): BulkRecipientVariant => {
   switch (kind) {
     case 'ACCEPTED':
       return 'success';
@@ -69,17 +83,47 @@ const toLabel = (result: BulkSendRecipientResult): string => {
   return BULK_RESULT_LABELS[result.kind];
 };
 
-export const buildBulkResultPresentation = (
-  results: readonly BulkSendRecipientResult[],
-): BulkRecipientResultPresentation[] =>
-  results.map((result) => ({
-    personId: result.personId,
-    displayName: result.displayName,
-    recipient: result.recipient,
-    label: toLabel(result),
-    variant: toVariant(result.kind),
-    detail: result.message ?? null,
-  }));
+/**
+ * Builds one row per confirmed recipient for the RUNNING or FINISHED view.
+ *
+ * The recipient whose request is in flight is shown as SENDING (never
+ * NOT_STARTED), recipients not yet attempted stay NOT_STARTED, and every
+ * completed result keeps its own truthful label and severity.
+ */
+export const buildBulkRecipientDisplay = ({
+  results,
+  currentPersonId,
+}: {
+  results: readonly BulkSendRecipientResult[];
+  currentPersonId: string | null;
+}): BulkRecipientDisplay[] =>
+  results.map((result) => {
+    if (result.personId === currentPersonId) {
+      return {
+        personId: result.personId,
+        displayName: result.displayName,
+        recipient: result.recipient,
+        label: BULK_SENDING_LABEL,
+        variant: 'neutral' as const,
+        detail: null,
+        isProviderText: false,
+      };
+    }
+
+    // A definite failure carries the provider's OWN wording: show it verbatim
+    // and never pretend it is translated application copy.
+    const isProviderText = result.kind === 'DEFINITE_FAILURE';
+
+    return {
+      personId: result.personId,
+      displayName: result.displayName,
+      recipient: result.recipient,
+      label: toLabel(result),
+      variant: toVariant(result.kind),
+      detail: result.message ?? null,
+      isProviderText,
+    };
+  });
 
 export type BulkSummaryPresentation = {
   acceptedCount: number;
@@ -114,3 +158,22 @@ export const buildBulkSummaryPresentation = (
     stopNotice,
   };
 };
+
+export type BulkExcludedDisplay = {
+  personId: string;
+  displayName: string;
+  /** The FIXED translation key for the reason. */
+  reasonKey: string;
+  /** Unresolved tokens, rendered separately as data (never translated). */
+  tokens: string[];
+};
+
+export const buildBulkExcludedDisplay = (
+  excluded: readonly BulkExcludedRecipient[],
+): BulkExcludedDisplay[] =>
+  excluded.map((entry) => ({
+    personId: entry.personId,
+    displayName: entry.displayName,
+    reasonKey: BULK_EXCLUSION_REASON_KEYS[entry.reasonCode],
+    tokens: entry.tokens,
+  }));
