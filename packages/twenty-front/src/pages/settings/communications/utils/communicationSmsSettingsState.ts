@@ -99,6 +99,15 @@ export const cancelSecretClear = (): SecretFieldState =>
   EMPTY_SECRET_FIELD_STATE;
 
 /**
+ * The value the secret input must show. It is ONLY the replacement the user
+ * typed, never the stored (or masked) value, so a saved secret can never leak
+ * back into the field.
+ */
+export const resolveSecretInputValue = (
+  state: SecretFieldState | undefined,
+): string => state?.replacement ?? '';
+
+/**
  * The value to write for a secret field, or `undefined` when nothing must be
  * written. A KEEP intent writes nothing, so the stored secret is untouched.
  */
@@ -147,18 +156,29 @@ export const summarizeSaveOutcome = ({
 };
 
 /**
- * Removes only the keys whose write succeeded. Applied to the LATEST draft map,
- * so a field edited while the save was in flight keeps its newer value, and a
- * field whose write failed keeps its draft for a retry.
+ * Removes only the keys whose draft is UNCHANGED since the save started. A
+ * field edited while the save was in flight (a newer revision) keeps its draft,
+ * and a field whose write failed keeps its draft for a retry. Comparing
+ * revisions — not just "did the write succeed" — is what makes an edit on the
+ * SAME key survive the cleanup.
  */
-export const dropSucceededDrafts = <TValue>(
-  latestDrafts: Record<string, TValue>,
-  succeededKeys: string[],
-): Record<string, TValue> => {
+export const dropUnchangedSucceededDrafts = <TValue>({
+  latestDrafts,
+  draftsAtSaveStart,
+  succeededKeys,
+}: {
+  latestDrafts: Record<string, TValue>;
+  draftsAtSaveStart: Record<string, TValue>;
+  succeededKeys: string[];
+}): Record<string, TValue> => {
   const next = { ...latestDrafts };
 
   for (const key of succeededKeys) {
-    delete next[key];
+    const draftIsUnchanged = latestDrafts[key] === draftsAtSaveStart[key];
+
+    if (draftIsUnchanged) {
+      delete next[key];
+    }
   }
 
   return next;

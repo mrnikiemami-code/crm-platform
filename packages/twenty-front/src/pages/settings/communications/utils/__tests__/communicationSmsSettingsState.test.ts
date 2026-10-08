@@ -1,9 +1,10 @@
 import {
   applySecretDraftChange,
-  dropSucceededDrafts,
+  dropUnchangedSucceededDrafts,
   EMPTY_SECRET_FIELD_STATE,
   requestSecretClear,
   resolveCommunicationSmsLoadState,
+  resolveSecretInputValue,
   resolveSecretIntent,
   resolveSecretWriteValue,
   summarizeSaveOutcome,
@@ -117,6 +118,29 @@ describe('communicationSmsSettingsState', () => {
       ).toBe('new-value');
       expect(resolveSecretWriteValue(requestSecretClear())).toBe('');
     });
+
+    it('the input shows only the typed replacement, never a stored value', () => {
+      expect(resolveSecretInputValue(undefined)).toBe('');
+      expect(resolveSecretInputValue(EMPTY_SECRET_FIELD_STATE)).toBe('');
+      expect(
+        resolveSecretInputValue({
+          replacement: 'my-new-key',
+          isClearRequested: false,
+        }),
+      ).toBe('my-new-key');
+      // A pending clear shows an empty input, not the stored secret.
+      expect(resolveSecretInputValue(requestSecretClear())).toBe('');
+    });
+
+    it('carries a full multi-character replacement to the write value', () => {
+      const state = applySecretDraftChange({
+        previous: EMPTY_SECRET_FIELD_STATE,
+        text: 'a-long-secret-key-123',
+      });
+
+      expect(resolveSecretInputValue(state)).toBe('a-long-secret-key-123');
+      expect(resolveSecretWriteValue(state)).toBe('a-long-secret-key-123');
+    });
   });
 
   describe('summarizeSaveOutcome', () => {
@@ -145,27 +169,65 @@ describe('communicationSmsSettingsState', () => {
     });
   });
 
-  describe('dropSucceededDrafts', () => {
-    it('keeps an edit made while the save was in flight', () => {
-      // The draft map passed in is the LATEST one, so a field edited during the
-      // save keeps its newer value even though its write succeeded.
-      const latestDrafts = {
-        KAVENEGAR_SENDER: 'edited-during-save',
-        KAVENEGAR_ENDPOINT: 'saved-value',
+  describe('dropUnchangedSucceededDrafts', () => {
+    it('drops a key whose draft is unchanged since the save started', () => {
+      const draftsAtSaveStart = { KAVENEGAR_SENDER: 'saved-value' };
+      const latestDrafts = { KAVENEGAR_SENDER: 'saved-value' };
+
+      expect(
+        dropUnchangedSucceededDrafts({
+          latestDrafts,
+          draftsAtSaveStart,
+          succeededKeys: ['KAVENEGAR_SENDER'],
+        }),
+      ).toEqual({});
+    });
+
+    it('keeps an edit made during the save on the SAME key (deferred)', () => {
+      // A deferred save: the key succeeded, but the user edited it again while
+      // the write was in flight, so the newer draft must survive.
+      const draftsAtSaveStart = { KAVENEGAR_SENDER: 'submitted-value' };
+      const latestDrafts = { KAVENEGAR_SENDER: 'edited-during-save' };
+
+      expect(
+        dropUnchangedSucceededDrafts({
+          latestDrafts,
+          draftsAtSaveStart,
+          succeededKeys: ['KAVENEGAR_SENDER'],
+        }),
+      ).toEqual({ KAVENEGAR_SENDER: 'edited-during-save' });
+    });
+
+    it('keeps a secret draft edited during the save on the same key (deferred)', () => {
+      const submitted = {
+        replacement: 'submitted-secret',
+        isClearRequested: false,
+      };
+      const editedDuringSave = {
+        replacement: 'newer-secret',
+        isClearRequested: false,
       };
 
-      const result = dropSucceededDrafts(latestDrafts, ['KAVENEGAR_ENDPOINT']);
+      const result = dropUnchangedSucceededDrafts({
+        latestDrafts: { KAVENEGAR_API_KEY: editedDuringSave },
+        draftsAtSaveStart: { KAVENEGAR_API_KEY: submitted },
+        succeededKeys: ['KAVENEGAR_API_KEY'],
+      });
 
-      expect(result).toEqual({ KAVENEGAR_SENDER: 'edited-during-save' });
+      expect(result).toEqual({ KAVENEGAR_API_KEY: editedDuringSave });
     });
 
     it('keeps the draft of a field whose write failed', () => {
-      const latestDrafts = { KAVENEGAR_SENDER: 'retry-me' };
+      const drafts = { KAVENEGAR_SENDER: 'retry-me' };
 
       // The failed key is not in succeededKeys, so its draft survives.
-      expect(dropSucceededDrafts(latestDrafts, [])).toEqual({
-        KAVENEGAR_SENDER: 'retry-me',
-      });
+      expect(
+        dropUnchangedSucceededDrafts({
+          latestDrafts: drafts,
+          draftsAtSaveStart: drafts,
+          succeededKeys: [],
+        }),
+      ).toEqual({ KAVENEGAR_SENDER: 'retry-me' });
     });
   });
 });

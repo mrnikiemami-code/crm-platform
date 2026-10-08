@@ -14,11 +14,12 @@ import { UpdateOneApplicationVariableDocument } from '~/generated-metadata/graph
 import {
   applySecretDraftChange,
   type CommunicationSmsLoadState,
-  dropSucceededDrafts,
+  dropUnchangedSucceededDrafts,
   requestSecretClear,
   type SaveOutcome,
   type SecretFieldState,
   resolveCommunicationSmsLoadState,
+  resolveSecretInputValue,
   resolveSecretIntent,
   resolveSecretWriteValue,
   summarizeSaveOutcome,
@@ -363,9 +364,12 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
       .map((variable) => [variable.key, isNonEmptyString(variable.value)]),
   );
 
+  // A secret field shows ONLY the replacement the user typed, never the stored
+  // or masked value, so a saved secret can never leak back into the input.
   const readValue = (key: string): string =>
-    draftValueByKey[key] ??
-    (secretPresenceByKey[key] ? '' : (storedValueByKey[key] ?? ''));
+    secretPresenceByKey[key] === true
+      ? resolveSecretInputValue(secretFieldStateByKey[key])
+      : (draftValueByKey[key] ?? storedValueByKey[key] ?? '');
 
   const selectedProviderId =
     storedValueByKey[COMMUNICATION_PROVIDER_VARIABLE_KEY] ?? '';
@@ -385,21 +389,41 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
       return;
     }
 
-    await runExclusive(async () => {
+    const result = await runExclusive(async () => {
       try {
         await persistVariable(COMMUNICATION_PROVIDER_VARIABLE_KEY, providerId);
-        await refetch();
-        enqueueToast({
-          variant: 'success',
-          children: t`Default provider saved.`,
-        });
+
+        // The write landed; a failed read-back must not read as a failed save.
+        try {
+          await refetch();
+          enqueueToast({
+            variant: 'success',
+            children: t`Default provider saved.`,
+          });
+        } catch {
+          enqueueToast({
+            variant: 'warning',
+            children: t`The default provider may have been saved, but it could not be re-read. Reload to see the saved value.`,
+          });
+        }
       } catch {
         enqueueToast({
           variant: 'error',
           children: t`Failed to save the default provider.`,
         });
       }
+
+      return true;
     });
+
+    // The lock dropped a click that overlapped another write; say so instead of
+    // silently ignoring the user.
+    if (result === undefined) {
+      enqueueToast({
+        variant: 'warning',
+        children: t`Another save is in progress. Try again in a moment.`,
+      });
+    }
   };
 
   const handleSaveProvider = async (config: SmsProviderConfig) => {
@@ -407,82 +431,118 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
       setSavingProviderId(config.id);
       setFailedProviderId(null);
 
-      const pendingWrites: { key: string; value: string }[] = [];
+      try {
+        // Snapshot the drafts as they are at the moment the save starts, so the
+        // cleanup can tell "unchanged since submit" from "edited during save".
+        const draftsAtSaveStart = draftValueByKey;
+        const secretFieldsAtSaveStart = secretFieldStateByKey;
 
-      for (const field of config.fields) {
-        if (field.isSecret) {
-          const secretWriteValue = resolveSecretWriteValue(
-            secretFieldStateByKey[field.key],
-          );
+        const pendingWrites: { key: string; value: string }[] = [];
 
-          // KEEP writes nothing, so the stored secret stays untouched.
-          if (isDefined(secretWriteValue)) {
-            pendingWrites.push({ key: field.key, value: secretWriteValue });
+        for (const field of config.fields) {
+          if (field.isSecret) {
+            const secretWriteValue = resolveSecretWriteValue(
+              secretFieldsAtSaveStart[field.key],
+            );
+
+            // KEEP writes nothing, so the stored secret stays untouched.
+            if (isDefined(secretWriteValue)) {
+              pendingWrites.push({ key: field.key, value: secretWriteValue });
+            }
+            continue;
           }
-          continue;
+
+          const draftValue = draftsAtSaveStart[field.key];
+
+          if (
+            isDefined(draftValue) &&
+            draftValue !== storedValueByKey[field.key]
+          ) {
+            pendingWrites.push({ key: field.key, value: draftValue });
+          }
         }
 
-        const draftValue = draftValueByKey[field.key];
+        // Every write is attempted, even if an earlier one fails, so the
+        // outcome can be reported per-write instead of guessed. A rejection is
+        // handled here, never left unhandled.
+        const results = await Promise.allSettled(
+          pendingWrites.map((write) => persistVariable(write.key, write.value)),
+        );
 
-        if (
-          isDefined(draftValue) &&
-          draftValue !== storedValueByKey[field.key]
-        ) {
-          pendingWrites.push({ key: field.key, value: draftValue });
+        const succeededCount = results.filter(
+          (result) => result.status === 'fulfilled',
+        ).length;
+        const outcome: SaveOutcome = summarizeSaveOutcome({
+          succeededCount,
+          totalCount: pendingWrites.length,
+        });
+
+        const succeededKeys = pendingWrites
+          .filter((_, index) => results[index].status === 'fulfilled')
+          .map((write) => write.key);
+
+        // Re-read before clearing anything, so the form shows what actually
+        // landed rather than what was intended. A failed read-back must not
+        // lock the UI or leave a draft in limbo: it is caught and reported
+        // honestly, and every draft is kept.
+        let didRefetchSucceed = true;
+
+        try {
+          await refetch();
+        } catch {
+          didRefetchSucceed = false;
         }
+
+        if (didRefetchSucceed) {
+          // Only keys whose draft is unchanged since submit are dropped; a
+          // field edited during the save keeps its newer draft, even on the
+          // same key.
+          setDraftValueByKey((previous) =>
+            dropUnchangedSucceededDrafts({
+              latestDrafts: previous,
+              draftsAtSaveStart,
+              succeededKeys,
+            }),
+          );
+          setSecretFieldStateByKey((previous) =>
+            dropUnchangedSucceededDrafts({
+              latestDrafts: previous,
+              draftsAtSaveStart: secretFieldsAtSaveStart,
+              succeededKeys,
+            }),
+          );
+        } else {
+          setFailedProviderId(config.id);
+        }
+
+        if (!didRefetchSucceed) {
+          enqueueToast({
+            variant: 'warning',
+            children: t`The settings may have been saved, but they could not be re-read. Reload to see the saved values.`,
+          });
+        } else if (outcome === 'ALL_SAVED') {
+          enqueueToast({
+            variant: 'success',
+            children: t`Settings saved.`,
+          });
+        } else if (outcome === 'PARTIAL') {
+          setFailedProviderId(config.id);
+          enqueueToast({
+            variant: 'error',
+            children: t`Some settings were saved and the rest failed to save.`,
+          });
+        } else {
+          setFailedProviderId(config.id);
+          enqueueToast({
+            variant: 'error',
+            children: t`The settings could not be saved.`,
+          });
+        }
+      } finally {
+        // Always releases the lock, so an unexpected failure cannot freeze the
+        // form.
+        setSavingProviderId(null);
       }
-
-      // Every write is attempted, even if an earlier one fails, so the outcome
-      // can be reported per-write instead of guessed.
-      const results = await Promise.allSettled(
-        pendingWrites.map((write) => persistVariable(write.key, write.value)),
-      );
-
-      const succeededCount = results.filter(
-        (result) => result.status === 'fulfilled',
-      ).length;
-      const outcome: SaveOutcome = summarizeSaveOutcome({
-        succeededCount,
-        totalCount: pendingWrites.length,
-      });
-
-      // Re-read before clearing anything, so the form shows what actually
-      // landed rather than what was intended.
-      await refetch();
-
-      // Only the keys whose write succeeded are dropped; a failed key keeps its
-      // draft so the user can retry, and an edit made while saving is preserved.
-      const succeededKeys = pendingWrites
-        .filter((_, index) => results[index].status === 'fulfilled')
-        .map((write) => write.key);
-
-      setDraftValueByKey((previous) =>
-        dropSucceededDrafts(previous, succeededKeys),
-      );
-      setSecretFieldStateByKey((previous) =>
-        dropSucceededDrafts(previous, succeededKeys),
-      );
-
-      if (outcome === 'ALL_SAVED') {
-        enqueueToast({
-          variant: 'success',
-          children: t`Settings saved.`,
-        });
-      } else if (outcome === 'PARTIAL') {
-        setFailedProviderId(config.id);
-        enqueueToast({
-          variant: 'error',
-          children: t`Some settings were saved and the rest failed to save.`,
-        });
-      } else {
-        setFailedProviderId(config.id);
-        enqueueToast({
-          variant: 'error',
-          children: t`The settings could not be saved.`,
-        });
-      }
-
-      setSavingProviderId(null);
     });
   };
 

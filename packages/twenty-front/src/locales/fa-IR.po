@@ -24330,3 +24330,18 @@ msgstr "تنظیمات ذخیره نشد."
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "Some settings may not have been saved. Reload to see the saved values."
 msgstr "ممکن است برخی تنظیمات ذخیره نشده باشند. برای دیدن مقادیر ذخیره‌شده، صفحه را دوباره بارگذاری کنید."
+
+#. js-lingui-id: kCRz7M
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The settings may have been saved, but they could not be re-read. Reload to see the saved values."
+msgstr "ممکن است تنظیمات ذخیره شده باشد، اما بازخوانی ناموفق بود. برای دیدن مقادیر ذخیره‌شده، صفحه را دوباره بارگذاری کنید."
+
+#. js-lingui-id: eMvzAi
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The default provider may have been saved, but it could not be re-read. Reload to see the saved value."
+msgstr "ممکن است سرویس‌دهندهٔ پیش‌فرض ذخیره شده باشد، اما بازخوانی ناموفق بود. برای دیدن مقدار ذخیره‌شده، صفحه را دوباره بارگذاری کنید."
+
+#. js-lingui-id: fTgQih
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Another save is in progress. Try again in a moment."
+msgstr "یک ذخیرهٔ دیگر در جریان است. لحظه‌ای بعد دوباره تلاش کنید."

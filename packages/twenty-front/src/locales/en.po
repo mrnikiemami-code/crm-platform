@@ -24380,3 +24380,18 @@ msgstr "The settings could not be saved."
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "Some settings may not have been saved. Reload to see the saved values."
 msgstr "Some settings may not have been saved. Reload to see the saved values."
+
+#. js-lingui-id: kCRz7M
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The settings may have been saved, but they could not be re-read. Reload to see the saved values."
+msgstr "The settings may have been saved, but they could not be re-read. Reload to see the saved values."
+
+#. js-lingui-id: eMvzAi
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The default provider may have been saved, but it could not be re-read. Reload to see the saved value."
+msgstr "The default provider may have been saved, but it could not be re-read. Reload to see the saved value."
+
+#. js-lingui-id: fTgQih
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "Another save is in progress. Try again in a moment."
+msgstr "Another save is in progress. Try again in a moment."

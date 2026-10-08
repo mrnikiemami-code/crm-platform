@@ -117,6 +117,15 @@ const styles = {
     border: '1px solid #fecdca',
     borderRadius: 4,
   },
+  warning: {
+    margin: 0,
+    padding: '8px 10px',
+    fontSize: 12,
+    color: '#93370d',
+    background: '#fffaeb',
+    border: '1px solid #fedf89',
+    borderRadius: 4,
+  },
   actions: {
     display: 'flex',
     justifyContent: 'flex-end',
@@ -173,6 +182,10 @@ const SendMessageComposer = () => {
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The severity of the last outcome, so the in-form message uses the SAME
+  // classification as the toast: a definite failure is an error, an uncertain
+  // result is a warning.
+  const [errorVariant, setErrorVariant] = useState<'error' | 'warning'>('error');
 
   // Synchronous in-flight guard. React state updates are not visible to a
   // second click in the same tick, so two rapid clicks could otherwise fire
@@ -288,9 +301,11 @@ const SendMessageComposer = () => {
       } else {
         // The provider's own reason is shown verbatim; only the app's own
         // fallback wording is translated, so a real backend reason is never
-        // replaced by a translated generic.
+        // replaced by a translated generic. The SAME severity drives the
+        // in-form message and the toast.
         const message = t(presentation.message);
 
+        setErrorVariant(presentation.variant);
         setError(message);
         await enqueueSnackbar({ message, variant: presentation.variant });
       }
@@ -387,7 +402,11 @@ const SendMessageComposer = () => {
         />
       </label>
 
-      {error !== null && <p style={styles.error}>{error}</p>}
+      {error !== null && (
+        <p style={errorVariant === 'warning' ? styles.warning : styles.error}>
+          {error}
+        </p>
+      )}
 
       <div style={styles.actions}>
         <button
