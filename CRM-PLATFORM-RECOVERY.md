@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-09 (W15-B-R3-MONOTONIC-DEADLINE-PROOF — real monotonic performance.now() source, post-parse guard proven, connected deadline chain; package 0.1.12 built, NOT installed; main and app2 remain 0.1.8; implementation review pending)
+Last updated: 2026-10-09 (W16-ROADMAP-BASELINE — Communications product roadmap and dynamic CRM template direction recorded; documentation only; W15-B-R3 package 0.1.12 remains built, NOT installed at this checkpoint; implementation review pending)
 
 ## Purpose
 
@@ -244,7 +244,73 @@ Current Development State:
 - **Workflow entry point: DISABLED.** The `Send Communication` action is **no longer registered** (`workflowActionTriggerSettings` removed) and its production entry is a deterministic refusal returning `WORKFLOW_ACTION_DISABLED`. Reason: a failed/incomplete send cannot mark a Workflow step FAILED, and throwing would risk a duplicate send. The reusable adapter and its tests are retained but unreachable. See the W7 section.
 
 Next Recommended Work:
-No wave assigned. W7 is **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED**. W8/W8-R1 and W9/W9-R1 are **accepted at code level**. **W10-R2** installed the app (registration → upload 14/14 → sync 92 entities) and its API/event checks passed **while the dependency layer was cached** (now historical). **W10-R3**'s browser pass was corrected by **W10-R4**, which proved front components and the composer **do render**. **W10-R4**'s two blockers are both resolved (W10-R6 execution, W10-R5 timeline card), **W10-R8-R1** resolved the two-workspace blocker via the native tarball path, and **W10-R8-R2** closed the evidence gaps (execution witness, per-install workflow-trigger verification, upgrade-job audit, Recovery reconciliation). Do not start another wave automatically.
+The next product wave is **W16 — metadata-driven CRM templates**. Execute the stages below in order; do not skip directly from the current fixed token catalog to arbitrary property access. W7 remains **IMPLEMENTED BUT DISABLED — BLOCKED / NOT ACCEPTED** and is not part of W16. W17 Workflow work starts only after W16 is complete and live-verified.
+
+## Communications Product Roadmap — mandatory planning gate
+
+This section is the planning Source of Truth for Communications. Before starting or changing a Communications task, reconcile its scope, prerequisites, acceptance criteria and evidence level against this roadmap. A task may be implemented only when its bounded deliverable is named here or this section is updated first. Keep reports short, but do not trade away the product path for isolated test-only corrections.
+
+### Current capability and target
+
+| Area | Current capability | Target |
+|------|--------------------|--------|
+| Template storage | Native workspace `messageTemplate` object | Preserve native workspace ownership and permissions |
+| Variables | Closed catalog: `@name`, `@firstName`, `@lastName`, `@fullName`, `@company`, `@companyName` | Metadata-driven variables for every supported, authorized, user-visible CRM field |
+| Record scope | Person plus Person's company name | Person, related Company and later other supported/custom CRM objects through explicit record context |
+| Resolution | Server-authoritative fixed accessors | Server-authoritative metadata contract and typed resolver; no client-trusted values |
+| Safety | Unknown/empty tokens block readiness | Preserve blocking, permissions and preview; never expose secrets, credentials, hidden/system fields or raw database access |
+| Usage | Bulk preview/send | Matching template behavior in single-send and bulk-send flows |
+
+“Every field in the database” means **every CRM field the current workspace user is authorized to read and that the product explicitly classifies as template-safe**. It does **not** mean arbitrary SQL, physical table/column access, encrypted application variables, credentials, internal system fields, audit/security data, unrestricted relation traversal, `eval`, or dynamic execution. Unsupported values must remain visible as unresolved data and must block send; they must never be silently blanked or guessed.
+
+### W16 delivery sequence
+
+1. **W16-A — Metadata Inventory and Contract**
+   - Inventory standard and custom objects, field metadata, data types, relations, permission/readability signals and the actual SDK/server surfaces available in this fork.
+   - Define a versioned template-variable contract: canonical paths such as `@person.firstName` and `@person.company.name`, display labels, source object, field type, nullable state and relation depth.
+   - Define the supported type/format matrix and explicit exclusions before implementation.
+   - Deliverable: documented contract + source-backed tests/fixtures; no composer UI or send behavior change.
+
+2. **W16-B — Dynamic Variable Catalog**
+   - Build the available-variable catalog from workspace metadata and the current record context, including eligible custom fields.
+   - Return only fields the caller may read and the template system may safely expose.
+   - Preserve compatibility for the existing aliases while assigning each a canonical path; define collision and renamed/deleted-field behavior.
+   - Deliverable: production catalog endpoint/service + permission, workspace-isolation, custom-field and compatibility tests.
+
+3. **W16-C — Safe Server Resolver**
+   - Resolve canonical variable paths on the server from freshly authorized records; the client never supplies resolved values.
+   - Support the approved scalar types and bounded relations from W16-A with deterministic Persian/English formatting rules.
+   - Keep unknown, unreadable, empty, deleted and unsupported values explicit and not-ready; prohibit arbitrary traversal and provider/exception leakage.
+   - Deliverable: resolver used by preview with exhaustive type, relation, permission, injection and stale-metadata tests.
+
+4. **W16-D — Template Builder UI**
+   - Add a searchable variable picker grouped by object/relation with Persian labels; inserting a variable produces the canonical token rather than requiring users to memorize paths.
+   - Show a real per-recipient preview and clear reasons for unresolved/unsupported values; input changes keep invalidating stale preview/consent.
+   - Deliverable: real composer interaction tests plus Persian/RTL coverage.
+
+5. **W16-E — Single/Bulk Parity**
+   - Use the same catalog, resolver, preview semantics and final confirmed snapshot for one recipient and many recipients.
+   - Preserve the existing durable `/communication/send` path, recipient authorization, sequential bulk execution, 60-second uncertainty semantics and `SENT != DELIVERED`.
+   - Deliverable: single and bulk production-wiring tests proving identical token behavior and no regression in provider, persistence or Timeline paths.
+
+6. **W16-F — Main Live Verification**
+   - Build one fresh package, back up the main instance, install through the native path and test with synthetic standard/custom fields and an allowed relation in the real Persian browser.
+   - Verify preview, unresolved blocking, fresh confirmation, single send and sequential bulk send against HTTP Mock only; no real SMS or live credentials.
+   - Deliverable: concise user test handoff, exact package/version/SHA, browser/API evidence kept separate, and Recovery update. Rollback material must be verified before install.
+
+### W17 and deferred work
+
+- **W17 — Workflow re-evaluation** begins only after W16-F. W7 stays disabled until the platform can represent failed/unknown outcomes without risking duplicate sends.
+- Real-provider SMS, delivery receipts, additional channels, branding/white-label and cold-start performance are separate waves; none may be smuggled into W16.
+
+### Execution and acceptance rules
+
+- One bounded task should deliver one roadmap stage completely: production code, real-boundary tests, full relevant validation, Recovery update and a short test handoff.
+- Prefer early main-instance HTTP Mock verification after a coherent feature slice; tests on main are authorized while the instance contains no sensitive data, but backup/rollback and synthetic-data discipline remain mandatory.
+- Do not spend a separate wave only polishing evidence unless a concrete correctness or safety defect exists. When a defect exists, fix the complete affected interaction in the same bounded task.
+- Existing universal identifiers, workspace isolation, native template storage, provider boundary, durable persistence, Timeline truthfulness and W7-disabled state remain invariants unless a later roadmap revision explicitly changes them.
+- Evidence levels must stay distinct: unit/pure, production-wiring, built artifact, API live, browser live and real-provider. Passing one level never implies another.
+- Every completion report must state what the user can test immediately in at most five short bullets, plus remaining limitations.
 
 **Current test runtimes:**
 - `twenty-comm-test-app2` — **fresh `twentycrm/twenty-app-dev:v2.41.0`**, port **3101**, NEW volumes, workspaces `apple` and `Isolation Beta`, the Communication app installed in **both** (native tarball path, W10-R8-R1). This is the working front-end runtime.
