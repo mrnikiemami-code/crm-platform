@@ -5,9 +5,10 @@ import {
   callAppRoute,
 } from 'src/components/composer-shared';
 
-// Real deadline behavior for the bulk transport. Only the global `fetch` is
-// faked (the single external dependency); the PRODUCTION `callAppRoute` — its
-// independent deadline race, timer and parse checks — runs unchanged.
+// Real deadline behavior for the bulk transport. Only the global `fetch` (and,
+// for the parsing criterion, a delegating `JSON.parse` wrapper) are faked; the
+// PRODUCTION `callAppRoute` — its independent deadline race, its MONOTONIC
+// elapsed-time checks and its parse — runs unchanged.
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
 
@@ -16,7 +17,6 @@ const setEnv = () => {
   process.env.TWENTY_APP_ACCESS_TOKEN = 'test-token';
 };
 
-// Records unhandled rejections so a late settlement can be proven harmless.
 const trackUnhandled = () => {
   const unhandled: unknown[] = [];
   const handler = (reason: unknown) => unhandled.push(reason);
@@ -37,6 +37,7 @@ describe('callAppRoute independent deadline', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     globalThis.fetch = originalFetch;
     process.env = { ...originalEnv };
   });
@@ -50,12 +51,11 @@ describe('callAppRoute independent deadline', () => {
   it('B: rejects at the deadline even when fetch NEVER resolves and IGNORES AbortSignal', async () => {
     let capturedSignal: AbortSignal | undefined;
 
-    // Deliberately does NOT subscribe to the signal.
     globalThis.fetch = vi.fn((_url: string, init?: RequestInit) => {
       capturedSignal = init?.signal ?? undefined;
 
       return new Promise(() => {
-        // Never settles.
+        // Never settles and never subscribes to the signal.
       });
     }) as unknown as typeof fetch;
 
@@ -68,18 +68,14 @@ describe('callAppRoute independent deadline', () => {
       rejected = true;
     });
 
-    // Before the deadline nothing has settled.
     await vi.advanceTimersByTimeAsync(BULK_SEND_DEADLINE_MS - 1);
     expect(rejected).toBe(false);
 
     await vi.advanceTimersByTimeAsync(1);
     await observed;
 
-    // The PUBLIC promise rejected at the deadline without any transport help.
     expect(rejected).toBe(true);
-    // AbortSignal was still used as a best-effort cancellation signal.
     expect(capturedSignal?.aborted).toBe(true);
-    // No pending deadline timer remains.
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -96,7 +92,7 @@ describe('callAppRoute independent deadline', () => {
         status: 200,
         text: () =>
           new Promise(() => {
-            // The body read never settles and does not subscribe to the signal.
+            // Never settles and never subscribes to the signal.
           }),
       });
     }) as unknown as typeof fetch;
@@ -147,13 +143,11 @@ describe('callAppRoute independent deadline', () => {
     await vi.advanceTimersByTimeAsync(BULK_SEND_DEADLINE_MS);
     await expect(outcome).resolves.toBe('rejected');
 
-    // The late response arrives with a SUCCESS payload.
     (resolveText as ((value: string) => void) | null)?.(
       '{"success":true,"status":"SENT"}',
     );
     await vi.advanceTimersByTimeAsync(0);
 
-    // The public result stays rejected; nothing is resurrected.
     await expect(outcome).resolves.toBe('rejected');
 
     tracker.stop();
@@ -162,11 +156,35 @@ describe('callAppRoute independent deadline', () => {
 
   // E. Parsing crosses the deadline -------------------------------------------
 
-  it('E: a parse that finishes AFTER the deadline is discarded as deadline-expired', async () => {
-    // A clock that jumps past the deadline exactly when the parse runs, so the
-    // POST-PARSE elapsed check is what rejects the result.
-    let clockMs = 0;
-    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => clockMs);
+  it('E: the REAL JSON.parse runs and the POST-parse monotonic check rejects a result that finished late', async () => {
+    // A controlled monotonic clock. The production code reads it at start, at
+    // the pre-parse check and at the post-parse check.
+    let monotonicMs = 0;
+
+    const performanceSpy = vi
+      .spyOn(performance, 'now')
+      .mockImplementation(() => monotonicMs);
+
+    const originalParse = JSON.parse;
+    let parseCallCount = 0;
+    let parseReturnValue: unknown = null;
+
+    // A narrowly scoped wrapper that delegates to the REAL parser and advances
+    // the monotonic clock DURING the parse (simulating synchronous work that
+    // crosses the deadline while the event loop is blocked).
+    const parseSpy = vi
+      .spyOn(JSON, 'parse')
+      .mockImplementation((text: string, reviver?: unknown) => {
+        parseCallCount += 1;
+
+        const parsed = originalParse(text, reviver as never);
+        parseReturnValue = parsed;
+
+        // Parsing itself crossed the deadline.
+        monotonicMs = BULK_SEND_DEADLINE_MS + 1;
+
+        return parsed;
+      });
 
     globalThis.fetch = vi.fn(() =>
       Promise.resolve({
@@ -185,14 +203,75 @@ describe('callAppRoute independent deadline', () => {
       (error: Error) => error.message,
     );
 
-    // Let fetch + text settle while the clock is still before the deadline, but
-    // move the clock past it before the parse's elapsed check runs.
-    clockMs = BULK_SEND_DEADLINE_MS + 1;
+    // fetch + text settle while the monotonic clock is still below the deadline,
+    // so the PRE-parse check passes and the parse is actually reached.
+    monotonicMs = 100;
     await vi.advanceTimersByTimeAsync(0);
 
+    // The public call rejects with the sanitized deadline error — from the
+    // POST-parse check, not the pre-parse one.
     await expect(outcome).resolves.toBe('Request deadline exceeded');
 
+    // The REAL parser ran exactly once and produced a valid SENT payload.
+    expect(parseCallCount).toBe(1);
+    expect(parseReturnValue).toEqual({ success: true, status: 'SENT' });
+
+    expect(vi.getTimerCount()).toBe(0);
+
+    parseSpy.mockRestore();
+    performanceSpy.mockRestore();
+  });
+
+  it('E: a backwards WALL-clock jump cannot rescue a late parse — only monotonic time decides', async () => {
+    // High wall clock at start, then moved BACKWARDS during the parse.
+    let wallMs = 1_000_000;
+    let monotonicMs = 0;
+
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => wallMs);
+    const performanceSpy = vi
+      .spyOn(performance, 'now')
+      .mockImplementation(() => monotonicMs);
+
+    const originalParse = JSON.parse;
+
+    vi.spyOn(JSON, 'parse').mockImplementation((text: string, reviver?: unknown) => {
+      const parsed = originalParse(text, reviver as never);
+
+      // Monotonic time crosses the deadline; the WALL clock moves BACKWARDS.
+      monotonicMs = BULK_SEND_DEADLINE_MS + 1;
+      wallMs = 900_000;
+
+      return parsed;
+    });
+
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"success":true,"status":"SENT"}'),
+      }),
+    ) as unknown as typeof fetch;
+
+    const pending = callAppRoute('/communication/send', 'POST', {}, {
+      timeoutMs: BULK_SEND_DEADLINE_MS,
+    });
+
+    const outcome = pending.then(
+      () => 'resolved',
+      (error: Error) => error.message,
+    );
+
+    monotonicMs = 100;
+    await vi.advanceTimersByTimeAsync(0);
+
+    // If the code used the wall clock, `wallMs` (900_000) < deadline
+    // (1_060_000) would look "in time" and it would succeed. It must reject.
+    await expect(outcome).resolves.toBe('Request deadline exceeded');
+
+    expect(vi.getTimerCount()).toBe(0);
+
     dateSpy.mockRestore();
+    performanceSpy.mockRestore();
   });
 
   // F. Normal and no-deadline paths -------------------------------------------
@@ -224,8 +303,6 @@ describe('callAppRoute independent deadline', () => {
       }),
     ) as unknown as typeof fetch;
 
-    // A parse error propagates as a rejection (the coordinator maps it to
-    // UNKNOWN), never as a `{ success: false }` payload.
     await expect(
       callAppRoute('/communication/send', 'POST', {}, {
         timeoutMs: BULK_SEND_DEADLINE_MS,

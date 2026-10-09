@@ -41,6 +41,20 @@ const normalizeTimeoutMs = (value: number | undefined): number | null =>
     ? value
     : null;
 
+// A genuinely MONOTONIC elapsed-time source (milliseconds since an arbitrary
+// origin). `performance.now()` never jumps with a system-clock correction, so a
+// backwards wall-clock adjustment cannot make a late result look in time.
+//
+// Fallback semantics (stated honestly): when `performance.now` is unavailable
+// the best available substitute is `Date.now()`, which is a WALL clock and is
+// NOT monotonic. The sandbox used by this app provides `performance.now`, so the
+// fallback is a defensive last resort, not the normal path.
+const monotonicNowMs = (): number =>
+  typeof performance !== 'undefined' &&
+  typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+
 // Calls one of the app's own authenticated logic-function routes. The base URL
 // and token come from the trusted execution context, never from user input.
 //
@@ -84,9 +98,10 @@ export const callAppRoute = async (
   const controller =
     typeof AbortController !== 'undefined' ? new AbortController() : null;
 
-  // A monotonic start/deadline pair: the same clock the timer uses decides
-  // whether a parsed result completed in time.
-  const startMs = Date.now();
+  // A monotonic start/deadline pair: the same elapsed-time source the timer
+  // uses decides whether a parsed result completed in time. `performance.now()`
+  // cannot be moved by a wall-clock correction.
+  const startMs = monotonicNowMs();
   const deadlineMs = startMs + timeoutMs;
 
   let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
@@ -122,7 +137,7 @@ export const callAppRoute = async (
 
     // Refuse to parse once the deadline has already elapsed (the timer callback
     // may not have run yet if the JS thread was busy).
-    if (Date.now() >= deadlineMs) {
+    if (monotonicNowMs() >= deadlineMs) {
       throw new Error('Request deadline exceeded');
     }
 
@@ -130,7 +145,7 @@ export const callAppRoute = async (
 
     // A synchronous parse can itself cross the deadline without the timer
     // callback ever running: discard a result that finished too late.
-    if (Date.now() >= deadlineMs) {
+    if (monotonicNowMs() >= deadlineMs) {
       throw new Error('Request deadline exceeded');
     }
 
