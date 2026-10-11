@@ -32,14 +32,23 @@ app (`packages/twenty-apps/internal/communication`).
 ### Implemented by this app
 
 Only `SendSMS` is wired today, through the provider at
-`src/providers/razpayamak/`. It posts the documented body
-(`username`, `password`, `to`, `from`, `text`) and maps a `RetStatus = 1`
-response to `SENT`, taking the first entry of the comma-separated `Value` as the
-provider message id.
+`src/providers/razpayamak/`. It posts the exact documented body
+(`username`, `password`, `to`, `from`, `text`) and treats a response as a
+success **only** when it is HTTP-success, valid JSON, `RetStatus = 1`, and
+`Value` carries a non-empty, valid `recID`. Anything else is either a definite
+provider rejection (a documented numeric code) or an **unknown** outcome — never
+a fabricated success.
 
-The send endpoint is configurable through the `RAZPAYAMAK_ENDPOINT` application
-variable (default: the official `api/SendSMS/SendSMS` URL), so a workspace can
-point it at a mock or an alternate host without a code change.
+The send endpoint is **fixed** to the official
+`https://rest.payamak-panel.com/api/SendSMS/SendSMS` by the document. It is a
+constant in the app, NOT a workspace variable, so a workspace cannot redirect the
+ApiKey to an arbitrary URL. Tests override it only through the provider's
+injected `sendUrl` dependency.
+
+A workspace-settings **test-send** (`POST /s/communication/settings-test-sms`)
+sends one real SMS through the same provider path. It creates no Person, no
+Communication record for an arbitrary number and no Person timeline activity,
+and it enforces the same server-side workspace permission as the settings page.
 
 ### `Value` codes on the send call
 
@@ -64,10 +73,19 @@ point it at a mock or an alternate host without a code change.
 | `16` | Recipient number not found |
 | `17` | Text is empty |
 | `18` | Invalid mobile number |
-| `108` | IP blocked due to failed API attempts |
-| `109` | Allowed IP for API use is required |
-| `110` | ApiKey must be used instead of the password |
-| `111` | Requester IP is invalid |
+| `-108` | IP blocked due to failed API attempts |
+| `-109` | Allowed IP for API use is required |
+| `-110` | ApiKey must be used instead of the password |
+| `-111` | Requester IP is invalid |
+
+The four request/IP codes are **negative** in the document (`-108` … `-111`); the
+non-negative codes are the per-send results. Both the `Value` (HTTP 2xx with
+`RetStatus != 1`) and the `ReqStatus` (HTTP 400) paths share this vocabulary, and
+the app normalizes both into one stable failure model
+(`src/providers/razpayamak/razpayamak-failure.ts`). The provider's own
+human-readable `Message` is never treated as translated copy: it is carried only
+as sanitized untrusted detail, while the app shows its own Persian copy keyed by
+the stable code.
 
 ### Deliberately not implemented
 
