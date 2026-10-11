@@ -1,7 +1,12 @@
 import {
   type RazpayamakConfig,
+  RAZPAYAMAK_SEND_URL,
   getRazpayamakConfig,
 } from 'src/providers/razpayamak/razpayamak.config';
+import {
+  parseRazpayamakFailureCode,
+  sanitizeProviderDetail,
+} from 'src/providers/razpayamak/razpayamak-failure';
 import {
   type CommunicationHttpClient,
   defaultCommunicationHttpClient,
@@ -34,6 +39,8 @@ type RazpayamakSendResponse = {
   Message?: string;
 };
 
+// The exact documented request body. Only the five documented fields are sent:
+// no backup senders, no endpoint value, no internal metadata, no `undefined`.
 const buildSendBody = (
   config: RazpayamakConfig,
   message: OutboundCommunication,
@@ -50,38 +57,63 @@ const parseResponse = (
   rawBody: string,
 ): RazpayamakSendResponse | undefined => {
   try {
-    return JSON.parse(rawBody) as RazpayamakSendResponse;
+    const parsed = JSON.parse(rawBody) as unknown;
+
+    return typeof parsed === 'object' && parsed !== null
+      ? (parsed as RazpayamakSendResponse)
+      : undefined;
   } catch {
     return undefined;
   }
 };
 
-// The provider id is the first entry of the documented comma-separated `Value`.
-const extractProviderMessageId = (
-  response: RazpayamakSendResponse,
-): string | null => {
-  const firstId = response.Value?.split(',')[0]?.trim();
+// Strict success requires a non-empty, valid recID in `Value`. A `Value` that
+// is a documented failure code (e.g. `11`) is NOT a recID, so it must never be
+// reported as a sent message id.
+const readUsableRecId = (value: string | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
 
-  return firstId === undefined || firstId.length === 0 ? null : firstId;
+  const first = value.split(',')[0]?.trim();
+
+  if (first === undefined || first.length === 0) {
+    return null;
+  }
+
+  // A recID is a positive integer. Anything else (a bare failure code, a
+  // non-numeric string) is not a usable identifier.
+  return /^[0-9]+$/.test(first) && Number(first) > 0 ? first : null;
 };
 
-const extractFailureReason = (
+const buildDefiniteFailure = (
   response: RazpayamakSendResponse | undefined,
   httpStatus: number,
-): string => {
-  const message = response?.Message;
+): CommunicationSendResult => {
+  // Prefer the numeric code from the documented vocabulary. `Value` carries it
+  // on a 2xx-with-RetStatus!=1 response; `ReqStatus` carries it on an HTTP 400.
+  const parsed =
+    parseRazpayamakFailureCode(response?.Value) ??
+    parseRazpayamakFailureCode(response?.ReqStatus);
 
-  if (typeof message === 'string' && message.length > 0) {
-    return message;
+  const providerDetail = sanitizeProviderDetail(response?.Message);
+
+  if (parsed !== null) {
+    return {
+      status: 'FAILED',
+      failureReason: `RazPayamak rejected the request with code ${parsed.providerCode}.`,
+      failureCode: parsed.code,
+      providerCode: parsed.providerCode,
+      ...(providerDetail === undefined ? {} : { providerDetail }),
+    };
   }
 
-  const requestStatus = response?.ReqStatus;
-
-  if (requestStatus !== undefined && String(requestStatus).length > 0) {
-    return `RazPayamak rejected the request with status ${String(requestStatus)}.`;
-  }
-
-  return `RazPayamak rejected the request with HTTP status ${httpStatus}.`;
+  return {
+    status: 'FAILED',
+    failureReason: `RazPayamak rejected the request with HTTP status ${httpStatus}.`,
+    failureCode: 'UNKNOWN_PROVIDER_ERROR',
+    ...(providerDetail === undefined ? {} : { providerDetail }),
+  };
 };
 
 export type RazpayamakProviderDependencies = {
@@ -89,7 +121,11 @@ export type RazpayamakProviderDependencies = {
   httpClient?: CommunicationHttpClient;
   /** Injected configuration. Defaults to reading the app variables. */
   getConfig?: () => RazpayamakConfig;
-  /** Overrides the configured endpoint; tests use a non-routable URL. */
+  /**
+   * Test-only endpoint override. Production ALWAYS uses the fixed official
+   * endpoint; there is deliberately no workspace-controlled URL, so an API Key
+   * can never be redirected to an arbitrary host.
+   */
   sendUrl?: string;
 };
 
@@ -99,12 +135,12 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
 
   private readonly httpClient: CommunicationHttpClient;
   private readonly resolveConfig: () => RazpayamakConfig;
-  private readonly sendUrl: string | undefined;
+  private readonly sendUrl: string;
 
   constructor(dependencies: RazpayamakProviderDependencies = {}) {
     this.httpClient =
       dependencies.httpClient ?? defaultCommunicationHttpClient;
-    this.sendUrl = dependencies.sendUrl;
+    this.sendUrl = dependencies.sendUrl ?? RAZPAYAMAK_SEND_URL;
     this.resolveConfig =
       dependencies.getConfig ??
       (() => {
@@ -126,13 +162,12 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
     message: OutboundCommunication,
   ): Promise<CommunicationSendResult> {
     const config = this.resolveConfig();
-    const url = this.sendUrl ?? config.endpoint;
 
     let response;
 
     try {
       response = await this.httpClient({
-        url,
+        url: this.sendUrl,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,45 +176,69 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
         body: buildSendBody(config, message),
       });
     } catch {
-      // Deliberately does not interpolate the thrown message: a transport
-      // error can embed the request body (which carries the ApiKey). The raw
-      // error is not surfaced here because this result is persisted as
-      // history.
+      // A transport rejection after dispatch is NOT a definite failure: the
+      // provider may have received the request. The raw error is never
+      // interpolated (it can embed the credential-bearing body).
       return {
-        status: 'FAILED',
-        failureReason: 'RazPayamak request failed.',
+        status: 'UNKNOWN',
+        failureReason: 'The RazPayamak request could not be completed.',
       };
     }
 
-    const rawBody = await response.text();
+    let rawBody: string;
+
+    try {
+      rawBody = await response.text();
+    } catch {
+      // The status was received but the body could not be read: the request
+      // definitely reached the provider, so the outcome is unknown.
+      return {
+        status: 'UNKNOWN',
+        failureReason: 'The RazPayamak response could not be read.',
+      };
+    }
+
     const parsed = parseResponse(rawBody);
 
     if (!response.ok) {
+      // A documented HTTP 400 with a `ReqStatus` is a definite rejection.
+      if (parsed !== undefined) {
+        return buildDefiniteFailure(parsed, response.status);
+      }
+
+      // An HTTP error we cannot interpret is not a definite send outcome.
       return {
-        status: 'FAILED',
-        failureReason: extractFailureReason(parsed, response.status),
+        status: 'UNKNOWN',
+        failureReason: `RazPayamak returned an unreadable error response (HTTP ${response.status}).`,
       };
     }
 
     if (parsed === undefined) {
+      // A 2xx that is not valid JSON may still have sent the message.
       return {
-        status: 'FAILED',
+        status: 'UNKNOWN',
         failureReason: 'RazPayamak returned a non-JSON response.',
       };
     }
 
     // The document defines `RetStatus: 1` as success; anything else is a
-    // provider-declared failure even on a 2xx response.
+    // provider-declared, definite failure.
     if (parsed.RetStatus !== 1) {
+      return buildDefiniteFailure(parsed, response.status);
+    }
+
+    // STRICT success: a `RetStatus=1` without a usable recID cannot be trusted
+    // as "sent" (a missing/empty/invalid id is an inconsistent response).
+    const recId = readUsableRecId(parsed.Value);
+
+    if (recId === null) {
       return {
-        status: 'FAILED',
-        failureReason: extractFailureReason(parsed, response.status),
+        status: 'UNKNOWN',
+        failureReason:
+          'RazPayamak accepted the request but returned no usable message id.',
       };
     }
 
-    return {
-      status: 'SENT',
-      providerMessageId: extractProviderMessageId(parsed),
-    };
+    return { status: 'SENT', providerMessageId: recId };
   }
 }

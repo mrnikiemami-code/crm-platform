@@ -143,4 +143,42 @@ describe('fa-IR catalog covers every fixed production message', () => {
       true,
     );
   });
+
+  it('translates every documented RazPayamak failure message', () => {
+    const failures = [
+      'RazPayamak failure: invalid requester IP.',
+      'RazPayamak failure: ApiKey is required instead of a password.',
+      'RazPayamak failure: the allowed API IP is not configured.',
+      'RazPayamak failure: the IP is blocked after failed API attempts.',
+      'RazPayamak failure: incorrect username or API key.',
+      'RazPayamak failure: insufficient credit.',
+      'RazPayamak failure: daily sending limit reached.',
+      'RazPayamak failure: sending-volume limit reached.',
+      'RazPayamak failure: invalid sender number.',
+      'RazPayamak failure: the provider is under maintenance.',
+      'RazPayamak failure: the message contains a filtered word.',
+      'RazPayamak failure: public sender lines cannot use this webservice.',
+      'RazPayamak failure: the user is not active.',
+      'RazPayamak failure: the message was not sent.',
+      'RazPayamak failure: the user documents are incomplete.',
+      'RazPayamak failure: the message contains a link.',
+      'RazPayamak failure: the required opt-out text is missing.',
+      'RazPayamak failure: no recipient was found.',
+      'RazPayamak failure: the message is empty.',
+      'RazPayamak failure: the mobile number is invalid.',
+      'RazPayamak failure: an unrecognized provider error occurred.',
+    ];
+
+    for (const message of failures) {
+      expect(isTranslated(message), `razpayamak: "${message}"`).toBe(true);
+    }
+  });
+
+  it('translates the RazPayamak unknown-outcome warning', () => {
+    expect(
+      isTranslated(
+        'The message may or may not have been sent. Check the provider panel before retrying.',
+      ),
+    ).toBe(true);
+  });
 });

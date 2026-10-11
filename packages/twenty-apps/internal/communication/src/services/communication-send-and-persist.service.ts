@@ -103,6 +103,15 @@ const buildOutcome = ({
         failureReason: result.failureReason,
         providerMessageId: null,
       };
+    case 'UNKNOWN':
+      // Handled by the caller: an unknown outcome must NOT be written as a
+      // definite FAILED. This branch is unreachable through `buildOutcome`
+      // because `sendAndPersist` returns before building an outcome.
+      return {
+        status: 'FAILED',
+        failureReason: result.failureReason,
+        providerMessageId: null,
+      };
   }
 };
 
@@ -173,6 +182,14 @@ export class CommunicationSendAndPersistService {
       }
 
       throw sendError;
+    }
+
+    // An UNKNOWN outcome must NOT be recorded as a definite FAILED: the
+    // provider may have received the request. The record is deliberately left
+    // in its pre-send QUEUED state so history does not assert a false failure,
+    // and the caller receives the typed unknown result plus the record id.
+    if (result.status === 'UNKNOWN') {
+      return { communicationId, result };
     }
 
     try {

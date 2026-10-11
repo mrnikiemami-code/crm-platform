@@ -96,10 +96,12 @@ export const RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER =
   'ac7a5ffa-4a4f-4c7a-a092-5504319f0bdc';
 export const RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER =
   'da25b771-9e4e-4d2f-8fb3-0f5e6e40e79f';
-// The send endpoint, mirroring the Kavenegar endpoint variable so a workspace
-// can point RazPayamak at a mock or an alternate host without a code change.
-export const RAZPAYAMAK_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER =
-  '1c9f2a54-6b3e-4d78-9a05-2f8e6c1b4d37';
+// NOTE (W16-R1): the W16 `RAZPAYAMAK_ENDPOINT` variable was REMOVED. The
+// production send endpoint is fixed by the official document, so a workspace
+// can never redirect the ApiKey to an arbitrary URL. Its former universal
+// identifier is not reused.
+export const SEND_SETTINGS_TEST_SMS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '5b2e9c14-7d38-4a6f-9c02-8e1f3a5b7d90';
 
 // Message templates (W15-A)
 // A workspace-owned, hand-authored message template. It is a native app object

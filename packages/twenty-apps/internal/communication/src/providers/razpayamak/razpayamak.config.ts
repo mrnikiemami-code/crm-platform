@@ -12,16 +12,14 @@ export const RAZPAYAMAK_USERNAME_ENV_VAR = 'RAZPAYAMAK_USERNAME';
 export const RAZPAYAMAK_API_KEY_ENV_VAR = 'RAZPAYAMAK_API_KEY';
 export const RAZPAYAMAK_SENDER_ENV_VAR = 'RAZPAYAMAK_SENDER';
 
-// The send endpoint is configurable so a workspace can point it at a mock or an
-// alternate host without a code change. When unset it falls back to the
-// official REST endpoint from the document.
-export const RAZPAYAMAK_ENDPOINT_ENV_VAR = 'RAZPAYAMAK_ENDPOINT';
-export const RAZPAYAMAK_DEFAULT_SEND_URL =
+// The production send endpoint is FIXED by the official document. It is a
+// constant, never a workspace variable, so a workspace cannot redirect the
+// ApiKey to an arbitrary URL. Tests override it only through the provider's
+// injected `sendUrl` dependency; there is no user-editable endpoint.
+export const RAZPAYAMAK_SEND_URL =
   'https://rest.payamak-panel.com/api/SendSMS/SendSMS';
 
 export type RazpayamakConfig = {
-  /** Full `SendSMS` endpoint, without a trailing slash. */
-  endpoint: string;
   username: string;
   apiKey: string;
   sender: string;
@@ -58,18 +56,5 @@ export const getRazpayamakConfig =
       };
     }
 
-    const configuredEndpoint = readRequiredEnv(RAZPAYAMAK_ENDPOINT_ENV_VAR);
-
-    return {
-      success: true,
-      config: {
-        endpoint: (configuredEndpoint ?? RAZPAYAMAK_DEFAULT_SEND_URL).replace(
-          /\/+$/,
-          '',
-        ),
-        username,
-        apiKey,
-        sender,
-      },
-    };
+    return { success: true, config: { username, apiKey, sender } };
   };

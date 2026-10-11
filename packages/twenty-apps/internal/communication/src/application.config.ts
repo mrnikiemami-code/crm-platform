@@ -7,7 +7,6 @@ import {
   KAVENEGAR_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
   KAVENEGAR_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER,
-  RAZPAYAMAK_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_USERNAME_VARIABLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
@@ -89,12 +88,6 @@ export default defineApplication({
       universalIdentifier: RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
         'RazPayamak primary sender number used as the REST `from` field.',
-      isSecret: false,
-    },
-    RAZPAYAMAK_ENDPOINT: {
-      universalIdentifier: RAZPAYAMAK_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
-      description:
-        'RazPayamak send endpoint, for example https://rest.payamak-panel.com/api/SendSMS/SendSMS. Defaults to the official REST endpoint when unset.',
       isSecret: false,
     },
   },

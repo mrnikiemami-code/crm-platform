@@ -11,6 +11,7 @@ import { Button, Radio, RadioGroup } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { TextInput } from '@/ui/input/components/TextInput';
 import { UpdateOneApplicationVariableDocument } from '~/generated-metadata/graphql';
+import { SettingsSmsTestSendPanel } from '~/pages/settings/communications/SettingsSmsTestSendPanel';
 import {
   applySecretDraftChange,
   buildSmsProviderPendingWrites,
@@ -75,6 +76,8 @@ type SmsProviderConfig = {
   label: string;
   description: string;
   fields: SmsProviderField[];
+  /** Rendered inside the provider's own card, under its fields and Save. */
+  testSendPanel?: React.ReactNode;
 };
 
 const StyledContainer = styled.div`
@@ -153,6 +156,8 @@ type SmsProviderSectionProps = {
   onRequestClearSecret: (key: string) => void;
   onCancelClearSecret: (key: string) => void;
   onSave: () => void;
+  /** Optional panel rendered inside the provider card, under Save. */
+  testSendPanel?: React.ReactNode;
 };
 
 const SmsProviderSection = ({
@@ -167,6 +172,7 @@ const SmsProviderSection = ({
   onRequestClearSecret,
   onCancelClearSecret,
   onSave,
+  testSendPanel,
 }: SmsProviderSectionProps) => {
   const { t } = useLingui();
 
@@ -253,6 +259,8 @@ const SmsProviderSection = ({
           {t`Save`}
         </Button>
       </StyledActions>
+
+      {testSendPanel}
     </StyledProviderCard>
   );
 };
@@ -533,10 +541,11 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
     });
   };
 
-  // Only providers this app actually implements. Each provider's send endpoint
-  // is configurable through its own endpoint variable, so a workspace can point
-  // it at a mock or an alternate host without a code change. The copy is built
-  // with tagged templates so lingui extracts it for translation.
+  // Only providers this app actually implements. Each provider shows ONLY its
+  // own credential fields; the production send endpoint is fixed in the app and
+  // is deliberately NOT editable here, so a workspace cannot redirect the
+  // ApiKey to an arbitrary URL. The copy is built with tagged templates so
+  // lingui extracts it for translation.
   const providerConfigs: SmsProviderConfig[] = [
     {
       id: 'kavenegar',
@@ -569,6 +578,12 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
       description: t`Send SMS through the RazPayamak REST webservice.`,
       fields: [
         {
+          key: 'RAZPAYAMAK_SENDER',
+          isSecret: false,
+          label: t`Sender number`,
+          description: t`RazPayamak sender number the message is sent from.`,
+        },
+        {
           key: 'RAZPAYAMAK_USERNAME',
           isSecret: false,
           label: t`Panel username`,
@@ -580,19 +595,18 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
           label: t`API key`,
           description: t`RazPayamak API key issued under the developer menu. Stored encrypted per workspace and never shown again.`,
         },
-        {
-          key: 'RAZPAYAMAK_SENDER',
-          isSecret: false,
-          label: t`Primary sender`,
-          description: t`RazPayamak primary sender number.`,
-        },
-        {
-          key: 'RAZPAYAMAK_ENDPOINT',
-          isSecret: false,
-          label: t`Send endpoint`,
-          description: t`RazPayamak send endpoint. Leave empty to use the official REST endpoint.`,
-        },
       ],
+      // The test-send panel lives inside the RazPayamak card only. It needs the
+      // provider's saved configuration (username + sender + a secret ApiKey).
+      testSendPanel: (
+        <SettingsSmsTestSendPanel
+          isConfigured={
+            isNonEmptyString(storedValueByKey.RAZPAYAMAK_USERNAME) &&
+            isNonEmptyString(storedValueByKey.RAZPAYAMAK_SENDER) &&
+            secretPresenceByKey.RAZPAYAMAK_API_KEY === true
+          }
+        />
+      ),
     },
   ];
 
@@ -651,6 +665,7 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
           isDefault={selectedProviderId === config.id}
           isSaving={savingProviderId === config.id}
           isAnySaveInFlight={isAnySaveInFlight}
+          testSendPanel={config.testSendPanel}
           onValueChange={(key, value) => {
             const isSecretField = config.fields.some(
               (field) => field.key === key && field.isSecret,

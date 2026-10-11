@@ -498,4 +498,48 @@ describe('CommunicationSendAndPersistService', () => {
       delete process.env.COMMUNICATION_PROVIDER;
     }
   });
+
+  it('leaves the record QUEUED (never FAILED) for an unknown outcome', async () => {
+    process.env.COMMUNICATION_PROVIDER = 'razpayamak';
+
+    try {
+      const provider = buildProvider('razpayamak', () => ({
+        status: 'UNKNOWN',
+        failureReason: 'The RazPayamak request could not be completed.',
+      }));
+
+      const { service } = buildService({ providers: [provider], persistence });
+
+      const result = await service.sendAndPersist({ message: MESSAGE });
+
+      // The record was created QUEUED and no outcome was ever written onto it.
+      expect(persistence.created).toHaveLength(1);
+      expect(persistence.outcomes).toHaveLength(0);
+      expect(result.result.status).toBe('UNKNOWN');
+      expect(result.communicationId).toBe('communication-1');
+    } finally {
+      delete process.env.COMMUNICATION_PROVIDER;
+    }
+  });
+
+  it('persists FAILED for a definite provider rejection', async () => {
+    process.env.COMMUNICATION_PROVIDER = 'razpayamak';
+
+    try {
+      const provider = buildProvider('razpayamak', () => ({
+        status: 'FAILED',
+        failureReason: 'RazPayamak rejected the request with code 0.',
+        failureCode: 'INVALID_CREDENTIALS',
+      }));
+
+      const { service } = buildService({ providers: [provider], persistence });
+
+      await service.sendAndPersist({ message: MESSAGE });
+
+      expect(persistence.outcomes).toHaveLength(1);
+      expect(persistence.outcomes[0].outcome.status).toBe('FAILED');
+    } finally {
+      delete process.env.COMMUNICATION_PROVIDER;
+    }
+  });
 });

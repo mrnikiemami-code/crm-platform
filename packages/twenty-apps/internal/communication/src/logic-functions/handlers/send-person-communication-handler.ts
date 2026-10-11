@@ -141,7 +141,9 @@ export const sendPersonCommunicationHandler = async (
 
       return {
         success: false,
-        status: outcome.status,
+        // An UNKNOWN result never reaches persistence (it returns earlier), so
+        // this branch only ever carries a known SENT/DELIVERED/FAILED outcome.
+        status: outcome.status === 'UNKNOWN' ? 'FAILED' : outcome.status,
         communicationId: error.communicationId,
         failureCode: 'OUTCOME_NOT_PERSISTED',
         isOutcomeKnown: true,
@@ -205,6 +207,23 @@ export const sendPersonCommunicationHandler = async (
       failureCode: 'PROVIDER_FAILED',
       isOutcomeKnown: true,
       error: result.failureReason,
+      ...(result.failureCode === undefined
+        ? {}
+        : { providerFailureCode: result.failureCode }),
+    };
+  }
+
+  if (result.status === 'UNKNOWN') {
+    // The provider may have received the request. Never present this as a
+    // definite failure and never retry automatically; the durable record is
+    // left QUEUED so history does not assert a false failure.
+    return {
+      success: false,
+      communicationId,
+      failureCode: 'OUTCOME_UNKNOWN',
+      isOutcomeKnown: false,
+      error:
+        'The message may or may not have been sent. Check the communication history before retrying.',
     };
   }
 

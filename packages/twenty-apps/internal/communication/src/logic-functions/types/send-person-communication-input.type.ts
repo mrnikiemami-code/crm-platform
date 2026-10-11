@@ -16,6 +16,7 @@ export type SendPersonCommunicationFailureCode =
   | 'INVALID_INPUT'
   | 'PERSON_NOT_ACCESSIBLE'
   | 'PROVIDER_FAILED'
+  | 'OUTCOME_UNKNOWN'
   | 'OUTCOME_NOT_PERSISTED'
   | 'UNEXPECTED_FAILURE';
 
@@ -26,6 +27,11 @@ export type SendPersonCommunicationResponse = {
   communicationId?: string;
   /** Stable failure classification, present only when `success` is false. */
   failureCode?: SendPersonCommunicationFailureCode;
+  /**
+   * Stable provider failure classification (e.g. a RazPayamak `Value` code),
+   * present only for a definite provider rejection.
+   */
+  providerFailureCode?: string;
   /**
    * Whether the provider outcome is known. When false, the caller must not
    * present the result as a definite failure and must not retry blindly.

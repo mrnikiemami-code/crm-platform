@@ -145,7 +145,9 @@ export const sendCommunicationWorkflowHandler = async (
 
       return {
         success: false,
-        status: outcome.status,
+        // An UNKNOWN result never reaches persistence (it returns earlier), so
+        // this branch only ever carries a known SENT/DELIVERED/FAILED outcome.
+        status: outcome.status === 'UNKNOWN' ? 'FAILED' : outcome.status,
         communicationId: error.communicationId,
         failureCode: 'OUTCOME_NOT_PERSISTED',
         isOutcomeKnown: true,
@@ -197,6 +199,19 @@ export const sendCommunicationWorkflowHandler = async (
     return {
       success: false,
       failureCode: 'UNEXPECTED_FAILURE',
+      isOutcomeKnown: false,
+      error:
+        'The message may or may not have been sent. Check the communication history before re-running this step.',
+    };
+  }
+
+  if (result.status === 'UNKNOWN') {
+    // The provider may have received the request; the durable record is left
+    // QUEUED. Never present a definite failure and never re-run automatically.
+    return {
+      success: false,
+      communicationId,
+      failureCode: 'OUTCOME_UNKNOWN',
       isOutcomeKnown: false,
       error:
         'The message may or may not have been sent. Check the communication history before re-running this step.',
