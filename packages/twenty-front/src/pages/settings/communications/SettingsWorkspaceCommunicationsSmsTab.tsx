@@ -533,9 +533,10 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
     });
   };
 
-  // Only providers this app actually implements. RazPayamak's REST base is a
-  // fixed constant in the app, so it is intentionally NOT a field here. The
-  // copy is built with tagged templates so lingui extracts it for translation.
+  // Only providers this app actually implements. Each provider's send endpoint
+  // is configurable through its own endpoint variable, so a workspace can point
+  // it at a mock or an alternate host without a code change. The copy is built
+  // with tagged templates so lingui extracts it for translation.
   const providerConfigs: SmsProviderConfig[] = [
     {
       id: 'kavenegar',
@@ -565,13 +566,13 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
     {
       id: 'razpayamak',
       label: 'RazPayamak',
-      description: t`Send SMS through the RazPayamak SmartSMS service.`,
+      description: t`Send SMS through the RazPayamak REST webservice.`,
       fields: [
         {
           key: 'RAZPAYAMAK_USERNAME',
           isSecret: false,
           label: t`Panel username`,
-          description: t`RazPayamak panel username used by the SmartSMS service.`,
+          description: t`RazPayamak panel username used by the REST webservice.`,
         },
         {
           key: 'RAZPAYAMAK_API_KEY',
@@ -586,16 +587,10 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
           description: t`RazPayamak primary sender number.`,
         },
         {
-          key: 'RAZPAYAMAK_BACKUP_SENDER_ONE',
+          key: 'RAZPAYAMAK_ENDPOINT',
           isSecret: false,
-          label: t`Backup sender one`,
-          description: t`Optional backup sender used when the primary line fails.`,
-        },
-        {
-          key: 'RAZPAYAMAK_BACKUP_SENDER_TWO',
-          isSecret: false,
-          label: t`Backup sender two`,
-          description: t`Optional second backup sender.`,
+          label: t`Send endpoint`,
+          description: t`RazPayamak send endpoint. Leave empty to use the official REST endpoint.`,
         },
       ],
     },

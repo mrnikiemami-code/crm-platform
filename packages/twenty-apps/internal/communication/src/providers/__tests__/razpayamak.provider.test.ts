@@ -10,7 +10,7 @@ import { type OutboundCommunication } from 'src/providers/types/outbound-communi
 const USERNAME = 'panel-user';
 const API_KEY = 'razpayamak-api-key-should-never-leak';
 const SENDER = '100020003000';
-const SEND_URL = 'https://rest.payamak-panel.test/api/SmartSMS/Send';
+const ENDPOINT = 'https://rest.payamak-panel.test/api/SendSMS/SendSMS';
 
 const MESSAGE: OutboundCommunication = {
   channel: 'SMS',
@@ -39,9 +39,9 @@ const buildProvider = (
   };
 
   const provider = new RazpayamakCommunicationProvider({
-    sendUrl: SEND_URL,
     httpClient,
     getConfig: () => ({
+      endpoint: ENDPOINT,
       username: USERNAME,
       apiKey: API_KEY,
       sender: SENDER,
@@ -67,7 +67,7 @@ describe('RazpayamakCommunicationProvider', () => {
     });
   });
 
-  it('posts the documented SmartSMS send payload', async () => {
+  it('posts the documented REST send payload to the configured endpoint', async () => {
     const { provider, requests } = buildProvider(() => ({
       rawBody: JSON.stringify({ RetStatus: 1, StrRetStatus: 'Ok', Value: '1' }),
     }));
@@ -79,7 +79,7 @@ describe('RazpayamakCommunicationProvider', () => {
     const [request] = requests;
 
     expect(request.method).toBe('POST');
-    expect(request.url).toBe(SEND_URL);
+    expect(request.url).toBe(ENDPOINT);
     expect(request.headers['Content-Type']).toBe('application/json');
 
     // Official field names: username, password, from, to, text.
@@ -92,11 +92,29 @@ describe('RazpayamakCommunicationProvider', () => {
     });
   });
 
-  it('includes the documented backup senders only when configured', async () => {
+  it('does not send any undocumented backup-sender field', async () => {
+    const { provider, requests } = buildProvider(() => ({
+      rawBody: JSON.stringify({ RetStatus: 1, StrRetStatus: 'Ok', Value: '1' }),
+    }));
+
+    await provider.send(MESSAGE);
+
+    // The official document defines only username, password, from, to, text
+    // (and an optional isFlash), so no other key may appear.
+    expect(Object.keys(parseBody(requests[0])).sort()).toEqual([
+      'from',
+      'password',
+      'text',
+      'to',
+      'username',
+    ]);
+  });
+
+  it('honours an injected send URL override', async () => {
     const requests: CommunicationHttpRequest[] = [];
 
     const provider = new RazpayamakCommunicationProvider({
-      sendUrl: SEND_URL,
+      sendUrl: 'https://override.test/send',
       httpClient: async (request) => {
         requests.push(request);
 
@@ -108,20 +126,16 @@ describe('RazpayamakCommunicationProvider', () => {
         };
       },
       getConfig: () => ({
+        endpoint: ENDPOINT,
         username: USERNAME,
         apiKey: API_KEY,
         sender: SENDER,
-        fromSupportOne: '200020003000',
-        fromSupportTwo: '900090009000',
       }),
     });
 
     await provider.send(MESSAGE);
 
-    expect(parseBody(requests[0])).toMatchObject({
-      fromSupportOne: '200020003000',
-      fromSupportTwo: '900090009000',
-    });
+    expect(requests[0].url).toBe('https://override.test/send');
   });
 
   it('maps the documented success response to SENT with the provider id', async () => {
@@ -184,11 +198,11 @@ describe('RazpayamakCommunicationProvider', () => {
 
   it('normalizes a transport failure into a stable FAILED reason', async () => {
     const provider = new RazpayamakCommunicationProvider({
-      sendUrl: SEND_URL,
       httpClient: async () => {
         throw new Error('socket hang up');
       },
       getConfig: () => ({
+        endpoint: ENDPOINT,
         username: USERNAME,
         apiKey: API_KEY,
         sender: SENDER,
@@ -205,7 +219,6 @@ describe('RazpayamakCommunicationProvider', () => {
 
   it('does not expose the ApiKey when a transport error embeds the request body', async () => {
     const provider = new RazpayamakCommunicationProvider({
-      sendUrl: SEND_URL,
       httpClient: async () => {
         // A real transport error can echo the credential-bearing body.
         throw new Error(
@@ -213,6 +226,7 @@ describe('RazpayamakCommunicationProvider', () => {
         );
       },
       getConfig: () => ({
+        endpoint: ENDPOINT,
         username: USERNAME,
         apiKey: API_KEY,
         sender: SENDER,
@@ -240,7 +254,6 @@ describe('RazpayamakCommunicationProvider', () => {
 
   it('fails explicitly when the request is made without configuration', async () => {
     const provider = new RazpayamakCommunicationProvider({
-      sendUrl: SEND_URL,
       httpClient: async () => ({
         status: 200,
         ok: true,

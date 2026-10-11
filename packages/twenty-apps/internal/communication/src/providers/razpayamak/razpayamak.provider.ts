@@ -1,6 +1,5 @@
 import {
   type RazpayamakConfig,
-  RAZPAYAMAK_SMART_SEND_URL,
   getRazpayamakConfig,
 } from 'src/providers/razpayamak/razpayamak.config';
 import {
@@ -15,19 +14,19 @@ import { type CommunicationSendResult } from 'src/providers/types/communication-
 import { type OutboundCommunication } from 'src/providers/types/outbound-communication.type';
 
 // Delivery receipts are not implemented through this driver yet, so the
-// capability reports only what this implementation exposes. The Smart service
-// does offer `GetDeliveries2`, but wiring it is a separate wave.
+// capability reports what this implementation actually exposes, not what the
+// vendor can theoretically do.
 const SMS_CAPABILITIES: CommunicationCapabilities = {
   supportsSubject: false,
   supportsDeliveryReceipt: false,
 };
 
-// Official SmartSMS REST response for `POST /api/SmartSMS/Send`.
-// Success carries `RetStatus: 1` / `StrRetStatus: "Ok"` and a comma-separated
-// `Value` holding one provider id per recipient.
-// Failure is documented as HTTP 400 with `ReqStatus` set to a numeric code
-// and a human-readable `Message`.
-type RazpayamakSmartSendResponse = {
+// Official REST response for `POST /api/SendSMS/SendSMS`.
+// Success carries `RetStatus: 1` / `StrRetStatus: "Ok"` and a `Value` holding
+// the `recID` (or a comma-separated list for multiple recipients).
+// Failure carries a numeric `Value` code (see the provider document) and, for
+// request-level errors, an HTTP 400 with `ReqStatus` and `Message`.
+type RazpayamakSendResponse = {
   Value?: string;
   RetStatus?: number;
   StrRetStatus?: string;
@@ -45,19 +44,13 @@ const buildSendBody = (
     from: config.sender,
     to: message.recipient,
     text: message.body,
-    ...(config.fromSupportOne === undefined
-      ? {}
-      : { fromSupportOne: config.fromSupportOne }),
-    ...(config.fromSupportTwo === undefined
-      ? {}
-      : { fromSupportTwo: config.fromSupportTwo }),
   });
 
 const parseResponse = (
   rawBody: string,
-): RazpayamakSmartSendResponse | undefined => {
+): RazpayamakSendResponse | undefined => {
   try {
-    return JSON.parse(rawBody) as RazpayamakSmartSendResponse;
+    return JSON.parse(rawBody) as RazpayamakSendResponse;
   } catch {
     return undefined;
   }
@@ -65,7 +58,7 @@ const parseResponse = (
 
 // The provider id is the first entry of the documented comma-separated `Value`.
 const extractProviderMessageId = (
-  response: RazpayamakSmartSendResponse,
+  response: RazpayamakSendResponse,
 ): string | null => {
   const firstId = response.Value?.split(',')[0]?.trim();
 
@@ -73,7 +66,7 @@ const extractProviderMessageId = (
 };
 
 const extractFailureReason = (
-  response: RazpayamakSmartSendResponse | undefined,
+  response: RazpayamakSendResponse | undefined,
   httpStatus: number,
 ): string => {
   const message = response?.Message;
@@ -96,7 +89,7 @@ export type RazpayamakProviderDependencies = {
   httpClient?: CommunicationHttpClient;
   /** Injected configuration. Defaults to reading the app variables. */
   getConfig?: () => RazpayamakConfig;
-  /** Overrides the documented endpoint; tests use a non-routable URL. */
+  /** Overrides the configured endpoint; tests use a non-routable URL. */
   sendUrl?: string;
 };
 
@@ -106,12 +99,12 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
 
   private readonly httpClient: CommunicationHttpClient;
   private readonly resolveConfig: () => RazpayamakConfig;
-  private readonly sendUrl: string;
+  private readonly sendUrl: string | undefined;
 
   constructor(dependencies: RazpayamakProviderDependencies = {}) {
     this.httpClient =
       dependencies.httpClient ?? defaultCommunicationHttpClient;
-    this.sendUrl = dependencies.sendUrl ?? RAZPAYAMAK_SMART_SEND_URL;
+    this.sendUrl = dependencies.sendUrl;
     this.resolveConfig =
       dependencies.getConfig ??
       (() => {
@@ -133,12 +126,13 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
     message: OutboundCommunication,
   ): Promise<CommunicationSendResult> {
     const config = this.resolveConfig();
+    const url = this.sendUrl ?? config.endpoint;
 
     let response;
 
     try {
       response = await this.httpClient({
-        url: this.sendUrl,
+        url,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

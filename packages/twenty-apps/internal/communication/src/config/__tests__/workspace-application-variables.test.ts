@@ -32,8 +32,7 @@ const EXPECTED_VARIABLES: Record<string, { isSecret: boolean }> = {
   RAZPAYAMAK_USERNAME: { isSecret: false },
   RAZPAYAMAK_API_KEY: { isSecret: true },
   RAZPAYAMAK_SENDER: { isSecret: false },
-  RAZPAYAMAK_BACKUP_SENDER_ONE: { isSecret: false },
-  RAZPAYAMAK_BACKUP_SENDER_TWO: { isSecret: false },
+  RAZPAYAMAK_ENDPOINT: { isSecret: false },
 };
 
 describe('workspace application variable declaration (W9-R2)', () => {

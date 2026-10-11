@@ -4,30 +4,27 @@ import {
 } from 'src/providers/config/read-required-env';
 import { type ProviderConfigResult } from 'src/providers/config/provider-config-result.type';
 
-// RazPayamak Smart REST credentials, per the official SmartSMS document:
-// `username` is the panel account and `password` is the ApiKey issued under
-// the developer menu. Both are stored as encrypted server variables.
+// RazPayamak REST credentials, per the official REST webservice document
+// (`docs/providers/razpayamak-rest-webservice.pdf`): `username` is the panel
+// account and `password` is the ApiKey issued under the developer menu. Both
+// are stored as encrypted server variables.
 export const RAZPAYAMAK_USERNAME_ENV_VAR = 'RAZPAYAMAK_USERNAME';
 export const RAZPAYAMAK_API_KEY_ENV_VAR = 'RAZPAYAMAK_API_KEY';
 export const RAZPAYAMAK_SENDER_ENV_VAR = 'RAZPAYAMAK_SENDER';
-export const RAZPAYAMAK_BACKUP_SENDER_ONE_ENV_VAR =
-  'RAZPAYAMAK_BACKUP_SENDER_ONE';
-export const RAZPAYAMAK_BACKUP_SENDER_TWO_ENV_VAR =
-  'RAZPAYAMAK_BACKUP_SENDER_TWO';
 
-// The Smart service can hand off to two backup senders when the primary line
-// fails. The REST base is fixed by the document; only credentials vary, so it
-// is a constant rather than a variable.
-export const RAZPAYAMAK_SMART_SEND_URL =
-  'https://rest.payamak-panel.com/api/SmartSMS/Send';
+// The send endpoint is configurable so a workspace can point it at a mock or an
+// alternate host without a code change. When unset it falls back to the
+// official REST endpoint from the document.
+export const RAZPAYAMAK_ENDPOINT_ENV_VAR = 'RAZPAYAMAK_ENDPOINT';
+export const RAZPAYAMAK_DEFAULT_SEND_URL =
+  'https://rest.payamak-panel.com/api/SendSMS/SendSMS';
 
 export type RazpayamakConfig = {
+  /** Full `SendSMS` endpoint, without a trailing slash. */
+  endpoint: string;
   username: string;
   apiKey: string;
   sender: string;
-  /** Optional backup sender lines; omitted from the request when unset. */
-  fromSupportOne?: string;
-  fromSupportTwo?: string;
 };
 
 export const getRazpayamakConfig =
@@ -61,21 +58,18 @@ export const getRazpayamakConfig =
       };
     }
 
-    const fromSupportOne = readRequiredEnv(
-      RAZPAYAMAK_BACKUP_SENDER_ONE_ENV_VAR,
-    );
-    const fromSupportTwo = readRequiredEnv(
-      RAZPAYAMAK_BACKUP_SENDER_TWO_ENV_VAR,
-    );
+    const configuredEndpoint = readRequiredEnv(RAZPAYAMAK_ENDPOINT_ENV_VAR);
 
     return {
       success: true,
       config: {
+        endpoint: (configuredEndpoint ?? RAZPAYAMAK_DEFAULT_SEND_URL).replace(
+          /\/+$/,
+          '',
+        ),
         username,
         apiKey,
         sender,
-        ...(fromSupportOne === undefined ? {} : { fromSupportOne }),
-        ...(fromSupportTwo === undefined ? {} : { fromSupportTwo }),
       },
     };
   };

@@ -37,8 +37,7 @@ const EMPTY_SECRET_VARIABLES = [
   { key: 'RAZPAYAMAK_API_KEY', value: '', isSecret: true },
   { key: 'RAZPAYAMAK_USERNAME', value: '', isSecret: false },
   { key: 'RAZPAYAMAK_SENDER', value: '', isSecret: false },
-  { key: 'RAZPAYAMAK_BACKUP_SENDER_ONE', value: '', isSecret: false },
-  { key: 'RAZPAYAMAK_BACKUP_SENDER_TWO', value: '', isSecret: false },
+  { key: 'RAZPAYAMAK_ENDPOINT', value: '', isSecret: false },
   { key: 'COMMUNICATION_PROVIDER', value: 'kavenegar', isSecret: false },
 ];
 

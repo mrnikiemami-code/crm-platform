@@ -7,8 +7,7 @@ import {
   KAVENEGAR_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
   KAVENEGAR_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER,
-  RAZPAYAMAK_BACKUP_SENDER_ONE_VARIABLE_UNIVERSAL_IDENTIFIER,
-  RAZPAYAMAK_BACKUP_SENDER_TWO_VARIABLE_UNIVERSAL_IDENTIFIER,
+  RAZPAYAMAK_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_USERNAME_VARIABLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
@@ -77,33 +76,25 @@ export default defineApplication({
     },
     RAZPAYAMAK_USERNAME: {
       universalIdentifier: RAZPAYAMAK_USERNAME_VARIABLE_UNIVERSAL_IDENTIFIER,
-      description: 'RazPayamak panel username used by the SmartSMS service.',
+      description: 'RazPayamak panel username used by the REST webservice.',
       isSecret: false,
     },
     RAZPAYAMAK_API_KEY: {
       universalIdentifier: RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
-        'RazPayamak ApiKey issued under the developer menu. Sent as the SmartSMS `password` field; stored encrypted per workspace and never exposed in API responses.',
+        'RazPayamak ApiKey issued under the developer menu. Sent as the REST `password` field; stored encrypted per workspace and never exposed in API responses.',
       isSecret: true,
     },
     RAZPAYAMAK_SENDER: {
       universalIdentifier: RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
-        'RazPayamak primary sender number used as the SmartSMS `from` field.',
+        'RazPayamak primary sender number used as the REST `from` field.',
       isSecret: false,
     },
-    RAZPAYAMAK_BACKUP_SENDER_ONE: {
-      universalIdentifier:
-        RAZPAYAMAK_BACKUP_SENDER_ONE_VARIABLE_UNIVERSAL_IDENTIFIER,
+    RAZPAYAMAK_ENDPOINT: {
+      universalIdentifier: RAZPAYAMAK_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
-        'Optional RazPayamak backup sender line used when the primary line fails.',
-      isSecret: false,
-    },
-    RAZPAYAMAK_BACKUP_SENDER_TWO: {
-      universalIdentifier:
-        RAZPAYAMAK_BACKUP_SENDER_TWO_VARIABLE_UNIVERSAL_IDENTIFIER,
-      description:
-        'Optional second RazPayamak backup sender line used when the primary and first backup fail.',
+        'RazPayamak send endpoint, for example https://rest.payamak-panel.com/api/SendSMS/SendSMS. Defaults to the official REST endpoint when unset.',
       isSecret: false,
     },
   },

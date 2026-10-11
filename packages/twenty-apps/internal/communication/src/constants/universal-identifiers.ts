@@ -96,10 +96,10 @@ export const RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER =
   'ac7a5ffa-4a4f-4c7a-a092-5504319f0bdc';
 export const RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER =
   'da25b771-9e4e-4d2f-8fb3-0f5e6e40e79f';
-export const RAZPAYAMAK_BACKUP_SENDER_ONE_VARIABLE_UNIVERSAL_IDENTIFIER =
-  'e469abb7-fae1-48f9-a5e5-16eb45e49683';
-export const RAZPAYAMAK_BACKUP_SENDER_TWO_VARIABLE_UNIVERSAL_IDENTIFIER =
-  '8d0985d9-f096-4d58-8ae5-739ed3e5822b';
+// The send endpoint, mirroring the Kavenegar endpoint variable so a workspace
+// can point RazPayamak at a mock or an alternate host without a code change.
+export const RAZPAYAMAK_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '1c9f2a54-6b3e-4d78-9a05-2f8e6c1b4d37';
 
 // Message templates (W15-A)
 // A workspace-owned, hand-authored message template. It is a native app object
