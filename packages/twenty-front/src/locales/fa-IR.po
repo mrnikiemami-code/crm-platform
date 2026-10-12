@@ -25035,3 +25035,48 @@ msgstr "رازپیامک"
 
 msgid "The saved SMS provider value is invalid. Select a provider to continue; sending is blocked until a valid provider is selected."
 msgstr "مقدار ذخیره‌شدهٔ سرویس‌دهندهٔ پیامک نامعتبر است. برای ادامه یک سرویس‌دهنده انتخاب کنید؛ تا انتخاب یک سرویس‌دهندهٔ معتبر، ارسال مسدود است."
+
+msgid "Check delivery status"
+msgstr "استعلام وضعیت تحویل"
+
+msgid "Asks the provider whether a message reached the phone. This only reads the status; it does not send anything."
+msgstr "از سرویس‌دهنده می‌پرسد که آیا پیام به گوشی رسیده است. این کار فقط وضعیت را می‌خواند و چیزی ارسال نمی‌کند."
+
+msgid "Check if the SMS was received"
+msgstr "استعلام دریافت پیامک"
+
+msgid "The ID returned when the message was sent. It is filled in automatically after a successful test send."
+msgstr "شناسه‌ای که هنگام ارسال پیام برگردانده می‌شود. پس از ارسال آزمایشی موفق، به‌صورت خودکار پر می‌شود."
+
+msgid "Delivered to the phone."
+msgstr "به گوشی تحویل داده شد."
+
+msgid "Accepted by the operator; not yet on the phone."
+msgstr "به مخابرات رسیده است؛ هنوز به گوشی نرسیده."
+
+msgid "Sent."
+msgstr "ارسال شد."
+
+msgid "Queued for sending."
+msgstr "در صف ارسال قرار گرفت."
+
+msgid "Not delivered to the phone."
+msgstr "به گوشی تحویل داده نشد."
+
+msgid "Delivery failed."
+msgstr "تحویل ناموفق بود."
+
+msgid "The operator did not report a final status."
+msgstr "اپراتور وضعیت نهایی را اعلام نکرده است."
+
+msgid "Unknown status."
+msgstr "وضعیت نامشخص."
+
+msgid "You do not have permission to check a message status."
+msgstr "شما اجازهٔ استعلام وضعیت پیام را ندارید."
+
+msgid "A valid provider message ID is required."
+msgstr "یک شناسهٔ پیام معتبر از سرویس‌دهنده الزامی است."
+
+msgid "The delivery status could not be checked. Try again shortly."
+msgstr "استعلام وضعیت تحویل ممکن نشد. کمی بعد دوباره تلاش کنید."
