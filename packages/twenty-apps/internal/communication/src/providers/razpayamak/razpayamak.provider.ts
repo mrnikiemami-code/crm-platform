@@ -4,6 +4,7 @@ import {
   getRazpayamakConfig,
 } from 'src/providers/razpayamak/razpayamak.config';
 import {
+  isDocumentedFailureCode,
   parseRazpayamakFailureCode,
   sanitizeProviderDetail,
 } from 'src/providers/razpayamak/razpayamak-failure';
@@ -68,8 +69,10 @@ const parseResponse = (
 };
 
 // Strict success requires a non-empty, valid recID in `Value`. A `Value` that
-// is a documented failure code (e.g. `11`) is NOT a recID, so it must never be
-// reported as a sent message id.
+// is a documented failure code (e.g. `11` = "not sent") is NOT a recID, so it
+// must never be reported as a sent message id. The provider is known to answer
+// `RetStatus: 1` together with a failure code in `Value`, so that case is a
+// DEFINITE failure, not a success.
 const readUsableRecId = (value: string | undefined): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -81,8 +84,13 @@ const readUsableRecId = (value: string | undefined): string | null => {
     return null;
   }
 
-  // A recID is a positive integer. Anything else (a bare failure code, a
-  // non-numeric string) is not a usable identifier.
+  // A documented failure code is never an id, even though it is numeric.
+  if (isDocumentedFailureCode(first)) {
+    return null;
+  }
+
+  // A recID is a positive integer. Anything else (a non-numeric string) is not
+  // a usable identifier.
   return /^[0-9]+$/.test(first) && Number(first) > 0 ? first : null;
 };
 
@@ -232,6 +240,13 @@ export class RazpayamakCommunicationProvider implements CommunicationProvider {
     const recId = readUsableRecId(parsed.Value);
 
     if (recId === null) {
+      // A documented failure code in `Value` is a DEFINITE rejection even though
+      // `RetStatus` was 1 (the provider answers this way, e.g. `11` = not sent).
+      // Only a genuinely uninterpretable response is UNKNOWN.
+      if (isDocumentedFailureCode(parsed.Value)) {
+        return buildDefiniteFailure(parsed, response.status);
+      }
+
       return {
         status: 'UNKNOWN',
         failureReason:

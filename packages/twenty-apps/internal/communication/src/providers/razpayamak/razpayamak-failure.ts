@@ -84,6 +84,27 @@ export const parseRazpayamakFailureCode = (
   return { code, providerCode: numeric };
 };
 
+/**
+ * Whether a numeric `Value` is a DOCUMENTED failure code.
+ *
+ * This is the strict test used to tell a real `recID` apart from a failure
+ * code: the document returns a small, fixed set of failure codes in `Value`
+ * (e.g. `11` = "not sent"), while a genuine `recID` is a large message id. Only
+ * codes in the documented vocabulary count — an unrecognized number is NOT
+ * treated as a failure here, so a legitimate recID is never rejected.
+ */
+export const isDocumentedFailureCode = (
+  value: string | number | undefined,
+): boolean => {
+  if (value === undefined || value === null) {
+    return false;
+  }
+
+  const numeric = typeof value === 'number' ? value : Number.parseInt(value, 10);
+
+  return Number.isFinite(numeric) && numeric in CODE_TO_FAILURE;
+};
+
 // Whether a failure code is a request-level/credential problem (as opposed to a
 // per-recipient send problem). Kept explicit so callers can present the right
 // guidance without re-deriving it from the number.

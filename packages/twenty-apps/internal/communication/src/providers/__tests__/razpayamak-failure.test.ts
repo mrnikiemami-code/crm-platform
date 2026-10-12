@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isConfigurationFailure,
+  isDocumentedFailureCode,
   parseRazpayamakFailureCode,
   sanitizeProviderDetail,
 } from 'src/providers/razpayamak/razpayamak-failure';
@@ -53,6 +54,29 @@ describe('parseRazpayamakFailureCode', () => {
   it('returns null for a missing or non-numeric value', () => {
     expect(parseRazpayamakFailureCode(undefined)).toBeNull();
     expect(parseRazpayamakFailureCode('abc')).toBeNull();
+  });
+});
+
+describe('isDocumentedFailureCode', () => {
+  it('recognizes every documented failure code, including negatives', () => {
+    for (const code of [
+      -111, -110, -109, -108, 0, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16,
+      17, 18,
+    ]) {
+      expect(isDocumentedFailureCode(code)).toBe(true);
+      expect(isDocumentedFailureCode(String(code))).toBe(true);
+    }
+  });
+
+  it('does NOT treat a real recID as a failure code', () => {
+    expect(isDocumentedFailureCode('34439078')).toBe(false);
+    expect(isDocumentedFailureCode(999001)).toBe(false);
+    expect(isDocumentedFailureCode('1')).toBe(false);
+  });
+
+  it('returns false for a missing or non-numeric value', () => {
+    expect(isDocumentedFailureCode(undefined)).toBe(false);
+    expect(isDocumentedFailureCode('abc')).toBe(false);
   });
 });
 

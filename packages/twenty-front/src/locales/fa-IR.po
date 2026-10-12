@@ -25080,3 +25080,15 @@ msgstr "یک شناسهٔ پیام معتبر از سرویس‌دهنده ال�
 
 msgid "The delivery status could not be checked. Try again shortly."
 msgstr "استعلام وضعیت تحویل ممکن نشد. کمی بعد دوباره تلاش کنید."
+
+msgid "Tracking message ID"
+msgstr "شناسه پیگیری پیام"
+
+msgid "Filled automatically after a successful send"
+msgstr "پس از ارسال موفق، به‌صورت خودکار پر می‌شود"
+
+msgid "Assigned by the provider only when the message is actually accepted. It is read-only and filled in automatically after a successful send."
+msgstr "این شناسه فقط زمانی توسط سرویس‌دهنده صادر می‌شود که پیام واقعاً پذیرفته شود. این فیلد فقط‌خواندنی است و پس از ارسال موفق به‌صورت خودکار پر می‌شود."
+
+msgid "Provider message ID"
+msgstr "شناسه پیام سرویس‌دهنده"

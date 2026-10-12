@@ -156,7 +156,8 @@ describe('RazpayamakCommunicationProvider', () => {
   });
 
   // A `RetStatus=1` without a usable recID cannot be trusted as "sent".
-  // A bare number like `11` IS a valid recID, so it is deliberately not here.
+  // A bare number like `11` IS a documented failure code (not a recID), so it
+  // is covered by the failure-code matrix above, not here.
   it.each(['', '   ', 'abc', '-5'])(
     'treats a RetStatus=1 with Value %j as UNKNOWN, never SENT',
     async (value) => {
@@ -245,6 +246,43 @@ describe('RazpayamakCommunicationProvider', () => {
       'providerDetail',
       'Username or password is not correct',
     );
+  });
+
+  // A `RetStatus: 1` together with a documented failure code in `Value` is the
+  // real provider behavior (e.g. `11` = "not sent"). It must be a DEFINITE
+  // failure, never a success, and the code must never be stored as a message id.
+  it.each([0, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 17, 18])(
+    'treats a RetStatus=1 with the documented failure code %i as FAILED, not SENT',
+    async (providerCode) => {
+      const { provider } = buildProvider(() => ({
+        rawBody: JSON.stringify({
+          RetStatus: 1,
+          StrRetStatus: 'Ok',
+          Value: String(providerCode),
+        }),
+      }));
+
+      const result = await provider.send(MESSAGE);
+
+      expect(result.status).toBe('FAILED');
+      expect(result).toHaveProperty('providerCode', providerCode);
+      expect(JSON.stringify(result)).not.toContain('providerMessageId');
+    },
+  );
+
+  it('still accepts a large numeric recID as a success', async () => {
+    const { provider } = buildProvider(() => ({
+      rawBody: JSON.stringify({
+        RetStatus: 1,
+        StrRetStatus: 'Ok',
+        Value: '34439078',
+      }),
+    }));
+
+    expect(await provider.send(MESSAGE)).toEqual({
+      status: 'SENT',
+      providerMessageId: '34439078',
+    });
   });
 
   it('keeps an unknown provider code safe and sanitized', async () => {

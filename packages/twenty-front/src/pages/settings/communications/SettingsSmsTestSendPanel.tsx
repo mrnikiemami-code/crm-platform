@@ -366,16 +366,17 @@ export const SettingsSmsTestSendPanel = ({
       </Section.Root>
 
       <StyledField>
-        <StyledLabel>{t`Provider message ID`}</StyledLabel>
+        <StyledLabel>{t`Tracking message ID`}</StyledLabel>
         <StyledLtrTextInput
           value={recIdInput}
-          onChange={setRecIdInput}
-          placeholder="123456789"
+          onChange={() => {}}
+          placeholder={t`Filled automatically after a successful send`}
           fullWidth
           autoComplete="off"
+          disabled
         />
         <StyledStatus>
-          {t`The ID returned when the message was sent. It is filled in automatically after a successful test send.`}
+          {t`Assigned by the provider only when the message is actually accepted. It is read-only and filled in automatically after a successful send.`}
         </StyledStatus>
       </StyledField>
 
