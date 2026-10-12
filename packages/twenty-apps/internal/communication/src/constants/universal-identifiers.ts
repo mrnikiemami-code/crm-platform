@@ -102,6 +102,8 @@ export const RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER =
 // identifier is not reused.
 export const SEND_SETTINGS_TEST_SMS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '5b2e9c14-7d38-4a6f-9c02-8e1f3a5b7d90';
+export const CHECK_SETTINGS_TEST_SMS_DELIVERY_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '6c3fa825-8e49-4b70-ad13-9f2a4b6c8e01';
 
 // Message templates (W15-A)
 // A workspace-owned, hand-authored message template. It is a native app object

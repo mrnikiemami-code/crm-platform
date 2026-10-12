@@ -24,6 +24,55 @@ export type SettingsTestSmsOutcome =
   /** A request was dropped because one is already in flight. Not a result. */
   | { kind: 'DUPLICATE_IGNORED' };
 
+// The result of a delivery-status inquiry («استعلام») for one recID.
+export type SettingsDeliveryState =
+  | 'DELIVERED'
+  | 'IN_TRANSIT'
+  | 'SENT'
+  | 'PENDING'
+  | 'NOT_DELIVERED'
+  | 'FAILED'
+  | 'UNKNOWN';
+
+export type SettingsDeliveryOutcome =
+  | { kind: 'STATUS'; state: SettingsDeliveryState; providerCode?: number }
+  | { kind: 'NOT_PERMITTED' }
+  | { kind: 'INVALID' }
+  /** The lookup itself failed: never presented as a delivery claim. */
+  | { kind: 'LOOKUP_FAILED' }
+  | { kind: 'DUPLICATE_IGNORED' };
+
+export const classifySettingsDeliveryResponse = (
+  data: Record<string, unknown>,
+): SettingsDeliveryOutcome => {
+  if (data.failureCode === 'NOT_PERMITTED') {
+    return { kind: 'NOT_PERMITTED' };
+  }
+
+  if (data.failureCode === 'INVALID_RECIPIENT') {
+    return { kind: 'INVALID' };
+  }
+
+  if (data.success !== true) {
+    return { kind: 'LOOKUP_FAILED' };
+  }
+
+  const state = readString(data.state);
+
+  if (state === undefined) {
+    return { kind: 'LOOKUP_FAILED' };
+  }
+
+  const providerCode =
+    typeof data.providerCode === 'number' ? data.providerCode : undefined;
+
+  return {
+    kind: 'STATUS',
+    state: state as SettingsDeliveryState,
+    ...(providerCode === undefined ? {} : { providerCode }),
+  };
+};
+
 export type SettingsTestSmsTransportResponse = {
   ok: boolean;
   status: number;
@@ -32,6 +81,11 @@ export type SettingsTestSmsTransportResponse = {
 
 export type SettingsTestSmsTransport = (
   request: { recipient: string; body: string },
+  options: { signal?: AbortSignal; timeoutMs: number },
+) => Promise<SettingsTestSmsTransportResponse>;
+
+export type SettingsDeliveryTransport = (
+  request: { providerMessageId: string },
   options: { signal?: AbortSignal; timeoutMs: number },
 ) => Promise<SettingsTestSmsTransportResponse>;
 
@@ -82,6 +136,8 @@ export const classifySettingsTestSmsResponse = (
 
 export type RunSettingsTestSmsDependencies = {
   transport: SettingsTestSmsTransport;
+  /** Transport for the delivery-status inquiry. */
+  deliveryTransport?: SettingsDeliveryTransport;
   /** Synchronous in-flight guard shared across submissions. */
   isSendingRef?: { current: boolean };
   deadlineMs?: number;
@@ -173,3 +229,72 @@ export const isSettingsTestSmsSendable = ({
   isSending: boolean;
 }): boolean =>
   !isSending && isDefined(recipient) && recipient.trim().length > 0 && body.trim().length > 0;
+
+/**
+ * Runs ONE delivery-status inquiry for a recID.
+ *
+ * Same deadline and synchronous in-flight guard as the send: two immediate
+ * clicks produce one request, and the caller is never left waiting past the
+ * deadline. It never sends and never retries automatically.
+ */
+export const runSettingsDeliveryCheck = async (
+  request: { providerMessageId: string },
+  dependencies: RunSettingsTestSmsDependencies,
+): Promise<SettingsDeliveryOutcome> => {
+  const guard = dependencies.isSendingRef;
+
+  if (guard?.current === true) {
+    return { kind: 'DUPLICATE_IGNORED' };
+  }
+
+  if (guard !== undefined) {
+    guard.current = true;
+  }
+
+  const timeoutMs = dependencies.deadlineMs ?? SETTINGS_TEST_SMS_DEADLINE_MS;
+
+  const controller =
+    typeof AbortController !== 'undefined' ? new AbortController() : null;
+
+  let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const startMs = monotonicNowMs();
+  const deadlineMs = startMs + timeoutMs;
+
+  const deadlinePromise = new Promise<never>((_resolve, reject) => {
+    deadlineTimer = setTimeout(() => {
+      controller?.abort();
+      reject(new Error('Request deadline exceeded'));
+    }, timeoutMs);
+  });
+
+  const work = (async (): Promise<SettingsDeliveryOutcome> => {
+    const response = await dependencies.deliveryTransport!(request, {
+      ...(controller === null ? {} : { signal: controller.signal }),
+      timeoutMs,
+    });
+
+    if (monotonicNowMs() >= deadlineMs) {
+      throw new Error('Request deadline exceeded');
+    }
+
+    return classifySettingsDeliveryResponse(response.data);
+  })();
+
+  work.catch(() => {});
+
+  try {
+    return await Promise.race([work, deadlinePromise]);
+  } catch {
+    return { kind: 'LOOKUP_FAILED' };
+  } finally {
+    if (deadlineTimer !== null) {
+      clearTimeout(deadlineTimer);
+      deadlineTimer = null;
+    }
+
+    if (guard !== undefined) {
+      guard.current = false;
+    }
+  }
+};

@@ -19,6 +19,10 @@ export const RAZPAYAMAK_SENDER_ENV_VAR = 'RAZPAYAMAK_SENDER';
 export const RAZPAYAMAK_SEND_URL =
   'https://rest.payamak-panel.com/api/SendSMS/SendSMS';
 
+// The delivery-status endpoint (`GetDeliveries2`), also fixed by the document.
+export const RAZPAYAMAK_DELIVERY_URL =
+  'https://rest.payamak-panel.com/api/SendSMS/GetDeliveries2';
+
 export type RazpayamakConfig = {
   username: string;
   apiKey: string;
