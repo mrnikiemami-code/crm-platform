@@ -17187,7 +17187,7 @@ msgstr "کلید API رازپیامک که از منوی توسعه‌دهنده
 #. js-lingui-id: Fk77MF
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "RazPayamak panel username used by the REST webservice."
-msgstr ""
+msgstr "نام کاربری پنل رازپیامک که در وب‌سرویس REST استفاده می‌شود."
 
 #. js-lingui-id: uVlCTU
 #: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
@@ -17197,7 +17197,7 @@ msgstr "رازپیامک پیام را رد کرد."
 #. js-lingui-id: xBydbh
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "RazPayamak sender number the message is sent from."
-msgstr "شمارهٔ فرستندهٔ رازپیامک که پیام از آن ارسال می‌شود."
+msgstr "شماره فرستندهٔ رازپیامک که پیام از آن ارسال می‌شود."
 
 #. js-lingui-id: 549d7o
 #: src/pages/settings/community/SettingsCommunity.tsx
@@ -19423,7 +19423,7 @@ msgstr "نام فرستنده"
 #. js-lingui-id: SN1C/D
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "Sender number"
-msgstr "شمارهٔ فرستنده"
+msgstr "شماره فرستنده"
 
 #. js-lingui-id: ULtHaJ
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationGroupChannelDetail.tsx
@@ -25026,3 +25026,12 @@ msgstr ""
 #: src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverview.tsx
 msgid "Zoom out"
 msgstr ""
+
+msgid "کاوه‌نگار"
+msgstr "کاوه‌نگار"
+
+msgid "رازپیامک"
+msgstr "رازپیامک"
+
+msgid "The saved SMS provider value is invalid. Select a provider to continue; sending is blocked until a valid provider is selected."
+msgstr "مقدار ذخیره‌شدهٔ سرویس‌دهندهٔ پیامک نامعتبر است. برای ادامه یک سرویس‌دهنده انتخاب کنید؛ تا انتخاب یک سرویس‌دهندهٔ معتبر، ارسال مسدود است."
