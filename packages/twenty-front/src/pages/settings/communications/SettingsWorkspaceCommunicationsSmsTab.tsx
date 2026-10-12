@@ -34,6 +34,10 @@ const COMMUNICATION_APPLICATION_UNIVERSAL_IDENTIFIER =
 
 const COMMUNICATION_PROVIDER_VARIABLE_KEY = 'COMMUNICATION_PROVIDER';
 
+// The provider ids this app implements. Kept in sync with the app registry;
+// used only to detect an invalid stored selection, never to infer a provider.
+const IMPLEMENTED_PROVIDER_IDS = ['kavenegar', 'razpayamak'];
+
 const FIND_COMMUNICATION_APP_FOR_SMS_SETTINGS = gql`
   query FindCommunicationAppForSmsSettings($universalIdentifier: UUID!) {
     findOneApplication(universalIdentifier: $universalIdentifier) {
@@ -387,6 +391,15 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
   const selectedProviderId =
     storedValueByKey[COMMUNICATION_PROVIDER_VARIABLE_KEY] ?? '';
 
+  // The stored value is the single source of truth for the selected provider.
+  // A present-but-unrecognized value is an explicit configuration error: it must
+  // NEVER silently fall back to a different provider and send with credentials
+  // the operator did not choose. An empty value is treated as "not yet
+  // configured" and shows no provider card until the operator picks one.
+  const isInvalidStoredProvider =
+    selectedProviderId.length > 0 &&
+    !IMPLEMENTED_PROVIDER_IDS.includes(selectedProviderId);
+
   const persistVariable = async (key: string, value: string) => {
     const result = await updateOneApplicationVariable({
       variables: { key, value, applicationId: application.id },
@@ -544,12 +557,11 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
   // Only providers this app actually implements. Each provider shows ONLY its
   // own credential fields; the production send endpoint is fixed in the app and
   // is deliberately NOT editable here, so a workspace cannot redirect the
-  // ApiKey to an arbitrary URL. The copy is built with tagged templates so
-  // lingui extracts it for translation.
+  // ApiKey to an arbitrary URL. Labels are Persian through the host catalog.
   const providerConfigs: SmsProviderConfig[] = [
     {
       id: 'kavenegar',
-      label: 'Kavenegar',
+      label: t`کاوه‌نگار`,
       description: t`Send SMS through the Kavenegar service.`,
       fields: [
         {
@@ -574,7 +586,7 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
     },
     {
       id: 'razpayamak',
-      label: 'RazPayamak',
+      label: t`رازپیامک`,
       description: t`Send SMS through the RazPayamak REST webservice.`,
       fields: [
         {
@@ -612,6 +624,13 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
 
   const isAnySaveInFlight = savingProviderId !== null;
 
+  // Exactly ONE provider card is rendered: the selected provider's. The
+  // unselected provider's card must not exist in the DOM at all, so a stale or
+  // hidden card can never be shown or saved.
+  const selectedProviderConfig = providerConfigs.find(
+    (config) => config.id === selectedProviderId,
+  );
+
   return (
     <StyledContainer>
       <Section.Root>
@@ -638,15 +657,24 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
         </StyledStatus>
       </Section.Root>
 
-      {providerConfigs.map((config) => (
+      {isInvalidStoredProvider && (
+        <Info
+          accent="danger"
+          text={t`The saved SMS provider value is invalid. Select a provider to continue; sending is blocked until a valid provider is selected.`}
+        />
+      )}
+
+      {isDefined(selectedProviderConfig) && (
         <SmsProviderSection
-          key={config.id}
-          config={config}
+          config={selectedProviderConfig}
           values={Object.fromEntries(
-            config.fields.map((field) => [field.key, readValue(field)]),
+            selectedProviderConfig.fields.map((field) => [
+              field.key,
+              readValue(field),
+            ]),
           )}
           secretPresence={Object.fromEntries(
-            config.fields
+            selectedProviderConfig.fields
               .filter((field) => field.isSecret)
               .map((field) => [
                 field.key,
@@ -654,7 +682,7 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
               ]),
           )}
           secretClearRequested={Object.fromEntries(
-            config.fields
+            selectedProviderConfig.fields
               .filter((field) => field.isSecret)
               .map((field) => [
                 field.key,
@@ -662,12 +690,12 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
                   'CLEAR',
               ]),
           )}
-          isDefault={selectedProviderId === config.id}
-          isSaving={savingProviderId === config.id}
+          isDefault={true}
+          isSaving={savingProviderId === selectedProviderConfig.id}
           isAnySaveInFlight={isAnySaveInFlight}
-          testSendPanel={config.testSendPanel}
+          testSendPanel={selectedProviderConfig.testSendPanel}
           onValueChange={(key, value) => {
-            const isSecretField = config.fields.some(
+            const isSecretField = selectedProviderConfig.fields.some(
               (field) => field.key === key && field.isSecret,
             );
 
@@ -698,10 +726,10 @@ export const SettingsWorkspaceCommunicationsSmsTab = () => {
             })
           }
           onSave={() => {
-            void handleSaveProvider(config);
+            void handleSaveProvider(selectedProviderConfig);
           }}
         />
-      ))}
+      )}
 
       {failedProviderId !== null && (
         <StyledWarningStatus>

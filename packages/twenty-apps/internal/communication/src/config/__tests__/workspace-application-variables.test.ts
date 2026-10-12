@@ -121,4 +121,17 @@ describe('workspace application variable declaration (W9-R2)', () => {
       ).toBeUndefined();
     }
   });
+
+  it('defaults a new workspace to the razpayamak provider', () => {
+    // The manifest default applies only when a workspace has no value yet; it
+    // never overwrites an existing selection (the migration compares every
+    // property except `value`).
+    expect(
+      (
+        config.applicationVariables?.COMMUNICATION_PROVIDER as {
+          value?: string;
+        }
+      )?.value,
+    ).toBe('razpayamak');
+  });
 });

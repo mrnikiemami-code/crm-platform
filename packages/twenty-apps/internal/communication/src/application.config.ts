@@ -49,12 +49,16 @@ export default defineApplication({
   // reports a precise "not configured" failure at send time instead.
   applicationVariables: {
     // Which provider is used when a caller does not choose one explicitly.
+    // `value` is the manifest DEFAULT, applied only when a workspace has no
+    // value yet; an existing valid workspace selection is never overwritten by
+    // a manifest default during upgrade.
     COMMUNICATION_PROVIDER: {
       universalIdentifier:
         COMMUNICATION_PROVIDER_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
         'Provider id used by default for outbound communication. One of: kavenegar, razpayamak.',
       isSecret: false,
+      value: 'razpayamak',
     },
     KAVENEGAR_ENDPOINT: {
       universalIdentifier: KAVENEGAR_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
