@@ -29,7 +29,9 @@ insertion) and W18-C remain.
 - **Deployment status.** **Code only.** No package was built and nothing was deployed in W18-A:
   **main/4D remains 0.1.29** (W17-R1). No environment was accessed; APPLE/app2 UNTOUCHED / NOT
   ACCESSED. No real SMS. W7 remains disabled.
-- **Implementation SHA.** `314ec2af7edd63ac91611f9a6be114245748d64b`
+- **Implementation SHA.** `314ec2af7edd63ac91611f9a6be114245748d64b` (studio, catalog, navigation and
+  contracts), followed by `3023240e1a1306cd03ffff9648cb77543c91a5e8` (the Persian copy for the
+  studio, which a first staging pass had missed).
 - **Documentation SHA.** This commit.
 - **Storage is unchanged.** The studio reads and writes the SAME native `messageTemplate` object
   through the app's own workspace-scoped route and `CoreApiClient`. There is **no second table, no
