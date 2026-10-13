@@ -13,7 +13,13 @@ const configureProvider = () => {
 };
 
 type QueryResult = {
-  person?: { id: string; phones: unknown } | null;
+  person?: {
+    id: string;
+    phones: unknown;
+    name?: { firstName?: string | null; lastName?: string | null } | null;
+    jobTitle?: string | null;
+    company?: { name?: string | null } | null;
+  } | null;
 };
 
 const PERSON_WITH_PHONE: QueryResult = {
@@ -23,6 +29,34 @@ const PERSON_WITH_PHONE: QueryResult = {
       primaryPhoneNumber: '09120000000',
       additionalPhones: [{ number: '09350000000' }],
     },
+  },
+};
+
+// A person whose authorized template fields are all populated.
+const PERSON_WITH_FIELDS: QueryResult = {
+  person: {
+    id: 'person-1',
+    phones: {
+      primaryPhoneNumber: '09120000000',
+      additionalPhones: [{ number: '09350000000' }],
+    },
+    name: { firstName: 'سارا', lastName: 'احمدی' },
+    jobTitle: 'مدیر فروش',
+    company: { name: 'شرکت الف' },
+  },
+};
+
+// A person whose company and job title are empty (for EMPTY_FIELD coverage).
+const PERSON_WITHOUT_COMPANY: QueryResult = {
+  person: {
+    id: 'person-1',
+    phones: {
+      primaryPhoneNumber: '09120000000',
+      additionalPhones: [{ number: '09350000000' }],
+    },
+    name: { firstName: 'سارا', lastName: 'احمدی' },
+    jobTitle: null,
+    company: null,
   },
 };
 
@@ -446,6 +480,114 @@ describe('sendPersonCommunicationHandler', () => {
       expect(JSON.stringify(result)).not.toContain('SECRET-API-KEY');
       // Exactly one provider call: no automatic resend.
       expect(sent).toHaveLength(1);
+    });
+  });
+
+  // W17 §C/§B: server-authoritative template variable resolution --------------
+
+  describe('template variable resolution (W17)', () => {
+    it('resolves the namespaced and legacy tokens against authorized Person data', async () => {
+      const { client, mutations } = buildFakeClient({
+        queryResult: PERSON_WITH_FIELDS,
+      });
+      const { registry } = buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: '42',
+      });
+
+      const result = await sendPersonCommunicationHandler(
+        {
+          ...validParameters,
+          body: 'سلام @name (@company.name) — @person.jobTitle',
+        },
+        { client: client as never, registry },
+      );
+
+      expect(result.success).toBe(true);
+
+      const created = mutations.find(
+        (mutation) => mutation.mutationName === 'createCommunication',
+      );
+
+      // The persisted body is the RESOLVED text, never a literal token.
+      expect(created?.args).toMatchObject({
+        data: { body: 'سلام سارا (شرکت الف) — مدیر فروش' },
+      });
+    });
+
+    it('never sends a literal token when a variable is unknown', async () => {
+      const { client, mutations } = buildFakeClient({
+        queryResult: PERSON_WITH_FIELDS,
+      });
+      const { registry, sent } = buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: '42',
+      });
+
+      const result = await sendPersonCommunicationHandler(
+        { ...validParameters, body: 'سلام @name @ssn' },
+        { client: client as never, registry },
+      );
+
+      expect(result).toEqual({
+        success: false,
+        failureCode: 'TEMPLATE_VARIABLE_UNRESOLVED',
+        isOutcomeKnown: true,
+        error:
+          'The message contains a variable that could not be resolved for this recipient.',
+        unresolvedVariables: ['@ssn'],
+      });
+      // The send is blocked BEFORE any provider call or record write.
+      expect(sent).toHaveLength(0);
+      expect(mutations).toHaveLength(0);
+    });
+
+    it('blocks the send when an authorized field is empty (EMPTY_FIELD)', async () => {
+      const { client } = buildFakeClient({
+        queryResult: PERSON_WITHOUT_COMPANY,
+      });
+      const { registry, sent } = buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: '42',
+      });
+
+      const result = await sendPersonCommunicationHandler(
+        { ...validParameters, body: 'از @company.name' },
+        { client: client as never, registry },
+      );
+
+      expect(result).toEqual({
+        success: false,
+        failureCode: 'TEMPLATE_VARIABLE_UNRESOLVED',
+        isOutcomeKnown: true,
+        error:
+          'The message contains a variable that could not be resolved for this recipient.',
+        unresolvedVariables: ['@company.name'],
+      });
+      expect(sent).toHaveLength(0);
+    });
+
+    it('leaves a plain body with no tokens untouched', async () => {
+      const { client, mutations } = buildFakeClient({
+        queryResult: PERSON_WITH_FIELDS,
+      });
+      const { registry } = buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: '42',
+      });
+
+      await sendPersonCommunicationHandler(
+        { ...validParameters, body: 'یک پیام ساده' },
+        { client: client as never, registry },
+      );
+
+      const created = mutations.find(
+        (mutation) => mutation.mutationName === 'createCommunication',
+      );
+
+      expect(created?.args).toMatchObject({
+        data: { body: 'یک پیام ساده' },
+      });
     });
   });
 });

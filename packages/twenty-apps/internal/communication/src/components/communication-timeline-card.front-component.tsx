@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { defineFrontComponent } from 'twenty-sdk/define';
 import {
+  useLocale,
   useTimelineActivityId,
   useTranslate,
 } from 'twenty-sdk/front-component';
 
+import { formatDigitsForLocale } from 'src/components/composer-shared';
 import { COMMUNICATION_TIMELINE_RENDERER_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { createCommunicationTimelineRestSource } from 'src/timeline/communication-rest-source';
 import {
@@ -27,6 +29,7 @@ import {
 // action and does not claim to update automatically.
 const CommunicationTimelineCard = () => {
   const { t } = useTranslate();
+  const locale = useLocale();
   const timelineActivityId = useTimelineActivityId();
 
   const [state, setState] = useState<CommunicationTimelineLoadState>({
@@ -133,7 +136,9 @@ const CommunicationTimelineCard = () => {
       </span>
 
       {view.recipient !== null && (
-        <span style={{ opacity: 0.7 }}>{view.recipient}</span>
+        <span style={{ opacity: 0.7, direction: 'ltr', unicodeBidi: 'plaintext' }}>
+          {formatDigitsForLocale(view.recipient, locale)}
+        </span>
       )}
 
       {view.providerLabel !== null && (

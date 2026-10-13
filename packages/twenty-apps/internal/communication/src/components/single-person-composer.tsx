@@ -10,6 +10,7 @@ import {
 import {
   callAppRoute,
   composerStyles as styles,
+  formatDigitsForLocale,
   getTextDirection,
   phoneValueStyle,
 } from 'src/components/composer-shared';
@@ -21,10 +22,74 @@ import {
 } from 'src/components/phone-options-load-state';
 import { submitPersonCommunication } from 'src/components/submit-person-communication';
 import { resolveSubmitOutcomePresentation } from 'src/components/submit-outcome-variant';
+import {
+  doesBodyEditDetach,
+  NO_TEMPLATE_ID,
+  resolveTemplateChoice,
+  templateOptionLabel,
+  type TemplateOption,
+} from 'src/components/template-selection';
 
 // Channels the composer offers. Mirrors the implemented channels only; future
 // channels become selectable when their provider ships.
 const SUPPORTED_CHANNELS = ['SMS'] as const;
+
+type TemplatesState =
+  | { kind: 'LOADING' }
+  | { kind: 'READY'; templates: TemplateOption[] }
+  | { kind: 'EMPTY' }
+  | { kind: 'ERROR' };
+
+const toTemplateOption = (value: unknown): TemplateOption | null => {
+  if (value === null || typeof value !== 'object') {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (typeof record.id !== 'string' || record.id.length === 0) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    title: typeof record.title === 'string' ? record.title : '',
+    body: typeof record.body === 'string' ? record.body : '',
+    channel: typeof record.channel === 'string' ? record.channel : 'SMS',
+  };
+};
+
+const resolveTemplatesState = (response: {
+  ok: boolean;
+  data: unknown;
+}): TemplatesState => {
+  if (
+    !response.ok ||
+    response.data === null ||
+    typeof response.data !== 'object'
+  ) {
+    return { kind: 'ERROR' };
+  }
+
+  const payload = response.data as Record<string, unknown>;
+
+  if (payload.success !== true || !Array.isArray(payload.templates)) {
+    return { kind: 'ERROR' };
+  }
+
+  const templates = payload.templates
+    .map(toTemplateOption)
+    .filter((template): template is TemplateOption => template !== null);
+
+  // A genuinely empty list is EMPTY (honest), a malformed one is ERROR.
+  if (payload.templates.length > 0 && templates.length === 0) {
+    return { kind: 'ERROR' };
+  }
+
+  return templates.length === 0
+    ? { kind: 'EMPTY' }
+    : { kind: 'READY', templates };
+};
 
 // The single-person form: exactly the W5 vertical slice, extracted so the
 // top-level composer can choose between it and the bulk form without changing
@@ -41,6 +106,16 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
   });
   const [selectedPhone, setSelectedPhone] = useState('');
   const [body, setBody] = useState('');
+  const [templatesState, setTemplatesState] = useState<TemplatesState>({
+    kind: 'LOADING',
+  });
+  const [selectedTemplateId, setSelectedTemplateId] = useState(NO_TEMPLATE_ID);
+  // The EXACT text the current template inserted, or `null` once the draft is
+  // detached (edited, or never attached). «بدون الگو» may clear the body only
+  // while this is non-null.
+  const [attachedTemplateBody, setAttachedTemplateBody] = useState<
+    string | null
+  >(null);
   const [sending, setSending] = useState(false);
   const [outcome, setOutcome] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +165,81 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
       connection?.invalidate();
     };
   }, [personId]);
+
+  // Templates are loaded once for the picker. A failure is a distinct state:
+  // the user can still type a custom message, so the composer never blocks on
+  // the template list.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTemplates = async () => {
+      try {
+        const response = await callAppRoute(
+          '/communication/message-templates',
+          'POST',
+        );
+
+        if (!cancelled) {
+          setTemplatesState(resolveTemplatesState(response));
+        }
+      } catch {
+        if (!cancelled) {
+          setTemplatesState({ kind: 'ERROR' });
+        }
+      }
+    };
+
+    void loadTemplates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const templates =
+    templatesState.kind === 'READY' ? templatesState.templates : [];
+
+  const handleSelectTemplate = (templateId: string) => {
+    const outcome = resolveTemplateChoice({
+      templateId,
+      templates,
+      attachedBody: attachedTemplateBody,
+    });
+
+    if (outcome.kind === 'INSERT') {
+      setBody(outcome.body);
+      setAttachedTemplateBody(outcome.body);
+      setSelectedTemplateId(templateId);
+    } else if (outcome.kind === 'CLEAR') {
+      setBody('');
+      setAttachedTemplateBody(null);
+      setSelectedTemplateId(NO_TEMPLATE_ID);
+    } else {
+      setSelectedTemplateId(templateId);
+    }
+
+    // A template change invalidates any previous outcome/error.
+    setOutcome(null);
+    setError(null);
+  };
+
+  const handleBodyChange = (nextBody: string) => {
+    setBody(nextBody);
+
+    // Manually editing a template's body detaches the draft from the template.
+    // The SAVED template is never touched.
+    if (doesBodyEditDetach({ attachedBody: attachedTemplateBody, body: nextBody })) {
+      setAttachedTemplateBody(null);
+      setSelectedTemplateId(NO_TEMPLATE_ID);
+    }
+  };
+
+  const templatesPlaceholder =
+    templatesState.kind === 'LOADING'
+      ? t('Loading templates…')
+      : templatesState.kind === 'ERROR'
+        ? t('Unable to load templates.')
+        : t('No templates available');
 
   const trimmedBody = body.trim();
   const canSubmit =
@@ -199,6 +349,11 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
   const isPhoneSelectDisabled =
     phonesState.kind !== 'READY' || phonesState.phones.length === 0;
 
+  // The template picker locks only while a template list is loading (there is
+  // nothing to choose yet). It is NOT locked while sending, because sending is
+  // guarded by the in-flight ref and the body is only read at submit time.
+  const isLockedForTemplate = templatesState.kind === 'LOADING';
+
   const phonePlaceholder =
     phonesState.kind === 'LOADING'
       ? t('Loading phone numbers…')
@@ -235,6 +390,30 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
       </label>
 
       <label style={styles.field}>
+        <span style={styles.label}>{t('Select a template')}</span>
+        <select
+          value={selectedTemplateId}
+          onChange={(event) => handleSelectTemplate(event.target.value)}
+          disabled={templatesState.kind === 'LOADING' || isLockedForTemplate}
+          style={styles.control}
+        >
+          <option value={NO_TEMPLATE_ID}>
+            {templates.length === 0 ? templatesPlaceholder : t('No template')}
+          </option>
+          {templates.map((template) => (
+            <option key={template.id} value={template.id}>
+              {templateOptionLabel(template)}
+            </option>
+          ))}
+        </select>
+        <p style={styles.muted}>
+          {t(
+            'Selecting a template fills the message. You can edit it before sending.',
+          )}
+        </p>
+      </label>
+
+      <label style={styles.field}>
         <span style={styles.label}>{t('Phone number')}</span>
         <select
           value={selectedPhone}
@@ -245,7 +424,7 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
           {phonesState.kind === 'READY' ? (
             phonesState.phones.map((phone) => (
               <option key={phone.id} value={phone.value}>
-                {phone.value}
+                {formatDigitsForLocale(phone.value, locale)}
               </option>
             ))
           ) : (
@@ -258,7 +437,7 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
         <span style={styles.label}>{t('Message')}</span>
         <textarea
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => handleBodyChange(event.target.value)}
           rows={5}
           style={{ ...styles.control, resize: 'vertical' }}
         />

@@ -10,6 +10,7 @@ import { type TemplateRecipientData } from 'src/templates/template-variable-cata
 type RawBulkPersonNode = {
   id: string;
   name?: { firstName?: string | null; lastName?: string | null } | null;
+  jobTitle?: string | null;
   company?: { name?: string | null } | null;
   phones?: PersonPhones;
 };
@@ -44,6 +45,7 @@ export const findPersonsForBulk = async ({
         node: {
           id: true,
           name: { firstName: true, lastName: true },
+          jobTitle: true,
           company: { name: true },
           phones: {
             primaryPhoneNumber: true,
@@ -66,6 +68,7 @@ export const findPersonsForBulk = async ({
     .map((node) => ({
       id: node.id,
       name: node.name ?? null,
+      jobTitle: node.jobTitle ?? null,
       company: node.company ?? null,
       phones: node.phones ?? null,
     }));
@@ -87,6 +90,7 @@ export const toTemplateRecipientData = (
     firstName: firstName.length > 0 ? firstName : null,
     lastName: lastName.length > 0 ? lastName : null,
     fullName: fullNameParts.length > 0 ? fullNameParts.join(' ') : null,
+    jobTitle: record.jobTitle?.trim() || null,
     companyName: record.company?.name?.trim() || null,
   };
 };

@@ -58,6 +58,7 @@ export const buildTemplatePreview = ({
       firstName: null,
       lastName: null,
       fullName: null,
+      jobTitle: null,
       companyName: null,
     };
 

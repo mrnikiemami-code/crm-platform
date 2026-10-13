@@ -71,14 +71,15 @@
     "Send SMS": "ارسال پیامک"
   },
   "navigationMenuItem.name": {
-    "Communications": "ارتباطات"
+    "Communications": "ارتباطات",
+    "Message templates": "الگوهای پیامک"
   },
   "timelineActivityType.label": {
     "communication": "ارتباط"
   },
   "view.name": {
     "Communications": "ارتباطات",
-    "Message templates": "الگوهای پیام"
+    "SMS templates": "الگوهای پیامک"
   },
   "Send SMS to multiple people": "ارسال پیامک به چند نفر",
   "Preview only. Bulk sending is not available yet.": "فقط پیش‌نمایش. ارسال گروهی هنوز در دسترس نیست.",
@@ -171,5 +172,18 @@
   "RazPayamak failure: an unrecognized provider error occurred.": "خطای رازپیامک: خطای ناشناختهٔ سرویس‌دهنده رخ داد.",
   "SMS": "پیامک",
   "رازپیامک": "رازپیامک",
-  "کاوه‌نگار": "کاوه‌نگار"
+  "کاوه‌نگار": "کاوه‌نگار",
+  "No template": "بدون الگو",
+  "Job title": "عنوان شغلی",
+  "Company name": "نام شرکت",
+  "Select a template": "انتخاب الگو",
+  "Selecting a template fills the message. You can edit it before sending.": "با انتخاب الگو، متن پیام پر می‌شود. می‌توانید پیش از ارسال آن را ویرایش کنید.",
+  "The message was changed. Select a template again to reuse it.": "متن پیام تغییر کرد. برای استفادهٔ مجدد، الگو را دوباره انتخاب کنید.",
+  "Usable variables": "متغیرهای قابل استفاده",
+  "Place these variables in the message body. Each one is replaced with the recipient’s own value when the message is sent.": "این متغیرها را در متن پیام قرار دهید. هنگام ارسال، هر متغیر با مقدار واقعی همان گیرنده جای‌گذاری می‌شود.",
+  "Copy": "کپی",
+  "Copied": "کپی شد",
+  "Variable copied": "متغیر کپی شد",
+  "The six legacy names (@name, @firstName, @lastName, @fullName, @company, @companyName) keep working and mean the same as their new form.": "شش نام قدیمی (@name، @firstName، @lastName، @fullName، @company، @companyName) همچنان کار می‌کنند و همان معنای شکل جدید را دارند.",
+  "The message contains a variable that could not be resolved for this recipient.": "پیام حاوی متغیری است که برای این گیرنده قابل جای‌گذاری نبود."
 }

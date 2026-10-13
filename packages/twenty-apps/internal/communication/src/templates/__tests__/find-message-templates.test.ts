@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { findMessageTemplates } from 'src/templates/data/find-message-templates';
-import { listTemplateVariables } from 'src/templates/template-variable-catalog';
+import {
+  findTemplateVariable,
+  listTemplateVariables,
+} from 'src/templates/template-variable-catalog';
 
 // A fake workspace API client. Every read the app performs for templates goes
 // through this client, so a template can only ever come from the current
@@ -71,14 +74,38 @@ describe('listTemplateVariables', () => {
     const variables = listTemplateVariables();
 
     expect(variables.map((variable) => variable.token)).toEqual([
-      '@name',
-      '@lastName',
-      '@fullName',
-      '@company',
+      '@person.firstName',
+      '@person.lastName',
+      '@person.fullName',
+      '@person.jobTitle',
+      '@company.name',
     ]);
 
     for (const variable of variables) {
       expect(Object.keys(variable)).toEqual(['token', 'label']);
     }
+  });
+
+  it('resolves every legacy alias to the same value as its namespaced token', () => {
+    // The six pre-W17 aliases must keep working for already-saved templates.
+    const aliases: [string, string][] = [
+      ['@name', '@person.firstName'],
+      ['@firstName', '@person.firstName'],
+      ['@lastName', '@person.lastName'],
+      ['@fullName', '@person.fullName'],
+      ['@company', '@company.name'],
+      ['@companyName', '@company.name'],
+    ];
+
+    for (const [alias, canonical] of aliases) {
+      expect(findTemplateVariable(alias.slice(1))?.token).toBe(
+        canonical.slice(1),
+      );
+    }
+  });
+
+  it('returns null for anything outside the allow-list', () => {
+    expect(findTemplateVariable('ssn')).toBeNull();
+    expect(findTemplateVariable('person.secret')).toBeNull();
   });
 });

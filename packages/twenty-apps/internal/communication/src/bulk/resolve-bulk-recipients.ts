@@ -14,6 +14,7 @@ import {
 export type BulkPersonRecord = {
   id: string;
   name?: { firstName?: string | null; lastName?: string | null } | null;
+  jobTitle?: string | null;
   company?: { name?: string | null } | null;
   phones?: PersonPhones;
 };

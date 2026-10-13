@@ -127,6 +127,14 @@ const templatesResponse = {
   data: { success: true, templates: [], variables: [] },
 };
 
+const buildTemplatesResponse = (
+  templates: { id: string; title: string; body: string; channel: string }[],
+) => ({
+  ok: true,
+  status: 200,
+  data: { success: true, templates, variables: [] },
+});
+
 const acceptedSend = (status: 'SENT' | 'DELIVERED' = 'SENT') => ({
   ok: true,
   status: 200,
@@ -183,10 +191,12 @@ const READY_PREVIEW = buildPreviewResponse([
 const installRoutes = ({
   recipients = TWO,
   preview = READY_PREVIEW,
+  templates = templatesResponse,
   onSend,
 }: {
   recipients?: RecipientSpec[];
   preview?: unknown;
+  templates?: unknown;
   onSend: SendResponder;
 }) => {
   const implementation = vi.fn(async (path: string, _method: string, body: unknown) => {
@@ -195,7 +205,7 @@ const installRoutes = ({
     }
 
     if (path === '/communication/message-templates') {
-      return templatesResponse;
+      return templates;
     }
 
     if (path === '/communication/preview-template') {
@@ -251,6 +261,14 @@ const waitForRecipients = async () => {
   await waitFor(() => {
     expect(
       routeCalls().some((call) => call[0] === '/communication/bulk-recipients'),
+    ).toBe(true);
+  });
+};
+
+const waitForTemplates = async () => {
+  await waitFor(() => {
+    expect(
+      routeCalls().some((call) => call[0] === '/communication/message-templates'),
     ).toBe(true);
   });
 };
@@ -1112,6 +1130,125 @@ describe('BulkPersonComposer — real wiring', () => {
 
     await waitFor(() => {
       expect(screen.getByText('خطای اختصاصی سرویس‌دهنده')).toBeTruthy();
+    });
+  });
+
+  // W17 §C: template selector in the bulk composer ----------------------------
+
+  describe('template selector (W17)', () => {
+    const templateSelect = (): HTMLSelectElement => {
+      const selects = screen.getAllByRole('combobox') as HTMLSelectElement[];
+      const found = selects.find((select) =>
+        Array.from(select.options).some(
+          (option) => option.textContent === 'No template',
+        ),
+      );
+
+      if (found === undefined) {
+        throw new Error('template select not found');
+      }
+
+      return found;
+    };
+
+    const messageTextarea = (): HTMLTextAreaElement => {
+      const textareas = screen.getAllByRole(
+        'textbox',
+      ) as HTMLTextAreaElement[];
+
+      return textareas[textareas.length - 1];
+    };
+
+    const chooseTemplate = (value: string) => {
+      const select = templateSelect();
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype,
+        'value',
+      )?.set;
+
+      setter?.call(select, value);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const TEMPLATE = {
+      id: 't-a',
+      title: 'خوش‌آمد',
+      body: 'سلام @name عزیز',
+      channel: 'SMS',
+    };
+
+    it('defaults to «بدون الگو» and lists templates below it', async () => {
+      installRoutes({
+        templates: buildTemplatesResponse([TEMPLATE]),
+        onSend: () => acceptedSend(),
+      });
+
+      await renderComposer();
+      await waitForRecipients();
+      await waitForTemplates();
+
+      expect(templateSelect().value).toBe('');
+      expect(screen.getByText('No template')).toBeTruthy();
+      expect(screen.getByText('خوش‌آمد')).toBeTruthy();
+    });
+
+    it('populates the body on selection, and clears it when «بدون الگو» follows', async () => {
+      installRoutes({
+        templates: buildTemplatesResponse([TEMPLATE]),
+        onSend: () => acceptedSend(),
+      });
+
+      await renderComposer();
+      await waitForRecipients();
+      await waitForTemplates();
+
+      await act(async () => {
+        chooseTemplate('t-a');
+      });
+      expect(messageTextarea().value).toBe('سلام @name عزیز');
+
+      await act(async () => {
+        chooseTemplate('');
+      });
+      expect(messageTextarea().value).toBe('');
+    });
+
+    it('exposes NO variable chips in the send panel (W17 §C.8)', async () => {
+      installRoutes({
+        templates: buildTemplatesResponse([TEMPLATE]),
+        onSend: () => acceptedSend(),
+      });
+
+      await renderComposer();
+      await waitForRecipients();
+      await waitForTemplates();
+
+      // The old composer rendered a chip button labelled `<label> (@token)`.
+      expect(screen.queryByText(/\(@/)).toBeNull();
+      expect(screen.queryByText('Variables')).toBeNull();
+      expect(
+        screen.queryByText(
+          'Variables are resolved on the server for each recipient.',
+        ),
+      ).toBeNull();
+    });
+
+    it('still allows a custom message when templates fail to load', async () => {
+      installRoutes({
+        templates: { ok: false, status: 500, data: {} },
+        onSend: () => acceptedSend(),
+      });
+
+      await renderComposer();
+      await waitForRecipients();
+      await waitForTemplates();
+
+      await act(async () => {
+        setTextarea('پیام دلخواه');
+      });
+
+      expect(messageTextarea().value).toBe('پیام دلخواه');
+      expect(screen.getByText('Unable to load templates.')).toBeTruthy();
     });
   });
 });

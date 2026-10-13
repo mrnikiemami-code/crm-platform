@@ -3,10 +3,20 @@ import {
   type TemplateRecipientData,
 } from 'src/templates/template-variable-catalog';
 
-// A placeholder is `@` followed by an identifier (letters, digits, underscore).
-// The identifier charset is deliberately strict: it can only ever match a token
-// in the catalog, never an expression, a path or an injection.
-const PLACEHOLDER_PATTERN = /@([A-Za-z][A-Za-z0-9_]*)/g;
+// A placeholder is `@` followed by a NAMESPACED identifier: one or more
+// segments of letters/digits/underscore joined by single dots (e.g. `@name`,
+// `@person.jobTitle`, `@company.name`).
+//
+// The grammar is deliberately strict and is the FIRST line of defence:
+//  - every segment must START with a letter, so `@1x` is not a token;
+//  - a dot must be FOLLOWED by a valid segment, so `@person.` stops at
+//    `@person` and a trailing dot is never swallowed;
+//  - there is no `..`, no leading/trailing dot, no bracket, no parenthesis and
+//    no quote — so a placeholder can only ever match a flat token in the
+//    catalog. It cannot express property traversal, an expression or an
+//    injection, even before the allow-list lookup rejects it.
+const PLACEHOLDER_PATTERN =
+  /@([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*)/g;
 
 export type TemplateInterpolationIssue = {
   /** The variable token as written, including the leading `@`. */

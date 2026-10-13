@@ -15,7 +15,11 @@ import {
 // workspace templates.
 export default defineView({
   universalIdentifier: MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
-  name: 'Message templates',
+  // The sidebar entry points at this view, and a view navigation item renders
+  // as `<view name> · <object plural>`. The view name is therefore the
+  // user-facing «الگوهای پیامک» / "SMS templates" label, translated through the
+  // app catalog (`view.name`).
+  name: 'SMS templates',
   objectUniversalIdentifier: MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   type: ViewType.TABLE,
   icon: 'IconTemplate',

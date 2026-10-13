@@ -16,6 +16,8 @@ import {
   CommunicationUnexpectedSendFailureError,
 } from 'src/services/communication-send-and-persist.service';
 import { CommunicationSendService } from 'src/services/communication-send.service';
+import { findRecipientTemplateData } from 'src/templates/data/find-recipient-template-data';
+import { interpolateTemplate } from 'src/templates/interpolate-template';
 
 export type SendPersonCommunicationParameters = {
   personId: string;
@@ -96,6 +98,36 @@ export const sendPersonCommunicationHandler = async (
     );
   }
 
+  // Resolve any template variables SERVER-SIDE, against the authorized Person
+  // fields just re-read here. The client's body may contain literal `@token`
+  // placeholders; those are substituted here and NEVER sent literally. An
+  // unknown or empty variable blocks the send with a stable classification, so
+  // a recipient is never messaged with an unresolved token.
+  const recipientData = await findRecipientTemplateData({
+    client,
+    personId: parameters.personId,
+  });
+
+  if (recipientData === null) {
+    return fail('Person not found or not accessible.', 'PERSON_NOT_ACCESSIBLE');
+  }
+
+  const interpolation = interpolateTemplate({
+    body: parameters.body,
+    recipient: recipientData,
+  });
+
+  if (interpolation.hasUnresolvedVariables) {
+    return {
+      success: false,
+      failureCode: 'TEMPLATE_VARIABLE_UNRESOLVED',
+      isOutcomeKnown: true,
+      error:
+        'The message contains a variable that could not be resolved for this recipient.',
+      unresolvedVariables: interpolation.issues.map((issue) => issue.token),
+    };
+  }
+
   const registry =
     dependencies.registry ?? createCommunicationProviderRegistry();
   const sendService = new CommunicationSendService(registry);
@@ -115,7 +147,7 @@ export const sendPersonCommunicationHandler = async (
       message: {
         channel: parameters.channel,
         recipient: parameters.recipient,
-        body: parameters.body,
+        body: interpolation.text,
         ...(isNonEmptyString(subject) ? { subject } : {}),
       },
       targetPersonId: parameters.personId,

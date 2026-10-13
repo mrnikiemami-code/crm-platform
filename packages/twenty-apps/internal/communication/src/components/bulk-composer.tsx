@@ -32,6 +32,7 @@ import {
   BULK_SEND_DEADLINE_MS,
   callAppRoute,
   composerStyles as styles,
+  formatDigitsForLocale,
   getTextDirection,
   phoneValueStyle,
 } from 'src/components/composer-shared';
@@ -39,6 +40,12 @@ import {
   createPreviewConnection,
   type PreviewConnection,
 } from 'src/components/preview-connection';
+import {
+  doesBodyEditDetach,
+  NO_TEMPLATE_ID,
+  resolveTemplateChoice,
+  templateOptionLabel,
+} from 'src/components/template-selection';
 
 // The bulk form. W15-A previews the group; W15-B sends it. The send button is
 // enabled only for a CURRENT, VALID preview, and sends the confirmed recipients
@@ -59,7 +66,11 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     {},
   );
   const [body, setBody] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState(NO_TEMPLATE_ID);
+  // The EXACT text the current template inserted, or `null` once detached.
+  const [attachedTemplateBody, setAttachedTemplateBody] = useState<
+    string | null
+  >(null);
   const [previewState, setPreviewState] = useState<PreviewLoadState>({
     kind: 'IDLE',
   });
@@ -349,27 +360,37 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
     );
   };
 
-  const handleInsertVariable = (token: string) => {
-    const textarea = bodyRef.current;
+  const handleSelectTemplate = (templateId: string) => {
+    const outcome = resolveTemplateChoice({
+      templateId,
+      templates,
+      attachedBody: attachedTemplateBody,
+    });
 
-    if (textarea === null) {
-      setBody((current) => `${current}${token}`);
-      return;
+    if (outcome.kind === 'INSERT') {
+      setBody(outcome.body);
+      setAttachedTemplateBody(outcome.body);
+      setSelectedTemplateId(templateId);
+    } else if (outcome.kind === 'CLEAR') {
+      setBody('');
+      setAttachedTemplateBody(null);
+      setSelectedTemplateId(NO_TEMPLATE_ID);
+    } else {
+      setSelectedTemplateId(templateId);
     }
+  };
 
-    const start = textarea.selectionStart ?? body.length;
-    const end = textarea.selectionEnd ?? body.length;
-    const nextBody = `${body.slice(0, start)}${token}${body.slice(end)}`;
-
+  const handleBodyChange = (nextBody: string) => {
     setBody(nextBody);
 
-    // Restore the caret after the inserted token on the next paint.
-    setTimeout(() => {
-      textarea.focus();
-      const caret = start + token.length;
-
-      textarea.setSelectionRange(caret, caret);
-    }, 0);
+    // Manually editing a template's body detaches the draft from the template;
+    // the SAVED template is never modified.
+    if (
+      doesBodyEditDetach({ attachedBody: attachedTemplateBody, body: nextBody })
+    ) {
+      setAttachedTemplateBody(null);
+      setSelectedTemplateId(NO_TEMPLATE_ID);
+    }
   };
 
   const handlePreview = async () => {
@@ -430,10 +451,11 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
 
   const templates =
     templatesState.kind === 'READY' ? templatesState.templates : [];
-  const variables =
-    templatesState.kind === 'READY' || templatesState.kind === 'EMPTY'
-      ? templatesState.variables
-      : [];
+
+  // Display-only Persian digits for COUNTS and phone LABELS. The underlying
+  // numbers, values, snapshots and payloads stay canonical ASCII.
+  const faDigits = (value: number | string): string =>
+    formatDigitsForLocale(String(value), locale);
 
   const templatesPlaceholder =
     templatesState.kind === 'LOADING'
@@ -464,7 +486,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
 
       <div style={styles.field}>
         <span style={styles.label}>
-          {t('Recipients')} ({visibleRecipients.length})
+          {t('Recipients')} ({faDigits(visibleRecipients.length)})
         </span>
 
         {recipientsState.kind === 'LOADING' || recipientsState.kind === 'ERROR' ? (
@@ -507,7 +529,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
                     >
                       {recipient.phones.map((phone) => (
                         <option key={phone.id} value={phone.value}>
-                          {phone.value}
+                          {formatDigitsForLocale(phone.value, locale)}
                         </option>
                       ))}
                     </select>
@@ -520,8 +542,8 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
 
         {recipientsState.kind === 'READY' && (
           <p style={styles.muted}>
-            {t('Sendable')}: {sendableRecipients.length} · {t('Unsendable')}:{' '}
-            {unsendableRecipients.length}
+            {t('Sendable')}: {faDigits(sendableRecipients.length)} · {t('Unsendable')}:{' '}
+            {faDigits(unsendableRecipients.length)}
           </p>
         )}
 
@@ -529,7 +551,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
           recipientsState.duplicatePersonIds.length > 0 && (
             <p style={styles.warning}>
               {t('Duplicate selections were removed:')}{' '}
-              {recipientsState.duplicatePersonIds.length}
+              {faDigits(recipientsState.duplicatePersonIds.length)}
             </p>
           )}
 
@@ -542,64 +564,35 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
       </div>
 
       <label style={styles.field}>
-        <span style={styles.label}>{t('Template')}</span>
+        <span style={styles.label}>{t('Select a template')}</span>
         <select
           value={selectedTemplateId}
-          onChange={(event) => {
-            const template = templates.find(
-              (candidate) => candidate.id === event.target.value,
-            );
-
-            setSelectedTemplateId(event.target.value);
-
-            if (template !== undefined) {
-              setBody(template.body);
-            }
-          }}
-          disabled={templates.length === 0 || isLocked}
+          onChange={(event) => handleSelectTemplate(event.target.value)}
+          disabled={templatesState.kind === 'LOADING' || isLocked}
           style={styles.control}
         >
-          <option value="">
-            {templates.length === 0
-              ? templatesPlaceholder
-              : t('Choose a template')}
+          <option value={NO_TEMPLATE_ID}>
+            {templates.length === 0 ? templatesPlaceholder : t('No template')}
           </option>
           {templates.map((template) => (
             <option key={template.id} value={template.id}>
-              {template.title.length > 0 ? template.title : template.id}
+              {templateOptionLabel(template)}
             </option>
           ))}
         </select>
-        {templatesState.kind === 'ERROR' && (
-          <p style={styles.error}>{t('Unable to load templates.')}</p>
-        )}
-      </label>
-
-      <div style={styles.field}>
-        <span style={styles.label}>{t('Variables')}</span>
-        <div style={styles.variableChips}>
-          {variables.map((variable) => (
-            <button
-              key={variable.token}
-              type="button"
-              style={styles.chip}
-              onClick={() => handleInsertVariable(variable.token)}
-            >
-              {t(variable.label)} ({variable.token})
-            </button>
-          ))}
-        </div>
         <p style={styles.muted}>
-          {t('Variables are resolved on the server for each recipient.')}
+          {t(
+            'Selecting a template fills the message. You can edit it before sending.',
+          )}
         </p>
-      </div>
+      </label>
 
       <label style={styles.field}>
         <span style={styles.label}>{t('Message')}</span>
         <textarea
           ref={bodyRef}
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => handleBodyChange(event.target.value)}
           rows={5}
           disabled={isLocked}
           style={{ ...styles.control, resize: 'vertical' }}
@@ -613,8 +606,8 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
       {previewState.kind === 'READY' && (
         <div style={styles.field}>
           <span style={styles.label}>
-            {t('Preview')} — {t('Ready')}: {previewState.readyCount}/
-            {previewState.previews.length}
+            {t('Preview')} — {t('Ready')}: {faDigits(previewState.readyCount)}/
+            {faDigits(previewState.previews.length)}
           </span>
 
           {previewState.isBodyEmpty && (
@@ -667,7 +660,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
                 </div>
                 {preview.phone !== null && (
                   <span style={{ ...styles.muted, ...phoneValueStyle }}>
-                    {preview.phone}
+                    {formatDigitsForLocale(preview.phone, locale)}
                   </span>
                 )}
                 <p style={styles.preview}>{preview.previewText}</p>
@@ -711,10 +704,10 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
 
           {sendState.summary !== null && (
             <p style={styles.muted}>
-              {t('Accepted')}: {sendState.summary.acceptedCount} ·{' '}
-              {t('Failed')}: {sendState.summary.definiteFailureCount} ·{' '}
-              {t('Unknown')}: {sendState.summary.unknownCount} ·{' '}
-              {t('Not started')}: {sendState.summary.notStartedCount}
+              {t('Accepted')}: {faDigits(sendState.summary.acceptedCount)} ·{' '}
+              {t('Failed')}: {faDigits(sendState.summary.definiteFailureCount)} ·{' '}
+              {t('Unknown')}: {faDigits(sendState.summary.unknownCount)} ·{' '}
+              {t('Not started')}: {faDigits(sendState.summary.notStartedCount)}
             </p>
           )}
 
@@ -728,7 +721,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
                   </span>
                 </div>
                 <span style={{ ...styles.muted, ...phoneValueStyle }}>
-                  {result.recipient}
+                  {formatDigitsForLocale(result.recipient, locale)}
                 </span>
                 {result.detail !== null &&
                   // The provider's own reason is shown VERBATIM; only app copy
@@ -808,14 +801,14 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
           <span style={styles.label}>{t('Confirm sending')}</span>
 
           <p style={styles.muted}>
-            {t('Recipients to send')}: {confirmationPlan.sendable.length} /{' '}
-            {confirmationPlan.totalRecipients}
+            {t('Recipients to send')}: {faDigits(confirmationPlan.sendable.length)} /{' '}
+            {faDigits(confirmationPlan.totalRecipients)}
           </p>
 
           {excludedDisplays.length > 0 && (
             <div style={styles.warning}>
               <p style={styles.muted}>
-                {t('Recipients set aside')}: {excludedDisplays.length}
+                {t('Recipients set aside')}: {faDigits(excludedDisplays.length)}
               </p>
               <ul style={styles.recipientList}>
                 {excludedDisplays.map((entry) => (
@@ -864,7 +857,7 @@ export const BulkPersonComposer = ({ personIds }: { personIds: string[] }) => {
                 <div style={styles.recipientHeader}>
                   <span style={styles.recipientName}>{entry.displayName}</span>
                   <span style={{ ...styles.muted, ...phoneValueStyle }}>
-                    {entry.recipient}
+                    {formatDigitsForLocale(entry.recipient, locale)}
                   </span>
                 </div>
                 <p style={styles.preview}>{entry.body}</p>

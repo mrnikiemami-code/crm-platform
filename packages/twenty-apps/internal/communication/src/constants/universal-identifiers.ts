@@ -122,6 +122,36 @@ export const MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER =
 export const MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER =
   'f6d4d1ff-adea-420f-aa1c-97e5d14663b1';
 
+// Template management surface (W17)
+// A sidebar entry pointing at the existing `messageTemplate` view, placed next
+// to «ارتباطات» so a workspace can find and manage its templates. It reuses the
+// SAME view/object as the composer picker — no parallel storage and no second
+// table.
+export const MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  'a1f5c9d2-3b64-4e70-9c81-2d4f6a8b0c13';
+// The native record page for a template: title/body/channel fields plus the
+// «متغیرهای قابل استفاده» guide rendered by a front component. A page layout is
+// an ADDITIONAL layout, so the engine default remains and the app only adds its
+// own tab set.
+export const MESSAGE_TEMPLATE_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER =
+  'b2e6d0a3-4c75-4f81-ad92-3e5a7b9c1d24';
+export const MESSAGE_TEMPLATE_FIELDS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  'c3f7e1b4-5d86-4092-be03-4f6b8c0d2e35';
+export const MESSAGE_TEMPLATE_FIELDS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'd408f2c5-6e97-41a3-8f14-5a7c9d1e3f46';
+export const MESSAGE_TEMPLATE_BODY_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  'e51903d6-7fa8-42b4-9025-6b8d0e2f4057';
+export const MESSAGE_TEMPLATE_BODY_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'f62a14e7-80b9-43c5-a136-7c9e1f30516a';
+export const MESSAGE_TEMPLATE_VARIABLES_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  'a73b2508-91ca-44d6-a247-8daf2031624b';
+export const MESSAGE_TEMPLATE_VARIABLES_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'b84c3619-a2db-45e7-8358-9eb03142735c';
+// The front component that renders the «متغیرهای قابل استفاده» guide and inserts
+// (or copies) a token.
+export const MESSAGE_TEMPLATE_VARIABLE_GUIDE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'c95d472a-b3ec-46f8-9469-afc14253846d';
+
 // Bulk selection + template preview routes (W15-A). These are READ-ONLY server
 // routes: they resolve the authorized recipients of a selection and produce a
 // per-recipient preview. No route in W15-A sends anything.

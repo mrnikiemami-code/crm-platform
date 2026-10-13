@@ -365,3 +365,26 @@ export const phoneValueStyle = {
   direction: 'ltr' as const,
   unicodeBidi: 'plaintext' as const,
 };
+
+// Locales that render with Persian digits. A single list so a new
+// digit-localizing locale is one entry, not a scattered condition. Mirrors the
+// host utility `useFormatDigitsForLocale`; the app bundle cannot import it.
+const PERSIAN_DIGIT_LOCALES = ['fa-IR'];
+
+const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+
+/**
+ * DISPLAY-ONLY digit localization for the app's own front components.
+ *
+ * Only the digit CHARACTERS change; the value is never parsed, stored or sent.
+ * A `value` attribute, a request payload, a snapshot and the actual SMS text
+ * must always use this only for RENDERED text, never for the underlying data.
+ * For a non-Persian locale the input is returned unchanged.
+ */
+export const formatDigitsForLocale = (
+  value: string,
+  locale: string,
+): string =>
+  PERSIAN_DIGIT_LOCALES.includes(locale)
+    ? value.replace(/[0-9]/g, (digit) => PERSIAN_DIGITS[Number(digit)])
+    : value;

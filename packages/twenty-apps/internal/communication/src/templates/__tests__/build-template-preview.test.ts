@@ -19,6 +19,7 @@ const data: Map<string, TemplateRecipientData> = new Map([
       firstName: 'سارا',
       lastName: 'احمدی',
       fullName: 'سارا احمدی',
+      jobTitle: 'مدیر فروش',
       companyName: 'شرکت الف',
     },
   ],

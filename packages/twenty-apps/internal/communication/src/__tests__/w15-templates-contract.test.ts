@@ -106,13 +106,33 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
   });
 });
 
-describe('the template variable catalog is explicit and closed (W15-A)', () => {
-  it('offers exactly the standard variables, with @name and @company mapped explicitly', () => {
+describe('the template variable catalog is explicit and closed (W15-A/W17)', () => {
+  it('offers exactly the authorized variables, namespaced to their record', () => {
+    // W17 namespaces the canonical tokens and adds @person.jobTitle. The six
+    // pre-W17 aliases are kept (see the catalog test) so saved templates work.
     expect(TEMPLATE_VARIABLES.map((variable) => variable.token)).toEqual([
+      'person.firstName',
+      'person.lastName',
+      'person.fullName',
+      'person.jobTitle',
+      'company.name',
+    ]);
+  });
+
+  it('keeps the six legacy aliases resolving to the same definitions', () => {
+    const aliasesByToken = new Map(
+      TEMPLATE_VARIABLES.map((variable) => [variable.token, variable.aliases]),
+    );
+
+    expect(aliasesByToken.get('person.firstName')).toEqual([
       'name',
-      'lastName',
-      'fullName',
+      'firstName',
+    ]);
+    expect(aliasesByToken.get('person.lastName')).toEqual(['lastName']);
+    expect(aliasesByToken.get('person.fullName')).toEqual(['fullName']);
+    expect(aliasesByToken.get('company.name')).toEqual([
       'company',
+      'companyName',
     ]);
   });
 
@@ -129,6 +149,7 @@ describe('the template variable catalog is explicit and closed (W15-A)', () => {
     expect(catalog['First name']).toBe('نام');
     expect(catalog['Last name']).toBe('نام خانوادگی');
     expect(catalog['Full name']).toBe('نام کامل');
-    expect(catalog['Company']).toBe('شرکت');
+    expect(catalog['Job title']).toBe('عنوان شغلی');
+    expect(catalog['Company name']).toBe('نام شرکت');
   });
 });

@@ -15,6 +15,7 @@ export type SendPersonCommunicationRequest = {
 export type SendPersonCommunicationFailureCode =
   | 'INVALID_INPUT'
   | 'PERSON_NOT_ACCESSIBLE'
+  | 'TEMPLATE_VARIABLE_UNRESOLVED'
   | 'PROVIDER_FAILED'
   | 'OUTCOME_UNKNOWN'
   | 'OUTCOME_NOT_PERSISTED'
@@ -37,6 +38,11 @@ export type SendPersonCommunicationResponse = {
    * present the result as a definite failure and must not retry blindly.
    */
   isOutcomeKnown?: boolean;
+  /**
+   * The literal variable tokens that could not be resolved for this recipient.
+   * Present only for `TEMPLATE_VARIABLE_UNRESOLVED`.
+   */
+  unresolvedVariables?: string[];
   message?: string;
   error?: string;
 };

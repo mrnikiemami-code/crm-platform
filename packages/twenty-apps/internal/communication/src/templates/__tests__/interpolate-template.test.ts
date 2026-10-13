@@ -7,6 +7,7 @@ const sara: TemplateRecipientData = {
   firstName: 'سارا',
   lastName: 'احمدی',
   fullName: 'سارا احمدی',
+  jobTitle: 'مدیر فروش',
   companyName: 'شرکت الف',
 };
 
@@ -14,6 +15,7 @@ const reza: TemplateRecipientData = {
   firstName: 'رضا',
   lastName: 'کریمی',
   fullName: 'رضا کریمی',
+  jobTitle: null,
   companyName: 'شرکت ب',
 };
 
@@ -48,6 +50,27 @@ describe('interpolateTemplate', () => {
     expect(result.text).toBe('سارا احمدی (احمدی)');
   });
 
+  it('resolves the namespaced @person.* and @company.* tokens', () => {
+    const result = interpolateTemplate({
+      body: '@person.fullName — @person.jobTitle در @company.name',
+      recipient: sara,
+    });
+
+    expect(result.text).toBe('سارا احمدی — مدیر فروش در شرکت الف');
+    expect(result.hasUnresolvedVariables).toBe(false);
+  });
+
+  it('resolves a legacy alias and a namespaced token to the SAME value', () => {
+    const legacy = interpolateTemplate({ body: '@company', recipient: sara });
+    const namespaced = interpolateTemplate({
+      body: '@company.name',
+      recipient: sara,
+    });
+
+    expect(legacy.text).toBe(namespaced.text);
+    expect(legacy.text).toBe('شرکت الف');
+  });
+
   it('produces different text for two people from the SAME template', () => {
     const template = 'سلام @name، پیشنهاد ویژه برای @company آماده است.';
 
@@ -66,13 +89,30 @@ describe('interpolateTemplate', () => {
   it('reports an EMPTY_FIELD for a variable whose field is empty and keeps it visible', () => {
     const result = interpolateTemplate({
       body: 'سلام @name از @company',
-      recipient: { firstName: 'سارا', lastName: null, fullName: null, companyName: null },
+      recipient: {
+        firstName: 'سارا',
+        lastName: null,
+        fullName: null,
+        jobTitle: null,
+        companyName: null,
+      },
     });
 
     expect(result.hasUnresolvedVariables).toBe(true);
     expect(result.text).toBe('سلام سارا از @company');
+    expect(result.issues).toEqual([{ token: '@company', kind: 'EMPTY_FIELD' }]);
+  });
+
+  it('reports an EMPTY_FIELD for a namespaced token whose field is empty', () => {
+    const result = interpolateTemplate({
+      body: 'سمت: @person.jobTitle',
+      recipient: reza,
+    });
+
+    expect(result.hasUnresolvedVariables).toBe(true);
+    expect(result.text).toBe('سمت: @person.jobTitle');
     expect(result.issues).toEqual([
-      { token: '@company', kind: 'EMPTY_FIELD' },
+      { token: '@person.jobTitle', kind: 'EMPTY_FIELD' },
     ]);
   });
 
@@ -100,16 +140,21 @@ describe('interpolateTemplate', () => {
     ]);
   });
 
-  it('never evaluates an expression, a path or an injection', () => {
-    const body = '@name + process.env.SECRET @name.foo @{1+1} @name()';
+  it('never evaluates an expression, a path, a call or an injection', () => {
+    const body = '@name + process.env.SECRET @name.foo @{1+1} @name() @..x';
     const result = interpolateTemplate({ body, recipient: sara });
 
-    // Only the bare `@name` identifier is a placeholder; a trailing `.foo` or
-    // `()` is NOT resolved (no traversal, no call), and `@{1+1}` is literal.
+    // Only catalog tokens resolve. A dotted token is ONE namespaced token, so
+    // `@name.foo` is an UNKNOWN variable — never `@name` followed by a property
+    // traversal. `@{1+1}` is literal, `@name()` resolves `@name` and leaves the
+    // parentheses, and `@..x` is not a token at all (a dot must be followed by
+    // a valid segment).
     expect(result.text).toBe(
-      'سارا + process.env.SECRET سارا.foo @{1+1} سارا()',
+      'سارا + process.env.SECRET @name.foo @{1+1} سارا() @..x',
     );
-    expect(result.hasUnresolvedVariables).toBe(false);
+    expect(result.issues).toEqual([
+      { token: '@name.foo', kind: 'UNKNOWN_VARIABLE' },
+    ]);
   });
 
   it('leaves a body with no placeholders untouched', () => {
