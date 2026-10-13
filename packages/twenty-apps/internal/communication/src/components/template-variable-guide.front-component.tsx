@@ -90,7 +90,6 @@ const VariableGuide = () => {
 
   const [state, setState] = useState<LoadState>({ kind: 'LOADING' });
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,21 +102,7 @@ const VariableGuide = () => {
         );
 
         if (!cancelled) {
-          const nextState = resolveVariablesState(response);
-
-          setState(nextState);
-
-          // When the server could not build the catalog it says so explicitly;
-          // surface that reason instead of a generic failure.
-          const payload = response.data as { catalogError?: unknown } | null;
-
-          if (
-            nextState.kind === 'EMPTY' &&
-            payload !== null &&
-            typeof payload?.catalogError === 'string'
-          ) {
-            setCatalogError(payload.catalogError);
-          }
+          setState(resolveVariablesState(response));
         }
       } catch {
         if (!cancelled) {
@@ -162,11 +147,7 @@ const VariableGuide = () => {
       )}
 
       {state.kind === 'EMPTY' && (
-        <p style={styles.muted}>
-          {catalogError === null
-            ? t('No usable variables were found.')
-            : catalogError}
-        </p>
+        <p style={styles.muted}>{t('No usable variables were found.')}</p>
       )}
 
       {state.kind === 'READY' && (

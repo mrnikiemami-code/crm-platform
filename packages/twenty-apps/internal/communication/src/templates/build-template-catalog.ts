@@ -3,6 +3,7 @@ import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 import { APPLICATION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import {
   buildTemplateVariableCatalog,
+  EMPTY_TEMPLATE_VARIABLE_CATALOG,
   type TemplateObjectName,
   type TemplateValueKind,
   type TemplateVariableCatalog,
@@ -106,6 +107,18 @@ export type TemplatePermissionSnapshot = {
   unreadableFieldMetadataIds: string[];
 };
 
+/** The outcome of building the authorized catalog. */
+export type AuthorizedTemplateCatalogResult = {
+  /** EMPTY when `isAvailable` is false. */
+  catalog: TemplateVariableCatalog;
+  /**
+   * False when the metadata or the role/permission read failed. Callers must
+   * report a stable unavailable state instead of advertising zero fields as if
+   * the workspace simply had none.
+   */
+  isAvailable: boolean;
+};
+
 // `restrictedFields` is a JSON column; its exact shape is a platform detail, so
 // it is read defensively: entries may be plain field names or objects carrying
 // a name / field metadata id.
@@ -170,32 +183,39 @@ const isSafeField = (
  * Builds the catalog. PURE: metadata and permissions are passed in, so the
  * selection rules can be tested without a workspace.
  *
- * `permissions` may be `null`, meaning the role could NOT be read. That is not
- * treated as "allow everything" by the object layer (a `null` snapshot still
- * applies every type/name rule), and it is never the authority for access: the
- * platform's own record-level permissions govern the actual read, so a field a
- * caller may not read resolves to empty and blocks that recipient.
+ * Permissions are REQUIRED (non-null). A role that could not be read must never
+ * be treated as "allow everything": the caller returns an EMPTY catalog and a
+ * stable unavailable status instead (see `buildAuthorizedTemplateCatalog`).
+ *
+ * Object readability follows the PLATFORM's own resolved semantics:
+ * `objectPermission.canReadObjectRecords ?? role.canReadAllObjectRecords`
+ * (verified in `workspace-roles-permissions-cache.service.ts` / the object
+ * permission consistency validator). So a role with `canReadAllObjectRecords:
+ * false` and no per-object override can read NOTHING, and an explicit override
+ * wins in both directions.
  */
 export const buildTemplateCatalogFromMetadata = ({
   objects,
   permissions,
 }: {
   objects: readonly TemplateMetadataObject[];
-  permissions: TemplatePermissionSnapshot | null;
+  permissions: TemplatePermissionSnapshot;
 }): TemplateVariableCatalog => {
   const objectByName = new Map(
     objects.map((object) => [object.nameSingular, object]),
   );
 
-  const objectDeniedByName = new Map<string, boolean>();
+  const readOverrideByObjectId = new Map<string, boolean>();
   const restrictedNamesByObjectId = new Map<string, Set<string>>();
   const restrictedIdsByObjectId = new Map<string, Set<string>>();
 
-  for (const permission of permissions?.objectPermissions ?? []) {
-    objectDeniedByName.set(
-      permission.objectMetadataId,
-      permission.canReadObjectRecords === false,
-    );
+  for (const permission of permissions.objectPermissions) {
+    if (permission.canReadObjectRecords !== undefined) {
+      readOverrideByObjectId.set(
+        permission.objectMetadataId,
+        permission.canReadObjectRecords,
+      );
+    }
 
     if (permission.restrictedFieldNames.length > 0) {
       restrictedNamesByObjectId.set(
@@ -213,11 +233,12 @@ export const buildTemplateCatalogFromMetadata = ({
   }
 
   const unreadableFieldIds = new Set(
-    permissions?.unreadableFieldMetadataIds ?? [],
+    permissions.unreadableFieldMetadataIds,
   );
 
   const isObjectReadable = (objectId: string): boolean =>
-    objectDeniedByName.get(objectId) !== true;
+    readOverrideByObjectId.get(objectId) ??
+    permissions.canReadAllObjectRecords;
 
   const buildEntriesFor = (
     objectName: TemplateObjectName,
@@ -429,18 +450,15 @@ export const readTemplateMetadataObjects = async ({
  * Reads the APP EXECUTION ROLE's permissions.
  *
  * The role is read as part of the app's OWN `Application` record
- * (`defaultLogicFunctionRole`), not from the settings-scoped `getRoles` list:
- * that is the role the app's record reads actually run as, AND it is readable
- * with the app's own token, so the restriction is genuinely enforced rather
- * than assumed. If the read fails the caller passes `null` and only the
- * type/name rules apply — the platform's record-level permissions stay the
- * authority for what a read returns.
+ * (`defaultLogicFunctionRole`). Returns `null` when the role cannot be read,
+ * which the caller turns into an EMPTY, unavailable catalog: a permission
+ * lookup that fails must fail CLOSED, never advertise fields.
  */
 export const readTemplatePermissions = async ({
   metadataClient,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
-}): Promise<TemplatePermissionSnapshot> => {
+}): Promise<TemplatePermissionSnapshot | null> => {
   const result = await metadataClient.query({
     findOneApplication: {
       __args: { universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER },
@@ -464,13 +482,7 @@ export const readTemplatePermissions = async ({
   const role = result.findOneApplication?.defaultLogicFunctionRole;
 
   if (role === undefined || role === null) {
-    // No role found must never mean "allow everything": an empty snapshot with
-    // canReadAllObjectRecords false denies every object explicitly.
-    return {
-      canReadAllObjectRecords: false,
-      objectPermissions: [],
-      unreadableFieldMetadataIds: [],
-    };
+    return null;
   }
 
   return {
@@ -494,24 +506,37 @@ export const readTemplatePermissions = async ({
 /**
  * The single server-authoritative entry point every consumer uses.
  *
- * The OBJECT/FIELD metadata read is FATAL when it fails (an empty catalog is the
- * safe answer: every token then reads as unknown and blocks the recipient
- * instead of a placeholder being sent). The ROLE read is NOT fatal: an app
- * execution role may not expose `getRoles`, and a workspace where the role
- * cannot be read must still get a working catalog. In that case only the
- * type/name rules apply and the platform's own record-level permissions remain
- * the authority for what a read actually returns.
+ * FAIL CLOSED. Both the metadata read and the role read are part of building an
+ * AUTHORIZED catalog, so either failing yields an EMPTY catalog and
+ * `isAvailable: false`. Callers must report that as a stable unavailable state —
+ * never advertise fields just because metadata enumeration succeeded, and never
+ * fall back to "allow everything" when permissions could not be read.
+ *
+ * Record reads stay server-authoritative regardless: the catalog only ever
+ * produces field names, and the platform enforces read permission on the actual
+ * record query.
  */
 export const buildAuthorizedTemplateCatalog = async ({
   metadataClient,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
-}): Promise<TemplateVariableCatalog> => {
-  const objects = await readTemplateMetadataObjects({ metadataClient });
+}): Promise<AuthorizedTemplateCatalogResult> => {
+  try {
+    const objects = await readTemplateMetadataObjects({ metadataClient });
+    const permissions = await readTemplatePermissions({ metadataClient });
 
-  const permissions = await readTemplatePermissions({ metadataClient }).catch(
-    () => null,
-  );
+    if (permissions === null) {
+      return {
+        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+        isAvailable: false,
+      };
+    }
 
-  return buildTemplateCatalogFromMetadata({ objects, permissions });
+    return {
+      catalog: buildTemplateCatalogFromMetadata({ objects, permissions }),
+      isAvailable: true,
+    };
+  } catch {
+    return { catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG, isAvailable: false };
+  }
 };

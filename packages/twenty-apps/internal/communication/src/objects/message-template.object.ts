@@ -4,6 +4,7 @@ import {
   MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
@@ -25,6 +26,15 @@ enum MessageTemplateChannel {
 // server-side at preview time against the authorized Person fields, so the
 // template itself carries no personal data and cannot leak another workspace's
 // records.
+// The entity a template is written for. `PERSON` is the only value today, and
+// the SELECT value is the STABLE machine identifier while the label is the
+// workspace-facing copy. A template row that predates this field has no value,
+// which the app reads as `PERSON` — deliberately NON-destructive: nothing is
+// rewritten on read.
+enum MessageTemplateTargetObject {
+  PERSON = 'PERSON',
+}
+
 export default defineObject({
   universalIdentifier: MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   nameSingular: 'messageTemplate',
@@ -79,6 +89,31 @@ export default defineObject({
           label: 'SMS',
           position: 0,
           color: 'blue',
+        },
+      ],
+    },
+    {
+      universalIdentifier:
+        MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
+      type: FieldType.SELECT,
+      name: 'targetObject',
+      // Workspace-facing Persian copy for a Persian-first workspace (the
+      // platform has no per-locale option-label mechanism for app options).
+      label: 'موجودیت هدف',
+      description:
+        'Entity this template is written for. Absent means PERSON.',
+      icon: 'IconTarget',
+      // Nullable on purpose: every template that already exists has no value
+      // and must keep working as PERSON without a destructive migration.
+      isNullable: true,
+      defaultValue: `'${MessageTemplateTargetObject.PERSON}'`,
+      options: [
+        {
+          id: 'c4e6a8b0-2d14-4368-9a7c-1b3d5f7092a4',
+          value: MessageTemplateTargetObject.PERSON,
+          label: 'اشخاص',
+          position: 0,
+          color: 'green',
         },
       ],
     },

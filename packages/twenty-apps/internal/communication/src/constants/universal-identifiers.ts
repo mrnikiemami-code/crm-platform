@@ -123,25 +123,47 @@ export const MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER =
   'f6d4d1ff-adea-420f-aa1c-97e5d14663b1';
 
 // Template management surface (W17)
-// A sidebar entry NEXT TO «ارتباطات» pointing at the workspace's
-// `messageTemplate` object, so a workspace can find and manage its templates.
-// It reuses the SAME object the composer picker reads — no parallel storage and
+// A sidebar entry NEXT TO «ارتباطات» pointing at the workspace's template
+// surface, so a workspace can find and manage its templates. It reuses the SAME
+// `messageTemplate` object the composer picker reads — no parallel storage and
 // no second table.
 //
-// W17-R1: the identifier below is the OBJECT item. The W17 VIEW item (see
-// `RETIRED_MESSAGE_TEMPLATES_VIEW_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER`)
-// rendered as `<view name> · <object plural label>`, which appended an
-// unwanted suffix. An OBJECT item renders exactly the object's plural label,
-// and the platform's manifest sync CANNOT change an existing item's type, so
-// the VIEW item is retired by dropping it from the manifest and a NEW item is
-// added. This is the only metadata removal in W17-R1.
-export const MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+// W18-A: the entry is now a dedicated PAGE_LAYOUT item pointing at the SMS
+// Template Studio. The platform's manifest sync CANNOT change an existing
+// navigation item's TYPE, so the W17-R1 OBJECT item is retired by dropping it
+// from the manifest and a NEW item is added. This is the only metadata removal
+// in W18-A.
+export const SMS_TEMPLATE_STUDIO_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  'e3b7f5c9-4d82-4a63-9b74-2f6c8e0a1d15';
+// RETIRED in W18-A (W17-R1's OBJECT item). Kept here only so the recovery
+// document and tests can name what was removed; nothing declares it any more, so
+// the platform's `inferDeletionFromMissingEntities` sync deletes that one row.
+export const RETIRED_MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'd2a6e4b8-3c71-4f52-9a83-1e5b7d9f2a04';
-// RETIRED in W17-R1 (W17's VIEW item). Kept here only so the recovery document
-// and tests can name what was removed; nothing declares it any more, so the
-// platform's `inferDeletionFromMissingEntities` sync deletes that one row.
+// RETIRED in W17-R1 (W17's VIEW item), listed for provenance only.
 export const RETIRED_MESSAGE_TEMPLATES_VIEW_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'a1f5c9d2-3b64-4e70-9c81-2d4f6a8b0c13';
+
+// SMS Template Studio (W18-A)
+// An app-owned STANDALONE_PAGE whose single FRONT_COMPONENT is the studio: the
+// template list plus the RTL editor plus the authorized-field panel. It reads
+// and writes the SAME native `messageTemplate` object.
+export const SMS_TEMPLATE_STUDIO_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER =
+  'f4c8a6da-5e93-4b74-8c85-3a7d9f1b2e26';
+export const SMS_TEMPLATE_STUDIO_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  'a5d9b7eb-6f04-4c85-9d96-4b8e0a2c3f37';
+export const SMS_TEMPLATE_STUDIO_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'b6ead8fc-7015-4d96-8ea7-5c9f1b3d4048';
+export const SMS_TEMPLATE_STUDIO_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'c7fbe90d-8126-4ea7-9fb8-6da02c4e5159';
+// The studio's list/create/update/delete route. It works on the native
+// `messageTemplate` object through the workspace-scoped `CoreApiClient`.
+export const TEMPLATE_STUDIO_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'd80cfa1e-9237-4fb8-a0c9-7eb13d5f626a';
+// The optional target-entity field. `PERSON` is the only value today, and an
+// existing template without a value is treated as `PERSON` (no migration).
+export const MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER =
+  'e91d0b2f-a348-40c9-b1da-8fc24e60737b';
 // The native record page for a template: title/body/channel fields plus the
 // «متغیرهای قابل استفاده» guide rendered by a front component. A page layout is
 // an ADDITIONAL layout, so the engine default remains and the app only adds its

@@ -9,6 +9,7 @@ import {
   MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
@@ -63,15 +64,21 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
     expect(objectConfig.isUIEditable).toBe(true);
   });
 
-  it('declares exactly title, body and channel fields', () => {
+  it('declares exactly title, body, channel and targetObject fields', () => {
     const fieldNames = objectConfig.fields.map((field) => field.name);
 
-    expect(fieldNames).toEqual(['title', 'body', 'channel']);
+    expect(fieldNames).toEqual([
+      'title',
+      'body',
+      'channel',
+      'targetObject',
+    ]);
     expect(objectConfig.fields.map((field) => field.universalIdentifier)).toEqual(
       [
         MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
         MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
         MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
+        MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
       ],
     );
     expect(

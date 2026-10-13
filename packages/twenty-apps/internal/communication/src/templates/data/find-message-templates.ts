@@ -1,13 +1,17 @@
 import { type CoreApiClient } from 'twenty-client-sdk/core';
 
-// A workspace message template as read for the composer's picker. Only the
-// fields the composer needs are exposed; the workspace scope is enforced by the
-// API client (an app can only ever read its own workspace's records).
+import { readTemplateTargetObject } from 'src/studio/template-studio-contract';
+
+// A workspace message template as read for the composer's picker and the
+// Template Studio. Only the fields those surfaces need are exposed; the
+// workspace scope is enforced by the API client (an app can only ever read its
+// own workspace's records).
 export type MessageTemplateRecord = {
   id: string;
   title: string;
   body: string;
   channel: string;
+  targetObject: string;
 };
 
 type RawMessageTemplateNode = {
@@ -15,6 +19,7 @@ type RawMessageTemplateNode = {
   title?: string | null;
   body?: string | null;
   channel?: string | null;
+  targetObject?: string | null;
 };
 
 type ConnectionEdge<TNode> = { node?: TNode | null } | null;
@@ -40,6 +45,7 @@ export const findMessageTemplates = async ({
           title: true,
           body: true,
           channel: true,
+          targetObject: true,
         },
       },
     },
@@ -59,5 +65,8 @@ export const findMessageTemplates = async ({
       title: node.title?.trim() ?? '',
       body: node.body ?? '',
       channel: node.channel ?? 'SMS',
+      // An existing row has no value and is read as PERSON — a read-time
+      // default only, never written back.
+      targetObject: readTemplateTargetObject(node.targetObject),
     }));
 };

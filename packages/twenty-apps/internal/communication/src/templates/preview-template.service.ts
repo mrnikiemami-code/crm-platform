@@ -100,8 +100,9 @@ export const previewTemplate = async ({
 
   // One catalog for the whole request: the SAME one the picker shows, so the
   // preview can never accept a token the manager would not advertise (or vice
-  // versa).
-  const catalog = await buildAuthorizedTemplateCatalog({ metadataClient });
+  // versa). When it cannot be authorized it is EMPTY, so every token reads as
+  // unknown and no recipient is treated as ready to send.
+  const { catalog } = await buildAuthorizedTemplateCatalog({ metadataClient });
 
   const valuesByPersonId = await resolveTemplateValuesForPersons({
     client,

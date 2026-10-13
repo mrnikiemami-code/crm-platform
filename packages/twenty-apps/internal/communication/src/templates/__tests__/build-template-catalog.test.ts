@@ -229,23 +229,26 @@ describe('readTemplatePermissions', () => {
       }) as never,
     });
 
-    expect(permissions.canReadAllObjectRecords).toBe(true);
-    expect(permissions.objectPermissions[0].restrictedFieldNames).toEqual([
+    expect(permissions).not.toBeNull();
+    expect(permissions?.canReadAllObjectRecords).toBe(true);
+    expect(permissions?.objectPermissions[0].restrictedFieldNames).toEqual([
       'loyaltyTier',
     ]);
-    expect(permissions.objectPermissions[0].restrictedFieldMetadataIds).toEqual([
+    expect(permissions?.objectPermissions[0].restrictedFieldMetadataIds).toEqual([
       'x-1',
     ]);
-    expect(permissions.unreadableFieldMetadataIds).toEqual([
+    expect(permissions?.unreadableFieldMetadataIds).toEqual([
       JOB_TITLE_FIELD_ID,
     ]);
   });
 
-  it('denies everything when the app role cannot be read', async () => {
+  it('returns null (fail closed) when the app role cannot be read', async () => {
     const permissions = await readTemplatePermissions({
       metadataClient: buildMetadataClient(null) as never,
     });
 
-    expect(permissions.canReadAllObjectRecords).toBe(false);
+    // A role that cannot be read must never be treated as "allow everything";
+    // the caller turns this into an EMPTY, UNAVAILABLE catalog.
+    expect(permissions).toBeNull();
   });
 });

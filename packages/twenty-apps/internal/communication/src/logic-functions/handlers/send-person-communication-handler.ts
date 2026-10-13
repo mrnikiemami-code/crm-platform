@@ -112,7 +112,7 @@ export const sendPersonCommunicationHandler = async (
   // aware one the manager and preview use, so the send path can never accept a
   // token the manager would not advertise. An unknown or empty variable blocks
   // the send with a stable classification.
-  const catalog = await buildAuthorizedTemplateCatalog({
+  const { catalog } = await buildAuthorizedTemplateCatalog({
     metadataClient: dependencies.metadataClient ?? new MetadataApiClient(),
   });
 

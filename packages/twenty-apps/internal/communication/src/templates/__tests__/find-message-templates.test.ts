@@ -45,8 +45,22 @@ describe('findMessageTemplates (native workspace path)', () => {
     const templates = await findMessageTemplates({ client });
 
     expect(templates).toEqual([
-      { id: 't1', title: 'خوش‌آمد', body: 'سلام @name', channel: 'SMS' },
-      { id: 't2', title: 'یادآوری', body: 'یادآوری برای @company', channel: 'SMS' },
+      {
+        id: 't1',
+        title: 'خوش‌آمد',
+        body: 'سلام @name',
+        channel: 'SMS',
+        // An existing row with no stored value is read as PERSON — a read-time
+        // default only, never a write-back migration.
+        targetObject: 'PERSON',
+      },
+      {
+        id: 't2',
+        title: 'یادآوری',
+        body: 'یادآوری برای @company',
+        channel: 'SMS',
+        targetObject: 'PERSON',
+      },
     ]);
 
     // The read targets the workspace-scoped `messageTemplates` connection only.
@@ -70,7 +84,13 @@ describe('findMessageTemplates (native workspace path)', () => {
     const [template] = await findMessageTemplates({ client });
 
     // The template carries only its own text — no phone, no person id.
-    expect(Object.keys(template)).toEqual(['id', 'title', 'body', 'channel']);
+    expect(Object.keys(template)).toEqual([
+      'id',
+      'title',
+      'body',
+      'channel',
+      'targetObject',
+    ]);
   });
 });
 

@@ -3,6 +3,7 @@ import { CoreApiClient } from 'twenty-client-sdk/core';
 import { MetadataApiClient } from 'twenty-client-sdk/metadata';
 
 import { LIST_MESSAGE_TEMPLATES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import { TEMPLATE_CATALOG_STATUS } from 'src/studio/template-studio-contract';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
 import { findMessageTemplates } from 'src/templates/data/find-message-templates';
 import { listTemplateVariables } from 'src/templates/template-variable-catalog';
@@ -19,33 +20,16 @@ import { listTemplateVariables } from 'src/templates/template-variable-catalog';
 // Templates are read through the workspace API client, so a caller only ever
 // sees its own workspace's templates.
 const handler = async () => {
-  let catalog;
+  const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
+    metadataClient: new MetadataApiClient(),
+  });
 
-  try {
-    catalog = await buildAuthorizedTemplateCatalog({
-      metadataClient: new MetadataApiClient(),
-    });
-  } catch (error) {
-    // The templates list itself is still useful, so report the catalog problem
-    // explicitly rather than failing the whole route. The message is the app's
-    // own metadata-read failure and is shown so the cause is never hidden.
-    console.warn(
-      '[communication] template variable catalog unavailable',
-      JSON.stringify({
-        reason: error instanceof Error ? error.message : 'unknown',
-      }),
-    );
-
-    return {
-      success: true,
-      templates: await findMessageTemplates({ client: new CoreApiClient() }),
-      variables: [],
-      catalogError:
-        error instanceof Error
-          ? error.message
-          : 'The variable catalog could not be built.',
-    };
-  }
+  // The catalog is EMPTY whenever it could not be authorized. The status tells
+  // the picker the difference between "this workspace has no usable fields" and
+  // "the authorized field list is unavailable" WITHOUT leaking why.
+  const catalogStatus = isAvailable
+    ? TEMPLATE_CATALOG_STATUS.READY
+    : TEMPLATE_CATALOG_STATUS.UNAVAILABLE;
 
   const templates = await findMessageTemplates({
     client: new CoreApiClient(),
@@ -55,6 +39,7 @@ const handler = async () => {
     success: true,
     templates,
     variables: listTemplateVariables(catalog),
+    catalogStatus,
   };
 };
 
