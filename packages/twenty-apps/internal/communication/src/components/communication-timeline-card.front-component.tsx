@@ -127,10 +127,17 @@ const CommunicationTimelineCard = () => {
       data-communication-timeline-activity-id={timelineActivityId ?? ''}
       style={containerStyle}
     >
-      <span style={{ fontWeight: 500 }}>{t(view.title)}</span>
+      <span style={{ fontWeight: 500 }}>
+        {t(view.title)}
+        {view.channelLabel !== null ? ` · ${t(view.channelLabel)}` : ''}
+      </span>
 
       {view.recipient !== null && (
         <span style={{ opacity: 0.7 }}>{view.recipient}</span>
+      )}
+
+      {view.providerLabel !== null && (
+        <span style={{ opacity: 0.7 }}>{t(view.providerLabel)}</span>
       )}
 
       {view.bodyPreview !== null && (

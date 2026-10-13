@@ -146,8 +146,7 @@
   "Sending…": "در حال ارسال…",
   "The group has finished. Review the results below.": "گروه به پایان رسید. نتایج را در پایین بررسی کنید.",
   "Dismiss results": "بستن نتایج",
-  "RazPayamak rejected the message.": "رازپیامک پیام را رد کرد.",
-  "The message may or may not have been sent. Check the provider panel before retrying.": "ممکن است پیام ارسال شده باشد یا نشده باشد. پیش از تلاش مجدد، پنل سرویس‌دهنده را بررسی کنید.",
+  "RazPayamak rejected the message.": "رازپیامک پیام را رد کرد.",  "The message may or may not have been sent. Check the provider panel before retrying.": "ممکن است پیام ارسال شده باشد یا نشده باشد. پیش از تلاش مجدد، پنل سرویس‌دهنده را بررسی کنید.",
   "RazPayamak failure: invalid requester IP.": "خطای رازپیامک: IP درخواست‌کننده نامعتبر است.",
   "RazPayamak failure: ApiKey is required instead of a password.": "خطای رازپیامک: باید از ApiKey به‌جای رمز عبور استفاده شود.",
   "RazPayamak failure: the allowed API IP is not configured.": "خطای رازپیامک: IP مجاز برای API تنظیم نشده است.",
@@ -169,5 +168,8 @@
   "RazPayamak failure: the message is empty.": "خطای رازپیامک: متن پیام خالی است.",
   "RazPayamak failure: the mobile number is invalid.": "خطای رازپیامک: شمارهٔ موبایل معتبر نیست.",
   "RazPayamak failure: the message and number counts do not match.": "خطای رازپیامک: تعداد متن‌ها با تعداد شماره‌ها یکسان نیست.",
-  "RazPayamak failure: an unrecognized provider error occurred.": "خطای رازپیامک: خطای ناشناختهٔ سرویس‌دهنده رخ داد."
+  "RazPayamak failure: an unrecognized provider error occurred.": "خطای رازپیامک: خطای ناشناختهٔ سرویس‌دهنده رخ داد.",
+  "SMS": "پیامک",
+  "رازپیامک": "رازپیامک",
+  "کاوه‌نگار": "کاوه‌نگار"
 }

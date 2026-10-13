@@ -216,7 +216,8 @@ describe('timeline refresh through the chain', () => {
     });
     expect(buildCommunicationTimelineView(second)).toMatchObject({
       kind: 'READY',
-      title: 'Message sent · SMS',
+      title: 'Message sent',
+      channelLabel: 'SMS',
       isPending: false,
     });
     // Same activity id throughout: a refresh never creates another activity.

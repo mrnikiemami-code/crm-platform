@@ -22,9 +22,20 @@ import {
 // actually implemented are listed: unsupported channels must not appear as
 // selectable dead controls. SMS is the first planned channel; WhatsApp,
 // Telegram, Instagram and Bale become options when their channel ships.
+//
+// Option `value` is the stable machine identifier and must never change; the
+// `label` is the workspace-facing copy. This app is Persian-first, so labels
+// are Persian here (the platform has no per-locale option-label mechanism for
+// app-defined options).
 enum CommunicationChannel {
   SMS = 'SMS',
 }
+
+// Workspace-facing Persian labels for the channel option. The `value` is the
+// stable machine identifier and never changes; only the label is localized.
+const COMMUNICATION_CHANNEL_LABELS: Record<CommunicationChannel, string> = {
+  [CommunicationChannel.SMS]: 'پیامک',
+};
 
 enum CommunicationStatus {
   QUEUED = 'QUEUED',
@@ -37,6 +48,27 @@ enum CommunicationDirection {
   OUTBOUND = 'OUTBOUND',
 }
 
+// Workspace-facing Persian labels. The `value` is the stable machine
+// identifier and never changes; only the label is localized. The platform has
+// no per-locale option-label mechanism for app-defined options, so this
+// Persian-first app authors the labels in Persian.
+const COMMUNICATION_STATUS_LABELS: Record<CommunicationStatus, string> = {
+  [CommunicationStatus.QUEUED]: 'در صف',
+  [CommunicationStatus.SENT]: 'ارسال شد',
+  [CommunicationStatus.DELIVERED]: 'تحویل شد',
+  [CommunicationStatus.FAILED]: 'ناموفق',
+};
+
+const COMMUNICATION_DIRECTION_LABELS: Record<CommunicationDirection, string> = {
+  [CommunicationDirection.OUTBOUND]: 'خروجی',
+};
+
+// Provider is intentionally NOT modeled as a SELECT here. The platform's app
+// sync does not apply a field TYPE change (`UpdateFieldInput` has no `type`),
+// so a TEXT→SELECT rewrite leaves an inconsistent column. The provider is
+// stored as its stable machine id (`razpayamak` / `kavenegar`) in the TEXT
+// `providerId` field, and the Persian name is presented by the app's own
+// surfaces through `resolveProviderLabel` (timeline card).
 export default defineObject({
   universalIdentifier: COMMUNICATION_OBJECT_UNIVERSAL_IDENTIFIER,
   nameSingular: 'communication',
@@ -76,7 +108,7 @@ export default defineObject({
         {
           id: '10a1b2c3-d4e5-4f60-8172-93a4b5c6d7e8',
           value: CommunicationChannel.SMS,
-          label: 'SMS',
+          label: COMMUNICATION_CHANNEL_LABELS[CommunicationChannel.SMS],
           position: 0,
           color: 'blue',
         },
@@ -113,28 +145,28 @@ export default defineObject({
         {
           id: 'd2f48b26-2d20-4945-ae97-f671bcb34b91',
           value: CommunicationStatus.QUEUED,
-          label: 'Queued',
+          label: COMMUNICATION_STATUS_LABELS[CommunicationStatus.QUEUED],
           position: 0,
           color: 'gray',
         },
         {
           id: '43aadda8-9626-425c-b82d-ab0282e089a3',
           value: CommunicationStatus.SENT,
-          label: 'Sent',
+          label: COMMUNICATION_STATUS_LABELS[CommunicationStatus.SENT],
           position: 1,
           color: 'blue',
         },
         {
           id: 'a0d493c1-31b3-4390-98c9-93781752d311',
           value: CommunicationStatus.DELIVERED,
-          label: 'Delivered',
+          label: COMMUNICATION_STATUS_LABELS[CommunicationStatus.DELIVERED],
           position: 2,
           color: 'green',
         },
         {
           id: '2ee303bf-9ea2-4113-bb9f-62e52cd5e71e',
           value: CommunicationStatus.FAILED,
-          label: 'Failed',
+          label: COMMUNICATION_STATUS_LABELS[CommunicationStatus.FAILED],
           position: 3,
           color: 'red',
         },
@@ -152,7 +184,7 @@ export default defineObject({
         {
           id: 'e7224a85-9a18-4762-8c81-0327c681dbd5',
           value: CommunicationDirection.OUTBOUND,
-          label: 'Outbound',
+          label: COMMUNICATION_DIRECTION_LABELS[CommunicationDirection.OUTBOUND],
           position: 0,
           color: 'blue',
         },
@@ -161,6 +193,13 @@ export default defineObject({
     {
       // Send-time snapshot: the provider actually used. Stored so history stays
       // truthful even if the configured default provider changes later.
+      //
+      // This is the stable MACHINE id (`razpayamak` / `kavenegar`), kept as
+      // TEXT on purpose: the platform's app sync does not apply a field
+      // TYPE change (a TEXT→SELECT rewrite left the column as TEXT while
+      // writing options — an inconsistent state), so the type is left alone.
+      // The Persian provider label is shown by the app's own surfaces
+      // (composer, timeline card) instead of the generic cell.
       universalIdentifier:
         COMMUNICATION_PROVIDER_ID_FIELD_UNIVERSAL_IDENTIFIER,
       type: FieldType.TEXT,

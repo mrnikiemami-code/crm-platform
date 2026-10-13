@@ -14,10 +14,22 @@ import {
 export type CommunicationTimelinePresentation = {
   /** Short, human-readable summary of what happened. */
   title: string;
+  /**
+   * Localizable channel label (e.g. `SMS` → «پیامک»), or null when absent. It
+   * is separate from `title` so the component can translate it through the
+   * native runtime instead of embedding an untranslated value in the title.
+   */
+  channelLabel: string | null;
   /** Destination, from the persisted record (never the current Person). */
   recipient: string | null;
   /** Provider that actually handled this send, from the record. */
   providerId: string | null;
+  /**
+   * Localizable provider label (e.g. `razpayamak` → «رازپیامک»), or null when
+   * absent. Separate so the component can translate it through the native
+   * runtime.
+   */
+  providerLabel: string | null;
   /** Message excerpt, when the record kept one. */
   bodyPreview: string | null;
   /** True when the outcome is not yet final and must not read as success. */
@@ -91,6 +103,26 @@ const buildTitle = (status: string | null): string => {
   }
 };
 
+// The channel is an enumeration with a stable machine value; the card shows the
+// localized label. Kept here so the mapping stays pure and testable, and the
+// component resolves it through the native `t()`.
+const CHANNEL_LABEL_BY_VALUE: Record<string, string> = {
+  SMS: 'SMS',
+};
+
+// The provider is stored as its stable machine id; the app shows the Persian
+// name. Kept beside the channel map so both enumerations are presented the
+// same way.
+export const PROVIDER_LABEL_BY_VALUE: Record<string, string> = {
+  razpayamak: 'رازپیامک',
+  kavenegar: 'کاوه‌نگار',
+};
+
+export const resolveProviderLabel = (
+  providerId: string | null,
+): string | null =>
+  providerId === null ? null : (PROVIDER_LABEL_BY_VALUE[providerId] ?? providerId);
+
 export const buildCommunicationTimelinePresentation = (
   record: CommunicationTimelineRecord | null | undefined,
 ): CommunicationTimelinePresentation => {
@@ -99,11 +131,15 @@ export const buildCommunicationTimelinePresentation = (
 
   const title = buildTitle(status);
   const isFailed = status === 'FAILED';
+  const channelLabel =
+    channel === null ? null : (CHANNEL_LABEL_BY_VALUE[channel] ?? channel);
 
   return {
-    title: channel === null ? title : `${title} · ${channel}`,
+    title,
+    channelLabel,
     recipient: readNonEmpty(record?.recipient),
     providerId: readNonEmpty(record?.providerId),
+    providerLabel: resolveProviderLabel(readNonEmpty(record?.providerId)),
     bodyPreview: buildBodyPreview(readNonEmpty(record?.body)),
     isPending: status === 'QUEUED' || status === null,
     isDelivered: status === 'DELIVERED',

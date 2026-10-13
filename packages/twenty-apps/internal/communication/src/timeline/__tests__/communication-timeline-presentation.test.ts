@@ -123,7 +123,8 @@ describe('buildCommunicationTimelinePresentation', () => {
         status: 'SENT',
       });
 
-      expect(presentation.title).toBe('Message sent · SMS');
+      expect(presentation.title).toBe('Message sent');
+    expect(presentation.channelLabel).toBe('SMS');
     });
 
     it('truncates a long body instead of dumping it', () => {
@@ -182,6 +183,7 @@ describe('buildCommunicationTimelineView', () => {
     });
 
     expect(view.kind).toBe('READY');
-    expect(view.kind === 'READY' && view.title).toBe('Message sent · SMS');
+    expect(view.kind === 'READY' && view.title).toBe('Message sent');
+    expect(view.kind === 'READY' && view.channelLabel).toBe('SMS');
   });
 });

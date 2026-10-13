@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { createPhonesFromFieldValue } from '@/object-record/record-field/ui/meta-types/input/utils/phonesUtils';
 import { type FieldPhonesValue } from '@/object-record/record-field/ui/types/FieldMetadata';
 import { ExpandableList } from '@/ui/layout/expandable-list/components/ExpandableList';
+import { useFormatDigitsForLocale } from '@/localization/hooks/useFormatDigitsForLocale';
 
 import { styled } from '@linaria/react';
 import { parsePhoneNumber } from 'libphonenumber-js';
@@ -43,6 +44,7 @@ export const PhonesDisplay = ({
 
     return createPhonesFromFieldValue(value);
   }, [value]);
+  const formatDigitsForLocale = useFormatDigitsForLocale();
   const parsePhoneNumberOrReturnInvalidValue = (number: string) => {
     try {
       return { parsedPhone: parsePhoneNumber(number) };
@@ -61,9 +63,9 @@ export const PhonesDisplay = ({
           <RoundedLink
             key={index}
             href={URI || ''}
-            label={
-              parsedPhone ? parsedPhone.formatInternational() : invalidPhone
-            }
+            label={formatDigitsForLocale(
+              parsedPhone ? parsedPhone.formatInternational() : invalidPhone,
+            )}
             onClick={(event) =>
               onPhoneNumberClick?.(callingCode + number, event)
             }
@@ -81,9 +83,9 @@ export const PhonesDisplay = ({
           <RoundedLink
             key={index}
             href={URI || ''}
-            label={
-              parsedPhone ? parsedPhone.formatInternational() : invalidPhone
-            }
+            label={formatDigitsForLocale(
+              parsedPhone ? parsedPhone.formatInternational() : invalidPhone,
+            )}
             onClick={(event) =>
               onPhoneNumberClick?.(callingCode + number, event)
             }
