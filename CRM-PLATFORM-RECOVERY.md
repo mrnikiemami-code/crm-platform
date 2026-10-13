@@ -16,11 +16,79 @@ Local source path used during development: `D:\CrmSource\twenty`
 
 # CURRENT CHECKPOINT
 
-Last rewritten: 2026-10-13 (W18-A). This is the authoritative checkpoint. Everything under the
+Last rewritten: 2026-10-13 (W18-B). This is the authoritative checkpoint. Everything under the
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
 read as current state.
 
-## W18-A — SMS Template Studio foundation (CODE ONLY, NOT DEPLOYED)
+## W18-B — template field interactions and sample-person preview (CODE ONLY, NOT DEPLOYED)
+
+TASK 2 OF 3. Completes the SMS Template Studio interaction model on top of the W18-A foundation,
+which is carried forward unchanged (its studio, navigation, storage contract and fail-closed catalog
+are all still in force).
+
+- **Deployment status.** **Code only.** No package was built and nothing was deployed:
+  **the installed main/4D version remains 0.1.29** (W17-R1). No environment was accessed;
+  APPLE/app2 UNTOUCHED / NOT ACCESSED. No real SMS. W7 remains disabled. No host/core/SDK/provider/
+  settings change.
+- **Implementation SHA.** `5852bffb46217686b9d81a3f563258367edf467d`.
+- **Documentation SHA.** This commit.
+- **W18-A status.** Accepted **only as the foundation carried into W18-B** — no independent
+  acceptance is claimed. Its SHA pair (`314ec2af7e`, `3023240e1a`) is unchanged.
+- **Field interaction (W18-B).** A single click now only **selects/highlights** a field; it never
+  inserts. A **double-click** inserts the canonical token exactly once, and **Enter/Space** does the
+  same for keyboard users (with `preventDefault` so the browser's own activation cannot insert a
+  second time). Because the click path cannot insert, a double-click can never yield "two click
+  insertions plus the double-click insertion". The textarea's **last valid selection is remembered**
+  on blur/select/keyup, so an insert still lands at the caret after focus moves to the palette; the
+  live selection wins while the textarea is focused, otherwise the remembered one is used, and every
+  offset is clamped. The caret is restored immediately after the token, newlines and surrounding
+  Persian text are preserved exactly, and selected text is replaced.
+- **Drag and drop (W18-B).** Field cards are draggable and visibly selected; the textarea shows a
+  distinct drop-active state. The drop payload is only ever used as a **lookup key** into the current
+  authorized catalog, so an unauthorized, stale or hand-crafted token changes nothing; dropping
+  outside the textarea does nothing; and `dragend` performs no insertion, so a native drop plus the
+  custom handler cannot double-insert. The logic lives in small pure helpers — no global mutable
+  state and no `querySelector` hacks.
+- **Sample-person preview (W18-B).** A searchable picker of the accessible People the platform
+  returns (a bounded page, filtered in the UI) with **no default selection**. The Preview button is
+  always rendered and **disabled** until a person is selected, the body is non-empty AND the
+  authorized catalog is available. The request **reuses the existing production preview service**,
+  so the server re-reads the Person and the authorized field values; no interpolation logic is
+  duplicated. The response renders the resolved multiline text with unresolved variables shown
+  separately, plus distinct states for an unreadable person, no usable number, an empty body, an
+  unavailable catalog and a sanitized generic failure. Editing the body or the person **invalidates
+  the shown preview immediately**, and a monotonic request id plus an unmount guard stop a late
+  response from ever publishing.
+- **Preview writes nothing.** The preview action only calls the read-only preview service: no
+  Communication record, no timeline activity, no send, and no change to the saved template. A source
+  contract (`template-studio-route-contract.test.ts`) locks that the route imports no send or
+  persistence path and assembles no response from raw exception text.
+- **Boundary limit (recorded honestly).** The sample-person list is a **bounded page** (50 accessible
+  People, ordered by `createdAt`) filtered in the UI, not a server-side text search: the app can only
+  build a filter from field names it has verified are queryable, and W18-B forbids touching main/4D
+  to verify a nested composite-filter shape. Access is still the platform's decision — only readable
+  records are returned.
+- **Real production component test.** `template-studio-wiring.test.tsx` renders the REAL
+  `TemplateStudio` (stubbing only the SDK hooks and the route transport) and drives the actual
+  controls for 17 cases, including click-does-not-insert, double-click-once-at-the-remembered-caret,
+  drag/drop-once, selection replacement, newline preservation, the canonical save payload, preview
+  text, invalidation, an ignored unauthorized drop, an ignored late preview after unmount, and the
+  absence of any send route.
+- **Security regression.** Retained and rerun (permission failure, `canReadAllObjectRecords` plus
+  explicit overrides, restricted/unreadable fields excluded, no raw exception text in the browser,
+  preview reading only catalog-authorized fields, unknown tokens blocking sending), plus a new
+  fail-closed suite: an unreadable role or a throwing metadata read yields an EMPTY, UNAVAILABLE
+  catalog and never advertises fields.
+- **Stale nav file.** The untracked
+  `src/navigation-menu-items/message-templates.navigation-menu-item.ts` (the retired W17-R1 OBJECT
+  item) was **already absent** at the W18-B baseline — it was deleted and committed in W18-A — so
+  nothing was removed and no worktree file was touched. The worktree is clean.
+- **Tests.** Communication app **672/672 across 64 files**; both app typechecks exit 0
+  (`tsconfig.spec.json` and `tsconfig.json`); app `oxlint` 0/0; `git diff --check` clean.
+- **Remaining work.** **W18-C only** — packaging and main/4D deployment. **RazPayamak TASK 2** (the
+  remaining nine documented REST operations) is still NOT implemented.
+
+## W18-A — SMS Template Studio foundation (historical; the foundation W18-B builds on)
 
 Replaces the unsuitable native `messageTemplate` quick-create experience with the foundation of a
 dedicated Persian SMS Template Studio. This is TASK 1 OF 3; W18-B (double-click / drag-drop
@@ -50,9 +118,9 @@ insertion) and W18-C remain.
   distinct loading / empty / error states. Channel stays SMS and is not offered as a user choice.
 - **Authorized field panel.** The panel is fed by the SAME runtime catalog W17-R1 built. Fields are
   grouped (Person vs related Company), searchable by Persian label AND technical token, and show
-  the user-facing label prominently with the stable token secondarily. A single click inserts the
-  token at the textarea caret. Double-click and drag/drop are deliberately **not** implemented
-  (W18-B).
+  the user-facing label prominently with the stable token secondarily. A single click inserted the
+  token at the textarea caret in W18-A; **W18-B changed that to select-on-click with
+  double-click/drag/keyboard insertion**, and added the sample-person preview.
 - **Storage contract.** The body stores the CANONICAL token (`سلام @person.firstName خوبی؟`). A
   translated label is never written as a substitution identifier, so renaming a Persian label
   cannot break a saved template. Newlines are preserved exactly, and canonical identifiers/payloads
