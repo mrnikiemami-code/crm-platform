@@ -20,8 +20,23 @@ Last rewritten: **2026-10-13 (W17)**. This is the authoritative checkpoint. Ever
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
 read as current state.
 
-## W17 — template management, authorized variables, composer template selector, fa-IR digits
+## W17-R1 — runtime permission-aware catalog and the clean template sidebar label (CURRENT)
 
+W17-R1 closes the three acceptance gaps W17 left open. The template selector, the
+Persian-digit formatter and the send architecture are unchanged.
+
+- **Installed version.** Communication **0.1.29** on main/4D
+  (`radiant-cyan-dragon`), reached `0.1.26 → 0.1.27 → 0.1.28 → 0.1.29`. Intermediates:
+  **0.1.27** shipped the nav retirement and the runtime catalog but its role read used the
+  settings-scoped `getRoles` query, which the app token cannot run, so the catalog route failed;
+  **0.1.28** made the role read non-fatal and proved the catalog loaded live; **0.1.29** moved the
+  role read to the app's own `Application.defaultLogicFunctionRole` so the permission layer is
+  actually live. **0.1.29 is the deployed, authoritative package.**
+- **Package.** `communication-0.1.29.tgz`, **1,763,208 bytes**, SHA256
+  **`e726dd80f17f94e8083021755f183797b1d5a5723ec7b7319832f94abfebb9e4`**, built on Linux with the
+  established fork `twenty-sdk 2.42.0` (`/tool`) via `twenty dev:build --tarball`.
+- **Implementation SHA.** `4fcddec5a8061fe6662c03c7cd36e93588bdb370`.
+- **Documentation SHA.** This commit.
 - **Installed version.** Communication **0.1.26** on main/4D (`radiant-cyan-dragon`). Upgrade history
   this task: 0.1.21 → 0.1.22 → 0.1.24 → 0.1.25 → 0.1.26 (each attempted through the native
   `uploadAppTarball` + `upgradeApplication` path). **0.1.22 (first), 0.1.23 and 0.1.25 were
@@ -38,59 +53,86 @@ read as current state.
 - **Manifest verification (pre-upgrade).** app UID `768bca20-0b81-4d33-a624-0a894a193ffd` unchanged;
   existing object/field/view/function identifiers unchanged; **7 application variables** unchanged
   (`COMMUNICATION_PROVIDER`, `KAVENEGAR_ENDPOINT`, `KAVENEGAR_API_KEY`, `KAVENEGAR_SENDER`,
-  `RAZPAYAMAK_USERNAME`, `RAZPAYAMAK_API_KEY`, `RAZPAYAMAK_SENDER`); **no metadata removals**;
-  **W7 remains disabled** (no `workflowActionTriggerSettings` on any logic function). New stable
-  identifiers this wave: nav item `a1f5c9d2-…`, page layout `b2e6d0a3-…`, variable-guide front
-  component `c95d472a-…`.
+  `RAZPAYAMAK_USERNAME`, `RAZPAYAMAK_API_KEY`, `RAZPAYAMAK_SENDER`); **W7 remains disabled** (no
+  `workflowActionTriggerSettings` on any logic function). Page layout `b2e6d0a3-…` and
+  variable-guide front component `c95d472a-…` are unchanged; the navigation item is
+  `d2a6e4b8-…` and the W17 VIEW item `a1f5c9d2-…` was **retired** (see below).
 - **Template-management location.** Sidebar entry **«الگوهای پیامک»** immediately after
-  «ارتباطات», pointing at the existing native `messageTemplate` view (one storage). A new record
-  page layout adds **Fields** / **Message** (native SMS body editor) / **Variables** tabs; the
-  **Variables** tab renders the front component that lists the authorized variables.
+  «ارتباطات». A new record page layout adds **Fields** / **Message** (native SMS body editor) /
+  **Variables** tabs; the **Variables** tab renders the front component that lists the authorized
+  variables.
+- **Exact clean navigation label (verified live).** The sidebar now reads **«الگوهای پیامک»** with
+  **no `·` suffix**. W17's VIEW-type item rendered `<view name> · <object plural>`; the entry was
+  replaced by an **OBJECT** item (type `OBJECT`, target object `messageTemplate`, label from
+  `objectMetadata.labelPlural` = "SMS templates" → «الگوهای پیامک»). The W17 VIEW item is retired by
+  dropping it from the manifest: the platform's sync runs with
+  `inferDeletionFromMissingEntities = true`, and the row is gone from
+  `core."navigationMenuItem"`. **This is the only metadata removal in W17-R1.**
 - **No-template behavior.** Both composers (single and bulk) have one template selector whose FIRST
   option is always **«بدون الگو»** (id `''`). Choosing a template copies its body into the editor
   and does **not** send or preview; choosing «بدون الگو» clears a body that a template inserted but
   never a hand-typed one; a manual edit detaches the draft and never modifies the saved template. The
   variable chips/explanation were removed from both send panels.
-- **Actual supported dynamic-variable boundary (recorded honestly).** The catalog is a **static,
-  code-declared allow-list**, not metadata-driven. Supported: `@person.firstName`,
-  `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name`, plus the six legacy
-  aliases (`@name`, `@firstName`, `@lastName`, `@fullName`, `@company`, `@companyName`). **Arbitrary
-  workspace custom scalar fields are NOT supported** — the app SDK exposes no runtime field
-  enumeration, so a truly metadata-driven catalog is not implementable within the app boundary. The
-  placeholder grammar is dotted-safe (`(?:\.segment)*`, no leading/trailing dot, no `..`), so a token
-  can only ever match a flat catalog entry — no traversal, call, eval, SQL or GraphQL selection.
-  Unknown/empty tokens stay visible, get a reason, and **block that recipient**. The single-send
-  route now re-reads the authorized Person/Company values server-side and returns the stable
-  `TEMPLATE_VARIABLE_UNRESOLVED` failure instead of sending literal tokens.
+- **Actual permission-aware dynamic-variable boundary (CORRECTED).** Earlier text here claimed the
+  app SDK "exposes no runtime field enumeration" and that a metadata-driven catalog was therefore
+  impossible. **That claim was false and is withdrawn.** The supported `MetadataApiClient` exposes
+  `objects(paging, filter) { edges { node { nameSingular fieldsList { name type label isActive
+  isSystem } } } }`, and the catalog is now built at RUNTIME from that metadata
+  (`build-template-catalog.ts`). The real boundary is:
+  - **Admitted** — only closed scalar shapes with a defined text extractor: `TEXT`, `NUMBER`,
+    `NUMERIC`, `BOOLEAN`, `DATE`, `DATE_TIME`, `SELECT`, `MULTI_SELECT`, `RATING`, `CURRENCY`,
+    `LINKS`, `EMAILS`, plus the Person `FULL_NAME` field exposed as `person.firstName` /
+    `person.lastName` / `person.fullName`.
+  - **Excluded** — every other type (relations, files, addresses, phones, arrays, actors, rich text,
+    raw JSON, positions, search vectors, UUIDs), the audit fields `id` / `createdAt` / `updatedAt` /
+    `deletedAt` / `avatarUrl` / `searchVector`, and any field whose NAME looks like a credential.
+  - **Permission-aware** — the app's own execution role is read from its `Application` record
+    (`defaultLogicFunctionRole`), and an object the role cannot read, a `restrictedFields` entry, or
+    a field with `canReadFieldValue: false` is excluded. If the role read fails the catalog still
+    applies every type/name rule and the platform's record-level permissions remain the authority: a
+    field the caller may not read resolves to empty, which makes that token an `EMPTY_FIELD` and
+    blocks the recipient. Nothing is ever assumed to be allowed.
+  - **Allow-listed reads only** — `resolve-template-values.ts` builds the record selection by
+    iterating the catalog, so a selection key always came from server-side metadata; a token is
+    substituted only after an allow-list lookup; and the placeholder grammar is dotted-safe
+    (`(?:\.segment)*`, no leading/trailing dot, no `..`) so it cannot express traversal, a call, a
+    GraphQL selection or an eval. **No eval, no SQL, no raw DB, no client-owned field authority.**
+  - **Workspace custom scalar fields are supported and proven** (see the acceptance section).
 - **Display-only Persian-digit rule.** ONE shared formatter: app-side
   `formatDigitsForLocale(value, locale)` in `composer-shared.ts` and host-side
   `useFormatDigitsForLocale` / the `useNumberFormat` seam. `fa-IR` renders `۰–۹` for **counts and
   phone labels only**. Option `value`, React state, snapshots, request payloads, provider requests,
   persisted records and the actual SMS text remain canonical ASCII; templates, API keys and
   identifiers are never transformed. The non-fa locales are unchanged.
-- **Main/4D deployment and backup.** Fresh backup `D:\twenty-main-backup\pre-w17-20261013-0720`
-  (`main-default.dump`, **1,391,797 bytes**), **restore-verified** into a scratch database
-  (`w17verify`): `application` 3, `workspace` 1, `objectMetadata` 39, `fieldMetadata` 726, `view`
-  82, `viewField` 665 — all matched. All **7 application variables byte-identical** (MD5 compared
-  live vs restored; no plaintext printed). Upgrade applied to **workspace 4D only** through the
-  native path; application row `7c7b25f9-…` now **0.1.26**; app UID unchanged; page layout, nav item
-  and front component present in metadata.
-- **Live acceptance (Persian, `http://radiant-cyan-dragon.localhost:3001`).** Sidebar shows
-  **«الگوهای پیامک · الگوهای پیام»** (the required «الگوهای پیامک» as the primary label) next to
-  «ارتباطات»; the templates view opens with native CRUD affordances (create action, list columns
-  title / body / channel) and the record count renders in **Persian digits** (`· ۲`); the template
-  record page shows the **Variables** tab whose «متغیرهای قابل استفاده» guide lists every token
-  (`@person.firstName`, `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name`)
-  with a «کپی» action and the legacy-alias note; phone labels render Persian digits while remaining
-  LTR (`+۹۸ ۹۱۲ ۱۲۳ ۰۰۰۱`); the Person command-menu entry is **«ارسال پیامک · ارتباطات»**; **no real
-  send was performed**.
-- **Known presentation limits (recorded, not worked around).** (a) A VIEW-type sidebar item renders
-  as `<view name> · <object plural>`, so the entry carries a suffix; switching to an OBJECT item
-  would render cleanly but requires a type change the platform rejects on an existing item. (b) A
-  record-page FRONT_COMPONENT widget mounts only when its tab is actually activated (the tab is
-  reached by its hash URL); synthetic clicks on the tab bar's off-screen measure nodes do not switch
-  tabs. (c) The sandbox exposes no API to write into a native field's caret, so the guide COPIES a
-  token with Persian feedback rather than faking an insertion.
+- **Main/4D deployment and backup.** Fresh backup `D:\twenty-main-backup\pre-w17r1-20261013-0955`
+  (`main-default.dump`, **1,396,268 bytes**), **restore-verified** into a scratch database
+  (`w17r1verify`): `application` 3, `workspace` 1, `objectMetadata` 39, `fieldMetadata` 726, `view`
+  82, `navigationMenuItem` 20 — all matched. All **7 application variables byte-identical** (MD5
+  compared live vs restored; no plaintext printed). Upgrade applied to **workspace 4D only** through
+  the native path; application row `7c7b25f9-…` now **0.1.29**; app UID unchanged.
+- **Live browser acceptance — real clicks vs source contracts.** What was observed through the real
+  UI on `http://radiant-cyan-dragon.localhost:3001`: the sidebar renders exactly **«الگوهای پیامک»**
+  (no suffix); the templates list opens; a template was **created** through the native inline row
+  form (title + body + channel, save button) and the record page then showed it; the **Variables**
+  tab was opened by **clicking the tab link** (no hash URL was typed) and rendered
+  «متغیرهای قابل استفاده»; the guide listed the live runtime catalog including the custom field, and
+  clicking **«کپی»** on `@person.loyaltyTier` flipped the button to «کپی شد». A **temporary custom
+  TEXT field** `loyaltyTier` (label "Loyalty Tier") was created on main/4D, appeared in the catalog
+  as `@person.loyaltyTier`, and its value **resolved from real Person data**
+  (`loyaltyTier: "طلایی"` read back through exactly the allow-listed selection the resolver builds);
+  the field was then **removed** and verified absent. **Delete of the test template was performed
+  through the GraphQL API, not a UI click** — the table's row-action button only appears on hover,
+  which this automation harness cannot produce; the create/edit form itself was verified through real
+  clicks. Everything else (selection semantics, invalidation, permission filtering, extraction,
+  alias compatibility) is covered by **source-contract tests**, which is stated as such and is not
+  claimed as browser evidence.
+- **Known presentation limits (recorded, not worked around).** (a) A record-page FRONT_COMPONENT
+  widget mounts only when its tab is activated, so the guide renders on the Variables tab rather than
+  beside the body editor on the Message tab. (b) The sandbox exposes no API to write into a native
+  field's caret, so the guide COPIES a token with Persian feedback rather than faking an insertion.
+- **W17 (0.1.26) history.** Template management page + `«بدون الگو»` selector semantics + the first
+  display-only Persian-digit formatter; `«الگوهای پیامک · الگوهای پیام»` sidebar suffix and the
+  static catalog were the two gaps W17-R1 then closed.
 - **W16-R5 (separate commit `9b96a3a2a6`).** Persian SELECT option labels (`پیامک`, `در صف`,
   `ارسال شد`, `تحویل شد`, `ناموفق`, `خروجی`), Persian timeline reason titles, and the first
   display-only Persian-digit formatter.
@@ -99,12 +141,10 @@ read as current state.
   **W7 remains disabled.**
 - **Still pending.** **RazPayamak TASK 2** (the remaining nine documented REST operations) is still
   **NOT implemented**.
-- **Test totals.** Communication app **574/574 across 57 files** (focused W17 tests: template
-  selection 10, single-composer selector 8, bulk-composer selector 4, format-digits 4, server-side
-  variable resolution 4, management surface 4); app `tsgo` typecheck exit 0; app `oxlint` 0/0;
-  `twenty-front` jest suite **8210/8210 across 1355 suites** (no host file changed in W17).
-
----
+- **Test totals.** Communication app **609/609 across 60 files** (new W17-R1 suites: metadata-driven
+  catalog + permissions 13, value extraction 8, dynamic resolution 8, plus updated interpolation and
+  preview suites); app `tsgo` typecheck exit 0; app `oxlint` 0/0; `twenty-front` jest suite
+  **8210/8210 across 1355 suites** (no host file changed in W17 or W17-R1).
 
 ## Historical checkpoints (superseded by the checkpoint above)
 
