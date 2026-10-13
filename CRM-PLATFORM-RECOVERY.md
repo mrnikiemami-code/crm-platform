@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-09 (W16-ROADMAP-BASELINE — Communications product roadmap and dynamic CRM template direction recorded; documentation only; W15-B-R3 package 0.1.12 remains built, NOT installed at this checkpoint; implementation review pending)
+Last updated: 2026-10-13 (W17-TEMPLATE-MANAGEMENT-AND-FA-DIGITS — Communication **0.1.26** built and deployed to main/4D; template-management page, authorized template variables, composer template selector and display-only Persian digits; implementation `078eefef5f`, docs THIS COMMIT)
 
 ## Purpose
 
@@ -15,6 +15,98 @@ Local source path used during development: `D:\CrmSource\twenty`
 ---
 
 # CURRENT CHECKPOINT
+
+Last rewritten: **2026-10-13 (W17)**. This is the authoritative checkpoint. Everything below the
+`Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
+read as current state.
+
+## W17 — template management, authorized variables, composer template selector, fa-IR digits
+
+- **Installed version.** Communication **0.1.26** on main/4D (`radiant-cyan-dragon`). Upgrade history
+  this task: 0.1.21 → 0.1.22 → 0.1.24 → 0.1.25 → 0.1.26 (each attempted through the native
+  `uploadAppTarball` + `upgradeApplication` path). **0.1.22 (first), 0.1.23 and 0.1.25 were
+  superseded**: 0.1.23 failed to upgrade because it changed an existing navigation menu item's TYPE
+  (`VIEW` → `OBJECT`) — the platform's manifest sync cannot change a nav item type — and 0.1.25 lost
+  the variable-guide widget when that widget was moved between tabs. **0.1.26 is the deployed,
+  authoritative package.**
+- **Package.** `communication-0.1.26.tgz`, **1,716,750 bytes**, SHA256
+  **`d890e276c6d3eb2da98a940bc97c807d6dfa2dc25a75f48ece4acaf1a423bc3e`**, built on Linux with the
+  established fork `twenty-sdk 2.42.0` (`/tool`) via `twenty dev:build --tarball`.
+- **Implementation SHA.** `078eefef5f061e47b315db7d2001d3afb778ec9f` (W17; preceded by
+  `9b96a3a2a6` = W16-R5, committed separately as instructed).
+- **Documentation SHA.** This commit (the recovery rewrite).
+- **Manifest verification (pre-upgrade).** app UID `768bca20-0b81-4d33-a624-0a894a193ffd` unchanged;
+  existing object/field/view/function identifiers unchanged; **7 application variables** unchanged
+  (`COMMUNICATION_PROVIDER`, `KAVENEGAR_ENDPOINT`, `KAVENEGAR_API_KEY`, `KAVENEGAR_SENDER`,
+  `RAZPAYAMAK_USERNAME`, `RAZPAYAMAK_API_KEY`, `RAZPAYAMAK_SENDER`); **no metadata removals**;
+  **W7 remains disabled** (no `workflowActionTriggerSettings` on any logic function). New stable
+  identifiers this wave: nav item `a1f5c9d2-…`, page layout `b2e6d0a3-…`, variable-guide front
+  component `c95d472a-…`.
+- **Template-management location.** Sidebar entry **«الگوهای پیامک»** immediately after
+  «ارتباطات», pointing at the existing native `messageTemplate` view (one storage). A new record
+  page layout adds **Fields** / **Message** (native SMS body editor) / **Variables** tabs; the
+  **Variables** tab renders the front component that lists the authorized variables.
+- **No-template behavior.** Both composers (single and bulk) have one template selector whose FIRST
+  option is always **«بدون الگو»** (id `''`). Choosing a template copies its body into the editor
+  and does **not** send or preview; choosing «بدون الگو» clears a body that a template inserted but
+  never a hand-typed one; a manual edit detaches the draft and never modifies the saved template. The
+  variable chips/explanation were removed from both send panels.
+- **Actual supported dynamic-variable boundary (recorded honestly).** The catalog is a **static,
+  code-declared allow-list**, not metadata-driven. Supported: `@person.firstName`,
+  `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name`, plus the six legacy
+  aliases (`@name`, `@firstName`, `@lastName`, `@fullName`, `@company`, `@companyName`). **Arbitrary
+  workspace custom scalar fields are NOT supported** — the app SDK exposes no runtime field
+  enumeration, so a truly metadata-driven catalog is not implementable within the app boundary. The
+  placeholder grammar is dotted-safe (`(?:\.segment)*`, no leading/trailing dot, no `..`), so a token
+  can only ever match a flat catalog entry — no traversal, call, eval, SQL or GraphQL selection.
+  Unknown/empty tokens stay visible, get a reason, and **block that recipient**. The single-send
+  route now re-reads the authorized Person/Company values server-side and returns the stable
+  `TEMPLATE_VARIABLE_UNRESOLVED` failure instead of sending literal tokens.
+- **Display-only Persian-digit rule.** ONE shared formatter: app-side
+  `formatDigitsForLocale(value, locale)` in `composer-shared.ts` and host-side
+  `useFormatDigitsForLocale` / the `useNumberFormat` seam. `fa-IR` renders `۰–۹` for **counts and
+  phone labels only**. Option `value`, React state, snapshots, request payloads, provider requests,
+  persisted records and the actual SMS text remain canonical ASCII; templates, API keys and
+  identifiers are never transformed. The non-fa locales are unchanged.
+- **Main/4D deployment and backup.** Fresh backup `D:\twenty-main-backup\pre-w17-20261013-0720`
+  (`main-default.dump`, **1,391,797 bytes**), **restore-verified** into a scratch database
+  (`w17verify`): `application` 3, `workspace` 1, `objectMetadata` 39, `fieldMetadata` 726, `view`
+  82, `viewField` 665 — all matched. All **7 application variables byte-identical** (MD5 compared
+  live vs restored; no plaintext printed). Upgrade applied to **workspace 4D only** through the
+  native path; application row `7c7b25f9-…` now **0.1.26**; app UID unchanged; page layout, nav item
+  and front component present in metadata.
+- **Live acceptance (Persian, `http://radiant-cyan-dragon.localhost:3001`).** Sidebar shows
+  **«الگوهای پیامک · الگوهای پیام»** (the required «الگوهای پیامک» as the primary label) next to
+  «ارتباطات»; the templates view opens with native CRUD affordances (create action, list columns
+  title / body / channel) and the record count renders in **Persian digits** (`· ۲`); the template
+  record page shows the **Variables** tab whose «متغیرهای قابل استفاده» guide lists every token
+  (`@person.firstName`, `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name`)
+  with a «کپی» action and the legacy-alias note; phone labels render Persian digits while remaining
+  LTR (`+۹۸ ۹۱۲ ۱۲۳ ۰۰۰۱`); the Person command-menu entry is **«ارسال پیامک · ارتباطات»**; **no real
+  send was performed**.
+- **Known presentation limits (recorded, not worked around).** (a) A VIEW-type sidebar item renders
+  as `<view name> · <object plural>`, so the entry carries a suffix; switching to an OBJECT item
+  would render cleanly but requires a type change the platform rejects on an existing item. (b) A
+  record-page FRONT_COMPONENT widget mounts only when its tab is actually activated (the tab is
+  reached by its hash URL); synthetic clicks on the tab bar's off-screen measure nodes do not switch
+  tabs. (c) The sandbox exposes no API to write into a native field's caret, so the guide COPIES a
+  token with Persian feedback rather than faking an insertion.
+- **W16-R5 (separate commit `9b96a3a2a6`).** Persian SELECT option labels (`پیامک`, `در صف`,
+  `ارسال شد`, `تحویل شد`, `ناموفق`, `خروجی`), Persian timeline reason titles, and the first
+  display-only Persian-digit formatter.
+- **Untouched.** **APPLE/app2: UNTOUCHED / NOT ACCESSED.** No other workspace or environment was
+  installed, upgraded, configured, tested, seeded or restarted. **No real SMS was sent.**
+  **W7 remains disabled.**
+- **Still pending.** **RazPayamak TASK 2** (the remaining nine documented REST operations) is still
+  **NOT implemented**.
+- **Test totals.** Communication app **574/574 across 57 files** (focused W17 tests: template
+  selection 10, single-composer selector 8, bulk-composer selector 4, format-digits 4, server-side
+  variable resolution 4, management surface 4); app `tsgo` typecheck exit 0; app `oxlint` 0/0;
+  `twenty-front` jest suite **8210/8210 across 1355 suites** (no host file changed in W17).
+
+---
+
+## Historical checkpoints (superseded by the checkpoint above)
 
 Repository:
 `mrnikiemami-code/crm-platform`
