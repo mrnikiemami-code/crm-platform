@@ -182,3 +182,175 @@ export const groupStudioFields = (
     label,
     fields: fields.filter((field) => field.group === group),
   })).filter((grouping) => grouping.fields.length > 0);
+
+// --- W18-B: field interaction ------------------------------------------------
+
+/**
+ * How a field card was activated.
+ *
+ * A single CLICK only SELECTS (highlights) a field; it never inserts. Insertion
+ * happens on DOUBLE_CLICK or on an explicit keyboard activation. Because the
+ * click path cannot insert, a double-click can never produce "two click
+ * insertions plus the double-click insertion".
+ */
+export const STUDIO_FIELD_ACTIVATION = {
+  CLICK: 'CLICK',
+  DOUBLE_CLICK: 'DOUBLE_CLICK',
+  KEYBOARD: 'KEYBOARD',
+} as const;
+
+export type StudioFieldActivation =
+  (typeof STUDIO_FIELD_ACTIVATION)[keyof typeof STUDIO_FIELD_ACTIVATION];
+
+/** True only for the activations that may insert a token. */
+export const doesFieldActivationInsert = (
+  activation: StudioFieldActivation,
+): boolean => activation !== STUDIO_FIELD_ACTIVATION.CLICK;
+
+/** True for the keys that activate the selected field. */
+export const isFieldActivationKey = (key: string): boolean =>
+  key === 'Enter' || key === ' ' || key === 'Spacebar';
+
+/** A caret/selection remembered from the body textarea. */
+export type StudioSelection = { start: number; end: number };
+
+/**
+ * Captures a usable selection, or `null` when the element cannot report one.
+ * The caller stores the result so an insertion can still land correctly after
+ * focus has moved to the field palette.
+ */
+export const readTextareaSelection = (
+  element: { selectionStart: number | null; selectionEnd: number | null } | null,
+): StudioSelection | null => {
+  if (
+    element === null ||
+    element.selectionStart === null ||
+    element.selectionEnd === null
+  ) {
+    return null;
+  }
+
+  return { start: element.selectionStart, end: element.selectionEnd };
+};
+
+/**
+ * Picks the selection an insertion should use: the LIVE selection while the
+ * textarea still owns focus, otherwise the REMEMBERED one, otherwise the end of
+ * the body. Offsets are clamped to the body, so a remembered selection from
+ * before an edit can never corrupt the result.
+ */
+export const resolveInsertSelection = ({
+  bodyLength,
+  liveSelection,
+  rememberedSelection,
+  isTextareaFocused,
+}: {
+  bodyLength: number;
+  liveSelection: StudioSelection | null;
+  rememberedSelection: StudioSelection | null;
+  isTextareaFocused: boolean;
+}): StudioSelection => {
+  const source = isTextareaFocused
+    ? (liveSelection ?? rememberedSelection)
+    : (rememberedSelection ?? liveSelection);
+
+  const clamp = (value: number): number =>
+    Math.min(Math.max(Math.trunc(value), 0), bodyLength);
+
+  if (source === null) {
+    return { start: bodyLength, end: bodyLength };
+  }
+
+  const start = clamp(source.start);
+
+  return { start, end: Math.max(start, clamp(source.end)) };
+};
+
+/**
+ * Finds the field behind a candidate token. A drag payload is NOT an identifier:
+ * whatever string a drop carries is only ever used as a LOOKUP KEY into the
+ * currently authorized catalog, so an unauthorized, stale or hand-crafted token
+ * resolves to `null` and the drop changes nothing.
+ */
+export const findAuthorizedFieldByToken = (
+  fields: readonly StudioField[],
+  token: string | null | undefined,
+): StudioField | null => {
+  if (typeof token !== 'string' || token.length === 0) {
+    return null;
+  }
+
+  return (
+    fields.find((field) => field.token === token.trim()) ?? null
+  );
+};
+
+/** The text carried during a field drag. Only ever used as a lookup key. */
+export const STUDIO_FIELD_DRAG_MIME = 'application/x-studio-field-token';
+
+/** Reads the dragged token from a drop payload, preferring the typed MIME. */
+export const readDroppedToken = (dataTransfer: {
+  getData: (format: string) => string;
+}): string => {
+  const typed = dataTransfer.getData(STUDIO_FIELD_DRAG_MIME);
+
+  return typed.length > 0 ? typed : dataTransfer.getData('text/plain');
+};
+
+// --- W18-B: sample-person preview --------------------------------------------
+
+export type StudioPreviewUnavailableReason =
+  | 'NO_PERSON'
+  | 'EMPTY_BODY'
+  | 'CATALOG_UNAVAILABLE';
+
+/**
+ * Whether a preview may be requested. Every gate is explicit so the button's
+ * disabled state and the request share ONE decision — they cannot drift.
+ */
+export const resolvePreviewBlockReason = ({
+  personId,
+  body,
+  isCatalogAvailable,
+}: {
+  personId: string | null;
+  body: string;
+  isCatalogAvailable: boolean;
+}): StudioPreviewUnavailableReason | null => {
+  if (!isCatalogAvailable) {
+    return 'CATALOG_UNAVAILABLE';
+  }
+
+  if (personId === null || personId.length === 0) {
+    return 'NO_PERSON';
+  }
+
+  return body.trim().length === 0 ? 'EMPTY_BODY' : null;
+};
+
+/** A selectable sample recipient. */
+export type StudioPerson = {
+  id: string;
+  displayName: string;
+};
+
+const buildPersonDisplayName = (person: StudioPerson): string =>
+  person.displayName.length > 0 ? person.displayName : person.id;
+
+/** Filters the loaded accessible People by name or id, case-insensitively. */
+export const filterStudioPeople = (
+  people: readonly StudioPerson[],
+  query: string,
+): StudioPerson[] => {
+  const needle = query.trim().toLowerCase();
+
+  if (needle.length === 0) {
+    return [...people];
+  }
+
+  return people.filter(
+    (person) =>
+      buildPersonDisplayName(person).toLowerCase().includes(needle) ||
+      person.id.toLowerCase().includes(needle),
+  );
+};

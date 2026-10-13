@@ -2,10 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EMPTY_STUDIO_DRAFT,
+  doesFieldActivationInsert,
   filterStudioFields,
+  filterStudioPeople,
+  findAuthorizedFieldByToken,
   groupStudioFields,
   insertTokenAtSelection,
+  isFieldActivationKey,
   isStudioDraftDirty,
+  readDroppedToken,
+  readTextareaSelection,
+  resolveInsertSelection,
+  resolvePreviewBlockReason,
+  STUDIO_FIELD_ACTIVATION,
+  STUDIO_FIELD_DRAG_MIME,
   toStudioDraft,
   validateStudioDraft,
   type StudioDraft,
@@ -181,5 +191,178 @@ describe('toStudioDraft', () => {
 
     expect(result.targetObject).toBe('PERSON');
     expect(result.body).toBe('سلام @name');
+  });
+});
+
+// --- W18-B ------------------------------------------------------------------
+
+describe('doesFieldActivationInsert', () => {
+  it('inserts only for a double-click or an explicit keyboard activation', () => {
+    expect(doesFieldActivationInsert(STUDIO_FIELD_ACTIVATION.CLICK)).toBe(false);
+    expect(
+      doesFieldActivationInsert(STUDIO_FIELD_ACTIVATION.DOUBLE_CLICK),
+    ).toBe(true);
+    expect(doesFieldActivationInsert(STUDIO_FIELD_ACTIVATION.KEYBOARD)).toBe(
+      true,
+    );
+  });
+});
+
+describe('isFieldActivationKey', () => {
+  it('accepts Enter and Space only', () => {
+    expect(isFieldActivationKey('Enter')).toBe(true);
+    expect(isFieldActivationKey(' ')).toBe(true);
+    expect(isFieldActivationKey('Spacebar')).toBe(true);
+    expect(isFieldActivationKey('a')).toBe(false);
+    expect(isFieldActivationKey('Tab')).toBe(false);
+  });
+});
+
+describe('resolveInsertSelection', () => {
+  it('prefers the LIVE selection while the textarea owns focus', () => {
+    expect(
+      resolveInsertSelection({
+        bodyLength: 10,
+        liveSelection: { start: 2, end: 2 },
+        rememberedSelection: { start: 7, end: 7 },
+        isTextareaFocused: true,
+      }),
+    ).toEqual({ start: 2, end: 2 });
+  });
+
+  it('prefers the REMEMBERED selection once focus moved to the palette', () => {
+    expect(
+      resolveInsertSelection({
+        bodyLength: 10,
+        liveSelection: { start: 9, end: 9 },
+        rememberedSelection: { start: 4, end: 4 },
+        isTextareaFocused: false,
+      }),
+    ).toEqual({ start: 4, end: 4 });
+  });
+
+  it('falls back to the end of the body with nothing remembered', () => {
+    expect(
+      resolveInsertSelection({
+        bodyLength: 12,
+        liveSelection: null,
+        rememberedSelection: null,
+        isTextareaFocused: false,
+      }),
+    ).toEqual({ start: 12, end: 12 });
+  });
+
+  it('clamps a remembered selection that is now past the end of an edited body', () => {
+    expect(
+      resolveInsertSelection({
+        bodyLength: 3,
+        liveSelection: null,
+        rememberedSelection: { start: 40, end: 50 },
+        isTextareaFocused: false,
+      }),
+    ).toEqual({ start: 3, end: 3 });
+  });
+});
+
+describe('findAuthorizedFieldByToken', () => {
+  it('resolves only a token that is in the authorized catalog', () => {
+    expect(findAuthorizedFieldByToken(fields, '@person.firstName')?.token).toBe(
+      '@person.firstName',
+    );
+    expect(findAuthorizedFieldByToken(fields, '@person.notAuthorized')).toBeNull();
+    expect(findAuthorizedFieldByToken(fields, 'نام')).toBeNull();
+    expect(findAuthorizedFieldByToken(fields, null)).toBeNull();
+    expect(findAuthorizedFieldByToken(fields, '')).toBeNull();
+  });
+});
+
+describe('readDroppedToken', () => {
+  it('prefers the typed MIME, then falls back to plain text', () => {
+    const typed = {
+      getData: (format: string) =>
+        format === STUDIO_FIELD_DRAG_MIME ? '@person.firstName' : 'ignored',
+    };
+    const plain = {
+      getData: (format: string) =>
+        format === 'text/plain' ? '@company.name' : '',
+    };
+
+    expect(readDroppedToken(typed)).toBe('@person.firstName');
+    expect(readDroppedToken(plain)).toBe('@company.name');
+  });
+});
+
+describe('resolvePreviewBlockReason', () => {
+  it('blocks on an unavailable catalog first', () => {
+    expect(
+      resolvePreviewBlockReason({
+        personId: 'p1',
+        body: 'x',
+        isCatalogAvailable: false,
+      }),
+    ).toBe('CATALOG_UNAVAILABLE');
+  });
+
+  it('blocks without a selected person', () => {
+    expect(
+      resolvePreviewBlockReason({
+        personId: null,
+        body: 'x',
+        isCatalogAvailable: true,
+      }),
+    ).toBe('NO_PERSON');
+  });
+
+  it('blocks with an empty or whitespace-only body', () => {
+    expect(
+      resolvePreviewBlockReason({
+        personId: 'p1',
+        body: '   ',
+        isCatalogAvailable: true,
+      }),
+    ).toBe('EMPTY_BODY');
+  });
+
+  it('allows a preview only when every gate passes', () => {
+    expect(
+      resolvePreviewBlockReason({
+        personId: 'p1',
+        body: 'سلام',
+        isCatalogAvailable: true,
+      }),
+    ).toBeNull();
+  });
+});
+
+describe('filterStudioPeople', () => {
+  const people = [
+    { id: 'p1', displayName: 'سارا احمدی' },
+    { id: 'p2', displayName: 'Reza Karimi' },
+  ];
+
+  it('matches by display name and by id', () => {
+    expect(filterStudioPeople(people, 'سارا').map((p) => p.id)).toEqual(['p1']);
+    expect(filterStudioPeople(people, 'reza').map((p) => p.id)).toEqual(['p2']);
+    expect(filterStudioPeople(people, 'p2').map((p) => p.id)).toEqual(['p2']);
+  });
+
+  it('returns everyone for an empty query and nobody for a miss', () => {
+    expect(filterStudioPeople(people, '')).toHaveLength(2);
+    expect(filterStudioPeople(people, 'zzz')).toHaveLength(0);
+  });
+});
+
+describe('readTextareaSelection', () => {
+  it('returns null when the element cannot report a selection', () => {
+    expect(readTextareaSelection(null)).toBeNull();
+    expect(
+      readTextareaSelection({ selectionStart: null, selectionEnd: null }),
+    ).toBeNull();
+  });
+
+  it('captures a usable selection', () => {
+    expect(
+      readTextareaSelection({ selectionStart: 3, selectionEnd: 5 }),
+    ).toEqual({ start: 3, end: 5 });
   });
 });

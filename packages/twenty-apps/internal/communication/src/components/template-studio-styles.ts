@@ -87,6 +87,19 @@ export const templateStudioStyles = {
     fontWeight: 500,
     color: '#111',
   },
+  // The selected field is clearly highlighted without looking disabled, and the
+  // card advertises its draggability through the grab cursor.
+  fieldButtonSelected: {
+    background: '#f2f4f7',
+    borderColor: '#667085',
+    boxShadow: '0 0 0 1px #667085 inset',
+  },
+  // The textarea shows a visible drop-active state while a field is over it.
+  bodyDropActive: {
+    borderColor: '#667085',
+    boxShadow: '0 0 0 2px #d0d5dd inset',
+    background: '#fbfbfd',
+  },
   notice: {
     margin: 0,
     padding: '8px 10px',

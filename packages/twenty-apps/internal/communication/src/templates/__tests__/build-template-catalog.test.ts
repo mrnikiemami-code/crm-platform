@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildAuthorizedTemplateCatalog,
   buildTemplateCatalogFromMetadata,
   readTemplatePermissions,
   type TemplatePermissionSnapshot,
@@ -250,5 +251,45 @@ describe('readTemplatePermissions', () => {
     // A role that cannot be read must never be treated as "allow everything";
     // the caller turns this into an EMPTY, UNAVAILABLE catalog.
     expect(permissions).toBeNull();
+  });
+});
+
+describe('buildAuthorizedTemplateCatalog — fail closed (W18-B)', () => {
+  it('returns an EMPTY catalog and isAvailable=false when the role is unreadable', async () => {
+    const result = await buildAuthorizedTemplateCatalog({
+      // Metadata enumerates fine, but the permission read yields no role.
+      metadataClient: {
+        query: async () => ({
+          objects: {
+            edges: templateMetadataObjects.map((object) => ({
+              node: {
+                id: object.id,
+                nameSingular: object.nameSingular,
+                fieldsList: object.fields,
+              },
+            })),
+          },
+          findOneApplication: { defaultLogicFunctionRole: null },
+        }),
+      } as never,
+    });
+
+    // Fields are NEVER advertised just because metadata enumeration succeeded.
+    expect(result.isAvailable).toBe(false);
+    expect(result.catalog.variables).toHaveLength(0);
+    expect(findTemplateVariable(result.catalog, 'person.firstName')).toBeNull();
+  });
+
+  it('returns an EMPTY, unavailable catalog when the metadata read throws', async () => {
+    const result = await buildAuthorizedTemplateCatalog({
+      metadataClient: {
+        query: async () => {
+          throw new Error('boom: https://internal.example/secret');
+        },
+      } as never,
+    });
+
+    expect(result.isAvailable).toBe(false);
+    expect(result.catalog.variables).toHaveLength(0);
   });
 });

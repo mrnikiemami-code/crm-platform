@@ -12,11 +12,13 @@ import {
 import { type StudioField } from 'src/studio/template-studio-logic';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
 import { findMessageTemplates } from 'src/templates/data/find-message-templates';
+import { findStudioPeople } from 'src/templates/data/find-studio-people';
 import {
   createMessageTemplate,
   deleteMessageTemplate,
   updateMessageTemplate,
 } from 'src/templates/data/mutate-message-templates';
+import { previewTemplate } from 'src/templates/preview-template.service';
 
 // The SMS Template Studio's server side. It works on the workspace's NATIVE
 // `messageTemplate` object through the workspace-scoped `CoreApiClient`, so the
@@ -34,6 +36,7 @@ import {
 type StudioRequest = {
   action?: unknown;
   templateId?: unknown;
+  personId?: unknown;
   title?: unknown;
   body?: unknown;
   targetObject?: unknown;
@@ -89,6 +92,68 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       fields,
       catalogStatus,
     };
+  }
+
+  if (action === 'search-people') {
+    try {
+      const people = await findStudioPeople({ client });
+
+      return { success: true as const, people };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
+    }
+  }
+
+  if (action === 'preview') {
+    const personId = readTrimmed(body.personId);
+    const messageBody = readString(body.body);
+
+    if (personId.length === 0 || messageBody.trim().length === 0) {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+    }
+
+    // Reuses the EXISTING production preview service: it re-reads the Person and
+    // the authorized field values server-side and evaluates the SAME catalog.
+    // This action writes NOTHING — no Communication, no timeline activity and no
+    // change to the template.
+    const { isAvailable } = await buildAuthorizedTemplateCatalog({
+      metadataClient: new MetadataApiClient(),
+    });
+
+    if (!isAvailable) {
+      return {
+        success: false as const,
+        errorCode: TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED,
+        catalogStatus: TEMPLATE_CATALOG_STATUS.UNAVAILABLE,
+      };
+    }
+
+    try {
+      const preview = await previewTemplate({
+        client,
+        metadataClient: new MetadataApiClient(),
+        body: messageBody,
+        personIds: [personId],
+        phoneOverrides: {},
+      });
+
+      if (!preview.success) {
+        return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+      }
+
+      // Only the preview fields the studio renders are returned; the preview
+      // service's own `error` string is never forwarded verbatim, and nothing is
+      // written.
+      return {
+        success: true as const,
+        previews: preview.previews,
+        hasUnresolvedVariables: preview.hasUnresolvedVariables,
+        isBodyEmpty: preview.isBodyEmpty,
+        readyCount: preview.readyCount,
+      };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
+    }
   }
 
   if (action === 'create') {

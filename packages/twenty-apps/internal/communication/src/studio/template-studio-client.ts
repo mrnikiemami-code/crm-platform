@@ -9,6 +9,7 @@ import {
   STUDIO_FIELD_GROUP,
   type StudioField,
   type StudioFieldGroup,
+  type StudioPerson,
   type StudioTemplate,
 } from 'src/studio/template-studio-logic';
 
@@ -116,6 +117,133 @@ export const resolveStudioLoadState = (response: {
 export type StudioMutationResult =
   | { ok: true; template: StudioTemplate | null }
   | { ok: false; code: TemplateStudioErrorCode };
+
+// --- W18-B: sample-person preview --------------------------------------------
+
+export type StudioPreviewIssue = {
+  token: string;
+  kind: 'UNKNOWN_VARIABLE' | 'EMPTY_FIELD';
+};
+
+/**
+ * The preview outcome. Every branch is explicit so the UI never has to infer
+ * meaning from a partially-populated object, and no raw server text is carried.
+ */
+export type StudioPreviewState =
+  | { kind: 'IDLE' }
+  | { kind: 'LOADING' }
+  | {
+      kind: 'READY';
+      personId: string;
+      resolvedText: string;
+      /** Unresolved tokens, rendered SEPARATELY from the resolved text. */
+      issues: StudioPreviewIssue[];
+    }
+  /** The person could not be read (missing, or no longer permitted). */
+  | { kind: 'PERSON_NOT_ACCESSIBLE' }
+  /** The person was read but has no usable destination number. */
+  | { kind: 'NOT_SENDABLE' }
+  | { kind: 'EMPTY_BODY' }
+  /** The body is whitespace only, as judged by the server. */
+  | { kind: 'ERROR' };
+
+const toPreviewIssue = (value: unknown): StudioPreviewIssue | null => {
+  if (!isRecord(value) || !isNonEmptyString(value.token)) {
+    return null;
+  }
+
+  return {
+    token: value.token,
+    kind: value.kind === 'EMPTY_FIELD' ? 'EMPTY_FIELD' : 'UNKNOWN_VARIABLE',
+  };
+};
+
+/**
+ * Parses the existing server-authoritative preview response for ONE recipient.
+ *
+ * A response that succeeded but carries no entry for the requested person means
+ * the server did not return that record, which is reported as
+ * PERSON_NOT_ACCESSIBLE rather than as a successful preview of nothing.
+ */
+export const resolveStudioPreviewState = ({
+  response,
+  personId,
+}: {
+  response: { ok: boolean; data: unknown };
+  personId: string;
+}): StudioPreviewState => {
+  if (!response.ok || !isRecord(response.data)) {
+    return { kind: 'ERROR' };
+  }
+
+  const payload = response.data;
+  const previews = Array.isArray(payload.previews) ? payload.previews : null;
+
+  if (payload.success !== true || previews === null) {
+    return { kind: 'ERROR' };
+  }
+
+  const entry = previews
+    .filter(isRecord)
+    .find((candidate) => candidate.personId === personId);
+
+  if (entry === undefined) {
+    return { kind: 'PERSON_NOT_ACCESSIBLE' };
+  }
+
+  if (entry.phone === null || entry.phone === undefined) {
+    // The record was read but no usable number was resolved for it. This is
+    // never treated as a successful preview.
+    return { kind: 'NOT_SENDABLE' };
+  }
+
+  if (typeof entry.previewText !== 'string') {
+    return { kind: 'ERROR' };
+  }
+
+  if (entry.previewText.trim().length === 0) {
+    return { kind: 'EMPTY_BODY' };
+  }
+
+  return {
+    kind: 'READY',
+    personId,
+    resolvedText: entry.previewText,
+    issues: Array.isArray(entry.issues)
+      ? entry.issues
+          .map(toPreviewIssue)
+          .filter((issue): issue is StudioPreviewIssue => issue !== null)
+      : [],
+  };
+};
+
+/** Parses the accessible-People list used by the sample-person picker. */
+export const resolveStudioPeople = (response: {
+  ok: boolean;
+  data: unknown;
+}): { ok: true; people: StudioPerson[] } | { ok: false } => {
+  if (!isRecord(response.data) || response.data.success !== true) {
+    return { ok: false };
+  }
+
+  const people = Array.isArray(response.data.people)
+    ? response.data.people
+        .map((value): StudioPerson | null => {
+          if (!isRecord(value) || !isNonEmptyString(value.id)) {
+            return null;
+          }
+
+          return {
+            id: value.id,
+            displayName:
+              typeof value.displayName === 'string' ? value.displayName : '',
+          };
+        })
+        .filter((person): person is StudioPerson => person !== null)
+    : [];
+
+  return { ok: true, people };
+};
 
 const readErrorCode = (value: unknown): TemplateStudioErrorCode => {
   if (!isRecord(value)) {
