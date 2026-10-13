@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-13 (W17-TEMPLATE-MANAGEMENT-AND-FA-DIGITS — Communication **0.1.26** built and deployed to main/4D; template-management page, authorized template variables, composer template selector and display-only Persian digits; implementation `078eefef5f`, docs THIS COMMIT)
+Last updated: 2026-10-13 (W18-A TEMPLATE STUDIO FOUNDATION - code only, NOT built and NOT deployed; the installed version on main/4D is unchanged at 0.1.29)
 
 ## Purpose
 
@@ -16,12 +16,85 @@ Local source path used during development: `D:\CrmSource\twenty`
 
 # CURRENT CHECKPOINT
 
-Last rewritten: **2026-10-13 (W17)**. This is the authoritative checkpoint. Everything below the
+Last rewritten: 2026-10-13 (W18-A). This is the authoritative checkpoint. Everything under the
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
 read as current state.
 
+## W18-A — SMS Template Studio foundation (CODE ONLY, NOT DEPLOYED)
 
-### W17 architect review (the review W17-R1 then closed)
+Replaces the unsuitable native `messageTemplate` quick-create experience with the foundation of a
+dedicated Persian SMS Template Studio. This is TASK 1 OF 3; W18-B (double-click / drag-drop
+insertion) and W18-C remain.
+
+- **Deployment status.** **Code only.** No package was built and nothing was deployed in W18-A:
+  **main/4D remains 0.1.29** (W17-R1). No environment was accessed; APPLE/app2 UNTOUCHED / NOT
+  ACCESSED. No real SMS. W7 remains disabled.
+- **Implementation SHA.** `314ec2af7edd63ac91611f9a6be114245748d64b`
+- **Documentation SHA.** This commit.
+- **Storage is unchanged.** The studio reads and writes the SAME native `messageTemplate` object
+  through the app's own workspace-scoped route and `CoreApiClient`. There is **no second table, no
+  local storage and no duplicated template model**. The only schema addition is one OPTIONAL SELECT
+  field `targetObject` (stable value `PERSON`, Persian label «اشخاص», default `PERSON`). An
+  existing row has no value and is READ as `PERSON` — a read-time default, never a write-back
+  migration, so existing title/body/channel data is untouched.
+- **Navigation.** A new **PAGE_LAYOUT** item `e3b7f5c9-4d82-4a63-9b74-2f6c8e0a1d15` named exactly
+  **«الگوهای پیامک»** points at the new app-owned STANDALONE_PAGE (`f4c8a6da-…`). W17-R1's OBJECT
+  item `d2a6e4b8-…` is **retired** by dropping it from the manifest — the only metadata removal in
+  W18-A — because the platform cannot change an existing navigation item's TYPE.
+- **Studio surface.** One dedicated studio (front component `c7fbe90d-…`) with: a selectable
+  template list; New / Edit / Delete with explicit delete confirmation; a title input, a target
+  selector (visible «اشخاص», stored `PERSON`) and a large RTL multiline body textarea; explicit
+  Save and Cancel; an unsaved-change guard when switching templates or closing the editor; and
+  distinct loading / empty / error states. Channel stays SMS and is not offered as a user choice.
+- **Authorized field panel.** The panel is fed by the SAME runtime catalog W17-R1 built. Fields are
+  grouped (Person vs related Company), searchable by Persian label AND technical token, and show
+  the user-facing label prominently with the stable token secondarily. A single click inserts the
+  token at the textarea caret. Double-click and drag/drop are deliberately **not** implemented
+  (W18-B).
+- **Storage contract.** The body stores the CANONICAL token (`سلام @person.firstName خوبی؟`). A
+  translated label is never written as a substitution identifier, so renaming a Persian label
+  cannot break a saved template. Newlines are preserved exactly, and canonical identifiers/payloads
+  stay ASCII (Persian digits remain display-only).
+- **W17-R1 defect 1 closed — permissions fail CLOSED.** The platform semantics were verified in
+  source: object readability is `objectPermission.canReadObjectRecords ??
+  role.canReadAllObjectRecords` (`workspace-roles-permissions-cache.service.ts` and the object
+  permission consistency validator). The catalog now resolves readability that way (so a role with
+  `canReadAllObjectRecords: false` and no override reads NOTHING, and an override wins both ways).
+  If the role/permission read fails, the catalog is **EMPTY and reported UNAVAILABLE** — fields are
+  never advertised merely because metadata enumeration succeeded, and no record-value read is
+  performed. Record reads stay server-authoritative.
+- **W17-R1 defect 2 closed — no raw `error.message`.** The studio contract reports only stable,
+  application-owned codes (`INVALID_INPUT`, `NOT_FOUND`, `WRITE_FAILED`, `UNEXPECTED`) plus the
+  catalog status (`READY` / `UNAVAILABLE`). The client discards any `error` / `message` text, so an
+  exception string, stack trace, URL, SDK string or credential cannot reach the browser even if a
+  server started sending one. The UI renders its own translated Persian copy.
+- **App-owned server surface.** `/communication/template-studio` (list / create / update / delete)
+  plus the existing `/communication/message-templates` picker route. Both build the field catalog
+  server-side; a client-supplied catalog is never trusted.
+- **Tests.** Communication app **633/633 across 62 files**, including the new W18-A suites: studio
+  logic 17, studio client/contract 8, plus updated catalog/permission, template-shape and
+  navigation-manifest contracts. Both app typechecks exit 0 (`tsconfig.spec.json` and
+  `tsconfig.json`); app `oxlint` 0/0; `git diff --check` clean. No host/core/SDK/provider/settings
+  change.
+- **Remaining.** **W18-B** (double-click and drag/drop insertion, sample Person, resolved-value
+  preview) then **W18-C** (packaging and main/4D deployment). **RazPayamak TASK 2** (the remaining
+  nine documented REST operations) is still NOT implemented.
+
+## Previously deployed baseline — 0.1.29 (W17-R1, still the INSTALLED build)
+
+The installed package on main/4D is **`communication-0.1.29.tgz`**, **1,763,208 bytes**, SHA256
+**`e726dd80f17f94e8083021755f183797b1d5a5723ec7b7319832f94abfebb9e4`** (fork `twenty-sdk 2.42.0`,
+`twenty dev:build --tarball`), upgraded `0.1.26 → 0.1.27 → 0.1.28 → 0.1.29` through the native
+`uploadAppTarball` + `upgradeApplication` path. Backup `pre-w17r1-20261013-0955` (1,396,268 B) is
+restore-verified; all **7 application variables are byte-identical**; app UID
+`768bca20-0b81-4d33-a624-0a894a193ffd` unchanged. Its acceptance evidence, the corrected
+permission-aware catalog boundary and the live browser findings are recorded in the W17-R1 section
+below (now historical, but still the description of the RUNNING build).
+
+## Historical checkpoints (superseded by the checkpoint above)
+
+### W17 architect review (historical — the review W17-R1 then closed)
+
 
 - **Verdict: PARTIAL PASS — W17 is not closed.** Keep the deployed **0.1.26** on main/4D for user preview; do **not** roll it back. The template selector, «بدون الگو» behavior, separate template-management surface and display-only Persian digits are usable, but two explicit acceptance criteria failed and one live proof is missing.
 - **Failure 1 — metadata-driven CRM fields are not implemented.** The production catalog currently contains only `@person.firstName`, `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name` plus the six legacy aliases. Arbitrary readable workspace custom scalar fields do not appear and cannot resolve. This is not an accepted limitation.
@@ -33,7 +106,8 @@ read as current state.
 - **Shortest path to a sellable v1:** after W17-R1, perform one bounded real acceptance task only: enter RazPayamak credentials in the UI (never in chat), send one settings test SMS and one Person SMS, verify history/status, then freeze a Release Candidate. Do not start another architecture wave unless that real test exposes a concrete blocker.
 - **Deferred after sellable v1:** the remaining nine RazPayamak PDF operations are post-MVP and do not block selling the current single/bulk SMS product. Do not claim “full RazPayamak API coverage”; sell the implemented scope honestly: provider settings, test send, single send, sequential bulk send, templates and Communication history/status.
 
-## W17-R1 — runtime permission-aware catalog and the clean template sidebar label (CURRENT)
+
+## W17-R1 — runtime permission-aware catalog and the clean template sidebar label (historical; describes the INSTALLED 0.1.29 build)
 
 W17-R1 closes the three acceptance gaps W17 left open. The template selector, the
 Persian-digit formatter and the send architecture are unchanged.
@@ -50,19 +124,15 @@ Persian-digit formatter and the send architecture are unchanged.
   established fork `twenty-sdk 2.42.0` (`/tool`) via `twenty dev:build --tarball`.
 - **Implementation SHA.** `4fcddec5a8061fe6662c03c7cd36e93588bdb370`.
 - **Documentation SHA.** This commit.
-- **Installed version.** Communication **0.1.26** on main/4D (`radiant-cyan-dragon`). Upgrade history
-  this task: 0.1.21 → 0.1.22 → 0.1.24 → 0.1.25 → 0.1.26 (each attempted through the native
-  `uploadAppTarball` + `upgradeApplication` path). **0.1.22 (first), 0.1.23 and 0.1.25 were
-  superseded**: 0.1.23 failed to upgrade because it changed an existing navigation menu item's TYPE
-  (`VIEW` → `OBJECT`) — the platform's manifest sync cannot change a nav item type — and 0.1.25 lost
-  the variable-guide widget when that widget was moved between tabs. **0.1.26 is the deployed,
-  authoritative package.**
-- **Package.** `communication-0.1.26.tgz`, **1,716,750 bytes**, SHA256
-  **`d890e276c6d3eb2da98a940bc97c807d6dfa2dc25a75f48ece4acaf1a423bc3e`**, built on Linux with the
-  established fork `twenty-sdk 2.42.0` (`/tool`) via `twenty dev:build --tarball`.
-- **Implementation SHA.** `078eefef5f061e47b315db7d2001d3afb778ec9f` (W17; preceded by
-  `9b96a3a2a6` = W16-R5, committed separately as instructed).
-- **Documentation SHA.** This commit (the recovery rewrite).
+- **W17 package (SUPERSEDED by W17-R1).** W17 shipped `communication-0.1.26.tgz`
+  (**1,716,750 bytes**, SHA256
+  **`d890e276c6d3eb2da98a940bc97c807d6dfa2dc25a75f48ece4acaf1a423bc3e`**) from implementation
+  `078eefef5f061e47b315db7d2001d3afb778ec9f` (preceded by `9b96a3a2a6` = W16-R5, committed
+  separately as instructed). It reached main/4D as `0.1.21 → 0.1.22 → 0.1.24 → 0.1.25 → 0.1.26`
+  through the native `uploadAppTarball` + `upgradeApplication` path; **0.1.22 (first), 0.1.23 and
+  0.1.25 were superseded** (0.1.23 failed because it changed an existing navigation item's TYPE,
+  which the platform's sync cannot do; 0.1.25 lost the variable-guide widget when that widget moved
+  between tabs). The INSTALLED build is now 0.1.29 — see the checkpoint above.
 - **Manifest verification (pre-upgrade).** app UID `768bca20-0b81-4d33-a624-0a894a193ffd` unchanged;
   existing object/field/view/function identifiers unchanged; **7 application variables** unchanged
   (`COMMUNICATION_PROVIDER`, `KAVENEGAR_ENDPOINT`, `KAVENEGAR_API_KEY`, `KAVENEGAR_SENDER`,
@@ -159,7 +229,7 @@ Persian-digit formatter and the send architecture are unchanged.
   preview suites); app `tsgo` typecheck exit 0; app `oxlint` 0/0; `twenty-front` jest suite
   **8210/8210 across 1355 suites** (no host file changed in W17 or W17-R1).
 
-## Historical checkpoints (superseded by the checkpoint above)
+
 
 Repository:
 `mrnikiemami-code/crm-platform`
@@ -3834,4 +3904,3 @@ Moved all nine variables from `serverVariables` to `applicationVariables` in `sr
 - **Verification.** Live on main/4D: a real settings test-send now returns `{"success":false,"failureCode":"PROVIDER_FAILED","error":"RazPayamak rejected the request with code 11.","providerFailureCode":"NOT_SENT","providerCode":11}` — no false acceptance, no fake tracking id. App `vitest run` **530/530** (52 files, including the full documented failure-code matrix asserted as FAILED and the real-recID-still-succeeds case); host SMS-settings **56/56** (6 suites); both app typechecks exit 0; app `oxlint` 0/0; `twenty-front` typecheck 0 errors; `oxlint` 0/0 on the changed files.
 - **Package + deployment.** `communication-0.1.18.tgz`, **1251473 bytes**, SHA256 `4fdf893a104de402241f59b0f99286b028e34806531e0e4963f63621f3f00127`. Fresh restore-verified backup `pre-w16r4-20261012-1545`; main/4D upgraded natively to **0.1.18**; app UID unchanged; objects intact; W7 disabled; APPLE/app2 untouched; saved credentials and provider selection preserved.
 - **Note.** Still TASK 2 for the remaining nine documented operations. **REAL SMS NOT PERFORMED by the agent** — the operator may send/inquire at will.
-
