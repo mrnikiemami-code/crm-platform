@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-13 (W17-TEMPLATE-MANAGEMENT-AND-FA-DIGITS — Communication **0.1.26** built and deployed to main/4D; template-management page, authorized template variables, composer template selector and display-only Persian digits; implementation `078eefef5f`, docs THIS COMMIT)
+Last updated: 2026-10-13 (architect review of W17 — Communication **0.1.26** remains deployed on main/4D; W17 is PARTIAL / R1 REQUIRED; no rollback and no real SMS)
 
 ## Purpose
 
@@ -22,6 +22,18 @@ read as current state.
 
 ## W17 — template management, authorized variables, composer template selector, fa-IR digits
 
+### Architect review / immediate handoff — authoritative next action
+
+- **Verdict: PARTIAL PASS — W17 is not closed.** Keep the deployed **0.1.26** on main/4D for user preview; do **not** roll it back. The template selector, «بدون الگو» behavior, separate template-management surface and display-only Persian digits are usable, but two explicit acceptance criteria failed and one live proof is missing.
+- **Failure 1 — metadata-driven CRM fields are not implemented.** The production catalog currently contains only `@person.firstName`, `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name` plus the six legacy aliases. Arbitrary readable workspace custom scalar fields do not appear and cannot resolve. This is not an accepted limitation.
+- **Correction to the W17 implementation report:** the SDK **does** expose runtime metadata enumeration. `twenty-client-sdk/metadata` exports `MetadataApiClient`; its generated schema exposes `objects` / `fieldsList`, field types and role/field permissions, and the repository's official `examples/media-notes` front component already pages `objects` and reads `fieldsList` at runtime. R1 must use the supported metadata boundary, then enforce object/field permissions and a safe scalar-type allow-list server-side. Never use raw DB access, eval, arbitrary traversal or client-owned field authority.
+- **Failure 2 — the sidebar label is not exact.** The live label is «الگوهای پیامک · الگوهای پیام», not the required «الگوهای پیامک». Calling the first half a “primary label” does not satisfy acceptance. The W17 navigation item was newly introduced in W17; it was not a W15 installed navigation item. Because 0.1.26 has now installed the incorrect VIEW item, R1 should introduce a new stable OBJECT navigation item and retire only the incorrect W17 VIEW item through supported manifest synchronization. No unrelated metadata removal is authorized.
+- **Missing live proof — native CRUD.** Browser evidence observed the list and create affordance, but did not actually complete create → edit → normal tab navigation → delete. The Variables tab was reached through a hash URL rather than proven through the normal visible user click. R1 must exercise those operations on main/4D through the real UI.
+- **Next task:** `CRM-COMMUNICATIONS-001-W17-R1-DYNAMIC-CATALOG-AND-NAV-CLOSURE`, baseline `310452e87e389c71af32072f2b357cdbe16a6c8e`, target package **0.1.27**. It must (1) build one permission-aware runtime catalog for the template manager, preview, single send and bulk send; (2) retain the six aliases; (3) expose only safe readable Person and related Company scalar fields, including supported custom fields; (4) make the sidebar label exactly «الگوهای پیامک»; and (5) prove real CRUD and a temporary custom-field resolution through normal browser interactions.
+- **Environment rule — permanent:** work, backup, install and browser-test **only main/4D** at `http://radiant-cyan-dragon.localhost:3001`. **APPLE/app2 and every other workspace/environment are UNTOUCHED / NOT ACCESSED**, including for mock tests. Preserve all seven provider variables and the selected provider byte-identically. W7 stays disabled. No real SMS during W17-R1.
+- **Shortest path to a sellable v1:** after W17-R1, perform one bounded real acceptance task only: enter RazPayamak credentials in the UI (never in chat), send one settings test SMS and one Person SMS, verify history/status, then freeze a Release Candidate. Do not start another architecture wave unless that real test exposes a concrete blocker.
+- **Deferred after sellable v1:** the remaining nine RazPayamak PDF operations are post-MVP and do not block selling the current single/bulk SMS product. Do not claim “full RazPayamak API coverage”; sell the implemented scope honestly: provider settings, test send, single send, sequential bulk send, templates and Communication history/status.
+
 - **Installed version.** Communication **0.1.26** on main/4D (`radiant-cyan-dragon`). Upgrade history
   this task: 0.1.21 → 0.1.22 → 0.1.24 → 0.1.25 → 0.1.26 (each attempted through the native
   `uploadAppTarball` + `upgradeApplication` path). **0.1.22 (first), 0.1.23 and 0.1.25 were
@@ -42,8 +54,9 @@ read as current state.
   **W7 remains disabled** (no `workflowActionTriggerSettings` on any logic function). New stable
   identifiers this wave: nav item `a1f5c9d2-…`, page layout `b2e6d0a3-…`, variable-guide front
   component `c95d472a-…`.
-- **Template-management location.** Sidebar entry **«الگوهای پیامک»** immediately after
-  «ارتباطات», pointing at the existing native `messageTemplate` view (one storage). A new record
+- **Template-management location (current 0.1.26, presentation defect open).** The sidebar entry is
+  currently **«الگوهای پیامک · الگوهای پیام»** immediately after «ارتباطات», pointing at the existing
+  native `messageTemplate` view (one storage). A new record
   page layout adds **Fields** / **Message** (native SMS body editor) / **Variables** tabs; the
   **Variables** tab renders the front component that lists the authorized variables.
 - **No-template behavior.** Both composers (single and bulk) have one template selector whose FIRST
@@ -51,12 +64,13 @@ read as current state.
   and does **not** send or preview; choosing «بدون الگو» clears a body that a template inserted but
   never a hand-typed one; a manual edit detaches the draft and never modifies the saved template. The
   variable chips/explanation were removed from both send panels.
-- **Actual supported dynamic-variable boundary (recorded honestly).** The catalog is a **static,
+- **Actual current variable boundary (incomplete; superseded by the architect review above).** The catalog is a **static,
   code-declared allow-list**, not metadata-driven. Supported: `@person.firstName`,
   `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name`, plus the six legacy
   aliases (`@name`, `@firstName`, `@lastName`, `@fullName`, `@company`, `@companyName`). **Arbitrary
-  workspace custom scalar fields are NOT supported** — the app SDK exposes no runtime field
-  enumeration, so a truly metadata-driven catalog is not implementable within the app boundary. The
+  workspace custom scalar fields are NOT supported in 0.1.26.** The earlier claim that the app SDK
+  exposes no runtime field enumeration was false; `MetadataApiClient` provides the supported metadata
+  surface and W17-R1 must close this requirement. The
   placeholder grammar is dotted-safe (`(?:\.segment)*`, no leading/trailing dot, no `..`), so a token
   can only ever match a flat catalog entry — no traversal, call, eval, SQL or GraphQL selection.
   Unknown/empty tokens stay visible, get a reason, and **block that recipient**. The single-send
@@ -75,18 +89,19 @@ read as current state.
   live vs restored; no plaintext printed). Upgrade applied to **workspace 4D only** through the
   native path; application row `7c7b25f9-…` now **0.1.26**; app UID unchanged; page layout, nav item
   and front component present in metadata.
-- **Live acceptance (Persian, `http://radiant-cyan-dragon.localhost:3001`).** Sidebar shows
-  **«الگوهای پیامک · الگوهای پیام»** (the required «الگوهای پیامک» as the primary label) next to
+- **Live observation (Persian, `http://radiant-cyan-dragon.localhost:3001`; not full acceptance).** Sidebar shows
+  **«الگوهای پیامک · الگوهای پیام»** (this fails the exact-label requirement) next to
   «ارتباطات»; the templates view opens with native CRUD affordances (create action, list columns
   title / body / channel) and the record count renders in **Persian digits** (`· ۲`); the template
   record page shows the **Variables** tab whose «متغیرهای قابل استفاده» guide lists every token
   (`@person.firstName`, `@person.lastName`, `@person.fullName`, `@person.jobTitle`, `@company.name`)
-  with a «کپی» action and the legacy-alias note; phone labels render Persian digits while remaining
+  with a «کپی» action and the legacy-alias note; actual create/edit/delete was not completed, and the
+  Variables tab was reached via a hash rather than normal user navigation. Phone labels render Persian digits while remaining
   LTR (`+۹۸ ۹۱۲ ۱۲۳ ۰۰۰۱`); the Person command-menu entry is **«ارسال پیامک · ارتباطات»**; **no real
   send was performed**.
-- **Known presentation limits (recorded, not worked around).** (a) A VIEW-type sidebar item renders
-  as `<view name> · <object plural>`, so the entry carries a suffix; switching to an OBJECT item
-  would render cleanly but requires a type change the platform rejects on an existing item. (b) A
+- **Open W17 defects (must be corrected, not treated as permanent limits).** (a) The installed VIEW-type
+  sidebar item renders as `<view name> · <object plural>` and carries an unwanted suffix. R1 must replace
+  this newly-added W17 item through a new stable OBJECT item and retire only the incorrect item. (b) A
   record-page FRONT_COMPONENT widget mounts only when its tab is actually activated (the tab is
   reached by its hash URL); synthetic clicks on the tab bar's off-screen measure nodes do not switch
   tabs. (c) The sandbox exposes no API to write into a native field's caret, so the guide COPIES a
