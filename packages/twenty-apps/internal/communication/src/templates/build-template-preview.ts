@@ -3,7 +3,10 @@ import {
   interpolateTemplate,
   type TemplateInterpolationIssue,
 } from 'src/templates/interpolate-template';
-import { type TemplateRecipientData } from 'src/templates/template-variable-catalog';
+import {
+  type TemplateValueMap,
+  type TemplateVariableCatalog,
+} from 'src/templates/template-variable-catalog';
 
 export type TemplateRecipientPreview = {
   personId: string;
@@ -35,34 +38,31 @@ export type TemplatePreview = {
 };
 
 /**
- * Builds a per-recipient preview. Recipient data is resolved on the server and
- * passed in; this function never reads a record and never authorizes anything,
- * so the frontend can render the result but cannot be the authority for
- * recipient access or template evaluation.
+ * Builds a per-recipient preview. The values were resolved on the SERVER from
+ * the authorized records (see `resolve-template-values.ts`) and the catalog is
+ * the same server-authoritative one the picker shows; this function never reads
+ * a record and never authorizes anything, so the frontend can render the result
+ * but cannot be the authority for recipient access or template evaluation.
  */
 export const buildTemplatePreview = ({
   body,
   recipients,
-  recipientData,
+  valuesByPersonId,
+  catalog,
 }: {
   body: string;
   recipients: BulkRecipient[];
-  recipientData: Map<string, TemplateRecipientData>;
+  valuesByPersonId: Map<string, TemplateValueMap>;
+  catalog: TemplateVariableCatalog;
 }): TemplatePreview => {
   // An empty (or whitespace-only) body is never a message: every recipient is
   // reported as not ready, regardless of phone or variables.
   const isBodyEmpty = body.trim().length === 0;
 
   const previews: TemplateRecipientPreview[] = recipients.map((recipient) => {
-    const data = recipientData.get(recipient.personId) ?? {
-      firstName: null,
-      lastName: null,
-      fullName: null,
-      jobTitle: null,
-      companyName: null,
-    };
+    const values = valuesByPersonId.get(recipient.personId) ?? new Map();
 
-    const interpolated = interpolateTemplate({ body, recipient: data });
+    const interpolated = interpolateTemplate({ body, values, catalog });
     const hasPhone = recipient.selectedPhone !== null;
 
     return {

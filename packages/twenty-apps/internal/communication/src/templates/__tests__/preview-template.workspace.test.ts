@@ -4,6 +4,7 @@ import {
   previewTemplate,
   readPhoneOverrides,
 } from 'src/templates/preview-template.service';
+import { createFakeMetadataClient } from 'src/templates/__tests__/catalog-fixture';
 
 // Every recipient value the preview uses comes from the workspace-scoped read.
 // A Person id that belongs to another workspace is simply not returned by the
@@ -35,6 +36,7 @@ describe('previewTemplate workspace separation', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'سلام @name',
       personIds: ['mine', 'foreign'],
       phoneOverrides: {},
@@ -58,6 +60,7 @@ describe('previewTemplate workspace separation', () => {
 
     await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'x',
       personIds: ['mine'],
       phoneOverrides: {},

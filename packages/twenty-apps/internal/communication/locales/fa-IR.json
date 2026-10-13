@@ -38,7 +38,7 @@
   },
   "objectMetadata.labelPlural": {
     "Communications": "ارتباطات",
-    "Message templates": "الگوهای پیام"
+    "SMS templates": "الگوهای پیامک"
   },
   "objectMetadata.description": {
     "One outbound communication, independent of the channel or provider it travels through.": "یک ارتباط خروجی، مستقل از کانال یا سرویس‌دهنده‌ای که از آن ارسال می‌شود.",
@@ -185,5 +185,14 @@
   "Copied": "کپی شد",
   "Variable copied": "متغیر کپی شد",
   "The six legacy names (@name, @firstName, @lastName, @fullName, @company, @companyName) keep working and mean the same as their new form.": "شش نام قدیمی (@name، @firstName، @lastName، @fullName، @company، @companyName) همچنان کار می‌کنند و همان معنای شکل جدید را دارند.",
-  "The message contains a variable that could not be resolved for this recipient.": "پیام حاوی متغیری است که برای این گیرنده قابل جای‌گذاری نبود."
+  "The message contains a variable that could not be resolved for this recipient.": "پیام حاوی متغیری است که برای این گیرنده قابل جای‌گذاری نبود.",
+  "Loading variables…": "در حال دریافت متغیرها…",
+  "Unable to load variables.": "دریافت متغیرها ناموفق بود.",
+  "No usable variables were found.": "متغیر قابل استفاده‌ای یافت نشد.",
+  "Job Title": "عنوان شغلی",
+  "Emails": "ایمیل‌ها",
+  "LinkedIn": "لینکدین",
+  "Domain Name": "نام دامنه",
+  "Annual Revenue": "درآمد سالانه",
+  "Loyalty Tier": "سطح باشگاه مشتریان"
 }

@@ -12,8 +12,13 @@ import {
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
-import { TEMPLATE_VARIABLES } from 'src/templates/template-variable-catalog';
-
+import { buildTemplateCatalogFromMetadata } from 'src/templates/build-template-catalog';
+import { findTemplateVariable } from 'src/templates/template-variable-catalog';
+import {
+  fixtureCatalogTokens,
+  templateMetadataObjects,
+  unrestrictedPermissions,
+} from 'src/templates/__tests__/catalog-fixture';
 // Locks the W15-A template contract on the real production modules:
 //  - templates are a NATIVE app object (no parallel storage),
 //  - the object is hand-authored through the generic UI (workspace CRUD),
@@ -106,50 +111,54 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
   });
 });
 
-describe('the template variable catalog is explicit and closed (W15-A/W17)', () => {
-  it('offers exactly the authorized variables, namespaced to their record', () => {
-    // W17 namespaces the canonical tokens and adds @person.jobTitle. The six
-    // pre-W17 aliases are kept (see the catalog test) so saved templates work.
-    expect(TEMPLATE_VARIABLES.map((variable) => variable.token)).toEqual([
-      'person.firstName',
-      'person.lastName',
-      'person.fullName',
-      'person.jobTitle',
-      'company.name',
+describe('the template variable catalog is runtime and permission-aware (W17/W17-R1)', () => {
+  it('derives its entries from workspace metadata, namespaced to their record', () => {
+    // No static list any more: the catalog is assembled from the workspace's
+    // object/field metadata (see `build-template-catalog.ts`), so this contract
+    // locks the SHAPE rather than a hard-coded field set.
+    const catalog = buildTemplateCatalogFromMetadata({
+      objects: templateMetadataObjects,
+      permissions: unrestrictedPermissions,
+    });
+
+    expect(catalog.variables.map((variable) => variable.token)).toEqual([
+      ...fixtureCatalogTokens,
     ]);
+
+    for (const variable of catalog.variables) {
+      expect(variable.objectName === 'person' || variable.objectName === 'company').toBe(true);
+      expect(typeof variable.fieldName).toBe('string');
+      expect(variable.fieldName.length).toBeGreaterThan(0);
+    }
   });
 
   it('keeps the six legacy aliases resolving to the same definitions', () => {
-    const aliasesByToken = new Map(
-      TEMPLATE_VARIABLES.map((variable) => [variable.token, variable.aliases]),
-    );
+    const catalog = buildTemplateCatalogFromMetadata({
+      objects: templateMetadataObjects,
+      permissions: unrestrictedPermissions,
+    });
 
-    expect(aliasesByToken.get('person.firstName')).toEqual([
-      'name',
-      'firstName',
-    ]);
-    expect(aliasesByToken.get('person.lastName')).toEqual(['lastName']);
-    expect(aliasesByToken.get('person.fullName')).toEqual(['fullName']);
-    expect(aliasesByToken.get('company.name')).toEqual([
-      'company',
-      'companyName',
-    ]);
+    const aliases: [string, string][] = [
+      ['name', 'person.firstName'],
+      ['firstName', 'person.firstName'],
+      ['lastName', 'person.lastName'],
+      ['fullName', 'person.fullName'],
+      ['company', 'company.name'],
+      ['companyName', 'company.name'],
+    ];
+
+    for (const [alias, canonical] of aliases) {
+      expect(findTemplateVariable(catalog, alias)?.token).toBe(canonical);
+    }
   });
 
   it('translates every variable picker label in the front-component catalog', () => {
-    for (const variable of TEMPLATE_VARIABLES) {
-      const translation = catalog[variable.label];
-
-      expect(
-        typeof translation === 'string' && translation.length > 0,
-        variable.label,
-      ).toBe(true);
-    }
-
+    // The labels for the FULL_NAME subfields and the Company name are FIXED
+    // source strings (so they translate); other labels come from the field's own
+    // workspace label.
     expect(catalog['First name']).toBe('نام');
     expect(catalog['Last name']).toBe('نام خانوادگی');
     expect(catalog['Full name']).toBe('نام کامل');
-    expect(catalog['Job title']).toBe('عنوان شغلی');
     expect(catalog['Company name']).toBe('نام شرکت');
   });
 });

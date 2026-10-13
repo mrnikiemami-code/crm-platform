@@ -30,7 +30,7 @@ export default defineObject({
   nameSingular: 'messageTemplate',
   namePlural: 'messageTemplates',
   labelSingular: 'Message template',
-  labelPlural: 'Message templates',
+  labelPlural: 'SMS templates',
   description:
     'A reusable message body with @variable placeholders, owned by this workspace.',
   icon: 'IconTemplate',

@@ -1,0 +1,517 @@
+import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
+
+import { APPLICATION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import {
+  buildTemplateVariableCatalog,
+  type TemplateObjectName,
+  type TemplateValueKind,
+  type TemplateVariableCatalog,
+  type TemplateVariableDefinition,
+} from 'src/templates/template-variable-catalog';
+
+// Builds the template variable catalog from the workspace's OWN metadata.
+//
+// This replaces the former hard-coded catalog: the available tokens are the
+// fields that actually exist on Person and Company in THIS workspace, including
+// custom fields, filtered to a safe scalar shape and to what the app's role may
+// read. The same catalog feeds the template Variables page, preview, the single
+// send and the bulk send.
+//
+// Security model (three layers, all server-side):
+//  1. TYPE allow-list — only closed scalar shapes with a defined text extractor
+//     are admitted. Relations, files, addresses, phones, arrays, actors, rich
+//     text, raw JSON, positions, search vectors and UUIDs are never exposed, so
+//     there is no collection, file or complex value to leak.
+//  2. NAME filtering — system/audit fields and anything matching a
+//     secret-looking name are excluded even when their type would be allowed.
+//  3. PERMISSIONS — the app's own execution role is read from metadata and any
+//     object it cannot read, any explicitly restricted field, and any field
+//     whose `canReadFieldValue` is false are excluded.
+//
+// The catalog only ever yields an `objectName` + `fieldName` (+ `subFieldName`)
+// pair that was read from metadata; a record read is built from those names and
+// nothing else, so client-supplied token text can never become a selection.
+
+// Types admitted into the catalog, mapped to their text-extraction kind. Every
+// other FieldMetadataType is deliberately absent.
+const SAFE_SCALAR_KIND_BY_TYPE: Record<string, TemplateValueKind> = {
+  TEXT: 'TEXT',
+  NUMBER: 'NUMBER',
+  NUMERIC: 'NUMBER',
+  BOOLEAN: 'BOOLEAN',
+  DATE: 'DATE',
+  DATE_TIME: 'DATE',
+  SELECT: 'SELECT',
+  MULTI_SELECT: 'MULTI_SELECT',
+  RATING: 'RATING',
+  CURRENCY: 'CURRENCY',
+  LINKS: 'LINKS',
+  EMAILS: 'EMAILS',
+};
+
+// Audit/system fields that would otherwise pass the type filter.
+const BLOCKED_FIELD_NAMES = new Set([
+  'id',
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+  'avatarUrl',
+  'searchVector',
+]);
+
+// A field whose NAME looks like a credential is never exposed, whatever its
+// type or its permissions say.
+const SECRET_FIELD_NAME_PATTERN =
+  /(secret|password|passcode|token|apikey|api_key|credential|private_?key|access_?key)/i;
+
+// A GraphQL selection key must be a plain identifier. A metadata field name
+// that is not one is skipped rather than quoted or escaped.
+const SAFE_FIELD_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
+
+// The six legacy aliases, attached to the canonical definitions that replaced
+// them. Saved templates that use the old names keep resolving to the SAME value.
+const LEGACY_FIRST_NAME_ALIASES = ['name', 'firstName'] as const;
+const LEGACY_LAST_NAME_ALIASES = ['lastName'] as const;
+const LEGACY_FULL_NAME_ALIASES = ['fullName'] as const;
+const LEGACY_COMPANY_NAME_ALIASES = ['company', 'companyName'] as const;
+
+/** The subset of object metadata this builder needs. */
+export type TemplateMetadataField = {
+  id: string;
+  name: string;
+  type: string;
+  label: string;
+  isActive: boolean;
+  isSystem: boolean;
+};
+
+export type TemplateMetadataObject = {
+  id: string;
+  nameSingular: string;
+  fields: TemplateMetadataField[];
+};
+
+/** The app execution role's permission projection. */
+export type TemplatePermissionSnapshot = {
+  /** True when the role is not restricted per object. */
+  canReadAllObjectRecords: boolean;
+  /** Objects the role may not read, or whose fields are restricted. */
+  objectPermissions: {
+    objectMetadataId: string;
+    canReadObjectRecords: boolean | undefined;
+    restrictedFieldNames: string[];
+    restrictedFieldMetadataIds: string[];
+  }[];
+  /** Fields the role may not read, by field metadata id. */
+  unreadableFieldMetadataIds: string[];
+};
+
+// `restrictedFields` is a JSON column; its exact shape is a platform detail, so
+// it is read defensively: entries may be plain field names or objects carrying
+// a name / field metadata id.
+const readRestrictedFields = (
+  value: unknown,
+): { names: string[]; ids: string[] } => {
+  const names: string[] = [];
+  const ids: string[] = [];
+
+  if (!Array.isArray(value)) {
+    return { names, ids };
+  }
+
+  for (const entry of value) {
+    if (typeof entry === 'string') {
+      names.push(entry);
+      continue;
+    }
+
+    if (entry !== null && typeof entry === 'object') {
+      const record = entry as Record<string, unknown>;
+
+      if (typeof record.name === 'string') {
+        names.push(record.name);
+      }
+
+      const id = record.fieldMetadataId ?? record.id;
+
+      if (typeof id === 'string') {
+        ids.push(id);
+      }
+    }
+  }
+
+  return { names, ids };
+};
+
+const isSafeField = (
+  field: TemplateMetadataField,
+  allowedNames: Set<string>,
+): boolean => {
+  if (!field.isActive) {
+    return false;
+  }
+
+  if (!SAFE_FIELD_NAME_PATTERN.test(field.name)) {
+    return false;
+  }
+
+  if (BLOCKED_FIELD_NAMES.has(field.name)) {
+    return false;
+  }
+
+  if (SECRET_FIELD_NAME_PATTERN.test(field.name)) {
+    return false;
+  }
+
+  return allowedNames.has(field.type);
+};
+
+/**
+ * Builds the catalog. PURE: metadata and permissions are passed in, so the
+ * selection rules can be tested without a workspace.
+ *
+ * `permissions` may be `null`, meaning the role could NOT be read. That is not
+ * treated as "allow everything" by the object layer (a `null` snapshot still
+ * applies every type/name rule), and it is never the authority for access: the
+ * platform's own record-level permissions govern the actual read, so a field a
+ * caller may not read resolves to empty and blocks that recipient.
+ */
+export const buildTemplateCatalogFromMetadata = ({
+  objects,
+  permissions,
+}: {
+  objects: readonly TemplateMetadataObject[];
+  permissions: TemplatePermissionSnapshot | null;
+}): TemplateVariableCatalog => {
+  const objectByName = new Map(
+    objects.map((object) => [object.nameSingular, object]),
+  );
+
+  const objectDeniedByName = new Map<string, boolean>();
+  const restrictedNamesByObjectId = new Map<string, Set<string>>();
+  const restrictedIdsByObjectId = new Map<string, Set<string>>();
+
+  for (const permission of permissions?.objectPermissions ?? []) {
+    objectDeniedByName.set(
+      permission.objectMetadataId,
+      permission.canReadObjectRecords === false,
+    );
+
+    if (permission.restrictedFieldNames.length > 0) {
+      restrictedNamesByObjectId.set(
+        permission.objectMetadataId,
+        new Set(permission.restrictedFieldNames),
+      );
+    }
+
+    if (permission.restrictedFieldMetadataIds.length > 0) {
+      restrictedIdsByObjectId.set(
+        permission.objectMetadataId,
+        new Set(permission.restrictedFieldMetadataIds),
+      );
+    }
+  }
+
+  const unreadableFieldIds = new Set(
+    permissions?.unreadableFieldMetadataIds ?? [],
+  );
+
+  const isObjectReadable = (objectId: string): boolean =>
+    objectDeniedByName.get(objectId) !== true;
+
+  const buildEntriesFor = (
+    objectName: TemplateObjectName,
+  ): TemplateVariableDefinition[] => {
+    const object = objectByName.get(objectName);
+
+    if (object === undefined || !isObjectReadable(object.id)) {
+      return [];
+    }
+
+    const restrictedNames = restrictedNamesByObjectId.get(object.id);
+    const restrictedIds = restrictedIdsByObjectId.get(object.id);
+    const allowedNames = new Set(Object.keys(SAFE_SCALAR_KIND_BY_TYPE));
+
+    const entries: TemplateVariableDefinition[] = [];
+
+    for (const field of object.fields) {
+      if (!isSafeField(field, allowedNames)) {
+        continue;
+      }
+
+      if (restrictedNames?.has(field.name) === true) {
+        continue;
+      }
+
+      if (restrictedIds?.has(field.id) === true) {
+        continue;
+      }
+
+      if (unreadableFieldIds.has(field.id)) {
+        continue;
+      }
+
+      const kind = SAFE_SCALAR_KIND_BY_TYPE[field.type];
+
+      entries.push({
+        token: `${objectName}.${field.name}`,
+        aliases:
+          objectName === 'company' && field.name === 'name'
+            ? LEGACY_COMPANY_NAME_ALIASES
+            : [],
+        label:
+          objectName === 'company' && field.name === 'name'
+            ? 'Company name'
+            : field.label,
+        objectName,
+        fieldName: field.name,
+        kind,
+      });
+    }
+
+    return entries;
+  };
+
+  const personObject = objectByName.get('person');
+  const personReadable = personObject !== undefined && isObjectReadable(personObject.id);
+  const personRestrictedNames =
+    personObject === undefined
+      ? undefined
+      : restrictedNamesByObjectId.get(personObject.id);
+  const personRestrictedIds =
+    personObject === undefined
+      ? undefined
+      : restrictedIdsByObjectId.get(personObject.id);
+
+  const personEntries = buildEntriesFor('person');
+  const companyEntries = buildEntriesFor('company');
+
+  // The Person's own full name is exposed as the familiar three tokens, which
+  // also carry the legacy aliases. They are derived from the workspace's
+  // FULL_NAME field; if the workspace has none, or the field is unreadable or
+  // restricted, the three tokens are simply absent.
+  const fullNameField = personObject?.fields.find(
+    (field) => field.type === 'FULL_NAME',
+  );
+
+  const isFullNameFieldUsable =
+    personReadable &&
+    fullNameField !== undefined &&
+    personRestrictedNames?.has(fullNameField.name) !== true &&
+    personRestrictedIds?.has(fullNameField.id) !== true &&
+    !unreadableFieldIds.has(fullNameField.id);
+
+  const fullNameEntries: TemplateVariableDefinition[] = isFullNameFieldUsable
+    ? [
+        {
+          token: 'person.firstName',
+          aliases: LEGACY_FIRST_NAME_ALIASES,
+          label: 'First name',
+          objectName: 'person',
+          fieldName: fullNameField!.name,
+          subFieldName: 'firstName',
+          kind: 'FULL_NAME',
+        },
+        {
+          token: 'person.lastName',
+          aliases: LEGACY_LAST_NAME_ALIASES,
+          label: 'Last name',
+          objectName: 'person',
+          fieldName: fullNameField!.name,
+          subFieldName: 'lastName',
+          kind: 'FULL_NAME',
+        },
+        {
+          token: 'person.fullName',
+          aliases: LEGACY_FULL_NAME_ALIASES,
+          label: 'Full name',
+          objectName: 'person',
+          fieldName: fullNameField!.name,
+          subFieldName: 'fullName',
+          kind: 'FULL_NAME',
+        },
+      ]
+    : [];
+
+  // A FULL_NAME field never reaches `personEntries` (its type is not in the
+  // scalar allow-list), so everything there is already a flat scalar.
+  return buildTemplateVariableCatalog([
+    ...fullNameEntries,
+    ...personEntries,
+    ...companyEntries,
+  ]);
+};
+
+// --- the runtime readers -----------------------------------------------------
+
+type RawMetadataField = {
+  id?: string | null;
+  name?: string | null;
+  type?: string | null;
+  label?: string | null;
+  isActive?: boolean | null;
+  isSystem?: boolean | null;
+};
+
+type RawMetadataObject = {
+  id?: string | null;
+  nameSingular?: string | null;
+  fieldsList?: RawMetadataField[] | null;
+};
+
+/** Reads the workspace object/field metadata through the metadata API. */
+export const readTemplateMetadataObjects = async ({
+  metadataClient,
+}: {
+  metadataClient: Pick<MetadataApiClient, 'query'>;
+}): Promise<TemplateMetadataObject[]> => {
+  const result = await metadataClient.query({
+    objects: {
+      __args: { paging: { first: 200 }, filter: {} },
+      edges: {
+        node: {
+          id: true,
+          nameSingular: true,
+          fieldsList: {
+            id: true,
+            name: true,
+            type: true,
+            label: true,
+            isActive: true,
+            isSystem: true,
+          },
+        },
+      },
+    },
+  });
+
+  const nodes: RawMetadataObject[] =
+    (result.objects?.edges ?? [])
+      .map((edge) => edge?.node as RawMetadataObject | null | undefined)
+      .filter(
+        (node): node is RawMetadataObject => node !== null && node !== undefined,
+      );
+
+  return nodes
+    .filter(
+      (node): node is RawMetadataObject & {
+        id: string;
+        nameSingular: string;
+      } =>
+        typeof node.id === 'string' && typeof node.nameSingular === 'string',
+    )
+    .map((node) => ({
+      id: node.id,
+      nameSingular: node.nameSingular,
+      fields: (node.fieldsList ?? [])
+        .filter(
+          (field): field is RawMetadataField & {
+            id: string;
+            name: string;
+            type: string;
+          } =>
+            typeof field.id === 'string' &&
+            typeof field.name === 'string' &&
+            typeof field.type === 'string',
+        )
+        .map((field) => ({
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          label: typeof field.label === 'string' ? field.label : field.name,
+          isActive: field.isActive !== false,
+          isSystem: field.isSystem === true,
+        })),
+    }));
+};
+
+/**
+ * Reads the APP EXECUTION ROLE's permissions.
+ *
+ * The role is read as part of the app's OWN `Application` record
+ * (`defaultLogicFunctionRole`), not from the settings-scoped `getRoles` list:
+ * that is the role the app's record reads actually run as, AND it is readable
+ * with the app's own token, so the restriction is genuinely enforced rather
+ * than assumed. If the read fails the caller passes `null` and only the
+ * type/name rules apply — the platform's record-level permissions stay the
+ * authority for what a read returns.
+ */
+export const readTemplatePermissions = async ({
+  metadataClient,
+}: {
+  metadataClient: Pick<MetadataApiClient, 'query'>;
+}): Promise<TemplatePermissionSnapshot> => {
+  const result = await metadataClient.query({
+    findOneApplication: {
+      __args: { universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER },
+      defaultLogicFunctionRole: {
+        id: true,
+        universalIdentifier: true,
+        canReadAllObjectRecords: true,
+        objectPermissions: {
+          objectMetadataId: true,
+          canReadObjectRecords: true,
+          restrictedFields: true,
+        },
+        fieldPermissions: {
+          fieldMetadataId: true,
+          canReadFieldValue: true,
+        },
+      },
+    },
+  });
+
+  const role = result.findOneApplication?.defaultLogicFunctionRole;
+
+  if (role === undefined || role === null) {
+    // No role found must never mean "allow everything": an empty snapshot with
+    // canReadAllObjectRecords false denies every object explicitly.
+    return {
+      canReadAllObjectRecords: false,
+      objectPermissions: [],
+      unreadableFieldMetadataIds: [],
+    };
+  }
+
+  return {
+    canReadAllObjectRecords: role.canReadAllObjectRecords === true,
+    objectPermissions: (role.objectPermissions ?? []).map((permission) => {
+      const restricted = readRestrictedFields(permission.restrictedFields);
+
+      return {
+        objectMetadataId: permission.objectMetadataId,
+        canReadObjectRecords: permission.canReadObjectRecords ?? undefined,
+        restrictedFieldNames: restricted.names,
+        restrictedFieldMetadataIds: restricted.ids,
+      };
+    }),
+    unreadableFieldMetadataIds: (role.fieldPermissions ?? [])
+      .filter((permission) => permission.canReadFieldValue === false)
+      .map((permission) => permission.fieldMetadataId),
+  };
+};
+
+/**
+ * The single server-authoritative entry point every consumer uses.
+ *
+ * The OBJECT/FIELD metadata read is FATAL when it fails (an empty catalog is the
+ * safe answer: every token then reads as unknown and blocks the recipient
+ * instead of a placeholder being sent). The ROLE read is NOT fatal: an app
+ * execution role may not expose `getRoles`, and a workspace where the role
+ * cannot be read must still get a working catalog. In that case only the
+ * type/name rules apply and the platform's own record-level permissions remain
+ * the authority for what a read actually returns.
+ */
+export const buildAuthorizedTemplateCatalog = async ({
+  metadataClient,
+}: {
+  metadataClient: Pick<MetadataApiClient, 'query'>;
+}): Promise<TemplateVariableCatalog> => {
+  const objects = await readTemplateMetadataObjects({ metadataClient });
+
+  const permissions = await readTemplatePermissions({ metadataClient }).catch(
+    () => null,
+  );
+
+  return buildTemplateCatalogFromMetadata({ objects, permissions });
+};

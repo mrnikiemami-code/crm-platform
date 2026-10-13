@@ -2,7 +2,6 @@ import { type CoreApiClient } from 'twenty-client-sdk/core';
 
 import { type BulkPersonRecord } from 'src/bulk/resolve-bulk-recipients';
 import { type PersonPhones } from 'src/logic-functions/types/person-phone.type';
-import { type TemplateRecipientData } from 'src/templates/template-variable-catalog';
 
 // The connection node shape this read relies on. The generated client schema is
 // intentionally untyped (`CoreSchema = {}`), so the node is typed locally from
@@ -72,25 +71,4 @@ export const findPersonsForBulk = async ({
       company: node.company ?? null,
       phones: node.phones ?? null,
     }));
-};
-
-// Maps a fetched Person onto the closed recipient-data shape the interpolation
-// engine consumes. Only allow-listed fields are exposed; nothing else on the
-// record can be referenced by a template.
-export const toTemplateRecipientData = (
-  record: BulkPersonRecord,
-): TemplateRecipientData => {
-  const firstName = record.name?.firstName?.trim() ?? '';
-  const lastName = record.name?.lastName?.trim() ?? '';
-  const fullNameParts = [firstName, lastName].filter(
-    (part) => part.length > 0,
-  );
-
-  return {
-    firstName: firstName.length > 0 ? firstName : null,
-    lastName: lastName.length > 0 ? lastName : null,
-    fullName: fullNameParts.length > 0 ? fullNameParts.join(' ') : null,
-    jobTitle: record.jobTitle?.trim() || null,
-    companyName: record.company?.name?.trim() || null,
-  };
 };

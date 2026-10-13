@@ -5,6 +5,7 @@ import {
   normalizePersonIds,
 } from 'src/bulk/list-bulk-recipients.service';
 import { previewTemplate } from 'src/templates/preview-template.service';
+import { createFakeMetadataClient } from 'src/templates/__tests__/catalog-fixture';
 
 type FakeNode = {
   id: string;
@@ -139,6 +140,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'سلام @name از @company',
       personIds: ['p1', 'p2'],
       phoneOverrides: {},
@@ -170,6 +172,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'سلام @name از @company',
       personIds: ['p1'],
       phoneOverrides: {},
@@ -197,6 +200,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'یک پیام ساده',
       personIds: ['p1'],
       phoneOverrides: { p1: '09999999999' },
@@ -228,6 +232,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'یک پیام ساده',
       personIds: ['p1'],
       phoneOverrides: { p1: '09350000001' },
@@ -249,6 +254,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'یک پیام ساده',
       personIds: ['p1'],
       phoneOverrides: { p1: '' },
@@ -273,6 +279,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'یک پیام ساده',
       personIds: ['p1'],
       phoneOverrides: { p1: 12345 },
@@ -299,6 +306,7 @@ describe('previewTemplate', () => {
     // p1 has no key (keeps its primary); p2 has an invalid override.
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'یک پیام ساده',
       personIds: ['p1', 'p2'],
       phoneOverrides: { p2: '09999999999' },
@@ -333,6 +341,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: 'یک پیام ساده',
       personIds: ['p1', 'p2'],
       phoneOverrides: { p1: '09999999999', p2: '09350000002' },
@@ -362,6 +371,7 @@ describe('previewTemplate', () => {
     for (const body of ['', '   ', '\n\t ']) {
       const result = await previewTemplate({
         client,
+        metadataClient: createFakeMetadataClient() as never,
         body,
         personIds: ['p1'],
         phoneOverrides: {},
@@ -394,6 +404,7 @@ describe('previewTemplate', () => {
     // Without an override the two people use different numbers.
     const before = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: '@name',
       personIds: ['p1', 'p2'],
       phoneOverrides: {},
@@ -409,6 +420,7 @@ describe('previewTemplate', () => {
     // must report because it recomputes after applying overrides.
     const after = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: '@name',
       personIds: ['p1', 'p2'],
       phoneOverrides: { p1: '09120000002' },
@@ -430,6 +442,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: '@name',
       personIds: ['p1', 'p1', 'p1'],
       phoneOverrides: {},
@@ -448,6 +461,7 @@ describe('previewTemplate', () => {
 
     const result = await previewTemplate({
       client,
+      metadataClient: createFakeMetadataClient() as never,
       body: '@name',
       personIds: tooMany,
       phoneOverrides: {},

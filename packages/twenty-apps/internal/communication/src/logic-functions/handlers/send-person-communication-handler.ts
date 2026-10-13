@@ -1,5 +1,6 @@
 import { isNonEmptyString } from '@sniptt/guards';
 import { CoreApiClient } from 'twenty-client-sdk/core';
+import { MetadataApiClient } from 'twenty-client-sdk/metadata';
 
 import { findPersonPhoneOptions } from 'src/logic-functions/data/find-person-phone-options';
 import {
@@ -16,8 +17,9 @@ import {
   CommunicationUnexpectedSendFailureError,
 } from 'src/services/communication-send-and-persist.service';
 import { CommunicationSendService } from 'src/services/communication-send.service';
-import { findRecipientTemplateData } from 'src/templates/data/find-recipient-template-data';
+import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
 import { interpolateTemplate } from 'src/templates/interpolate-template';
+import { resolveTemplateValues } from 'src/templates/resolve-template-values';
 
 export type SendPersonCommunicationParameters = {
   personId: string;
@@ -40,6 +42,11 @@ export type SendPersonCommunicationDependencies = {
    * live workspace.
    */
   client?: CoreApiClient;
+  /**
+   * Metadata API client used to build the permission-aware template catalog.
+   * Defaults to the app runtime's `MetadataApiClient`; tests inject a fake.
+   */
+  metadataClient?: Pick<MetadataApiClient, 'query'>;
   /** Provider registry override; tests inject stub providers. */
   registry?: ReturnType<typeof createCommunicationProviderRegistry>;
 };
@@ -99,22 +106,30 @@ export const sendPersonCommunicationHandler = async (
   }
 
   // Resolve any template variables SERVER-SIDE, against the authorized Person
-  // fields just re-read here. The client's body may contain literal `@token`
-  // placeholders; those are substituted here and NEVER sent literally. An
-  // unknown or empty variable blocks the send with a stable classification, so
-  // a recipient is never messaged with an unresolved token.
-  const recipientData = await findRecipientTemplateData({
-    client,
-    personId: parameters.personId,
+  // fields re-read here through the workspace-scoped client. The client's body
+  // may contain literal `@token` placeholders; those are substituted here and
+  // NEVER sent literally. The catalog is the same metadata-driven, permission-
+  // aware one the manager and preview use, so the send path can never accept a
+  // token the manager would not advertise. An unknown or empty variable blocks
+  // the send with a stable classification.
+  const catalog = await buildAuthorizedTemplateCatalog({
+    metadataClient: dependencies.metadataClient ?? new MetadataApiClient(),
   });
 
-  if (recipientData === null) {
+  const resolved = await resolveTemplateValues({
+    client,
+    personId: parameters.personId,
+    catalog,
+  });
+
+  if (!resolved.isAccessible) {
     return fail('Person not found or not accessible.', 'PERSON_NOT_ACCESSIBLE');
   }
 
   const interpolation = interpolateTemplate({
     body: parameters.body,
-    recipient: recipientData,
+    values: resolved.values,
+    catalog,
   });
 
   if (interpolation.hasUnresolvedVariables) {

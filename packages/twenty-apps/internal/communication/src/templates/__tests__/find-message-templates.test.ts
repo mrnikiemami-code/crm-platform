@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { buildTemplateCatalogFromMetadata } from 'src/templates/build-template-catalog';
 import { findMessageTemplates } from 'src/templates/data/find-message-templates';
 import {
   findTemplateVariable,
   listTemplateVariables,
 } from 'src/templates/template-variable-catalog';
+import {
+  templateMetadataObjects,
+  unrestrictedPermissions,
+} from 'src/templates/__tests__/catalog-fixture';
 
 // A fake workspace API client. Every read the app performs for templates goes
 // through this client, so a template can only ever come from the current
@@ -70,19 +75,40 @@ describe('findMessageTemplates (native workspace path)', () => {
 });
 
 describe('listTemplateVariables', () => {
-  it('exposes only tokens and labels, never a recipient value', () => {
-    const variables = listTemplateVariables();
+  const catalog = buildTemplateCatalogFromMetadata({
+    objects: templateMetadataObjects,
+    permissions: unrestrictedPermissions,
+  });
 
-    expect(variables.map((variable) => variable.token)).toEqual([
+  it('exposes only tokens and labels, never a recipient value', () => {
+    const variables = listTemplateVariables(catalog);
+
+    // Canonical tokens only, in metadata order: the FULL_NAME subfields first,
+    // then the remaining Person scalars, then the Company scalars.
+    expect(variables.slice(0, 3).map((variable) => variable.token)).toEqual([
       '@person.firstName',
       '@person.lastName',
       '@person.fullName',
-      '@person.jobTitle',
-      '@company.name',
     ]);
+    expect(variables.map((variable) => variable.token)).toContain(
+      '@person.loyaltyTier',
+    );
+    expect(variables.map((variable) => variable.token)).toContain(
+      '@company.name',
+    );
 
     for (const variable of variables) {
       expect(Object.keys(variable)).toEqual(['token', 'label']);
+    }
+  });
+
+  it('never lists an alias as its own entry', () => {
+    const tokens = listTemplateVariables(catalog).map(
+      (variable) => variable.token,
+    );
+
+    for (const alias of ['@name', '@firstName', '@companyName', '@company']) {
+      expect(tokens).not.toContain(alias);
     }
   });
 
@@ -98,14 +124,14 @@ describe('listTemplateVariables', () => {
     ];
 
     for (const [alias, canonical] of aliases) {
-      expect(findTemplateVariable(alias.slice(1))?.token).toBe(
+      expect(findTemplateVariable(catalog, alias.slice(1))?.token).toBe(
         canonical.slice(1),
       );
     }
   });
 
   it('returns null for anything outside the allow-list', () => {
-    expect(findTemplateVariable('ssn')).toBeNull();
-    expect(findTemplateVariable('person.secret')).toBeNull();
+    expect(findTemplateVariable(catalog, 'ssn')).toBeNull();
+    expect(findTemplateVariable(catalog, 'person.secret')).toBeNull();
   });
 });

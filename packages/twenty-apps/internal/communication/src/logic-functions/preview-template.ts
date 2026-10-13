@@ -1,5 +1,6 @@
 import { defineLogicFunction, type RoutePayload } from 'twenty-sdk/define';
 import { CoreApiClient } from 'twenty-client-sdk/core';
+import { MetadataApiClient } from 'twenty-client-sdk/metadata';
 
 import { normalizePersonIds } from 'src/bulk/list-bulk-recipients.service';
 import { PREVIEW_TEMPLATE_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
@@ -34,6 +35,7 @@ const handler = async (event: RoutePayload<PreviewTemplateRequest>) => {
 
   return previewTemplate({
     client: new CoreApiClient(),
+    metadataClient: new MetadataApiClient(),
     body: typeof requestBody.body === 'string' ? requestBody.body : '',
     personIds,
     phoneOverrides: readPhoneOverrides(requestBody.phoneOverrides),

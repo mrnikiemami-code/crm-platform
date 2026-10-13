@@ -1,6 +1,7 @@
 import {
   findTemplateVariable,
-  type TemplateRecipientData,
+  type TemplateValueMap,
+  type TemplateVariableCatalog,
 } from 'src/templates/template-variable-catalog';
 
 // A placeholder is `@` followed by a NAMESPACED identifier: one or more
@@ -39,9 +40,9 @@ export type TemplateInterpolationResult = {
 // Interpolates a template body for ONE recipient.
 //
 // Rules:
-//  - A placeholder in the catalog whose field has a non-empty value is
+//  - A placeholder in the catalog whose resolved value is non-empty is
 //    substituted with that value.
-//  - A placeholder in the catalog whose field is empty/null is an EMPTY_FIELD
+//  - A placeholder in the catalog whose value is empty/null is an EMPTY_FIELD
 //    issue and is left visible in the text.
 //  - A placeholder NOT in the catalog is an UNKNOWN_VARIABLE issue and is left
 //    visible in the text.
@@ -49,13 +50,16 @@ export type TemplateInterpolationResult = {
 //    the result as ready to send.
 //
 // The substitution is a plain string walk over an allow-listed identifier
-// grammar: no eval, no template engine, no dynamic property access.
+// grammar plus a Map lookup: no eval, no template engine, no dynamic property
+// access.
 export const interpolateTemplate = ({
   body,
-  recipient,
+  values,
+  catalog,
 }: {
   body: string;
-  recipient: TemplateRecipientData;
+  values: TemplateValueMap;
+  catalog: TemplateVariableCatalog;
 }): TemplateInterpolationResult => {
   const issues: TemplateInterpolationIssue[] = [];
   const seenTokens = new Set<string>();
@@ -63,7 +67,7 @@ export const interpolateTemplate = ({
   const text = body.replace(
     PLACEHOLDER_PATTERN,
     (match: string, token: string): string => {
-      const definition = findTemplateVariable(token);
+      const definition = findTemplateVariable(catalog, token);
       const tokenWithAt = `@${token}`;
 
       if (definition === null) {
@@ -75,9 +79,9 @@ export const interpolateTemplate = ({
         return match;
       }
 
-      const value = definition.read(recipient);
+      const value = values.get(definition.token);
 
-      if (value === null || value.trim().length === 0) {
+      if (value === null || value === undefined || value.trim().length === 0) {
         if (!seenTokens.has(tokenWithAt)) {
           seenTokens.add(tokenWithAt);
           issues.push({ token: tokenWithAt, kind: 'EMPTY_FIELD' });

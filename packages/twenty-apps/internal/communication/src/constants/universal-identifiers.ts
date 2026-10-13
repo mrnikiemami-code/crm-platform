@@ -123,11 +123,24 @@ export const MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER =
   'f6d4d1ff-adea-420f-aa1c-97e5d14663b1';
 
 // Template management surface (W17)
-// A sidebar entry pointing at the existing `messageTemplate` view, placed next
-// to «ارتباطات» so a workspace can find and manage its templates. It reuses the
-// SAME view/object as the composer picker — no parallel storage and no second
-// table.
+// A sidebar entry NEXT TO «ارتباطات» pointing at the workspace's
+// `messageTemplate` object, so a workspace can find and manage its templates.
+// It reuses the SAME object the composer picker reads — no parallel storage and
+// no second table.
+//
+// W17-R1: the identifier below is the OBJECT item. The W17 VIEW item (see
+// `RETIRED_MESSAGE_TEMPLATES_VIEW_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER`)
+// rendered as `<view name> · <object plural label>`, which appended an
+// unwanted suffix. An OBJECT item renders exactly the object's plural label,
+// and the platform's manifest sync CANNOT change an existing item's type, so
+// the VIEW item is retired by dropping it from the manifest and a NEW item is
+// added. This is the only metadata removal in W17-R1.
 export const MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  'd2a6e4b8-3c71-4f52-9a83-1e5b7d9f2a04';
+// RETIRED in W17-R1 (W17's VIEW item). Kept here only so the recovery document
+// and tests can name what was removed; nothing declares it any more, so the
+// platform's `inferDeletionFromMissingEntities` sync deletes that one row.
+export const RETIRED_MESSAGE_TEMPLATES_VIEW_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'a1f5c9d2-3b64-4e70-9c81-2d4f6a8b0c13';
 // The native record page for a template: title/body/channel fields plus the
 // «متغیرهای قابل استفاده» guide rendered by a front component. A page layout is

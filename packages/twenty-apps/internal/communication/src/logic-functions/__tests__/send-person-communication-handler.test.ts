@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { findPersonPhoneOptions } from 'src/logic-functions/data/find-person-phone-options';
 import { sendPersonCommunicationHandler } from 'src/logic-functions/handlers/send-person-communication-handler';
+import { createFakeMetadataClient } from 'src/templates/__tests__/catalog-fixture';
 import { CommunicationProviderRegistry } from 'src/providers/communication-provider-registry';
 import { type CommunicationProvider } from 'src/providers/types/communication-provider.type';
 import { type CommunicationSendResult } from 'src/providers/types/communication-send-result.type';
@@ -18,6 +19,8 @@ type QueryResult = {
     phones: unknown;
     name?: { firstName?: string | null; lastName?: string | null } | null;
     jobTitle?: string | null;
+    /** An example WORKSPACE CUSTOM scalar field. */
+    loyaltyTier?: string | null;
     company?: { name?: string | null } | null;
   } | null;
 };
@@ -32,7 +35,8 @@ const PERSON_WITH_PHONE: QueryResult = {
   },
 };
 
-// A person whose authorized template fields are all populated.
+// A person whose authorized template fields are all populated, including a
+// workspace CUSTOM scalar field (`loyaltyTier`).
 const PERSON_WITH_FIELDS: QueryResult = {
   person: {
     id: 'person-1',
@@ -42,6 +46,7 @@ const PERSON_WITH_FIELDS: QueryResult = {
     },
     name: { firstName: 'سارا', lastName: 'احمدی' },
     jobTitle: 'مدیر فروش',
+    loyaltyTier: 'طلایی',
     company: { name: 'شرکت الف' },
   },
 };
@@ -242,6 +247,7 @@ describe('sendPersonCommunicationHandler', () => {
     expect(
       await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
+        metadataClient: createFakeMetadataClient() as never,
       }),
     ).toEqual({
       success: false,
@@ -258,6 +264,7 @@ describe('sendPersonCommunicationHandler', () => {
     expect(
       await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
+        metadataClient: createFakeMetadataClient() as never,
       }),
     ).toEqual({
       success: false,
@@ -292,7 +299,7 @@ describe('sendPersonCommunicationHandler', () => {
 
     const result = await sendPersonCommunicationHandler(
       { ...validParameters, workspaceMemberId: 'member-1' },
-      { client: client as never, registry },
+      { client: client as never, registry, metadataClient: createFakeMetadataClient() as never },
     );
 
     expect(result).toEqual({
@@ -327,6 +334,7 @@ describe('sendPersonCommunicationHandler', () => {
 
     const result = await sendPersonCommunicationHandler(validParameters, {
       client: client as never,
+      metadataClient: createFakeMetadataClient() as never,
       registry,
     });
 
@@ -343,6 +351,7 @@ describe('sendPersonCommunicationHandler', () => {
 
     const result = await sendPersonCommunicationHandler(validParameters, {
       client: client as never,
+      metadataClient: createFakeMetadataClient() as never,
       registry,
     });
 
@@ -368,6 +377,7 @@ describe('sendPersonCommunicationHandler', () => {
 
     const result = await sendPersonCommunicationHandler(validParameters, {
       client: client as never,
+      metadataClient: createFakeMetadataClient() as never,
       registry,
     });
 
@@ -388,6 +398,7 @@ describe('sendPersonCommunicationHandler', () => {
 
     const result = await sendPersonCommunicationHandler(validParameters, {
       client: client as never,
+      metadataClient: createFakeMetadataClient() as never,
     });
 
     expect(result).toEqual({
@@ -411,6 +422,7 @@ describe('sendPersonCommunicationHandler', () => {
 
       const result = await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
+        metadataClient: createFakeMetadataClient() as never,
         registry,
       });
 
@@ -439,6 +451,7 @@ describe('sendPersonCommunicationHandler', () => {
 
       const result = await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
+        metadataClient: createFakeMetadataClient() as never,
         registry,
       });
 
@@ -465,6 +478,7 @@ describe('sendPersonCommunicationHandler', () => {
 
       const result = await sendPersonCommunicationHandler(validParameters, {
         client: client as never,
+        metadataClient: createFakeMetadataClient() as never,
         registry,
       });
 
@@ -500,7 +514,7 @@ describe('sendPersonCommunicationHandler', () => {
           ...validParameters,
           body: 'سلام @name (@company.name) — @person.jobTitle',
         },
-        { client: client as never, registry },
+        { client: client as never, registry, metadataClient: createFakeMetadataClient() as never },
       );
 
       expect(result.success).toBe(true);
@@ -515,6 +529,35 @@ describe('sendPersonCommunicationHandler', () => {
       });
     });
 
+    it('resolves a workspace CUSTOM field token from real record data', async () => {
+      const { client, mutations } = buildFakeClient({
+        queryResult: PERSON_WITH_FIELDS,
+      });
+      const { registry } = buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: '42',
+      });
+
+      const result = await sendPersonCommunicationHandler(
+        { ...validParameters, body: 'سطح باشگاه: @person.loyaltyTier' },
+        {
+          client: client as never,
+          registry,
+          metadataClient: createFakeMetadataClient() as never,
+        },
+      );
+
+      expect(result.success).toBe(true);
+
+      const created = mutations.find(
+        (mutation) => mutation.mutationName === 'createCommunication',
+      );
+
+      expect(created?.args).toMatchObject({
+        data: { body: 'سطح باشگاه: طلایی' },
+      });
+    });
+
     it('never sends a literal token when a variable is unknown', async () => {
       const { client, mutations } = buildFakeClient({
         queryResult: PERSON_WITH_FIELDS,
@@ -526,7 +569,7 @@ describe('sendPersonCommunicationHandler', () => {
 
       const result = await sendPersonCommunicationHandler(
         { ...validParameters, body: 'سلام @name @ssn' },
-        { client: client as never, registry },
+        { client: client as never, registry, metadataClient: createFakeMetadataClient() as never },
       );
 
       expect(result).toEqual({
@@ -553,7 +596,7 @@ describe('sendPersonCommunicationHandler', () => {
 
       const result = await sendPersonCommunicationHandler(
         { ...validParameters, body: 'از @company.name' },
-        { client: client as never, registry },
+        { client: client as never, registry, metadataClient: createFakeMetadataClient() as never },
       );
 
       expect(result).toEqual({
@@ -578,7 +621,7 @@ describe('sendPersonCommunicationHandler', () => {
 
       await sendPersonCommunicationHandler(
         { ...validParameters, body: 'یک پیام ساده' },
-        { client: client as never, registry },
+        { client: client as never, registry, metadataClient: createFakeMetadataClient() as never },
       );
 
       const created = mutations.find(

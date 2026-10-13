@@ -1,103 +1,91 @@
-// The authorized recipient fields a template may reference. This is the ONLY
-// data shape the interpolation engine ever sees: it is built server-side from
-// the Person fields the workspace is permitted to read, so a template can never
-// traverse into an arbitrary record or another workspace's data.
-//
-// The shape is CLOSED and FLAT on purpose. There is no nested object, no
-// relation and no arbitrary property: a template token resolves through one of
-// the typed accessors in the catalog below, never through dynamic lookup. A new
-// readable field is added by adding one property here AND one definition below.
-export type TemplateRecipientData = {
-  firstName: string | null;
-  lastName: string | null;
-  fullName: string | null;
-  /** Person's job title — a readable scalar field of the Person. */
-  jobTitle: string | null;
-  /** The Person's Company name — a readable scalar field of the Company. */
-  companyName: string | null;
-};
+// The template-variable catalog. It is NOT a static list of fields any more:
+// it is assembled at RUNTIME from the workspace's own object/field metadata (see
+// `build-template-catalog.ts`). This module owns only the SHAPE and the pure
+// lookups, so the same catalog object can be used by every consumer — the
+// template Variables page, preview interpolation, the single send and the bulk
+// send — and they cannot drift.
 
-// A variable definition. `token` is the canonical `@name` without the leading
-// `@`; `aliases` are alternative spellings that resolve to the SAME value.
-// `read` is a closed, typed accessor — there is deliberately no dynamic
-// property lookup, no eval, and no SQL: adding a variable means adding one
-// entry to the catalog below.
-//
-// The canonical tokens are NAMESPACED (`person.*` / `company.*`) so the catalog
-// reads as the record it belongs to, while the six legacy aliases (`@name`,
-// `@firstName`, `@lastName`, `@fullName`, `@company`, `@companyName`) keep
-// resolving to the exact same values so saved templates never break.
+/** The two objects a template may read from. A closed set. */
+export type TemplateObjectName = 'person' | 'company';
+
+/**
+ * How a raw metadata value becomes text. This is a CLOSED set: adding a type
+ * means adding one extractor in `extract-template-value.ts`, never an eval, an
+ * arbitrary property path or a dynamic lookup.
+ */
+export type TemplateValueKind =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'BOOLEAN'
+  | 'DATE'
+  | 'SELECT'
+  | 'MULTI_SELECT'
+  | 'RATING'
+  | 'CURRENCY'
+  | 'LINKS'
+  | 'EMAILS'
+  /** A FULL_NAME field, exposed as three tokens via `subFieldName`. */
+  | 'FULL_NAME';
+
+/**
+ * One catalog entry. `token` is the canonical `@`-less token; `aliases` are
+ * alternative spellings that resolve to the SAME definition (the six legacy
+ * names); `objectName` + `fieldName` (+ optional `subFieldName`) are the ONLY
+ * data ever used to build a record read, and both come from server-side
+ * metadata — never from client input.
+ */
 export type TemplateVariableDefinition = {
   token: string;
   aliases: readonly string[];
-  /** Source string shown in the picker and translated by the app catalog. */
+  /** Source string, translated by the app catalog at render time. */
   label: string;
-  read: (recipient: TemplateRecipientData) => string | null;
+  objectName: TemplateObjectName;
+  fieldName: string;
+  subFieldName?: string;
+  kind: TemplateValueKind;
 };
 
-// The standard variables, in picker order. `@name` maps explicitly to the
-// first name and `@company` maps explicitly to the company name, as required.
-// Further authorized fields are added by appending a definition here — the
-// engine, the picker and the server route all read this one catalog, so they
-// cannot drift.
-//
-// The picker shows the CANONICAL token (`@person.jobTitle`); the aliases exist
-// only for backwards compatibility with templates written before W17.
-export const TEMPLATE_VARIABLES: readonly TemplateVariableDefinition[] = [
-  {
-    token: 'person.firstName',
-    aliases: ['name', 'firstName'],
-    label: 'First name',
-    read: (recipient) => recipient.firstName,
-  },
-  {
-    token: 'person.lastName',
-    aliases: ['lastName'],
-    label: 'Last name',
-    read: (recipient) => recipient.lastName,
-  },
-  {
-    token: 'person.fullName',
-    aliases: ['fullName'],
-    label: 'Full name',
-    read: (recipient) => recipient.fullName,
-  },
-  {
-    token: 'person.jobTitle',
-    aliases: [],
-    label: 'Job title',
-    read: (recipient) => recipient.jobTitle,
-  },
-  {
-    token: 'company.name',
-    aliases: ['company', 'companyName'],
-    label: 'Company name',
-    read: (recipient) => recipient.companyName,
-  },
-];
+export type TemplateVariableCatalog = {
+  /** Canonical entries, in picker order. */
+  variables: readonly TemplateVariableDefinition[];
+  /** Canonical token AND every alias (lower-cased) to its definition. */
+  lookup: ReadonlyMap<string, TemplateVariableDefinition>;
+};
 
-// Case-insensitive lookup of a token (or alias) to its definition. Returns
-// `null` for anything not in the allow-list, which the engine reports as an
-// unknown variable rather than silently substituting.
-export const findTemplateVariable = (
-  token: string,
-): TemplateVariableDefinition | null => {
-  const normalized = token.toLowerCase();
+/** Builds a catalog from definitions, indexing canonical tokens and aliases. */
+export const buildTemplateVariableCatalog = (
+  variables: readonly TemplateVariableDefinition[],
+): TemplateVariableCatalog => {
+  const lookup = new Map<string, TemplateVariableDefinition>();
 
-  for (const definition of TEMPLATE_VARIABLES) {
-    if (definition.token.toLowerCase() === normalized) {
-      return definition;
-    }
+  for (const variable of variables) {
+    lookup.set(variable.token.toLowerCase(), variable);
 
-    if (
-      definition.aliases.some((alias) => alias.toLowerCase() === normalized)
-    ) {
-      return definition;
+    for (const alias of variable.aliases) {
+      // A canonical token always wins over an alias collision.
+      if (!lookup.has(alias.toLowerCase())) {
+        lookup.set(alias.toLowerCase(), variable);
+      }
     }
   }
 
-  return null;
+  return { variables, lookup };
 };
+
+/** An empty catalog, used when metadata cannot be read. */
+export const EMPTY_TEMPLATE_VARIABLE_CATALOG: TemplateVariableCatalog =
+  buildTemplateVariableCatalog([]);
+
+/**
+ * Case-insensitive lookup of a token (or alias). Returns `null` for anything
+ * not in the allow-list, which the engine reports as an unknown variable rather
+ * than silently substituting.
+ */
+export const findTemplateVariable = (
+  catalog: TemplateVariableCatalog,
+  token: string,
+): TemplateVariableDefinition | null =>
+  catalog.lookup.get(token.toLowerCase()) ?? null;
 
 export type TemplateVariablePickerItem = {
   /** The `@token` a user inserts into the body. */
@@ -106,10 +94,18 @@ export type TemplateVariablePickerItem = {
   label: string;
 };
 
-// The picker descriptors. Only tokens and labels are exposed — never a value —
-// so the frontend receives no recipient data and remains a presentation layer.
-export const listTemplateVariables = (): TemplateVariablePickerItem[] =>
-  TEMPLATE_VARIABLES.map((definition) => ({
-    token: `@${definition.token}`,
-    label: definition.label,
+/**
+ * The picker descriptors: CANONICAL tokens only (never aliases). Only tokens
+ * and labels are exposed — never a value — so the frontend receives no
+ * recipient data and remains a presentation layer.
+ */
+export const listTemplateVariables = (
+  catalog: TemplateVariableCatalog,
+): TemplateVariablePickerItem[] =>
+  catalog.variables.map((variable) => ({
+    token: `@${variable.token}`,
+    label: variable.label,
   }));
+
+/** A resolved value per CANONICAL token for one recipient, or `null` if empty. */
+export type TemplateValueMap = ReadonlyMap<string, string | null>;

@@ -1,6 +1,7 @@
 import { type CoreApiClient } from 'twenty-client-sdk/core';
+import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 
-import { findPersonsForBulk, toTemplateRecipientData } from 'src/bulk/find-bulk-persons';
+import { findPersonsForBulk } from 'src/bulk/find-bulk-persons';
 import { MAX_BULK_PERSON_IDS } from 'src/bulk/list-bulk-recipients.service';
 import {
   applyPhoneOverrides,
@@ -9,8 +10,9 @@ import {
   type InvalidPhoneOverride,
   type SharedPhoneWarning,
 } from 'src/bulk/resolve-bulk-recipients';
+import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
 import { buildTemplatePreview } from 'src/templates/build-template-preview';
-import { type TemplateRecipientData } from 'src/templates/template-variable-catalog';
+import { resolveTemplateValuesForPersons } from 'src/templates/resolve-template-values';
 
 // Reads the optional per-recipient phone overrides. The distinction that
 // matters is ABSENT vs PRESENT: a key the caller did not send at all means "no
@@ -55,11 +57,13 @@ export type PreviewTemplateFailure = { success: false; error: string };
  */
 export const previewTemplate = async ({
   client,
+  metadataClient,
   body,
   personIds,
   phoneOverrides,
 }: {
   client: Pick<CoreApiClient, 'query'>;
+  metadataClient: Pick<MetadataApiClient, 'query'>;
   body: string;
   personIds: string[];
   phoneOverrides: Record<string, unknown>;
@@ -94,16 +98,22 @@ export const previewTemplate = async ({
   // reflected in the server's response.
   const sharedPhoneWarnings = recomputeSharedPhoneWarnings(applied.recipients);
 
-  const recipientData = new Map<string, TemplateRecipientData>();
+  // One catalog for the whole request: the SAME one the picker shows, so the
+  // preview can never accept a token the manager would not advertise (or vice
+  // versa).
+  const catalog = await buildAuthorizedTemplateCatalog({ metadataClient });
 
-  for (const person of persons) {
-    recipientData.set(person.id, toTemplateRecipientData(person));
-  }
+  const valuesByPersonId = await resolveTemplateValuesForPersons({
+    client,
+    personIds: persons.map((person) => person.id),
+    catalog,
+  });
 
   const preview = buildTemplatePreview({
     body,
     recipients: applied.recipients,
-    recipientData,
+    valuesByPersonId,
+    catalog,
   });
 
   return {
