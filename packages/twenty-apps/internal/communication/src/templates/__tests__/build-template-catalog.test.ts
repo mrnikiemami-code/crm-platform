@@ -206,27 +206,45 @@ describe('buildTemplateCatalogFromMetadata', () => {
 });
 
 describe('readTemplatePermissions', () => {
-  const buildMetadataClient = (role: unknown) => ({
-    query: async () => ({ findOneApplication: { defaultLogicFunctionRole: role } }),
+  const buildMetadataClient = ({
+    role,
+    defaultRoleId = null,
+    legacyRoleId = null,
+  }: {
+    role: unknown;
+    defaultRoleId?: string | null;
+    legacyRoleId?: string | null;
+  }) => ({
+    query: async () => ({
+      findOneApplication: {
+        defaultRoleId,
+        defaultLogicFunctionRole:
+          legacyRoleId === null ? null : { id: legacyRoleId },
+      },
+      getRoles: role === null ? [] : [role],
+    }),
   });
 
-  it('maps the app execution role restrictions', async () => {
+  it('resolves the app role through the Application defaultRoleId', async () => {
     const permissions = await readTemplatePermissions({
       metadataClient: buildMetadataClient({
-        id: 'role-1',
-        universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
-        canReadAllObjectRecords: true,
-        objectPermissions: [
-          {
-            objectMetadataId: PERSON_OBJECT_ID,
-            canReadObjectRecords: true,
-            restrictedFields: ['loyaltyTier', { fieldMetadataId: 'x-1' }],
-          },
-        ],
-        fieldPermissions: [
-          { fieldMetadataId: JOB_TITLE_FIELD_ID, canReadFieldValue: false },
-          { fieldMetadataId: LOYALTY_TIER_FIELD_ID, canReadFieldValue: true },
-        ],
+        defaultRoleId: 'role-app',
+        role: {
+          id: 'role-app',
+          universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
+          canReadAllObjectRecords: true,
+          objectPermissions: [
+            {
+              objectMetadataId: PERSON_OBJECT_ID,
+              canReadObjectRecords: true,
+              restrictedFields: ['loyaltyTier', { fieldMetadataId: 'x-1' }],
+            },
+          ],
+          fieldPermissions: [
+            { fieldMetadataId: JOB_TITLE_FIELD_ID, canReadFieldValue: false },
+            { fieldMetadataId: LOYALTY_TIER_FIELD_ID, canReadFieldValue: true },
+          ],
+        },
       }) as never,
     });
 
@@ -243,34 +261,117 @@ describe('readTemplatePermissions', () => {
     ]);
   });
 
-  it('returns null (fail closed) when the app role cannot be read', async () => {
+  it('falls back to the declared role identifier when defaultRoleId is absent', async () => {
     const permissions = await readTemplatePermissions({
-      metadataClient: buildMetadataClient(null) as never,
+      metadataClient: buildMetadataClient({
+        role: {
+          id: 'role-declared',
+          universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
+          canReadAllObjectRecords: true,
+          objectPermissions: [],
+          fieldPermissions: [],
+        },
+      }) as never,
     });
 
-    // A role that cannot be read must never be treated as "allow everything";
-    // the caller turns this into an EMPTY, UNAVAILABLE catalog.
+    expect(permissions?.canReadAllObjectRecords).toBe(true);
+  });
+
+  it('also accepts a resolvable defaultLogicFunctionRole id', async () => {
+    const permissions = await readTemplatePermissions({
+      metadataClient: buildMetadataClient({
+        legacyRoleId: 'role-app',
+        role: {
+          id: 'role-app',
+          universalIdentifier: 'anything',
+          canReadAllObjectRecords: false,
+          objectPermissions: [],
+          fieldPermissions: [],
+        },
+      }) as never,
+    });
+
+    expect(permissions?.canReadAllObjectRecords).toBe(false);
+  });
+
+  it('prefers the defaultRoleId row over an unrelated role in the list', async () => {
+    const metadataClient = {
+      query: async (request: Record<string, unknown>) => {
+        if ('getRoles' in request) {
+          return {
+            getRoles: [
+              {
+                id: 'role-admin',
+                universalIdentifier: 'admin',
+                canReadAllObjectRecords: true,
+                objectPermissions: [],
+                fieldPermissions: [],
+              },
+              {
+                id: 'role-app',
+                universalIdentifier: 'app',
+                canReadAllObjectRecords: false,
+                objectPermissions: [],
+                fieldPermissions: [],
+              },
+            ],
+          };
+        }
+
+        return {
+          findOneApplication: {
+            defaultRoleId: 'role-app',
+            defaultLogicFunctionRole: null,
+          },
+        };
+      },
+    };
+
+    const permissions = await readTemplatePermissions({
+      metadataClient: metadataClient as never,
+    });
+
+    // The app's OWN role is chosen, not the first (administrator) row.
+    expect(permissions?.canReadAllObjectRecords).toBe(false);
+  });
+
+  it('returns null (fail closed) when no role resolves', async () => {
+    const permissions = await readTemplatePermissions({
+      metadataClient: buildMetadataClient({ role: null }) as never,
+    });
+
+    // A role that cannot be resolved must never be treated as "allow
+    // everything"; the caller turns this into an EMPTY, UNAVAILABLE catalog.
     expect(permissions).toBeNull();
   });
 });
 
 describe('buildAuthorizedTemplateCatalog — fail closed (W18-B)', () => {
-  it('returns an EMPTY catalog and isAvailable=false when the role is unreadable', async () => {
+  it('returns an EMPTY catalog and isAvailable=false when no role resolves', async () => {
     const result = await buildAuthorizedTemplateCatalog({
       // Metadata enumerates fine, but the permission read yields no role.
       metadataClient: {
-        query: async () => ({
-          objects: {
-            edges: templateMetadataObjects.map((object) => ({
-              node: {
-                id: object.id,
-                nameSingular: object.nameSingular,
-                fieldsList: object.fields,
-              },
-            })),
-          },
-          findOneApplication: { defaultLogicFunctionRole: null },
-        }),
+        query: async (request: Record<string, unknown>) => {
+          if ('getRoles' in request) {
+            return { getRoles: [] };
+          }
+
+          return {
+            objects: {
+              edges: templateMetadataObjects.map((object) => ({
+                node: {
+                  id: object.id,
+                  nameSingular: object.nameSingular,
+                  fieldsList: object.fields,
+                },
+              })),
+            },
+            findOneApplication: {
+              defaultRoleId: null,
+              defaultLogicFunctionRole: null,
+            },
+          };
+        },
       } as never,
     });
 

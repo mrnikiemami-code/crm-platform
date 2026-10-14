@@ -1,6 +1,9 @@
 import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 
-import { APPLICATION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import {
+  APPLICATION_UNIVERSAL_IDENTIFIER,
+  DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
+} from 'src/constants/universal-identifiers';
 import {
   buildTemplateVariableCatalog,
   EMPTY_TEMPLATE_VARIABLE_CATALOG,
@@ -447,41 +450,69 @@ export const readTemplateMetadataObjects = async ({
 };
 
 /**
- * Reads the APP EXECUTION ROLE's permissions.
+ * Reads the permissions of the role the app ACTUALLY executes as.
  *
- * The role is read as part of the app's OWN `Application` record
- * (`defaultLogicFunctionRole`). Returns `null` when the role cannot be read,
- * which the caller turns into an EMPTY, unavailable catalog: a permission
- * lookup that fails must fail CLOSED, never advertise fields.
+ * Why two sources. The app's role is identified authoritatively by the
+ * `Application` row's `defaultRoleId` — on this platform build
+ * `defaultLogicFunctionRole` is `null` even when `defaultRoleId` is set, so
+ * relying on the nested field alone silently produced no role and made the whole
+ * catalog fail closed. The permissions themselves are then read from the
+ * workspace role list (`getRoles`, a plain workspace-scoped metadata query) and
+ * matched to that id, falling back to the app's declared role universal
+ * identifier.
+ *
+ * Returns `null` when NO role can be resolved, which the caller turns into an
+ * EMPTY, unavailable catalog: a permission lookup that fails must fail CLOSED,
+ * never advertise fields, and never assume "allow everything".
  */
 export const readTemplatePermissions = async ({
   metadataClient,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
 }): Promise<TemplatePermissionSnapshot | null> => {
-  const result = await metadataClient.query({
+  const application = await metadataClient.query({
     findOneApplication: {
       __args: { universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER },
-      defaultLogicFunctionRole: {
-        id: true,
-        universalIdentifier: true,
-        canReadAllObjectRecords: true,
-        objectPermissions: {
-          objectMetadataId: true,
-          canReadObjectRecords: true,
-          restrictedFields: true,
-        },
-        fieldPermissions: {
-          fieldMetadataId: true,
-          canReadFieldValue: true,
-        },
+      defaultRoleId: true,
+      defaultLogicFunctionRole: { id: true },
+    },
+  });
+
+  const preferredRoleId =
+    application.findOneApplication?.defaultRoleId ??
+    application.findOneApplication?.defaultLogicFunctionRole?.id ??
+    null;
+
+  const rolesResult = await metadataClient.query({
+    getRoles: {
+      id: true,
+      universalIdentifier: true,
+      canReadAllObjectRecords: true,
+      objectPermissions: {
+        objectMetadataId: true,
+        canReadObjectRecords: true,
+        restrictedFields: true,
+      },
+      fieldPermissions: {
+        fieldMetadataId: true,
+        canReadFieldValue: true,
       },
     },
   });
 
-  const role = result.findOneApplication?.defaultLogicFunctionRole;
+  const roles = rolesResult.getRoles ?? [];
 
-  if (role === undefined || role === null) {
+  // The id from the Application row wins; the declared role identifier is the
+  // fallback for a workspace where that row has not been populated.
+  const role =
+    roles.find((candidate) => candidate.id === preferredRoleId) ??
+    roles.find(
+      (candidate) =>
+        candidate.universalIdentifier ===
+        DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
+    );
+
+  if (role === undefined) {
     return null;
   }
 

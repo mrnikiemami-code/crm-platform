@@ -92,14 +92,18 @@ export const createFakeMetadataClient = () => ({
       })),
     },
     findOneApplication: {
-      defaultLogicFunctionRole: {
+      defaultRoleId: 'role-1',
+      defaultLogicFunctionRole: null,
+    },
+    getRoles: [
+      {
         id: 'role-1',
         universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
         canReadAllObjectRecords: true,
         objectPermissions: [],
         fieldPermissions: [],
       },
-    },
+    ],
   }),
 });
 
