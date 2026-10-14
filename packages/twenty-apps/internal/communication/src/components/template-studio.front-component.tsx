@@ -780,7 +780,12 @@ export const TemplateStudio = () => {
                   <span style={styles.label}>{t('Sample preview')}</span>
 
                   {catalogUnavailable && (
-                    <p style={styles.warning}>
+                    <p
+                      style={styles.warning}
+                      data-catalog-stage={
+                        state.kind === 'READY' ? state.catalogStage : 'UNKNOWN'
+                      }
+                    >
                       {t('Authorized variables are unavailable right now.')}
                     </p>
                   )}

@@ -68,6 +68,11 @@ export type StudioLoadState =
       templates: StudioTemplate[];
       fields: StudioField[];
       catalogStatus: TemplateCatalogStatus;
+      /**
+       * The stable, application-owned reason the catalog is unavailable. Kept as
+       * a code so a support surface can show it without any exception text.
+       */
+      catalogStage: string;
     }
   | { kind: 'ERROR'; code: TemplateStudioErrorCode };
 
@@ -111,6 +116,11 @@ export const resolveStudioLoadState = (response: {
       payload.catalogStatus === TEMPLATE_CATALOG_STATUS.READY
         ? TEMPLATE_CATALOG_STATUS.READY
         : TEMPLATE_CATALOG_STATUS.UNAVAILABLE,
+    catalogStage:
+      isNonEmptyString(payload.catalogStage) &&
+      /^[A-Z_]{1,32}$/.test(payload.catalogStage)
+        ? payload.catalogStage
+        : 'UNKNOWN',
   };
 };
 
