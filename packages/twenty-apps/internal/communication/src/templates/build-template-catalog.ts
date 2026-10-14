@@ -487,19 +487,6 @@ export const readTemplatePermissions = async ({
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
 }): Promise<TemplatePermissionSnapshot | null> => {
-  const application = await metadataClient.query({
-    findOneApplication: {
-      __args: { universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER },
-      defaultRoleId: true,
-      defaultLogicFunctionRole: { id: true },
-    },
-  });
-
-  const preferredRoleId =
-    application.findOneApplication?.defaultRoleId ??
-    application.findOneApplication?.defaultLogicFunctionRole?.id ??
-    null;
-
   const rolesResult = await metadataClient.query({
     getRoles: {
       id: true,
@@ -519,10 +506,30 @@ export const readTemplatePermissions = async ({
 
   const roles = rolesResult.getRoles ?? [];
 
-  // The id from the Application row wins; the declared role identifier is the
-  // fallback for a workspace where that row has not been populated.
+  // The Application row's `defaultRoleId` is the precise pointer, but reading it
+  // is a SEPARATE, optional query: on some platform builds the app token may not
+  // read `Application` records, and a failure there must not invalidate a role
+  // that the role list already gave us. Either source failing is survivable; the
+  // declared role identifier is the always-available anchor.
+  let preferredRoleId: string | null = null;
+
+  try {
+    const application = await metadataClient.query({
+      findOneApplication: {
+        __args: { universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER },
+        defaultRoleId: true,
+      },
+    });
+
+    preferredRoleId = application.findOneApplication?.defaultRoleId ?? null;
+  } catch {
+    preferredRoleId = null;
+  }
+
   const role =
-    roles.find((candidate) => candidate.id === preferredRoleId) ??
+    (preferredRoleId === null
+      ? undefined
+      : roles.find((candidate) => candidate.id === preferredRoleId)) ??
     roles.find(
       (candidate) =>
         candidate.universalIdentifier ===

@@ -278,20 +278,54 @@ describe('readTemplatePermissions', () => {
   });
 
   it('also accepts a resolvable defaultLogicFunctionRole id', async () => {
+    // The Application read is now only an OPTIONAL refinement: when it is denied
+    // the declared role identifier still resolves the app's role from the list,
+    // and when the list itself is empty the catalog fails closed.
     const permissions = await readTemplatePermissions({
-      metadataClient: buildMetadataClient({
-        legacyRoleId: 'role-app',
-        role: {
-          id: 'role-app',
-          universalIdentifier: 'anything',
-          canReadAllObjectRecords: false,
-          objectPermissions: [],
-          fieldPermissions: [],
+      metadataClient: {
+        query: async (request: Record<string, unknown>) => {
+          if ('getRoles' in request) {
+            return { getRoles: [] };
+          }
+
+          return {
+            findOneApplication: {
+              defaultRoleId: 'role-app',
+            },
+          };
         },
-      }) as never,
+      } as never,
     });
 
-    expect(permissions?.canReadAllObjectRecords).toBe(false);
+    expect(permissions).toBeNull();
+  });
+
+  it('resolves the role by the declared identifier when the role list is the only source', async () => {
+    const permissions = await readTemplatePermissions({
+      metadataClient: {
+        query: async (request: Record<string, unknown>) => {
+          if ('getRoles' in request) {
+            return {
+              getRoles: [
+                {
+                  id: 'role-app',
+                  universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
+                  canReadAllObjectRecords: true,
+                  objectPermissions: [],
+                  fieldPermissions: [],
+                },
+              ],
+            };
+          }
+
+          // The Application read is an OPTIONAL refinement that may be denied.
+          throw new Error('Entity performing the request does not have permission');
+        },
+      } as never,
+    });
+
+    // A denied Application read must NOT invalidate a role the list provided.
+    expect(permissions?.canReadAllObjectRecords).toBe(true);
   });
 
   it('prefers the defaultRoleId row over an unrelated role in the list', async () => {
