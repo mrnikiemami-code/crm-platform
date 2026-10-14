@@ -222,10 +222,12 @@ export const TemplateStudio = () => {
 
   const targetOptions = useMemo(
     () =>
+      // The adapter supplies the SOURCE label; translation happens here so the
+      // control shows workspace copy, never the adapter's English source string.
       toTargetComboboxOptions(
         getStudioTargetAdapter(TEMPLATE_TARGET_OBJECT.PERSON),
-      ),
-    [],
+      ).map((option) => ({ ...option, label: t(option.label) })),
+    [t],
   );
 
   const previewBlockReason = resolvePreviewBlockReason({
@@ -852,6 +854,11 @@ export const TemplateStudio = () => {
                     style={{
                       ...styles.control,
                       ...studioStyles.body,
+                      // The inline style is what actually guarantees the RTL
+                      // alignment in this app's renderer.
+                      ...(direction === 'rtl'
+                        ? { direction: 'rtl' as const, textAlign: 'right' as const }
+                        : { direction: 'ltr' as const, textAlign: 'left' as const }),
                       ...(isBodyDragOver ? studioStyles.bodyDropActive : {}),
                     }}
                   />
