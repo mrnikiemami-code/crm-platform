@@ -882,6 +882,32 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     expect(screen.queryByLabelText('Sample person')).toBeNull();
   });
 
+  it('29: uses the REMEMBERED caret after the textarea blurs and resets its range', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'ABCDEF');
+    });
+
+    act(() => {
+      placeCaret(2);
+    });
+
+    // A real browser resets selectionStart/End to the END of the value on blur,
+    // which is exactly what made the caret look like it was ignored.
+    const textarea = bodyTextarea();
+
+    textarea.setSelectionRange(6, 6);
+    textarea.blur();
+
+    await act(async () => {
+      fireEvent.doubleClick(fieldCard('@person.firstName'));
+    });
+
+    expect(bodyTextarea().value).toBe('AB@person.firstNameCDEF');
+  });
+
   it('28: no SMS or send route is ever called', async () => {
     installRoutes();
     await openCreateModal();

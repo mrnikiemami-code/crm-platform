@@ -226,18 +226,22 @@ describe('resolveInsertSelection', () => {
         bodyLength: 10,
         liveSelection: { start: 2, end: 2 },
         rememberedSelection: { start: 7, end: 7 },
+        isTextareaFocused: true,
       }),
     ).toEqual({ start: 2, end: 2 });
   });
 
-  it('uses the REMEMBERED selection when there is no live one', () => {
+  it('prefers the REMEMBERED selection once the textarea lost focus', () => {
+    // A blur resets selectionStart to the end of the value, so the live range
+    // must be ignored in favour of the caret captured while it was valid.
     expect(
       resolveInsertSelection({
         bodyLength: 10,
-        liveSelection: null,
-        rememberedSelection: { start: 4, end: 4 },
+        liveSelection: { start: 10, end: 10 },
+        rememberedSelection: { start: 2, end: 2 },
+        isTextareaFocused: false,
       }),
-    ).toEqual({ start: 4, end: 4 });
+    ).toEqual({ start: 2, end: 2 });
   });
 
   it('falls back to the end of the body with nothing remembered', () => {
@@ -246,6 +250,7 @@ describe('resolveInsertSelection', () => {
         bodyLength: 12,
         liveSelection: null,
         rememberedSelection: null,
+        isTextareaFocused: false,
       }),
     ).toEqual({ start: 12, end: 12 });
   });
@@ -256,6 +261,7 @@ describe('resolveInsertSelection', () => {
         bodyLength: 3,
         liveSelection: null,
         rememberedSelection: { start: 40, end: 50 },
+        isTextareaFocused: false,
       }),
     ).toEqual({ start: 3, end: 3 });
   });

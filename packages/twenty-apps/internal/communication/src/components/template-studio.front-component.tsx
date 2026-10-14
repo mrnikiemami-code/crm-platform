@@ -345,6 +345,8 @@ export const TemplateStudio = () => {
       bodyLength: draft.body.length,
       liveSelection: readTextareaSelection(textarea),
       rememberedSelection: rememberedSelectionRef.current,
+      isTextareaFocused:
+        typeof document !== 'undefined' && document.activeElement === textarea,
     });
 
     const next = insertTokenAtSelection({
@@ -377,7 +379,19 @@ export const TemplateStudio = () => {
   };
 
   const handleRememberSelection = () => {
-    const selection = readTextareaSelection(bodyRef.current);
+    const textarea = bodyRef.current;
+
+    // Only remember while the textarea still owns focus: a blur resets
+    // `selectionStart` to the end of the value, so reading after a blur would
+    // overwrite the real caret with a useless position.
+    if (
+      textarea === null ||
+      (typeof document !== 'undefined' && document.activeElement !== textarea)
+    ) {
+      return;
+    }
+
+    const selection = readTextareaSelection(textarea);
 
     if (selection !== null) {
       rememberedSelectionRef.current = selection;
