@@ -19,10 +19,10 @@ import { StudioCombobox } from 'src/components/studio-combobox';
 import {
   collectFocusCycle,
   focusElementSafely,
+  isInsideContainer,
   readActiveElement,
   setSelectionRangeSafely,
 } from 'src/components/studio-dom';
-import { StudioOverlay } from 'src/components/studio-overlay';
 import { templateStudioStyles as studioStyles } from 'src/components/template-studio-styles';
 import { SMS_TEMPLATE_STUDIO_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { TEMPLATE_TARGET_OBJECT } from 'src/studio/template-studio-contract';
@@ -66,6 +66,17 @@ import {
   type StudioSelection,
   type StudioTemplate,
 } from 'src/studio/template-studio-logic';
+
+// A VISIBLE build marker, rendered in the studio header next to the page title.
+//
+// WHY it exists: a front component is served as a bundle the browser may cache,
+// so "did the new deployment actually reach this browser?" is otherwise
+// unanswerable — and a stale bundle looks exactly like a broken one. The marker
+// makes the loaded revision self-evident to both the user and the agent.
+//
+// It is intentionally NOT hand-maintained: `studio-build-marker.test.ts` fails
+// if it drifts from `package.json`, so it can never lie about the revision.
+export const STUDIO_BUILD_MARKER = '0.1.43';
 
 // The SMS Template Studio.
 //
@@ -757,7 +768,16 @@ export const TemplateStudio = () => {
       <div style={studioStyles.page}>
         <div style={studioStyles.pageHeader}>
           <div style={styles.field}>
-            <p style={{ ...styles.heading, fontSize: 16 }}>{t('SMS template management')}</p>
+            <p style={{ ...styles.heading, fontSize: 16 }}>
+              {t('SMS template management')}{' '}
+              {/* The loaded revision, visible at a glance. */}
+              <span
+                style={studioStyles.buildMarker}
+                title={t('Loaded studio revision')}
+              >
+                v{STUDIO_BUILD_MARKER}
+              </span>
+            </p>
             <p style={styles.hint}>
               {t(
                 'Create and manage the reusable SMS templates of this workspace.',
@@ -887,26 +907,21 @@ export const TemplateStudio = () => {
 
       {/* --- create / edit modal --------------------------------------------- */}
       {modal !== null && draft !== null && (
-        // Portaled to `<body>`: outside the widget's transformed / clipped
-        // ancestor, so it covers the real viewport and its controls keep
-        // receiving pointer events.
-        <StudioOverlay>
-          <div
-            style={studioStyles.modalBackdrop}
-            // A press on the BACKDROP itself is the only pointer gesture that
-            // may request a close. Because the dialog is a child, a press on
-            // any input, combobox, field card, scrollbar or the textarea has a
-            // different target, so it can never be mistaken for the backdrop.
-            // Handling it on pointer-DOWN means a press that starts outside is
-            // resolved immediately, without depending on where it ends.
-            onMouseDown={(event) => {
-              if (event.target !== event.currentTarget) {
-                return;
-              }
+        <div
+          style={studioStyles.modalBackdrop}
+          // A backdrop click may ONLY close when the click did not land inside
+          // the dialog. The container check is stronger than comparing
+          // `target`/`currentTarget`: a click on any input, combobox, field card,
+          // scrollbar or the textarea is provably inside the dialog and can never
+          // be mistaken for a backdrop click.
+          onClick={(event) => {
+            if (isInsideContainer(modalRef.current, event.target)) {
+              return;
+            }
 
-              requestClose();
-            }}
-          >
+            requestClose();
+          }}
+        >
             <div
               ref={modalRef}
               role="dialog"
@@ -1272,22 +1287,20 @@ export const TemplateStudio = () => {
                 {isSaving ? t('Saving…') : t('Save')}
               </button>
             </div>
-            </div>
           </div>
-        </StudioOverlay>
+        </div>
       )}
 
       {/* --- delete confirmation --------------------------------------------- */}
       {deleteTarget !== null && (
-        <StudioOverlay>
-          <div
-            style={studioStyles.modalBackdrop}
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) {
-                setDeleteTarget(null);
-              }
-            }}
-          >
+        <div
+          style={studioStyles.modalBackdrop}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setDeleteTarget(null);
+            }
+          }}
+        >
           <div
             role="dialog"
             aria-modal="true"
@@ -1318,8 +1331,7 @@ export const TemplateStudio = () => {
               </button>
             </div>
           </div>
-          </div>
-        </StudioOverlay>
+        </div>
       )}
     </div>
   );

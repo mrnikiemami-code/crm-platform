@@ -1006,9 +1006,8 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
 
     await act(async () => {
-      // The backdrop is the only pointer surface that may request a close, and
-      // it resolves on pointer-DOWN.
-      fireEvent.mouseDown(backdrop);
+      // The backdrop is the only pointer surface that may request a close.
+      fireEvent.click(backdrop);
     });
 
     // The dialog is still mounted and now asks before discarding.

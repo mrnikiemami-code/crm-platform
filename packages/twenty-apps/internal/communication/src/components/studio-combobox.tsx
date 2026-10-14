@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useId,
   useRef,
   useState,
@@ -8,7 +7,6 @@ import {
 } from 'react';
 
 import { composerStyles as styles } from 'src/components/composer-shared';
-import { StudioOverlay } from 'src/components/studio-overlay';
 import { templateStudioStyles as studioStyles } from 'src/components/template-studio-styles';
 import {
   activeComboboxValue,
@@ -26,14 +24,14 @@ import {
 // are `option`s. There is deliberately NO default selection — an empty value
 // means nothing is chosen, and a clear action is available once something is.
 //
-// The popup is rendered through `StudioOverlay` and positioned with
-// `position: fixed`. That matters for two reasons:
-//   1. the editor's own body scrolls, and an in-flow popup near the bottom of
-//      that body would be clipped away; and
-//   2. at body level the popup is not affected by the widget's transformed /
-//      clipped ancestor, so its controls keep receiving pointer events.
-// It is flipped above the input when there is not enough room below, and its
-// height is bounded, so it can never overflow the viewport.
+// The popup is rendered IN FLOW, directly under the input, with its own bounded
+// height and scrolling.
+//
+// It is deliberately NOT portaled to `<body>`: the host renders this front
+// component with the host's React, so content moved outside the host's React
+// root would keep painting but stop receiving its events — it would look
+// correct and be completely inert. Staying inside the host's tree is what keeps
+// every control interactive.
 //
 // The list itself is PAGED by the caller: `hasMore` + `onLoadMore` let a
 // workspace with ~100k People append one page at a time as the user scrolls,
@@ -60,19 +58,13 @@ export type StudioComboboxProps = {
   onLoadMore?: () => void;
   /**
    * When provided, typing is also sent to the server, so a match outside the
-   * already-loaded pages is still found (name or phone).
+   * already-loaded pages is still found (name or phone). The caller then owns
+   * the filtering and the loaded page is listed as-is.
    */
   onSearchChange?: (query: string) => void;
-  /** Rendered above the list to explain a failed load. */
+  /** Rendered under the input to explain a failed load. */
   errorLabel?: string | null;
 };
-
-/** Vertical gap between the input and the popup. */
-const POPUP_GAP = 4;
-/** The largest the popup may grow before it scrolls internally. */
-const POPUP_MAX_HEIGHT = 220;
-/** Below this much remaining space the popup flips above the input. */
-const POPUP_MIN_SPACE_BELOW = 160;
 
 export const StudioCombobox = ({
   options,
@@ -99,20 +91,12 @@ export const StudioCombobox = ({
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [placement, setPlacement] = useState<{
-    top: number;
-    left: number;
-    width: number;
-    maxHeight: number;
-    flipUp: boolean;
-  } | null>(null);
 
   const selectedOption =
     options.find((option) => option.value === value) ?? null;
 
-  // The caller already searched server-side, so the loaded page is not filtered
-  // again by the query; filtering is only a local refinement when the caller
-  // does NOT own the search.
+  // When the caller owns the search (server-side), the loaded page is shown
+  // as-is; otherwise the loaded options are filtered locally.
   const visibleOptions =
     onSearchChange === undefined
       ? filterComboboxOptions(options, query)
@@ -122,78 +106,11 @@ export const StudioCombobox = ({
   // the current selection, so the selected entity is always visible.
   const inputValue = isOpen ? query : (selectedOption?.label ?? '');
 
-  /**
-   * Positions the popup against the input.
-   *
-   * The popup is `position: fixed` at body level, so it is placed from the
-   * input's own viewport rectangle. Flipping above when the space below is too
-   * small is what keeps the list usable when the input sits at the bottom of
-   * the editor.
-   */
-  const reposition = useCallback(() => {
-    const input = inputRef.current;
-
-    if (input === null || typeof input.getBoundingClientRect !== 'function') {
-      setPlacement(null);
-      return;
-    }
-
-    const rect = input.getBoundingClientRect();
-    const viewportHeight =
-      typeof window === 'undefined' ? 0 : window.innerHeight;
-    const spaceBelow = viewportHeight - rect.bottom - POPUP_GAP;
-    const spaceAbove = rect.top - POPUP_GAP;
-    const flipUp = spaceBelow < POPUP_MIN_SPACE_BELOW && spaceAbove > spaceBelow;
-    const available = flipUp ? spaceAbove : spaceBelow;
-
-    setPlacement({
-      top: flipUp ? rect.top - POPUP_GAP : rect.bottom + POPUP_GAP,
-      left: rect.left,
-      width: rect.width,
-      maxHeight: Math.max(
-        Math.min(POPUP_MAX_HEIGHT, available),
-        88,
-      ),
-      flipUp,
-    });
-  }, []);
-
   const close = useCallback(() => {
     setIsOpen(false);
     setQuery('');
     setActiveIndex(-1);
   }, []);
-
-  const open = useCallback(() => {
-    setIsOpen(true);
-    setQuery('');
-    setActiveIndex(-1);
-  }, []);
-
-  // Keep the popup glued to the input while it is open.
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    reposition();
-
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const onScrollOrResize = () => reposition();
-
-    // `capture: true` so a scroll in ANY ancestor (the editor body, the page)
-    // is seen, not only a window scroll.
-    window.addEventListener('scroll', onScrollOrResize, true);
-    window.addEventListener('resize', onScrollOrResize);
-
-    return () => {
-      window.removeEventListener('scroll', onScrollOrResize, true);
-      window.removeEventListener('resize', onScrollOrResize);
-    };
-  }, [isOpen, reposition]);
 
   const select = (nextValue: string) => {
     onChange(nextValue);
@@ -251,7 +168,8 @@ export const StudioCombobox = ({
       event.preventDefault();
 
       if (!isOpen) {
-        open();
+        setIsOpen(true);
+        setActiveIndex(-1);
         return;
       }
 
@@ -313,10 +231,10 @@ export const StudioCombobox = ({
             role="option"
             aria-selected={index === activeIndex}
             data-studio-option={option.value}
-            // Selecting on pointer DOWN (and preventing the default) is what
-            // makes a click reliable here: the input never loses focus, the
-            // list is never torn down between press and release, and the
-            // selection cannot be lost to a layout shift.
+            // Selecting on pointer DOWN (and preventing the default) keeps the
+            // input focused for the whole gesture, so the list cannot be torn
+            // down between press and release and the selection cannot be lost
+            // to a re-render or a layout shift.
             onMouseDown={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -362,7 +280,11 @@ export const StudioCombobox = ({
           disabled={disabled}
           value={inputValue}
           placeholder={placeholder}
-          onFocus={open}
+          onFocus={() => {
+            setIsOpen(true);
+            setQuery('');
+            setActiveIndex(-1);
+          }}
           onChange={(event) => {
             if (!isOpen) {
               setIsOpen(true);
@@ -402,35 +324,18 @@ export const StudioCombobox = ({
         )}
       </div>
 
-      {errorLabel !== null && (
-        <p style={styles.warning}>{errorLabel}</p>
-      )}
+      {errorLabel !== null && <p style={styles.warning}>{errorLabel}</p>}
 
       {isOpen && (
-        <StudioOverlay>
-          <ul
-            id={listId}
-            ref={listRef}
-            role="listbox"
-            onScroll={handleListScroll}
-            style={{
-              ...studioStyles.comboboxListFixed,
-              // Before the first measurement the popup is placed under the
-              // input; `reposition` corrects it on the next frame.
-              top: placement?.top ?? 0,
-              left: placement?.left ?? 0,
-              width: placement?.width ?? 240,
-              maxHeight: placement?.maxHeight ?? POPUP_MAX_HEIGHT,
-              // Anchoring the flipped popup by its bottom edge keeps it exactly
-              // above the input whatever its final height is.
-              ...(placement?.flipUp === true
-                ? { transform: 'translateY(-100%)' }
-                : {}),
-            }}
-          >
-            {renderListBody()}
-          </ul>
-        </StudioOverlay>
+        <ul
+          id={listId}
+          ref={listRef}
+          role="listbox"
+          onScroll={handleListScroll}
+          style={studioStyles.comboboxList}
+        >
+          {renderListBody()}
+        </ul>
       )}
     </div>
   );

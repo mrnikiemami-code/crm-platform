@@ -200,23 +200,6 @@ export const templateStudioStyles = {
     borderRadius: 4,
     boxShadow: '0 6px 16px rgba(16, 24, 40, 0.1)',
   },
-  // The same list, but portaled to `<body>` and pinned to the input. `top` and
-  // `maxHeight` are supplied per render from the input's measured rectangle.
-  comboboxListFixed: {
-    position: 'fixed' as const,
-    zIndex: 2147483001,
-    pointerEvents: 'auto' as const,
-    margin: 0,
-    padding: 4,
-    listStyle: 'none',
-    overflowY: 'auto' as const,
-    overflowX: 'hidden' as const,
-    background: '#fff',
-    border: '1px solid #d6d6d6',
-    borderRadius: 4,
-    boxShadow: '0 8px 20px rgba(16, 24, 40, 0.16)',
-    boxSizing: 'border-box' as const,
-  },
   // The loading / empty / loading-more row inside a listbox.
   comboboxStatus: {
     padding: '8px 8px',
@@ -233,6 +216,19 @@ export const templateStudioStyles = {
     color: '#8a1f11',
     background: '#fdecea',
     borderBottom: '1px solid #f5c6c0',
+  },
+  // The loaded studio revision, shown beside the page heading.
+  buildMarker: {
+    marginInlineStart: 6,
+    padding: '1px 6px',
+    fontSize: 11,
+    fontWeight: 400,
+    color: '#5b6572',
+    background: '#f1f3f6',
+    border: '1px solid #dde1e7',
+    borderRadius: 10,
+    direction: 'ltr' as const,
+    unicodeBidi: 'isolate' as const,
   },
   listHeader: {
     display: 'flex',
