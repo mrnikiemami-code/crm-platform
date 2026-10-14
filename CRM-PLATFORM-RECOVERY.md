@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (USER DECISION after the third W19-B1 failure: «الگوهای پیامک» now uses the PLATFORM'S NATIVE list and CRUD — the same mechanism as the Companies page — and the bespoke studio is out of the user path. Communication 0.1.45 is installed on main/4D: the sidebar entry is a VIEW navigation item for the templates view, the view shows title / source entity / last update, and create, edit and reload persistence are verified live. Delete-with-confirm is NOT verified — see the section below. W19-B2 is cancelled; APPLE/app2 untouched; no real SMS; W7 disabled.)
+Last updated: 2026-10-14 (CRM-NATIVE-TEMPLATES-02, partial: items 1–2 DONE and verified live on 0.1.46 — the menu reads «همهٔ الگوها · الگویهای پیامک» and the record tabs are «اطلاعات / متن پیام / متغیرها». Item 3's native delete path was IDENTIFIED (record page → command menu → «حذف الگوی پیام»، و مجوز Admin برای soft-delete و destroy روی messageTemplate فعال است) but cancel/confirm were NOT executed, so it is UNVERIFIED. Items 4–9 are NOT STARTED and are blocked by a platform limitation recorded below — they are not a coding task that can be absorbed as-is. APPLE/app2 untouched; no real SMS; W7 disabled.)
 
 ## Purpose
 
@@ -52,6 +52,58 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## CRM-NATIVE-TEMPLATES-02 (partial) — items 1–2 done, item 3 identified, items 4–9 blocked by a platform limit
+
+Baseline `6d9a853ad8` → tip `9b329ec9dc`; installed on main/4D: Communication **0.1.46**.
+
+**Items 1–2 — DONE, verified live.** The view was renamed to `All templates` (catalog
+`view.name` → «همهٔ الگوها») so the sidebar reads **«همهٔ الگوها · الگوهای پیامک»** instead of
+repeating the object name (verified in the rendered sidebar and the page title), and the
+record-page tabs are now **«اطلاعات» / «متن پیام» / «متغیرها»** with the variables widget
+titled «متغیرهای قابل استفاده» — no English tab title remains.
+
+**Item 3 — native delete: path IDENTIFIED, acceptance UNVERIFIED.**
+- The capability is permitted: the human **Admin** role has
+  `canSoftDeleteAllObjectRecords = true` and `canDestroyAllObjectRecords = true`, so delete is
+  available in the UI (no app-side permission work is needed).
+- The path is the **record context**, not the list: on a record page the command menu
+  (Ctrl+K) contains **«حذف الگوی پیام»**. In the LIST context the only delete-related command
+  is «مشاهده الگوهای پیامک حذفشده», which is the platform's native trash surface for
+  soft-deleted records — not a delete action. The list exposes no per-row delete control.
+- **Cancel-then-confirm was not executed**, so presence + soft-delete + post-reload
+  disappearance are all unproven. It is reported UNVERIFIED rather than inferred from the
+  command's presence, and the path was deliberately not exercised on a user's real template.
+- No bespoke delete was created: the flow is entirely the platform's own command.
+
+**Items 4–9 — NOT STARTED, and blocked by a platform limit (architect decision needed).**
+The requirement is that the eligible source objects (`Person` plus objects with a readable
+single relation to `Person`) be **discovered from metadata** and offered in a **native**
+control (item 6: "با کنترلهای بومی موجود"), with stable identifiers persisted on
+`messageTemplate` and old rows read as `Person` without a write migration.
+
+1. A manifest `SELECT` field's options are **static strings declared in the manifest**.
+   This SDK has no runtime-populated option source, so a control whose choices come from
+   workspace metadata cannot be expressed as a native field. Item 6 cannot be satisfied with
+   native controls as they exist.
+2. The only remaining way to render a dynamic picker is a **custom front component**, and
+   that is precisely the surface that is broken in this host: the component runs in a worker
+   behind remote-dom, and events inside its dialog subtree never reach its handlers (see the
+   W19-B1 re-run sections). Delivering the picker that way would reproduce the failure the
+   user just removed.
+3. Items 7–8 (insert-once-at-caret into the body from the «متغیرها» tab, and a
+   source + recipient preview resolved server-side with `TEMPLATE_CONTEXT_MISMATCH`) depend on
+   both of the above: writing into a record field from a widget is a custom component, and the
+   *source* half of the preview needs the dynamic source model from items 4–6. The
+   server-side pieces that already exist and must be kept (`build-template-catalog`,
+   `preview-template`, the `template-studio` route's catalog/preview logic) are unaffected.
+4. Item 9 (delete the studio and its dependent code) is independently feasible, but it is the
+   only current implementation of the app's catalog/preview surface, so deleting it before its
+   replacement exists would remove working, tested logic. It is deliberately deferred.
+
+So items 4–9 need a **platform-level mechanism** (runtime-populated field options, or a
+working custom-component event path) before they can be built. Recording that is the
+correct outcome of this task rather than half-building the picker on the broken surface.
 
 ## NATIVE TEMPLATE FLOW (2026-10-14) — the studio is retired, the platform's own list is used
 

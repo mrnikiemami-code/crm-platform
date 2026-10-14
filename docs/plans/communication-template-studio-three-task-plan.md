@@ -163,6 +163,17 @@ APPLE/app2 or other environment is accessed.
 
 ## USER DECISION (2026-10-14): native flow replaces the bespoke studio
 
+**Follow-up CRM-NATIVE-TEMPLATES-02 outcome:** items 1–2 of the follow-up are done (view
+renamed to «همهٔ الگوها» so the menu no longer repeats the object name, and the record tabs are
+Persian); the native delete path was located on the record page's command menu
+(«حذف الگوی پیام») with Admin soft-delete/destroy permission confirmed present, but cancel and
+confirm were not executed and remain UNVERIFIED; items 4–9 (dynamic metadata-driven source,
+stable identifiers, native source/relation pickers, insert-once and source+recipient preview
+on the native record page, studio removal) are NOT STARTED because a manifest `SELECT` field
+has **static** options and this SDK has no runtime-populated option source, while the only
+alternative — a custom front component — is the very surface that is broken in this host. See
+the `CRM-NATIVE-TEMPLATES-02` section of `CRM-PLATFORM-RECOVERY.md`.
+
 The user decided that «الگوهای پیامک» must use **the same native mechanism as the
 Companies page** — the platform's own list, create, edit and delete — and that the
 bespoke studio leaves the user path. This **supersedes the three-task plan above** for
