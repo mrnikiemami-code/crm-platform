@@ -121,6 +121,29 @@ export const MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER =
   '4d4075b4-48bd-46f4-8d79-7305a770519f';
 export const MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER =
   'f6d4d1ff-adea-420f-aa1c-97e5d14663b1';
+// The engine's system `updatedAt` column on this app object.
+//
+// System field universal identifiers are DERIVED from the owning application,
+// the object and the field name, so this value is not arbitrary: it was read
+// back from this workspace's own metadata and matches the derivation. It is
+// needed because a manifest view may only reference a field by universal
+// identifier, and «آخرین ویرایش» is a system column rather than an app field.
+export const MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER =
+  'a4ceaacc-00b2-5283-96b5-d8b2b5705461';
+
+// The sidebar entry for «الگوهای پیامک».
+//
+// It is a VIEW item pointing at the app's own `messageTemplate` TABLE view, so
+// the sidebar opens the PLATFORM's native list: native columns, native search,
+// filter, sort, and the native record create/edit/delete flow. The label comes
+// from the view's own name (`view.name` in the app catalog), which is why no
+// `name` is declared here.
+//
+// This replaces the PAGE_LAYOUT item that opened the bespoke studio. The
+// platform cannot change an existing navigation item's TYPE, so the studio item
+// is retired by dropping it from the manifest and this new item is added.
+export const MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  'b7e2a4d0-9c31-4f58-8d26-4a1b7e5c9f03';
 
 // Template management surface (W17)
 // A sidebar entry NEXT TO «ارتباطات» pointing at the workspace's template

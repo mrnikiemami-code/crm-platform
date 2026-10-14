@@ -97,11 +97,12 @@ export default defineObject({
         MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
       type: FieldType.SELECT,
       name: 'targetObject',
-      // Workspace-facing Persian copy for a Persian-first workspace (the
-      // platform has no per-locale option-label mechanism for app options).
-      label: 'موجودیت هدف',
+      // The template's SOURCE entity: the object whose records a user writes a
+      // template for. Named in the workspace's own words, and it is also the
+      // column header «موجودیت منبع» in the templates list.
+      label: 'موجودیت منبع',
       description:
-        'Entity this template is written for. Absent means PERSON.',
+        'Source entity this template is written for. Absent means PERSON.',
       icon: 'IconTarget',
       // Nullable on purpose: every template that already exists has no value
       // and must keep working as PERSON without a destructive migration.

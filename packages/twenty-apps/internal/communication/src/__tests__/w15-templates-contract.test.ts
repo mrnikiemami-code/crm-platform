@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import objectResult from 'src/objects/message-template.object';
+import navigationItemResult from 'src/navigation-menu-items/sms-templates.navigation-menu-item';
 import viewResult from 'src/views/message-templates.view';
 import {
   MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
@@ -11,6 +12,7 @@ import {
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 import { buildTemplateCatalogFromMetadata } from 'src/templates/build-template-catalog';
@@ -41,6 +43,12 @@ const viewConfig = viewResult.config as unknown as {
   name: string;
   objectUniversalIdentifier: string;
   fields?: { fieldMetadataUniversalIdentifier: string }[];
+};
+
+const navigationItemConfig = navigationItemResult.config as unknown as {
+  type: string;
+  viewUniversalIdentifier?: string;
+  pageLayoutUniversalIdentifier?: string;
 };
 
 const APP_ROOT = join(__dirname, '..', '..');
@@ -94,12 +102,14 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
     expect(viewConfig.objectUniversalIdentifier).toBe(
       MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
     );
+    // The list shows the source entity and the last change alongside the title,
+    // which are the three columns a template manager reads.
     expect(
       viewConfig.fields?.map((field) => field.fieldMetadataUniversalIdentifier),
     ).toEqual([
       MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
-      MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
-      MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
+      MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
+      MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER,
     ]);
   });
 
@@ -115,6 +125,22 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
         field.universalIdentifier,
       ).toBe(true);
     }
+  });
+
+  it('opens the native templates list from the sidebar, not a bespoke page', () => {
+    // The «الگوهای پیامک» entry must open the PLATFORM's list for this object, so
+    // the platform supplies the table, the column header menu, search, filter,
+    // sort and the record create/edit/delete flow. A PAGE_LAYOUT item would mean
+    // the app is drawing that surface itself again, which is exactly what this
+    // contract forbids.
+    expect(navigationItemConfig.type).toBe('VIEW');
+    expect(navigationItemConfig.viewUniversalIdentifier).toBe(
+      MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
+    );
+    expect(navigationItemConfig.pageLayoutUniversalIdentifier).toBeUndefined();
+
+    // The label is the VIEW's own name, so the sidebar copy stays the view's.
+    expect(viewConfig.name).toBe('SMS templates');
   });
 });
 
