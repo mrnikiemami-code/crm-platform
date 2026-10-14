@@ -343,12 +343,18 @@ export const resolvePreviewBlockReason = ({
 export type StudioPerson = {
   id: string;
   displayName: string;
+  /** Best-effort phone, shown in the option so a phone search is verifiable. */
+  phone?: string;
 };
 
 const buildPersonDisplayName = (person: StudioPerson): string =>
   person.displayName.length > 0 ? person.displayName : person.id;
 
-/** Filters the loaded accessible People by name or id, case-insensitively. */
+/** Digits-only form of a phone, so `+98 912…` matches a typed `0912…`. */
+const toDialableDigits = (value: string): string =>
+  value.replace(/\D+/g, '');
+
+/** Filters the loaded accessible People by name, phone or id. */
 export const filterStudioPeople = (
   people: readonly StudioPerson[],
   query: string,
@@ -359,11 +365,90 @@ export const filterStudioPeople = (
     return [...people];
   }
 
-  return people.filter(
-    (person) =>
-      buildPersonDisplayName(person).toLowerCase().includes(needle) ||
-      person.id.toLowerCase().includes(needle),
-  );
+  const needleDigits = toDialableDigits(needle);
+
+  return people.filter((person) => {
+    if (buildPersonDisplayName(person).toLowerCase().includes(needle)) {
+      return true;
+    }
+
+    if (person.id.toLowerCase().includes(needle)) {
+      return true;
+    }
+
+    // A phone search must survive spacing, calling codes and Persian digits, so
+    // the comparison is done on digits only.
+    if (needleDigits.length >= 3 && person.phone !== undefined) {
+      return toDialableDigits(person.phone).includes(needleDigits);
+    }
+
+    return false;
+  });
+};
+
+// --- Paged People loading ----------------------------------------------------
+
+/**
+ * How many People one page asks for.
+ *
+ * The picker must work in a workspace with ~100k People, so it never loads the
+ * whole table: it pages through the connection and appends. 100 keeps each
+ * request small while making a long scroll feel continuous.
+ */
+export const STUDIO_PEOPLE_PAGE_SIZE = 100;
+
+/** True when a response carries at least one further page. */
+export type StudioPeoplePageInfo = {
+  hasMore: boolean;
+  endCursor: string | null;
+};
+
+/**
+ * True when the list is close enough to its end that the next page should
+ * start loading. The threshold is 10% of the visible height, so the next page
+ * is already there by the time the user reaches the bottom.
+ */
+export const shouldLoadMorePeople = ({
+  scrollTop,
+  clientHeight,
+  scrollHeight,
+  thresholdRatio = 0.1,
+}: {
+  scrollTop: number;
+  clientHeight: number;
+  scrollHeight: number;
+  thresholdRatio?: number;
+}): boolean => {
+  if (clientHeight <= 0 || scrollHeight <= 0) {
+    return false;
+  }
+
+  const remaining = scrollHeight - scrollTop - clientHeight;
+  const threshold = Math.max(clientHeight * thresholdRatio, 1);
+
+  return remaining <= threshold;
+};
+
+/**
+ * Appends one page to the already-loaded People, de-duplicating by id so a
+ * record that moved between pages while the user scrolled is never listed
+ * twice and React keys stay stable.
+ */
+export const mergeStudioPeople = (
+  existing: readonly StudioPerson[],
+  incoming: readonly StudioPerson[],
+): StudioPerson[] => {
+  const seen = new Set(existing.map((person) => person.id));
+  const merged = [...existing];
+
+  for (const person of incoming) {
+    if (!seen.has(person.id)) {
+      seen.add(person.id);
+      merged.push(person);
+    }
+  }
+
+  return merged;
 };
 
 // --- W19-A: table, combobox, target adapters, drag safety --------------------

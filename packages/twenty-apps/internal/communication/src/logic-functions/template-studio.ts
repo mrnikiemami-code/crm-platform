@@ -40,6 +40,11 @@ type StudioRequest = {
   title?: unknown;
   body?: unknown;
   targetObject?: unknown;
+  /** Sample-Person picker: free-text name/phone search. */
+  search?: unknown;
+  /** Sample-Person picker: opaque cursor of the last page. */
+  after?: unknown;
+  limit?: unknown;
 };
 
 const readString = (value: unknown): string =>
@@ -100,9 +105,28 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
 
   if (action === 'search-people') {
     try {
-      const people = await findStudioPeople({ client });
+      // One PAGE at a time, plus the cursor for the next one. The picker appends
+      // pages as the user scrolls, so a workspace with ~100k People is never
+      // loaded in one request.
+      const page = await findStudioPeople({
+        client,
+        search: readTrimmed(body.search),
+        after:
+          typeof body.after === 'string' && body.after.length > 0
+            ? body.after
+            : null,
+        limit:
+          typeof body.limit === 'number' && Number.isFinite(body.limit)
+            ? body.limit
+            : undefined,
+      });
 
-      return { success: true as const, people };
+      return {
+        success: true as const,
+        people: page.people,
+        hasMore: page.pageInfo.hasMore,
+        endCursor: page.pageInfo.endCursor,
+      };
     } catch {
       return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
     }

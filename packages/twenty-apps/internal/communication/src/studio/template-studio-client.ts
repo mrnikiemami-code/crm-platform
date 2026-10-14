@@ -228,11 +228,16 @@ export const resolveStudioPreviewState = ({
   };
 };
 
-/** Parses the accessible-People list used by the sample-person picker. */
+/** Parses one PAGE of the accessible-People list used by the sample picker. */
 export const resolveStudioPeople = (response: {
   ok: boolean;
   data: unknown;
-}): { ok: true; people: StudioPerson[] } | { ok: false } => {
+}): {
+  ok: true;
+  people: StudioPerson[];
+  hasMore: boolean;
+  endCursor: string | null;
+} | { ok: false } => {
   if (!isRecord(response.data) || response.data.success !== true) {
     return { ok: false };
   }
@@ -248,12 +253,21 @@ export const resolveStudioPeople = (response: {
             id: value.id,
             displayName:
               typeof value.displayName === 'string' ? value.displayName : '',
+            phone: typeof value.phone === 'string' ? value.phone : '',
           };
         })
         .filter((person): person is StudioPerson => person !== null)
     : [];
 
-  return { ok: true, people };
+  return {
+    ok: true,
+    people,
+    hasMore: response.data.hasMore === true,
+    endCursor:
+      typeof response.data.endCursor === 'string'
+        ? response.data.endCursor
+        : null,
+  };
 };
 
 const readErrorCode = (value: unknown): TemplateStudioErrorCode => {

@@ -106,10 +106,45 @@ const peopleResponse = {
   data: {
     success: true,
     people: [
-      { id: 'p1', displayName: 'سارا احمدی' },
-      { id: 'p2', displayName: 'رضا کریمی' },
+      { id: 'p1', displayName: 'سارا احمدی', phone: '09120000001' },
+      { id: 'p2', displayName: 'رضا کریمی', phone: '09120000002' },
     ],
+    hasMore: false,
+    endCursor: null,
   },
+};
+
+/**
+ * Stands in for the real paged `search-people` route: it applies the search
+ * term server-side and walks the cursor, exactly like `findStudioPeople`, so the
+ * component tests exercise the real contract instead of a fixed fixture.
+ */
+const defaultSearchPeople = (
+  body: Record<string, unknown>,
+): unknown => {
+  const search = String(body.search ?? '').trim().toLowerCase();
+  const after = body.after ?? null;
+  const all = peopleResponse.data.people;
+
+  // A cursor past the first page returns the (empty) final page.
+  if (after !== null) {
+    return {
+      ok: true,
+      status: 200,
+      data: { success: true, people: [], hasMore: false, endCursor: null },
+    };
+  }
+
+  const matched =
+    search.length === 0
+      ? all
+      : all.filter((person) => person.displayName.toLowerCase().includes(search));
+
+  return {
+    ok: true,
+    status: 200,
+    data: { success: true, people: matched, hasMore: false, endCursor: null },
+  };
 };
 
 const previewResponse = (body: unknown, personId: string) => ({
@@ -138,8 +173,10 @@ let listPayload: unknown = listResponse();
 
 const installRoutes = ({
   onPreview,
+  onSearchPeople,
 }: {
   onPreview?: (body: Record<string, unknown>) => unknown;
+  onSearchPeople?: (body: Record<string, unknown>) => unknown;
 } = {}) => {
   callAppRoute.mockImplementation(
     async (path: string, _method: string, body?: Record<string, unknown>) => {
@@ -151,7 +188,9 @@ const installRoutes = ({
         case 'list':
           return listPayload;
         case 'search-people':
-          return peopleResponse;
+          return onSearchPeople
+            ? onSearchPeople(body)
+            : defaultSearchPeople(body);
         case 'preview':
           return onPreview
             ? onPreview(body)
@@ -275,6 +314,16 @@ const selectSamplePerson = async (query: string) => {
 
   await act(async () => {
     fireEvent.change(input, { target: { value: query } });
+  });
+
+  // The options now come from the SERVER search, which is debounced, so wait
+  // for the matching option to arrive before driving the keyboard.
+  await waitFor(() => {
+    expect(
+      screen
+        .getAllByRole('option')
+        .some((option) => (option.textContent ?? '').includes(query)),
+    ).toBe(true);
   });
 
   await act(async () => {
@@ -683,10 +732,16 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
       fireEvent.change(input, { target: { value: 'سارا' } });
     });
 
+    // The search is server-side and debounced, so wait for the filtered page.
+    await waitFor(() => {
+      expect(screen.getAllByRole('option')).toHaveLength(1);
+    });
+
     const options = screen.getAllByRole('option');
 
     expect(options).toHaveLength(1);
-    expect(options[0].textContent).toBe('سارا احمدی');
+    // The phone is part of the label, so a phone search is verifiable.
+    expect(options[0].textContent).toBe('سارا احمدی — 09120000001');
 
     await act(async () => {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
@@ -701,7 +756,7 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     });
 
     // The selection is visible once the list closes.
-    expect(input.value).toBe('سارا احمدی');
+    expect(input.value).toBe('سارا احمدی — 09120000001');
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
@@ -719,7 +774,7 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
 
     await selectSamplePerson('رضا');
 
-    expect(samplePersonInput().value).toBe('رضا کریمی');
+    expect(samplePersonInput().value).toBe('رضا کریمی — 09120000002');
 
     await act(async () => {
       fireEvent.click(within(personBox()).getByLabelText('Clear'));
@@ -951,7 +1006,9 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
 
     await act(async () => {
-      fireEvent.click(backdrop);
+      // The backdrop is the only pointer surface that may request a close, and
+      // it resolves on pointer-DOWN.
+      fireEvent.mouseDown(backdrop);
     });
 
     // The dialog is still mounted and now asks before discarding.
@@ -998,18 +1055,26 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
       fireEvent.change(input, { target: { value: 'رضا' } });
     });
 
-    const option = screen.getAllByRole('option')[0];
-
-    await act(async () => {
-      fireEvent.mouseDown(option);
-      fireEvent.click(option);
+    await waitFor(() => {
+      expect(screen.getAllByRole('option')).toHaveLength(1);
     });
 
-    expect(samplePersonInput().value).toBe('رضا کریمی');
+    const option = screen.getAllByRole('option')[0];
+
+    // Selection is applied on pointer-DOWN: the input keeps focus and the list
+    // cannot be torn down between press and release.
+    await act(async () => {
+      fireEvent.mouseDown(option);
+    });
+
+    expect(samplePersonInput().value).toBe('رضا کریمی — 09120000002');
   });
 
-  it('34: the combobox shows loading and empty states', async () => {
-    let releasePeople: ((value: unknown) => void) | null = null;
+  it('34: the combobox shows loading, then the empty state', async () => {
+    // Every request is held open so the loading state can be observed, and all
+    // of them are released together so a second in-flight request (React may
+    // mount effects twice) cannot leave the list stuck on "loading".
+    const pending: ((value: unknown) => void)[] = [];
 
     callAppRoute.mockImplementation(
       async (path: string, _method: string, body?: Record<string, unknown>) => {
@@ -1018,7 +1083,7 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
             return listPayload;
           case 'search-people':
             return new Promise((resolve) => {
-              releasePeople = resolve;
+              pending.push(resolve);
             });
           default:
             return { ok: true, status: 200, data: { success: true } };
@@ -1037,19 +1102,150 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     // Still fetching: the list reports loading rather than pretending to be empty.
     expect(screen.getByText('Loading people…')).toBeTruthy();
 
-    await act(async () => {
-      releasePeople?.({
-        ok: true,
-        status: 200,
-        data: { success: true, people: [] },
-      });
+    // The search is debounced, so wait for the request to actually start before
+    // releasing it.
+    await waitFor(() => {
+      expect(pending.length).toBeGreaterThan(0);
     });
 
-    expect(screen.getByText('No matching person.')).toBeTruthy();
+    await act(async () => {
+      pending.splice(0).forEach((resolve) =>
+        resolve({
+          ok: true,
+          status: 200,
+          data: { success: true, people: [], hasMore: false, endCursor: null },
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      const list = screen.queryByRole('listbox');
+
+      expect(list === null ? 'NO-LIST' : (list.textContent ?? '')).toContain(
+        'No matching person.',
+      );
+    });
   });
 
-  it('35: the modal exposes a bounded scrolling body and bounded list regions', async () => {
-    installRoutes();
+  it('36: the sample-Person picker APPENDS the next page when scrolled near the end', async () => {
+    // Page 1 advertises a further page; the cursor call returns page 2.
+    installRoutes({
+      onSearchPeople: (body) => {
+        if (body.after !== null && body.after !== undefined) {
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              success: true,
+              people: [{ id: 'p2', displayName: 'رضا کریمی', phone: '0912' }],
+              hasMore: false,
+              endCursor: null,
+            },
+          };
+        }
+
+        return {
+          ok: true,
+          status: 200,
+          data: {
+            success: true,
+            people: [{ id: 'p1', displayName: 'سارا احمدی', phone: '0911' }],
+            hasMore: true,
+            endCursor: 'cursor-1',
+          },
+        };
+      },
+    });
+
+    await openCreateModal();
+
+    const input = samplePersonInput();
+
+    await act(async () => {
+      fireEvent.focus(input);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('option')).toHaveLength(1);
+    });
+
+    // Scrolling to the end must request the next page and APPEND it. jsdom
+    // reports every scroll box as 0, so the geometry is defined explicitly.
+    const list = screen.getByRole('listbox');
+
+    Object.defineProperty(list, 'clientHeight', {
+      value: 100,
+      configurable: true,
+    });
+    Object.defineProperty(list, 'scrollHeight', {
+      value: 180,
+      configurable: true,
+    });
+    Object.defineProperty(list, 'scrollTop', {
+      value: 80,
+      configurable: true,
+      writable: true,
+    });
+
+    await act(async () => {
+      fireEvent.scroll(list);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('option')).toHaveLength(2);
+    });
+
+    expect(callsFor('search-people')).toHaveLength(2);
+    expect(callsFor('search-people').map((call) => call.body.after)).toEqual([
+      null,
+      'cursor-1',
+    ]);
+  });
+
+  it('37: typing is sent to the server so a Person outside the loaded page is found', async () => {
+    installRoutes({
+      onSearchPeople: (body) => ({
+        ok: true,
+        status: 200,
+        data: {
+          success: true,
+          people: [
+            {
+              id: 'p9',
+              displayName: String(body.search ?? ''),
+              phone: '09120000009',
+            },
+          ],
+          hasMore: false,
+          endCursor: null,
+        },
+      }),
+    });
+
+    await openCreateModal();
+
+    const input = samplePersonInput();
+
+    await act(async () => {
+      fireEvent.focus(input);
+    });
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '09120000009' } });
+    });
+
+    // The typed term reached the SERVER, which is what makes a phone search
+    // work for a Person who is not on the first page.
+    await waitFor(() => {
+      const searches = callsFor('search-people').map(
+        (call) => call.body.search,
+      );
+
+      expect(searches).toContain('09120000009');
+    });
+  });
+
+  it('35: the modal exposes a bounded scrolling body and bounded list regions', async () => {    installRoutes();
     await openCreateModal();
 
     const dialog = screen.getByRole('dialog');

@@ -1,16 +1,20 @@
-import { useId, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 
 import { composerStyles as styles } from 'src/components/composer-shared';
-import {
-  collectFocusCycle,
-  FOCUSABLE_SELECTOR,
-  focusElementSafely,
-} from 'src/components/studio-dom';
+import { StudioOverlay } from 'src/components/studio-overlay';
 import { templateStudioStyles as studioStyles } from 'src/components/template-studio-styles';
 import {
   activeComboboxValue,
   filterComboboxOptions,
   nextComboboxActiveIndex,
+  shouldLoadMorePeople,
   type ComboboxOption,
 } from 'src/studio/template-studio-logic';
 
@@ -22,8 +26,18 @@ import {
 // are `option`s. There is deliberately NO default selection — an empty value
 // means nothing is chosen, and a clear action is available once something is.
 //
-// The popup has its own bounded height and scrolls internally, so a long result
-// list can never push the surrounding modal out of the viewport.
+// The popup is rendered through `StudioOverlay` and positioned with
+// `position: fixed`. That matters for two reasons:
+//   1. the editor's own body scrolls, and an in-flow popup near the bottom of
+//      that body would be clipped away; and
+//   2. at body level the popup is not affected by the widget's transformed /
+//      clipped ancestor, so its controls keep receiving pointer events.
+// It is flipped above the input when there is not enough room below, and its
+// height is bounded, so it can never overflow the viewport.
+//
+// The list itself is PAGED by the caller: `hasMore` + `onLoadMore` let a
+// workspace with ~100k People append one page at a time as the user scrolls,
+// instead of loading the whole table.
 export type StudioComboboxProps = {
   options: readonly ComboboxOption[];
   value: string | null;
@@ -35,10 +49,30 @@ export type StudioComboboxProps = {
   emptyLabel: string;
   clearLabel: string;
   disabled?: boolean;
-  /** True while the options are still being fetched. */
+  /** True while the FIRST page is still being fetched. */
   isLoading?: boolean;
   loadingLabel?: string;
+  /** True when the server holds a further page. */
+  hasMore?: boolean;
+  /** True while the NEXT page is being fetched. */
+  isLoadingMore?: boolean;
+  loadingMoreLabel?: string;
+  onLoadMore?: () => void;
+  /**
+   * When provided, typing is also sent to the server, so a match outside the
+   * already-loaded pages is still found (name or phone).
+   */
+  onSearchChange?: (query: string) => void;
+  /** Rendered above the list to explain a failed load. */
+  errorLabel?: string | null;
 };
+
+/** Vertical gap between the input and the popup. */
+const POPUP_GAP = 4;
+/** The largest the popup may grow before it scrolls internally. */
+const POPUP_MAX_HEIGHT = 220;
+/** Below this much remaining space the popup flips above the input. */
+const POPUP_MIN_SPACE_BELOW = 160;
 
 export const StudioCombobox = ({
   options,
@@ -51,29 +85,148 @@ export const StudioCombobox = ({
   disabled = false,
   isLoading = false,
   loadingLabel = 'Loading…',
+  hasMore = false,
+  isLoadingMore = false,
+  loadingMoreLabel = 'Loading more…',
+  onLoadMore,
+  onSearchChange,
+  errorLabel = null,
 }: StudioComboboxProps) => {
   const listId = useId();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLUListElement | null>(null);
+
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [placement, setPlacement] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+    flipUp: boolean;
+  } | null>(null);
 
   const selectedOption =
     options.find((option) => option.value === value) ?? null;
-  const visibleOptions = filterComboboxOptions(options, query);
+
+  // The caller already searched server-side, so the loaded page is not filtered
+  // again by the query; filtering is only a local refinement when the caller
+  // does NOT own the search.
+  const visibleOptions =
+    onSearchChange === undefined
+      ? filterComboboxOptions(options, query)
+      : [...options];
 
   // While open the input holds what the user is typing; while closed it shows
   // the current selection, so the selected entity is always visible.
   const inputValue = isOpen ? query : (selectedOption?.label ?? '');
 
-  const close = () => {
+  /**
+   * Positions the popup against the input.
+   *
+   * The popup is `position: fixed` at body level, so it is placed from the
+   * input's own viewport rectangle. Flipping above when the space below is too
+   * small is what keeps the list usable when the input sits at the bottom of
+   * the editor.
+   */
+  const reposition = useCallback(() => {
+    const input = inputRef.current;
+
+    if (input === null || typeof input.getBoundingClientRect !== 'function') {
+      setPlacement(null);
+      return;
+    }
+
+    const rect = input.getBoundingClientRect();
+    const viewportHeight =
+      typeof window === 'undefined' ? 0 : window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom - POPUP_GAP;
+    const spaceAbove = rect.top - POPUP_GAP;
+    const flipUp = spaceBelow < POPUP_MIN_SPACE_BELOW && spaceAbove > spaceBelow;
+    const available = flipUp ? spaceAbove : spaceBelow;
+
+    setPlacement({
+      top: flipUp ? rect.top - POPUP_GAP : rect.bottom + POPUP_GAP,
+      left: rect.left,
+      width: rect.width,
+      maxHeight: Math.max(
+        Math.min(POPUP_MAX_HEIGHT, available),
+        88,
+      ),
+      flipUp,
+    });
+  }, []);
+
+  const close = useCallback(() => {
     setIsOpen(false);
     setQuery('');
     setActiveIndex(-1);
-  };
+  }, []);
+
+  const open = useCallback(() => {
+    setIsOpen(true);
+    setQuery('');
+    setActiveIndex(-1);
+  }, []);
+
+  // Keep the popup glued to the input while it is open.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    reposition();
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const onScrollOrResize = () => reposition();
+
+    // `capture: true` so a scroll in ANY ancestor (the editor body, the page)
+    // is seen, not only a window scroll.
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [isOpen, reposition]);
 
   const select = (nextValue: string) => {
     onChange(nextValue);
     close();
+  };
+
+  /**
+   * Loads the next page when the list is scrolled close to its end.
+   *
+   * The 10% threshold is shared with the People loader so the rule lives in one
+   * place.
+   */
+  const handleListScroll = () => {
+    const list = listRef.current;
+
+    if (
+      list === null ||
+      hasMore !== true ||
+      isLoadingMore ||
+      onLoadMore === undefined
+    ) {
+      return;
+    }
+
+    if (
+      shouldLoadMorePeople({
+        scrollTop: list.scrollTop,
+        clientHeight: list.clientHeight,
+        scrollHeight: list.scrollHeight,
+      })
+    ) {
+      onLoadMore();
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -98,8 +251,7 @@ export const StudioCombobox = ({
       event.preventDefault();
 
       if (!isOpen) {
-        setIsOpen(true);
-        setActiveIndex(-1);
+        open();
         return;
       }
 
@@ -138,7 +290,7 @@ export const StudioCombobox = ({
   const renderListBody = () => {
     if (isLoading) {
       return (
-        <li style={styles.muted} role="presentation">
+        <li style={studioStyles.comboboxStatus} role="presentation">
           {loadingLabel}
         </li>
       );
@@ -146,32 +298,47 @@ export const StudioCombobox = ({
 
     if (visibleOptions.length === 0) {
       return (
-        <li style={styles.muted} role="presentation">
+        <li style={studioStyles.comboboxStatus} role="presentation">
           {emptyLabel}
         </li>
       );
     }
 
-    return visibleOptions.map((option, index) => (
-      <li
-        key={option.value}
-        id={`${listId}-option-${index}`}
-        role="option"
-        aria-selected={index === activeIndex}
-        data-active={index === activeIndex}
-        // Preventing the default keeps focus on the input, so the click handler
-        // still runs before any blur could close the list.
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => select(option.value)}
-        style={
-          index === activeIndex
-            ? studioStyles.comboboxOptionActive
-            : studioStyles.comboboxOption
-        }
-      >
-        {option.label}
-      </li>
-    ));
+    return (
+      <>
+        {visibleOptions.map((option, index) => (
+          <li
+            key={option.value}
+            id={`${listId}-option-${index}`}
+            role="option"
+            aria-selected={index === activeIndex}
+            data-studio-option={option.value}
+            // Selecting on pointer DOWN (and preventing the default) is what
+            // makes a click reliable here: the input never loses focus, the
+            // list is never torn down between press and release, and the
+            // selection cannot be lost to a layout shift.
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              select(option.value);
+            }}
+            style={
+              index === activeIndex
+                ? studioStyles.comboboxOptionActive
+                : studioStyles.comboboxOption
+            }
+          >
+            {option.label}
+          </li>
+        ))}
+
+        {isLoadingMore && (
+          <li style={studioStyles.comboboxStatus} role="presentation">
+            {loadingMoreLabel}
+          </li>
+        )}
+      </>
+    );
   };
 
   return (
@@ -179,6 +346,7 @@ export const StudioCombobox = ({
       <span style={styles.label}>{label}</span>
       <div style={studioStyles.combobox}>
         <input
+          ref={inputRef}
           type="text"
           role="combobox"
           aria-label={label}
@@ -194,20 +362,20 @@ export const StudioCombobox = ({
           disabled={disabled}
           value={inputValue}
           placeholder={placeholder}
-          onFocus={() => {
-            setIsOpen(true);
-            setQuery('');
-            setActiveIndex(-1);
-          }}
+          onFocus={open}
           onChange={(event) => {
-            setIsOpen(true);
+            if (!isOpen) {
+              setIsOpen(true);
+            }
+
             setQuery(event.target.value);
             setActiveIndex(-1);
+            onSearchChange?.(event.target.value);
           }}
           onKeyDown={handleKeyDown}
           onBlur={() => {
-            // A click on an option prevents this default, so a selection is not
-            // lost before it is applied.
+            // A pointer-down on an option stops this from running, so a
+            // selection is never lost; anything else closes the list.
             close();
           }}
           style={{
@@ -234,17 +402,36 @@ export const StudioCombobox = ({
         )}
       </div>
 
+      {errorLabel !== null && (
+        <p style={styles.warning}>{errorLabel}</p>
+      )}
+
       {isOpen && (
-        // `role="listbox"` with an explicit bounded height: the results scroll
-        // here rather than expanding the modal.
-        <ul id={listId} role="listbox" style={studioStyles.comboboxList}>
-          {renderListBody()}
-        </ul>
+        <StudioOverlay>
+          <ul
+            id={listId}
+            ref={listRef}
+            role="listbox"
+            onScroll={handleListScroll}
+            style={{
+              ...studioStyles.comboboxListFixed,
+              // Before the first measurement the popup is placed under the
+              // input; `reposition` corrects it on the next frame.
+              top: placement?.top ?? 0,
+              left: placement?.left ?? 0,
+              width: placement?.width ?? 240,
+              maxHeight: placement?.maxHeight ?? POPUP_MAX_HEIGHT,
+              // Anchoring the flipped popup by its bottom edge keeps it exactly
+              // above the input whatever its final height is.
+              ...(placement?.flipUp === true
+                ? { transform: 'translateY(-100%)' }
+                : {}),
+            }}
+          >
+            {renderListBody()}
+          </ul>
+        </StudioOverlay>
       )}
     </div>
   );
 };
-
-// Re-exported so a caller building its own focus trap shares the same guarded
-// primitives instead of re-implementing an unsafe `focus()` call.
-export { collectFocusCycle, FOCUSABLE_SELECTOR, focusElementSafely };

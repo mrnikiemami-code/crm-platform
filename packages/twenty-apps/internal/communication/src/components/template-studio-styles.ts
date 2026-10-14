@@ -84,6 +84,9 @@ export const templateStudioStyles = {
     borderRadius: 4,
     cursor: 'pointer',
   },
+  // The overlay is portaled to `<body>`, so it must outrank the host's own
+  // layers and must explicitly accept pointer events (an ancestor inside the
+  // widget may have disabled them).
   modalBackdrop: {
     position: 'fixed' as const,
     inset: 0,
@@ -92,7 +95,8 @@ export const templateStudioStyles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    zIndex: 1000,
+    zIndex: 2147483000,
+    pointerEvents: 'auto' as const,
     boxSizing: 'border-box' as const,
     // The backdrop itself never scrolls: the dialog owns its own scrolled body,
     // so content can never escape below the viewport.
@@ -195,6 +199,40 @@ export const templateStudioStyles = {
     border: '1px solid #d6d6d6',
     borderRadius: 4,
     boxShadow: '0 6px 16px rgba(16, 24, 40, 0.1)',
+  },
+  // The same list, but portaled to `<body>` and pinned to the input. `top` and
+  // `maxHeight` are supplied per render from the input's measured rectangle.
+  comboboxListFixed: {
+    position: 'fixed' as const,
+    zIndex: 2147483001,
+    pointerEvents: 'auto' as const,
+    margin: 0,
+    padding: 4,
+    listStyle: 'none',
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    background: '#fff',
+    border: '1px solid #d6d6d6',
+    borderRadius: 4,
+    boxShadow: '0 8px 20px rgba(16, 24, 40, 0.16)',
+    boxSizing: 'border-box' as const,
+  },
+  // The loading / empty / loading-more row inside a listbox.
+  comboboxStatus: {
+    padding: '8px 8px',
+    fontSize: 12,
+    color: '#666',
+  },
+  // An always-visible notice row pinned under the dialog header, so a validation
+  // or save failure can never be hidden inside the scrolling body.
+  modalNotice: {
+    flex: '0 0 auto' as const,
+    margin: 0,
+    padding: '8px 20px',
+    fontSize: 12,
+    color: '#8a1f11',
+    background: '#fdecea',
+    borderBottom: '1px solid #f5c6c0',
   },
   listHeader: {
     display: 'flex',

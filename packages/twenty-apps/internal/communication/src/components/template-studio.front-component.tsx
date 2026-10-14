@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -18,10 +19,10 @@ import { StudioCombobox } from 'src/components/studio-combobox';
 import {
   collectFocusCycle,
   focusElementSafely,
-  isInsideContainer,
   readActiveElement,
   setSelectionRangeSafely,
 } from 'src/components/studio-dom';
+import { StudioOverlay } from 'src/components/studio-overlay';
 import { templateStudioStyles as studioStyles } from 'src/components/template-studio-styles';
 import { SMS_TEMPLATE_STUDIO_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { TEMPLATE_TARGET_OBJECT } from 'src/studio/template-studio-contract';
@@ -46,6 +47,7 @@ import {
   insertTokenAtSelection,
   isFieldActivationKey,
   isStudioDraftDirty,
+  mergeStudioPeople,
   readDroppedTokenSafely,
   readTextareaSelection,
   resolveDroppedFieldToken,
@@ -102,7 +104,18 @@ export const TemplateStudio = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   // W19-A preview state.
   const [people, setPeople] = useState<StudioPerson[]>([]);
+  // Paged sample-Person loading. `peopleQuery` is the SERVER search term (name
+  // or phone); `peopleEndCursor` walks the connection so ~100k People are loaded
+  // 100 at a time instead of all at once.
+  const [peopleQuery, setPeopleQuery] = useState('');
+  const [peopleEndCursor, setPeopleEndCursor] = useState<string | null>(null);
+  const [hasMorePeople, setHasMorePeople] = useState(false);
+  const [isLoadingMorePeople, setIsLoadingMorePeople] = useState(false);
+  const [peopleErrorCode, setPeopleErrorCode] = useState<
+    'LOAD_FAILED' | null
+  >(null);
   const [isPeopleLoading, setIsPeopleLoading] = useState(true);
+  const peopleRequestIdRef = useRef(0);
   const [samplePersonId, setSamplePersonId] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<StudioPreviewState>({
     kind: 'IDLE',
@@ -147,43 +160,100 @@ export const TemplateStudio = () => {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  // --- paged, searchable sample People -------------------------------------
 
-    const loadPeople = async () => {
-      setIsPeopleLoading(true);
+  const loadPeoplePage = useCallback(
+    async ({
+      query,
+      after,
+    }: {
+      query: string;
+      after: string | null;
+    }) => {
+      peopleRequestIdRef.current += 1;
+      const requestId = peopleRequestIdRef.current;
+
+      if (after === null) {
+        setIsPeopleLoading(true);
+      } else {
+        setIsLoadingMorePeople(true);
+      }
 
       try {
         const response = await callAppRoute(
           '/communication/template-studio',
           'POST',
-          { action: 'search-people' },
+          { action: 'search-people', search: query, after },
         );
 
-        if (cancelled) {
+        // A newer request (or an unmount) owns the state now.
+        if (!isMountedRef.current || requestId !== peopleRequestIdRef.current) {
           return;
         }
 
         const result = resolveStudioPeople(response);
 
-        if (result.ok) {
-          setPeople(result.people);
+        if (!result.ok) {
+          setPeopleErrorCode('LOAD_FAILED');
+          return;
         }
+
+        setPeopleErrorCode(null);
+        // Appending is what makes the list grow as the user scrolls, and
+        // de-duplicating by id keeps keys stable across page boundaries.
+        setPeople((current) =>
+          after === null
+            ? result.people
+            : mergeStudioPeople(current, result.people),
+        );
+        setPeopleEndCursor(result.endCursor);
+        setHasMorePeople(result.hasMore);
       } catch {
-        // The picker simply stays empty and the preview stays disabled.
-      } finally {
-        if (!cancelled) {
-          setIsPeopleLoading(false);
+        if (isMountedRef.current && requestId === peopleRequestIdRef.current) {
+          setPeopleErrorCode('LOAD_FAILED');
         }
-      }
-    };
+      } finally {
+        if (isMountedRef.current && requestId === peopleRequestIdRef.current) {
+          setIsPeopleLoading(false);
+          setIsLoadingMorePeople(false);
+        }
+       }
+    },
+    // No dependencies: `t` is deliberately not used inside, so this callback is
+    // stable and the search effect below cannot re-trigger itself in a loop.
+    [],
+  );
 
-    void loadPeople();
+  // Reload the FIRST page whenever the search term changes. The debounce keeps a
+  // fast typist from firing one request per keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      void loadPeoplePage({ query: peopleQuery, after: null });
+    }, 300);
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => clearTimeout(handle);
+  }, [peopleQuery, loadPeoplePage]);
+
+  /** Appends the next page when the list is scrolled near its end. */
+  const handleLoadMorePeople = useCallback(() => {
+    if (
+      !hasMorePeople ||
+      isLoadingMorePeople ||
+      isPeopleLoading ||
+      peopleEndCursor === null
+    ) {
+      return;
+    }
+
+    void loadPeoplePage({ query: peopleQuery, after: peopleEndCursor });
+  }, [
+    hasMorePeople,
+    isLoadingMorePeople,
+    isPeopleLoading,
+    peopleEndCursor,
+    peopleQuery,
+    loadPeoplePage,
+  ]);
 
   const templates = state.kind === 'READY' ? state.templates : [];
   const fields = state.kind === 'READY' ? state.fields : [];
@@ -224,10 +294,18 @@ export const TemplateStudio = () => {
 
   const personOptions = useMemo(
     () =>
-      people.map((person) => ({
-        value: person.id,
-        label: person.displayName.length > 0 ? person.displayName : person.id,
-      })),
+      people.map((person) => {
+        const name =
+          person.displayName.length > 0 ? person.displayName : person.id;
+        // The phone is shown next to the name so a phone search is verifiable,
+        // and so two people with the same name stay distinguishable.
+        const phone = person.phone ?? '';
+
+        return {
+          value: person.id,
+          label: phone.length > 0 ? `${name} — ${phone}` : name,
+        };
+      }),
     [people],
   );
 
@@ -294,8 +372,7 @@ export const TemplateStudio = () => {
     closeEditor();
   };
 
-  const handleModalKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
+  const handleModalKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {    if (event.key === 'Escape') {
       // A combobox that owns the key already stopped propagation, so reaching
       // here means the EDITOR should handle Escape.
       event.stopPropagation();
@@ -331,6 +408,47 @@ export const TemplateStudio = () => {
       focusElementSafely(first);
     }
   };
+
+  /**
+   * Escape is also handled at the DOCUMENT level.
+   *
+   * The dialog's own `onKeyDown` only fires while focus is inside it, so a user
+   * who clicked the backdrop, the body or any non-focusable area could not close
+   * the editor with Escape. Listening on the document makes Escape work from
+   * anywhere — and it is deliberately skipped while a combobox list is open, so
+   * Escape closes the LIST first and the editor only on the next press.
+   */
+  useEffect(() => {
+    if (modal === null) {
+      return;
+    }
+
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      const active = document.activeElement as
+        | (Element & { getAttribute?: (name: string) => string | null })
+        | null;
+
+      // A combobox owns Escape while its list is expanded.
+      if (
+        active !== null &&
+        typeof active.getAttribute === 'function' &&
+        active.getAttribute('aria-expanded') === 'true'
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      requestClose();
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [modal, isDirty]);
 
   // --- field interaction -----------------------------------------------------
 
@@ -769,49 +887,65 @@ export const TemplateStudio = () => {
 
       {/* --- create / edit modal --------------------------------------------- */}
       {modal !== null && draft !== null && (
-        <div
-          style={studioStyles.modalBackdrop}
-          // A backdrop click may ONLY close when the click did not land inside
-          // the dialog. The container check is stronger than comparing
-          // `target`/`currentTarget`: a click on any input, combobox, field card,
-          // scrollbar or the textarea is provably inside the dialog and can never
-          // be mistaken for a backdrop click.
-          onClick={(event) => {
-            if (isInsideContainer(modalRef.current, event.target)) {
-              return;
-            }
-
-            requestClose();
-          }}
-        >
+        // Portaled to `<body>`: outside the widget's transformed / clipped
+        // ancestor, so it covers the real viewport and its controls keep
+        // receiving pointer events.
+        <StudioOverlay>
           <div
-            ref={modalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('SMS template management')}
-            style={studioStyles.modal}
-            onKeyDown={handleModalKeyDown}
+            style={studioStyles.modalBackdrop}
+            // A press on the BACKDROP itself is the only pointer gesture that
+            // may request a close. Because the dialog is a child, a press on
+            // any input, combobox, field card, scrollbar or the textarea has a
+            // different target, so it can never be mistaken for the backdrop.
+            // Handling it on pointer-DOWN means a press that starts outside is
+            // resolved immediately, without depending on where it ends.
+            onMouseDown={(event) => {
+              if (event.target !== event.currentTarget) {
+                return;
+              }
+
+              requestClose();
+            }}
           >
-            {/* FIXED header: never scrolls, so the dialog identity stays visible. */}
-            <div style={studioStyles.modalHeader}>
-              <p style={{ ...styles.heading, fontSize: 15 }}>
-                {draft.id === null ? t('Create new template') : t('Edit template')}
-              </p>
-              <button
-                type="button"
-                aria-label={t('Close')}
-                style={studioStyles.compactButton}
-                onClick={requestClose}
-              >
-                {t('Close')}
-              </button>
-            </div>
+            <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t('SMS template management')}
+              style={studioStyles.modal}
+              onKeyDown={handleModalKeyDown}
+            >
+              {/* FIXED header: never scrolls, so the dialog identity stays visible. */}
+              <div style={studioStyles.modalHeader}>
+                <p style={{ ...styles.heading, fontSize: 15 }}>
+                  {draft.id === null
+                    ? t('Create new template')
+                    : t('Edit template')}
+                </p>
+                <button
+                  type="button"
+                  aria-label={t('Close')}
+                  style={studioStyles.compactButton}
+                  onClick={requestClose}
+                >
+                  {t('Close')}
+                </button>
+              </div>
 
-            {/* The ONLY scrolling region: bounded, so nothing escapes the viewport. */}
-            <div style={studioStyles.modalBody}>
-            {modalError !== null && <p style={styles.error}>{modalError}</p>}
+              {/*
+                The save/validation failure is pinned UNDER the header, outside
+                the scrolling body. Previously it rendered at the top of the
+                scrollable body, so a user standing at the bottom saw the Save
+                button "do nothing" — the message existed but was scrolled out
+                of view.
+              */}
+              {modalError !== null && (
+                <p style={studioStyles.modalNotice}>{modalError}</p>
+              )}
 
-            {isConfirmingDiscard && (
+              {/* The ONLY scrolling region: bounded, so nothing escapes the viewport. */}
+              <div style={studioStyles.modalBody}>
+                {isConfirmingDiscard && (
               <div style={styles.warning}>
                 <p style={styles.muted}>
                   {t('This template has unsaved changes.')}
@@ -1028,6 +1162,16 @@ export const TemplateStudio = () => {
                       clearLabel={t('Clear')}
                       isLoading={isPeopleLoading}
                       loadingLabel={t('Loading people…')}
+                      hasMore={hasMorePeople}
+                      isLoadingMore={isLoadingMorePeople}
+                      loadingMoreLabel={t('Loading more…')}
+                      onLoadMore={handleLoadMorePeople}
+                      onSearchChange={setPeopleQuery}
+                      errorLabel={
+                        peopleErrorCode === null
+                          ? null
+                          : t('The people could not be loaded.')
+                      }
                     />
                   )}
 
@@ -1128,20 +1272,22 @@ export const TemplateStudio = () => {
                 {isSaving ? t('Saving…') : t('Save')}
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </StudioOverlay>
       )}
 
       {/* --- delete confirmation --------------------------------------------- */}
       {deleteTarget !== null && (
-        <div
-          style={studioStyles.modalBackdrop}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setDeleteTarget(null);
-            }
-          }}
-        >
+        <StudioOverlay>
+          <div
+            style={studioStyles.modalBackdrop}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setDeleteTarget(null);
+              }
+            }}
+          >
           <div
             role="dialog"
             aria-modal="true"
@@ -1172,7 +1318,8 @@ export const TemplateStudio = () => {
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        </StudioOverlay>
       )}
     </div>
   );
