@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (W19-B1 REOPENED, NOT ACCEPTED — re-run CRM-W19-B1-RUNTIME-ROOT-CAUSE-CLOSURE. The three versions agree (code, installed 4D app and loaded browser bundle are all Communication 0.1.43), so this is NOT a stale-deployment or cache problem. The failure IS reproduced on main/4D with real input, and the break boundary is localised: React does not dispatch ANY event into the `[role=dialog]` subtree, while elements outside it work in the same session. No code fix was applied this round because the mechanism is not yet identified and a speculative change is out of bounds. W19-B2/B3 not started; APPLE/app2 untouched; no real SMS; W7 disabled.)
+Last updated: 2026-10-14 (USER DECISION after the third W19-B1 failure: «الگوهای پیامک» now uses the PLATFORM'S NATIVE list and CRUD — the same mechanism as the Companies page — and the bespoke studio is out of the user path. Communication 0.1.45 is installed on main/4D: the sidebar entry is a VIEW navigation item for the templates view, the view shows title / source entity / last update, and create, edit and reload persistence are verified live. Delete-with-confirm is NOT verified — see the section below. W19-B2 is cancelled; APPLE/app2 untouched; no real SMS; W7 disabled.)
 
 ## Purpose
 
@@ -52,6 +52,60 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## NATIVE TEMPLATE FLOW (2026-10-14) — the studio is retired, the platform's own list is used
+
+USER DECISION: «الگوهای پیامک» uses the same native mechanism as the Companies page. The
+bespoke studio is out of the user path. Installed on main/4D: Communication **0.1.45**
+(`4873b92896` → `769871e75f`, view-field fix; see the two commits below).
+
+What the change is:
+- The sidebar entry is a `VIEW` navigation item pointing at the app's own `messageTemplate`
+  TABLE view. The platform therefore owns the table, the column header menu (sort,
+  aggregate, hide), search, filter, paging, and the record create/edit/delete flow.
+- The retired studio `PAGE_LAYOUT` item and the studio page layout are **deleted** from the
+  manifest (verified: 0 rows remain for both universal identifiers), and the studio route
+  now 404s.
+- The view's columns are the title, the source entity (`targetObject`, field label
+  «موجودیت منبع») and «آخرین بهروزرسانی».
+- The `messageTemplate` object is untouched apart from that field label; no parallel storage
+  and **no record was migrated or rewritten** — every pre-existing template is preserved.
+
+Two things the platform forced, worth remembering:
+- A navigation item's **TYPE cannot be changed** once it exists, so the studio item had to be
+  dropped and a new item declared with its own stable identifier.
+- A view field's **target field is its identity**: repointing the existing channel/body
+  view-field rows did not apply (0.1.44 shipped the sidebar switch but the list still showed
+  title/channel/body). The two changed columns got **new** view-field identifiers in 0.1.45,
+  after which the columns reconciled. This is the same immutability trap as the navigation
+  item type, one level down.
+
+LIVE ACCEPTANCE on the installed 0.1.45 (real clicks and typing, main/4D):
+
+| | Result | Evidence |
+| --- | --- | --- |
+| Sidebar entry opens the native list | PASS | link resolves to `/objects/messageTemplates?viewId=82fae853-…`; the studio route is gone (404) |
+| Requested columns | PASS | header buttons read «عنوان»، «موجودیت منبع»، «آخرین بهروزرسانی» |
+| Native search / filter / sort | PASS | «فیلتر»، «مرتبسازی»، «گزینهها» and per-column sort buttons present |
+| Create → persisted | PASS | native side panel: typed title + body, clicked «ایجاد»; row `W19B1-NATIVE-TEST` written with title, body and `PERSON` (verified in the database) |
+| Appears in the list after reload | PASS | after reload the row is listed with «اشخاص» in the source-entity column |
+| Edit body → persisted after reload | PASS | inline edit on the native record page, committed with Enter; the new body was read back from the database and is shown after reload |
+| Delete: cancel then confirm | **UNVERIFIED** | no delete entry point could be located from the list (row selection opens no action bar exposing delete) or from the record page within the session budget; not attempted further and therefore not claimed |
+| Existing records preserved | PASS | the four pre-existing templates are unchanged before and after |
+| Provider variables | PASS | all seven byte-identical (MD5 + ciphertext length) |
+| Persian copy / error banner | PASS with one leak | no FrontComponent error and no runtime error; **but the record page tab titles are English** («Fields»، «Message»، «Variables») — a follow-up below |
+
+Cleanup: the task's own test row `W19B1-NATIVE-TEST` was removed after the checks (a data
+operation, reported as cleanup and **not** as UI acceptance of delete).
+
+Known follow-ups (not done in this change):
+1. The sidebar label reads **«الگوهای پیامک · الگوهای پیامک»** because a VIEW item renders
+   `<view name> · <object plural>` and both are «الگوهای پیامک». Renaming the view (for
+   example to «همهٔ الگوها») removes the duplication.
+2. The record page tab titles are English; they come from the page layout manifest and need
+   Persian copy.
+3. The retired studio front component and its logic-function route are unreferenced dead
+   code and should be deleted in a separate, reviewable commit.
 
 ## W19-B1 REOPENED — runtime root-cause closure (FAIL: reproduced, NOT fixed)
 

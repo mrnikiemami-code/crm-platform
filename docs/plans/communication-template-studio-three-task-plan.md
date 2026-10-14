@@ -157,9 +157,37 @@ APPLE/app2 or other environment is accessed.
 
 | Task | Status | Deployed version | Evidence |
 | --- | --- | --- | --- |
-| W19-B1 Persian UX and stability | **REOPENED — FAIL (narrowed, not fixed)** | 0.1.43 | Host forwards clicks **identically** for a working button and a dead in-dialog card (`[3, nodeId, listenerId, [event]]`, captured on `MessagePort`); worker returns no mutation ⇒ loss is inside the worker. See the W19-B1 re-run 2 section of `CRM-PLATFORM-RECOVERY.md` |
-| W19-B2 Dynamic source model | BLOCKED BY B1 | — | — |
-| W19-B3 Generic send and release closure | BLOCKED BY B2 | — | — |
+| W19-B1 Persian UX and stability | **SUPERSEDED by the user's decision below** | 0.1.45 | See the "Native-flow decision" section |
+| W19-B2 Dynamic source model | Cancelled with the decision below | — | — |
+| W19-B3 Generic send and release closure | Cancelled with the decision below | — | — |
+
+## USER DECISION (2026-10-14): native flow replaces the bespoke studio
+
+The user decided that «الگوهای پیامک» must use **the same native mechanism as the
+Companies page** — the platform's own list, create, edit and delete — and that the
+bespoke studio leaves the user path. This **supersedes the three-task plan above** for
+template management: W19-B1's remaining studio work and W19-B2 are cancelled, and W19-B3's
+sending scope is untouched by this decision.
+
+Decisions taken with it, and why:
+
+- **Sidebar.** The entry is a `VIEW` navigation item pointing at the app's own
+  `messageTemplate` TABLE view, so the platform supplies the table, the column header menu
+  (sort, aggregate, hide), search, filter, paging and the record create/edit/delete flow.
+  A navigation item's TYPE cannot be changed once it exists, so the studio's `PAGE_LAYOUT`
+  item is retired by dropping it from the manifest; the new item carries its own stable
+  identifier. The studio page layout is deleted, so the studio route no longer exists.
+- **Columns.** The view starts with the title, the source entity (`targetObject`) and
+  «آخرین بهروزرسانی». A view field's TARGET FIELD is treated as its identity by the sync, so
+  the two changed columns necessarily carry **new** view-field identifiers; the previous
+  channel/body columns are dropped from the list (both fields still exist and stay editable
+  on the record).
+- **No parallel storage.** Templates remain the native `messageTemplate` object. No row was
+  migrated or rewritten, and every pre-existing record is preserved.
+
+The bespoke studio's front component and its logic-function route are now **unreferenced
+dead weight**. Removing that code is deliberately left to a separate cleanup so this change
+stays reviewable; it can no longer be reached from the UI.
 
 ### W19-B1 re-run notes (CRM-W19-B1-RUNTIME-ROOT-CAUSE-CLOSURE)
 
