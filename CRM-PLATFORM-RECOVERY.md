@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (W18-C TEMPLATE STUDIO DEPLOYMENT AND LIVE ACCEPTANCE — Communication 0.1.37 built and deployed to main/4D; W18-A/B/C complete; APPLE/app2 untouched; no real SMS; W7 disabled)
+Last updated: 2026-10-14 (W19-A TEMPLATE STUDIO UX AND SECURITY — Communication 0.1.40 built and deployed to main/4D; table+modal studio, searchable combobox, drag/drop crash fixed, 0.1.37 security closed; 0.1.37–0.1.39 superseded; APPLE/app2 untouched; no real SMS; W7 disabled)
 
 ## Purpose
 
@@ -16,11 +16,143 @@ Local source path used during development: `D:\CrmSource\twenty`
 
 # CURRENT CHECKPOINT
 
-Last rewritten: 2026-10-14 (W18-C). This is the authoritative checkpoint. Everything under the
+Last rewritten: 2026-10-14 (W19-A). This is the authoritative checkpoint. Everything under the
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
 read as current state.
 
-## W18-C — SMS Template Studio packaging, deployment and live acceptance (DEPLOYED, 0.1.37)
+## W19-A — Template Studio UX (table + modal) and 0.1.37 security closure (DEPLOYED, 0.1.40)
+
+Replaces the inline studio with a Persian table + modal experience, fixes the live
+drag/drop crash and closes the 0.1.37 permission defects. Company sending is NOT
+implemented; that is W19-B.
+
+- **Installed on main/4D.** Communication **0.1.40**. The task targeted 0.1.38;
+  **0.1.38 was built and deployed first**, and two defects found by LIVE ACCEPTANCE
+  shipped as 0.1.39 and 0.1.40 (the platform refuses to re-upload a version, so a
+  fix always needs the next one). **0.1.37, 0.1.38 and 0.1.39 are SUPERSEDED.**
+- **Package (final).** `communication-0.1.40.tgz`, **2,312,183 bytes**, SHA256
+  **`03c5739315d3723b432c9eecaf2f0bd65a236a60162c397e6f08993e3ff31628`**, built on
+  Linux with the fork `twenty-sdk 2.42.0` (`/tool`) via
+  `twenty dev:build --tarball`, from a **clean `git archive` export** of the
+  implementation SHA.
+- **Implementation SHAs.** `07392b7792` (0.1.38 studio rewrite, drag fix, security
+  closure), `2ca9bba7da` (0.1.39 translated target label + explicit RTL editor),
+  `911ce5ab5d` (0.1.40 caret-after-blur fix).
+- **Documentation SHA.** This commit.
+- **Studio shape.** The page is now a heading («الگوهای پیامک»), an
+  «ایجاد الگوی جدید» primary action and a title search over a responsive
+  fixed-layout table (`عنوان / موجودیت هدف / آخرین ویرایش / عملیات`) with distinct
+  loading, empty and sanitized error states. Row actions are a compact «ویرایش»
+  and a danger-styled «حذف»; delete opens a Persian confirmation modal. **The
+  inline editor and the card list are gone.** New/Edit open one centered modal
+  (focus trap, «انصراف» / «ذخیره», loading/saving states) whose Escape and
+  backdrop-click both respect an unsaved-change guard.
+- **Searchable combobox.** One ARIA combobox/listbox replaces the separate search
+  input and select for the sample Person: typing filters, arrows navigate, Enter
+  selects, Escape closes, a clear action exists and there is no default Person.
+  The target-entity control consumes a `StudioTargetAdapter` contract rather than
+  a hardcoded JSX option, so W19-B can add a target without editing the control.
+- **Variable panel and editor.** The Persian label is prominent with the token
+  beneath it in forced LTR with bidi isolation, so it always reads
+  `@person.firstName`. Fields are grouped Person/Company and searchable by label
+  or token. A single click only selects; double-click and Enter/Space insert
+  exactly once. The body is RTL.
+- **Drag/drop crash fixed.** `dataTransfer` is never dereferenced blindly — the
+  `types`/`getData` reads are guarded and the dragged token is held in a ref, so a
+  payload-less drop still works. On drop the typed token is preferred, otherwise
+  the remembered one, and either must be in the current authorized catalog. Drag
+  state clears on drop, dragend, cancel and modal close; unsupported, file or text
+  drops do nothing and never throw.
+- **Security closure (0.1.37 defects).** The role grants **NO** blanket soft delete
+  and **NO** destroy; soft delete is granted **only** through a `messageTemplate`
+  object override, so Person, Company and Communication have none and hard destroy
+  stays false everywhere. Fields are now authorized **one by one**: each candidate
+  field must pass its OWN bounded read (bounded concurrency), Company fields are no
+  longer authorized by association, a Person that HAS a Company is discovered
+  explicitly, and no readable Person or an all-probe failure yields an EMPTY,
+  UNAVAILABLE catalog. Only stable stage codes ever reach the browser.
+- **Defects found ONLY by live acceptance, and fixed.**
+  1. **Target label leaked English (0.1.39).** The modal's target combobox showed
+     the adapter's source label `People` in the Persian UI. The contract is
+     unchanged; the label is now translated where the control is built.
+  2. **RTL editor not explicit (0.1.39).** The body textarea relied on the `dir`
+     attribute, which the renderer did not apply to that element even though the
+     document is `dir=rtl`. The direction is also set through the inline style
+     (the path that demonstrably works app-wide), so the editor is explicitly
+     right-aligned.
+  3. **Caret ignored after blur (0.1.40).** With the caret at index 2 of `ABCDEF`,
+     activating a field still appended at the end. Root cause is a browser
+     behavior, not a logic slip: **blurring a textarea RESETS
+     `selectionStart`/`selectionEnd` to the end of the value**, so both the live
+     read and the remember-on-blur write pointed at the end. The selection is now
+     remembered only while the textarea still owns focus, and the live selection is
+     trusted only while it is focused (otherwise the remembered one is used).
+- **Backup and deployment.** Fresh backup
+  `D:\twenty-main-backup\pre-w19a-20261014-1030` (`main-default.dump`,
+  **1,403,193 bytes**), **restore-verified** into a scratch database
+  (`w19averify`): `application` 3, `workspace` 1, `objectMetadata` 39,
+  `fieldMetadata` 727, `view` 82, `navigationMenuItem` 20,
+  `applicationVariable` 7 — all matched. All **7 provider variables were recorded
+  before the upgrade and are byte-identical after it** (MD5 plus ciphertext length
+  compared; no plaintext printed). Workspace **4D only** was upgraded.
+- **Post-upgrade least-privilege state (verified in the database).** The app role
+  has `canSoftDeleteAllObjectRecords = false` and `canDestroyAllObjectRecords =
+  false`, and its **only** object override is `messageTemplate` with
+  `canSoftDeleteObjectRecords = true` and no destroy bit — exactly the intended
+  manifest, so Person, Company and Communication have no delete capability.
+- **Live acceptance (Persian, real main/4D UI).**
+  - **A — Clean table page: PASS.** Heading «الگوهای پیامک», «ایجاد الگوی جدید»,
+    the title search box and a table whose headers are exactly
+    «عنوان / موجودیت هدف / آخرین ویرایش / عملیات», with «ویرایش» and «حذف» per row;
+    **no** inline editor and **no** card list.
+  - **B — New/Edit modal: PASS.** The modal opens with the title input, the
+    «اشخاص» target combobox, the RTL multiline body and the authorized-field panel
+    (10 fields, labels above LTR tokens); «انصراف» and «ذخیره» are present.
+  - **C — Searchable Person combobox: PASS.** The control is an ARIA
+    `combobox` with no default, filters as you type, navigates with the arrow
+    keys, selects with Enter, closes with Escape and offers a clear action.
+  - **D — No drag/drop exception: PASS.** A payload-less drag and drop on the body
+    (a `DragEvent` with no `dataTransfer`) produced **no** exception and **no**
+    error toast.
+  - **E — Keyboard-positioned insertion: NOT PROVEN LIVE.** The harness cannot
+    produce a caret the component observes: synthetic `select` events do not
+    trigger React's `onSelect`, and a real blur resets the range (see defect 3).
+    This is reported as a **harness limitation, not a pass**; the same production
+    code path is covered by the real-component regression test that reproduces the
+    blur reset and asserts insertion at the remembered caret.
+  - **F — Tokens LTR, stored canonically: PASS.** The token element forces
+    `direction: ltr` with `unicode-bidi: isolate` and reads `@person.firstName`.
+    The saved row held `سلام @person.firstName\nخط دوم @company.name`,
+    `targetObject = PERSON`, and the database check reported
+    `has_bidi = false` — **no hidden bidi control character is persisted**.
+  - **G — Create → reload → edit → delete: PASS.** A disposable template was
+    created through the modal (the modal closed and the row appeared), the row
+    persisted across a page reload, and it was then deleted through the real UI
+    with the Persian confirmation «این الگو برای همیشه حذف شود؟» → «الگو حذف شد»,
+    after which it was gone from the table. No final send button was pressed.
+  - **H — Least-privilege role: PASS.** See the database verification above.
+- **Known MVP limitation (kept).** The sample-person picker remains a **bounded
+  page of 50 accessible People** filtered in the UI; it was deliberately not
+  expanded in W19-A.
+- **Tests and static checks.** Communication app **696/696 across 64 files**,
+  including **29 real-production-component** cases (table/search/empty/error,
+  modal, unsaved guard, combobox keyboard behavior, LTR token, double-click and
+  keyboard insertion, undefined-`dataTransfer` safety, drag fallback,
+  unauthorized drop, canonical save, bidi-free persistence, the caret-after-blur
+  regression, the per-field catalog probes with bounded concurrency and the exact
+  least-privilege role manifest). Both app typechecks exit 0; app `oxlint` 0/0;
+  `git diff --check` clean. No host, core, SDK, provider or settings file changed.
+- **Untouched.** **APPLE/app2: UNTOUCHED / NOT ACCESSED.** **No real SMS was sent**,
+  no credential was changed and **W7 remains disabled**.
+- **RazPayamak TASK 2** (the remaining nine documented REST operations) remains
+  **DEFERRED** and does **not** block selling the current product.
+- **Next.** **W19-B** (Company sending) only, and it has not been started.
+
+
+`Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
+read as current state.
+
+## W18-C — SMS Template Studio packaging, deployment and live acceptance (historical; superseded by W19-A)
 
 TASK 3 OF 3 — the final W18 task. The SMS Template Studio is built, deployed to
 main/4D and exercised through the real Persian UI. The bounded 50-person picker is
