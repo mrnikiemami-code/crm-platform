@@ -123,6 +123,69 @@ space is compensated (`getBoundingClientRect` returns layout coordinates while h
 uses `rect × zoom`), so a tool miss was repeatedly mistaken for a product failure and a
 real product failure was mistaken for a tool limit.
 
+### W19-B1 re-run 2 — `CRM-W19-B1-EVENT-DISPATCH-ROOT-FIX` (FAIL: narrowed, still not fixed)
+
+The architecture was read from the code instead of inferred, and it changes the whole
+diagnosis:
+
+- A front component does **not** run in the page. It runs in a **worker inside a
+  cross-origin sandboxed iframe** (`sandbox="allow-scripts"`, `display:none`), and the host
+  renders its **serialized element tree** through `@remote-dom`'s `RemoteRootRenderer` with
+  a generated component registry (`packages/twenty-front-component-renderer/src/host/...`).
+  Events travel host → worker: the host serializes the DOM event
+  (`host/events/utils/serializeEvent.ts`, `wrapEventHandler.ts`) and posts it over the
+  `MessagePort` shared with the worker.
+- Two consequences that explain earlier confusion:
+  - **A component-side `document.addEventListener` can never receive host events** (the
+    component's `document` is the worker's polyfilled document, and the host only forwards
+    events for elements with a registered listener). The document-level Escape handler
+    added in 0.1.43 is therefore unreachable — this is why Escape does not close the modal.
+  - **`position: fixed` cannot resolve against the browser viewport**: the host renders the
+    tree inside the page-layout widget container, which is what confines the backdrop to
+    `1509×748` at `(8,56)` while `document.body` is `1745×982`.
+
+**New evidence this round.** The host's forwarding was captured at runtime by patching
+`MessagePort.prototype.postMessage`:
+
+| Clicked element | Forwarded message |
+| --- | --- |
+| `ایجاد الگوی جدید` (works) | `[3, "dql8RqsbTHObzyDOSszkq", "xQlqwuJ5z_lflEtzKASSl", [{type:"click",…}]]` |
+| variable card inside the dialog (dead) | `[3, "6gcItELN0JMyyUtTmKMVy", "jq6wpZFgdxEIy5-ZoBmJm", [{type:"click",…}]]` |
+
+Both carry the same op code, a node id **and a listener id**, and the same serialized
+payload. **So the host does not treat the dialog subtree differently — the event leaves the
+host correctly for both.** After the dead click the worker produced **no DOM mutation** in
+response (no further `MessagePort` traffic), so the loss is on the remote side: the worker
+receives the forward and does not invoke the component handler.
+
+`ایجاد الگوی جدید` opens the dialog, and `ویرایش` in a table row opens the edit modal with
+its persisted title — both with real clicks. Row buttons are created in a **later** render
+(after the async list load), so "nodes from a later render are dead" is **disproved**. The
+failing boundary is exactly the **dialog subtree**.
+
+**Instrumentation blocker (concrete).** The worker realm is a cross-origin sandboxed
+iframe: `iframe.contentDocument` is `null` and CDP cannot attach to it, so the worker's
+element listeners and React props cannot be inspected from outside. The host's own
+`FrontComponentErrorBox` never appeared and no console/runtime error was raised, so the
+worker is not throwing — it is silently not dispatching.
+
+**Next step (narrowed, do not re-derive).** Instrument **inside the component** — it runs
+in the worker — writing a diagnostic through the bridged storage
+(`setFrontComponentStorageItem` mirrors worker storage to the host) or the thread channel,
+then deploy that one diagnostic build and read it from the host. Log: (i) whether a native
+listener attached in the worker to the dialog element receives a click, (ii) render counts,
+(iii) whether the React prop handler fires. That single experiment separates "the worker
+never receives the event" from "the worker receives it and React does not deliver it to the
+component", which is the only remaining fork. Note `installStylePropertyOnRemoteElements`
+redefines `style` on every remote element prototype, so element-level property patching in
+this fork is worth auditing once the worker can be observed.
+
+**Status ⇒ FAIL, no code shipped.** The primary defect is unfixed; a geometry-only change
+would not make A–M pass, and shipping another speculative edit is out of bounds. Reported
+BLOCKED on the worker realm with the evidence above.
+
+### Superseded first re-run notes (kept for provenance)
+
 **Status.** No code change was made this round: the mechanism is not yet identified and a
 speculative edit is not an acceptable fix. Reported as **BLOCKED** on the mechanism, with
 the evidence above. The acceptance matrix cannot pass while every dialog control is inert.

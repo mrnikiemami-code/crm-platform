@@ -157,7 +157,7 @@ APPLE/app2 or other environment is accessed.
 
 | Task | Status | Deployed version | Evidence |
 | --- | --- | --- | --- |
-| W19-B1 Persian UX and stability | **REOPENED — FAIL (reproduced, not fixed)** | 0.1.43 | Fault localised to React event delivery into the `[role=dialog]` subtree; see the W19-B1 REOPENED section of `CRM-PLATFORM-RECOVERY.md` |
+| W19-B1 Persian UX and stability | **REOPENED — FAIL (narrowed, not fixed)** | 0.1.43 | Host forwards clicks **identically** for a working button and a dead in-dialog card (`[3, nodeId, listenerId, [event]]`, captured on `MessagePort`); worker returns no mutation ⇒ loss is inside the worker. See the W19-B1 re-run 2 section of `CRM-PLATFORM-RECOVERY.md` |
 | W19-B2 Dynamic source model | BLOCKED BY B1 | — | — |
 | W19-B3 Generic send and release closure | BLOCKED BY B2 | — | — |
 
@@ -176,6 +176,21 @@ elements and propagate through `#root` in both phases, the subtree belongs to th
 React root, and its props carry real handlers — yet no handler is ever invoked.
 
 The exit gate cannot be met while the dialog subtree is inert, so Task 1 is **not
-accepted**. No code change was made in this round: the mechanism is unidentified and a
-speculative edit is out of bounds. The next attempt must begin from the inert-subtree fact
-and inspect how the host mounts and renders it, not from any single control's logic.
+accepted**. Re-run 2 (`CRM-W19-B1-EVENT-DISPATCH-ROOT-FIX`) read the real renderer path and
+narrowed the fault: a front component runs in a **worker inside a cross-origin sandboxed
+iframe**, the host renders its serialized tree through `@remote-dom` and forwards events
+over a `MessagePort`. Runtime capture shows the host forwards a click **identically** —
+same op code, node id, listener id and payload — for the working `ایجاد الگوی جدید` button
+and for the dead variable card inside the dialog, and the worker returns **no mutation**.
+Row buttons created in a later render (`ویرایش`) work, so "later-render nodes are dead" is
+disproved and the failing boundary is exactly the dialog subtree. The worker realm cannot be
+reached from outside (cross-origin sandbox; `contentDocument` is null), which is the concrete
+instrumentation blocker; the next step is a single diagnostic build that logs from inside the
+component through the bridged storage. No code change was shipped in either round: the
+mechanism is unidentified and speculative edits are out of bounds.
+
+Two further facts that must be honoured by any fix: a component-side
+`document.addEventListener` can never receive host events (so the 0.1.43 document-level
+Escape handler is unreachable), and `position: fixed` inside the component resolves against
+the host widget container, not the browser viewport (the measured backdrop is `1509×748` at
+`(8,56)` while the body is `1745×982`).
