@@ -120,7 +120,24 @@ export type AuthorizedTemplateCatalogResult = {
    * the workspace simply had none.
    */
   isAvailable: boolean;
+  /**
+   * A STABLE, application-owned marker of which step produced the unavailable
+   * state. It carries no exception text, URL, credential or SDK detail, and
+   * exists so an operator can tell "metadata unreadable" apart from "role
+   * unreadable" without a raw error ever reaching a client.
+   */
+  stage: AuthorizedTemplateCatalogStage;
 };
+
+export const AUTHORIZED_CATALOG_STAGE = {
+  OK: 'OK',
+  METADATA_ERROR: 'METADATA_ERROR',
+  ROLE_QUERY_ERROR: 'ROLE_QUERY_ERROR',
+  ROLE_NOT_FOUND: 'ROLE_NOT_FOUND',
+} as const;
+
+export type AuthorizedTemplateCatalogStage =
+  (typeof AUTHORIZED_CATALOG_STAGE)[keyof typeof AUTHORIZED_CATALOG_STAGE];
 
 // `restrictedFields` is a JSON column; its exact shape is a platform detail, so
 // it is read defensively: entries may be plain field names or objects carrying
@@ -552,22 +569,41 @@ export const buildAuthorizedTemplateCatalog = async ({
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
 }): Promise<AuthorizedTemplateCatalogResult> => {
+  let objects: TemplateMetadataObject[];
+
   try {
-    const objects = await readTemplateMetadataObjects({ metadataClient });
-    const permissions = await readTemplatePermissions({ metadataClient });
-
-    if (permissions === null) {
-      return {
-        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
-        isAvailable: false,
-      };
-    }
-
-    return {
-      catalog: buildTemplateCatalogFromMetadata({ objects, permissions }),
-      isAvailable: true,
-    };
+    objects = await readTemplateMetadataObjects({ metadataClient });
   } catch {
-    return { catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG, isAvailable: false };
+    return {
+      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+      isAvailable: false,
+      stage: AUTHORIZED_CATALOG_STAGE.METADATA_ERROR,
+    };
   }
+
+  let permissions: TemplatePermissionSnapshot | null;
+
+  try {
+    permissions = await readTemplatePermissions({ metadataClient });
+  } catch {
+    return {
+      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+      isAvailable: false,
+      stage: AUTHORIZED_CATALOG_STAGE.ROLE_QUERY_ERROR,
+    };
+  }
+
+  if (permissions === null) {
+    return {
+      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+      isAvailable: false,
+      stage: AUTHORIZED_CATALOG_STAGE.ROLE_NOT_FOUND,
+    };
+  }
+
+  return {
+    catalog: buildTemplateCatalogFromMetadata({ objects, permissions }),
+    isAvailable: true,
+    stage: AUTHORIZED_CATALOG_STAGE.OK,
+  };
 };

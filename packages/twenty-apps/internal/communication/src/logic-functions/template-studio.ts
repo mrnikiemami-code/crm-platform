@@ -64,10 +64,11 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
   const loadCatalog = async (): Promise<{
     fields: StudioField[];
     catalogStatus: string;
+    catalogStage: string;
   }> => {
-    const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
-      metadataClient: new MetadataApiClient(),
-    });
+    const { catalog, isAvailable, stage } = await buildAuthorizedTemplateCatalog(
+      { metadataClient: new MetadataApiClient() },
+    );
 
     return {
       fields: catalog.variables.map((variable) => ({
@@ -78,19 +79,22 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       catalogStatus: isAvailable
         ? TEMPLATE_CATALOG_STATUS.READY
         : TEMPLATE_CATALOG_STATUS.UNAVAILABLE,
+      // A stable application-owned marker: never exception text.
+      catalogStage: stage,
     };
   };
 
   const action = readString(body.action);
 
   if (action === 'list') {
-    const { fields, catalogStatus } = await loadCatalog();
+    const { fields, catalogStatus, catalogStage } = await loadCatalog();
 
     return {
       success: true as const,
       templates: await findMessageTemplates({ client }),
       fields,
       catalogStatus,
+      catalogStage,
     };
   }
 
