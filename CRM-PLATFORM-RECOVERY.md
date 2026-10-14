@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (W19-B1 — Task 1 of the three-task closure plan is implemented, packaged as Communication 0.1.41 and INSTALLED on main/4D; Persian naming, guarded focus and the viewport-safe modal verified live; the preview click path is NOT proven live (automation harness limitation, see the W19-B1 section); W19-B2/B3 not started; APPLE/app2 untouched; no real SMS; W7 disabled)
+Last updated: 2026-10-14 (W19-B1 REOPENED, NOT ACCEPTED — re-run CRM-W19-B1-RUNTIME-ROOT-CAUSE-CLOSURE. The three versions agree (code, installed 4D app and loaded browser bundle are all Communication 0.1.43), so this is NOT a stale-deployment or cache problem. The failure IS reproduced on main/4D with real input, and the break boundary is localised: React does not dispatch ANY event into the `[role=dialog]` subtree, while elements outside it work in the same session. No code fix was applied this round because the mechanism is not yet identified and a speculative change is out of bounds. W19-B2/B3 not started; APPLE/app2 untouched; no real SMS; W7 disabled.)
 
 ## Purpose
 
@@ -53,7 +53,83 @@ deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUC
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
 
-## W19-B1 — Persian studio UX and runtime stability (DEPLOYED, 0.1.41)
+## W19-B1 REOPENED — runtime root-cause closure (FAIL: reproduced, NOT fixed)
+
+Re-run `CRM-W19-B1-RUNTIME-ROOT-CAUSE-CLOSURE`. All previous stability claims are void;
+only the live result below counts.
+
+**Version reconciliation (step 1) — all three AGREE, so this is NOT a stale deploy:**
+- Code: `HEAD == origin/crm-platform == 80ba2aa9c4247b5e0cefa8967de389d3d005de20`,
+  `package.json` version `0.1.43`.
+- Installed application in workspace 4D: Communication **0.1.43**
+  (`core.application`, UID `768bca20-0b81-4d33-a624-0a894a193ffd`).
+- **Loaded browser bundle: 0.1.43**, read from the revision marker the studio renders in
+  its header (`مدیریت الگوهای پیامک v0.1.43`). That marker was added so this question is
+  answerable, and it rules out a cached or stale bundle on this session.
+
+**Reproduced with real input on the installed 0.1.43 (step 2):**
+- `ایجاد الگوی جدید` DOES open the dialog (real click).
+- Inside the dialog **no control responds**: `ذخیره` and `انصراف`/`بستن` do nothing, the
+  variable cards neither select nor insert, and the variable-search input does not even
+  filter the palette.
+- Elements OUTSIDE the dialog keep working in the same session: the create button opens
+  the dialog and the table title search still filters the rows.
+
+**First broken boundary (step 3) — measured, not inferred.**
+For the variable card `[data-studio-field-token="@person.firstName"]`:
+- Native listeners ON the card receive `pointerdown`, `mousedown`, `mouseup`, `click` and
+  `dblclick`; `event.target` is the card and `defaultPrevented` is false.
+- Capture and bubble listeners placed on **every** ancestor up to `#root` and `document`
+  all fire in the correct order. **Nothing stops propagation** — the event reaches `#root`
+  in both phases.
+- The card's React props exist and carry real `onClick`/`onDoubleClick`/`onKeyDown`
+  functions; the card is in React's committed tree; the document holds exactly **one**
+  React container (`#root`) whose random key matches the card's `__reactFiber$` key, so
+  there is one React instance and no second renderer.
+- Yet **no handler runs**: `aria-pressed` stays `false`, the card's inline style never
+  changes, the body never receives a token, and the search `onChange` never filters.
+  Dispatching a synthetic `click`/`keydown` on the card also does nothing, and a real
+  `Enter` while the card is `document.activeElement` does nothing either.
+
+**Ruled out with evidence (so the next attempt does not repeat them):**
+- Not a stale or mismatched deployment: the three versions are identical.
+- Not a cached bundle: the loaded bundle reports its own 0.1.43 revision.
+- Not the 0.1.42 body portal: 0.1.43 removed it and the symptom is unchanged.
+- Not `pointer-events`, clipping, stacking or an overlay eating input: native events reach
+  the target element itself.
+- Not blocked propagation: the full capture and bubble path fires all the way to `document`.
+- Not a shadow DOM or nested document: every node's `getRootNode()` is `document` and no
+  element in the page has a `shadowRoot`.
+- Not duplicate renders: exactly one `[role=dialog]`, one card, one textarea.
+- Not a stale-fiber signature: `fiber.alternate === null` is equally true for the WORKING
+  create button, so it is normal for this build.
+- Not the SDK's handler wrapper: the create button and the card expose an identical
+  minified `onClick` (`(t) => { e(pT(t)); }`), yet only the button reacts.
+
+**Precise fault statement.** The first broken layer is: *the React event system does not
+deliver events to any element inside the studio's `[role=dialog]` subtree.* The DOM
+delivers them correctly; React does not turn them into component handler calls for that
+subtree. Every user-visible defect in this task is downstream of that single fact, because
+close/cancel/save, drag/drop, double-click insert, sample-Person selection and preview all
+live inside that subtree.
+
+**Why the previous three attempts did not fix it.** They aimed at the wrong layer. 0.1.41
+added focus guards and a Persian heading (real, but cosmetic here); 0.1.42 added a
+`createPortal` body portal to escape the widget's containing block, which addressed the
+`position: fixed` geometry and made things worse; 0.1.43 reverted the portal. None of them
+touched event delivery into the dialog subtree. One earlier conclusion must also be
+corrected: the automation harness DOES click correctly once the `zoom: 1.1` coordinate
+space is compensated (`getBoundingClientRect` returns layout coordinates while hit-testing
+uses `rect × zoom`), so a tool miss was repeatedly mistaken for a product failure and a
+real product failure was mistaken for a tool limit.
+
+**Status.** No code change was made this round: the mechanism is not yet identified and a
+speculative edit is not an acceptable fix. Reported as **BLOCKED** on the mechanism, with
+the evidence above. The acceptance matrix cannot pass while every dialog control is inert.
+The next attempt should start from "the dialog subtree is inert" and inspect how the host
+mounts and renders that subtree, not from any individual control's logic.
+
+## W19-B1 — Persian studio UX and runtime stability (SUPERSEDED by the re-run above; 0.1.41)
 
 TASK 1 OF 3 of the bounded closure plan. The currently installed Person-only studio is
 now stable, Persian and viewport-safe. No dynamic source model and no generic sending:

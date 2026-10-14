@@ -157,19 +157,25 @@ APPLE/app2 or other environment is accessed.
 
 | Task | Status | Deployed version | Evidence |
 | --- | --- | --- | --- |
-| W19-B1 Persian UX and stability | **DONE — deployed, one item pending user confirmation** | 0.1.41 | Impl `6587f7ce4b`; pkg SHA256 `f91c26b4a0…`; app 723/723; live A–J with H unproven (see below) |
-| W19-B2 Dynamic source model | NEXT (blocked only on H confirmation) | — | — |
+| W19-B1 Persian UX and stability | **REOPENED — FAIL (reproduced, not fixed)** | 0.1.43 | Fault localised to React event delivery into the `[role=dialog]` subtree; see the W19-B1 REOPENED section of `CRM-PLATFORM-RECOVERY.md` |
+| W19-B2 Dynamic source model | BLOCKED BY B1 | — | — |
 | W19-B3 Generic send and release closure | BLOCKED BY B2 | — | — |
 
-### W19-B1 closure notes
+### W19-B1 re-run notes (CRM-W19-B1-RUNTIME-ROOT-CAUSE-CLOSURE)
 
-Baseline for this task: `300bebdf74523f6165d93723bff24eb708c2b4ed` (HEAD ==
-`origin/crm-platform` at start, confirmed with `git ls-remote`).
+Versions reconciled on main/4D and **all three agree** — code `80ba2aa9c4` (0.1.43),
+installed application 0.1.43, and the loaded browser bundle 0.1.43 (read from the runtime
+revision marker rendered in the studio header). A stale deployment or cached bundle is
+therefore excluded by measurement.
 
-Exit gate status: no console/front-component error, the title is fully Persian, the modal
-stays open through edit/search/select/insert/drag, and every scroll region works in the
-real viewport. The one gate not proven live is **H — the rendered preview**: the sample
-Person was selected and the Preview control became enabled, but the automation browser
-could not activate any button inside the modal (see the W19-B1 section of
-`CRM-PLATFORM-RECOVERY.md`). A **user click on main/4D is required to close that gate**
-before Task 2 starts, because Task 2 changes the same preview path.
+With real input on the installed build: `ایجاد الگوی جدید` opens the dialog, and then
+**every control inside the dialog is inert** (save, cancel/close, variable select/insert,
+variable search filtering), while controls outside the dialog keep working in the same
+session. The break was isolated by instrumentation: DOM events reach the dialog's
+elements and propagate through `#root` in both phases, the subtree belongs to the single
+React root, and its props carry real handlers — yet no handler is ever invoked.
+
+The exit gate cannot be met while the dialog subtree is inert, so Task 1 is **not
+accepted**. No code change was made in this round: the mechanism is unidentified and a
+speculative edit is out of bounds. The next attempt must begin from the inert-subtree fact
+and inspect how the host mounts and renders it, not from any single control's logic.
