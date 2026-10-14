@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (W19-A TEMPLATE STUDIO UX AND SECURITY — Communication 0.1.40 built and deployed to main/4D; table+modal studio, searchable combobox, drag/drop crash fixed, 0.1.37 security closed; 0.1.37–0.1.39 superseded; APPLE/app2 untouched; no real SMS; W7 disabled)
+Last updated: 2026-10-14 (ARCHITECT REVIEW AFTER W19-A — Communication 0.1.40 remains deployed on main/4D, but user screenshots reopened the studio UX/runtime acceptance; a bounded three-task closure plan is now authoritative; APPLE/app2 untouched; no real SMS; W7 disabled)
 
 ## Purpose
 
@@ -16,15 +16,53 @@ Local source path used during development: `D:\CrmSource\twenty`
 
 # CURRENT CHECKPOINT
 
-Last rewritten: 2026-10-14 (W19-A). This is the authoritative checkpoint. Everything under the
+Last rewritten: 2026-10-14 (post-W19-A architect review). This is the authoritative checkpoint. Everything under the
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
 read as current state.
 
-## W19-A — Template Studio UX (table + modal) and 0.1.37 security closure (DEPLOYED, 0.1.40)
+## ACTIVE THREE-TASK CLOSURE PLAN — read before issuing the next task
 
-Replaces the inline studio with a Persian table + modal experience, fixes the live
-drag/drop crash and closes the 0.1.37 permission defects. Company sending is NOT
-implemented; that is W19-B.
+The durable architecture and execution plan is
+[`docs/plans/communication-template-studio-three-task-plan.md`](docs/plans/communication-template-studio-three-task-plan.md).
+It is part of the Recovery source of truth, not optional working notes. A recovered
+agent must read it before changing Communication templates or send behavior.
+
+The plan has exactly three bounded tasks, executed one at a time:
+
+1. **W19-B1 — Persian UX and runtime stability.** Fix the English title, the real
+   `ot.focus is not a function` front-component crash, unexpected modal closure,
+   failed drag/focus behavior, unreliable Person selection, missing bounded scroll
+   and the unsaleable visual hierarchy. Package and deploy on main/4D for user review.
+2. **W19-B2 — dynamic eligible source model and preview.** Person plus only objects
+   whose selected record has a readable singular relation to Person; stable metadata
+   identifiers, source + recipient tokens, sample source-record preview and strict
+   server revalidation. No send in this task.
+3. **W19-B3 — generic command and release closure.** Generic record-selection command,
+   server-side exact-context template filtering, unsupported-object message, existing
+   sequential send/persist path, main/4D acceptance and release-candidate freeze.
+
+**Critical compatibility rule:** selecting Person records returns only Person-source
+templates. A template sourced from Sales Follow-up (or any related object) must never
+load in Person context because one Person may have several related records and the
+source value would be ambiguous. Incompatible objects/templates are excluded on the
+server before the browser receives them; the client never guesses a relation or a
+source record.
+
+**Environment rule remains permanent:** only main/4D may be accessed, backed up,
+deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
+NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
+disabled and send no real SMS without a new explicit authorization.
+
+## W19-A — deployed baseline, but studio UX/runtime acceptance REOPENED (0.1.40)
+
+W19-A remains the installed baseline and its security correction remains valid, but
+the user's later screenshots supersede its UX acceptance claims. They show the
+English heading “SMS Template Studio”, a live
+`FrontComponent error: Uncaught TypeError: ot.focus is not a function`, a target
+fixed to Person, unreliable close/focus/drag behavior, an unusable sample-Person
+list, missing effective modal/list scrolling and an unsaleable layout. Treat those
+as confirmed defects, not harness limitations. The next work is the three-task plan
+above; it is **not** the old vague “Company sending” task.
 
 - **Installed on main/4D.** Communication **0.1.40**. The task targeted 0.1.38;
   **0.1.38 was built and deployed first**, and two defects found by LIVE ACCEPTANCE
@@ -146,7 +184,8 @@ implemented; that is W19-B.
   no credential was changed and **W7 remains disabled**.
 - **RazPayamak TASK 2** (the remaining nine documented REST operations) remains
   **DEFERRED** and does **not** block selling the current product.
-- **Next.** **W19-B** (Company sending) only, and it has not been started.
+- **Next.** **W19-B1 — Persian UX and runtime stability** from the active plan. Do
+  not start dynamic sources or generic sending until B1 is deployed and accepted.
 
 
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
