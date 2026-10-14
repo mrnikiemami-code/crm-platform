@@ -106,8 +106,13 @@ export const updateMessageTemplate = async ({
 };
 
 /**
- * Deletes one template. Returns the deleted id, or `null` when the platform did
- * not return one (which the caller reports as NOT_FOUND rather than success).
+ * Deletes one template. This is a SOFT delete (`deleteMessageTemplate`), the
+ * platform's normal delete: it removes the template from the studio and the
+ * composers while keeping the row recoverable, and it is the operation the app's
+ * role is authorized for — hard destroy stays denied on purpose.
+ *
+ * Returns the deleted id, or `null` when the platform did not return one (which
+ * the caller reports as NOT_FOUND rather than success).
  */
 export const deleteMessageTemplate = async ({
   client,
@@ -117,14 +122,14 @@ export const deleteMessageTemplate = async ({
   id: string;
 }): Promise<string | null> => {
   const result = await client.mutation({
-    destroyMessageTemplate: {
+    deleteMessageTemplate: {
       __args: { id },
       id: true,
     },
   });
 
   const deletedId = (
-    result.destroyMessageTemplate as RawMutationNode | null | undefined
+    result.deleteMessageTemplate as RawMutationNode | null | undefined
   )?.id;
 
   return typeof deletedId === 'string' && deletedId.length > 0
