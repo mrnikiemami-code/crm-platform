@@ -14,15 +14,19 @@ import {
 //
 // The layout holds NO storage: the studio reads and writes the existing native
 // `messageTemplate` object through the app's own route.
+//
+// The layout and tab titles are WORKSPACE-VISIBLE copy, so they are Persian here.
+// The platform has no per-locale manifest-title mechanism, and a Persian-first
+// workspace must never see an English product heading.
 export default definePageLayout({
   universalIdentifier: SMS_TEMPLATE_STUDIO_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
-  name: 'SMS Template Studio',
+  name: 'مدیریت الگوهای پیامک',
   type: 'STANDALONE_PAGE',
   tabs: [
     {
       universalIdentifier:
         SMS_TEMPLATE_STUDIO_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-      title: 'Templates',
+      title: 'الگوها',
       position: 0,
       icon: 'IconTemplate',
       layoutMode: PageLayoutTabLayoutMode.GRID,
@@ -30,7 +34,7 @@ export default definePageLayout({
         {
           universalIdentifier:
             SMS_TEMPLATE_STUDIO_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
-          title: 'SMS Template Studio',
+          title: 'مدیریت الگوهای پیامک',
           type: 'FRONT_COMPONENT',
           gridPosition: {
             row: 0,

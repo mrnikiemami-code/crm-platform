@@ -15,6 +15,13 @@ import {
   getTextDirection,
 } from 'src/components/composer-shared';
 import { StudioCombobox } from 'src/components/studio-combobox';
+import {
+  collectFocusCycle,
+  focusElementSafely,
+  isInsideContainer,
+  readActiveElement,
+  setSelectionRangeSafely,
+} from 'src/components/studio-dom';
 import { templateStudioStyles as studioStyles } from 'src/components/template-studio-styles';
 import { SMS_TEMPLATE_STUDIO_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { TEMPLATE_TARGET_OBJECT } from 'src/studio/template-studio-contract';
@@ -74,9 +81,6 @@ type ModalState = {
   baseline: StudioDraft | null;
 } | null;
 
-const FOCUSABLE_SELECTOR =
-  'input, textarea, select, button, [tabindex]:not([tabindex="-1"])';
-
 export const TemplateStudio = () => {
   const { t } = useTranslate();
   const locale = useLocale();
@@ -98,6 +102,7 @@ export const TemplateStudio = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   // W19-A preview state.
   const [people, setPeople] = useState<StudioPerson[]>([]);
+  const [isPeopleLoading, setIsPeopleLoading] = useState(true);
   const [samplePersonId, setSamplePersonId] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<StudioPreviewState>({
     kind: 'IDLE',
@@ -146,6 +151,8 @@ export const TemplateStudio = () => {
     let cancelled = false;
 
     const loadPeople = async () => {
+      setIsPeopleLoading(true);
+
       try {
         const response = await callAppRoute(
           '/communication/template-studio',
@@ -164,6 +171,10 @@ export const TemplateStudio = () => {
         }
       } catch {
         // The picker simply stays empty and the preview stays disabled.
+      } finally {
+        if (!cancelled) {
+          setIsPeopleLoading(false);
+        }
       }
     };
 
@@ -285,6 +296,8 @@ export const TemplateStudio = () => {
 
   const handleModalKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
+      // A combobox that owns the key already stopped propagation, so reaching
+      // here means the EDITOR should handle Escape.
       event.stopPropagation();
       requestClose();
       return;
@@ -294,17 +307,10 @@ export const TemplateStudio = () => {
       return;
     }
 
-    const container = modalRef.current;
-
-    if (container === null) {
-      return;
-    }
-
-    const focusable = Array.from(
-      container.querySelectorAll(FOCUSABLE_SELECTOR),
-    ).filter(
-      (element) => !(element as HTMLButtonElement).disabled,
-    ) as HTMLElement[];
+    // Only genuinely focusable values enter the cycle: a renderer proxy without
+    // a `focus` method is dropped, and every focus call is guarded, so the trap
+    // can never throw the live "focus is not a function" error.
+    const focusable = collectFocusCycle(modalRef.current);
 
     if (focusable.length === 0) {
       return;
@@ -312,17 +318,17 @@ export const TemplateStudio = () => {
 
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    const active = document.activeElement;
+    const active = readActiveElement();
 
     if (event.shiftKey && active === first) {
       event.preventDefault();
-      last.focus();
+      focusElementSafely(last);
       return;
     }
 
     if (!event.shiftKey && active === last) {
       event.preventDefault();
-      first.focus();
+      focusElementSafely(first);
     }
   };
 
@@ -359,10 +365,10 @@ export const TemplateStudio = () => {
     updateDraft({ ...draft, body: next.body });
     rememberedSelectionRef.current = { start: next.caret, end: next.caret };
 
-    if (textarea !== null) {
-      textarea.focus();
-      textarea.setSelectionRange(next.caret, next.caret);
-    }
+    // Restoring focus and the caret is best-effort: the renderer may hand back a
+    // value without those methods, and a focus failure must never crash.
+    focusElementSafely(textarea);
+    setSelectionRangeSafely(textarea, next.caret, next.caret);
   };
 
   // A single click only SELECTS a field, so the two clicks of a double-click can
@@ -633,7 +639,7 @@ export const TemplateStudio = () => {
       <div style={studioStyles.page}>
         <div style={studioStyles.pageHeader}>
           <div style={styles.field}>
-            <p style={styles.heading}>{t('SMS templates')}</p>
+            <p style={{ ...styles.heading, fontSize: 16 }}>{t('SMS template management')}</p>
             <p style={styles.hint}>
               {t(
                 'Create and manage the reusable SMS templates of this workspace.',
@@ -765,28 +771,44 @@ export const TemplateStudio = () => {
       {modal !== null && draft !== null && (
         <div
           style={studioStyles.modalBackdrop}
-          // A backdrop click closes only when the click started on the backdrop
-          // itself, and it respects the unsaved-change guard.
+          // A backdrop click may ONLY close when the click did not land inside
+          // the dialog. The container check is stronger than comparing
+          // `target`/`currentTarget`: a click on any input, combobox, field card,
+          // scrollbar or the textarea is provably inside the dialog and can never
+          // be mistaken for a backdrop click.
           onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              requestClose();
+            if (isInsideContainer(modalRef.current, event.target)) {
+              return;
             }
+
+            requestClose();
           }}
         >
           <div
             ref={modalRef}
             role="dialog"
             aria-modal="true"
-            aria-label={t('SMS templates')}
+            aria-label={t('SMS template management')}
             style={studioStyles.modal}
             onKeyDown={handleModalKeyDown}
           >
+            {/* FIXED header: never scrolls, so the dialog identity stays visible. */}
             <div style={studioStyles.modalHeader}>
-              <p style={styles.heading}>
+              <p style={{ ...styles.heading, fontSize: 15 }}>
                 {draft.id === null ? t('Create new template') : t('Edit template')}
               </p>
+              <button
+                type="button"
+                aria-label={t('Close')}
+                style={studioStyles.compactButton}
+                onClick={requestClose}
+              >
+                {t('Close')}
+              </button>
             </div>
 
+            {/* The ONLY scrolling region: bounded, so nothing escapes the viewport. */}
+            <div style={studioStyles.modalBody}>
             {modalError !== null && <p style={styles.error}>{modalError}</p>}
 
             {isConfirmingDiscard && (
@@ -882,24 +904,6 @@ export const TemplateStudio = () => {
                     )}
                   </p>
                 </label>
-
-                <div style={styles.actions}>
-                  <button
-                    type="button"
-                    style={styles.secondaryButton}
-                    onClick={requestClose}
-                  >
-                    {t('Cancel')}
-                  </button>
-                  <button
-                    type="button"
-                    style={styles.primaryButton}
-                    onClick={() => void handleSave()}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? t('Saving…') : t('Save')}
-                  </button>
-                </div>
               </div>
 
               <div style={studioStyles.modalSide}>
@@ -932,71 +936,75 @@ export const TemplateStudio = () => {
                       {groupedFields.length === 0 ? (
                         <p style={styles.muted}>{t('No matching fields.')}</p>
                       ) : (
-                        groupedFields.map((grouping) => (
-                          <div key={grouping.group} style={styles.field}>
-                            <span style={styles.label}>
-                              {t(grouping.label)}
-                            </span>
-                            <div style={studioStyles.fieldGrid}>
-                              {grouping.fields.map((field) => (
-                                <div
-                                  key={field.token}
-                                  role="button"
-                                  tabIndex={0}
-                                  draggable
-                                  aria-pressed={
-                                    selectedFieldToken === field.token
-                                  }
-                                  data-studio-field-token={field.token}
-                                  style={
-                                    selectedFieldToken === field.token
-                                      ? {
-                                          ...studioStyles.fieldButton,
-                                          ...studioStyles.fieldButtonSelected,
-                                        }
-                                      : studioStyles.fieldButton
-                                  }
-                                  onClick={() =>
-                                    handleFieldActivation(
-                                      field,
-                                      STUDIO_FIELD_ACTIVATION.CLICK,
-                                    )
-                                  }
-                                  // Insertion happens EXACTLY ONCE here. The two
-                                  // preceding clicks only select.
-                                  onDoubleClick={() =>
-                                    handleFieldActivation(
-                                      field,
-                                      STUDIO_FIELD_ACTIVATION.DOUBLE_CLICK,
-                                    )
-                                  }
-                                  onKeyDown={(event) => {
-                                    if (isFieldActivationKey(event.key)) {
-                                      event.preventDefault();
+                        // The palette has its OWN bounded height and scrolling,
+                        // so a long catalog can never grow the dialog.
+                        <div style={studioStyles.variablePalette}>
+                          {groupedFields.map((grouping) => (
+                            <div key={grouping.group} style={styles.field}>
+                              <span style={styles.label}>
+                                {t(grouping.label)}
+                              </span>
+                              <div style={studioStyles.fieldGrid}>
+                                {grouping.fields.map((field) => (
+                                  <div
+                                    key={field.token}
+                                    role="button"
+                                    tabIndex={0}
+                                    draggable
+                                    aria-pressed={
+                                      selectedFieldToken === field.token
+                                    }
+                                    data-studio-field-token={field.token}
+                                    style={
+                                      selectedFieldToken === field.token
+                                        ? {
+                                            ...studioStyles.fieldButton,
+                                            ...studioStyles.fieldButtonSelected,
+                                          }
+                                        : studioStyles.fieldButton
+                                    }
+                                    onClick={() =>
                                       handleFieldActivation(
                                         field,
-                                        STUDIO_FIELD_ACTIVATION.KEYBOARD,
-                                      );
+                                        STUDIO_FIELD_ACTIVATION.CLICK,
+                                      )
                                     }
-                                  }}
-                                  onDragStart={(event) =>
-                                    handleFieldDragStart(event, field)
-                                  }
-                                  onDragEnd={handleFieldDragEnd}
-                                >
-                                  <span style={studioStyles.fieldLabel}>
-                                    {t(field.label)}
-                                  </span>
-                                  {/* Forced LTR + bidi isolation so the token
-                                      always READS as `@person.firstName`. */}
-                                  <span style={studioStyles.fieldToken}>
-                                    {field.token}
-                                  </span>
-                                </div>
-                              ))}
+                                    // Insertion happens EXACTLY ONCE here. The two
+                                    // preceding clicks only select.
+                                    onDoubleClick={() =>
+                                      handleFieldActivation(
+                                        field,
+                                        STUDIO_FIELD_ACTIVATION.DOUBLE_CLICK,
+                                      )
+                                    }
+                                    onKeyDown={(event) => {
+                                      if (isFieldActivationKey(event.key)) {
+                                        event.preventDefault();
+                                        handleFieldActivation(
+                                          field,
+                                          STUDIO_FIELD_ACTIVATION.KEYBOARD,
+                                        );
+                                      }
+                                    }}
+                                    onDragStart={(event) =>
+                                      handleFieldDragStart(event, field)
+                                    }
+                                    onDragEnd={handleFieldDragEnd}
+                                  >
+                                    <span style={studioStyles.fieldLabel}>
+                                      {t(field.label)}
+                                    </span>
+                                    {/* Forced LTR + bidi isolation so the token
+                                        always READS as `@person.firstName`. */}
+                                    <span style={studioStyles.fieldToken}>
+                                      {field.token}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))}
+                        </div>
                       )}
                     </>
                   )}
@@ -1018,6 +1026,8 @@ export const TemplateStudio = () => {
                       placeholder={t('Search people')}
                       emptyLabel={t('No matching person.')}
                       clearLabel={t('Clear')}
+                      isLoading={isPeopleLoading}
+                      loadingLabel={t('Loading people…')}
                     />
                   )}
 
@@ -1097,6 +1107,26 @@ export const TemplateStudio = () => {
                   )}
                 </div>
               </div>
+            </div>
+            </div>
+
+            {/* FIXED actions: always reachable, never scrolled away. */}
+            <div style={studioStyles.modalFooter}>
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={requestClose}
+              >
+                {t('Cancel')}
+              </button>
+              <button
+                type="button"
+                style={styles.primaryButton}
+                onClick={() => void handleSave()}
+                disabled={isSaving}
+              >
+                {isSaving ? t('Saving…') : t('Save')}
+              </button>
             </div>
           </div>
         </div>

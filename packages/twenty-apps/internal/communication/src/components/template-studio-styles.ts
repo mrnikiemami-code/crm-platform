@@ -94,18 +94,24 @@ export const templateStudioStyles = {
     padding: 16,
     zIndex: 1000,
     boxSizing: 'border-box' as const,
+    // The backdrop itself never scrolls: the dialog owns its own scrolled body,
+    // so content can never escape below the viewport.
+    overflow: 'hidden' as const,
   },
+  // A three-row dialog: a FIXED header, a SCROLLING body and a FIXED action row.
+  // `height` is capped in viewport units and `overflow: hidden` keeps the rows
+  // inside it, while the body row subtracts the header/footer from the height so
+  // nothing can push the actions off-screen.
   modal: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: 14,
     width: '100%',
-    maxWidth: 720,
-    maxHeight: '90vh',
-    overflowY: 'auto' as const,
-    overflowX: 'hidden' as const,
+    maxWidth: 760,
+    height: '86vh',
+    maxHeight: 720,
+    minHeight: 320,
+    overflow: 'hidden' as const,
     boxSizing: 'border-box' as const,
-    padding: 20,
     background: '#fff',
     border: '1px solid #e4e4e4',
     borderRadius: 8,
@@ -119,6 +125,41 @@ export const templateStudioStyles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+    flex: '0 0 auto',
+    padding: '14px 20px',
+    borderBottom: '1px solid #ececec',
+    background: '#fff',
+  },
+  // The ONLY scrolling row. `overflowY: auto` plus a bounded height is what makes
+  // the modal viewport-safe.
+  modalBody: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 14,
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    padding: '16px 20px',
+    boxSizing: 'border-box' as const,
+  },
+  modalFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    flex: '0 0 auto',
+    padding: '12px 20px',
+    borderTop: '1px solid #ececec',
+    background: '#fafafa',
+  },
+  // The variable palette scrolls independently of the body, so a long catalog
+  // never grows the dialog.
+  variablePalette: {
+    maxHeight: 220,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    paddingInlineEnd: 4,
   },
   modalColumns: {
     display: 'flex',
@@ -130,15 +171,30 @@ export const templateStudioStyles = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 12,
-    flex: '2 1 360px',
-    minWidth: 260,
+    flex: '2 1 340px',
+    minWidth: 240,
   },
   modalSide: {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 12,
-    flex: '1 1 260px',
-    minWidth: 240,
+    flex: '1 1 240px',
+    minWidth: 220,
+  },
+  // A bounded, internally scrolling result list: a long catalog or People list
+  // scrolls here instead of stretching the dialog.
+  comboboxList: {
+    margin: 0,
+    marginTop: 4,
+    padding: 4,
+    listStyle: 'none',
+    maxHeight: 180,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    background: '#fff',
+    border: '1px solid #d6d6d6',
+    borderRadius: 4,
+    boxShadow: '0 6px 16px rgba(16, 24, 40, 0.1)',
   },
   listHeader: {
     display: 'flex',
@@ -240,18 +296,6 @@ export const templateStudioStyles = {
     border: '1px solid #d6d6d6',
     borderRadius: 4,
     cursor: 'pointer',
-  },
-  comboboxList: {
-    margin: 0,
-    marginTop: 4,
-    padding: 4,
-    listStyle: 'none',
-    maxHeight: 200,
-    overflowY: 'auto' as const,
-    background: '#fff',
-    border: '1px solid #d6d6d6',
-    borderRadius: 4,
-    boxShadow: '0 6px 16px rgba(16, 24, 40, 0.1)',
   },
   comboboxOption: {
     padding: '6px 8px',

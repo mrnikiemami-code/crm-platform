@@ -219,6 +219,8 @@
   "Discard changes": "لغو تغییرات",
   "Delete this template permanently?": "این الگو برای همیشه حذف شود؟",
   "SMS templates": "الگوهای پیامک",
+  "SMS template management": "مدیریت الگوهای پیامک",
+  "Loading people…": "در حال دریافت اشخاص…",
   "Create and manage the reusable SMS templates of this workspace.": "الگوهای پیامک قابل استفادهٔ مجدد این فضای کاری را بسازید و مدیریت کنید.",
   "Create new template": "ایجاد الگوی جدید",
   "Search by title": "جست‌وجوی عنوان",

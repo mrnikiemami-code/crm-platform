@@ -322,7 +322,7 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     installRoutes();
     await renderStudio();
 
-    expect(screen.getByText('SMS templates')).toBeTruthy();
+    expect(screen.getByText('SMS template management')).toBeTruthy();
     const headers = screen.getAllByRole('columnheader').map((cell) =>
       cell.textContent?.trim(),
     );
@@ -906,6 +906,191 @@ describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
     });
 
     expect(bodyTextarea().value).toBe('AB@person.firstNameCDEF');
+  });
+
+  it('30: clicks anywhere inside the dialog keep it open', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const dialog = screen.getByRole('dialog');
+
+    // Every interactive surface a user could click: the header, the title input,
+    // the target combobox, the field cards, the body, the palette and the
+    // preview control.
+    const targets: Element[] = [
+      dialog,
+      screen.getByLabelText('Title'),
+      screen.getByLabelText('Target entity'),
+      screen.getByLabelText('Message body'),
+      screen.getByLabelText('Search fields'),
+      fieldCard('@person.firstName'),
+      screen.getByText('Sample preview'),
+      screen.getByText('Save').closest('button') as Element,
+    ];
+
+    for (const target of targets) {
+      await act(async () => {
+        fireEvent.click(target);
+        fireEvent.mouseDown(target);
+      });
+
+      expect(screen.queryByRole('dialog')).toBeTruthy();
+    }
+  });
+
+  it('31: an actual backdrop click respects the unsaved-change guard', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Title'), {
+        target: { value: 'Dirty' },
+      });
+    });
+
+    const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+
+    await act(async () => {
+      fireEvent.click(backdrop);
+    });
+
+    // The dialog is still mounted and now asks before discarding.
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('This template has unsaved changes.')).toBeTruthy();
+  });
+
+  it('32: Escape inside an open combobox closes only the list', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const input = samplePersonInput();
+
+    await act(async () => {
+      fireEvent.focus(input);
+    });
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'سارا' } });
+    });
+
+    expect(screen.getByRole('listbox')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Escape' });
+    });
+
+    // The list is gone, the editor is not.
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('33: the sample-Person combobox selects by MOUSE', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const input = samplePersonInput();
+
+    await act(async () => {
+      fireEvent.focus(input);
+    });
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'رضا' } });
+    });
+
+    const option = screen.getAllByRole('option')[0];
+
+    await act(async () => {
+      fireEvent.mouseDown(option);
+      fireEvent.click(option);
+    });
+
+    expect(samplePersonInput().value).toBe('رضا کریمی');
+  });
+
+  it('34: the combobox shows loading and empty states', async () => {
+    let releasePeople: ((value: unknown) => void) | null = null;
+
+    callAppRoute.mockImplementation(
+      async (path: string, _method: string, body?: Record<string, unknown>) => {
+        switch (body?.action) {
+          case 'list':
+            return listPayload;
+          case 'search-people':
+            return new Promise((resolve) => {
+              releasePeople = resolve;
+            });
+          default:
+            return { ok: true, status: 200, data: { success: true } };
+        }
+      },
+    );
+
+    await openCreateModal();
+
+    const input = samplePersonInput();
+
+    await act(async () => {
+      fireEvent.focus(input);
+    });
+
+    // Still fetching: the list reports loading rather than pretending to be empty.
+    expect(screen.getByText('Loading people…')).toBeTruthy();
+
+    await act(async () => {
+      releasePeople?.({
+        ok: true,
+        status: 200,
+        data: { success: true, people: [] },
+      });
+    });
+
+    expect(screen.getByText('No matching person.')).toBeTruthy();
+  });
+
+  it('35: the modal exposes a bounded scrolling body and bounded list regions', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const dialog = screen.getByRole('dialog');
+
+    // The dialog itself never scrolls; a bounded inner row does.
+    const scrollingRows = Array.from(dialog.querySelectorAll('div')).filter(
+      (element) => element.style.overflowY === 'auto',
+    );
+
+    expect(scrollingRows.length).toBeGreaterThan(0);
+    expect(dialog.style.overflow).toBe('hidden');
+
+    // The modal is height-bounded in viewport units, and the palette and the
+    // combobox list each carry their own maximum height.
+    expect(dialog.style.height.length).toBeGreaterThan(0);
+    expect(dialog.style.maxHeight.length).toBeGreaterThan(0);
+
+    const bounded = Array.from(dialog.querySelectorAll('*')).filter(
+      (element) =>
+        (element as HTMLElement).style.maxHeight.length > 0 &&
+        (element as HTMLElement).style.overflowY === 'auto',
+    );
+
+    expect(bounded.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('36: a Tab press at the cycle edge never throws on a non-focusable value', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const dialog = screen.getByRole('dialog');
+
+    // The renderer may return values without `focus`; the trap must survive.
+    await expect(
+      act(async () => {
+        fireEvent.keyDown(dialog, { key: 'Tab' });
+        fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+      }),
+    ).resolves.not.toThrow();
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
   it('28: no SMS or send route is ever called', async () => {

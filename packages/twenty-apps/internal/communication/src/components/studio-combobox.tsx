@@ -1,6 +1,11 @@
 import { useId, useState, type KeyboardEvent } from 'react';
 
 import { composerStyles as styles } from 'src/components/composer-shared';
+import {
+  collectFocusCycle,
+  FOCUSABLE_SELECTOR,
+  focusElementSafely,
+} from 'src/components/studio-dom';
 import { templateStudioStyles as studioStyles } from 'src/components/template-studio-styles';
 import {
   activeComboboxValue,
@@ -15,8 +20,10 @@ import {
 // ARIA: the text input is the `combobox` (owns the list, reports the active
 // option through `aria-activedescendant`); the popup is a `listbox` whose items
 // are `option`s. There is deliberately NO default selection — an empty value
-// means nothing is chosen, and a clear action is always available once something
-// is.
+// means nothing is chosen, and a clear action is available once something is.
+//
+// The popup has its own bounded height and scrolls internally, so a long result
+// list can never push the surrounding modal out of the viewport.
 export type StudioComboboxProps = {
   options: readonly ComboboxOption[];
   value: string | null;
@@ -28,6 +35,9 @@ export type StudioComboboxProps = {
   emptyLabel: string;
   clearLabel: string;
   disabled?: boolean;
+  /** True while the options are still being fetched. */
+  isLoading?: boolean;
+  loadingLabel?: string;
 };
 
 export const StudioCombobox = ({
@@ -39,6 +49,8 @@ export const StudioCombobox = ({
   emptyLabel,
   clearLabel,
   disabled = false,
+  isLoading = false,
+  loadingLabel = 'Loading…',
 }: StudioComboboxProps) => {
   const listId = useId();
   const [isOpen, setIsOpen] = useState(false);
@@ -65,7 +77,24 @@ export const StudioCombobox = ({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // The list is a popup INSIDE the editor, so its own keys must never reach
+    // the modal's Escape handler.
+    if (event.key === 'Escape') {
+      if (!isOpen) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      return;
+    }
+
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (isLoading) {
+        return;
+      }
+
       event.preventDefault();
 
       if (!isOpen) {
@@ -101,22 +130,48 @@ export const StudioCombobox = ({
       return;
     }
 
-    if (event.key === 'Escape') {
-      if (!isOpen) {
-        return;
-      }
-
-      // Contain the Escape so it closes the list rather than the surrounding
-      // modal.
-      event.preventDefault();
-      event.stopPropagation();
-      close();
-      return;
-    }
-
-    if (event.key === 'Tab') {
+    if (event.key === 'Tab' || event.key === 'Home' || event.key === 'End') {
       close();
     }
+  };
+
+  const renderListBody = () => {
+    if (isLoading) {
+      return (
+        <li style={styles.muted} role="presentation">
+          {loadingLabel}
+        </li>
+      );
+    }
+
+    if (visibleOptions.length === 0) {
+      return (
+        <li style={styles.muted} role="presentation">
+          {emptyLabel}
+        </li>
+      );
+    }
+
+    return visibleOptions.map((option, index) => (
+      <li
+        key={option.value}
+        id={`${listId}-option-${index}`}
+        role="option"
+        aria-selected={index === activeIndex}
+        data-active={index === activeIndex}
+        // Preventing the default keeps focus on the input, so the click handler
+        // still runs before any blur could close the list.
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => select(option.value)}
+        style={
+          index === activeIndex
+            ? studioStyles.comboboxOptionActive
+            : studioStyles.comboboxOption
+        }
+      >
+        {option.label}
+      </li>
+    ));
   };
 
   return (
@@ -131,7 +186,9 @@ export const StudioCombobox = ({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={
-            isOpen && activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined
+            isOpen && activeIndex >= 0
+              ? `${listId}-option-${activeIndex}`
+              : undefined
           }
           autoComplete="off"
           disabled={disabled}
@@ -164,7 +221,7 @@ export const StudioCombobox = ({
           <button
             type="button"
             aria-label={clearLabel}
-            // Keep focus so the clear does not blur-then-reopen the list.
+            // Keep focus so clearing does not blur-then-reopen the list.
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => {
               onChange(null);
@@ -178,35 +235,16 @@ export const StudioCombobox = ({
       </div>
 
       {isOpen && (
+        // `role="listbox"` with an explicit bounded height: the results scroll
+        // here rather than expanding the modal.
         <ul id={listId} role="listbox" style={studioStyles.comboboxList}>
-          {visibleOptions.length === 0 ? (
-            <li style={styles.muted} role="presentation">
-              {emptyLabel}
-            </li>
-          ) : (
-            visibleOptions.map((option, index) => (
-              <li
-                key={option.value}
-                id={`${listId}-option-${index}`}
-                role="option"
-                aria-selected={index === activeIndex}
-                data-active={index === activeIndex}
-                // Preventing the default keeps focus on the input, so the
-                // click handler still runs before any blur closes the list.
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => select(option.value)}
-                style={
-                  index === activeIndex
-                    ? studioStyles.comboboxOptionActive
-                    : studioStyles.comboboxOption
-                }
-              >
-                {option.label}
-              </li>
-            ))
-          )}
+          {renderListBody()}
         </ul>
       )}
     </div>
   );
 };
+
+// Re-exported so a caller building its own focus trap shares the same guarded
+// primitives instead of re-implementing an unsafe `focus()` call.
+export { collectFocusCycle, FOCUSABLE_SELECTOR, focusElementSafely };
