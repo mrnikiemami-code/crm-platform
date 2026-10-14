@@ -157,6 +157,19 @@ APPLE/app2 or other environment is accessed.
 
 | Task | Status | Deployed version | Evidence |
 | --- | --- | --- | --- |
-| W19-B1 Persian UX and stability | NEXT | — | — |
-| W19-B2 Dynamic source model | BLOCKED BY B1 | — | — |
+| W19-B1 Persian UX and stability | **DONE — deployed, one item pending user confirmation** | 0.1.41 | Impl `6587f7ce4b`; pkg SHA256 `f91c26b4a0…`; app 723/723; live A–J with H unproven (see below) |
+| W19-B2 Dynamic source model | NEXT (blocked only on H confirmation) | — | — |
 | W19-B3 Generic send and release closure | BLOCKED BY B2 | — | — |
+
+### W19-B1 closure notes
+
+Baseline for this task: `300bebdf74523f6165d93723bff24eb708c2b4ed` (HEAD ==
+`origin/crm-platform` at start, confirmed with `git ls-remote`).
+
+Exit gate status: no console/front-component error, the title is fully Persian, the modal
+stays open through edit/search/select/insert/drag, and every scroll region works in the
+real viewport. The one gate not proven live is **H — the rendered preview**: the sample
+Person was selected and the Preview control became enabled, but the automation browser
+could not activate any button inside the modal (see the W19-B1 section of
+`CRM-PLATFORM-RECOVERY.md`). A **user click on main/4D is required to close that gate**
+before Task 2 starts, because Task 2 changes the same preview path.

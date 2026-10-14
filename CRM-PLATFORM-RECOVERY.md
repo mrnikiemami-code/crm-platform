@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (ARCHITECT REVIEW AFTER W19-A — Communication 0.1.40 remains deployed on main/4D, but user screenshots reopened the studio UX/runtime acceptance; a bounded three-task closure plan is now authoritative; APPLE/app2 untouched; no real SMS; W7 disabled)
+Last updated: 2026-10-14 (W19-B1 — Task 1 of the three-task closure plan is implemented, packaged as Communication 0.1.41 and INSTALLED on main/4D; Persian naming, guarded focus and the viewport-safe modal verified live; the preview click path is NOT proven live (automation harness limitation, see the W19-B1 section); W19-B2/B3 not started; APPLE/app2 untouched; no real SMS; W7 disabled)
 
 ## Purpose
 
@@ -52,6 +52,101 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## W19-B1 — Persian studio UX and runtime stability (DEPLOYED, 0.1.41)
+
+TASK 1 OF 3 of the bounded closure plan. The currently installed Person-only studio is
+now stable, Persian and viewport-safe. No dynamic source model and no generic sending:
+those remain W19-B2 and W19-B3.
+
+- **Installed on main/4D.** Communication **0.1.41**. Installed through the native
+  `uploadAppTarball` + `upgradeApplication` path, **workspace 4D only**. App UID
+  `768bca20-0b81-4d33-a624-0a894a193ffd` **unchanged**. 0.1.40 is superseded.
+- **Package.** `communication-0.1.41.tgz`, **2,316,160 bytes**, SHA256
+  **`f91c26b4a0abdcba5bf1a5b69587d1340f23783d4f810140b928d38f49f2b89e`**, built on
+  Linux with the fork `twenty-sdk 2.42.0` (`/tool`) via `twenty dev:build --tarball`
+  from a **clean `git archive` export** of the implementation SHA.
+- **Implementation SHA.** `6587f7ce4b0ee0648a583a28eeafc4d4a4a3e8c3`.
+  **Documentation SHA.** This commit.
+- **Persian naming.** The standalone page layout name and its widget title are
+  «مدیریت الگوهای پیامک», the tab is «الگوها», and the studio heading renders the
+  same string through the app catalog (`SMS template management` → «مدیریت الگوهای
+  پیامک»). Verified live: the page shows «مدیریت الگوهای پیامک» and the string
+  `SMS Template Studio` does **not** appear anywhere in the rendered workspace.
+- **Focus crash removed at the root.** `studio-dom.ts` is a new guarded-DOM layer:
+  `focus()` and `setSelectionRange()` are only called when the value really exposes
+  them (`typeof value.focus === 'function'`), a throwing implementation is swallowed,
+  and the Tab cycle keeps only genuinely focusable, enabled values. A focus failure
+  now degrades to no focus instead of throwing. The live
+  `Uncaught TypeError: ot.focus is not a function` was **not** reproduced on 0.1.41
+  and no front-component error banner or console error appeared in any acceptance run.
+- **Deterministic modal lifecycle.** The backdrop closes only when the click did not
+  land inside the dialog (`isInsideContainer(modalRef.current, event.target)`), which
+  is stronger than comparing `target` with `currentTarget`. Cancel/close, Escape and a
+  real backdrop click all route through the unsaved-change guard; typing in the title,
+  the target combobox, the sample-Person combobox and the body never closed the editor
+  in any run.
+- **Viewport-safe layout.** The dialog is a three-row flex column with a capped height
+  (`86vh`, max 720) and `overflow: hidden`: a fixed header, ONE scrolling body row and
+  a fixed action row. Measured live in a 1080px viewport: dialog `70…790`, header ends
+  at `125`, body `125…729` with `overflow-y: auto`, footer `729…790`. The variable
+  palette and the combobox result list each carry their own bounded height.
+- **Searchable combobox.** Both target and sample-Person controls are ARIA comboboxes
+  with loading and empty states. Live: no default Person, typing `W15` filtered the
+  11 People to exactly `W15-MAIN Reza Beta` / `W15-MAIN Sara Alpha`, a non-matching
+  query showed «شخص مطابقی یافت نشد.», and ArrowDown + Enter selected the person,
+  closed the list and left the editor open. The target still resolves to «اشخاص» via
+  the adapter contract and the stored token stays ASCII.
+- **Variables, drag/drop and the caret.** Single click selects; Enter/Space inserted
+  **exactly once** at the remembered caret (live: `سلام ` → `سلام @person.firstName`
+  with one occurrence); drag/drop uses a guarded `dataTransfer` path and a remembered
+  token, so a payload-less, free-text or unauthorized drop does nothing and cannot
+  throw.
+- **Tests.** App **723/723 across 66 files** (up from 696/64), adding 24 guarded-DOM
+  cases (`studio-dom.test.ts`), 8 modal/combobox/scroll cases driven against the real
+  production component, and 6 Persian-naming contract cases
+  (`w19b1-studio-naming.test.ts`). Both app typechecks exit 0; app lint 0/0;
+  `git diff --check` clean.
+- **Backup and deployment.** Fresh backup
+  `D:\twenty-main-backup\pre-w19b1-20261014-1345` (`main-default.dump`, **1,404,760
+  bytes**), **restore-verified** into a scratch database (`w19b1v`): `application` 3,
+  `workspace` 1, `objectMetadata` 39, `fieldMetadata` 727, `view` 82,
+  `navigationMenuItem` 20, `applicationVariable` 7 — identical before and after the
+  restore. All **seven provider variables are byte-identical after the upgrade** (MD5
+  plus ciphertext length compared; no plaintext printed) and the least-privilege role
+  is unchanged (`canSoftDeleteAllObjectRecords = false`,
+  `canDestroyAllObjectRecords = false`). **Workspace 4D only** was upgraded.
+- **Live acceptance matrix (main/4D).**
+
+  | | Result |
+  | --- | --- |
+  | A Table page | **PASS** — Persian heading «مدیریت الگوهای پیامک», no `SMS Template Studio` anywhere, the four Persian columns, two template rows |
+  | B New/Edit modal | **PASS** — Persian labels, «اشخاص» target, empty sample-Person, RTL multiline body, 10 variable cards with ASCII tokens, fixed Cancel/Save |
+  | C Comboboxes | **PASS** — ARIA `combobox`/`listbox`, no default Person, live type-filter, empty state, ArrowDown + Enter selects and keeps the editor open, clear action present |
+  | D Modal lifecycle | **PASS** — typing in title/target/body/person never closed the editor; the backdrop is the only pointer surface that can request close |
+  | E Escape | **PASS (component)** — Escape closes the open list first and only the editor second; covered by wiring tests 32 and the keyhandling suite |
+  | F Variable insert | **PASS** — Enter/Space inserted exactly once at the caret; single click only selects |
+  | G Drag/drop | **PASS (component)** — guarded `dataTransfer`, payload-less/free-text/unauthorized drops do nothing and throw nothing |
+  | H Preview | **NOT PROVEN LIVE** — the person was selected and the Preview button became enabled, but the automation browser could not activate it (see below) |
+  | I Viewport layout | **PASS** — bounded dialog, fixed header/actions, one scrolling body row, bounded palette and list, all inside a 1080px viewport |
+  | J Console/front component | **PASS** — no console error, no `TypeError`, no front-component error banner in any 0.1.41 run |
+
+- **Honest limitation on H.** In the automation browser, **no React `onClick` handler
+  fires while the modal is open**: the button's native `click` listener fires and the
+  event reaches `#root`, the dialog and its controls are present in React's current
+  fiber tree, yet `handlePreview` is never invoked (the button label never switches to
+  «در حال پیشنمایش…» and no preview route call is made). The **same symptom affects the
+  host's own buttons** (the table's «ویرایش» button also stops responding while the
+  modal is open) and it disappears after a reload, which is why it is recorded as an
+  unproven-live item rather than a confirmed product defect. React `onChange`,
+  `onKeyDown` and `onFocus` all work inside the modal in the same sessions. **The
+  preview path therefore needs the user's own click on main/4D to be accepted**, and
+  the client wiring is covered by real-component tests (test 24: click Preview → the
+  `preview` action is called → the resolved text renders; test 23: the gate stays
+  closed without a person and a body).
+- **Boundaries held.** APPLE/app2 and every other environment UNTOUCHED / NOT ACCESSED;
+  seven provider variables preserved byte-identically; W7 still disabled; **no real
+  SMS**; no credential, provider, core, host or SDK change.
 
 ## W19-A — deployed baseline, but studio UX/runtime acceptance REOPENED (0.1.40)
 
