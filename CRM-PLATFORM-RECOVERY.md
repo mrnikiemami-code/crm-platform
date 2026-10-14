@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-13 (W18-A TEMPLATE STUDIO FOUNDATION - code only, NOT built and NOT deployed; the installed version on main/4D is unchanged at 0.1.29)
+Last updated: 2026-10-14 (W18-C TEMPLATE STUDIO DEPLOYMENT AND LIVE ACCEPTANCE — Communication 0.1.37 built and deployed to main/4D; W18-A/B/C complete; APPLE/app2 untouched; no real SMS; W7 disabled)
 
 ## Purpose
 
@@ -16,11 +16,153 @@ Local source path used during development: `D:\CrmSource\twenty`
 
 # CURRENT CHECKPOINT
 
-Last rewritten: 2026-10-13 (W18-B). This is the authoritative checkpoint. Everything under the
+Last rewritten: 2026-10-14 (W18-C). This is the authoritative checkpoint. Everything under the
 `Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
 read as current state.
 
-## W18-B — template field interactions and sample-person preview (CODE ONLY, NOT DEPLOYED)
+## W18-C — SMS Template Studio packaging, deployment and live acceptance (DEPLOYED, 0.1.37)
+
+TASK 3 OF 3 — the final W18 task. The SMS Template Studio is built, deployed to
+main/4D and exercised through the real Persian UI. The bounded 50-person picker is
+kept as an explicit MVP limitation.
+
+- **Installed on main/4D.** Communication **0.1.37**. The task targeted 0.1.30, and
+  **0.1.30 was built and deployed first**; four defects were then found by LIVE
+  ACCEPTANCE (below) and each fix shipped as its own build, so the deployed
+  version advanced 0.1.30 → 0.1.31 → 0.1.32 → 0.1.33 → 0.1.34 → 0.1.35 → 0.1.36 →
+  0.1.37 through the native `uploadAppTarball` + `upgradeApplication` path. The
+  platform refuses to re-upload an existing version, which is why the fixes could
+  not stay on 0.1.30.
+- **Package (final).** `communication-0.1.37.tgz`, **2,289,284 bytes**, SHA256
+  **`0ad9f24edf2bbd04848d2fdb0bc82ba576dd6f7593242f39011b009b46282d7d`**, built on
+  Linux with the fork `twenty-sdk 2.42.0` (`/tool`) via
+  `twenty dev:build --tarball`, from a **clean `git archive` export of the
+  implementation SHA** so no untracked file could enter the package.
+- **Implementation SHAs (in order).** `57aead7844` (0.1.30 version bump),
+  `b4dde714fc` (0.1.31 role-resolution fix), `6e6999785a` (0.1.32 stage marker),
+  `e75632d152` (0.1.33 stage on the panel), `179205dc95` (0.1.34 role-list
+  authority), `32a18ac76f` (0.1.35 read-probe authorization), `c9379b02fb`
+  (0.1.36 live-caret fix), `8ec189bf10` (0.1.37 soft-delete fix).
+- **Documentation SHA.** This commit.
+- **Defects found ONLY by live acceptance, and fixed.**
+  1. **Catalog unusable (0.1.30).** Every field panel showed «متغیرهای مجاز در حال
+     حاضر در دسترس نیستند.». The app token cannot read role metadata at all —
+     `getRoles` and the application role row are both denied with "Entity
+     performing the request does not have permission" — so a permission-aware
+     catalog sourced from role metadata is not implementable from inside the app.
+     **The authorization source is now the platform's OWN record read**: one
+     bounded probe read (`first: 1`) of an accessible Person reports which
+     candidate fields the caller may read (a readable-but-empty field returns
+     `null`; an unreadable field is absent), and the offered catalog is the
+     candidate metadata catalog restricted to what that read returned. Person
+     fields are authorized per field; Company fields ride on the same
+     `person { company { … } }` read, a weaker relation-level guarantee that is
+     recorded as such. No readable Person, a failed metadata read or a failed
+     probe each yield an EMPTY, UNAVAILABLE catalog with a stable stage code
+     (`OK` / `METADATA_ERROR` / `READ_PROBE_ERROR` / `ROLE_NOT_FOUND`).
+  2. **Insertion ignored the caret (0.1.35).** With the caret at index 2 of
+     `ABCDEF`, a double-click appended the token at the end. The insertion
+     preferred the REMEMBERED selection whenever focus had moved to the field
+     palette, and that value could still hold the post-render end position.
+     **A live selection now always wins**; the remembered one is only the
+     fallback when the textarea reports none.
+  3. **Delete always failed (0.1.36).** The studio showed «حذف الگو ناموفق بود.»
+     and the row stayed. The app's own declared role had
+     `canSoftDeleteAllObjectRecords: false`, so the platform refused every
+     delete. The role now grants soft delete (hard destroy stays denied, so a
+     mistake stays recoverable) and the studio uses the platform's normal SOFT
+     delete (`deleteMessageTemplate`) instead of hard destroy.
+- **Backup and deployment.** Fresh backup
+  `D:\twenty-main-backup\pre-w18c-20261014-0900` (`main-default.dump`,
+  **1,396,696 bytes**), **restore-verified** into a scratch database
+  (`w18cverify`): `application` 3, `workspace` 1, `objectMetadata` 39,
+  `fieldMetadata` 726, `view` 82, `navigationMenuItem` 20,
+  `applicationVariable` 7 — all matched. All **7 provider variables were
+  recorded before the upgrade and are byte-identical after it** (MD5 plus
+  ciphertext length compared; no plaintext printed), and the selected provider is
+  unchanged. Workspace **4D only** was upgraded.
+- **Post-upgrade metadata.** app UID
+  `768bca20-0b81-4d33-a624-0a894a193ffd` unchanged; Communication and Person
+  objects intact; the `messageTemplate` object gained the optional
+  `targetObject` SELECT (the platform's own `name` label field was already
+  present before this wave, so it is not a change); navigation is exactly
+  «الگوهای پیامک» (`e3b7f5c9-…`, PAGE_LAYOUT) plus «ارتباطات`
+  (`c6d3a8b9-…`), with the retired W17 VIEW item `a1f5c9d2-…` and W17-R1 OBJECT
+  item `d2a6e4b8-…` both **absent**; the SMS Template Studio STANDALONE_PAGE and
+  its front component are installed; **no workflow trigger settings on any logic
+  function, so W7 remains disabled**.
+- **Live acceptance (Persian, real main/4D UI).**
+  - **A — Navigation: PASS.** The sidebar contains exactly one template entry,
+    «الگوهای پیامک», next to «ارتباطات», with no duplicate or old entry; opening
+    it renders the studio (heading «استودیوی الگوی پیامک», hint, template list)
+    with no blank or error state.
+  - **B — Create/edit UI: PASS.** «الگوی جدید» opens the real editor with the
+    title input, the «اشخاص» target selector (the only option, stored `PERSON`)
+    and the multiline message textarea. The authorized field panel lists **10
+    fields** with the Persian label first and the technical token second (for
+    example «نام / @person.firstName»), grouped into Person and Company.
+  - **C — Insertion: PARTIAL.** A single click selects the field and does **not**
+    insert (verified: the body was unchanged and the card became selected). A
+    double-click and Enter both insert the canonical token **exactly once**. A
+    drag/drop with a typed payload inserted exactly once, and a fabricated
+    unauthorized token (`@person.notAuthorized`) inserted **nothing**.
+    **Not proven live:** *positional* insertion at a caret the harness places —
+    with the selection set programmatically and the input value set through the
+    DOM, the token was appended at the end instead of at the caret. **This is
+    reported as a harness limitation, not a pass**: the same production code path
+    is proven by the real production component test
+    (`template-studio-wiring.test.tsx`), which drives the real `TemplateStudio`
+    and asserts insertion at the remembered caret (`سلام @person.firstName خوبی؟`);
+    no live caret-positioned proof is claimed.
+  - **D — Preview: PARTIAL.** The preview PERSIAN state is reachable and the
+    button gates on person + body + catalog; the preview reuses the production
+    read-only preview service, so it re-reads the Person server-side and writes
+    nothing (locked by a source contract asserting the studio route imports no
+    send or persistence path). Selecting a sample Person through the harness's
+    synthetic events and reading the resolved text back was **not completed**;
+    the resolved-value path is covered by the studio and preview suites. No
+    preview, at any point, created a Communication or Timeline record and no SMS
+    was sent.
+  - **E — Persistence: PASS.** A disposable multiline template titled
+    «W18C تست چندخطی» with body
+    `سلام @person.firstName عزیز\nسطح باشگاه: @person.jobTitle\nشرکت: @company.name`
+    was saved through the UI; the stored row held the **canonical tokens**,
+    **preserved newlines**, `targetObject = PERSON` and `channel = SMS`; it was
+    still listed **after a page reload**; editing and re-saving worked; and it was
+    deleted through the real UI (explicit confirmation «این الگو برای همیشه حذف
+    شود؟» → «الگو حذف شد») and verified **soft-deleted** in the database while the
+    other two templates were untouched. No final send button was pressed.
+  - **F — Safety/error states: PASS where exercised.** Persian loading, empty and
+    validation copy render (an empty save produced «عنوان الزامی است.»), and the
+    failed-delete path produced the sanitized «حذف الگو ناموفق بود.» with **no**
+    raw exception, URL, credential or SDK text in the browser. The catalog stores
+    and exposes only stable codes (`OK` / `METADATA_ERROR` / `READ_PROBE_ERROR` /
+    `ROLE_NOT_FOUND`), never exception text.
+- **Known MVP limitation (kept).** The sample-person picker is a **bounded page of
+  50 accessible People**, ordered by `createdAt` and filtered in the UI. It is
+  not a server-side text search: the app can only build a filter from field names
+  it has verified are queryable. Access is still the platform's decision — only
+  readable records are returned. This limitation was deliberately NOT expanded in
+  W18-C and remains documented.
+- **Tests and static checks.** Communication app **678/678 across 64 files**; both
+  app typechecks exit 0 (`tsconfig.spec.json` and `tsconfig.json`); app
+  `oxlint` **0/0**; `git diff --check` clean. No host, core, SDK, provider or
+  settings file was changed.
+- **Untouched.** **APPLE/app2: UNTOUCHED / NOT ACCESSED.** No other workspace or
+  environment was queried, installed, upgraded or tested. **No real SMS was
+  sent**, no credential was changed and **W7 remains disabled**.
+- **RazPayamak TASK 2** (the remaining nine documented REST operations) remains
+  **DEFERRED**. It is post-MVP and does **not** block selling the current
+  product: provider settings, the settings test send with delivery inquiry,
+  single-person send, sequential bulk send, templates and the Communication
+  history/status all work today. Do not claim full RazPayamak API coverage.
+- **No W18-D.** The W18 program is complete with A, B and C.
+
+
+`Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
+read as current state.
+
+## W18-B — template field interactions and sample-person preview (historical; carried into W18-C)
 
 TASK 2 OF 3. Completes the SMS Template Studio interaction model on top of the W18-A foundation,
 which is carried forward unchanged (its studio, navigation, storage contract and fail-closed catalog
