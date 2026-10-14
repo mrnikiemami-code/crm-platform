@@ -192,7 +192,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     }
 
     try {
-      const template = await saveMessageTemplateBody({
+      const outcome = await saveMessageTemplateBody({
         client,
         id: templateId,
         body: messageBody,
@@ -203,9 +203,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
             : null,
       });
 
-      if (template === null) {
-        // Either the row is gone, or `updatedAt` moved under us. Both are a
-        // conflict from the caller's point of view.
+      if (outcome.kind === 'CONFLICT') {
         return {
           success: false as const,
           errorCode: TEMPLATE_STUDIO_ERROR_CODE.WRITE_FAILED,
@@ -213,7 +211,11 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
         };
       }
 
-      return { success: true as const, template };
+      if (outcome.kind === 'NOT_FOUND') {
+        return fail(TEMPLATE_STUDIO_ERROR_CODE.NOT_FOUND);
+      }
+
+      return { success: true as const, template: outcome.template };
     } catch {
       return fail(TEMPLATE_STUDIO_ERROR_CODE.WRITE_FAILED);
     }

@@ -164,10 +164,17 @@ export const updateMessageTemplateSource = async ({
 /**
  * Writes ONLY the body of one template.
  *
- * The update is scoped to `updatedAt` equality with what the caller loaded: if
- * another session changed the record meanwhile, the platform matches no row and
- * returns nothing, which the caller reports as a conflict instead of silently
- * overwriting the other change.
+ * Conflict handling is CHECK-THEN-WRITE: the record's current `updatedAt` is read
+ * first and compared with what the caller loaded, and the write is skipped when
+ * they differ.
+ *
+ * Why not a conditional update: this platform's `updateMessageTemplate(id, data)`
+ * accepts no `filter` argument (only the batch `updateMessageTemplates(data,
+ * filter)` does), so an atomic compare-and-set is not available for a
+ * single-record update. The read-then-write check therefore closes the practical
+ * "another session saved while I was typing" case, and the small window between
+ * the two calls is stated rather than pretended away. A conflict is reported as
+ * `{ kind: 'CONFLICT' }` so the caller can keep the user's text.
  */
 export const saveMessageTemplateBody = async ({
   client,
@@ -175,19 +182,32 @@ export const saveMessageTemplateBody = async ({
   body,
   expectedUpdatedAt,
 }: {
-  client: MutationClient;
+  client: MutationClient & Pick<CoreApiClient, 'query'>;
   id: string;
   body: string;
   expectedUpdatedAt: string | null;
-}): Promise<TemplateRecordWithSource | null> => {
-  const filter =
-    expectedUpdatedAt !== null && expectedUpdatedAt.length > 0
-      ? { id: { eq: id }, updatedAt: { eq: expectedUpdatedAt } }
-      : { id: { eq: id } };
+}): Promise<
+  | { kind: 'SAVED'; template: TemplateRecordWithSource }
+  | { kind: 'CONFLICT' }
+  | { kind: 'NOT_FOUND' }
+> => {
+  const current = await readMessageTemplate({ client, id });
+
+  if (current === null) {
+    return { kind: 'NOT_FOUND' };
+  }
+
+  if (
+    expectedUpdatedAt !== null &&
+    expectedUpdatedAt.length > 0 &&
+    current.updatedAt !== expectedUpdatedAt
+  ) {
+    return { kind: 'CONFLICT' };
+  }
 
   const result = await client.mutation({
     updateMessageTemplate: {
-      __args: { id, data: { body }, filter },
+      __args: { id, data: { body } },
       id: true,
       title: true,
       body: true,
@@ -198,9 +218,11 @@ export const saveMessageTemplateBody = async ({
     },
   });
 
-  return toTemplateRecord(
+  const template = toTemplateRecord(
     result.updateMessageTemplate as RawMutationNode | null | undefined,
   );
+
+  return template === null ? { kind: 'NOT_FOUND' } : { kind: 'SAVED', template };
 };
 
 export const createMessageTemplate = async ({
