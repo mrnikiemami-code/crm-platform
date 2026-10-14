@@ -11,12 +11,19 @@ import {
 } from 'src/studio/template-studio-contract';
 import { type StudioField } from 'src/studio/template-studio-logic';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
+import {
+  findEligibleTemplateSources,
+  resolveEligibleSource,
+} from 'src/templates/data/find-eligible-template-sources';
 import { findMessageTemplates } from 'src/templates/data/find-message-templates';
 import { findStudioPeople } from 'src/templates/data/find-studio-people';
 import {
   createMessageTemplate,
   deleteMessageTemplate,
+  readMessageTemplate,
+  saveMessageTemplateBody,
   updateMessageTemplate,
+  updateMessageTemplateSource,
 } from 'src/templates/data/mutate-message-templates';
 import { previewTemplate } from 'src/templates/preview-template.service';
 
@@ -45,6 +52,12 @@ type StudioRequest = {
   /** Sample-Person picker: opaque cursor of the last page. */
   after?: unknown;
   limit?: unknown;
+  /** Record-page editor: the chosen source object's `nameSingular`. */
+  sourceObjectName?: unknown;
+  /** Record-page editor: the relation field that resolves to one Person. */
+  recipientRelation?: unknown;
+  /** Record-page editor: the `updatedAt` the caller loaded, for conflict detection. */
+  expectedUpdatedAt?: unknown;
 };
 
 const readString = (value: unknown): string =>
@@ -129,6 +142,127 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       };
     } catch {
       return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
+    }
+  }
+
+  if (action === 'eligible-sources') {
+    try {
+      const sources = await findEligibleTemplateSources({
+        metadataClient: new MetadataApiClient(),
+      });
+
+      // An empty list is reported as such: it means the workspace metadata gave
+      // no eligible source (or Person itself is unreadable), never a guess.
+      return { success: true as const, sources };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
+    }
+  }
+
+  if (action === 'read-template') {
+    // The RECORD-PAGE editor reads exactly one template — the one the user is
+    // already viewing, whose id the component takes from `useRecordId()`. The
+    // route never lists templates here, so it cannot be used to enumerate.
+    const templateId = readTrimmed(body.templateId);
+
+    if (templateId.length === 0) {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+    }
+
+    try {
+      const template = await readMessageTemplate({ client, id: templateId });
+
+      return template === null
+        ? fail(TEMPLATE_STUDIO_ERROR_CODE.NOT_FOUND)
+        : { success: true as const, template };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
+    }
+  }
+
+  if (action === 'save-body') {
+    // Saves the BODY only, scoped to the `updatedAt` the caller loaded: a
+    // concurrent change matches no row and is reported as a conflict instead of
+    // being silently overwritten.
+    const templateId = readTrimmed(body.templateId);
+    const messageBody = readString(body.body);
+
+    if (templateId.length === 0) {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+    }
+
+    try {
+      const template = await saveMessageTemplateBody({
+        client,
+        id: templateId,
+        body: messageBody,
+        expectedUpdatedAt:
+          typeof body.expectedUpdatedAt === 'string' &&
+          body.expectedUpdatedAt.length > 0
+            ? body.expectedUpdatedAt
+            : null,
+      });
+
+      if (template === null) {
+        // Either the row is gone, or `updatedAt` moved under us. Both are a
+        // conflict from the caller's point of view.
+        return {
+          success: false as const,
+          errorCode: TEMPLATE_STUDIO_ERROR_CODE.WRITE_FAILED,
+          isConflict: true,
+        };
+      }
+
+      return { success: true as const, template };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.WRITE_FAILED);
+    }
+  }
+
+  if (action === 'save-source') {
+    // Saves the SOURCE model, validated against the workspace's eligible set so
+    // a forged or stale pair is rejected rather than stored.
+    const templateId = readTrimmed(body.templateId);
+    const requestedObject = readTrimmed(body.sourceObjectName);
+
+    if (templateId.length === 0 || requestedObject.length === 0) {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+    }
+
+    try {
+      const sources = await findEligibleTemplateSources({
+        metadataClient: new MetadataApiClient(),
+      });
+
+      const resolved = resolveEligibleSource({
+        sources,
+        objectName: requestedObject,
+        relationName: readTrimmed(body.recipientRelation),
+      });
+
+      if (resolved === null) {
+        return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+      }
+
+      const template = await updateMessageTemplateSource({
+        client,
+        id: templateId,
+        sourceObjectName: resolved.objectName,
+        recipientRelation: resolved.relationName,
+        // The legacy marker stays PERSON whenever the source is Person, so the
+        // list's «موجودیت منبع» column keeps working for those rows.
+        targetObject:
+          // The legacy marker is always PERSON: it is the value the list's
+          // «موجودیت منبع» column renders, and the real source lives in the
+          // stable `sourceObjectName` / `recipientRelation` pair.
+          TEMPLATE_TARGET_OBJECT.PERSON,
+      });
+
+      return template === null
+        ? fail(TEMPLATE_STUDIO_ERROR_CODE.NOT_FOUND)
+        : { success: true as const, template };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.WRITE_FAILED);
     }
   }
 

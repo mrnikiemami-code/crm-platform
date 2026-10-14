@@ -19,6 +19,8 @@ type RawMutationNode = {
   title?: string | null;
   body?: string | null;
   targetObject?: string | null;
+  sourceObjectName?: string | null;
+  recipientRelation?: string | null;
   updatedAt?: string | null;
 };
 
@@ -46,6 +48,159 @@ export type TemplateWriteInput = {
   title: string;
   body: string;
   targetObject: string;
+  /** The source object's `nameSingular`; absent means Person. */
+  sourceObjectName?: string | null;
+  /** The relation field on that object resolving to one Person; empty for Person. */
+  recipientRelation?: string | null;
+};
+
+/**
+ * A template record plus its SOURCE identifiers, as the record-page editor
+ * needs them. Kept separate from `StudioTemplate` so the shared composer
+ * contract is untouched.
+ */
+export type TemplateRecordWithSource = StudioTemplate & {
+  /** Stored `nameSingular`; empty when the row predates the source model. */
+  sourceObjectName: string;
+  /** Stored relation field name; empty for a Person source. */
+  recipientRelation: string;
+};
+
+const toTemplateRecord = (
+  node: RawMutationNode | null | undefined,
+): TemplateRecordWithSource | null => {
+  const base = toStudioTemplate(node);
+
+  if (base === null || node === null || node === undefined) {
+    return null;
+  }
+
+  return {
+    ...base,
+    sourceObjectName:
+      typeof node.sourceObjectName === 'string' ? node.sourceObjectName : '',
+    recipientRelation:
+      typeof node.recipientRelation === 'string' ? node.recipientRelation : '',
+  };
+};
+
+/**
+ * Reads ONE template by id, for the record-page editor.
+ *
+ * It returns only this single record's own fields — never a list — so the read
+ * is bounded to the record the user is already viewing, and the caller cannot
+ * enumerate anything through it.
+ */
+export const readMessageTemplate = async ({
+  client,
+  id,
+}: {
+  client: Pick<CoreApiClient, 'query'>;
+  id: string;
+}): Promise<TemplateRecordWithSource | null> => {
+  const result = await client.query({
+    messageTemplate: {
+      __args: { filter: { id: { eq: id } } },
+      id: true,
+      title: true,
+      body: true,
+      targetObject: true,
+      sourceObjectName: true,
+      recipientRelation: true,
+      updatedAt: true,
+    },
+  });
+
+  return toTemplateRecord(
+    result.messageTemplate as RawMutationNode | null | undefined,
+  );
+};
+
+/**
+ * Writes the source model of one template, leaving the body untouched.
+ *
+ * Separate from `updateMessageTemplate` on purpose: choosing a source must not
+ * require rewriting the text, and a save of the source alone cannot clobber
+ * text that another session changed meanwhile.
+ */
+export const updateMessageTemplateSource = async ({
+  client,
+  id,
+  sourceObjectName,
+  recipientRelation,
+  targetObject,
+}: {
+  client: MutationClient;
+  id: string;
+  sourceObjectName: string;
+  recipientRelation: string;
+  targetObject: string;
+}): Promise<TemplateRecordWithSource | null> => {
+  const result = await client.mutation({
+    updateMessageTemplate: {
+      __args: {
+        id,
+        data: {
+          sourceObjectName,
+          recipientRelation,
+          targetObject,
+        },
+      },
+      id: true,
+      title: true,
+      body: true,
+      targetObject: true,
+      sourceObjectName: true,
+      recipientRelation: true,
+      updatedAt: true,
+    },
+  });
+
+  return toTemplateRecord(
+    result.updateMessageTemplate as RawMutationNode | null | undefined,
+  );
+};
+
+/**
+ * Writes ONLY the body of one template.
+ *
+ * The update is scoped to `updatedAt` equality with what the caller loaded: if
+ * another session changed the record meanwhile, the platform matches no row and
+ * returns nothing, which the caller reports as a conflict instead of silently
+ * overwriting the other change.
+ */
+export const saveMessageTemplateBody = async ({
+  client,
+  id,
+  body,
+  expectedUpdatedAt,
+}: {
+  client: MutationClient;
+  id: string;
+  body: string;
+  expectedUpdatedAt: string | null;
+}): Promise<TemplateRecordWithSource | null> => {
+  const filter =
+    expectedUpdatedAt !== null && expectedUpdatedAt.length > 0
+      ? { id: { eq: id }, updatedAt: { eq: expectedUpdatedAt } }
+      : { id: { eq: id } };
+
+  const result = await client.mutation({
+    updateMessageTemplate: {
+      __args: { id, data: { body }, filter },
+      id: true,
+      title: true,
+      body: true,
+      targetObject: true,
+      sourceObjectName: true,
+      recipientRelation: true,
+      updatedAt: true,
+    },
+  });
+
+  return toTemplateRecord(
+    result.updateMessageTemplate as RawMutationNode | null | undefined,
+  );
 };
 
 export const createMessageTemplate = async ({

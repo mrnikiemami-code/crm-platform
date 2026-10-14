@@ -199,6 +199,18 @@ export const TEMPLATE_STUDIO_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
 // existing template without a value is treated as `PERSON` (no migration).
 export const MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER =
   'e91d0b2f-a348-40c9-b1da-8fc24e60737b';
+// The template's SOURCE model, stored as stable metadata identifiers.
+//
+// `sourceObjectName` holds the source object's `nameSingular` and
+// `recipientRelation` the name of the relation field ON that object that
+// resolves to exactly one Person. Both are nullable: every template that already
+// exists has neither, and is read as Person — a read-time default, never a write
+// migration. `targetObject` stays as the legacy marker so the list's
+// «موجودیت منبع» column keeps showing «اشخاص» for those rows.
+export const MESSAGE_TEMPLATE_SOURCE_OBJECT_NAME_FIELD_UNIVERSAL_IDENTIFIER =
+  '4c7e1f83-5a6d-4b92-8e37-9d2f0a4c6b18';
+export const MESSAGE_TEMPLATE_RECIPIENT_RELATION_FIELD_UNIVERSAL_IDENTIFIER =
+  '5d8f2094-6b7e-4ca3-9f48-0e3a1b5d7c29';
 // The native record page for a template: title/body/channel fields plus the
 // «متغیرهای قابل استفاده» guide rendered by a front component. A page layout is
 // an ADDITIONAL layout, so the engine default remains and the app only adds its
