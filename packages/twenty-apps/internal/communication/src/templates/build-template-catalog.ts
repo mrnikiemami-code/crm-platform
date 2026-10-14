@@ -7,8 +7,8 @@ import {
   DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 import {
-  probeReadableTemplateFields,
-  restrictCatalogToObservedFields,
+  probeAuthorizedFieldTokens,
+  restrictCatalogToAuthorizedTokens,
 } from 'src/templates/probe-readable-fields';
 import {
   buildTemplateVariableCatalog,
@@ -599,8 +599,8 @@ export const readTemplatePermissions = async ({
  *    advertising requires a successful authorized read.
  *  - A workspace with no readable Person yields an EMPTY, UNAVAILABLE catalog,
  *    which is safe (there is nothing to template against) and never guesses.
- *  - Record reads stay server-authoritative; the probe is one bounded read
- *    (`first: 1`) and writes nothing.
+ *  - Record reads stay server-authoritative; every probe is a bounded read and
+ *    writes nothing. Probes run with bounded concurrency.
  */
 export const buildAuthorizedTemplateCatalog = async ({
   metadataClient,
@@ -622,16 +622,21 @@ export const buildAuthorizedTemplateCatalog = async ({
   }
 
   // The candidate catalog: every safe scalar the workspace defines. It is NOT
-  // yet authorized — the probe read below decides what may actually be used.
+  // yet authorized — each field must pass its OWN bounded read below.
   const candidates = buildTemplateCatalogFromMetadata({
     objects,
     permissions: UNRESTRICTED_TEMPLATE_PERMISSIONS,
   });
 
   try {
-    const observed = await probeReadableTemplateFields({ client, catalog: candidates });
+    const probe = await probeAuthorizedFieldTokens({
+      client,
+      catalog: candidates,
+    });
 
-    if (observed === null) {
+    if (probe === null) {
+      // No readable Person, or every field probe failed. Either way nothing can
+      // be authorized, so the catalog is EMPTY and reported unavailable.
       return {
         catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
         isAvailable: false,
@@ -640,7 +645,7 @@ export const buildAuthorizedTemplateCatalog = async ({
     }
 
     return {
-      catalog: restrictCatalogToObservedFields(candidates, observed),
+      catalog: restrictCatalogToAuthorizedTokens(candidates, probe.authorizedTokens),
       isAvailable: true,
       stage: AUTHORIZED_CATALOG_STAGE.OK,
     };

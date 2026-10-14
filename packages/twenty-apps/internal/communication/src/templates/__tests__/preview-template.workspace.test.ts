@@ -18,9 +18,18 @@ const buildWorkspaceClient = (
     phones?: { primaryPhoneNumber?: string | null } | null;
   }[],
 ) => ({
-  query: vi.fn(async (_payload: unknown) => ({
-    people: { edges: nodes.map((node) => ({ node })) },
-  })),
+  query: vi.fn(async (payload: unknown) => {
+    // The authorized-catalog probe reads `people` for discovery and `person`
+    // per field; both are answered from the same records so the catalog is
+    // usable. Authorization itself is covered by the probe suites.
+    if (payload !== null && typeof payload === 'object' && 'person' in payload) {
+      return { person: nodes.length > 0 ? nodes[0] : null };
+    }
+
+    return {
+      people: { edges: nodes.map((node) => ({ node })) },
+    };
+  }),
 });
 
 describe('previewTemplate workspace separation', () => {

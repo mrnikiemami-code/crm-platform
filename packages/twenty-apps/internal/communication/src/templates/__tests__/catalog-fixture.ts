@@ -121,3 +121,25 @@ export const fixtureCatalogTokens = [
   'company.linkedinLink',
   'company.annualRevenue',
 ] as const;
+
+/**
+ * A fake workspace client whose records expose EVERY requested field, so each
+ * per-field probe authorizes every candidate. Tests about recipient resolution,
+ * preview or sending (not about authorization) use this to get a usable catalog;
+ * the authorization rules themselves are covered by dedicated probe tests.
+ */
+export const createAuthorizingCoreClient = ({
+  nodes = [] as readonly unknown[],
+}: { nodes?: readonly unknown[] } = {}) => ({
+  query: async (payload: Record<string, unknown>) => {
+    if (payload !== undefined && 'people' in payload) {
+      return { people: { edges: nodes.map((node) => ({ node })) } };
+    }
+
+    if (payload !== undefined && 'person' in payload) {
+      return { person: nodes.length > 0 ? nodes[0] : null };
+    }
+
+    return {};
+  },
+});

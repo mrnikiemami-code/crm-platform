@@ -53,6 +53,7 @@ describe('findMessageTemplates (native workspace path)', () => {
         // An existing row with no stored value is read as PERSON — a read-time
         // default only, never a write-back migration.
         targetObject: 'PERSON',
+        updatedAt: '',
       },
       {
         id: 't2',
@@ -60,6 +61,7 @@ describe('findMessageTemplates (native workspace path)', () => {
         body: 'یادآوری برای @company',
         channel: 'SMS',
         targetObject: 'PERSON',
+        updatedAt: '',
       },
     ]);
 
@@ -90,6 +92,7 @@ describe('findMessageTemplates (native workspace path)', () => {
       'body',
       'channel',
       'targetObject',
+      'updatedAt',
     ]);
   });
 });

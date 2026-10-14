@@ -58,6 +58,7 @@ const toStudioTemplate = (value: unknown): StudioTemplate | null => {
     title: typeof value.title === 'string' ? value.title : '',
     body: typeof value.body === 'string' ? value.body : '',
     targetObject: readTemplateTargetObject(value.targetObject),
+    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : '',
   };
 };
 

@@ -6,21 +6,17 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Stub ONLY the SDK runtime hooks and the external route transport. The REAL
-// production `TemplateStudio` component and its REAL helpers run, so this test
-// exercises the shipped interaction model rather than a copy of it.
+// production `TemplateStudio` and its REAL helpers run, so this test exercises
+// the shipped table/modal/combobox behavior rather than a copy of it.
 vi.mock('twenty-sdk/front-component', () => ({
   useTranslate: () => ({ t: (message: string) => message }),
   useLocale: () => 'fa-IR',
 }));
-
-type RouteCall = {
-  path: string;
-  body: Record<string, unknown>;
-};
 
 const callAppRoute = vi.fn<
   (
@@ -30,7 +26,7 @@ const callAppRoute = vi.fn<
   ) => Promise<unknown>
 >();
 
-const routeCalls = (): RouteCall[] =>
+const routeCalls = () =>
   callAppRoute.mock.calls.map((call) => ({
     path: call[0],
     body: (call[2] ?? {}) as Record<string, unknown>,
@@ -40,7 +36,7 @@ const callsFor = (action: string) =>
   routeCalls().filter(
     (call) =>
       call.path === '/communication/template-studio' &&
-      call.body?.action === action,
+      call.body.action === action,
   );
 
 vi.mock('src/components/composer-shared', async () => {
@@ -62,31 +58,44 @@ import { TemplateStudio } from 'src/components/template-studio.front-component';
 
 const PERSON_FIELD = {
   token: '@person.firstName',
-  label: 'نام',
+  label: 'First name',
   group: 'PERSON',
 };
 
 const COMPANY_FIELD = {
   token: '@company.name',
-  label: 'نام شرکت',
+  label: 'Company name',
   group: 'COMPANY',
 };
 
 const TEMPLATE = {
   id: 't1',
-  title: 'خوش‌آمد',
+  title: 'Greeting',
   body: 'سلام @person.firstName خوبی؟',
   targetObject: 'PERSON',
+  updatedAt: '2026-10-14T06:00:00.000Z',
 };
 
-const listResponse = (overrides: Record<string, unknown> = {}) => ({
+const SECOND_TEMPLATE = {
+  id: 't2',
+  title: 'Reminder',
+  body: 'یادآوری',
+  targetObject: 'PERSON',
+  updatedAt: '2026-10-13T05:00:00.000Z',
+};
+
+const listResponse = (
+  templates: unknown[] = [TEMPLATE, SECOND_TEMPLATE],
+  overrides: Record<string, unknown> = {},
+) => ({
   ok: true,
   status: 200,
   data: {
     success: true,
-    templates: [TEMPLATE],
+    templates,
     fields: [PERSON_FIELD, COMPANY_FIELD],
     catalogStatus: 'READY',
+    catalogStage: 'OK',
     ...overrides,
   },
 });
@@ -96,20 +105,41 @@ const peopleResponse = {
   status: 200,
   data: {
     success: true,
-    people: [{ id: 'p1', displayName: 'سارا احمدی' }],
+    people: [
+      { id: 'p1', displayName: 'سارا احمدی' },
+      { id: 'p2', displayName: 'رضا کریمی' },
+    ],
   },
 };
 
-type Responder = (body: Record<string, unknown>) => unknown;
+const previewResponse = (body: unknown, personId: string) => ({
+  ok: true,
+  status: 200,
+  data: {
+    success: true,
+    previews: [
+      {
+        personId,
+        displayName: 'سارا احمدی',
+        phone: '09120000001',
+        previewText: `پیش‌نمایش: ${String(body ?? '')}`,
+        hasUnresolvedVariables: false,
+        issues: [],
+        isReadyToSend: true,
+      },
+    ],
+    hasUnresolvedVariables: false,
+    isBodyEmpty: false,
+    readyCount: 1,
+  },
+});
+
+let listPayload: unknown = listResponse();
 
 const installRoutes = ({
-  list = listResponse(),
   onPreview,
-  onCreate,
 }: {
-  list?: unknown;
-  onPreview?: Responder;
-  onCreate?: Responder;
+  onPreview?: (body: Record<string, unknown>) => unknown;
 } = {}) => {
   callAppRoute.mockImplementation(
     async (path: string, _method: string, body?: Record<string, unknown>) => {
@@ -117,69 +147,40 @@ const installRoutes = ({
         throw new Error(`unexpected route ${path}`);
       }
 
-      const action = body?.action;
-
-      if (action === 'list') {
-        return list;
-      }
-
-      if (action === 'search-people') {
-        return peopleResponse;
-      }
-
-      if (action === 'preview') {
-        return onPreview
-          ? onPreview(body ?? {})
-          : {
-              ok: true,
-              status: 200,
-              data: {
-                success: true,
-                previews: [
-                  {
-                    personId: 'p1',
-                    displayName: 'سارا احمدی',
-                    phone: '09120000001',
-                    previewText: `پیش‌نمایش: ${String(body?.body ?? '')}`,
-                    hasUnresolvedVariables: false,
-                    issues: [],
-                    isReadyToSend: true,
-                  },
-                ],
-                hasUnresolvedVariables: false,
-                isBodyEmpty: false,
-                readyCount: 1,
+      switch (body?.action) {
+        case 'list':
+          return listPayload;
+        case 'search-people':
+          return peopleResponse;
+        case 'preview':
+          return onPreview
+            ? onPreview(body)
+            : previewResponse(body?.body, String(body?.personId));
+        case 'create':
+        case 'update':
+          return {
+            ok: true,
+            status: 200,
+            data: {
+              success: true,
+              template: {
+                id: 't-new',
+                title: String(body?.title ?? ''),
+                body: String(body?.body ?? ''),
+                targetObject: 'PERSON',
+                updatedAt: '2026-10-14T07:00:00.000Z',
               },
-            };
+            },
+          };
+        case 'delete':
+          return {
+            ok: true,
+            status: 200,
+            data: { success: true, deletedId: String(body?.templateId ?? '') },
+          };
+        default:
+          throw new Error(`unexpected action ${String(body?.action)}`);
       }
-
-      if (action === 'create' || action === 'update') {
-        return onCreate
-          ? onCreate(body ?? {})
-          : {
-              ok: true,
-              status: 200,
-              data: {
-                success: true,
-                template: {
-                  id: 't-new',
-                  title: String(body?.title ?? ''),
-                  body: String(body?.body ?? ''),
-                  targetObject: 'PERSON',
-                },
-              },
-            };
-      }
-
-      if (action === 'delete') {
-        return {
-          ok: true,
-          status: 200,
-          data: { success: true, deletedId: String(body?.templateId ?? '') },
-        };
-      }
-
-      throw new Error(`unexpected action ${String(action)}`);
     },
   );
 };
@@ -233,31 +234,83 @@ const renderStudio = async () => {
   return result;
 };
 
-const openTemplate = async () => {
+const openCreateModal = async () => {
   await renderStudio();
 
   await act(async () => {
-    fireEvent.click(screen.getByText('Edit'));
-  });
-
-  await waitFor(() => {
-    expect(bodyTextarea().value).toBe(TEMPLATE.body);
+    fireEvent.click(screen.getByText('Create new template'));
   });
 };
 
-/** Sets a selection, then blurs so the studio remembers it. */
-const selectRangeAndBlur = (start: number, end: number) => {
+const openEditModal = async (title = 'Greeting') => {
+  await renderStudio();
+
+  const row = screen.getByText(title).closest('tr') as HTMLTableRowElement;
+
+  await act(async () => {
+    fireEvent.click(within(row).getByText('Edit'));
+  });
+};
+
+/** Moves the caret and lets the component remember it, as a user would. */
+const placeCaret = (start: number, end = start) => {
   const textarea = bodyTextarea();
 
   textarea.focus();
   textarea.setSelectionRange(start, end);
   fireEvent.select(textarea);
-  textarea.blur();
 };
 
-describe('TemplateStudio — real production component wiring (W18-B)', () => {
+/**
+ * Drives the Person combobox the way a user does. Each event gets its own `act`
+ * so React has re-rendered before the next key is handled — batching them into
+ * one `act` would let the arrow key act on stale options.
+ */
+const selectSamplePerson = async (query: string) => {
+  const input = screen.getByLabelText('Sample person') as HTMLInputElement;
+
+  await act(async () => {
+    fireEvent.focus(input);
+  });
+
+  await act(async () => {
+    fireEvent.change(input, { target: { value: query } });
+  });
+
+  await act(async () => {
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+  });
+
+  await act(async () => {
+    fireEvent.keyDown(input, { key: 'Enter' });
+  });
+
+  return input;
+};
+
+const samplePersonInput = (): HTMLInputElement =>
+  screen.getByLabelText('Sample person') as HTMLInputElement;
+
+const setNativeValue = (
+  element: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+) => {
+  const prototype =
+    element instanceof HTMLTextAreaElement
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
+
+  Object.getOwnPropertyDescriptor(prototype, 'value')?.set?.call(
+    element,
+    value,
+  );
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+describe('TemplateStudio — table, modal and combobox wiring (W19-A)', () => {
   beforeEach(() => {
     callAppRoute.mockReset();
+    listPayload = listResponse();
   });
 
   afterEach(() => {
@@ -265,50 +318,114 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
     vi.clearAllMocks();
   });
 
-  it('1: renders the existing templates', async () => {
+  it('1: renders the Persian table with the expected columns and rows', async () => {
     installRoutes();
     await renderStudio();
 
-    expect(screen.getByText('خوش‌آمد')).toBeTruthy();
+    expect(screen.getByText('SMS templates')).toBeTruthy();
+    const headers = screen.getAllByRole('columnheader').map((cell) =>
+      cell.textContent?.trim(),
+    );
+
+    expect(headers).toEqual(['Title', 'Target entity', 'Last update', 'Actions']);
+    expect(screen.getByText('Greeting')).toBeTruthy();
+    expect(screen.getByText('Reminder')).toBeTruthy();
+    // The target shows the adapter label, never the raw stored value.
+    expect(screen.getAllByText('People').length).toBeGreaterThan(0);
+    // The last-update column shows the date portion of the ISO timestamp.
+    expect(screen.getByText('2026-10-14')).toBeTruthy();
   });
 
-  it('2: New template opens the real editor', async () => {
+  it('2: search filters the table by title', async () => {
     installRoutes();
     await renderStudio();
 
     await act(async () => {
-      fireEvent.click(screen.getByText('New template'));
+      fireEvent.change(screen.getByLabelText('Search by title'), {
+        target: { value: 'Reminder' },
+      });
     });
 
-    expect(bodyTextarea().value).toBe('');
-    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Reminder')).toBeTruthy();
+    expect(screen.queryByText('Greeting')).toBeNull();
   });
 
-  it('3: the body is a real multiline textarea', async () => {
+  it('3: shows the empty state when the workspace has no templates', async () => {
+    listPayload = listResponse([]);
     installRoutes();
-    await openTemplate();
+    await renderStudio();
 
-    const textarea = bodyTextarea();
-
-    expect(textarea.tagName).toBe('TEXTAREA');
-    expect(Number(textarea.getAttribute('rows'))).toBeGreaterThan(1);
+    expect(screen.getByText('No templates yet.')).toBeTruthy();
   });
 
-  it('4: shows the Persian field label AND the technical token', async () => {
+  it('4: shows the sanitized error state when the list fails', async () => {
+    listPayload = { ok: false, status: 500, data: {} };
     installRoutes();
-    await openTemplate();
+    await renderStudio();
 
+    expect(screen.getByText('Templates could not be loaded.')).toBeTruthy();
+  });
+
+  it('5: the create modal opens with the editor, target combobox and fields', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    expect(screen.getByLabelText('Title')).toBeTruthy();
+    expect(bodyTextarea().tagName).toBe('TEXTAREA');
+    expect(bodyTextarea().getAttribute('dir')).toBe('rtl');
+    expect(screen.getByLabelText('Target entity')).toBeTruthy();
+    expect(fieldCard('@person.firstName')).toBeTruthy();
+  });
+
+  it('6: the edit modal loads the EXACT saved values', async () => {
+    installRoutes();
+    await openEditModal();
+
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe(
+      'Greeting',
+    );
+    expect(bodyTextarea().value).toBe(TEMPLATE.body);
+  });
+
+  it('7: the field shows the Persian label and an LTR, bidi-isolated token', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const card = fieldCard('@person.firstName');
+
+    expect(card.textContent).toContain('First name');
+
+    const token = card.querySelector(
+      'span[style*="direction: ltr"], span[style*="direction:ltr"]',
+    ) as HTMLElement | null;
+
+    // The token element forces LTR with bidi isolation, so it always READS as
+    // `@person.firstName` even inside the RTL panel.
+    expect(token).not.toBeNull();
+    expect(token?.textContent).toBe('@person.firstName');
+    expect(token?.style.direction).toBe('ltr');
+    expect(token?.style.unicodeBidi).toBe('isolate');
+  });
+
+  it('8: field search matches the Persian label and the technical token', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Search fields'), {
+        target: { value: 'company' },
+      });
+    });
+
+    expect(fieldCard('@company.name')).toBeTruthy();
     expect(
-      fieldCard('@person.firstName').textContent,
-    ).toContain('نام');
-    expect(
-      fieldCard('@person.firstName').textContent,
-    ).toContain('@person.firstName');
+      document.querySelector('[data-studio-field-token="@person.firstName"]'),
+    ).toBeNull();
   });
 
-  it('5: a single click selects a field but does NOT insert', async () => {
+  it('9: a single click selects a field but does NOT insert', async () => {
     installRoutes();
-    await openTemplate();
+    await openCreateModal();
 
     const before = bodyTextarea().value;
 
@@ -322,51 +439,126 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
     ).toBe('true');
   });
 
-  it('6: double-click inserts EXACTLY ONCE at the remembered caret', async () => {
+  it('10: double-click inserts the canonical token EXACTLY ONCE at the caret', async () => {
     installRoutes();
-    await renderStudio();
-
-    // The task's own example: a Persian sentence with a gap to fill.
-    await act(async () => {
-      fireEvent.click(screen.getByText('New template'));
-    });
+    await openCreateModal();
 
     await act(async () => {
-      fireEvent.change(bodyTextarea(), { target: { value: 'سلام  خوبی؟' } });
+      setNativeValue(bodyTextarea(), 'سلام  خوبی؟');
     });
 
-    // Caret in the gap → index 5.
-    selectRangeAndBlur(5, 5);
+    act(() => {
+      placeCaret(5);
+    });
 
     await act(async () => {
       fireEvent.doubleClick(fieldCard('@person.firstName'));
     });
 
     const value = bodyTextarea().value;
-    const occurrences = value.split('@person.firstName').length - 1;
 
     expect(value).toBe('سلام @person.firstName خوبی؟');
-    expect(occurrences).toBe(1);
+    expect(value.split('@person.firstName').length - 1).toBe(1);
   });
 
-  it('6b: the click half of a double-click never inserts on its own', async () => {
+  it('11: Enter on a focused field inserts exactly once', async () => {
     installRoutes();
-    await openTemplate();
+    await openCreateModal();
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'سلام  خوبی؟');
+    });
+
+    act(() => {
+      placeCaret(5);
+    });
+
+    await act(async () => {
+      fireEvent.keyDown(fieldCard('@company.name'), { key: 'Enter' });
+    });
+
+    expect(bodyTextarea().value).toBe('سلام @company.name خوبی؟');
+  });
+
+  it('12: newlines and surrounding Persian text are preserved', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'خط اول\nخط دوم');
+    });
+
+    act(() => {
+      placeCaret(6);
+    });
+
+    await act(async () => {
+      fireEvent.doubleClick(fieldCard('@person.firstName'));
+    });
+
+    expect(bodyTextarea().value).toBe('خط اول@person.firstName\nخط دوم');
+    expect(bodyTextarea().value.split('\n')).toHaveLength(2);
+  });
+
+  it('13: a drop with NO dataTransfer does not crash and changes nothing', async () => {
+    installRoutes();
+    await openCreateModal();
 
     const before = bodyTextarea().value;
 
-    // Two clicks, no double-click: selection only.
     await act(async () => {
-      fireEvent.click(fieldCard('@person.firstName'));
-      fireEvent.click(fieldCard('@person.firstName'));
+      // jsdom/React hand us an event whose `dataTransfer` is undefined; the
+      // handlers must never dereference it.
+      fireEvent.drop(bodyTextarea());
+      fireEvent.dragOver(bodyTextarea());
     });
 
     expect(bodyTextarea().value).toBe(before);
   });
 
-  it('7: drag and drop inserts EXACTLY ONCE', async () => {
+  it('14: the drag fallback inserts the remembered token exactly once', async () => {
     installRoutes();
-    await openTemplate();
+    await openCreateModal();
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'سلام  خوبی؟');
+    });
+
+    act(() => {
+      placeCaret(5);
+    });
+
+    await act(async () => {
+      // No payload at all: only the locally remembered drag token can be used.
+      fireEvent.dragStart(fieldCard('@person.firstName'));
+      fireEvent.drop(bodyTextarea());
+    });
+
+    const value = bodyTextarea().value;
+
+    expect(value).toBe('سلام @person.firstName خوبی؟');
+    expect(value.split('@person.firstName').length - 1).toBe(1);
+  });
+
+  it('15: an unauthorized dropped token is ignored', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const before = bodyTextarea().value;
+    const dataTransfer = buildDataTransfer();
+
+    dataTransfer.setData('text/plain', '@person.notAuthorized');
+
+    await act(async () => {
+      fireEvent.drop(bodyTextarea(), { dataTransfer });
+    });
+
+    expect(bodyTextarea().value).toBe(before);
+  });
+
+  it('16: a typed drop payload inserts once', async () => {
+    installRoutes();
+    await openCreateModal();
 
     const dataTransfer = buildDataTransfer();
 
@@ -375,70 +567,59 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
       fireEvent.drop(bodyTextarea(), { dataTransfer });
     });
 
-    const value = bodyTextarea().value;
-    const occurrences = value.split('@company.name').length - 1;
-
-    expect(occurrences).toBe(1);
+    expect(bodyTextarea().value.split('@company.name').length - 1).toBe(1);
   });
 
-  it('8: selected text is replaced by the inserted token', async () => {
+  it('17: the unsaved guard blocks Escape until the change is discarded', async () => {
     installRoutes();
-    await openTemplate();
-
-    // Replace the '@person.firstName' that the template already contains.
-    const start = TEMPLATE.body.indexOf('@person.firstName');
-
-    selectRangeAndBlur(start, start + '@person.firstName'.length);
+    await openCreateModal();
 
     await act(async () => {
-      fireEvent.doubleClick(fieldCard('@company.name'));
-    });
-
-    expect(bodyTextarea().value).toBe('سلام @company.name خوبی؟');
-  });
-
-  it('9: newlines and surrounding Persian text are preserved', async () => {
-    installRoutes();
-    await renderStudio();
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('New template'));
-    });
-
-    await act(async () => {
-      fireEvent.change(bodyTextarea(), {
-        target: { value: 'خط اول\nخط دوم\nخط سوم' },
+      fireEvent.change(screen.getByLabelText('Title'), {
+        target: { value: 'Draft' },
       });
     });
 
-    // Caret at the end of the first line (index 6, before the newline).
-    selectRangeAndBlur(6, 6);
+    const dialog = screen.getByRole('dialog');
 
     await act(async () => {
-      fireEvent.doubleClick(fieldCard('@person.firstName'));
+      fireEvent.keyDown(dialog, { key: 'Escape' });
     });
 
-    expect(bodyTextarea().value).toBe(
-      'خط اول@person.firstName\nخط دوم\nخط سوم',
-    );
-    expect(bodyTextarea().value.split('\n')).toHaveLength(3);
+    // Still open, and now offering the confirmation.
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('This template has unsaved changes.')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Keep editing'));
+    });
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(
+      screen.queryByText('This template has unsaved changes.'),
+    ).toBeNull();
   });
 
-  it('10: Save sends the canonical title, body and targetObject', async () => {
+  it('18: Escape closes a clean modal immediately', async () => {
     installRoutes();
-    await renderStudio();
+    await openCreateModal();
 
     await act(async () => {
-      fireEvent.click(screen.getByText('New template'));
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('19: Save sends the canonical payload, closes the modal and refreshes the table', async () => {
+    installRoutes();
+    await openCreateModal();
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Title'), {
         target: { value: 'الگوی تست' },
       });
-      fireEvent.change(bodyTextarea(), {
-        target: { value: 'سلام @person.firstName خوبی؟' },
-      });
+      setNativeValue(bodyTextarea(), 'سلام @person.firstName خوبی؟');
     });
 
     await act(async () => {
@@ -449,32 +630,133 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
       expect(callsFor('create')).toHaveLength(1);
     });
 
-    // The CANONICAL token is stored — never the Persian label — and the target
-    // is the stable machine value.
-    expect(callsFor('create')[0].body).toEqual({
+    const payload = callsFor('create')[0].body;
+
+    // Canonical token, stable target, no label, no hidden bidi controls.
+    expect(payload).toEqual({
       action: 'create',
       templateId: null,
       title: 'الگوی تست',
       body: 'سلام @person.firstName خوبی؟',
       targetObject: 'PERSON',
     });
+    expect(
+      /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/.test(
+        String(payload.body),
+      ),
+    ).toBe(false);
+
+    await waitFor(() => {
+      expect(callsFor('list')).toHaveLength(2);
+    });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('11: the sample-person preview displays the resolved text', async () => {
+  it('20: validation blocks a save with a Persian message', async () => {
     installRoutes();
-    await openTemplate();
+    await openCreateModal();
 
     await act(async () => {
-      fireEvent.change(screen.getByPlaceholderText('Search people'), {
-        target: { value: 'سارا' },
-      });
+      fireEvent.click(screen.getByText('Save'));
+    });
+
+    expect(screen.getByText('A title is required.')).toBeTruthy();
+    expect(callsFor('create')).toHaveLength(0);
+    expect(callsFor('update')).toHaveLength(0);
+  });
+
+  it('21: the Person combobox filters, navigates with arrows and selects with Enter', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const input = samplePersonInput();
+
+    expect(input.getAttribute('role')).toBe('combobox');
+    expect(input.value).toBe('');
+
+    await act(async () => {
+      fireEvent.focus(input);
     });
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Sample person'), {
-        target: { value: 'p1' },
-      });
+      fireEvent.change(input, { target: { value: 'سارا' } });
     });
+
+    const options = screen.getAllByRole('option');
+
+    expect(options).toHaveLength(1);
+    expect(options[0].textContent).toBe('سارا احمدی');
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+    });
+
+    expect(
+      screen.getAllByRole('option')[0].getAttribute('aria-selected'),
+    ).toBe('true');
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+    });
+
+    // The selection is visible once the list closes.
+    expect(input.value).toBe('سارا احمدی');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('22: the Person combobox has a clear action and no default selection', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const personBox = () =>
+      samplePersonInput().parentElement as HTMLElement;
+
+    expect(samplePersonInput().value).toBe('');
+    // The Person picker starts with nothing selected, so it offers no clear
+    // action (the target picker legitimately has one).
+    expect(within(personBox()).queryByLabelText('Clear')).toBeNull();
+
+    await selectSamplePerson('رضا');
+
+    expect(samplePersonInput().value).toBe('رضا کریمی');
+
+    await act(async () => {
+      fireEvent.click(within(personBox()).getByLabelText('Clear'));
+    });
+
+    expect(samplePersonInput().value).toBe('');
+  });
+
+  it('23: the preview gate stays closed until a person AND a body exist', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    const previewButton = () =>
+      screen.getByText('Preview').closest('button') as HTMLButtonElement;
+
+    expect(previewButton().disabled).toBe(true);
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'سلام');
+    });
+
+    expect(previewButton().disabled).toBe(true);
+
+    await selectSamplePerson('سارا');
+
+    expect(previewButton().disabled).toBe(false);
+  });
+
+  it('24: preview shows the resolved text and is invalidated by a body edit', async () => {
+    installRoutes();
+    await openCreateModal();
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'سلام');
+    });
+
+    await selectSamplePerson('سارا');
 
     await act(async () => {
       fireEvent.click(screen.getByText('Preview'));
@@ -484,74 +766,40 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
       expect(callsFor('preview')).toHaveLength(1);
     });
 
-    expect(
-      screen.getByText(`پیش‌نمایش: ${TEMPLATE.body}`),
-    ).toBeTruthy();
+    expect(screen.getByText('پیش‌نمایش: سلام')).toBeTruthy();
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'متن جدید');
+    });
+
+    expect(screen.queryByText('پیش‌نمایش: سلام')).toBeNull();
   });
 
-  it('12: editing the body invalidates the shown preview', async () => {
-    installRoutes();
-    await openTemplate();
-
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Sample person'), {
-        target: { value: 'p1' },
-      });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Preview'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(`پیش‌نمایش: ${TEMPLATE.body}`)).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.change(bodyTextarea(), { target: { value: 'متن جدید' } });
-    });
-
-    expect(screen.queryByText(`پیش‌نمایش: ${TEMPLATE.body}`)).toBeNull();
-  });
-
-  it('13: an unauthorized or stale dropped token changes nothing', async () => {
-    installRoutes();
-    await openTemplate();
-
-    const before = bodyTextarea().value;
-    const dataTransfer = buildDataTransfer();
-
-    // Hand-crafted payload that is NOT in the authorized catalog.
-    dataTransfer.setData('text/plain', '@person.notAuthorized');
-
-    await act(async () => {
-      fireEvent.drop(bodyTextarea(), { dataTransfer });
-    });
-
-    expect(bodyTextarea().value).toBe(before);
-  });
-
-  it('14: a late preview response is ignored after unmount', async () => {
-    let releasePreview: ((value: unknown) => void) | null = null;
+  it('25: a late preview response cannot publish after unmount', async () => {
+    let release: ((value: unknown) => void) | null = null;
 
     installRoutes({
       onPreview: () =>
         new Promise((resolve) => {
-          releasePreview = resolve;
+          release = resolve;
         }),
     });
 
-    const { unmount } = await renderStudio();
+    const { unmount } = render(<TemplateStudio />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Edit'));
+      await Promise.resolve();
     });
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText('Sample person'), {
-        target: { value: 'p1' },
-      });
+      fireEvent.click(screen.getByText('Create new template'));
     });
+
+    await act(async () => {
+      setNativeValue(bodyTextarea(), 'سلام');
+    });
+
+    await selectSamplePerson('سارا');
 
     await act(async () => {
       fireEvent.click(screen.getByText('Preview'));
@@ -559,9 +807,8 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
 
     unmount();
 
-    // Resolving AFTER unmount must not publish anything (and must not throw).
     await act(async () => {
-      releasePreview?.({
+      release?.({
         ok: true,
         status: 200,
         data: {
@@ -587,42 +834,74 @@ describe('TemplateStudio — real production component wiring (W18-B)', () => {
     expect(screen.queryByText('دیرهنگام')).toBeNull();
   });
 
-  it('15: no SMS or send route is ever called', async () => {
+  it('26: delete asks for confirmation and then removes the row', async () => {
     installRoutes();
-    await openTemplate();
+    await renderStudio();
+
+    const row = screen.getByText('Greeting').closest('tr') as HTMLTableRowElement;
+
+    await act(async () => {
+      fireEvent.click(within(row).getByText('Delete'));
+    });
+
+    expect(screen.getByText(/Delete this template permanently\?/)).toBeTruthy();
+
+    await act(async () => {
+      const dialog = screen.getByRole('dialog');
+
+      fireEvent.click(within(dialog).getByText('Delete'));
+    });
+
+    await waitFor(() => {
+      expect(callsFor('delete')).toHaveLength(1);
+    });
+
+    expect(callsFor('delete')[0].body).toEqual({
+      action: 'delete',
+      templateId: 't1',
+    });
+  });
+
+  it('27: the catalog-unavailable state hides the fields and blocks preview', async () => {
+    listPayload = listResponse([TEMPLATE], {
+      fields: [],
+      catalogStatus: 'UNAVAILABLE',
+      catalogStage: 'READ_ONLY_PROBE_FAILED',
+    });
+    installRoutes();
+    await openCreateModal();
+
+    expect(
+      screen.getAllByText('Authorized variables are unavailable right now.')
+        .length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Preview').closest('button')).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.queryByLabelText('Sample person')).toBeNull();
+  });
+
+  it('28: no SMS or send route is ever called', async () => {
+    installRoutes();
+    await openCreateModal();
 
     await act(async () => {
       fireEvent.doubleClick(fieldCard('@company.name'));
     });
 
     await act(async () => {
+      fireEvent.change(screen.getByLabelText('Title'), {
+        target: { value: 'x' },
+      });
       fireEvent.click(screen.getByText('Save'));
     });
 
     const paths = routeCalls().map((call) => call.path);
 
-    expect(paths.every((path) => path === '/communication/template-studio')).toBe(
-      true,
-    );
-    expect(paths).not.toContain('/communication/send');
-    expect(paths).not.toContain('/communication/preview-template');
-  });
-
-  it('16: shows the catalog-unavailable state and disables preview', async () => {
-    installRoutes({
-      list: listResponse({ fields: [], catalogStatus: 'UNAVAILABLE' }),
-    });
-
-    await openTemplate();
-
     expect(
-      screen.getAllByText('Authorized variables are unavailable right now.').length,
-    ).toBeGreaterThan(0);
-    // The button is still rendered, but disabled — the gate is explicit.
-    expect((screen.getByText('Preview') as HTMLButtonElement).disabled).toBe(
-      true,
-    );
-    // No preview may be requested while the catalog is unavailable.
-    expect(callsFor('preview')).toHaveLength(0);
+      paths.every((path) => path === '/communication/template-studio'),
+    ).toBe(true);
+    expect(paths).not.toContain('/communication/send');
   });
 });

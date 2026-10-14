@@ -80,15 +80,25 @@ const buildFakeClient = ({
 
   const client = {
     query: async (payload?: Record<string, unknown>) => {
-      // The authorized-catalog probe reads `people`; the send path reads
-      // `person`. Both are answered from the same fixture so the probe can
-      // authorize the fields this fake record actually exposes.
-      if (payload !== undefined && 'people' in payload) {
-        return {
-          people: {
-            edges: queryResult.person === undefined ? [] : [{ node: queryResult.person }],
-          },
-        };
+      if (payload !== undefined && typeof payload === 'object') {
+        // The authorized-catalog probe reads `people` for discovery and `person`
+        // per field; the send path and the phone lookup also read `person`.
+        // All are answered from the same fixture. Authorization itself is
+        // covered by the dedicated probe suites.
+        if ('people' in payload) {
+          return {
+            people: {
+              edges:
+                queryResult.person === undefined
+                  ? []
+                  : [{ node: queryResult.person }],
+            },
+          };
+        }
+
+        if ('person' in payload) {
+          return { person: queryResult.person ?? null };
+        }
       }
 
       return queryResult;

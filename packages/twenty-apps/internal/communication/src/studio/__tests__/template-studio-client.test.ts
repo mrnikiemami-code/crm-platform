@@ -79,6 +79,7 @@ describe('resolveStudioMutationResult', () => {
           title: 'خوش‌آمد',
           body: 'سلام @name',
           targetObject: 'PERSON',
+          updatedAt: '2026-10-14T06:00:00.000Z',
         },
       },
     });
@@ -90,6 +91,7 @@ describe('resolveStudioMutationResult', () => {
         title: 'خوش‌آمد',
         body: 'سلام @name',
         targetObject: 'PERSON',
+        updatedAt: '2026-10-14T06:00:00.000Z',
       },
     });
   });

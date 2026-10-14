@@ -27,6 +27,13 @@ const buildFakeClient = (nodes: FakeNode[]) => {
     query: vi.fn(async (payload: unknown) => {
       queries.push(payload);
 
+      // The authorized-catalog probe reads `people` for discovery and `person`
+      // per field; both are answered from the same records. Authorization itself
+      // is covered by the dedicated probe suites.
+      if (payload !== null && typeof payload === 'object' && 'person' in payload) {
+        return { person: nodes.length > 0 ? nodes[0] : null };
+      }
+
       return { people: { edges: nodes.map((node) => ({ node })) } };
     }),
   };
@@ -165,7 +172,10 @@ describe('previewTemplate', () => {
       {
         id: 'p1',
         name: { firstName: 'سارا' },
-        company: null,
+        // The Company relation IS present (so the Company fields can be proven
+        // by the authorization probes) but its name is empty, which is what
+        // makes `@company` an EMPTY_FIELD for this recipient.
+        company: { name: null },
         phones: { primaryPhoneNumber: '09120000001' },
       },
     ]);

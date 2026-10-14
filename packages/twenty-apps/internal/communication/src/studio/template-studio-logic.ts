@@ -32,6 +32,8 @@ export type StudioTemplate = {
   title: string;
   body: string;
   targetObject: TemplateTargetObject;
+  /** ISO timestamp of the last write; shown as «آخرین ویرایش». */
+  updatedAt: string;
 };
 
 /** The editor draft. `id === null` means "a new, unsaved template". */
@@ -354,4 +356,233 @@ export const filterStudioPeople = (
       buildPersonDisplayName(person).toLowerCase().includes(needle) ||
       person.id.toLowerCase().includes(needle),
   );
+};
+
+// --- W19-A: table, combobox, target adapters, drag safety --------------------
+
+/** A generic option for the searchable Combobox controls. */
+export type ComboboxOption = {
+  /** The STABLE stored value. */
+  value: string;
+  /** The workspace-facing label. */
+  label: string;
+};
+
+/** Filters options by label or value, case-insensitively. */
+export const filterComboboxOptions = (
+  options: readonly ComboboxOption[],
+  query: string,
+): ComboboxOption[] => {
+  const needle = query.trim().toLowerCase();
+
+  if (needle.length === 0) {
+    return [...options];
+  }
+
+  return options.filter(
+    (option) =>
+      option.label.toLowerCase().includes(needle) ||
+      option.value.toLowerCase().includes(needle),
+  );
+};
+
+/**
+ * Moves the active option index by `delta`, clamped to the available options.
+ * Returns -1 for an empty list, so "Enter selects" cannot pick a non-existent
+ * option.
+ */
+export const nextComboboxActiveIndex = ({
+  activeIndex,
+  optionCount,
+  delta,
+}: {
+  activeIndex: number;
+  optionCount: number;
+  delta: number;
+}): number => {
+  if (optionCount <= 0) {
+    return -1;
+  }
+
+  const start = activeIndex < 0 ? (delta > 0 ? -1 : optionCount) : activeIndex;
+
+  return Math.min(Math.max(start + delta, 0), optionCount - 1);
+};
+
+/** The stable value of the active option, or `null` when there is none. */
+export const activeComboboxValue = (
+  options: readonly ComboboxOption[],
+  activeIndex: number,
+): string | null =>
+  activeIndex >= 0 && activeIndex < options.length
+    ? options[activeIndex].value
+    : null;
+
+/**
+ * The target-entity adapter contract.
+ *
+ * The target control is NOT a hardcoded JSX option list: it consumes an adapter,
+ * which supplies the STABLE stored value and the workspace-facing label of each
+ * supported target. Adding a target (for example a Company recipient in W19-B)
+ * means adding an adapter entry, not editing the control.
+ */
+export type StudioTargetOption = {
+  /** The stable value persisted in `targetObject`. */
+  value: string;
+  /** The source label, translated by the app catalog at render time. */
+  label: string;
+};
+
+export type StudioTargetAdapter = {
+  id: string;
+  options: readonly StudioTargetOption[];
+  /** The option selected for a template that has no stored target. */
+  defaultOptionValue: string;
+};
+
+export const STUDIO_TARGET_ADAPTERS: readonly StudioTargetAdapter[] = [
+  {
+    id: 'PERSON',
+    options: [{ value: 'PERSON', label: 'People' }],
+    defaultOptionValue: 'PERSON',
+  },
+];
+
+/** The adapter for an id, falling back to the first declared adapter. */
+export const getStudioTargetAdapter = (id: string): StudioTargetAdapter =>
+  STUDIO_TARGET_ADAPTERS.find((adapter) => adapter.id === id) ??
+  (STUDIO_TARGET_ADAPTERS[0] as StudioTargetAdapter);
+
+/** The adapter's options as Combobox options. */
+export const toTargetComboboxOptions = (
+  adapter: StudioTargetAdapter,
+): ComboboxOption[] =>
+  adapter.options.map((option) => ({
+    value: option.value,
+    label: option.label,
+  }));
+
+/** The label shown for a stored target value, falling back to the value. */
+export const targetValueLabel = (value: string): string =>
+  getStudioTargetAdapter(value).options.find(
+    (option) => option.value === value,
+  )?.label ?? value;
+
+// --- drag safety -------------------------------------------------------------
+
+/**
+ * True when the payload carries our field token. `dataTransfer` is typed as
+ * unknown because the DOM may hand us `undefined` (a synthetic drag event) or an
+ * object without `types`, and dereferencing either used to throw.
+ */
+export const hasFieldDragPayload = (dataTransfer: unknown): boolean => {
+  if (dataTransfer === null || dataTransfer === undefined) {
+    return false;
+  }
+
+  const types = (dataTransfer as { types?: unknown }).types;
+
+  return Array.isArray(types) && types.includes(STUDIO_FIELD_DRAG_MIME);
+};
+
+/**
+ * Reads a token from a drop payload WITHOUT ever throwing: a missing
+ * `dataTransfer`, a missing `getData`, or a `getData` that rejects all yield an
+ * empty string.
+ */
+export const readDroppedTokenSafely = (dataTransfer: unknown): string => {
+  if (dataTransfer === null || dataTransfer === undefined) {
+    return '';
+  }
+
+  const getData = (dataTransfer as { getData?: unknown }).getData;
+
+  if (typeof getData !== 'function') {
+    return '';
+  }
+
+  try {
+    const typed = (
+      getData as (format: string) => unknown
+    ).call(dataTransfer, STUDIO_FIELD_DRAG_MIME);
+
+    if (typeof typed === 'string' && typed.length > 0) {
+      return typed;
+    }
+
+    const plain = (getData as (format: string) => unknown).call(
+      dataTransfer,
+      'text/plain',
+    );
+
+    return typeof plain === 'string' ? plain : '';
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * The token a drop should insert: the payload's token when it is authorized,
+ * otherwise the token remembered from `dragstart`, and `null` when neither is in
+ * the CURRENT authorized catalog. A fabricated or stale token therefore changes
+ * nothing.
+ */
+export const resolveDroppedFieldToken = ({
+  typedToken,
+  rememberedToken,
+  fields,
+}: {
+  typedToken: string;
+  rememberedToken: string | null;
+  fields: readonly StudioField[];
+}): string | null =>
+  findAuthorizedFieldByToken(fields, typedToken)?.token ??
+  findAuthorizedFieldByToken(fields, rememberedToken)?.token ??
+  null;
+
+// --- text integrity ----------------------------------------------------------
+
+// LRM, RLM, ALM, the explicit embedding/override controls and the isolate
+// controls. None of these may ever be persisted as part of a template body.
+const HIDDEN_BIDI_PATTERN = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/;
+
+/** True when a string carries a hidden bidi control character. */
+export const containsHiddenBidiCharacter = (value: string): boolean =>
+  HIDDEN_BIDI_PATTERN.test(value);
+
+// --- table -------------------------------------------------------------------
+
+/** Filters templates by title, case-insensitively. */
+export const filterStudioTemplates = (
+  templates: readonly StudioTemplate[],
+  query: string,
+): StudioTemplate[] => {
+  const needle = query.trim().toLowerCase();
+
+  if (needle.length === 0) {
+    return [...templates];
+  }
+
+  return templates.filter(
+    (template) =>
+      template.title.toLowerCase().includes(needle) ||
+      template.id.toLowerCase().includes(needle),
+  );
+};
+
+/**
+ * A compact display value for «آخرین ویرایش». Returns the date portion of a
+ * valid ISO timestamp, or an empty string when there is nothing usable — the
+ * component decides the "unknown" copy.
+ */
+export const formatStudioUpdatedAt = (updatedAt: string): string => {
+  const trimmed = updatedAt.trim();
+
+  if (trimmed.length === 0) {
+    return '';
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+
+  return match === null ? '' : `${match[1]}-${match[2]}-${match[3]}`;
 };

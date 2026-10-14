@@ -19,6 +19,7 @@ type RawMutationNode = {
   title?: string | null;
   body?: string | null;
   targetObject?: string | null;
+  updatedAt?: string | null;
 };
 
 const toStudioTemplate = (
@@ -37,6 +38,7 @@ const toStudioTemplate = (
     title: typeof node.title === 'string' ? node.title : '',
     body: typeof node.body === 'string' ? node.body : '',
     targetObject: readTemplateTargetObject(node.targetObject),
+    updatedAt: typeof node.updatedAt === 'string' ? node.updatedAt : '',
   };
 };
 
@@ -66,6 +68,7 @@ export const createMessageTemplate = async ({
       title: true,
       body: true,
       targetObject: true,
+      updatedAt: true,
     },
   });
 
@@ -97,6 +100,7 @@ export const updateMessageTemplate = async ({
       title: true,
       body: true,
       targetObject: true,
+      updatedAt: true,
     },
   });
 

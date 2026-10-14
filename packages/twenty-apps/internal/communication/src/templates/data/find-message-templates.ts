@@ -12,6 +12,8 @@ export type MessageTemplateRecord = {
   body: string;
   channel: string;
   targetObject: string;
+  /** ISO timestamp of the last write, shown as «آخرین ویرایش» in the studio. */
+  updatedAt: string;
 };
 
 type RawMessageTemplateNode = {
@@ -20,6 +22,7 @@ type RawMessageTemplateNode = {
   body?: string | null;
   channel?: string | null;
   targetObject?: string | null;
+  updatedAt?: string | null;
 };
 
 type ConnectionEdge<TNode> = { node?: TNode | null } | null;
@@ -46,6 +49,7 @@ export const findMessageTemplates = async ({
           body: true,
           channel: true,
           targetObject: true,
+          updatedAt: true,
         },
       },
     },
@@ -68,5 +72,6 @@ export const findMessageTemplates = async ({
       // An existing row has no value and is read as PERSON — a read-time
       // default only, never written back.
       targetObject: readTemplateTargetObject(node.targetObject),
+      updatedAt: typeof node.updatedAt === 'string' ? node.updatedAt : '',
     }));
 };
