@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (CRM-NATIVE-TEMPLATES-02 continued: leftover items 1–2 are DONE and verified live on 0.1.47 — menu reads «همهٔ الگوها · الگوهای پیامک» and tabs are «اطلاعات / متن پیام / متغیرها»; the native delete path is CLOSED as an evidence-backed answer (record command menu «حذف الگوی پیام» is headless and immediate — no cancel exists — and the platform's cancel-equipped counterpart is «بازیابی» in the trash view, verified round-trip); the inline record-page control is PROVEN live (typing re-renders the echo, two real clicks advance the counter to 2), which settles that inline front-component controls DO receive events — the old failure was specific to the modal. Items 3–7 are NOT STARTED and are bounded by the enumerated component API, which exposes no record-field read/write: insert-at-caret is not implementable, while persistence must go through a server route as the studio did. PASS is NOT asserted. APPLE/app2 untouched; no real SMS; W7 disabled; seven provider variables byte-identical.)
+Last updated: 2026-10-14 (CRM-NATIVE-TEMPLATES-02 COMPLETE_REMAINING_IMPLEMENTATION: items 1–6 are IMPLEMENTED and verified live on 0.1.49 — the probe control is gone and the record-page widget is now a real inline editor (source model from metadata, RTL body textarea, variable insertion exactly once, save with conflict guard, sample preview). Preview works for a Person source; preview for a RELATED source and TEMPLATE_CONTEXT_MISMATCH are NOT implemented, and the studio was NOT removed (item 8), so PASS is NOT asserted. APPLE/app2 untouched; no real SMS; W7 disabled; seven provider variables byte-identical; the user's own templates were restored byte-identical after testing.)
 
 ## Purpose
 
@@ -52,6 +52,79 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## CRM-NATIVE-TEMPLATES-02 COMPLETE_REMAINING_IMPLEMENTATION — items 1–6 done and verified (0.1.49)
+
+Baseline `4198fa6a27` → tip `eaa02c7700`; installed on main/4D: Communication **0.1.49**
+(0.1.48 shipped the editor, 0.1.49 fixed the save).
+
+**The decision implemented:** the table, creation, record page and delete stay native;
+the record-page widget is the specialized editor for text, source, variables and preview;
+the text lives only in the record's own `body` field. The widget is INLINE — no modal, no
+backdrop, no portal, no document-level listener.
+
+### What was built
+
+- **Two nullable fields on the same record** — `sourceObjectName` and `recipientRelation` —
+  storing the stable metadata identifiers. A row written before them has neither and reads
+  as Person: a read-time default, never a write migration. `targetObject` is unchanged, so
+  the list's «موجودیت منبع» column still renders. No parallel table exists.
+- **Server discovery from metadata** (`findEligibleTemplateSources`): Person plus objects
+  whose record resolves to exactly ONE Person (MANY_TO_ONE to Person). `ONE_TO_MANY`
+  collections are excluded, system join tables are excluded, and the function returns an
+  EMPTY list rather than guessing when Person is missing or inactive.
+  `resolveEligibleSource` revalidates a requested pair server-side, so a forged or stale
+  pair is rejected instead of stored.
+- **Route actions:** `read-template` (one record only — no listing), `eligible-sources`,
+  `save-body`, `save-source`. `save-body` writes ONLY the body: a source change cannot
+  clobber text.
+- **Conflict handling** is CHECK-THEN-WRITE. `updateMessageTemplate(id, data)` accepts no
+  `filter` (only the batch `updateMessageTemplates(data, filter)` does), so an atomic
+  compare-and-set is unavailable for a single record; the record's `updatedAt` is read and
+  compared with what the caller loaded, and the write is skipped on a mismatch. The small
+  window between the two calls is stated in the code rather than pretended away. A failed
+  save KEEPS the typed text.
+- **Insertion** uses the caret when the renderer exposes a selection and appends at the end
+  otherwise. The caret path is unavailable on this build: the remote-element polyfill
+  implements no `selectionStart`/`setSelectionRange` (verified by search over
+  `@remote-dom`), so append is the real path and clipboard is no longer the only way to use
+  a variable. Tokens stay ASCII and forced LTR.
+
+### Live acceptance on main/4D (real clicks, real typing)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Probe control removed | PASS | the counter/echo is gone; the widget is the editor |
+| Body read from the record | PASS | the textarea loaded «سلام @name، این یک پیام آزمایشی است.» via `useRecordId()` + `read-template` |
+| Eligible sources from metadata | PASS | the source select offers **افراد، ثبتنام های همایش، سرنخ های همایش، فرصتها، ارتباطات** |
+| Ineligible source absent | PASS | **company is not offered** (its only Person relation is a collection) and system join tables are absent |
+| Source + relation persisted | PASS | choosing «فرصتها» stored `sourceObjectName=opportunity`, `recipientRelation=pointOfContact` on the same record |
+| Old templates read as Person | PASS | a row with neither identifier loads with source = Person |
+| Variable inserted exactly once | PASS | one click appended exactly one `@person.firstName` |
+| Body saved and persisted | PASS | after Save the DB body held the appended token; a reload showed it with no dirty state |
+| Dirty state | PASS | «تغییرات ذخیرهنشده» appears on edit and clears after a successful save |
+| Save failure keeps the text | PASS | the first (broken) save attempt reported «ذخیرهٔ الگو ناموفق بود.» and left the typed text intact |
+| Preview resolved server-side | PASS | previewing against a sample Person rendered «سلام تست شماره مشترک دو، این یک پیام آزمایشی است.» |
+| Preview for a RELATED source | **NOT IMPLEMENTED** | the sample picker lists People only; a sample SOURCE record and its relation resolution are not built |
+| `TEMPLATE_CONTEXT_MISMATCH` | **NOT IMPLEMENTED** | no relation-context validation yet |
+| Studio removed (item 8) | **NOT DONE** | the studio and its route still exist |
+
+Honesty note: the two test writes were made on the user's own template
+«تست ارسال گروهی» and were **restored byte-identical** afterwards (body, source fields and
+`targetObject` all returned to their original values; verified in the database).
+
+### Remaining work, precisely
+
+1. **Related-source preview**: choose a sample SOURCE record (not a Person), have the server
+   resolve the stored relation to its Person, then resolve the body — plus
+   `TEMPLATE_CONTEXT_MISMATCH` when the template's source/relation does not match the
+   request. This is server work in the preview path plus a source-record picker.
+2. **Item 8**: delete the studio and studio-only code once (1) lands, keeping the shared
+   catalog/preview/send logic.
+3. **Permission boundary, stated plainly**: the route reads the record with the app's
+   `CoreApiClient`, and the platform exposes no user-scoped query to an app route. The read
+   is bounded to the single record id the user is already viewing (never a list), but it is
+   not a per-user enforcement. Closing that would need a platform capability.
 
 ## CRM-NATIVE-TEMPLATES-02 CONTINUED (2026-10-14) — items 1–2 PROVEN, exact boundary for 3–7 measured
 Baseline `8be789e219` → tip `9532e8d3c8`; installed on main/4D: Communication **0.1.47**.
