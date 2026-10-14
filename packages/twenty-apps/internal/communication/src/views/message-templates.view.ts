@@ -24,9 +24,10 @@ import {
 // data surface.
 export default defineView({
   universalIdentifier: MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
-  // The sidebar label comes from this name, resolved through the app catalog
-  // (`view.name`: 'SMS templates' → «الگوهای پیامک»).
-  name: 'SMS templates',
+  // The sidebar entry renders `<view name> · <object plural>`, so the view is
+  // named «همهٔ الگوها» and the sidebar reads «همهٔ الگوها · الگوهای پیامک» instead
+  // of repeating the object name twice.
+  name: 'All templates',
   objectUniversalIdentifier: MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   type: ViewType.TABLE,
   icon: 'IconTemplate',

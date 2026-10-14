@@ -79,7 +79,8 @@
   },
   "view.name": {
     "Communications": "ارتباطات",
-    "SMS templates": "الگوهای پیامک"
+    "SMS templates": "الگوهای پیامک",
+    "All templates": "همهٔ الگوها"
   },
   "Send SMS to multiple people": "ارسال پیامک به چند نفر",
   "Preview only. Bulk sending is not available yet.": "فقط پیش‌نمایش. ارسال گروهی هنوز در دسترس نیست.",

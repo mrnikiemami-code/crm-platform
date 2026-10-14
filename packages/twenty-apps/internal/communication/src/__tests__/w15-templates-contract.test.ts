@@ -140,7 +140,8 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
     expect(navigationItemConfig.pageLayoutUniversalIdentifier).toBeUndefined();
 
     // The label is the VIEW's own name, so the sidebar copy stays the view's.
-    expect(viewConfig.name).toBe('SMS templates');
+    // The view is named «همهٔ الگوها» so the sidebar does not repeat the object name.
+    expect(viewConfig.name).toBe('All templates');
   });
 });
 

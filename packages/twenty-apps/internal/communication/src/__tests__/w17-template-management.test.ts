@@ -98,7 +98,7 @@ describe('message-template record page (W17)', () => {
     );
 
     const bodyTab = recordPageConfig.tabs?.find(
-      (tab) => tab.title === 'Message',
+      (tab) => tab.title === 'متن پیام',
     );
 
     expect(bodyTab?.widgets?.[0].configuration).toMatchObject({
@@ -107,7 +107,7 @@ describe('message-template record page (W17)', () => {
     });
 
     const variablesTab = recordPageConfig.tabs?.find(
-      (tab) => tab.title === 'Variables',
+      (tab) => tab.title === 'متغیرها',
     );
 
     expect(

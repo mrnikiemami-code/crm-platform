@@ -31,7 +31,7 @@ export default definePageLayout({
     {
       universalIdentifier:
         MESSAGE_TEMPLATE_FIELDS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-      title: 'Fields',
+      title: 'اطلاعات',
       position: 0,
       icon: 'IconList',
       layoutMode: PageLayoutTabLayoutMode.VERTICAL_LIST,
@@ -39,7 +39,7 @@ export default definePageLayout({
         {
           universalIdentifier:
             MESSAGE_TEMPLATE_FIELDS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
-          title: 'Fields',
+          title: 'اطلاعات',
           type: 'FIELDS',
           configuration: {
             configurationType: 'FIELDS',
@@ -50,7 +50,7 @@ export default definePageLayout({
     {
       universalIdentifier:
         MESSAGE_TEMPLATE_BODY_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-      title: 'Message',
+      title: 'متن پیام',
       position: 1,
       icon: 'IconMessage',
       layoutMode: PageLayoutTabLayoutMode.GRID,
@@ -58,7 +58,7 @@ export default definePageLayout({
         {
           universalIdentifier:
             MESSAGE_TEMPLATE_BODY_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
-          title: 'Message',
+          title: 'متن پیام',
           type: 'FIELD',
           objectUniversalIdentifier: MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
           gridPosition: {
@@ -78,7 +78,7 @@ export default definePageLayout({
     {
       universalIdentifier:
         MESSAGE_TEMPLATE_VARIABLES_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-      title: 'Variables',
+      title: 'متغیرها',
       position: 2,
       icon: 'IconVariable',
       layoutMode: PageLayoutTabLayoutMode.VERTICAL_LIST,
@@ -86,7 +86,7 @@ export default definePageLayout({
         {
           universalIdentifier:
             MESSAGE_TEMPLATE_VARIABLES_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
-          title: 'Usable variables',
+          title: 'متغیرهای قابل استفاده',
           type: 'FRONT_COMPONENT',
           objectUniversalIdentifier: MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
           configuration: {
