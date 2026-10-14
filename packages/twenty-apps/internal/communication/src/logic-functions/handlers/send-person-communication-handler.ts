@@ -114,6 +114,7 @@ export const sendPersonCommunicationHandler = async (
   // the send with a stable classification.
   const { catalog } = await buildAuthorizedTemplateCatalog({
     metadataClient: dependencies.metadataClient ?? new MetadataApiClient(),
+    client,
   });
 
   const resolved = await resolveTemplateValues({

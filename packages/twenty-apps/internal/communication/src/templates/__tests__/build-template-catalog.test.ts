@@ -13,6 +13,7 @@ import {
   LOYALTY_TIER_FIELD_ID,
   PERSON_OBJECT_ID,
   SECRET_FIELD_ID,
+  createFakeMetadataClient,
   templateMetadataObjects,
   unrestrictedPermissions,
 } from 'src/templates/__tests__/catalog-fixture';
@@ -380,37 +381,33 @@ describe('readTemplatePermissions', () => {
   });
 });
 
-describe('buildAuthorizedTemplateCatalog — fail closed (W18-B)', () => {
-  it('returns an EMPTY catalog and isAvailable=false when no role resolves', async () => {
-    const result = await buildAuthorizedTemplateCatalog({
-      // Metadata enumerates fine, but the permission read yields no role.
-      metadataClient: {
-        query: async (request: Record<string, unknown>) => {
-          if ('getRoles' in request) {
-            return { getRoles: [] };
-          }
+describe('buildAuthorizedTemplateCatalog — fail closed (W18-C)', () => {
+  const probeClientReturning = (node: unknown) => ({
+    query: async () => ({ people: { edges: node === null ? [] : [{ node }] } }),
+  });
 
-          return {
-            objects: {
-              edges: templateMetadataObjects.map((object) => ({
-                node: {
-                  id: object.id,
-                  nameSingular: object.nameSingular,
-                  fieldsList: object.fields,
-                },
-              })),
-            },
-            findOneApplication: {
-              defaultRoleId: null,
-              defaultLogicFunctionRole: null,
-            },
-          };
-        },
+  it('returns an EMPTY catalog and isAvailable=false when no Person is readable', async () => {
+    const result = await buildAuthorizedTemplateCatalog({
+      metadataClient: {
+        query: async () => ({
+          objects: {
+            edges: templateMetadataObjects.map((object) => ({
+              node: {
+                id: object.id,
+                nameSingular: object.nameSingular,
+                fieldsList: object.fields,
+              },
+            })),
+          },
+        }),
       } as never,
+      // The probe read finds nothing, so nothing can be authorized.
+      client: probeClientReturning(null) as never,
     });
 
     // Fields are NEVER advertised just because metadata enumeration succeeded.
     expect(result.isAvailable).toBe(false);
+    expect(result.stage).toBe('ROLE_NOT_FOUND');
     expect(result.catalog.variables).toHaveLength(0);
     expect(findTemplateVariable(result.catalog, 'person.firstName')).toBeNull();
   });
@@ -422,9 +419,52 @@ describe('buildAuthorizedTemplateCatalog — fail closed (W18-B)', () => {
           throw new Error('boom: https://internal.example/secret');
         },
       } as never,
+      client: probeClientReturning({ id: 'p1' }) as never,
     });
 
     expect(result.isAvailable).toBe(false);
+    expect(result.stage).toBe('METADATA_ERROR');
     expect(result.catalog.variables).toHaveLength(0);
+  });
+
+  it('returns an EMPTY, unavailable catalog when the probe read throws', async () => {
+    const result = await buildAuthorizedTemplateCatalog({
+      metadataClient: createFakeMetadataClient() as never,
+      client: {
+        query: async () => {
+          throw new Error('probe failed');
+        },
+      } as never,
+    });
+
+    expect(result.isAvailable).toBe(false);
+    expect(result.stage).toBe('READ_PROBE_ERROR');
+    expect(result.catalog.variables).toHaveLength(0);
+  });
+
+  it('authorizes exactly the fields the platform read returned', async () => {
+    // The read returns aJobTitle and a custom field, and omits the rest: only
+    // those two may be advertised.
+    const result = await buildAuthorizedTemplateCatalog({
+      metadataClient: createFakeMetadataClient() as never,
+      client: probeClientReturning({
+        id: 'p1',
+        jobTitle: 'مدیر',
+        loyaltyTier: 'طلایی',
+      }) as never,
+    });
+
+    expect(result.isAvailable).toBe(true);
+    expect(result.stage).toBe('OK');
+    // Person fields are restricted to what the read returned...
+    expect(
+      result.catalog.variables
+        .filter((variable) => variable.objectName === 'person')
+        .map((variable) => variable.token),
+    ).toEqual(['person.jobTitle', 'person.loyaltyTier']);
+    // ...and a Person field the read did NOT return is not advertised.
+    expect(findTemplateVariable(result.catalog, 'person.emails')).toBeNull();
+    // Company fields ride on the same Person read (relation-level guarantee).
+    expect(findTemplateVariable(result.catalog, 'company.name')).not.toBeNull();
   });
 });

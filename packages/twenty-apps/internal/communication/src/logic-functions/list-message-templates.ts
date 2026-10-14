@@ -22,6 +22,7 @@ import { listTemplateVariables } from 'src/templates/template-variable-catalog';
 const handler = async () => {
   const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
     metadataClient: new MetadataApiClient(),
+    client: new CoreApiClient(),
   });
 
   // The catalog is EMPTY whenever it could not be authorized. The status tells

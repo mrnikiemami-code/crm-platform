@@ -67,7 +67,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     catalogStage: string;
   }> => {
     const { catalog, isAvailable, stage } = await buildAuthorizedTemplateCatalog(
-      { metadataClient: new MetadataApiClient() },
+      { metadataClient: new MetadataApiClient(), client },
     );
 
     return {
@@ -122,6 +122,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     // change to the template.
     const { isAvailable } = await buildAuthorizedTemplateCatalog({
       metadataClient: new MetadataApiClient(),
+      client,
     });
 
     if (!isAvailable) {

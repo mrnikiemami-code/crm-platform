@@ -79,7 +79,20 @@ const buildFakeClient = ({
   const mutations: MutationCall[] = [];
 
   const client = {
-    query: async () => queryResult,
+    query: async (payload?: Record<string, unknown>) => {
+      // The authorized-catalog probe reads `people`; the send path reads
+      // `person`. Both are answered from the same fixture so the probe can
+      // authorize the fields this fake record actually exposes.
+      if (payload !== undefined && 'people' in payload) {
+        return {
+          people: {
+            edges: queryResult.person === undefined ? [] : [{ node: queryResult.person }],
+          },
+        };
+      }
+
+      return queryResult;
+    },
     mutation: async (payload: Record<string, Record<string, unknown>>) => {
       const [mutationName] = Object.keys(payload);
       const body = payload[mutationName] as { __args: Record<string, unknown> };

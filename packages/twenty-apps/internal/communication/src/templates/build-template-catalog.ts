@@ -1,9 +1,15 @@
 import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 
+import { type CoreApiClient } from 'twenty-client-sdk/core';
+
 import {
   APPLICATION_UNIVERSAL_IDENTIFIER,
   DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
+import {
+  probeReadableTemplateFields,
+  restrictCatalogToObservedFields,
+} from 'src/templates/probe-readable-fields';
 import {
   buildTemplateVariableCatalog,
   EMPTY_TEMPLATE_VARIABLE_CATALOG,
@@ -134,10 +140,22 @@ export const AUTHORIZED_CATALOG_STAGE = {
   METADATA_ERROR: 'METADATA_ERROR',
   ROLE_QUERY_ERROR: 'ROLE_QUERY_ERROR',
   ROLE_NOT_FOUND: 'ROLE_NOT_FOUND',
+  READ_PROBE_ERROR: 'READ_PROBE_ERROR',
 } as const;
 
 export type AuthorizedTemplateCatalogStage =
   (typeof AUTHORIZED_CATALOG_STAGE)[keyof typeof AUTHORIZED_CATALOG_STAGE];
+
+/**
+ * The candidate-build permissions. Deliberately unrestricted at the METADATA
+ * layer: the actual authorization comes from the probe record read, so applying
+ * a second, unverifiable restriction here would only be guesswork.
+ */
+export const UNRESTRICTED_TEMPLATE_PERMISSIONS: TemplatePermissionSnapshot = {
+  canReadAllObjectRecords: true,
+  objectPermissions: [],
+  unreadableFieldMetadataIds: [],
+};
 
 // `restrictedFields` is a JSON column; its exact shape is a platform detail, so
 // it is read defensively: entries may be plain field names or objects carrying
@@ -561,20 +579,35 @@ export const readTemplatePermissions = async ({
 /**
  * The single server-authoritative entry point every consumer uses.
  *
- * FAIL CLOSED. Both the metadata read and the role read are part of building an
- * AUTHORIZED catalog, so either failing yields an EMPTY catalog and
- * `isAvailable: false`. Callers must report that as a stable unavailable state —
- * never advertise fields just because metadata enumeration succeeded, and never
- * fall back to "allow everything" when permissions could not be read.
+ * FAIL CLOSED, and authorized by the platform's OWN record read.
  *
- * Record reads stay server-authoritative regardless: the catalog only ever
- * produces field names, and the platform enforces read permission on the actual
- * record query.
+ * Why not the role metadata: an app-scoped token cannot read workspace roles
+ * (`getRoles`) or application role rows on this platform build — verified live on
+ * main/4D, where every such query is denied with "Entity performing the request
+ * does not have permission". So the app cannot derive field-level access from
+ * role metadata, and pretending to would be a fiction.
+ *
+ * What is authoritative instead: the platform enforces access on the ACTUAL
+ * record read. A probe read of one accessible Person therefore reports exactly
+ * which candidate fields this caller may read — a readable-but-empty field comes
+ * back as `null`, while a field the caller may NOT read is absent from the
+ * response entirely. The catalog is the CANDIDATE metadata catalog restricted to
+ * the fields that read actually returned.
+ *
+ * Consequences, stated honestly:
+ *  - Fields are never advertised merely because metadata enumeration succeeded;
+ *    advertising requires a successful authorized read.
+ *  - A workspace with no readable Person yields an EMPTY, UNAVAILABLE catalog,
+ *    which is safe (there is nothing to template against) and never guesses.
+ *  - Record reads stay server-authoritative; the probe is one bounded read
+ *    (`first: 1`) and writes nothing.
  */
 export const buildAuthorizedTemplateCatalog = async ({
   metadataClient,
+  client,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
+  client: Pick<CoreApiClient, 'query'>;
 }): Promise<AuthorizedTemplateCatalogResult> => {
   let objects: TemplateMetadataObject[];
 
@@ -588,29 +621,34 @@ export const buildAuthorizedTemplateCatalog = async ({
     };
   }
 
-  let permissions: TemplatePermissionSnapshot | null;
+  // The candidate catalog: every safe scalar the workspace defines. It is NOT
+  // yet authorized — the probe read below decides what may actually be used.
+  const candidates = buildTemplateCatalogFromMetadata({
+    objects,
+    permissions: UNRESTRICTED_TEMPLATE_PERMISSIONS,
+  });
 
   try {
-    permissions = await readTemplatePermissions({ metadataClient });
+    const observed = await probeReadableTemplateFields({ client, catalog: candidates });
+
+    if (observed === null) {
+      return {
+        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+        isAvailable: false,
+        stage: AUTHORIZED_CATALOG_STAGE.ROLE_NOT_FOUND,
+      };
+    }
+
+    return {
+      catalog: restrictCatalogToObservedFields(candidates, observed),
+      isAvailable: true,
+      stage: AUTHORIZED_CATALOG_STAGE.OK,
+    };
   } catch {
     return {
       catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
       isAvailable: false,
-      stage: AUTHORIZED_CATALOG_STAGE.ROLE_QUERY_ERROR,
+      stage: AUTHORIZED_CATALOG_STAGE.READ_PROBE_ERROR,
     };
   }
-
-  if (permissions === null) {
-    return {
-      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
-      isAvailable: false,
-      stage: AUTHORIZED_CATALOG_STAGE.ROLE_NOT_FOUND,
-    };
-  }
-
-  return {
-    catalog: buildTemplateCatalogFromMetadata({ objects, permissions }),
-    isAvailable: true,
-    stage: AUTHORIZED_CATALOG_STAGE.OK,
-  };
 };
