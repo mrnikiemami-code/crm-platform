@@ -76,7 +76,7 @@ import {
 //
 // It is intentionally NOT hand-maintained: `studio-build-marker.test.ts` fails
 // if it drifts from `package.json`, so it can never lie about the revision.
-export const STUDIO_BUILD_MARKER = '0.1.46';
+export const STUDIO_BUILD_MARKER = '0.1.47';
 
 // The SMS Template Studio.
 //

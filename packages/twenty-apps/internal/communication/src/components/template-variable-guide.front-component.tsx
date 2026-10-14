@@ -91,6 +91,17 @@ const VariableGuide = () => {
   const [state, setState] = useState<LoadState>({ kind: 'LOADING' });
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
+  // The INLINE interaction state: a real input and a real button, both driven by
+  // component state and rendered straight onto the record page.
+  //
+  // It exists to prove — and to keep proving — that this surface receives input
+  // and click events. It is deliberately inline: no modal, no backdrop, no
+  // portal, and no `document`-level listener, because a front component runs in
+  // a worker and a listener on `document` there would never see host events.
+  // The source/relation selectors and the preview build on exactly this surface.
+  const [inlineText, setInlineText] = useState('');
+  const [inlineClicks, setInlineClicks] = useState(0);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -129,6 +140,38 @@ const VariableGuide = () => {
 
   return (
     <div style={{ ...styles.container, direction }}>
+      {/*
+        The inline interaction proof. Typing must update the input, clicking must
+        advance the counter, and both must be visible on the record page — with
+        no modal, no backdrop, no portal and no document-level listener.
+      */}
+      <div style={styles.field} data-inline-control="probe">
+        <p style={styles.heading}>{t('Inline control')}</p>
+        <input
+          type="text"
+          aria-label={t('Inline control input')}
+          value={inlineText}
+          placeholder={t('Type here')}
+          onChange={(event) => setInlineText(event.target.value)}
+          style={styles.control}
+        />
+        <div style={styles.actions}>
+          <button
+            type="button"
+            style={styles.primaryButton}
+            onClick={() => setInlineClicks((current) => current + 1)}
+          >
+            {t('Add')}
+          </button>
+          <span style={styles.muted} data-inline-counter>
+            {t('Clicks')}: {inlineClicks}
+          </span>
+        </div>
+        <p style={styles.muted} data-inline-echo>
+          {t('Typed text')}: {inlineText}
+        </p>
+      </div>
+
       <div style={styles.field}>
         <p style={styles.heading}>{t('Usable variables')}</p>
         <p style={styles.hint}>
