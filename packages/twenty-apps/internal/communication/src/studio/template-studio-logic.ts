@@ -234,25 +234,26 @@ export const readTextareaSelection = (
 };
 
 /**
- * Picks the selection an insertion should use: the LIVE selection while the
- * textarea still owns focus, otherwise the REMEMBERED one, otherwise the end of
- * the body. Offsets are clamped to the body, so a remembered selection from
- * before an edit can never corrupt the result.
+ * Picks the selection an insertion should use.
+ *
+ * A LIVE selection always wins when the textarea reports one: it is the caret the
+ * user can currently see, and it stays valid even after a synthetic activation or
+ * a focus shift, so insertion can never silently fall back to a stale position.
+ * The REMEMBERED selection is the fallback for when the textarea reports none
+ * (for example after the field palette took focus in a way that cleared the
+ * range), and the end of the body is the last resort. Every offset is clamped, so
+ * a remembered selection from before an edit can never corrupt the result.
  */
 export const resolveInsertSelection = ({
   bodyLength,
   liveSelection,
   rememberedSelection,
-  isTextareaFocused,
 }: {
   bodyLength: number;
   liveSelection: StudioSelection | null;
   rememberedSelection: StudioSelection | null;
-  isTextareaFocused: boolean;
 }): StudioSelection => {
-  const source = isTextareaFocused
-    ? (liveSelection ?? rememberedSelection)
-    : (rememberedSelection ?? liveSelection);
+  const source = liveSelection ?? rememberedSelection;
 
   const clamp = (value: number): number =>
     Math.min(Math.max(Math.trunc(value), 0), bodyLength);

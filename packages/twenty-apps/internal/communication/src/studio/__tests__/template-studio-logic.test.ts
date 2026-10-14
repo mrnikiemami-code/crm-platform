@@ -219,24 +219,22 @@ describe('isFieldActivationKey', () => {
 });
 
 describe('resolveInsertSelection', () => {
-  it('prefers the LIVE selection while the textarea owns focus', () => {
+  it('prefers the LIVE selection whenever the textarea reports one', () => {
     expect(
       resolveInsertSelection({
         bodyLength: 10,
         liveSelection: { start: 2, end: 2 },
         rememberedSelection: { start: 7, end: 7 },
-        isTextareaFocused: true,
       }),
     ).toEqual({ start: 2, end: 2 });
   });
 
-  it('prefers the REMEMBERED selection once focus moved to the palette', () => {
+  it('uses the REMEMBERED selection when there is no live one', () => {
     expect(
       resolveInsertSelection({
         bodyLength: 10,
-        liveSelection: { start: 9, end: 9 },
+        liveSelection: null,
         rememberedSelection: { start: 4, end: 4 },
-        isTextareaFocused: false,
       }),
     ).toEqual({ start: 4, end: 4 });
   });
@@ -247,7 +245,6 @@ describe('resolveInsertSelection', () => {
         bodyLength: 12,
         liveSelection: null,
         rememberedSelection: null,
-        isTextareaFocused: false,
       }),
     ).toEqual({ start: 12, end: 12 });
   });
@@ -258,7 +255,6 @@ describe('resolveInsertSelection', () => {
         bodyLength: 3,
         liveSelection: null,
         rememberedSelection: { start: 40, end: 50 },
-        isTextareaFocused: false,
       }),
     ).toEqual({ start: 3, end: 3 });
   });

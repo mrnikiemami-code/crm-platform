@@ -318,10 +318,6 @@ export const TemplateStudio = () => {
       bodyLength: draft.body.length,
       liveSelection: readTextareaSelection(textarea),
       rememberedSelection: rememberedSelectionRef.current,
-      isTextareaFocused:
-        typeof document !== 'undefined' &&
-        document.activeElement === textarea &&
-        textarea !== null,
     });
 
     const next = insertTokenAtSelection({
