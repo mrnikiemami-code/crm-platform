@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-14 (CRM-NATIVE-TEMPLATES-02, partial: items 1–2 DONE and verified live on 0.1.46 — the menu reads «همهٔ الگوها · الگویهای پیامک» and the record tabs are «اطلاعات / متن پیام / متغیرها». Item 3's native delete path was IDENTIFIED (record page → command menu → «حذف الگوی پیام»، و مجوز Admin برای soft-delete و destroy روی messageTemplate فعال است) but cancel/confirm were NOT executed, so it is UNVERIFIED. Items 4–9 are NOT STARTED and are blocked by a platform limitation recorded below — they are not a coding task that can be absorbed as-is. APPLE/app2 untouched; no real SMS; W7 disabled.)
+Last updated: 2026-10-14 (CRM-NATIVE-TEMPLATES-02 continued: leftover items 1–2 are DONE and verified live on 0.1.47 — menu reads «همهٔ الگوها · الگوهای پیامک» and tabs are «اطلاعات / متن پیام / متغیرها»; the native delete path is CLOSED as an evidence-backed answer (record command menu «حذف الگوی پیام» is headless and immediate — no cancel exists — and the platform's cancel-equipped counterpart is «بازیابی» in the trash view, verified round-trip); the inline record-page control is PROVEN live (typing re-renders the echo, two real clicks advance the counter to 2), which settles that inline front-component controls DO receive events — the old failure was specific to the modal. Items 3–7 are NOT STARTED and are bounded by the enumerated component API, which exposes no record-field read/write: insert-at-caret is not implementable, while persistence must go through a server route as the studio did. PASS is NOT asserted. APPLE/app2 untouched; no real SMS; W7 disabled; seven provider variables byte-identical.)
 
 ## Purpose
 
@@ -53,7 +53,87 @@ deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUC
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
 
-## CRM-NATIVE-TEMPLATES-02 (partial) — items 1–2 done, item 3 identified, items 4–9 blocked by a platform limit
+## CRM-NATIVE-TEMPLATES-02 CONTINUED (2026-10-14) — items 1–2 PROVEN, exact boundary for 3–7 measured
+Baseline `8be789e219` → tip `9532e8d3c8`; installed on main/4D: Communication **0.1.47**.
+
+### Item 1 (leftover) — menu name and Persian tabs: DONE, verified live
+- Sidebar reads **«همهٔ الگوها · الگوهای پیامک»** (previously the object name twice); page title
+  «همهٔ الگوها - الگوهای پیامک». No duplicated label remains.
+- Record-page tabs are **«اطلاعات» / «متن پیام» / «متغیرها»**; no English tab title remains.
+
+### Item 2 (leftover) — the native delete path: CLOSED with a precise, evidenced answer
+
+The path is the **record context**: record page → command menu (Ctrl+K) → **«حذف الگوی پیام»**.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Permission | available | human **Admin** role: `canSoftDeleteAllObjectRecords = t`, `canDestroyAllObjectRecords = t` |
+| Delete executes natively | PASS | one command click set `deletedAt = 2026-10-14 15:03:01` on the test row |
+| Gone from the list after reload | PASS | list showed only the 2 pre-existing rows; badge ۲ |
+| Soft delete (not destroy) | PASS | row present with `deletedAt` set, not removed |
+| **Cancel before deleting** | **NOT AVAILABLE** | the command is **headless**: `DeleteRecordsCommand.tsx` runs `handleExecute` immediately — no confirm dialog, no cancel. This is platform design, not a defect in this app. |
+| Reversible route | PASS | trash view («مشاهده الگوهای پیامک حذفشده») lists it; **«بازیابی»** opens a real confirmation («آیا مطمئن هستید…» + «لغو») and, on confirm, `deletedAt` returned to `null` |
+
+So the requested "cancel → row stays" has no counterpart on DELETE in this platform; the
+command that carries a cancel is **restore**. Delete is immediate-but-reversible, which is
+why the platform pairs it with a trash view. The test record was created through the app's
+own GraphQL API as a fixture (never a user template) and was removed afterwards.
+
+### Item 2 of THIS task — the inline control: PROVEN LIVE on main/4D
+
+Delivered exactly as specified — inline, in the record page's existing widget, with **no
+modal, no backdrop, no portal and no document-level listener**:
+`template-variable-guide.front-component.tsx` now renders «کنترل درونخطی»: a text input, an
+«افزودن» button and a visible «کلیکها» counter.
+
+| Interaction | Result | Evidence |
+| --- | --- | --- |
+| Typing | PASS | a controlled input; after real typing the echo re-rendered to «متن تایپشده: آزمون درونخطی» |
+| Clicking | PASS | one real click → «کلیکها: 1»; a second → «کلیکها: 2» (repeatable) |
+
+This settles the question left open by the studio failure: **inline front-component controls
+on the record page receive input and click events and re-render correctly.** The modal
+failure was specific to that surface and must not be generalised — exactly as instructed.
+Note the contrast that explains the old failure: this control registers listeners on its own
+elements, while the retired studio also relied on a `document`-level Escape listener, which
+can never fire because the component runs in a worker.
+
+### Items 3–7 — NOT STARTED, and now bounded by measured API facts (architect decision needed)
+
+The front-component API surface was enumerated in full
+(`twenty-sdk/dist/front-component/index.d.ts`). It exposes `useRecordId`,
+`useSelectedRecordIds`, `copyToClipboard`, `navigate`, `openSidePanelPage`,
+`openCommandConfirmationModal`, `enqueueSnackbar`, `uploadFile`, `updateProgress`,
+`getApplicationVariable`, `unmountFrontComponent` and the hooks/providers — and **no API to
+read or write a record's field value**. Consequences, stated precisely:
+
+1. **Insert-at-caret (item 6) is not implementable.** There is no way to read the native
+   body field's caret or to write into it from a front component. The component's existing
+   honest workaround (copy the token to the clipboard, with a Persian confirmation) is the
+   most that this surface supports. Anything else would be a fake and is refused.
+2. **Persisting the source/relation identifiers (items 4–5) IS feasible**, but only through a
+   server route: the component cannot write fields, yet it can POST to an app logic function
+   which writes them with its own `CoreApiClient` — the mechanism the retired studio used and
+   a supported, native-storage path (no parallel table).
+3. **The source/relation picker (items 3–4, 6) is feasible with the inline surface proven
+   above**: `useRecordId()` identifies the record, and options come from a server endpoint
+   that resolves eligible sources from metadata and filters out collections/unauthorised
+   objects.
+4. **Server-side preview + `TEMPLATE_CONTEXT_MISMATCH` (item 6) is feasible** and should be
+   added to the existing `template-studio` route's preview action, which already rebuilds the
+   authorized catalog and rejects mismatches; the preview UI belongs in the same inline
+   widget and stores no sample record on the template.
+5. **Item 7 (remove the old UI)** stays deferred: the studio is still the only
+   implementation of catalog/preview until the inline replacement lands.
+
+Because the model/review run in a worker, the practical build order is: (a) extend the
+server route with an `eligible-sources` action and the relation revalidation, (b) render the
+inline source/relation selects from it, (c) persist via a server action, (d) add the inline
+preview, (e) only then delete the studio. That is a focused, bounded follow-up rather than a
+speculative rewrite.
+
+**Nothing in items 3–7 was claimed as done, and PASS is NOT asserted.**
+
 
 Baseline `6d9a853ad8` → tip `9b329ec9dc`; installed on main/4D: Communication **0.1.46**.
 
