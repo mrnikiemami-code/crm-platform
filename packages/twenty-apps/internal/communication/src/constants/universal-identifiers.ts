@@ -145,6 +145,18 @@ export const MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER =
 export const MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'b7e2a4d0-9c31-4f58-8d26-4a1b7e5c9f03';
 
+// View-field identifiers for the two columns that changed when the native list
+// replaced the bespoke studio table.
+//
+// A view field's TARGET FIELD is treated as its identity, so a manifest revision
+// may not repoint an existing row: the sync creates the new row and removes the
+// one that is no longer declared. These are therefore NEW identifiers, not the
+// retired title/channel/body ones.
+export const MESSAGE_TEMPLATE_TARGET_OBJECT_VIEW_FIELD_UNIVERSAL_IDENTIFIER =
+  '2a5f8c41-6d3b-4e79-8c52-1f7a9d0b3e64';
+export const MESSAGE_TEMPLATE_UPDATED_AT_VIEW_FIELD_UNIVERSAL_IDENTIFIER =
+  '3b6d9e52-7e4c-4f8a-9d63-2a8b0e1c4f75';
+
 // Template management surface (W17)
 // A sidebar entry NEXT TO «ارتباطات» pointing at the workspace's template
 // surface, so a workspace can find and manage its templates. It reuses the SAME

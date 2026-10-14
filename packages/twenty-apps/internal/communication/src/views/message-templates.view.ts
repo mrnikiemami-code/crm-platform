@@ -3,8 +3,10 @@ import { defineView, ViewType } from 'twenty-sdk/define';
 import {
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_TARGET_OBJECT_VIEW_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_UPDATED_AT_VIEW_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATES_VIEW_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
@@ -39,7 +41,11 @@ export default defineView({
       size: 240,
     },
     {
-      universalIdentifier: '74f517f3-9859-48d5-9f83-cef80a70dc5f',
+      // A NEW view-field identifier: a view field's target field is its identity,
+      // so the previous channel column cannot be repointed and is simply no
+      // longer declared (the sync removes it).
+      universalIdentifier:
+        MESSAGE_TEMPLATE_TARGET_OBJECT_VIEW_FIELD_UNIVERSAL_IDENTIFIER,
       fieldMetadataUniversalIdentifier:
         MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
       position: 1,
@@ -47,7 +53,8 @@ export default defineView({
       size: 140,
     },
     {
-      universalIdentifier: '359983a6-5f2a-4e75-876c-46ea37c35dca',
+      universalIdentifier:
+        MESSAGE_TEMPLATE_UPDATED_AT_VIEW_FIELD_UNIVERSAL_IDENTIFIER,
       fieldMetadataUniversalIdentifier:
         MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER,
       position: 2,
