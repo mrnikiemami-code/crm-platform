@@ -86,6 +86,157 @@ The following reports are retained without rewriting their contents.
 They are not the active plan, are not proof of current live behavior, and may contain
 superseded conclusions. The checkpoint and linked plan above control subsequent work.
 
+## CRM-TEMPLATES-SOURCE-CATALOG-FIX — the catalog now follows the selected source, and three latent defects fell out with it (0.1.58 → 0.1.60)
+
+Baseline `400cc0b1ad4b380019ec0e54c5f9d1206cd5d040` → tip `6f5401ee62`; apps 0.1.58, 0.1.59
+then 0.1.60 on main/4D; host unchanged. Wall clock 06:20–06:52 UTC. **HEAD = origin/crm-platform.**
+Four commits: `ba6e964983` (source-driven catalog), `cfe51bbfa7` (preview context), `6f5401ee62`
+(composite sub-selections), plus the Recovery commit.
+
+### 1. Why selecting another entity still showed Person variables
+
+Not a title bug and not a persistence bug. The catalog was built by
+`buildTemplateCatalogFromMetadata`, which hard-coded the union
+`TemplateObjectName = 'person' | 'company'` and only ever called
+`buildEntriesFor('person')` / `buildEntriesFor('company')`. The `catalog` action read
+`body.sourceObjectUid` **nowhere** — so the request could not have carried a source and the
+server could not have honoured one. The client was equally silent: `loadCatalog()` sent
+`{ action: 'catalog' }` with no source at all. The editor *did* refresh the catalog on a source
+change, which is why the failure looked like "the catalog is correct but for the wrong entity".
+
+The fix is one thread: the client sends the source, the server resolves it (validated against the
+eligible set, never a raw client object name) and builds the catalog for it.
+
+| Check | Result |
+| --- | --- |
+| Editor sends the source on every load and every change | **PASS** — `loadCatalog({ sourceObjectUid, recipientRelationUid })` |
+| Server resolves the source from the eligible set | **PASS** — `resolveStoredTemplateSource` / `resolveEligibleSource` |
+| Builder is source-driven | **PASS** — `buildTemplateCatalogFromMetadata({ …, source })` |
+
+### 2. The catalog is per source, in two clearly-titled groups
+
+- **Person source** → ONE group, `person.*`, titled with the object's own label («افراد»). No
+  `source.*` copy: the record IS the recipient, and duplicating it is the confusion this removes.
+- **Related source** (e.g. Opportunity) → the source object's own safe scalars as `source.*` in a
+  group titled with the workspace's `labelPlural` («فرصت‌ها»), the recipient Person's fields as
+  `person.*` in a second group, and the recipient's Company in a third. Titles come from the
+  server, so a client cannot spoof a heading.
+- **Custom fields are covered** because the entries come from the object's own metadata, filtered
+  by the existing type allow-list and secret-name filter (`source.apiKey` is absent — verified).
+- **The six legacy aliases stay on the PERSON definitions** (`@name`, `@company`, …), so the
+  user's existing `W15-MAIN Greeting` (`سلام @name از شرکت @company`) keeps resolving. This is
+  why the Company group was kept rather than dropped: removing it would have invalidated a live
+  user template, which the task forbids.
+
+### 3. No silent fallback — the three outcomes, all verified live on the real route
+
+| Case | Result |
+| --- | --- |
+| Source not an active object in this workspace | `catalogStage: SOURCE_UNKNOWN`, empty catalog, **zero** `@person`/`@company` variables |
+| Source exists but no field of it is authorizable | `catalogStage: SOURCE_UNAVAILABLE`, empty catalog |
+| Nothing at all authorizable | `SOURCE_UNAVAILABLE` (was `ROLE_NOT_FOUND`; kept in the enum as documented-deprecated) |
+
+Measured on the running app (`/s/communication/template-studio`, item G):
+
+```
+G1 forged source -> {"errorCode":"TEMPLATE_CONTEXT_MISMATCH","catalogStatus":"UNAVAILABLE","catalogStage":"SOURCE_UNKNOWN"}
+G1 contains any @person/@company variable? false
+G2 stored source -> {"success":true,"sourceObjectName":"opportunity","catalogStatus":"READY","groups":["source:4","recipient:6","company:4"]}
+G3 ineligible uid -> TEMPLATE_CONTEXT_MISMATCH | variables: absent
+```
+
+G2 is the control: the refusal is specific to the forged value, not a blanket failure. The pure
+builder also returns EMPTY for an unknown source, as defence in depth.
+
+### 4. The defect the acceptance found: the preview used the STORED source (0.1.59)
+
+Selecting a source and pressing «پیش‌نمایش» without saving first returned
+`TEMPLATE_CONTEXT_MISMATCH` («رکورد نمونه با منبع این الگو هم‌خوان نیست») — because the preview
+resolved `resolveStoredTemplateSource(stored.sourceObjectUid)`, while the sample record the picker
+had just offered came from the FORM's source. The user would have had to save and reload just to
+preview, which item 5 forbids.
+
+The preview now takes the source from the request, **validated by `resolveEligibleSource` first**,
+falling back to the stored identifiers only when the form sent none. A forged pair is still
+refused: this changes *which legitimate source* is used, not *whether it must be legitimate*.
+
+### 5. The second defect the acceptance found: composites resolved to nothing (0.1.60)
+
+`@source.amount` was advertised and authorized, then left as literal text in the preview. Cause,
+measured against the live API rather than guessed:
+
+```
+{ opportunity { amount } }                              -> amount: null      (KEY present, value null)
+{ opportunity { amount { amountMicros currencyCode } } } -> amount: {…}        (the real value)
+```
+
+A **COMPOSITE** field asked for as `true` returns the key with a `null` value, and presence of the
+key is the probe's access signal — so a composite looked authorized and then resolved to empty.
+
+`buildTemplateFieldSelection` is now the single definition of those shapes (FULL_NAME, CURRENCY,
+LINKS, EMAILS; scalars stay `true`), shared by the probe and the resolver so what is proven
+readable and what is actually read cannot drift.
+
+**This was not limited to the new source tokens.** The pre-existing `@person.emails`,
+`@person.linkedinLink`, `@company.domainName`, `@company.linkedinLink` and
+`@company.annualRevenue` were resolving to nothing in production for the same reason, and are
+fixed by the same change. It was invisible because the token still rendered — as its own literal
+text — instead of failing.
+
+### 6. Editor behaviour on a source change
+
+| Requirement | Result |
+| --- | --- |
+| Previous catalog out of a usable state immediately, loading shown | **PASS** — groups cleared and state set to `LOADING` before the request |
+| Only the last selection's catalog published | **PASS** — every call bumps a request id; a response whose id is stale is discarded. Verified by a 3-way switch (opportunities → leads → person) inside ~40 ms, ending on exactly the Person groups |
+| Sample and preview cleared | **PASS** — `sampleRecordId` reset, preview text cleared |
+| Typed text preserved | **PASS** — the body was byte-identical across a source change |
+| Error vs empty distinguished, with retry | **PASS** — `ERROR`, `SOURCE_UNAVAILABLE`, `UNAVAILABLE` and `EMPTY` are four distinct states, each with its own copy; the three failures offer «تلاش مجدد» |
+| The request carries the NEW source, not the one still in state | **PASS** — the uid is passed explicitly, because the state update has not been applied when the callback runs |
+
+### Live acceptance on main/4D (A–G)
+
+Fixture `45ea273a-9438-47e7-b4e1-ce24c454f9cd`, created through the UI as «SRC-CATALOG-01».
+
+| # | Check | Result |
+| --- | --- | --- |
+| A | «اشخاص» → person fields, no `@source.*` | **PASS** — one group «افراد», 6 `@person.*` tokens, 0 `@source.*` |
+| B | «فرصت‌ها» → opportunity fields incl. name + others; recipient group separate | **PASS** — «فرصت‌ها» group with `@source.name`, `@source.amount`, `@source.closeDate`, `@source.stage`; «Recipient person» group with 6 `@person.*`; company group |
+| C | Back to «اشخاص» → opportunity fields gone | **PASS** |
+| D | Rapid switching → only the last selection | **PASS** (see item 6) |
+| E | `@source.*` + preview on two source records sharing a Person | **PASS** — «API Integration Deal» → «سلام Patrick عزیز، فرصت «API Integration Deal» به مبلغ 75000»; «Platform Migration» → «… «Platform Migration» به مبلغ 60000». Source differs, Person («Patrick») identical — both records share person `edf6d445` |
+| F | Save → reload → edit: source and catalog restored | **PASS** — DB stores opportunity uid `20202020-9549-…` + `pointOfContact` uid `20202020-8dfb-…`; after reload the source is «فرصت‌ها» and its catalog loads automatically with `@source.*`, no re-selection |
+| G | Invalid source → clear error, no Person fallback | **PASS** (item 3) |
+
+`@person.firstName` resolving identically across two different source records is the point of E:
+it proves `@source.*` reads the SOURCE record while `@person.*` reads the RELATED person, from the
+same form context.
+
+### Checks
+
+App: **typecheck 0 errors**, **lint 0 warnings / 0 errors**, **715/715** tests in 66 files — 18 new
+tests in `src/templates/__tests__/source-catalog.test.ts` covering the source-driven groups, the
+no-fallback stages, the composite sub-selections and the source/person split in the resolver.
+`@company` templates are additionally covered by the unchanged bulk/send suites, which is how the
+Company-probe regression was caught.
+
+### Data
+
+Only fixture `45ea273a-9438-47e7-b4e1-ce24c454f9cd` was created and it was **soft-deleted by its
+exact id** (`deletedAt` set; row and values retained). All 9 rows remain present, both user
+templates (`W15-MAIN Greeting`, «تست ارسال گروهی») still live. No hard delete, no predicate
+cleanup. Seven provider variables untouched, W7 disabled, no real SMS, APPLE/app2 untouched.
+
+### Residual limitations, stated plainly
+
+- **A source object with no readable record cannot have any field authorized**, so it reports
+  `SOURCE_UNAVAILABLE`. This is inherent to authorizing by an actual read; it is not a fallback and
+  not silent, but it does mean an empty source table yields no variables for it.
+- **The bulk/send paths remain Person-scoped** (`list-message-templates`, the single-send handler).
+  They pass `source: { objectName: 'person' }` and `sourceRecord: null`, which preserves their
+  existing behaviour; a related-source template is not sent through them. Out of scope for this
+  task and reported rather than quietly half-done.
+
 ## CRM-TEMPLATES-PERSON-FLOW-01 — Stage 1 COMPLETE: UI creation, a discoverable Persian Edit, a second cycle and a real CONFLICT (0.1.56/0.1.57)
 
 Baseline `3ab6be21688f929384e30956be62023f87c00766` → tip `541086b7ef`; apps **0.1.56** then
