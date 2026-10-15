@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 IMPLEMENT_REMAINING_AND_CLOSE_AUTH_GUARD: items 1–6 implemented, built from a clean archive of `9fd25e6ded` whose 172 source files were byte-compared against the archive (zero differences), and installed as Communication 0.1.50. Live on main/4D with a user identity: uid-keyed eligible sources with the collection-only object absent, uid fields stored, a REAL CAS that rejects a stale write while keeping the text, a forged pair refused with TEMPLATE_CONTEXT_MISMATCH, and a related-source preview whose recipient comes from the SELECTED record's own relation. The USER-scoped guard is enforced first on every data-touching action and behaviourally tested, but the editor remains BLOCKED in the browser because a front component carries only an application identity — so the capability is NOT a full PASS. Three honest gaps are listed below. Only a disposable fixture was created and it was soft-deleted; no user template was read, written or removed.)
+Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 USER_SCOPED_EDITOR_COMPLETION — item 5 DONE and live (readable sample titles from each object's own label-identifier field, with the Persian «بدون عنوان» fallback so an untitled option is impossible); item 4 (@source.* tokens) and items 1–3 (the user-scoped editor) are NOT done. Items 1–3 need a host-side bridge that does not exist, and its full shape is now traced and recorded rather than half-built. Communication 0.1.52 is installed on main/4D. No user template was touched; no fixture rows were left behind.)
 
 ## Purpose
 
@@ -52,6 +52,91 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## CRM-NATIVE-TEMPLATES-02 USER_SCOPED_EDITOR_COMPLETION — item 5 done; 1–4 blocked on a missing host bridge
+
+Baseline `e6c6b75c32` → tip `1f095f13ac`; installed on main/4D: Communication **0.1.52**
+(0.1.51 shipped the title fix, 0.1.52 repaired a regression it introduced).
+
+### 5. Sample titles — DONE and verified live
+
+The title now comes from each object's OWN label-identifier field, resolved from metadata
+(`labelIdentifierFieldMetadataId` → the field's name AND type), instead of an assumed
+`name.firstName/lastName` that only Person happens to have. A `FULL_NAME` field is a
+composite and a text field is a scalar, so the reader handles both, and a missing, empty,
+non-string or part-less value yields the explicit Persian fallback **«بدون عنوان»** — an
+untitled option is therefore impossible, because a blank row is indistinguishable from a
+loading bug.
+
+Live on main/4D:
+
+| Object | label field | live labels |
+| --- | --- | --- |
+| opportunity | `name` (TEXT) | «API Integration Deal»، «Workspace Expansion»، «Platform Migration»، «Design Partnership»، «Enterprise Plan Upgrade»، «AI Model Training» |
+| person | `name` (FULL_NAME) | «تست شماره مشترک دو تست»، «تست شماره مشترک یک تست»، «تست ارسال گروهی ب تست» |
+
+**A regression I caused and then fixed, recorded deliberately.** 0.1.51 fixed the blank
+scalar titles but broke Person: selecting a composite as `name: true` with no subfields
+returns nothing, so every Person fell to the fallback. The unit tests passed; **live
+verification caught it** — the API returned readable opportunity titles and «بدون عنوان» for
+every person, which is the signature of exactly that bug. 0.1.52 selects
+`firstName`/`lastName` for a `FULL_NAME` label field and Person titles are restored. The
+lesson is kept here: unit-level green did not imply the fix worked, and only asking the real
+API showed it.
+
+### 4. Source variables (`@source.*`) — NOT DONE
+
+The catalog is still Person/Company based, so a template cannot yet read a field of its own
+source record, and the acceptance case *"two source records sharing one Person with different
+`@source.*` values"* could not be demonstrated. This is an app-side change to
+`build-template-catalog`, `resolve-template-values` and the preview service, and it was not
+started rather than half-built.
+
+### 1–3. User-scoped editor — BLOCKED, with the bridge fully traced
+
+The editor still cannot run in the browser, and the reason is now precise rather than
+speculative. The mechanism that WOULD make it work already exists on the server:
+
+- `logic-function-executor.service.ts` mints a **delegated** token carrying the user
+  (`generateApplicationAccessToken({ workspaceId, applicationId, userId, userWorkspaceId })`)
+  and assigns it to `TWENTY_APP_ACCESS_TOKEN`, with the application token kept separately as
+  `TWENTY_APP_APPLICATION_ACCESS_TOKEN`. So inside a user-triggered logic function,
+  `new CoreApiClient()` already acts as the USER.
+- `route-trigger.service.ts` supplies `userId`/`userWorkspaceId` from the validated token.
+
+What is missing is only the **front-component → route hop carrying a user token**, because a
+component reaches the route with the application token. `FrontComponentHostCommunicationApi`
+exposes no data call at all (navigate, modal, snackbar, clipboard, upload, storage), and
+`ApplicationTokenPair` contains only application tokens, so no user token is reachable from
+the worker.
+
+The required bridge, traced end to end — this is the whole change, and it is deliberately
+**not** implemented because it spans two packages, needs both rebuilt, and a mistake would
+take down the workspace UI:
+
+1. `packages/twenty-front-component-renderer/src/types/FrontComponentHostCommunicationApi.ts`
+   — declare the new host function.
+2. `.../host/thread/constants/FrontComponentHostCommunicationApiNoop.ts` — its no-op.
+3. `.../host/thread/utils/createFrontComponentHostThread.ts` — expose it in the thread imports.
+4. `.../remote/worker/thread/utils/buildFrontComponentHostCommunicationApiFromThreadImports.ts`
+   — map it into the worker-side API.
+5. `packages/twenty-front/src/modules/front-components/hooks/useFrontComponentExecutionContext.ts`
+   — implement it: POST to the FIXED route `/s/communication/template-studio` with the USER
+   token from the host's own session, an allow-list of actions, and no generic URL or free
+   GraphQL.
+6. The app calls it instead of `callAppRoute`.
+
+Constraints it must satisfy, per the task: the host takes identity from its own session; the
+token never reaches the worker, storage or logs; only the specified Communication operations
+are supported; and the workspace/component access is validated. The current guard stays as the
+backstop — a direct call with an application token still returns `AUTH_REQUIRED`.
+
+### Data
+
+No fixture rows were created this round and none were left behind: the only fixture from the
+previous round (`W19B2-GUARD-FIXTURE`) remains soft-deleted only. The four user rows are
+exactly as they were, two soft-deleted as before, and all seven provider variables are
+unchanged.
 
 ## CRM-NATIVE-TEMPLATES-02 IMPLEMENT_REMAINING_AND_CLOSE_AUTH_GUARD — items 1–6 (0.1.50)
 
