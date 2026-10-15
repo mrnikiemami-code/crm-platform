@@ -211,6 +211,18 @@ export const MESSAGE_TEMPLATE_SOURCE_OBJECT_NAME_FIELD_UNIVERSAL_IDENTIFIER =
   '4c7e1f83-5a6d-4b92-8e37-9d2f0a4c6b18';
 export const MESSAGE_TEMPLATE_RECIPIENT_RELATION_FIELD_UNIVERSAL_IDENTIFIER =
   '5d8f2094-6b7e-4ca3-9f48-0e3a1b5d7c29';
+// The STABLE identifiers that are actually authoritative.
+//
+// A `nameSingular` or a field name is a HUMAN label that an operator can rename,
+// so it is not an identity. The stored identity is the metadata
+// `universalIdentifier` of the object and of the relation field; the runtime API
+// names are resolved from metadata on every use. These are the values the editor
+// writes, and the name fields above are kept only as readable, non-authoritative
+// hints for diagnosis.
+export const MESSAGE_TEMPLATE_SOURCE_OBJECT_UID_FIELD_UNIVERSAL_IDENTIFIER =
+  '6e9031a5-7c8f-4db4-a059-1f4b2c6e8d3a';
+export const MESSAGE_TEMPLATE_RECIPIENT_RELATION_UID_FIELD_UNIVERSAL_IDENTIFIER =
+  '7fa142b6-8d90-4ec5-b16a-205c3d7f9e4b';
 // The native record page for a template: title/body/channel fields plus the
 // «متغیرهای قابل استفاده» guide rendered by a front component. A page layout is
 // an ADDITIONAL layout, so the engine default remains and the app only adds its

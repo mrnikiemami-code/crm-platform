@@ -21,6 +21,8 @@ type RawMutationNode = {
   targetObject?: string | null;
   sourceObjectName?: string | null;
   recipientRelation?: string | null;
+  sourceObjectUid?: string | null;
+  recipientRelationUid?: string | null;
   updatedAt?: string | null;
 };
 
@@ -58,11 +60,19 @@ export type TemplateWriteInput = {
  * A template record plus its SOURCE identifiers, as the record-page editor
  * needs them. Kept separate from `StudioTemplate` so the shared composer
  * contract is untouched.
+ *
+ * Both the stable identifiers and the readable names are returned: the
+ * identifiers are what the editor WRITES, and the names are a diagnostic hint
+ * only — never an identity.
  */
 export type TemplateRecordWithSource = StudioTemplate & {
-  /** Stored `nameSingular`; empty when the row predates the source model. */
+  /** Stable source-object identifier; empty when the row predates the model. */
+  sourceObjectUid: string;
+  /** Stable relation-field identifier; empty for a Person source. */
+  recipientRelationUid: string;
+  /** Readable hint: stored `nameSingular`, resolved from metadata for display. */
   sourceObjectName: string;
-  /** Stored relation field name; empty for a Person source. */
+  /** Readable hint: stored relation field name. */
   recipientRelation: string;
 };
 
@@ -77,6 +87,12 @@ const toTemplateRecord = (
 
   return {
     ...base,
+    sourceObjectUid:
+      typeof node.sourceObjectUid === 'string' ? node.sourceObjectUid : '',
+    recipientRelationUid:
+      typeof node.recipientRelationUid === 'string'
+        ? node.recipientRelationUid
+        : '',
     sourceObjectName:
       typeof node.sourceObjectName === 'string' ? node.sourceObjectName : '',
     recipientRelation:
@@ -107,6 +123,8 @@ export const readMessageTemplate = async ({
       targetObject: true,
       sourceObjectName: true,
       recipientRelation: true,
+      sourceObjectUid: true,
+      recipientRelationUid: true,
       updatedAt: true,
     },
   });
@@ -152,6 +170,8 @@ export const updateMessageTemplateSource = async ({
       targetObject: true,
       sourceObjectName: true,
       recipientRelation: true,
+      sourceObjectUid: true,
+      recipientRelationUid: true,
       updatedAt: true,
     },
   });
@@ -162,67 +182,79 @@ export const updateMessageTemplateSource = async ({
 };
 
 /**
- * Writes ONLY the body of one template.
+ * Writes the whole conditional save in ONE request: the body AND the source
+ * identifiers, guarded by a real compare-and-set.
  *
- * Conflict handling is CHECK-THEN-WRITE: the record's current `updatedAt` is read
- * first and compared with what the caller loaded, and the write is skipped when
- * they differ.
+ * The platform's batch `updateMessageTemplates(data, filter)` accepts a filter on
+ * `id` + `updatedAt` (verified against the live schema) and returns the updated
+ * records as a LIST. An EMPTY list therefore means the filter matched nothing —
+ * i.e. another session changed the record after the caller loaded it — which is
+ * reported as `CONFLICT`. That is a genuine compare-and-set, not a check-then-write:
+ * the decision and the write are the same statement.
  *
- * Why not a conditional update: this platform's `updateMessageTemplate(id, data)`
- * accepts no `filter` argument (only the batch `updateMessageTemplates(data,
- * filter)` does), so an atomic compare-and-set is not available for a
- * single-record update. The read-then-write check therefore closes the practical
- * "another session saved while I was typing" case, and the small window between
- * the two calls is stated rather than pretended away. A conflict is reported as
- * `{ kind: 'CONFLICT' }` so the caller can keep the user's text.
+ * `updatedAt` is optional because a caller may legitimately save without having
+ * loaded a version (a freshly created record); when it is absent the write is
+ * unconditional and no conflict can be reported.
  */
-export const saveMessageTemplateBody = async ({
+export const saveMessageTemplateConditionally = async ({
   client,
   id,
   body,
+  sourceObjectUid,
+  recipientRelationUid,
+  targetObject,
   expectedUpdatedAt,
 }: {
-  client: MutationClient & Pick<CoreApiClient, 'query'>;
+  client: MutationClient;
   id: string;
   body: string;
+  sourceObjectUid: string;
+  recipientRelationUid: string;
+  targetObject: string;
   expectedUpdatedAt: string | null;
 }): Promise<
   | { kind: 'SAVED'; template: TemplateRecordWithSource }
   | { kind: 'CONFLICT' }
-  | { kind: 'NOT_FOUND' }
 > => {
-  const current = await readMessageTemplate({ client, id });
-
-  if (current === null) {
-    return { kind: 'NOT_FOUND' };
-  }
-
-  if (
-    expectedUpdatedAt !== null &&
-    expectedUpdatedAt.length > 0 &&
-    current.updatedAt !== expectedUpdatedAt
-  ) {
-    return { kind: 'CONFLICT' };
-  }
+  const filter =
+    expectedUpdatedAt !== null && expectedUpdatedAt.length > 0
+      ? { id: { eq: id }, updatedAt: { eq: expectedUpdatedAt } }
+      : { id: { eq: id } };
 
   const result = await client.mutation({
-    updateMessageTemplate: {
-      __args: { id, data: { body } },
+    updateMessageTemplates: {
+      __args: {
+        data: {
+          body,
+          sourceObjectUid,
+          recipientRelationUid,
+          targetObject,
+        },
+        filter,
+      },
       id: true,
       title: true,
       body: true,
       targetObject: true,
       sourceObjectName: true,
       recipientRelation: true,
+      sourceObjectUid: true,
+      recipientRelationUid: true,
       updatedAt: true,
     },
   });
 
-  const template = toTemplateRecord(
-    result.updateMessageTemplate as RawMutationNode | null | undefined,
+  const updated = Array.isArray(result.updateMessageTemplates)
+    ? (result.updateMessageTemplates as (RawMutationNode | null)[])
+    : [];
+
+  const first = updated.find(
+    (node): node is RawMutationNode => node !== null && node !== undefined,
   );
 
-  return template === null ? { kind: 'NOT_FOUND' } : { kind: 'SAVED', template };
+  return first === undefined
+    ? { kind: 'CONFLICT' }
+    : { kind: 'SAVED', template: toTemplateRecord(first)! };
 };
 
 export const createMessageTemplate = async ({

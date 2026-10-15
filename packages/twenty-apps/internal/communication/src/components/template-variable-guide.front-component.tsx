@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { defineFrontComponent } from 'twenty-sdk/define';
 import {
   enqueueSnackbar,
-  useRecordId,
   useLocale,
+  useRecordId,
   useTranslate,
 } from 'twenty-sdk/front-component';
 
@@ -14,34 +14,43 @@ import {
 } from 'src/components/composer-shared';
 import { MESSAGE_TEMPLATE_VARIABLE_GUIDE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 
-// The template editor shown on the template record page, inside the «متغیرها»
-// tab.
+// The template editor shown on the template record page, inside the «متغیرها» tab.
 //
 // It is INLINE by design: no modal, no backdrop, no portal and no
-// `document`-level listener. A front component runs in a worker, so a listener
-// on `document` there would never see host events; every control here registers
-// its listener on its own element, which the host does forward.
+// `document`-level listener. A front component runs in a worker, so a listener on
+// `document` there would never see host events; every control here registers its
+// listener on its own element, which the host does forward.
 //
-// The product model: the record's own `body` field holds the message text, and
-// this component edits exactly that field through the app's server route — no
-// parallel table, no second copy. The source model (which object a template is
-// written for, and which relation resolves the recipient Person) is stored as
-// stable metadata identifiers on the same record.
+// IDENTITY: what this component sends and receives for a source is the metadata
+// `universalIdentifier` of the object and of the relation field. Names are
+// display-only hints resolved server-side from metadata.
+//
+// AUTHORIZATION: every action on the server is user-scoped, and a front component
+// calls with the APPLICATION token, which carries no person. The server therefore
+// answers `AUTH_REQUIRED` and this editor shows that plainly and disables its
+// operations rather than pretending they worked.
 
 type VariableItem = { token: string; label: string };
 
+type SourceRelation = {
+  relationUid: string;
+  relationName: string;
+  relationLabel: string;
+};
+
 type EligibleSource = {
+  objectUid: string;
   objectName: string;
+  objectNamePlural: string;
   labelSingular: string;
   labelPlural: string;
-  relations: { relationName: string; relationLabel: string }[];
+  relations: SourceRelation[];
 };
 
 type TemplateSnapshot = {
   body: string;
-  title: string;
-  sourceObjectName: string;
-  recipientRelation: string;
+  sourceObjectUid: string;
+  recipientRelationUid: string;
   updatedAt: string;
 };
 
@@ -49,7 +58,8 @@ type EditorState =
   | { kind: 'LOADING' }
   | { kind: 'READY' }
   | { kind: 'NOT_FOUND' }
-  | { kind: 'ERROR' };
+  | { kind: 'ERROR' }
+  | { kind: 'AUTH_REQUIRED' };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object'
@@ -79,9 +89,9 @@ const toSource = (value: unknown): EligibleSource | null => {
     return null;
   }
 
-  const objectName = readString(record.objectName);
+  const objectUid = readString(record.objectUid);
 
-  if (objectName.length === 0) {
+  if (objectUid.length === 0) {
     return null;
   }
 
@@ -90,14 +100,19 @@ const toSource = (value: unknown): EligibleSource | null => {
         .map((entry) => asRecord(entry))
         .filter((entry): entry is Record<string, unknown> => entry !== null)
         .map((entry) => ({
+          relationUid: readString(entry.relationUid),
           relationName: readString(entry.relationName),
           relationLabel: readString(entry.relationLabel),
         }))
-        .filter((entry) => entry.relationName.length > 0)
+        .filter((entry) => entry.relationUid.length > 0)
     : [];
 
+  const objectName = readString(record.objectName);
+
   return {
+    objectUid,
     objectName,
+    objectNamePlural: readString(record.objectNamePlural) || objectName,
     labelSingular: readString(record.labelSingular) || objectName,
     labelPlural: readString(record.labelPlural) || objectName,
     relations,
@@ -110,9 +125,8 @@ const toSource = (value: unknown): EligibleSource | null => {
  *
  * Why the fallback exists: this platform's remote-element polyfill does not
  * implement `selectionStart`/`setSelectionRange`, so the caret is not readable
- * from a front component. Rather than pretend, the caller is told which
- * behaviour was used and the textarea position is preserved when the API IS
- * available.
+ * from a front component. Rather than pretend, the caller is told which behaviour
+ * was used and the textarea position is preserved when the API IS available.
  */
 export const insertTokenIntoBody = ({
   body,
@@ -154,78 +168,119 @@ const TemplateEditor = () => {
   const [snapshot, setSnapshot] = useState<TemplateSnapshot | null>(null);
 
   const [body, setBody] = useState('');
-  const [sourceObjectName, setSourceObjectName] = useState('person');
-  const [recipientRelation, setRecipientRelation] = useState('');
+  const [sourceObjectUid, setSourceObjectUid] = useState('');
+  const [recipientRelationUid, setRecipientRelationUid] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
 
-  const [people, setPeople] = useState<{ id: string; name: string }[]>([]);
-  const [samplePersonId, setSamplePersonId] = useState('');
+  const [sampleRecords, setSampleRecords] = useState<
+    { id: string; label: string }[]
+  >([]);
+  const [sampleRecordId, setSampleRecordId] = useState('');
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Load the record's own body + source model, the eligible sources and the
-  // authorized variables. Nothing is guessed: a failure is reported as such.
+  /**
+   * Every guarded action funnels through here, so an `AUTH_REQUIRED` answer is
+   * never mistaken for a normal failure: it switches the whole editor into the
+   * blocked state instead.
+   */
+  const callGuarded = useCallback(
+    async (payload: Record<string, unknown>) => {
+      const response = await callAppRoute(
+        '/communication/template-studio',
+        'POST',
+        payload,
+      );
+
+      const result = asRecord(response.data);
+
+      if (readString(result?.errorCode) === 'AUTH_REQUIRED') {
+        setState({ kind: 'AUTH_REQUIRED' });
+
+        return null;
+      }
+
+      return result;
+    },
+    [],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
       try {
-        const [templateResponse, sourcesResponse, variablesResponse] =
-          await Promise.all([
-            callAppRoute('/communication/template-studio', 'POST', {
-              action: 'read-template',
-              templateId,
-            }),
-            callAppRoute('/communication/template-studio', 'POST', {
-              action: 'eligible-sources',
-            }),
-            callAppRoute('/communication/message-templates', 'POST'),
-          ]);
+        const template = await callGuarded({
+          action: 'read-template',
+          templateId,
+        });
+
+        if (cancelled || template === null) {
+          return;
+        }
+
+        const loaded = asRecord(template.template);
+
+        if (template.success !== true || loaded === null) {
+          setState({ kind: 'NOT_FOUND' });
+          return;
+        }
+
+        setSnapshot({
+          body: readString(loaded.body),
+          // An empty stored source means the legacy Person meaning; the server
+          // resolves it, and the editor simply echoes the stored values.
+          sourceObjectUid: readString(loaded.sourceObjectUid),
+          recipientRelationUid: readString(loaded.recipientRelationUid),
+          updatedAt: readString(loaded.updatedAt),
+        });
+        setBody(readString(loaded.body));
+
+        const sourcesResult = await callGuarded({ action: 'eligible-sources' });
 
         if (cancelled) {
           return;
         }
 
-        const templatePayload = asRecord(templateResponse.data);
-        const template = asRecord(templatePayload?.template);
-
-        if (templatePayload?.success !== true || template === null) {
-          setState({ kind: 'NOT_FOUND' });
+        if (sourcesResult === null) {
           return;
         }
 
-        const loaded: TemplateSnapshot = {
-          body: readString(template.body),
-          title: readString(template.title),
-          // A row written before the source model has neither identifier, which
-          // is read as Person — the same default the server applies.
-          sourceObjectName: readString(template.sourceObjectName) || 'person',
-          recipientRelation: readString(template.recipientRelation),
-          updatedAt: readString(template.updatedAt),
-        };
+        const parsedSources =
+          sourcesResult.success === true && Array.isArray(sourcesResult.sources)
+            ? sourcesResult.sources
+                .map(toSource)
+                .filter((entry): entry is EligibleSource => entry !== null)
+            : [];
 
-        setSnapshot(loaded);
-        setBody(loaded.body);
-        setSourceObjectName(loaded.sourceObjectName);
-        setRecipientRelation(loaded.recipientRelation);
+        setSources(parsedSources);
 
-        const sourcesPayload = asRecord(sourcesResponse.data);
+        const stored = readString(loaded.sourceObjectUid);
+        const personSource = parsedSources.find(
+          (entry) => entry.objectName === 'person',
+        );
 
-        if (sourcesPayload?.success === true && Array.isArray(sourcesPayload.sources)) {
-          setSources(
-            sourcesPayload.sources
-              .map(toSource)
-              .filter((source): source is EligibleSource => source !== null),
-          );
+        setSourceObjectUid(
+          stored.length > 0 ? stored : (personSource?.objectUid ?? ''),
+        );
+        setRecipientRelationUid(readString(loaded.recipientRelationUid));
+
+        const variablesResult = await callAppRoute(
+          '/communication/message-templates',
+          'POST',
+        );
+
+        if (cancelled) {
+          return;
         }
 
-        const variablesPayload = asRecord(variablesResponse.data);
+        const variablesPayload = asRecord(variablesResult.data);
 
         if (
           variablesPayload?.success === true &&
@@ -251,76 +306,80 @@ const TemplateEditor = () => {
     return () => {
       cancelled = true;
     };
-  }, [templateId]);
+  }, [templateId, callGuarded]);
 
-  // The sample people for the preview, loaded once the editor is usable.
+  const selectedSource = sources.find(
+    (entry) => entry.objectUid === sourceObjectUid,
+  );
+  const relationOptions = selectedSource?.relations ?? [];
+  const isPersonSource = selectedSource?.objectName === 'person';
+
+  // The sample records for the preview are records of the TEMPLATE'S OWN source
+  // object, so the preview resolves the recipient from the record the user picks.
   useEffect(() => {
-    if (state.kind !== 'READY') {
+    if (state.kind !== 'READY' || selectedSource === undefined) {
       return;
     }
 
     let cancelled = false;
 
-    const loadPeople = async () => {
-      try {
-        const response = await callAppRoute(
-          '/communication/template-studio',
-          'POST',
-          { action: 'search-people', search: '', after: null },
-        );
+    const loadRecords = async () => {
+      const result = await callGuarded({
+        action: 'source-records',
+        sourceObjectUid: selectedSource.objectUid,
+        search: '',
+      });
 
-        if (cancelled) {
-          return;
-        }
+      if (cancelled || result === null || result.success !== true) {
+        return;
+      }
 
-        const payload = asRecord(response.data);
-
-        if (payload?.success === true && Array.isArray(payload.people)) {
-          setPeople(
-            payload.people
+      setSampleRecords(
+        Array.isArray(result.records)
+          ? result.records
               .map((entry) => asRecord(entry))
               .filter((entry): entry is Record<string, unknown> => entry !== null)
               .map((entry) => ({
                 id: readString(entry.id),
-                name: readString(entry.displayName) || readString(entry.id),
+                label: readString(entry.label),
               }))
-              .filter((entry) => entry.id.length > 0),
-          );
-        }
-      } catch {
-        // A failed sample list leaves the preview unavailable, never wrong.
-      }
+              .filter((entry) => entry.id.length > 0)
+          : [],
+      );
     };
 
-    void loadPeople();
+    void loadRecords();
 
     return () => {
       cancelled = true;
     };
-  }, [state.kind]);
+  }, [state.kind, selectedSource, callGuarded]);
 
-  const isDirty = snapshot !== null && body !== snapshot.body;
+  const isDirty =
+    snapshot !== null &&
+    (body !== snapshot.body ||
+      sourceObjectUid !== snapshot.sourceObjectUid ||
+      recipientRelationUid !== snapshot.recipientRelationUid);
 
   const handleInsertVariable = (token: string) => {
     const textarea = bodyRef.current;
 
-    const start =
-      typeof textarea?.selectionStart === 'number' ? textarea.selectionStart : null;
-    const end =
-      typeof textarea?.selectionEnd === 'number' ? textarea.selectionEnd : null;
-
     const next = insertTokenIntoBody({
       body,
       token,
-      selectionStart: start,
-      selectionEnd: end,
+      selectionStart:
+        typeof textarea?.selectionStart === 'number'
+          ? textarea.selectionStart
+          : null,
+      selectionEnd:
+        typeof textarea?.selectionEnd === 'number' ? textarea.selectionEnd : null,
     });
 
     setBody(next.body);
     setSavedNotice(false);
   };
 
-  const handleSaveBody = async () => {
+  const handleSave = async () => {
     if (snapshot === null || isSaving) {
       return;
     }
@@ -330,27 +389,31 @@ const TemplateEditor = () => {
     setSavedNotice(false);
 
     try {
-      const response = await callAppRoute(
-        '/communication/template-studio',
-        'POST',
-        {
-          action: 'save-body',
-          templateId,
-          body,
-          expectedUpdatedAt: snapshot.updatedAt,
-        },
-      );
+      const payload = await callGuarded({
+        action: 'save-template',
+        templateId,
+        body,
+        sourceObjectUid,
+        recipientRelationUid,
+        expectedUpdatedAt: snapshot.updatedAt,
+      });
 
-      const payload = asRecord(response.data);
+      if (payload === null) {
+        return;
+      }
 
-      if (payload?.success !== true) {
-        // On a conflict the typed text is KEPT: clearing it would destroy the
-        // user's work, which is exactly what they are trying to avoid.
-        setSaveError(
-          payload?.isConflict === true
-            ? t('Someone else changed this template. Reload before saving.')
-            : t('The template could not be saved.'),
-        );
+      if (payload.success !== true) {
+        if (payload.isConflict === true) {
+          // The typed text is KEPT: discarding the user's work is exactly what
+          // they are trying to avoid.
+          setSaveError(
+            readString(payload.message) ||
+              t('Someone else changed this template. Reload before saving.'),
+          );
+          return;
+        }
+
+        setSaveError(t('The template could not be saved.'));
         return;
       }
 
@@ -359,16 +422,17 @@ const TemplateEditor = () => {
       if (updated !== null) {
         setSnapshot({
           body: readString(updated.body),
-          title: readString(updated.title),
-          sourceObjectName:
-            readString(updated.sourceObjectName) || snapshot.sourceObjectName,
-          recipientRelation: readString(updated.recipientRelation),
+          sourceObjectUid: readString(updated.sourceObjectUid),
+          recipientRelationUid: readString(updated.recipientRelationUid),
           updatedAt: readString(updated.updatedAt),
         });
       }
 
       setSavedNotice(true);
-      await enqueueSnackbar({ message: t('The template was saved.'), variant: 'success' });
+      await enqueueSnackbar({
+        message: t('The template was saved.'),
+        variant: 'success',
+      });
     } catch {
       setSaveError(t('The template could not be saved.'));
     } finally {
@@ -376,47 +440,8 @@ const TemplateEditor = () => {
     }
   };
 
-  const handleSaveSource = async () => {
-    setSaveError(null);
-    setSavedNotice(false);
-
-    try {
-      const response = await callAppRoute(
-        '/communication/template-studio',
-        'POST',
-        {
-          action: 'save-source',
-          templateId,
-          sourceObjectName,
-          recipientRelation,
-        },
-      );
-
-      const payload = asRecord(response.data);
-
-      if (payload?.success !== true) {
-        setSaveError(t('The template could not be saved.'));
-        return;
-      }
-
-      const updated = asRecord(payload.template);
-
-      if (updated !== null && snapshot !== null) {
-        setSnapshot({
-          ...snapshot,
-          sourceObjectName: readString(updated.sourceObjectName),
-          recipientRelation: readString(updated.recipientRelation),
-        });
-      }
-
-      setSavedNotice(true);
-    } catch {
-      setSaveError(t('The template could not be saved.'));
-    }
-  };
-
   const handlePreview = async () => {
-    if (samplePersonId.length === 0 || isPreviewing) {
+    if (sampleRecordId.length === 0 || isPreviewing || selectedSource === undefined) {
       return;
     }
 
@@ -425,16 +450,22 @@ const TemplateEditor = () => {
     setPreviewText(null);
 
     try {
-      const response = await callAppRoute(
-        '/communication/template-studio',
-        'POST',
-        { action: 'preview', personId: samplePersonId, body },
-      );
+      const payload = await callGuarded({
+        action: 'preview',
+        templateId,
+        sampleRecordId,
+        sampleObjectName: selectedSource.objectName,
+        body,
+      });
 
-      const payload = asRecord(response.data);
+      if (payload === null) {
+        return;
+      }
 
-      if (payload?.success !== true) {
-        setPreviewError(t('The preview could not be built.'));
+      if (payload.success !== true) {
+        setPreviewError(
+          readString(payload.message) || t('The preview could not be built.'),
+        );
         return;
       }
 
@@ -457,6 +488,22 @@ const TemplateEditor = () => {
     );
   }
 
+  // The blocked state is shown FIRST and in full: the platform authenticated only
+  // the application, so these operations cannot run as the person looking at the
+  // screen and no control is offered that would fail anyway.
+  if (state.kind === 'AUTH_REQUIRED') {
+    return (
+      <div style={{ ...styles.container, direction }} data-editor-auth-required>
+        <p style={styles.heading}>{t('Template editor')}</p>
+        <p style={styles.error}>
+          {t(
+            'This editor needs your own signed-in access. The application identity is not enough, so reading, saving and previewing are disabled.',
+          )}
+        </p>
+      </div>
+    );
+  }
+
   if (state.kind === 'NOT_FOUND' || state.kind === 'ERROR') {
     return (
       <div style={{ ...styles.container, direction }}>
@@ -465,39 +512,36 @@ const TemplateEditor = () => {
     );
   }
 
-  const selectedSource = sources.find(
-    (source) => source.objectName === sourceObjectName,
-  );
-  const relationOptions = selectedSource?.relations ?? [];
-
   return (
     <div style={{ ...styles.container, direction }}>
-      {/* --- source model ------------------------------------------------- */}
       <div style={styles.field} data-editor-source>
         <span style={styles.label}>{t('Source entity')}</span>
         <select
           aria-label={t('Source entity')}
-          value={sourceObjectName}
+          value={sourceObjectUid}
           onChange={(event) => {
-            const nextObject = event.target.value;
-            setSourceObjectName(nextObject);
+            const nextUid = event.target.value;
+            setSourceObjectUid(nextUid);
+            setSampleRecordId('');
+            setPreviewText(null);
 
-            // A relation belongs to its object, so it is reset rather than
-            // carried across a source change.
+            // A relation belongs to its object, so it is re-derived rather than
+            // carried across a source change. One eligible relation is selected
+            // automatically; several require an explicit choice.
             const nextSource = sources.find(
-              (source) => source.objectName === nextObject,
+              (entry) => entry.objectUid === nextUid,
             );
 
-            setRecipientRelation(
+            setRecipientRelationUid(
               nextSource !== undefined && nextSource.relations.length === 1
-                ? nextSource.relations[0].relationName
+                ? nextSource.relations[0].relationUid
                 : '',
             );
           }}
           style={styles.control}
         >
           {sources.map((source) => (
-            <option key={source.objectName} value={source.objectName}>
+            <option key={source.objectUid} value={source.objectUid}>
               {source.labelPlural}
             </option>
           ))}
@@ -509,13 +553,17 @@ const TemplateEditor = () => {
           <span style={styles.label}>{t('Recipient relation')}</span>
           <select
             aria-label={t('Recipient relation')}
-            value={recipientRelation}
-            onChange={(event) => setRecipientRelation(event.target.value)}
+            value={recipientRelationUid}
+            onChange={(event) => {
+              setRecipientRelationUid(event.target.value);
+              setSampleRecordId('');
+              setPreviewText(null);
+            }}
             style={styles.control}
           >
             <option value="">{t('Choose a relation')}</option>
             {relationOptions.map((relation) => (
-              <option key={relation.relationName} value={relation.relationName}>
+              <option key={relation.relationUid} value={relation.relationUid}>
                 {relation.relationLabel}
               </option>
             ))}
@@ -523,17 +571,6 @@ const TemplateEditor = () => {
         </div>
       )}
 
-      <div style={styles.actions}>
-        <button
-          type="button"
-          style={styles.secondaryButton}
-          onClick={() => void handleSaveSource()}
-        >
-          {t('Save source')}
-        </button>
-      </div>
-
-      {/* --- the message body --------------------------------------------- */}
       <div style={styles.field}>
         <span style={styles.label}>{t('Message body')}</span>
         <textarea
@@ -555,7 +592,6 @@ const TemplateEditor = () => {
         />
       </div>
 
-      {/* --- variables ----------------------------------------------------- */}
       <div style={styles.field} data-editor-variables>
         <span style={styles.label}>{t('Usable variables')}</span>
         <ul style={styles.recipientList}>
@@ -580,45 +616,54 @@ const TemplateEditor = () => {
         </ul>
       </div>
 
-      {/* --- save ---------------------------------------------------------- */}
       <div style={styles.actions}>
         <button
           type="button"
           style={styles.primaryButton}
           disabled={isSaving || !isDirty}
-          onClick={() => void handleSaveBody()}
+          onClick={() => void handleSave()}
         >
           {isSaving ? t('Saving…') : t('Save')}
         </button>
-        {isDirty && <span style={styles.muted} data-editor-dirty>{t('Unsaved changes')}</span>}
+        {isDirty && (
+          <span style={styles.muted} data-editor-dirty>
+            {t('Unsaved changes')}
+          </span>
+        )}
         {savedNotice && !isDirty && (
-          <span style={styles.muted} data-editor-saved>{t('Saved')}</span>
+          <span style={styles.muted} data-editor-saved>
+            {t('Saved')}
+          </span>
         )}
       </div>
 
       {saveError !== null && <p style={styles.error}>{saveError}</p>}
 
-      {/* --- preview ------------------------------------------------------- */}
       <div style={styles.field} data-editor-preview>
         <span style={styles.label}>{t('Preview')}</span>
         <select
-          aria-label={t('Sample person')}
-          value={samplePersonId}
-          onChange={(event) => setSamplePersonId(event.target.value)}
+          aria-label={t('Sample record')}
+          value={sampleRecordId}
+          onChange={(event) => setSampleRecordId(event.target.value)}
           style={styles.control}
         >
-          <option value="">{t('Select a sample person to preview.')}</option>
-          {people.map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.name}
+          <option value="">{t('Select a sample record to preview.')}</option>
+          {sampleRecords.map((record) => (
+            <option key={record.id} value={record.id}>
+              {record.label}
             </option>
           ))}
         </select>
+        <p style={styles.muted}>
+          {isPersonSource
+            ? t('The selected person is the recipient.')
+            : t('The recipient is resolved from the selected record.')}
+        </p>
         <div style={styles.actions}>
           <button
             type="button"
             style={styles.secondaryButton}
-            disabled={samplePersonId.length === 0 || isPreviewing}
+            disabled={sampleRecordId.length === 0 || isPreviewing}
             onClick={() => void handlePreview()}
           >
             {isPreviewing ? t('Previewing…') : t('Preview')}

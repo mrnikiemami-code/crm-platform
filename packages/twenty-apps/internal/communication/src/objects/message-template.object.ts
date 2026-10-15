@@ -5,7 +5,9 @@ import {
   MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_RECIPIENT_RELATION_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_RECIPIENT_RELATION_UID_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_SOURCE_OBJECT_NAME_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_SOURCE_OBJECT_UID_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
@@ -142,6 +144,28 @@ export default defineObject({
       description:
         'Name of the relation field on the source object that resolves to one Person. Empty when the source record IS the person.',
       icon: 'IconRelationManyToOne',
+      isNullable: true,
+    },
+    {
+      universalIdentifier:
+        MESSAGE_TEMPLATE_SOURCE_OBJECT_UID_FIELD_UNIVERSAL_IDENTIFIER,
+      type: FieldType.TEXT,
+      name: 'sourceObjectUid',
+      label: 'شناسهٔ موجودیت منبع',
+      description:
+        'Metadata universalIdentifier of the source object. Absent means person (legacy).',
+      icon: 'IconKey',
+      isNullable: true,
+    },
+    {
+      universalIdentifier:
+        MESSAGE_TEMPLATE_RECIPIENT_RELATION_UID_FIELD_UNIVERSAL_IDENTIFIER,
+      type: FieldType.TEXT,
+      name: 'recipientRelationUid',
+      label: 'شناسهٔ رابطهٔ گیرنده',
+      description:
+        'Metadata universalIdentifier of the relation field that resolves to one Person. Empty when the source record IS the person.',
+      icon: 'IconKey',
       isNullable: true,
     },
   ],

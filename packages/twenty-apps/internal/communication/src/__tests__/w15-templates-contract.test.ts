@@ -11,7 +11,9 @@ import {
   MESSAGE_TEMPLATE_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_RECIPIENT_RELATION_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_RECIPIENT_RELATION_UID_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_SOURCE_OBJECT_NAME_FIELD_UNIVERSAL_IDENTIFIER,
+  MESSAGE_TEMPLATE_SOURCE_OBJECT_UID_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_TITLE_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER,
@@ -82,10 +84,13 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
       'body',
       'channel',
       'targetObject',
-      // The stable SOURCE model, stored on the same record: which object the
-      // template is written for, and which relation resolves the recipient.
+      // Readable, non-authoritative hints, kept for diagnosis.
       'sourceObjectName',
       'recipientRelation',
+      // The STABLE identifiers that are actually authoritative: metadata
+      // universal identifiers, because a name is a label an operator can rename.
+      'sourceObjectUid',
+      'recipientRelationUid',
     ]);
     expect(objectConfig.fields.map((field) => field.universalIdentifier)).toEqual(
       [
@@ -95,6 +100,8 @@ describe('message templates are a native, workspace-owned object (W15-A)', () =>
         MESSAGE_TEMPLATE_TARGET_OBJECT_FIELD_UNIVERSAL_IDENTIFIER,
         MESSAGE_TEMPLATE_SOURCE_OBJECT_NAME_FIELD_UNIVERSAL_IDENTIFIER,
         MESSAGE_TEMPLATE_RECIPIENT_RELATION_FIELD_UNIVERSAL_IDENTIFIER,
+        MESSAGE_TEMPLATE_SOURCE_OBJECT_UID_FIELD_UNIVERSAL_IDENTIFIER,
+        MESSAGE_TEMPLATE_RECIPIENT_RELATION_UID_FIELD_UNIVERSAL_IDENTIFIER,
       ],
     );
     expect(

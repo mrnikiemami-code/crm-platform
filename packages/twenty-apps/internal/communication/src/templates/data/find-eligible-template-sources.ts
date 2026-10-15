@@ -1,55 +1,64 @@
 import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 
 // Discovers the source objects a template may be written for, from the
-// workspace's OWN metadata.
+// workspace's OWN metadata, and resolves stored identifiers back to API names.
 //
 // The product rule: the final SMS recipient is always a Person, and a template's
 // source is either a Person itself or another object whose selected record
 // resolves to exactly ONE Person. "Exactly one" is judged from the source
-// record, so only the SINGULAR side of a relation qualifies; a collection of
-// Persons is excluded, because one source record would then map to several
-// recipients and any value read from it would be ambiguous.
+// record, so only the SINGULAR side of a relation qualifies; a collection is
+// excluded because one source record would then map to several recipients.
 //
-// In this platform's metadata a MANY_TO_ONE relation field ON the source object
-// pointing AT Person is exactly that singular side (a stored one-to-one is the
-// same shape with `isUnique`). A ONE_TO_MANY field on the source object pointing
-// at Person is a collection and is never offered.
-//
-// A source is offered only when BOTH the object and the relation field are
-// active and non-system. System objects (join tables such as
-// `calendarEventParticipant`) are excluded: a user does not author templates for
-// them.
+// IDENTITY: what is stored is the metadata `universalIdentifier` of the object
+// and of the relation field, never a name. Names are labels an operator can
+// rename, so they are resolved from metadata on every use instead of being
+// treated as identity. The resolution is total-or-explicit: an identifier that
+// no longer resolves is reported as unresolvable, NEVER silently turned into
+// Person.
 export const PERSON_SOURCE_OBJECT_NAME = 'person';
 
 /** One relation on a source object that resolves to a single Person. */
 export type EligibleSourceRelation = {
-  /** The relation field's name on the source object — the stored identifier. */
+  /** Stable relation-field identifier — the value that gets stored. */
+  relationUid: string;
+  /** API field name, resolved from metadata for querying. */
   relationName: string;
-  /** Workspace-facing label of that field. */
+  /** Workspace-facing label. */
   relationLabel: string;
 };
 
 /** One object a template may be sourced from. */
 export type EligibleTemplateSource = {
-  /** The source object's `nameSingular` — the stored identifier. */
+  /** Stable object identifier — the value that gets stored. */
+  objectUid: string;
+  /** API `nameSingular`, resolved from metadata for the singular root field. */
   objectName: string;
-  /** Workspace-facing singular/plural labels. */
+  /**
+   * API `namePlural`, resolved from metadata for the connection field. The
+   * connection name is NOT `nameSingular + 's'` (Person's is `people`), so it is
+   * carried explicitly rather than derived.
+   */
+  objectNamePlural: string;
   labelSingular: string;
   labelPlural: string;
   /**
-   * The relations that can resolve the recipient. A Person source has none
-   * (the record IS the person); any other source has at least one.
+   * Relations that can resolve the recipient. A Person source has none (the
+   * record IS the person); any other source has at least one.
    */
   relations: EligibleSourceRelation[];
 };
 
 type RawRelation = {
   type?: string | null;
-  targetObjectMetadata?: { id?: string | null; nameSingular?: string | null } | null;
+  targetObjectMetadata?: {
+    id?: string | null;
+    universalIdentifier?: string | null;
+  } | null;
 };
 
 type RawField = {
   id?: string | null;
+  universalIdentifier?: string | null;
   name?: string | null;
   label?: string | null;
   type?: string | null;
@@ -60,7 +69,9 @@ type RawField = {
 
 type RawObject = {
   id?: string | null;
+  universalIdentifier?: string | null;
   nameSingular?: string | null;
+  namePlural?: string | null;
   labelSingular?: string | null;
   labelPlural?: string | null;
   isActive?: boolean | null;
@@ -68,19 +79,22 @@ type RawObject = {
   fieldsList?: RawField[] | null;
 };
 
-const ELIGIBLE_SOURCES_QUERY = {
+export const ELIGIBLE_SOURCES_QUERY = {
   objects: {
     __args: { paging: { first: 200 }, filter: {} },
     edges: {
       node: {
         id: true,
+        universalIdentifier: true,
         nameSingular: true,
+        namePlural: true,
         labelSingular: true,
         labelPlural: true,
         isActive: true,
         isSystem: true,
         fieldsList: {
           id: true,
+          universalIdentifier: true,
           name: true,
           label: true,
           type: true,
@@ -88,13 +102,16 @@ const ELIGIBLE_SOURCES_QUERY = {
           isSystem: true,
           relation: {
             type: true,
-            targetObjectMetadata: { id: true, nameSingular: true },
+            targetObjectMetadata: { id: true, universalIdentifier: true },
           },
         },
       },
     },
   },
 } as const;
+
+const isNonEmpty = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0;
 
 /**
  * Builds the eligible-source list from metadata. PURE, so the selection rules
@@ -107,23 +124,30 @@ export const buildEligibleTemplateSources = (
   objects: readonly unknown[],
 ): EligibleTemplateSource[] => {
   const parsed = objects.filter(
-    (object): object is RawObject =>
-      object !== null && typeof object === 'object',
+    (object): object is RawObject => object !== null && typeof object === 'object',
   );
 
   const person = parsed.find(
     (object) => object.nameSingular === PERSON_SOURCE_OBJECT_NAME,
   );
 
-  if (person === undefined || person.id == null || person.isActive === false) {
-    // Without a readable Person object there is no valid source at all, so the
+  if (
+    person === undefined ||
+    !isNonEmpty(person.universalIdentifier) ||
+    person.isActive === false
+  ) {
+    // Without a resolvable Person object there is no valid source at all, so the
     // list is EMPTY rather than guessed.
     return [];
   }
 
+  const personUid = person.universalIdentifier;
+
   const sources: EligibleTemplateSource[] = [
     {
+      objectUid: personUid,
       objectName: PERSON_SOURCE_OBJECT_NAME,
+      objectNamePlural: person.namePlural ?? PERSON_SOURCE_OBJECT_NAME,
       labelSingular: person.labelSingular ?? PERSON_SOURCE_OBJECT_NAME,
       labelPlural: person.labelPlural ?? PERSON_SOURCE_OBJECT_NAME,
       relations: [],
@@ -132,11 +156,11 @@ export const buildEligibleTemplateSources = (
 
   for (const object of parsed) {
     if (
-      object.nameSingular == null ||
+      !isNonEmpty(object.universalIdentifier) ||
+      !isNonEmpty(object.nameSingular) ||
       object.nameSingular === PERSON_SOURCE_OBJECT_NAME ||
       object.isActive === false ||
-      object.isSystem === true ||
-      object.id == null
+      object.isSystem === true
     ) {
       continue;
     }
@@ -148,8 +172,8 @@ export const buildEligibleTemplateSources = (
         field.type !== 'RELATION' ||
         field.isActive === false ||
         field.isSystem === true ||
-        typeof field.name !== 'string' ||
-        field.name.length === 0
+        !isNonEmpty(field.name) ||
+        !isNonEmpty(field.universalIdentifier)
       ) {
         continue;
       }
@@ -162,16 +186,14 @@ export const buildEligibleTemplateSources = (
         continue;
       }
 
-      if (relation.targetObjectMetadata?.id !== person.id) {
+      if (relation.targetObjectMetadata?.universalIdentifier !== personUid) {
         continue;
       }
 
       relations.push({
+        relationUid: field.universalIdentifier,
         relationName: field.name,
-        relationLabel:
-          typeof field.label === 'string' && field.label.length > 0
-            ? field.label
-            : field.name,
+        relationLabel: isNonEmpty(field.label) ? field.label : field.name,
       });
     }
 
@@ -180,7 +202,11 @@ export const buildEligibleTemplateSources = (
     }
 
     sources.push({
+      objectUid: object.universalIdentifier,
       objectName: object.nameSingular,
+      objectNamePlural: isNonEmpty(object.namePlural)
+        ? object.namePlural
+        : object.nameSingular,
       labelSingular: object.labelSingular ?? object.nameSingular,
       labelPlural: object.labelPlural ?? object.nameSingular,
       relations,
@@ -198,46 +224,137 @@ export const findEligibleTemplateSources = async ({
 }): Promise<EligibleTemplateSource[]> => {
   const result = await metadataClient.query(ELIGIBLE_SOURCES_QUERY);
 
-  const nodes = (result.objects?.edges ?? []).map(
-    (edge) => edge?.node as unknown,
+  return buildEligibleTemplateSources(
+    (result.objects?.edges ?? []).map((edge) => edge?.node as unknown),
   );
-
-  return buildEligibleTemplateSources(nodes);
 };
 
 /**
- * Validates a requested (source object, relation) pair against the eligible set.
+ * The outcome of resolving a template's stored source.
  *
- * Returns the CANONICAL pair, or `null` when the request is not eligible — so a
- * forged or stale client value is rejected server-side instead of being stored.
- * An empty relation is only valid for Person.
+ * `LEGACY_PERSON` is a DIFFERENT outcome from `RESOLVED`, and that distinction is
+ * the point: a row that stores no identifier at all predates the source model and
+ * means Person, while a row that stores an identifier which no longer resolves is
+ * broken. Collapsing the second case into the first would silently send a
+ * template written for another object as if it were a Person template.
+ */
+export type ResolvedTemplateSource =
+  | { kind: 'LEGACY_PERSON'; objectName: string; objectUid: string | null }
+  | {
+      kind: 'RESOLVED';
+      objectName: string;
+      objectUid: string;
+      /** Empty when the source record IS the person. */
+      relationUid: string;
+      relationName: string;
+    }
+  | { kind: 'UNRESOLVABLE' };
+
+/**
+ * Resolves a template's stored identifiers against the live eligible set.
+ *
+ * Returns `UNRESOLVABLE` — never Person — when an identifier is present but the
+ * object or relation no longer qualifies (renamed away, deactivated, turned into
+ * a collection, or removed).
+ */
+export const resolveStoredTemplateSource = ({
+  sources,
+  storedObjectUid,
+  storedRelationUid,
+}: {
+  sources: readonly EligibleTemplateSource[];
+  storedObjectUid: string;
+  storedRelationUid: string;
+}): ResolvedTemplateSource => {
+  const hasObject = storedObjectUid.length > 0;
+  const hasRelation = storedRelationUid.length > 0;
+
+  if (!hasObject) {
+    // No stored source at all: the legacy meaning is Person. A relation WITHOUT
+    // an object is broken data, not a legacy row.
+    return hasRelation
+      ? { kind: 'UNRESOLVABLE' }
+      : {
+          kind: 'LEGACY_PERSON',
+          objectName: PERSON_SOURCE_OBJECT_NAME,
+          objectUid: null,
+        };
+  }
+
+  const source = sources.find((entry) => entry.objectUid === storedObjectUid);
+
+  if (source === undefined) {
+    return { kind: 'UNRESOLVABLE' };
+  }
+
+  if (source.objectName === PERSON_SOURCE_OBJECT_NAME) {
+    return hasRelation
+      ? // A Person source cannot carry a relation; that pairing is broken data.
+        { kind: 'UNRESOLVABLE' }
+      : {
+          kind: 'RESOLVED',
+          objectName: source.objectName,
+          objectUid: source.objectUid,
+          relationUid: '',
+          relationName: '',
+        };
+  }
+
+  if (!hasRelation) {
+    // A related source MUST name its relation; guessing one would be exactly the
+    // "pick a Person for the user" failure this model exists to prevent.
+    return { kind: 'UNRESOLVABLE' };
+  }
+
+  const relation = source.relations.find(
+    (entry) => entry.relationUid === storedRelationUid,
+  );
+
+  if (relation === undefined) {
+    return { kind: 'UNRESOLVABLE' };
+  }
+
+  return {
+    kind: 'RESOLVED',
+    objectName: source.objectName,
+    objectUid: source.objectUid,
+    relationUid: relation.relationUid,
+    relationName: relation.relationName,
+  };
+};
+
+/**
+ * Validates a requested (object, relation) pair against the eligible set, for
+ * WRITES.
+ *
+ * Returns the canonical stored pair, or `null` when the request is not eligible —
+ * so a forged or stale client value is rejected instead of being stored. An empty
+ * relation is only valid for Person.
  */
 export const resolveEligibleSource = ({
   sources,
-  objectName,
-  relationName,
+  objectUid,
+  relationUid,
 }: {
   sources: readonly EligibleTemplateSource[];
-  objectName: string;
-  relationName: string;
-}): { objectName: string; relationName: string } | null => {
-  const source = sources.find((entry) => entry.objectName === objectName);
+  objectUid: string;
+  relationUid: string;
+}): { objectUid: string; relationUid: string } | null => {
+  const source = sources.find((entry) => entry.objectUid === objectUid);
 
   if (source === undefined) {
     return null;
   }
 
-  if (objectName === PERSON_SOURCE_OBJECT_NAME) {
-    return { objectName, relationName: '' };
+  if (source.objectName === PERSON_SOURCE_OBJECT_NAME) {
+    return { objectUid, relationUid: '' };
   }
 
   const relation = source.relations.find(
-    (entry) => entry.relationName === relationName,
+    (entry) => entry.relationUid === relationUid,
   );
 
-  if (relation === undefined) {
-    return null;
-  }
-
-  return { objectName, relationName: relation.relationName };
+  return relation === undefined
+    ? null
+    : { objectUid, relationUid: relation.relationUid };
 };
