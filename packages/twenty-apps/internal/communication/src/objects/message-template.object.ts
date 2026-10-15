@@ -83,6 +83,8 @@ export default defineObject({
       type: FieldType.SELECT,
       name: 'channel',
       label: 'Channel',
+      // SMS-only in this flow and defaulted, so it is not a manual input.
+      isUIEditable: false,
       description: 'Channel this template is intended for',
       icon: 'IconBroadcast',
       defaultValue: `'${MessageTemplateChannel.SMS}'`,
@@ -105,6 +107,10 @@ export default defineObject({
       // template for. Named in the workspace's own words, and it is also the
       // column header «موجودیت منبع» in the templates list.
       label: 'موجودیت منبع',
+      // Hidden from forms on purpose: the editor owns the source model now, and
+      // its `defaultValue` still marks new rows as PERSON. Showing it here would
+      // put a SECOND «موجودیت منبع» control next to the editor's own.
+      isUIEditable: false,
       description:
         'Source entity this template is written for. Absent means PERSON.',
       icon: 'IconTarget',
@@ -128,6 +134,8 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'sourceObjectName',
       label: 'موجودیت منبع',
+      // Readable HINT only: the editor writes it, the user must not.
+      isUIEditable: false,
       description:
         'nameSingular of the source object this template is written for. Absent means person.',
       icon: 'IconSource',
@@ -141,6 +149,7 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'recipientRelation',
       label: 'رابطهٔ گیرنده',
+      isUIEditable: false,
       description:
         'Name of the relation field on the source object that resolves to one Person. Empty when the source record IS the person.',
       icon: 'IconRelationManyToOne',
@@ -152,6 +161,8 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'sourceObjectUid',
       label: 'شناسهٔ موجودیت منبع',
+      // A technical identifier: stored, never hand-edited.
+      isUIEditable: false,
       description:
         'Metadata universalIdentifier of the source object. Absent means person (legacy).',
       icon: 'IconKey',
@@ -163,6 +174,7 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'recipientRelationUid',
       label: 'شناسهٔ رابطهٔ گیرنده',
+      isUIEditable: false,
       description:
         'Metadata universalIdentifier of the relation field that resolves to one Person. Empty when the source record IS the person.',
       icon: 'IconKey',
