@@ -39,7 +39,7 @@ the original three-task/time commitment was achieved.
 
 | Stage | Deliverable | Status | Dependency |
 | --- | --- | --- | --- |
-| 1 | Complete Person template creation/editing in the real UI | **ACTIVE / NOT ACCEPTED** | Renderer/bridge delivery is internal work in this stage |
+| 1 | Complete Person template creation/editing in the real UI | **PARTIAL / NOT ACCEPTED** — see the Stage 1 report below | Renderer/bridge: DONE |
 | 2 | Extend that same working editor to related sources | NOT ACCEPTED; partial underlying implementation exists | Stage 1 accepted |
 | 3 | Connect single/bulk send and finish release acceptance | NOT ACCEPTED; existing send foundation is reused | Stage 2 accepted |
 
@@ -177,3 +177,34 @@ Person flow work. Finish renderer/bridge build as its dependency, hide technical
 wire a discoverable Edit action, then verify the entire flow in the browser.
 Do not issue another source-catalog or cosmetic-only completion report.
 Update this ledger and Recovery after real acceptance; retain precise blockers if still open.
+
+## Stage 1 progress report — 2026-10-15 (app 0.1.55)
+
+**Dependency CLOSED.** The renderer build was never broken; the wrong command was being run.
+The package's nx target is `vite build` (JS bundles) followed by
+`tsgo --emitDeclarationOnly` + `tsc-alias` (the `.d.ts` files vite does not emit).
+`node_modules/twenty-front-component-renderer` is a junction to the workspace package, so the
+rebuilt `dist` is what the host consumes — no restart was needed and `twenty-front` typechecks.
+**The user bridge is therefore LIVE**, and the container was untouched.
+
+**Verified in the browser with this run's fixture:** the editor loads as the signed-in user
+with no AUTH_REQUIRED; the catalog and sample people load (and reload on edit); a variable
+inserts exactly once; the preview resolves «سلام تست شماره مشترک دو»; Save persists body and
+source; a reload restores title, body, source and the catalog; the form is Persian-only with
+one source control and no technical identifiers; and the Edit command opens the editor.
+
+**Still open, and deliberately not claimed:**
+
+1. UI creation from the sidebar was not exercised (the fixture was created through the app's
+   API), so acceptance item A is UNVERIFIED.
+2. The Edit action is registered and works, but appears only in the command menu — selecting a
+   row shows no entry, and the platform renders no per-row button for this object. Its label
+   also still renders in English although the catalog carries «ویرایش الگو», so that catalog
+   entry is not applied.
+3. A second edit→save cycle and the CONFLICT path were not re-verified through this UI
+   (CAS behaviour was verified earlier at the service level).
+4. Restricted-user denial has no live identity available; it stays covered behaviourally.
+
+The next action is to close item 2 (make the Edit entry discoverable from the list and get its
+label translated), verify item 1 by creating a template from the sidebar, and re-run the
+edit→save→reload cycle — then Stage 1 can be considered for acceptance.

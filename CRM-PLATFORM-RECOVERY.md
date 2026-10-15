@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 — USER-FLOW PLAN RESET. Person New/Edit/field selection/save/preview is NOT ACCEPTED. The user screenshots override earlier isolated UX acceptance claims. The active plan is docs/plans/communication-template-studio-three-task-plan.md; start with Stage 1 only. Latest reported app: 0.1.53; user bridge is source-only/not live pending renderer build. This documentation update did not deploy or test runtime code.
+Last updated: 2026-10-15 — STAGE 1 PARTIAL. The renderer build dependency is RESOLVED (the real build command was found and run: `vite build` emits the JS bundles, then `tsgo -p tsconfig.lib.json --declaration --emitDeclarationOnly` plus `tsc-alias` emit the types; `twenty-front` typechecks against it). The user bridge is therefore LIVE: the record-page editor loads the authorized catalog and the sample people, inserts a variable once, resolves a preview and saves through the conditional CAS — all as the signed-in user, with no AUTH_REQUIRED. The raw field list is gone (no technical identifiers, one source control). App 0.1.55, host unchanged. NOT accepted: UI creation from the sidebar was not exercised, the visible Edit action lives in the command menu (it works, but its label is untranslated and the platform renders no per-row button), a second edit+save cycle and the CONFLICT path were not re-verified in the browser. See the Stage 1 section below for the per-criterion table. No user template was touched; the run's fixture was soft-deleted by exact id.
 
 ## Purpose
 
@@ -73,6 +73,64 @@ The full execution/build/acceptance duration counts; estimates are not acceptanc
 The following reports are retained without rewriting their contents.
 They are not the active plan, are not proof of current live behavior, and may contain
 superseded conclusions. The checkpoint and linked plan above control subsequent work.
+
+## CRM-TEMPLATES-PERSON-FLOW-01 — Stage 1 partial, bridge now LIVE (0.1.54/0.1.55)
+
+Baseline `b27ac1a96460df8805cf31192456754a37da39c1` → tip `f3746b9ec8`; app **0.1.55** on
+main/4D; host unchanged (no host restart was needed).
+
+### The blocker that had blocked three rounds is SOLVED
+
+The renderer build was never broken — I had been running the wrong command. The package's
+own nx target (`packages/twenty-front-component-renderer/project.json`) is two steps:
+
+1. `npx rimraf dist && npx vite build -c vite.config.ts` → emits `index.mjs` / `index.cjs`
+   (the config sets `logLevel: 'warn'`, which is why a SUCCESSFUL build printed nothing and
+   looked like a no-op);
+2. `tsgo -p tsconfig.lib.json --declaration --emitDeclarationOnly --noEmit false --outDir dist
+   --rootDir src && npx tsc-alias -p tsconfig.lib.json --outDir dist` → emits the `.d.ts`
+   files (vite does not) and rewrites the `@/` aliases into relative paths.
+
+`node_modules/twenty-front-component-renderer` is a **junction** to the workspace package, so
+once `dist` was rebuilt the host picked the change up without a restart, and `twenty-front`
+typechecks. **The bridge is live**: the editor now runs as the signed-in user.
+
+### Verified in the browser on main/4D (fixture `5fef1bda-2233-4bb1-ab65-6e6efd899668`)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Editor loads as the user, no AUTH_REQUIRED | **PASS** | the record page renders the full editor; no blocked state |
+| One source control, no technical fields | **PASS** | `sourceObjectUid` / `recipientRelationUid` / relation API name / engine `name` are absent; exactly one «موجودیت منبع» |
+| Catalog loads (and on edit, automatically) | **PASS** | 10 variables with Persian labels and ASCII tokens, in both a fresh load and after reload |
+| Insert exactly once | **PASS** | body `سلام ` → `سلام @person.firstName`, one occurrence, dirty indicator shown |
+| Sample person + resolved preview | **PASS** | sample list populated; preview rendered «سلام تست شماره مشترک دو» |
+| Save persists | **PASS** | DB row: body `سلام @person.firstName`, `sourceObjectUid` = Person uid |
+| Reload shows saved values | **PASS** | after reload: title, body and source value all restored; catalog reloaded |
+| Visible Edit command works | **PASS (placement caveat)** | `Ctrl+K` → «Edit template» → navigates to `/object/messageTemplate/<id>` and opens the editor |
+| Persian-only form | **PASS** | no English label remains in the editor |
+
+### NOT verified / defects found
+
+1. **UI creation from the sidebar was not exercised.** The run's fixture was created through
+   the app's own API, so acceptance item A ("New → title → Person → permitted fields", from the
+   sidebar) is **UNVERIFIED**, not passed.
+2. **The Edit action is not where the plan wants it, and is untranslated.** The command is
+   registered and works, but it appears only in the command menu — selecting a row shows no
+   command bar entry — and the platform renders **no per-row action button** for this object
+   (verified: the row container has no buttons). Its label also still renders as English
+   "Edit template" even though `commandMenuItem.label`/`shortLabel` carry «ویرایش الگو», so that
+   catalog entry is not being applied.
+3. **A second edit→save cycle after reload and the CONFLICT path were not re-verified in the
+   browser.** CAS stale-write rejection and text preservation were verified earlier at the
+   service level, not through this UI.
+4. **Restricted-user denial is still not verified live** — no low-privilege identity exists
+   and a real user's role must not be changed. The guard is covered behaviourally instead.
+
+### Data
+
+Only this run's fixture was created and it was **soft-deleted by its exact id**. No hard
+delete and no predicate-based cleanup. The user's four rows are unchanged (two remain
+soft-deleted exactly as before), and the seven provider variables are untouched.
 
 ## CRM-NATIVE-TEMPLATES-02 IMPLEMENT_USER_BRIDGE — bridge written and typechecked; blocked on the renderer build
 
