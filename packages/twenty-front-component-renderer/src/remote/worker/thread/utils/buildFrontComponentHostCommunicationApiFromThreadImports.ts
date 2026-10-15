@@ -19,4 +19,5 @@ export const buildFrontComponentHostCommunicationApiFromThreadImports = (
   storageSet: hostThreadImports.storageSet,
   storageDelete: hostThreadImports.storageDelete,
   storageClear: hostThreadImports.storageClear,
+  callCommunicationRoute: hostThreadImports.callCommunicationRoute,
 });

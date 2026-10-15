@@ -114,6 +114,12 @@ export const StorageRoundTrip: Story = {
           storageType,
         });
       },
+      // This story exercises storage only, so the Communication bridge is a
+      // refusing stub: stories must never reach a real user-scoped route.
+      callCommunicationRoute: async () => ({
+        success: false,
+        errorCode: 'UNEXPECTED',
+      }),
     },
   },
 };

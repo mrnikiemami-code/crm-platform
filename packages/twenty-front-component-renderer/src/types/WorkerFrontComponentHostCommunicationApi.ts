@@ -28,4 +28,16 @@ export type WorkerFrontComponentHostCommunicationApi = {
   storageSet?: StorageSetFunction;
   storageDelete?: StorageDeleteFunction;
   storageClear?: StorageClearFunction;
+  /**
+   * Runs a user-scoped Communication operation through the host.
+   *
+   * Typed locally rather than imported from `twenty-sdk/front-component`: the SDK
+   * an app builds against is a published package, while this renderer is part of
+   * the host, so the contract has to be declared on the side that actually
+   * provides it.
+   */
+  callCommunicationRoute?: (request: {
+    action: string;
+    payload?: Record<string, unknown>;
+  }) => Promise<unknown>;
 };

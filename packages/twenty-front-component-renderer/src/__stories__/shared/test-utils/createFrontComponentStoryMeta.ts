@@ -22,6 +22,10 @@ export const hostApiMocks = {
   storageSet: fn().mockResolvedValue(undefined),
   storageDelete: fn().mockResolvedValue(undefined),
   storageClear: fn().mockResolvedValue(undefined),
+  callCommunicationRoute: fn().mockResolvedValue({
+    success: false,
+    errorCode: 'UNEXPECTED',
+  }),
 };
 
 export const FRONT_COMPONENT_STORY_DEFAULT_ARGS: NonNullable<

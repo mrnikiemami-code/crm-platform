@@ -15,4 +15,8 @@ export const FRONT_COMPONENT_HOST_COMMUNICATION_API_NOOP: FrontComponentHostComm
     storageSet: async () => {},
     storageDelete: async () => {},
     storageClear: async () => {},
+    callCommunicationRoute: async () => ({
+      success: false,
+      errorCode: 'UNEXPECTED',
+    }),
   };

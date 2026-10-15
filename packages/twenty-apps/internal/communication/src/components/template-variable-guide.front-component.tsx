@@ -128,8 +128,7 @@ const toSource = (value: unknown): EligibleSource | null => {
  * from a front component. Rather than pretend, the caller is told which behaviour
  * was used and the textarea position is preserved when the API IS available.
  */
-export const insertTokenIntoBody = ({
-  body,
+export const insertTokenIntoBody = ({  body,
   token,
   selectionStart,
   selectionEnd,
@@ -154,6 +153,33 @@ export const insertTokenIntoBody = ({
     body: `${body.slice(0, selectionStart)}${token}${body.slice(selectionEnd)}`,
     usedCaret: true,
   };
+};
+
+/**
+ * The host bridge that runs a Communication operation AS THE SIGNED-IN USER.
+ *
+ * The host exposes it on `globalThis.frontComponentHostCommunicationApi`, the same
+ * object the SDK's own helpers read from, so this app needs no SDK change. It is
+ * the ONLY way to reach a user-scoped operation: `callAppRoute` sends the
+ * APPLICATION token and is therefore refused by the server's authorization guard.
+ */
+type CommunicationRouteBridge = (request: {
+  action: string;
+  payload?: Record<string, unknown>;
+}) => Promise<unknown>;
+
+const readCommunicationBridge = (): CommunicationRouteBridge | null => {
+  const api = (
+    globalThis as unknown as {
+      frontComponentHostCommunicationApi?: {
+        callCommunicationRoute?: CommunicationRouteBridge;
+      };
+    }
+  ).frontComponentHostCommunicationApi;
+
+  return typeof api?.callCommunicationRoute === 'function'
+    ? api.callCommunicationRoute
+    : null;
 };
 
 const TemplateEditor = () => {
@@ -186,12 +212,33 @@ const TemplateEditor = () => {
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   /**
-   * Every guarded action funnels through here, so an `AUTH_REQUIRED` answer is
-   * never mistaken for a normal failure: it switches the whole editor into the
-   * blocked state instead.
+   * Every guarded action funnels through here.
+   *
+   * Preferred path: the HOST bridge, which runs the operation as the signed-in
+   * user. When it is unavailable (an older host), the app falls back to its own
+   * route — which then fails closed with `AUTH_REQUIRED` because it carries only
+   * the application token. Either way an `AUTH_REQUIRED` answer switches the whole
+   * editor into the blocked state rather than being mistaken for a normal failure.
    */
   const callGuarded = useCallback(
     async (payload: Record<string, unknown>) => {
+      const bridge = readCommunicationBridge();
+      const action = readString(payload.action);
+      const args: Record<string, unknown> = { ...payload };
+      delete args.action;
+
+      if (bridge !== null) {
+        const result = asRecord(await bridge({ action, payload: args }));
+
+        if (readString(result?.errorCode) === 'AUTH_REQUIRED') {
+          setState({ kind: 'AUTH_REQUIRED' });
+
+          return null;
+        }
+
+        return result;
+      }
+
       const response = await callAppRoute(
         '/communication/template-studio',
         'POST',

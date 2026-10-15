@@ -26,6 +26,8 @@ import {
 
 import { useOpenAskAiPageWithPreprompt } from '@/ai/hooks/useOpenAskAiPageWithPreprompt';
 import { currentUserState } from '@/auth/states/currentUserState';
+import { isAllowedCommunicationAction } from '@/front-components/utils/communicationRouteAllowList';
+import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import { useCommandMenuConfirmationModal } from '@/command-menu-item/confirmation-modal/hooks/useCommandMenuConfirmationModal';
 import { useUnmountCommand } from '@/command-menu-item/engine-command/hooks/useUnmountEngineCommand';
 import { commandMenuItemProgressFamilyState } from '@/command-menu-item/states/commandMenuItemProgressFamilyState';
@@ -584,6 +586,46 @@ export const useFrontComponentExecutionContext = ({
       });
     };
 
+  /**
+   * Runs a user-scoped Communication operation on behalf of the signed-in user.
+   *
+   * The identity comes from the BROWSER'S OWN SESSION: this fetch uses
+   * `credentials: 'include'`, so the session cookie authenticates the request and
+   * the server resolves the real user — the same mechanism the app's own settings
+   * panels use to reach an app route. The consequence that matters here is that
+   * no token is ever handed to the worker, written to storage or logged, and the
+   * worker cannot name an identity because it never supplies one.
+   *
+   * The route is FIXED and the action is checked against an allow-list, so a
+   * component can only reach the specific Communication operations it is meant to
+   * have — there is no generic URL proxy and no free GraphQL. The server still
+   * applies the real record/field authorization on top.
+   */
+  const callCommunicationRoute: FrontComponentHostCommunicationApi['callCommunicationRoute'] =
+    async ({ action, payload }) => {
+      if (!isAllowedCommunicationAction(action)) {
+        return { success: false, errorCode: 'INVALID_INPUT' };
+      }
+
+      const response = await fetch(
+        `${REACT_APP_SERVER_BASE_URL}/s/communication/template-studio`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ...(payload ?? {}), action }),
+        },
+      );
+
+      const text = await response.text();
+
+      try {
+        return text.length > 0 ? JSON.parse(text) : {};
+      } catch {
+        return { success: false, errorCode: 'UNEXPECTED' };
+      }
+    };
+
   const frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi =
     {
       navigate,
@@ -599,6 +641,7 @@ export const useFrontComponentExecutionContext = ({
       storageSet,
       storageDelete,
       storageClear,
+      callCommunicationRoute,
     };
 
   return {
