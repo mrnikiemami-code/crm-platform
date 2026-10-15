@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import nativeNavItem from 'src/navigation-menu-items/sms-templates.navigation-menu-item';
 import pageLayout from 'src/page-layouts/message-template.page-layout';
 import {
-  MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATE_VARIABLE_GUIDE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
   MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER,
@@ -90,28 +89,33 @@ describe('template management sidebar entry (native flow)', () => {
 });
 
 describe('message-template record page (W17)', () => {
-  it('still renders the variable guide on its own record page', () => {
+  it('renders the template editor as the record page, with no raw field list', () => {
     expect(pageLayout.success).toBe(true);
     expect(recordPageConfig.type).toBe('RECORD_PAGE');
     expect(recordPageConfig.objectUniversalIdentifier).toBe(
       MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
     );
 
-    const bodyTab = recordPageConfig.tabs?.find(
-      (tab) => tab.title === 'متن پیام',
+    // The editor owns the whole flow, so the page declares exactly one tab.
+    expect(recordPageConfig.tabs).toHaveLength(1);
+
+    const editorTab = recordPageConfig.tabs?.find(
+      (tab) => tab.title === 'ویرایشگر',
     );
+    const widget = editorTab?.widgets?.[0];
 
-    expect(bodyTab?.widgets?.[0].configuration).toMatchObject({
-      configurationType: 'FIELD',
-      fieldMetadataId: MESSAGE_TEMPLATE_BODY_FIELD_UNIVERSAL_IDENTIFIER,
-    });
-
-    const variablesTab = recordPageConfig.tabs?.find(
-      (tab) => tab.title === 'متغیرها',
-    );
-
+    expect(widget?.type).toBe('FRONT_COMPONENT');
     expect(
-      variablesTab?.widgets?.[0].configuration.frontComponentUniversalIdentifier,
+      widget?.configuration.frontComponentUniversalIdentifier,
     ).toBe(MESSAGE_TEMPLATE_VARIABLE_GUIDE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER);
+
+    // A `FIELDS` widget renders every field, which leaked the technical
+    // identifiers, the relation API name and the engine `name` field into the
+    // normal form. It must not come back.
+    for (const tab of recordPageConfig.tabs ?? []) {
+      for (const declaredWidget of tab.widgets ?? []) {
+        expect(declaredWidget.type).not.toBe('FIELDS');
+      }
+    }
   });
 });

@@ -92,6 +92,7 @@ const fail = (errorCode: string) => ({ success: false as const, errorCode });
  */
 const USER_SCOPED_ACTIONS = new Set([
   'list',
+  'catalog',
   'search-people',
   'eligible-sources',
   'source-records',
@@ -130,6 +131,36 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
   }
 
   const client = new CoreApiClient();
+
+  if (action === 'catalog') {
+    // The authorized variable catalog for the editor's variable list.
+    //
+    // It is built server-side from the workspace's own metadata and the caller's
+    // authorized read — never from anything the client sends. A failure is
+    // reported as an explicit status so the editor can offer a retry instead of
+    // showing an empty list as if the workspace had no fields.
+    try {
+      const { catalog, isAvailable, stage } =
+        await buildAuthorizedTemplateCatalog({
+          metadataClient: new MetadataApiClient(),
+          client,
+        });
+
+      return {
+        success: true as const,
+        catalogStatus: isAvailable
+          ? TEMPLATE_CATALOG_STATUS.READY
+          : TEMPLATE_CATALOG_STATUS.UNAVAILABLE,
+        catalogStage: stage,
+        variables: catalog.variables.map((variable) => ({
+          token: `@${variable.token}`,
+          label: variable.label,
+        })),
+      };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
+    }
+  }
 
   if (action === 'search-people') {
     try {
@@ -271,6 +302,9 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       const outcome = await saveMessageTemplateConditionally({
         client,
         id: templateId,
+        // A title, when provided, is written with the body so the list shows the
+        // name the user typed. The route rejects an empty one before this point.
+        title: readTrimmed(body.title).length > 0 ? readTrimmed(body.title) : null,
         body: messageBody,
         sourceObjectUid: resolved.objectUid,
         recipientRelationUid: resolved.relationUid,

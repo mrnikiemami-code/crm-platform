@@ -48,6 +48,7 @@ type EligibleSource = {
 };
 
 type TemplateSnapshot = {
+  title: string;
   body: string;
   sourceObjectUid: string;
   recipientRelationUid: string;
@@ -190,16 +191,28 @@ const TemplateEditor = () => {
 
   const [state, setState] = useState<EditorState>({ kind: 'LOADING' });
   const [variables, setVariables] = useState<VariableItem[]>([]);
+  // The catalog has its OWN state so the editor can distinguish "still loading",
+  // "this workspace really has no fields", and "loading failed — try again".
+  // Collapsing a failure into an empty list would hide an access problem as if
+  // there were simply nothing to insert.
+  const [catalogState, setCatalogState] = useState<
+    'LOADING' | 'READY' | 'EMPTY' | 'UNAVAILABLE' | 'ERROR'
+  >('LOADING');
   const [sources, setSources] = useState<EligibleSource[]>([]);
   const [snapshot, setSnapshot] = useState<TemplateSnapshot | null>(null);
 
+  const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [sourceObjectUid, setSourceObjectUid] = useState('');
   const [recipientRelationUid, setRecipientRelationUid] = useState('');
+  // Guards against a slow response overwriting a newer choice: every catalog and
+  // sample request carries a sequence number and only the newest may publish.
+  const catalogRequestIdRef = useRef(0);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
 
   const [sampleRecords, setSampleRecords] = useState<
     { id: string; label: string }[]
@@ -258,6 +271,49 @@ const TemplateEditor = () => {
     [],
   );
 
+  /**
+   * Loads the authorized variable catalog for the editor's variable list.
+   *
+   * It is a separate callback so the editor can RETRY it on its own after a
+   * failure, without reloading the whole record. The sequence number makes a
+   * slow earlier response unable to overwrite a newer one.
+   */
+  const loadCatalog = useCallback(async () => {
+    catalogRequestIdRef.current += 1;
+    const requestId = catalogRequestIdRef.current;
+
+    setCatalogState('LOADING');
+
+    const payload = await callGuarded({ action: 'catalog' });
+
+    if (requestId !== catalogRequestIdRef.current) {
+      return;
+    }
+
+    if (payload === null) {
+      return;
+    }
+
+    if (payload.success !== true) {
+      setCatalogState('ERROR');
+      return;
+    }
+
+    if (readString(payload.catalogStatus) === 'UNAVAILABLE') {
+      setCatalogState('UNAVAILABLE');
+      return;
+    }
+
+    const parsed = Array.isArray(payload.variables)
+      ? payload.variables
+          .map(toVariable)
+          .filter((variable): variable is VariableItem => variable !== null)
+      : [];
+
+    setVariables(parsed);
+    setCatalogState(parsed.length === 0 ? 'EMPTY' : 'READY');
+  }, [callGuarded]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -280,6 +336,7 @@ const TemplateEditor = () => {
         }
 
         setSnapshot({
+          title: readString(loaded.title),
           body: readString(loaded.body),
           // An empty stored source means the legacy Person meaning; the server
           // resolves it, and the editor simply echoes the stored values.
@@ -287,6 +344,7 @@ const TemplateEditor = () => {
           recipientRelationUid: readString(loaded.recipientRelationUid),
           updatedAt: readString(loaded.updatedAt),
         });
+        setTitle(readString(loaded.title));
         setBody(readString(loaded.body));
 
         const sourcesResult = await callGuarded({ action: 'eligible-sources' });
@@ -318,26 +376,13 @@ const TemplateEditor = () => {
         );
         setRecipientRelationUid(readString(loaded.recipientRelationUid));
 
-        const variablesResult = await callAppRoute(
-          '/communication/message-templates',
-          'POST',
-        );
+        // The catalog is loaded for the editor as soon as the record is known,
+        // so opening an existing template shows its variables WITHOUT the user
+        // having to re-select the source.
+        await loadCatalog();
 
         if (cancelled) {
           return;
-        }
-
-        const variablesPayload = asRecord(variablesResult.data);
-
-        if (
-          variablesPayload?.success === true &&
-          Array.isArray(variablesPayload.variables)
-        ) {
-          setVariables(
-            variablesPayload.variables
-              .map(toVariable)
-              .filter((variable): variable is VariableItem => variable !== null),
-          );
         }
 
         setState({ kind: 'READY' });
@@ -353,7 +398,7 @@ const TemplateEditor = () => {
     return () => {
       cancelled = true;
     };
-  }, [templateId, callGuarded]);
+  }, [templateId, callGuarded, loadCatalog]);
 
   const selectedSource = sources.find(
     (entry) => entry.objectUid === sourceObjectUid,
@@ -404,7 +449,8 @@ const TemplateEditor = () => {
 
   const isDirty =
     snapshot !== null &&
-    (body !== snapshot.body ||
+    (title !== snapshot.title ||
+      body !== snapshot.body ||
       sourceObjectUid !== snapshot.sourceObjectUid ||
       recipientRelationUid !== snapshot.recipientRelationUid);
 
@@ -426,6 +472,35 @@ const TemplateEditor = () => {
     setSavedNotice(false);
   };
 
+  /**
+   * Cancel never silently discards typed work: with unsaved changes it asks
+   * first, and only then restores the last SAVED values.
+   */
+  const handleCancel = () => {
+    if (snapshot === null) {
+      return;
+    }
+
+    if (isDirty) {
+      setIsConfirmingDiscard(true);
+      return;
+    }
+  };
+
+  const handleDiscardConfirmed = () => {
+    if (snapshot === null) {
+      return;
+    }
+
+    setTitle(snapshot.title);
+    setBody(snapshot.body);
+    setSourceObjectUid(snapshot.sourceObjectUid);
+    setRecipientRelationUid(snapshot.recipientRelationUid);
+    setIsConfirmingDiscard(false);
+    setSaveError(null);
+    setSavedNotice(false);
+  };
+
   const handleSave = async () => {
     if (snapshot === null || isSaving) {
       return;
@@ -439,6 +514,7 @@ const TemplateEditor = () => {
       const payload = await callGuarded({
         action: 'save-template',
         templateId,
+        title,
         body,
         sourceObjectUid,
         recipientRelationUid,
@@ -468,6 +544,7 @@ const TemplateEditor = () => {
 
       if (updated !== null) {
         setSnapshot({
+          title: readString(updated.title),
           body: readString(updated.body),
           sourceObjectUid: readString(updated.sourceObjectUid),
           recipientRelationUid: readString(updated.recipientRelationUid),
@@ -561,6 +638,25 @@ const TemplateEditor = () => {
 
   return (
     <div style={{ ...styles.container, direction }}>
+      {/*
+        Title first, then the single source control, then the body, variables,
+        sample person, preview and the actions — one shared flow for a new and an
+        existing template. Technical identifiers are never rendered here.
+      */}
+      <div style={styles.field}>
+        <span style={styles.label}>{t('Title')}</span>
+        <input
+          type="text"
+          aria-label={t('Title')}
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            setSavedNotice(false);
+          }}
+          style={styles.control}
+        />
+      </div>
+
       <div style={styles.field} data-editor-source>
         <span style={styles.label}>{t('Source entity')}</span>
         <select
@@ -584,6 +680,10 @@ const TemplateEditor = () => {
                 ? nextSource.relations[0].relationUid
                 : '',
             );
+
+            // The catalog belongs to the selected source, so it is refreshed and
+            // any stale sample/preview is cleared rather than left behind.
+            void loadCatalog();
           }}
           style={styles.control}
         >
@@ -641,26 +741,79 @@ const TemplateEditor = () => {
 
       <div style={styles.field} data-editor-variables>
         <span style={styles.label}>{t('Usable variables')}</span>
-        <ul style={styles.recipientList}>
-          {variables.map((variable) => (
-            <li key={variable.token} style={styles.recipientRow}>
-              <div style={styles.recipientHeader}>
-                {/* ASCII token, forced LTR so it never reorders in RTL text. */}
-                <span style={{ ...styles.recipientName, direction: 'ltr' }}>
-                  {variable.token}
-                </span>
-                <button
-                  type="button"
-                  style={styles.secondaryButton}
-                  onClick={() => handleInsertVariable(variable.token)}
-                >
-                  {t('Add')}
-                </button>
-              </div>
-              <span style={styles.muted}>{t(variable.label)}</span>
-            </li>
-          ))}
-        </ul>
+
+        {catalogState === 'LOADING' && (
+          <p style={styles.muted} data-editor-catalog="loading">
+            {t('Loading variables…')}
+          </p>
+        )}
+
+        {/*
+          A failure is shown AS a failure with a retry. Reporting it as an empty
+          list would hide an access problem as though the workspace simply had no
+          fields to insert.
+        */}
+        {catalogState === 'ERROR' && (
+          <div style={styles.actions} data-editor-catalog="error">
+            <p style={styles.error}>{t('Unable to load variables.')}</p>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => void loadCatalog()}
+            >
+              {t('Retry')}
+            </button>
+          </div>
+        )}
+
+        {catalogState === 'UNAVAILABLE' && (
+          <div style={styles.actions} data-editor-catalog="unavailable">
+            <p style={styles.warning}>
+              {t(
+                'Authorized variables are unavailable right now. They are not the same as "no variables".',
+              )}
+            </p>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => void loadCatalog()}
+            >
+              {t('Retry')}
+            </button>
+          </div>
+        )}
+
+        {catalogState === 'EMPTY' && (
+          <p style={styles.muted} data-editor-catalog="empty">
+            {t('No usable variables were found.')}
+          </p>
+        )}
+
+        {catalogState === 'READY' && (
+          <ul style={styles.recipientList}>
+            {variables.map((variable) => (
+              <li key={variable.token} style={styles.recipientRow}>
+                <div style={styles.recipientHeader}>
+                  {/* ASCII token, forced LTR so it never reorders in RTL text. */}
+                  <span style={{ ...styles.recipientName, direction: 'ltr' }}>
+                    {variable.token}
+                  </span>
+                  <button
+                    type="button"
+                    style={styles.secondaryButton}
+                    onClick={() => handleInsertVariable(variable.token)}
+                  >
+                    {/* The label states what actually happens: this platform's
+                        remote-element polyfill exposes no selection API, so the
+                        token is appended. */}
+                    {t('Add to end of text')}
+                  </button>
+                </div>
+                <span style={styles.muted}>{t(variable.label)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div style={styles.actions}>
@@ -671,6 +824,13 @@ const TemplateEditor = () => {
           onClick={() => void handleSave()}
         >
           {isSaving ? t('Saving…') : t('Save')}
+        </button>
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          onClick={handleCancel}
+        >
+          {t('Cancel')}
         </button>
         {isDirty && (
           <span style={styles.muted} data-editor-dirty>
@@ -683,6 +843,30 @@ const TemplateEditor = () => {
           </span>
         )}
       </div>
+
+      {isConfirmingDiscard && (
+        <div style={styles.warning} data-editor-discard>
+          <p style={styles.muted}>
+            {t('This template has unsaved changes.')}
+          </p>
+          <div style={styles.actions}>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() => setIsConfirmingDiscard(false)}
+            >
+              {t('Keep editing')}
+            </button>
+            <button
+              type="button"
+              style={styles.primaryButton}
+              onClick={handleDiscardConfirmed}
+            >
+              {t('Discard changes')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {saveError !== null && <p style={styles.error}>{saveError}</p>}
 

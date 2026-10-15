@@ -199,6 +199,7 @@ export const updateMessageTemplateSource = async ({
 export const saveMessageTemplateConditionally = async ({
   client,
   id,
+  title,
   body,
   sourceObjectUid,
   recipientRelationUid,
@@ -207,6 +208,8 @@ export const saveMessageTemplateConditionally = async ({
 }: {
   client: MutationClient;
   id: string;
+  /** Written only when non-empty, so a title-less caller cannot blank it. */
+  title: string | null;
   body: string;
   sourceObjectUid: string;
   recipientRelationUid: string;
@@ -225,6 +228,7 @@ export const saveMessageTemplateConditionally = async ({
     updateMessageTemplates: {
       __args: {
         data: {
+          ...(title === null || title.length === 0 ? {} : { title }),
           body,
           sourceObjectUid,
           recipientRelationUid,

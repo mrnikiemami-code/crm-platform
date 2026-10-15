@@ -12,6 +12,7 @@
 export const ALLOWED_COMMUNICATION_ACTIONS = [
   'read-template',
   'save-template',
+  'catalog',
   'eligible-sources',
   'source-records',
   'search-people',
