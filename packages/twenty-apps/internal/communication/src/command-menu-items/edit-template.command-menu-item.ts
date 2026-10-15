@@ -18,10 +18,21 @@ import {
 // only ever be offered for this app's own object, and it only navigates.
 export default defineCommandMenuItem({
   universalIdentifier: EDIT_TEMPLATE_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER,
-  // Persian copy through the app catalog (`commandMenuItem.label`/`shortLabel`).
-  label: 'Edit template',
-  shortLabel: 'Edit template',
-  isPinned: false,
+  // The label is Persian IN THE MANIFEST on purpose.
+  //
+  // Why not the app catalog: the platform's `CommandMenuItemRenderer` passes the
+  // label straight through to the rendered text with no translation call — unlike
+  // view names, object labels and this app's page-layout titles, which ARE
+  // resolved through the catalog. An app command menu item's label is therefore
+  // shown verbatim, so a catalog entry cannot translate it. Persian is declared
+  // here, the same way the «موجودیت منبع» field label and the editor tab titles
+  // already are.
+  label: 'ویرایش الگو',
+  shortLabel: 'ویرایش الگو',
+  // PINNED so it renders as a visible button for the selected records instead of
+  // hiding behind the command palette. Ctrl+K is then a shortcut, not the only
+  // way to reach the editor.
+  isPinned: true,
   availabilityType: 'RECORD_SELECTION',
   availabilityObjectUniversalIdentifier: MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
   frontComponentUniversalIdentifier:
