@@ -1,6 +1,18 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 — STAGE 1 PARTIAL. The renderer build dependency is RESOLVED (the real build command was found and run: `vite build` emits the JS bundles, then `tsgo -p tsconfig.lib.json --declaration --emitDeclarationOnly` plus `tsc-alias` emit the types; `twenty-front` typechecks against it). The user bridge is therefore LIVE: the record-page editor loads the authorized catalog and the sample people, inserts a variable once, resolves a preview and saves through the conditional CAS — all as the signed-in user, with no AUTH_REQUIRED. The raw field list is gone (no technical identifiers, one source control). App 0.1.55, host unchanged. NOT accepted: UI creation from the sidebar was not exercised, the visible Edit action lives in the command menu (it works, but its label is untranslated and the platform renders no per-row button), a second edit+save cycle and the CONFLICT path were not re-verified in the browser. See the Stage 1 section below for the per-criterion table. No user template was touched; the run's fixture was soft-deleted by exact id.
+Last updated: 2026-10-15 — STAGE 1 COMPLETE (0.1.57). All five acceptance items now pass on
+main/4D: the record was created through the real UI from the sidebar, the create panel offers
+only «عنوان»/«متن», a second edit→save→reload cycle was executed *after* a reload, and a genuine
+CONFLICT was reproduced in two tabs with the second tab's typed text preserved and the first
+tab's value intact. The Edit action is now a visible Persian «ویرایش الگو» header button on the
+record page — its English rendering was traced to `CommandMenuItemRenderer`, which renders an
+app command's label with no translation call, so the copy is declared in the manifest. The
+renderer build command is recorded in full and the earlier "broken build / physical copy"
+diagnosis is explicitly superseded. Two residual limitations are reported rather than glossed:
+the engine's `name` field cannot be hidden from the manifest (the SDK types reject
+`isLabelSyncedWithName`), and the row-selection command bar could not be confirmed by this
+automation's synthetic clicks. App 0.1.56 → 0.1.57, host unchanged. No user template was
+touched; the run's UI-created fixture was soft-deleted by exact id.
 
 ## Purpose
 
@@ -73,6 +85,116 @@ The full execution/build/acceptance duration counts; estimates are not acceptanc
 The following reports are retained without rewriting their contents.
 They are not the active plan, are not proof of current live behavior, and may contain
 superseded conclusions. The checkpoint and linked plan above control subsequent work.
+
+## CRM-TEMPLATES-PERSON-FLOW-01 — Stage 1 COMPLETE: UI creation, a discoverable Persian Edit, a second cycle and a real CONFLICT (0.1.56/0.1.57)
+
+Baseline `3ab6be21688f929384e30956be62023f87c00766` → tip `541086b7ef`; apps **0.1.56** then
+**0.1.57** on main/4D; host unchanged (no host restart needed). Wall-clock 05:52–06:15 UTC.
+Two commits, each with its own checks: `5150bfebf7` (label + pin) and `541086b7ef` (field hiding).
+
+### 1. Why «Edit template» stayed English, and where the action now lives
+
+The cause is not the catalog. `CommandMenuItemRenderer` passes an app command's label straight
+into the rendered text (`interpolateCommandMenuItemFields(...)` → `text={label}`) with **no
+translation call**. View names, object labels and this app's page-layout titles *are* resolved
+through the app catalog — which is exactly why «همهٔ الگوها», «موجودیت منبع» and the editor tab
+titles do translate while this one did not. No `commandMenuItem.label` entry can ever translate
+it, so the Persian copy is **declared in the manifest** (`label`/`shortLabel` = «ویرایش الگو»),
+the same way this app's field labels and tab titles already are.
+
+`isPinned: true` was set in the same change so the platform renders the command as a button for
+the selected records instead of leaving it inside the palette.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Header action is Persian and visible | **PASS** | the record page header renders a native button «ویرایش الگو» (a11y ref `e21`/`e51`) with no Ctrl+K |
+| Ctrl+K is not the only path | **PASS** | the same command opens the editor from the header button |
+| Row-selection action bar | **NOT CONFIRMED interactively** | `isPinned: true` is declared, but this automation's synthetic clicks miss the table's custom checkbox and its coordinate mapping is unreliable at that row density. A human click on a row checkbox is the one-second confirmation. The header button satisfies the stated fallback. |
+
+### 2. Creation genuinely from the UI — and the create panel it exposed
+
+The create panel had been offering **all nine fields**: this model's own identifiers
+(`sourceObjectUid`, `recipientRelationUid`), the readable hint fields, the channel selector, a
+**second** control labelled «موجودیت منبع» (the legacy SELECT beside the editor's own) and the
+engine's `name`. Each of the five non-business fields now declares `isUIEditable: false`, which
+removes it from the create/edit form **without touching stored data or the columns that read
+it** — the editor still writes all of them, because that is a data operation, not a UI one.
+`targetObject` is hidden too because the editor owns the source model and its `defaultValue`
+still marks new rows as `PERSON`.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Create panel shows only business data | **PASS** | «الگوی پیام جدید» now offers only «عنوان» and «متن» (+ the engine `name`); no ids, no duplicate source label, no channel |
+| Fixture created through the UI, not the API | **PASS** | sidebar → «الگوی پیام جدید» → title+body → «ایجاد» → `a0b613ed-fa2c-4b8f-a6df-72f0b539c0bb` |
+| Flow reaches the specialised editor | **PASS** | the created record opens the inline editor, not a raw id form |
+| Source → variable → sample → preview → save | **PASS** | source «افراد»; one insertion of `@person.firstName`; sample «Ivan Zhao»; preview rendered «…است.Ivan»; «ذخیره شد» |
+| Table and reload | **PASS** | list shows the row; after reload title, body, source and the 10-variable catalog all restored, 12 samples, no error and no AUTH_REQUIRED |
+
+**Attempted and reverted, so it is not retried:** the engine's own `name` field cannot be
+suppressed from the manifest. `isLabelSyncedWithName` is rejected by the SDK's own types on
+both `ObjectConfig` and a `TEXT` field. It therefore remains in the create form and is reported
+as a residual limitation rather than worked around by writing metadata out of band.
+
+### 3. Second edit → save → reload cycle, executed after the reload
+
+| Step | Result | Evidence |
+| --- | --- | --- |
+| Editor rehydrates after reload | **PASS** | title `UI-PERSON-FLOW-01`, body with the token, source «افراد», 10 variables, 12 samples |
+| Edit after the reload (not just opening) | **PASS** | body replaced with «سلام @person.firstName عزیز، این متن در چرخهٔ دوم ویرایش شد.»; the unsaved-changes guard appeared |
+| Save | **PASS** | «ذخیره شد» and the dirty indicator cleared |
+| Reload proves persistence | **PASS** | the new body is what the editor loads after a full reload |
+
+### 4. A real CONFLICT, with the typed text preserved
+
+The same record was opened in a second tab. Tab B typed «نسخهٔ تب B — ذخیرهنشده و باید حفظ
+شود.» and did **not** save; tab A then saved «نسخهٔ تب A — برندهٔ ذخیرهٔ اول.», advancing
+`updatedAt`; tab B then attempted its stale save.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Stale save is rejected | **PASS** | the editor shows «این الگو پس از بارگذاری شما تغییر کرده است. متن شما حفظ شده است؛ صفحه را تازه کنید.» — the server's `outcome.kind === 'CONFLICT'` branch in `logic-functions/template-studio.ts`, returning `errorCode: CONFLICT` / `isConflict: true` |
+| The second tab's typed text survives | **PASS** | the textarea still holds «نسخهٔ تب B …» after the failed save, and the unsaved-changes guard is still shown |
+| The first tab's value is not overwritten | **PASS** | DB row body is «نسخهٔ تب A — برندهٔ ذخیرهٔ اول.» with `updatedAt` = 2026-10-15 06:07:53 UTC |
+
+No workaround was needed; the first attempt reproduced the conflict correctly.
+
+### 5. Renderer build — the standard command, and the old diagnosis explicitly superseded
+
+**SUPERSEDED: "the build is broken", "`vite build` emits no `dist`", "`node_modules` holds a
+physical copy and the workspace `dist` is empty", "the remaining work is a build-plumbing
+step".** All of that was wrong and was already corrected in the Stage 1 report below; it is
+restated here so no future session acts on it. There is no physical copy and nothing is broken:
+`node_modules/twenty-front-component-renderer` is a **junction** to the workspace package, and
+`vite build` was *succeeding silently* because the config sets `logLevel: 'warn'`.
+
+The complete standard build, from `packages/twenty-front-component-renderer/project.json`:
+
+```bash
+# 1. the JS bundles (.mjs / .cjs)
+npx rimraf dist && npx vite build -c vite.config.ts
+
+# 2. the type declarations, which vite does NOT emit
+tsgo -p tsconfig.lib.json --declaration --emitDeclarationOnly \
+     --noEmit false --outDir dist --rootDir src
+
+# 3. rewrite the `@/` aliases into relative paths
+npx tsc-alias -p tsconfig.lib.json --outDir dist
+```
+
+Step 2 is required because `package.json` points `types` at `dist/index.d.ts`, and step 3
+because the emitted declarations otherwise keep `@/` specifiers that consumers cannot resolve.
+**A green build today does not mean a rebuild is never needed again:** any change to
+`packages/twenty-front-component-renderer/src` — including the host bridge — must be followed by
+all three steps before `twenty-front` sees it.
+
+### Data
+
+Only this run's fixture, `a0b613ed-fa2c-4b8f-a6df-72f0b539c0bb`, was created, and it was
+soft-deleted by its exact id at cleanup (`deletedAt` set; the row and its values remain). No hard
+delete, no predicate-based cleanup, and no user template was touched — the three live rows
+(`UI-PERSON-FLOW-01`, «تست ارسال گروهی», `W15-MAIN Greeting`) and the pre-existing
+soft-deleted ones are unchanged. Seven provider variables intact; W7 disabled; no real SMS;
+APPLE/app2 untouched.
 
 ## CRM-TEMPLATES-PERSON-FLOW-01 — Stage 1 partial, bridge now LIVE (0.1.54/0.1.55)
 
@@ -165,6 +287,13 @@ URL, a user id, a role or a workspace, so there is no generic proxy and no free 
 access, and the `AUTH_REQUIRED` guard is unchanged.
 
 ### Why it is NOT live — the exact remaining step
+
+> **SUPERSEDED (2026-10-15).** The diagnosis in this subsection is wrong and no longer describes
+> the system. There is no physical copy in `node_modules` (it is a junction), the workspace
+> `dist` was not empty, and `vite build` was not failing — it was *succeeding quietly* because
+> the renderer config sets `logLevel: 'warn'`, and it simply does not emit the `.d.ts` files.
+> The real missing step was `tsgo … --declaration --emitDeclarationOnly` plus `tsc-alias`; the
+> full standard command is recorded in the Stage 1 section above. Kept only as provenance.
 
 `twenty-front-component-renderer` resolves through its built `dist` (`package.json` `types:
 dist/index.d.ts`), `node_modules` holds a physical copy, and the workspace `dist` is empty. The
