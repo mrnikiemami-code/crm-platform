@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 IMPLEMENT_USER_BRIDGE_AND_FINISH_EDITOR — the user-scoped bridge is IMPLEMENTED IN SOURCE across the host (renderer type + noop + worker mapping), twenty-front (fixed route, action allow-list, session-cookie identity) and the app, and all three typecheck; but it is NOT LIVE because the renderer could not be rebuilt in this environment, so the bridge key never reaches the worker global and the editor stays blocked (the app safely falls back to the fail-closed route). No host change was deployed, so the running host is not broken. Item 4 (@source.*) is NOT done. Communication 0.1.53 is installed on main/4D; the app suite is 697/697; no user template was touched and the only fixture from this run was soft-deleted by exact id.)
+Last updated: 2026-10-15 — USER-FLOW PLAN RESET. Person New/Edit/field selection/save/preview is NOT ACCEPTED. The user screenshots override earlier isolated UX acceptance claims. The active plan is docs/plans/communication-template-studio-three-task-plan.md; start with Stage 1 only. Latest reported app: 0.1.53; user bridge is source-only/not live pending renderer build. This documentation update did not deploy or test runtime code.
 
 ## Purpose
 
@@ -16,42 +16,63 @@ Local source path used during development: `D:\CrmSource\twenty`
 
 # CURRENT CHECKPOINT
 
-Last rewritten: 2026-10-14 (post-W19-A architect review). This is the authoritative checkpoint. Everything under the
-`Historical checkpoints (superseded)` heading is retained for provenance only and must **not** be
-read as current state.
+Last rewritten: 2026-10-15 after the user's screenshots and planning review.
+This checkpoint and the linked active plan override all older execution instructions below.
 
-## ACTIVE THREE-TASK CLOSURE PLAN — read before issuing the next task
+## ACTIVE PLAN — user-flow completion
 
-The durable architecture and execution plan is
-[`docs/plans/communication-template-studio-three-task-plan.md`](docs/plans/communication-template-studio-three-task-plan.md).
-It is part of the Recovery source of truth, not optional working notes. A recovered
-agent must read it before changing Communication templates or send behavior.
+Read [the active three-stage plan](docs/plans/communication-template-studio-three-task-plan.md)
+before another Communication change. The file has been rewritten; the old modal plan and
+the claim that repeating task 02 preserves a three-task delivery promise are superseded.
 
-The plan has exactly three bounded tasks, executed one at a time:
+| Stage | Scope | Current status |
+| --- | --- | --- |
+| 1 | Complete Person New/Edit, permitted fields, insertion, preview, save/reload | **ACTIVE — NOT ACCEPTED** |
+| 2 | Related sources and source-record variables in that same editor | NOT ACCEPTED; partial underlying code exists |
+| 3 | Existing single/bulk send integration and release acceptance | NOT ACCEPTED |
 
-1. **W19-B1 — Persian UX and runtime stability.** Fix the English title, the real
-   `ot.focus is not a function` front-component crash, unexpected modal closure,
-   failed drag/focus behavior, unreliable Person selection, missing bounded scroll
-   and the unsaleable visual hierarchy. Package and deploy on main/4D for user review.
-2. **W19-B2 — dynamic eligible source model and preview.** Person plus only objects
-   whose selected record has a readable singular relation to Person; stable metadata
-   identifiers, source + recipient tokens, sample source-record preview and strict
-   server revalidation. No send in this task.
-3. **W19-B3 — generic command and release closure.** Generic record-selection command,
-   server-side exact-context template filtering, unsupported-object message, existing
-   sequential send/persist path, main/4D acceptance and release-candidate freeze.
+### Immediate defects confirmed by the user screenshots (2026-10-15)
 
-**Critical compatibility rule:** selecting Person records returns only Person-source
-templates. A template sourced from Sales Follow-up (or any related object) must never
-load in Person context because one Person may have several related records and the
-source value would be ambiguous. Incompatible objects/templates are excluded on the
-server before the browser receives them; the client never guesses a relation or a
-source record.
+- No visible/discoverable Edit action in the shown list.
+- The New panel exposes raw technical ids/relation fields and duplicate source labels.
+- Selecting Person does not produce the required visible variable-field workflow.
+- The source-only bridge/build work has not made the editor usable in the browser.
+Earlier unit/API checks and isolated record-edit reports do not accept this user experience.
 
-**Environment rule remains permanent:** only main/4D may be accessed, backed up,
-deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
-NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
-disabled and send no real SMS without a new explicit authorization.
+### Next action — Stage 1, not another infrastructure-only or cosmetic delivery
+
+Finish the renderer/bridge build as an internal dependency, then deliver the complete flow:
+sidebar -> New -> Person -> permitted field catalog -> insert -> sample -> preview -> save
+-> list -> reload -> visible Edit -> change -> save -> reload.
+Use native table/record/side-panel mechanisms and supported extension points.
+If a record id is necessary before inline editing, use minimal native creation and immediately
+open the editor. Do not leave the raw metadata form as the final user journey.
+Hide technical fields from normal create/edit/table layouts without deleting data.
+Keep the existing messageTemplate store and inline specialized editor; no bespoke modal.
+
+Verify real delegated data/field permissions, not just a session cookie/userWorkspaceId.
+The limited host/renderer/bridge change is already authorized; app-only calls stay fail-closed.
+Do not expand related-source UI or sending before this Person flow passes in the browser.
+
+### Provenance and safety
+
+Latest retrieved execution checkpoint: bridge implementation `0bd83a4350`,
+documentation `9d4f0dc01e`, reported installed app 0.1.53. Reconcile actual versions before
+implementation; this plan edit is documentation only, not independent runtime verification.
+Commit `609f2eb6812d2fcff858bec6c950e5a9e431c455` rewrote the active plan.
+
+Only main/4D is authorized; APPLE/app2 NOT ACCESSED; preserve seven provider variables;
+W7 disabled; no real SMS. No user template may be changed, including trash.
+Only current-execution fixtures tracked by exact ids may be soft-deleted.
+No hard delete and no cleanup by deletedAt/name/general predicate.
+Build from known clean source, run related checks, and record browser evidence.
+The full execution/build/acceptance duration counts; estimates are not acceptance gates.
+
+## Historical execution reports below — evidence/provenance only
+
+The following reports are retained without rewriting their contents.
+They are not the active plan, are not proof of current live behavior, and may contain
+superseded conclusions. The checkpoint and linked plan above control subsequent work.
 
 ## CRM-NATIVE-TEMPLATES-02 IMPLEMENT_USER_BRIDGE — bridge written and typechecked; blocked on the renderer build
 
