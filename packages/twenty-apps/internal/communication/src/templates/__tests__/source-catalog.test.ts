@@ -182,6 +182,77 @@ describe('the catalog follows the source, and never falls back to Person', () =>
   });
 });
 
+describe('composite fields are selected by their sub-fields', () => {
+  it('asks for a currency composite by amountMicros, not `true`', async () => {
+    // Asking for a COMPOSITE field as `true` returns the KEY with a NULL value,
+    // so the token resolves to nothing while looking authorized. Found live via
+    // `@source.amount` on an Opportunity.
+    const seen: Record<string, unknown>[] = [];
+
+    const query = async (payload: Record<string, unknown>) => {
+      if ('opportunity' in payload) {
+        seen.push(payload.opportunity as Record<string, unknown>);
+        return {
+          opportunity: {
+            name: 'Platform Migration',
+            // Only a real sub-selection yields the object.
+            amount: { amountMicros: 60_000_000_000, currencyCode: 'USD' },
+          },
+        };
+      }
+
+      return { person: { id: 'p1', name: { firstName: 'Reza', lastName: 'Beta' } } };
+    };
+
+    const resolved = await resolveTemplateValues({
+      client: { query } as never,
+      personId: 'p1',
+      sourceRecord: { objectName: 'opportunity', recordId: 'o2' },
+      catalog: buildFor('opportunity'),
+    });
+
+    expect(seen[0].amount).toEqual({
+      amountMicros: true,
+      currencyCode: true,
+    });
+    expect(resolved.values.get('source.amount')).toBe('60000');
+    expect(resolved.values.get('source.name')).toBe('Platform Migration');
+  });
+
+  it('asks for emails and links by their primary sub-field', async () => {
+    const seen: Record<string, unknown>[] = [];
+
+    const resolved = await resolveTemplateValues({
+      client: {
+        query: async (payload: Record<string, unknown>) => {
+          seen.push(payload.person as Record<string, unknown>);
+          return {
+            person: {
+              id: 'p1',
+              name: { firstName: 'Reza', lastName: 'Beta' },
+              emails: { primaryEmail: 'reza@example.com' },
+              linkedinLink: { primaryLinkUrl: 'https://in.example/reza' },
+            },
+          };
+        },
+      } as never,
+      personId: 'p1',
+      sourceRecord: null,
+      catalog: buildFor('person'),
+    });
+
+    expect(seen[0].emails).toEqual({ primaryEmail: true });
+    expect(seen[0].linkedinLink).toEqual({
+      primaryLinkUrl: true,
+      primaryLinkLabel: true,
+    });
+    expect(resolved.values.get('person.emails')).toBe('reza@example.com');
+    expect(resolved.values.get('person.linkedinLink')).toBe(
+      'https://in.example/reza',
+    );
+  });
+});
+
 describe('resolveTemplateValues reads @source.* from the source record', () => {
   it('resolves the source record and the recipient independently', async () => {
     // Two DIFFERENT opportunity records that point at the SAME Person: the source

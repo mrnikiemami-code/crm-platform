@@ -1,5 +1,6 @@
 import { type CoreApiClient } from 'twenty-client-sdk/core';
 
+import { buildTemplateFieldSelection } from 'src/templates/extract-template-value';
 import {
   buildTemplateVariableCatalog,
   type TemplateVariableCatalog,
@@ -68,9 +69,7 @@ export const mapWithBoundedConcurrency = async <Item, Result>({
 
 /** The selection for one definition's field. */
 const selectionFor = (definition: TemplateVariableDefinition): unknown =>
-  definition.kind === 'FULL_NAME'
-    ? { firstName: true, lastName: true }
-    : true;
+  buildTemplateFieldSelection(definition.kind);
 
 /** The dedupe key for a field: two definitions may share one metadata field. */
 export const templateFieldKey = (

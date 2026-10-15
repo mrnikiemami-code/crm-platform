@@ -1,6 +1,9 @@
 import { type CoreApiClient } from 'twenty-client-sdk/core';
 
-import { extractTemplateValue } from 'src/templates/extract-template-value';
+import {
+  buildTemplateFieldSelection,
+  extractTemplateValue,
+} from 'src/templates/extract-template-value';
 import {
   type TemplateValueMap,
   type TemplateVariableCatalog,
@@ -38,10 +41,11 @@ export const buildObjectSelection = (
   const selection: Record<string, unknown> = {};
 
   for (const definition of definitions) {
-    selection[definition.fieldName] =
-      definition.kind === 'FULL_NAME'
-        ? { firstName: true, lastName: true }
-        : true;
+    // Composite fields need their sub-fields named, or they come back as a null
+    // value with the key present — which would resolve the token to nothing.
+    selection[definition.fieldName] = buildTemplateFieldSelection(
+      definition.kind,
+    );
   }
 
   return selection;

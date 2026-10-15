@@ -6,6 +6,40 @@ import { type TemplateValueKind } from 'src/templates/template-variable-catalog'
 // explicitly allow. Anything unexpected yields `null`, which the engine reports
 // as an EMPTY_FIELD issue (and therefore blocks that recipient) rather than
 // substituting a meaningless value.
+
+/**
+ * The GraphQL sub-selection a kind's field needs to come back with a VALUE.
+ *
+ * A COMPOSITE field (`CURRENCY`, `LINKS`, `EMAILS`, `FULL_NAME`) is NOT a scalar:
+ * asking for it as `true` returns the KEY with a `null` value. That is a silent
+ * empty — the field looks authorized and readable, then resolves to nothing. So
+ * the selection has to name the sub-fields the extractors actually read.
+ *
+ * This is the SINGLE definition of those shapes, shared by the per-field probe
+ * and the value resolver, so what is proven readable and what is actually read
+ * cannot drift apart.
+ */
+export const buildTemplateFieldSelection = (
+  kind: TemplateValueKind,
+): unknown => {
+  switch (kind) {
+    case 'FULL_NAME':
+      return { firstName: true, lastName: true };
+
+    case 'CURRENCY':
+      return { amountMicros: true, currencyCode: true };
+
+    case 'LINKS':
+      return { primaryLinkUrl: true, primaryLinkLabel: true };
+
+    case 'EMAILS':
+      return { primaryEmail: true };
+
+    default:
+      return true;
+  }
+};
+
 const readNonEmptyString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 
