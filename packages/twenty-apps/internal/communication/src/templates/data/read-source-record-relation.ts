@@ -54,8 +54,7 @@ const resolveLabelShape = (source: {
 export const readRecordLabel = (
   node: Record<string, unknown>,
   labelFieldName: string | null,
-): string => {
-  if (labelFieldName === null) {
+): string => {  if (labelFieldName === null) {
     return UNTITLED_RECORD_LABEL;
   }
 
@@ -193,7 +192,11 @@ export const searchSourceRecords = async ({
   const nodeSelection =
     labelField === null
       ? { id: true }
-      : { id: true, [labelField]: true };
+      : labelShape === 'FULL_NAME'
+        ? // A FULL_NAME field is a COMPOSITE: selecting it without subfields
+          // returns nothing, which would render every Person as the fallback.
+          { id: true, [labelField]: { firstName: true, lastName: true } }
+        : { id: true, [labelField]: true };
 
   const result = await client.query({
     [source.objectNamePlural]: {
