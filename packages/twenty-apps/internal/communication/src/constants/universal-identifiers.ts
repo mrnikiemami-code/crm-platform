@@ -142,6 +142,14 @@ export const MESSAGE_TEMPLATE_UPDATED_AT_FIELD_UNIVERSAL_IDENTIFIER =
 // This replaces the PAGE_LAYOUT item that opened the bespoke studio. The
 // platform cannot change an existing navigation item's TYPE, so the studio item
 // is retired by dropping it from the manifest and this new item is added.
+// The row-selection command that opens the selected template in the app editor.
+// It gives the list an explicit, named Edit entry through the platform's own
+// command bar, because the native table has no per-row action button here.
+export const EDIT_TEMPLATE_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  '9c1d3e5f-7a2b-4c8d-9e10-3f5a7b9c1d20';
+export const EDIT_TEMPLATE_EDITOR_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'ad2e4f60-8b3c-4d9e-af21-4a6b8c0d2e31';
+
 export const MESSAGE_TEMPLATES_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'b7e2a4d0-9c31-4f58-8d26-4a1b7e5c9f03';
 

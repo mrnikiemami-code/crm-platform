@@ -65,11 +65,14 @@
     "Title": "عنوان"
   },
   "commandMenuItem.label": {
-    "Send SMS": "ارسال پیامک"
+    "Send SMS": "ارسال پیامک",
+    "Edit template": "ویرایش الگو"
   },
   "commandMenuItem.shortLabel": {
-    "Send SMS": "ارسال پیامک"
+    "Send SMS": "ارسال پیامک",
+    "Edit template": "ویرایش الگو"
   },
+  "Opening the template editor…": "در حال باز کردن ویرایشگر الگو…",
   "navigationMenuItem.name": {
     "Communications": "ارتباطات",
     "Message templates": "الگوهای پیامک"
@@ -195,6 +198,8 @@
   "Select a sample record to preview.": "برای پیش‌نمایش، یک رکورد نمونه انتخاب کنید.",
   "Sample record": "رکورد نمونه",
   "Retry": "تلاش مجدد",
+  "Source entity": "موجودیت منبع",
+  "Loading…": "در حال بارگذاری…",
   "Add to end of text": "افزودن به انتهای متن",
   "Authorized variables are unavailable right now. They are not the same as \"no variables\".": "متغیرهای مجاز در حال حاضر در دسترس نیستند. این وضعیت با «متغیری وجود ندارد» یکسان نیست.",
   "Recipient relation": "رابطهٔ گیرنده",
