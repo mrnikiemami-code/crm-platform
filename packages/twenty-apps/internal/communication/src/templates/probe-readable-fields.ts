@@ -132,49 +132,109 @@ export const discoverFieldProbeTargets = async ({
 
 type ProbeOutcome = 'AUTHORIZED' | 'NOT_AUTHORIZED';
 
+/**
+ * Finds ONE accessible record id of an arbitrary object, so its fields can be
+ * probed. Returns `null` when the workspace has no readable record of that
+ * object — in which case none of its fields can be proven, and they are simply
+ * not authorized.
+ */
+export const discoverRecordIdForObject = async ({
+  client,
+  objectNamePlural,
+}: {
+  client: Pick<CoreApiClient, 'query'>;
+  objectNamePlural: string;
+}): Promise<string | null> => {
+  try {
+    const result = (await client.query({
+      [objectNamePlural]: {
+        __args: { first: 1 },
+        edges: { node: { id: true } },
+      },
+    })) as Record<string, unknown>;
+
+    const connection = isRecord(result[objectNamePlural])
+      ? (result[objectNamePlural] as Record<string, unknown>)
+      : null;
+    const edges = Array.isArray(connection?.edges) ? connection.edges : [];
+
+    for (const edge of edges) {
+      const node = isRecord(edge) ? (edge.node as unknown) : null;
+
+      if (isRecord(node) && typeof node.id === 'string' && node.id.length > 0) {
+        return node.id;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Probes ONE field through a bounded read of a real record.
+ *
+ * The read is built from the object's own `nameSingular` and the definition's
+ * own `fieldName`, both of which came from server-side metadata. A Company is
+ * the exception: it is read THROUGH the Person's relation, because that is how
+ * the resolver reads it too.
+ */
 const probeOneField = async ({
   client,
-  personId,
+  objectName,
+  recordId,
   definition,
 }: {
   client: Pick<CoreApiClient, 'query'>;
-  personId: string;
+  objectName: string;
+  recordId: string;
   definition: TemplateVariableDefinition;
 }): Promise<ProbeOutcome> => {
   try {
+    // The ROOT field of the read. A Company is not a root object here: it is
+    // reached through the Person's `company` relation, which is exactly how the
+    // resolver reads it, so both the query and the response are keyed by
+    // `person` in that case.
+    const rootField = objectName === 'company' ? 'person' : objectName;
+
     const result = (await client.query(
-      definition.objectName === 'company'
+      objectName === 'company'
         ? {
             person: {
-              __args: { filter: { id: { eq: personId } } },
+              __args: { filter: { id: { eq: recordId } } },
               id: true,
               company: { [definition.fieldName]: selectionFor(definition) },
             },
           }
         : {
-            person: {
-              __args: { filter: { id: { eq: personId } } },
+            [objectName]: {
+              __args: { filter: { id: { eq: recordId } } },
               id: true,
               [definition.fieldName]: selectionFor(definition),
             },
           },
-    )) as { person?: unknown };
+    )) as Record<string, unknown>;
 
-    const node = isRecord(result.person) ? result.person : null;
+    const node = isRecord(result[rootField]) ? result[rootField] : null;
 
     if (node === null) {
       return 'NOT_AUTHORIZED';
     }
 
-    if (definition.objectName === 'company') {
-      const company = isRecord(node.company) ? node.company : null;
+    if (objectName === 'company') {
+      const company = isRecord((node as Record<string, unknown>).company)
+        ? ((node as Record<string, unknown>).company as Record<string, unknown>)
+        : null;
 
       return company !== null && definition.fieldName in company
         ? 'AUTHORIZED'
         : 'NOT_AUTHORIZED';
     }
 
-    return definition.fieldName in node ? 'AUTHORIZED' : 'NOT_AUTHORIZED';
+    return definition.fieldName in (node as Record<string, unknown>)
+      ? 'AUTHORIZED'
+      : 'NOT_AUTHORIZED';
   } catch {
     // A denied or malformed probe is simply not proof of readability.
     return 'NOT_AUTHORIZED';
@@ -197,18 +257,19 @@ export type FieldProbeResult = {
 export const probeAuthorizedFieldTokens = async ({
   client,
   catalog,
+  objectPluralNames,
   concurrency = FIELD_PROBE_CONCURRENCY,
 }: {
   client: Pick<CoreApiClient, 'query'>;
   catalog: TemplateVariableCatalog;
+  /**
+   * `nameSingular` → `namePlural`, for the objects in the catalog. Needed to
+   * reach a source object's records. Person/Company are resolved structurally
+   * (Person directly, Company through Person) and do not use it.
+   */
+  objectPluralNames: ReadonlyMap<string, string>;
   concurrency?: number;
 }): Promise<FieldProbeResult> => {
-  const targets = await discoverFieldProbeTargets({ client });
-
-  if (targets === null) {
-    return null;
-  }
-
   // One representative definition per metadata field.
   const definitionsByKey = new Map<string, TemplateVariableDefinition>();
 
@@ -222,21 +283,75 @@ export const probeAuthorizedFieldTokens = async ({
 
   const keys = [...definitionsByKey.keys()];
 
+  if (keys.length === 0) {
+    return null;
+  }
+
+  // The objects this catalog actually needs to read. Only these are discovered,
+  // so an unused object costs no extra read.
+  const neededObjectNames = new Set(
+    [...definitionsByKey.values()].map((definition) =>
+      // A Company field is read through the Person, so it needs the PERSON target.
+      definition.objectName === 'company' ? 'person' : definition.objectName,
+    ),
+  );
+
+  // Person discovery also yields the Company target (a Person that HAS a
+  // Company), because a Company field can only be proven on a record that has
+  // one — a null relation returns no keys and is not evidence either way.
+  const personTargets = neededObjectNames.has('person')
+    ? await discoverFieldProbeTargets({ client })
+    : null;
+
+  const recordIdByObjectName = new Map<string, string | null>();
+
+  for (const objectName of neededObjectNames) {
+    if (objectName === 'person') {
+      recordIdByObjectName.set('person', personTargets?.personId ?? null);
+      recordIdByObjectName.set(
+        'company',
+        personTargets?.companyPersonId ?? null,
+      );
+      continue;
+    }
+
+    const pluralName = objectPluralNames.get(objectName);
+
+    recordIdByObjectName.set(
+      objectName,
+      pluralName === undefined
+        ? null
+        : await discoverRecordIdForObject({
+            client,
+            objectNamePlural: pluralName,
+          }),
+    );
+  }
+
   const outcomes = await mapWithBoundedConcurrency({
     items: keys,
     concurrency,
-    worker: (key) => {
+    worker: async (key) => {
       const definition = definitionsByKey.get(key) as TemplateVariableDefinition;
-      const personId =
-        definition.objectName === 'company'
-          ? targets.companyPersonId
-          : targets.personId;
+      // A Company field is proven through the Person that HAS a Company, so the
+      // target key is `company` (which `discoverFieldProbeTargets` filled with
+      // such a Person, or `null` when none was found). Every other field is
+      // proven through a record of its OWN object.
+      const targetKey =
+        definition.objectName === 'company' ? 'company' : definition.objectName;
+      const recordId = recordIdByObjectName.get(targetKey);
 
-      // Without a Person that has a Company, a Company field cannot be proven,
-      // so it is not authorized.
-      return personId === null
-        ? Promise.resolve<ProbeOutcome>('NOT_AUTHORIZED')
-        : probeOneField({ client, personId, definition });
+      if (recordId === null || recordId === undefined) {
+        // No readable record to prove the field on, so it is not authorized.
+        return 'NOT_AUTHORIZED' as ProbeOutcome;
+      }
+
+      return probeOneField({
+        client,
+        objectName: definition.objectName,
+        recordId,
+        definition,
+      });
     },
   });
 

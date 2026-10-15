@@ -18,6 +18,7 @@ import {
 } from 'src/services/communication-send-and-persist.service';
 import { CommunicationSendService } from 'src/services/communication-send.service';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
+import { PERSON_SOURCE_OBJECT_NAME } from 'src/templates/data/find-eligible-template-sources';
 import { interpolateTemplate } from 'src/templates/interpolate-template';
 import { resolveTemplateValues } from 'src/templates/resolve-template-values';
 
@@ -115,11 +116,17 @@ export const sendPersonCommunicationHandler = async (
   const { catalog } = await buildAuthorizedTemplateCatalog({
     metadataClient: dependencies.metadataClient ?? new MetadataApiClient(),
     client,
+    // The single send addresses one PERSON, so its templates resolve against the
+    // Person catalog. A template written for a related source is not sent through
+    // this path.
+    source: { objectName: PERSON_SOURCE_OBJECT_NAME },
   });
 
   const resolved = await resolveTemplateValues({
     client,
     personId: parameters.personId,
+    // This path has no source record: the recipient person IS the record.
+    sourceRecord: null,
     catalog,
   });
 

@@ -5,6 +5,7 @@ import { MetadataApiClient } from 'twenty-client-sdk/metadata';
 import { LIST_MESSAGE_TEMPLATES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { TEMPLATE_CATALOG_STATUS } from 'src/studio/template-studio-contract';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
+import { PERSON_SOURCE_OBJECT_NAME } from 'src/templates/data/find-eligible-template-sources';
 import { findMessageTemplates } from 'src/templates/data/find-message-templates';
 import { listTemplateVariables } from 'src/templates/template-variable-catalog';
 
@@ -23,6 +24,10 @@ const handler = async () => {
   const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
     metadataClient: new MetadataApiClient(),
     client: new CoreApiClient(),
+    // The template PICKER is Person-scoped: it feeds the single/bulk send flow,
+    // whose recipients are People. It therefore builds the Person catalog, which
+    // is the same one those sends resolve against.
+    source: { objectName: PERSON_SOURCE_OBJECT_NAME },
   });
 
   // The catalog is EMPTY whenever it could not be authorized. The status tells

@@ -5,8 +5,31 @@
 // template Variables page, preview interpolation, the single send and the bulk
 // send — and they cannot drift.
 
-/** The two objects a template may read from. A closed set. */
-export type TemplateObjectName = 'person' | 'company';
+/**
+ * The object a definition reads from.
+ *
+ * This is NOT a closed set any more. It is always a `nameSingular` resolved
+ * SERVER-SIDE from the workspace's own metadata for the template's selected
+ * source, and it is only ever used to build a record read. Client input never
+ * reaches it: the source is resolved from the stored/eligible identifiers before
+ * the catalog is built, and the resolver reads exactly this name.
+ *
+ * The literal members are kept for autocomplete and for the two objects whose
+ * reads are structurally different (a Person is read directly; a Company is read
+ * through the Person's relation).
+ */
+export type TemplateObjectName =
+  | 'person'
+  | 'company'
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  | (string & {});
+
+/**
+ * Which part of the template's context a variable belongs to. The editor renders
+ * these as separate, titled groups so a user can tell the SOURCE RECORD's fields
+ * apart from the RECIPIENT PERSON's.
+ */
+export type TemplateVariableGroup = 'source' | 'recipient' | 'company';
 
 /**
  * How a raw metadata value becomes text. This is a CLOSED set: adding a type
@@ -43,6 +66,7 @@ export type TemplateVariableDefinition = {
   fieldName: string;
   subFieldName?: string;
   kind: TemplateValueKind;
+  group: TemplateVariableGroup;
 };
 
 export type TemplateVariableCatalog = {
@@ -106,6 +130,66 @@ export const listTemplateVariables = (
     token: `@${variable.token}`,
     label: variable.label,
   }));
+
+/**
+ * One titled group of picker items.
+ *
+ * `title` is display text the editor passes through the app catalog. For the
+ * source group it is the SOURCE OBJECT'S OWN `labelPlural` from metadata, so it
+ * reads «فرصت‌ها» / «اشخاص» in the workspace's own words instead of a generic
+ * heading; the other groups use stable app-owned strings.
+ */
+export type TemplateVariablePickerGroup = {
+  key: TemplateVariableGroup;
+  title: string;
+  variables: TemplateVariablePickerItem[];
+};
+
+/** The group titles, in render order. App-owned; translated at render time. */
+export const TEMPLATE_VARIABLE_GROUP_TITLE: Record<
+  Exclude<TemplateVariableGroup, 'source'>,
+  string
+> = {
+  recipient: 'Recipient person',
+  company: 'Recipient company',
+};
+
+/**
+ * Groups the picker items for the editor.
+ *
+ * Empty groups are omitted, so the editor never shows a heading with nothing
+ * under it. A Person source therefore yields ONE group (the record itself),
+ * which is what keeps that case free of the duplicate, confusing listing.
+ */
+export const listTemplateVariableGroups = (
+  catalog: TemplateVariableCatalog,
+  sourceLabelPlural: string,
+): TemplateVariablePickerGroup[] => {
+  const order: TemplateVariableGroup[] = ['source', 'recipient', 'company'];
+  const groups: TemplateVariablePickerGroup[] = [];
+
+  for (const key of order) {
+    const variables = catalog.variables.filter(
+      (variable) => variable.group === key,
+    );
+
+    if (variables.length === 0) {
+      continue;
+    }
+
+    groups.push({
+      key,
+      title:
+        key === 'source' ? sourceLabelPlural : TEMPLATE_VARIABLE_GROUP_TITLE[key],
+      variables: variables.map((variable) => ({
+        token: `@${variable.token}`,
+        label: variable.label,
+      })),
+    });
+  }
+
+  return groups;
+};
 
 /** A resolved value per CANONICAL token for one recipient, or `null` if empty. */
 export type TemplateValueMap = ReadonlyMap<string, string | null>;

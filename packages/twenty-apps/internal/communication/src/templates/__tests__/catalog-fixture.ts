@@ -22,6 +22,14 @@ const field = (
 export const PERSON_OBJECT_ID = '11111111-1111-4111-8111-111111111111';
 export const COMPANY_OBJECT_ID = '22222222-2222-4222-8222-222222222222';
 
+/**
+ * The Person source, for the suites that exercise the Person-scoped catalog —
+ * which is the shape every consumer used before the catalog became
+ * source-driven. A Person source yields the person fields (as the SOURCE) plus
+ * the company, so those expectations still hold.
+ */
+export const PERSON_CATALOG_SOURCE = { objectName: 'person' } as const;
+
 export const JOB_TITLE_FIELD_ID = '33333333-3333-4333-8333-333333333333';
 export const LOYALTY_TIER_FIELD_ID = '44444444-4444-4444-8444-444444444444';
 export const SECRET_FIELD_ID = '55555555-5555-4555-8555-555555555555';
@@ -30,6 +38,8 @@ export const templateMetadataObjects: TemplateMetadataObject[] = [
   {
     id: PERSON_OBJECT_ID,
     nameSingular: 'person',
+    namePlural: 'people',
+    labelPlural: 'People',
     fields: [
       field('p-id', 'id', 'UUID', 'Id', true),
       field('p-created', 'createdAt', 'DATE_TIME', 'Creation date', true),
@@ -54,6 +64,8 @@ export const templateMetadataObjects: TemplateMetadataObject[] = [
   {
     id: COMPANY_OBJECT_ID,
     nameSingular: 'company',
+    namePlural: 'companies',
+    labelPlural: 'Companies',
     fields: [
       field('c-id', 'id', 'UUID', 'Id', true),
       field('c-created', 'createdAt', 'DATE_TIME', 'Creation date', true),
@@ -66,7 +78,33 @@ export const templateMetadataObjects: TemplateMetadataObject[] = [
       field('c-people', 'people', 'RELATION', 'People'),
     ],
   },
+  {
+    // A RELATED source: its records reach a recipient Person through
+    // `pointOfContact`. Present so the source-driven catalog can be tested
+    // against a real second object, including one CUSTOM field — which is the
+    // case the user reported as still showing Person variables.
+    id: '66666666-6666-4666-8666-666666666666',
+    nameSingular: 'opportunity',
+    namePlural: 'opportunities',
+    labelPlural: 'فرصت‌ها',
+    fields: [
+      field('o-id', 'id', 'UUID', 'Id', true),
+      field('o-created', 'createdAt', 'DATE_TIME', 'Creation date', true),
+      field('o-name', 'name', 'TEXT', 'Name'),
+      field('o-amount', 'amount', 'CURRENCY', 'Amount'),
+      field('o-stage', 'stage', 'SELECT', 'Stage'),
+      field('o-score', 'customScore', 'NUMBER', 'Custom score'),
+      field('o-secret', 'apiKey', 'TEXT', 'Api key'),
+      field('o-contact', 'pointOfContact', 'RELATION', 'Point of Contact'),
+      field('o-company', 'company', 'RELATION', 'Company'),
+    ],
+  },
 ];
+
+/** The related-source catalog source used by the source-driven tests. */
+export const OPPORTUNITY_CATALOG_SOURCE = {
+  objectName: 'opportunity',
+} as const;
 
 export const unrestrictedPermissions: TemplatePermissionSnapshot = {
   canReadAllObjectRecords: true,
@@ -87,6 +125,8 @@ export const createFakeMetadataClient = () => ({
         node: {
           id: object.id,
           nameSingular: object.nameSingular,
+          namePlural: object.namePlural,
+          labelPlural: object.labelPlural,
           fieldsList: object.fields,
         },
       })),

@@ -12,7 +12,13 @@ import {
 } from 'src/bulk/resolve-bulk-recipients';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
 import { buildTemplatePreview } from 'src/templates/build-template-preview';
-import { resolveTemplateValuesForPersons } from 'src/templates/resolve-template-values';
+import { PERSON_SOURCE_OBJECT_NAME } from 'src/templates/data/find-eligible-template-sources';
+import {
+  resolveTemplateValues,
+  resolveTemplateValuesForPersons,
+  type TemplateSourceRecord,
+} from 'src/templates/resolve-template-values';
+import { type TemplateVariableCatalog } from 'src/templates/template-variable-catalog';
 
 // Reads the optional per-recipient phone overrides. The distinction that
 // matters is ABSENT vs PRESENT: a key the caller did not send at all means "no
@@ -61,12 +67,27 @@ export const previewTemplate = async ({
   body,
   personIds,
   phoneOverrides,
+  catalog,
+  sourceRecord,
 }: {
   client: Pick<CoreApiClient, 'query'>;
   metadataClient: Pick<MetadataApiClient, 'query'>;
   body: string;
   personIds: string[];
   phoneOverrides: Record<string, unknown>;
+  /**
+   * A catalog the CALLER already resolved for a known source. The editor's
+   * preview passes the one it built for THIS template's source, so the preview
+   * validates against the same field set the picker showed. Omitted by the bulk
+   * send, which is Person-scoped and has no single source.
+   */
+  catalog?: TemplateVariableCatalog;
+  /**
+   * The SOURCE record `source.*` tokens read from. Only the editor's preview has
+   * one (its sample record); a bulk preview has none, so those tokens stay
+   * unresolved rather than borrowing a value from somewhere else.
+   */
+  sourceRecord?: TemplateSourceRecord | null;
 }): Promise<PreviewTemplateSuccess | PreviewTemplateFailure> => {
   if (personIds.length === 0) {
     return { success: false, error: '`personIds` is required.' };
@@ -102,19 +123,52 @@ export const previewTemplate = async ({
   // preview can never accept a token the manager would not advertise (or vice
   // versa). When it cannot be authorized it is EMPTY, so every token reads as
   // unknown and no recipient is treated as ready to send.
-  const { catalog } = await buildAuthorizedTemplateCatalog({ metadataClient, client });
+  const resolvedCatalog =
+    catalog ??
+    (
+      await buildAuthorizedTemplateCatalog({
+        metadataClient,
+        client,
+        // Without a caller-supplied source this is the Person-scoped path (the
+        // bulk send), which is exactly what its templates are resolved against.
+        source: { objectName: PERSON_SOURCE_OBJECT_NAME },
+      })
+    ).catalog;
 
-  const valuesByPersonId = await resolveTemplateValuesForPersons({
-    client,
-    personIds: persons.map((person) => person.id),
-    catalog,
-  });
+  const resolvedSourceRecord = sourceRecord ?? null;
+
+  const valuesByPersonId =
+    resolvedSourceRecord !== null && persons.length > 0
+      ? new Map(
+          await Promise.all(
+            // The editor previews ONE sample source record for ONE recipient, so
+            // the source record's values are attached to that recipient. Any
+            // further recipient has no source record of its own, so `source.*`
+            // stays unresolved for it rather than being copied from another
+            // record.
+            persons.slice(0, 1).map(async (person) => {
+              const resolved = await resolveTemplateValues({
+                client,
+                personId: person.id,
+                sourceRecord: resolvedSourceRecord,
+                catalog: resolvedCatalog,
+              });
+
+              return [person.id, resolved.values] as const;
+            }),
+          ),
+        )
+      : await resolveTemplateValuesForPersons({
+          client,
+          personIds: persons.map((person) => person.id),
+          catalog: resolvedCatalog,
+        });
 
   const preview = buildTemplatePreview({
     body,
     recipients: applied.recipients,
     valuesByPersonId,
-    catalog,
+    catalog: resolvedCatalog,
   });
 
   return {

@@ -25,6 +25,7 @@ import {
   searchSourceRecords,
 } from 'src/templates/data/read-source-record-relation';
 import { previewTemplate } from 'src/templates/preview-template.service';
+import { listTemplateVariableGroups } from 'src/templates/template-variable-catalog';
 
 // The SMS Template Studio's server side. It works on the workspace's NATIVE
 // `messageTemplate` object through the workspace-scoped `CoreApiClient`, so the
@@ -135,19 +136,78 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
   if (action === 'catalog') {
     // The authorized variable catalog for the editor's variable list.
     //
-    // It is built server-side from the workspace's own metadata and the caller's
-    // authorized read — never from anything the client sends. A failure is
-    // reported as an explicit status so the editor can offer a retry instead of
-    // showing an empty list as if the workspace had no fields.
+    // The catalog belongs to the template's SOURCE. The source object is resolved
+    // HERE, server-side, from identifiers — never taken as a raw object name from
+    // the client — so selecting a source can only ever yield that source's own
+    // fields, and an unresolvable source is reported instead of falling back to
+    // Person.
+    //
+    // It is built from the workspace's own metadata and the caller's authorized
+    // read. A failure is reported as an explicit status so the editor can offer a
+    // retry instead of showing an empty list as if the workspace had no fields.
     try {
-      const { catalog, isAvailable, stage } =
-        await buildAuthorizedTemplateCatalog({
-          metadataClient: new MetadataApiClient(),
+      const metadataClient = new MetadataApiClient();
+      const sources = await findEligibleTemplateSources({ metadataClient });
+
+      // A source CHANGE in the editor sends the newly selected object; opening an
+      // existing template sends its id instead, so the STORED identifiers are
+      // used and the editor does not have to re-select the source to see fields.
+      // Either way the value is validated against the eligible set first.
+      const requestedObjectUid = readTrimmed(body.sourceObjectUid);
+      const catalogTemplateId = readTrimmed(body.templateId);
+
+      if (requestedObjectUid.length === 0 && catalogTemplateId.length === 0) {
+        // Nothing to resolve a source from. Refusing is the point: guessing
+        // Person here is exactly the fallback this task removes.
+        return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+      }
+
+      let storedObjectUid = requestedObjectUid;
+      let storedRelationUid = readTrimmed(body.recipientRelationUid);
+
+      if (requestedObjectUid.length === 0) {
+        const stored = await readMessageTemplate({
           client,
+          id: catalogTemplateId,
+        });
+
+        if (stored === null) {
+          return fail(TEMPLATE_STUDIO_ERROR_CODE.NOT_FOUND);
+        }
+
+        storedObjectUid = stored.sourceObjectUid;
+        storedRelationUid = stored.recipientRelationUid;
+      }
+
+      const resolvedSource = resolveStoredTemplateSource({
+        sources,
+        storedObjectUid,
+        storedRelationUid,
+      });
+
+      if (resolvedSource.kind === 'UNRESOLVABLE') {
+        // The identifier is present but no longer resolves. This is NEVER
+        // reinterpreted as Person: the editor is told the source is unusable.
+        return {
+          success: false as const,
+          errorCode: TEMPLATE_STUDIO_ERROR_CODE.CONTEXT_MISMATCH,
+          catalogStatus: TEMPLATE_CATALOG_STATUS.UNAVAILABLE,
+          catalogStage: 'SOURCE_UNKNOWN',
+          message:
+            'منبع این الگو در دسترس نیست یا تغییر کرده است. یک منبع دیگر انتخاب کنید.',
+        };
+      }
+
+      const { catalog, isAvailable, stage, sourceLabelPlural } =
+        await buildAuthorizedTemplateCatalog({
+          metadataClient,
+          client,
+          source: { objectName: resolvedSource.objectName },
         });
 
       return {
         success: true as const,
+        sourceObjectName: resolvedSource.objectName,
         catalogStatus: isAvailable
           ? TEMPLATE_CATALOG_STATUS.READY
           : TEMPLATE_CATALOG_STATUS.UNAVAILABLE,
@@ -156,6 +216,10 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
           token: `@${variable.token}`,
           label: variable.label,
         })),
+        // Titled groups: the source group carries the source OBJECT's own label
+        // («فرصت‌ها» / «اشخاص»), the recipient and company groups app-owned
+        // strings. Both come from the server, so the heading cannot be spoofed.
+        groups: listTemplateVariableGroups(catalog, sourceLabelPlural),
       };
     } catch {
       return fail(TEMPLATE_STUDIO_ERROR_CODE.UNEXPECTED);
@@ -438,9 +502,14 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
         recipientPersonId = related.personId;
       }
 
-      const { isAvailable } = await buildAuthorizedTemplateCatalog({
+      // The catalog AND the values are built for THIS template's resolved source,
+      // so a preview can neither accept a token the source does not define nor
+      // resolve `@source.*` from a different source than the form shows. The
+      // sample record is passed as the source record, so `@source.*` reads IT.
+      const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
         metadataClient: new MetadataApiClient(),
         client,
+        source: { objectName: sourceObjectName },
       });
 
       if (!isAvailable) {
@@ -457,6 +526,11 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
         body: messageBody,
         personIds: [recipientPersonId],
         phoneOverrides: {},
+        catalog,
+        sourceRecord:
+          sourceObjectName === PERSON_SOURCE_OBJECT_NAME
+            ? null
+            : { objectName: sourceObjectName, recordId: sampleRecordId },
       });
 
       if (!preview.success) {

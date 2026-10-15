@@ -10,11 +10,13 @@ import { findTemplateVariable } from 'src/templates/template-variable-catalog';
 import {
   templateMetadataObjects,
   unrestrictedPermissions,
+  PERSON_CATALOG_SOURCE,
 } from 'src/templates/__tests__/catalog-fixture';
 
 const catalog = buildTemplateCatalogFromMetadata({
   objects: templateMetadataObjects,
   permissions: unrestrictedPermissions,
+  source: PERSON_CATALOG_SOURCE,
 });
 
 const buildClient = (person: unknown) => {
@@ -59,6 +61,7 @@ describe('resolveTemplateValues', () => {
     const result = await resolveTemplateValues({
       client,
       personId: 'p1',
+      sourceRecord: null,
       catalog,
     });
 
@@ -79,6 +82,7 @@ describe('resolveTemplateValues', () => {
     const result = await resolveTemplateValues({
       client,
       personId: 'p1',
+      sourceRecord: null,
       catalog,
     });
 
@@ -89,7 +93,12 @@ describe('resolveTemplateValues', () => {
   it('queries only the allow-listed selection, scoped to the person id', async () => {
     const { client, query } = buildClient(null);
 
-    await resolveTemplateValues({ client, personId: 'p1', catalog });
+    await resolveTemplateValues({
+      client,
+      personId: 'p1',
+      sourceRecord: null,
+      catalog,
+    });
 
     const payload = query.mock.calls[0][0] as unknown as {
       person: { __args: { filter: { id: { eq: string } } } };

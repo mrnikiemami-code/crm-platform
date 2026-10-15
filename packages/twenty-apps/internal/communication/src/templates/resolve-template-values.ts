@@ -19,6 +19,18 @@ const readRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
+/**
+ * The record a template's `source.*` tokens read from.
+ *
+ * Resolved server-side from the template's own stored/eligible source BEFORE any
+ * read, so this is not client input. `objectName` is a real metadata
+ * `nameSingular`, and it is the ONLY thing used to choose the root field.
+ */
+export type TemplateSourceRecord = {
+  objectName: string;
+  recordId: string;
+};
+
 /** The GraphQL selection for one object, keyed by its metadata field names. */
 export const buildObjectSelection = (
   definitions: readonly TemplateVariableDefinition[],
@@ -37,27 +49,35 @@ export const buildObjectSelection = (
 
 const definitionsForObject = (
   catalog: TemplateVariableCatalog,
-  objectName: 'person' | 'company',
+  objectName: string,
 ): TemplateVariableDefinition[] =>
   catalog.variables.filter((variable) => variable.objectName === objectName);
 
 const extractValues = ({
   definitions,
-  personNode,
+  nodeByObjectName,
   companyNode,
 }: {
   definitions: readonly TemplateVariableDefinition[];
-  personNode: Record<string, unknown>;
+  /**
+   * The record read for each object the catalog references, keyed by the
+   * definition's own `objectName`. Company is absent here and passed separately,
+   * because it is read nested under the recipient Person.
+   */
+  nodeByObjectName: ReadonlyMap<string, Record<string, unknown>>;
   companyNode: Record<string, unknown> | null;
 }): TemplateValueMap => {
   const values = new Map<string, string | null>();
 
   for (const definition of definitions) {
-    const source = definition.objectName === 'person' ? personNode : companyNode;
+    const source =
+      definition.objectName === 'company'
+        ? companyNode
+        : (nodeByObjectName.get(definition.objectName) ?? null);
 
     values.set(
       definition.token,
-      source === null
+      source === null || source === undefined
         ? null
         : extractTemplateValue({
             kind: definition.kind,
@@ -77,6 +97,12 @@ export type ResolvedTemplateValues = {
   values: TemplateValueMap;
   /** False when the Person does not exist or may not be read. */
   isAccessible: boolean;
+  /**
+   * False when the SOURCE record could not be read (removed, or no longer
+   * permitted). Distinguishes "the source is gone" from "the source's fields are
+   * empty", so a preview can report the real cause instead of rendering blanks.
+   */
+  isSourceAccessible: boolean;
 };
 
 /**
@@ -87,10 +113,17 @@ export type ResolvedTemplateValues = {
 export const resolveTemplateValues = async ({
   client,
   personId,
+  sourceRecord,
   catalog,
 }: {
   client: Pick<CoreApiClient, 'query'>;
   personId: string;
+  /**
+   * The SOURCE record the `source.*` tokens read from, or `null` for a Person
+   * source (where the source record IS the recipient, so `person.*` already
+   * carries it and a second, identical read would be pure waste).
+   */
+  sourceRecord: TemplateSourceRecord | null;
   catalog: TemplateVariableCatalog;
 }): Promise<ResolvedTemplateValues> => {
   const personDefinitions = definitionsForObject(catalog, 'person');
@@ -110,16 +143,55 @@ export const resolveTemplateValues = async ({
   const node = readRecord(result.person);
 
   if (node === null) {
-    return { values: new Map<string, string | null>(), isAccessible: false };
+    return {
+      values: new Map<string, string | null>(),
+      isAccessible: false,
+      isSourceAccessible: false,
+    };
+  }
+
+  const nodeByObjectName = new Map<string, Record<string, unknown>>([
+    ['person', node],
+  ]);
+
+  let sourceReadSucceeded = true;
+
+  if (sourceRecord !== null && sourceRecord.objectName !== 'person') {
+    // The source record's OWN fields. The selection is built from the catalog's
+    // metadata field names for that object, and the root field is the
+    // server-resolved `nameSingular` — never anything the client sent.
+    const sourceSelection = buildObjectSelection(
+      definitionsForObject(catalog, sourceRecord.objectName),
+    );
+
+    if (Object.keys(sourceSelection).length > 0) {
+      const sourceResult = await client.query({
+        [sourceRecord.objectName]: {
+          __args: { filter: { id: { eq: sourceRecord.recordId } } },
+          ...sourceSelection,
+        },
+      });
+
+      const sourceNode = readRecord(sourceResult[sourceRecord.objectName]);
+
+      if (sourceNode === null) {
+        // The source record is gone or no longer readable. Its tokens resolve to
+        // null rather than silently borrowing the recipient's values.
+        sourceReadSucceeded = false;
+      } else {
+        nodeByObjectName.set(sourceRecord.objectName, sourceNode);
+      }
+    }
   }
 
   return {
     values: extractValues({
       definitions: catalog.variables,
-      personNode: node,
+      nodeByObjectName,
       companyNode: hasCompanySelection ? readRecord(node.company) : null,
     }),
     isAccessible: true,
+    isSourceAccessible: sourceReadSucceeded,
   };
 };
 
@@ -178,7 +250,7 @@ export const resolveTemplateValuesForPersons = async ({
       node.id,
       extractValues({
         definitions: catalog.variables,
-        personNode: node,
+        nodeByObjectName: new Map([['person', node]]),
         companyNode: hasCompanySelection ? readRecord(node.company) : null,
       }),
     );

@@ -7,11 +7,13 @@ import { type TemplateValueMap } from 'src/templates/template-variable-catalog';
 import {
   templateMetadataObjects,
   unrestrictedPermissions,
+  PERSON_CATALOG_SOURCE,
 } from 'src/templates/__tests__/catalog-fixture';
 
 const catalog = buildTemplateCatalogFromMetadata({
   objects: templateMetadataObjects,
   permissions: unrestrictedPermissions,
+  source: PERSON_CATALOG_SOURCE,
 });
 
 const recipient = (personId: string, selectedPhone: string | null): BulkRecipient => ({

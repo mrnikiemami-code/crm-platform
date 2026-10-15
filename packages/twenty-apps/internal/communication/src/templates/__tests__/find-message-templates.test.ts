@@ -9,6 +9,7 @@ import {
 import {
   templateMetadataObjects,
   unrestrictedPermissions,
+  PERSON_CATALOG_SOURCE,
 } from 'src/templates/__tests__/catalog-fixture';
 
 // A fake workspace API client. Every read the app performs for templates goes
@@ -101,6 +102,7 @@ describe('listTemplateVariables', () => {
   const catalog = buildTemplateCatalogFromMetadata({
     objects: templateMetadataObjects,
     permissions: unrestrictedPermissions,
+    source: PERSON_CATALOG_SOURCE,
   });
 
   it('exposes only tokens and labels, never a recipient value', () => {

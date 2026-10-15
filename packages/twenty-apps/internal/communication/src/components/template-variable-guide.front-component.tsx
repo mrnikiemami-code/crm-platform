@@ -55,6 +55,18 @@ type TemplateSnapshot = {
   updatedAt: string;
 };
 
+/**
+ * One titled group of variables in the picker. The SOURCE group carries the
+ * source object's own workspace label; the recipient and company groups use
+ * app-owned strings. Rendering them separately is what lets a user tell the
+ * source record's fields apart from the recipient person's.
+ */
+type VariableGroup = {
+  key: string;
+  title: string;
+  variables: VariableItem[];
+};
+
 type EditorState =
   | { kind: 'LOADING' }
   | { kind: 'READY' }
@@ -81,6 +93,31 @@ const toVariable = (value: unknown): VariableItem | null => {
   const label = readString(record.label);
 
   return token.length > 0 && label.length > 0 ? { token, label } : null;
+};
+
+const toGroup = (value: unknown): VariableGroup | null => {
+  const record = asRecord(value);
+
+  if (record === null) {
+    return null;
+  }
+
+  const variables = Array.isArray(record.variables)
+    ? record.variables
+        .map(toVariable)
+        .filter((variable): variable is VariableItem => variable !== null)
+    : [];
+
+  // A group with no items is dropped rather than rendered as an empty heading.
+  if (variables.length === 0) {
+    return null;
+  }
+
+  return {
+    key: readString(record.key),
+    title: readString(record.title),
+    variables,
+  };
 };
 
 const toSource = (value: unknown): EligibleSource | null => {
@@ -190,13 +227,15 @@ const TemplateEditor = () => {
   const templateId = useRecordId();
 
   const [state, setState] = useState<EditorState>({ kind: 'LOADING' });
-  const [variables, setVariables] = useState<VariableItem[]>([]);
+  const [variableGroups, setVariableGroups] = useState<VariableGroup[]>([]);
   // The catalog has its OWN state so the editor can distinguish "still loading",
-  // "this workspace really has no fields", and "loading failed — try again".
-  // Collapsing a failure into an empty list would hide an access problem as if
-  // there were simply nothing to insert.
+  // "this workspace really has no fields", "the chosen SOURCE itself is unusable"
+  // and "loading failed — try again". Collapsing a failure into an empty list
+  // would hide an access problem as if there were simply nothing to insert, and
+  // collapsing SOURCE_UNAVAILABLE into UNAVAILABLE would hide that it is the
+  // user's source choice that cannot be used.
   const [catalogState, setCatalogState] = useState<
-    'LOADING' | 'READY' | 'EMPTY' | 'UNAVAILABLE' | 'ERROR'
+    'LOADING' | 'READY' | 'EMPTY' | 'UNAVAILABLE' | 'SOURCE_UNAVAILABLE' | 'ERROR'
   >('LOADING');
   const [sources, setSources] = useState<EligibleSource[]>([]);
   const [snapshot, setSnapshot] = useState<TemplateSnapshot | null>(null);
@@ -274,45 +313,100 @@ const TemplateEditor = () => {
   /**
    * Loads the authorized variable catalog for the editor's variable list.
    *
+   * The catalog belongs to the template's SOURCE, so the source is passed IN
+   * explicitly rather than read from state. That matters on a source CHANGE: the
+   * new selection is known synchronously, while the state update has not been
+   * applied yet, so reading `sourceObjectUid` here would request the PREVIOUS
+   * source's catalog and show the wrong fields until the next render.
+   *
    * It is a separate callback so the editor can RETRY it on its own after a
    * failure, without reloading the whole record. The sequence number makes a
-   * slow earlier response unable to overwrite a newer one.
+   * slow earlier response unable to overwrite a newer one: every call bumps the
+   * id first, and a response whose id is no longer current is discarded instead
+   * of publishing.
    */
-  const loadCatalog = useCallback(async () => {
-    catalogRequestIdRef.current += 1;
-    const requestId = catalogRequestIdRef.current;
+  const loadCatalog = useCallback(
+    async (request: {
+      /** The source to load fields FOR. Empty means "use the stored source". */
+      sourceObjectUid: string;
+      recipientRelationUid: string;
+    }) => {
+      catalogRequestIdRef.current += 1;
+      const requestId = catalogRequestIdRef.current;
 
-    setCatalogState('LOADING');
+      // The previous catalog is dropped from a USABLE state immediately, so the
+      // fields of the old source are never offered while the new ones load.
+      setVariableGroups([]);
+      setCatalogState('LOADING');
 
-    const payload = await callGuarded({ action: 'catalog' });
+      const payload = await callGuarded({
+        action: 'catalog',
+        templateId,
+        sourceObjectUid: request.sourceObjectUid,
+        recipientRelationUid: request.recipientRelationUid,
+      });
 
-    if (requestId !== catalogRequestIdRef.current) {
-      return;
-    }
+      if (requestId !== catalogRequestIdRef.current) {
+        return;
+      }
 
-    if (payload === null) {
-      return;
-    }
+      if (payload === null) {
+        return;
+      }
 
-    if (payload.success !== true) {
-      setCatalogState('ERROR');
-      return;
-    }
+      if (payload.success !== true) {
+        // A source that does not resolve is its OWN state: the user picked it, so
+        // the message must point at the source, not at a generic loading failure.
+        setCatalogState(
+          readString(payload.catalogStage) === 'SOURCE_UNKNOWN'
+            ? 'SOURCE_UNAVAILABLE'
+            : 'ERROR',
+        );
 
-    if (readString(payload.catalogStatus) === 'UNAVAILABLE') {
-      setCatalogState('UNAVAILABLE');
-      return;
-    }
+        return;
+      }
 
-    const parsed = Array.isArray(payload.variables)
-      ? payload.variables
-          .map(toVariable)
-          .filter((variable): variable is VariableItem => variable !== null)
-      : [];
+      if (readString(payload.catalogStatus) === 'UNAVAILABLE') {
+        setCatalogState(
+          readString(payload.catalogStage) === 'SOURCE_UNAVAILABLE'
+            ? 'SOURCE_UNAVAILABLE'
+            : 'UNAVAILABLE',
+        );
 
-    setVariables(parsed);
-    setCatalogState(parsed.length === 0 ? 'EMPTY' : 'READY');
-  }, [callGuarded]);
+        return;
+      }
+
+      const groups = Array.isArray(payload.groups)
+        ? payload.groups
+            .map(toGroup)
+            .filter((group): group is VariableGroup => group !== null)
+        : [];
+
+      // Defensive: an older server without `groups` still yields usable fields
+      // from the flat list, so the editor never renders an empty picker because
+      // the response shape is older than the component.
+      const resolvedGroups =
+        groups.length > 0
+          ? groups
+          : (() => {
+              const flat = Array.isArray(payload.variables)
+                ? payload.variables
+                    .map(toVariable)
+                    .filter(
+                      (variable): variable is VariableItem => variable !== null,
+                    )
+                : [];
+
+              return flat.length === 0
+                ? []
+                : [{ key: 'source', title: '', variables: flat }];
+            })();
+
+      setVariableGroups(resolvedGroups);
+      setCatalogState(resolvedGroups.length === 0 ? 'EMPTY' : 'READY');
+    },
+    [callGuarded, templateId],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -377,9 +471,15 @@ const TemplateEditor = () => {
         setRecipientRelationUid(readString(loaded.recipientRelationUid));
 
         // The catalog is loaded for the editor as soon as the record is known,
-        // so opening an existing template shows its variables WITHOUT the user
-        // having to re-select the source.
-        await loadCatalog();
+        // and it is loaded FOR THE TEMPLATE'S OWN STORED SOURCE, so opening an
+        // existing template shows that source's variables WITHOUT the user having
+        // to re-select the source. (An empty stored source means the legacy
+        // Person meaning, which the server resolves.)
+        await loadCatalog({
+          sourceObjectUid:
+            stored.length > 0 ? stored : (personSource?.objectUid ?? ''),
+          recipientRelationUid: readString(loaded.recipientRelationUid),
+        });
 
         if (cancelled) {
           return;
@@ -667,6 +767,7 @@ const TemplateEditor = () => {
             setSourceObjectUid(nextUid);
             setSampleRecordId('');
             setPreviewText(null);
+            setPreviewError(null);
 
             // A relation belongs to its object, so it is re-derived rather than
             // carried across a source change. One eligible relation is selected
@@ -675,15 +776,24 @@ const TemplateEditor = () => {
               (entry) => entry.objectUid === nextUid,
             );
 
-            setRecipientRelationUid(
+            const nextRelationUid =
               nextSource !== undefined && nextSource.relations.length === 1
                 ? nextSource.relations[0].relationUid
-                : '',
-            );
+                : '';
 
-            // The catalog belongs to the selected source, so it is refreshed and
-            // any stale sample/preview is cleared rather than left behind.
-            void loadCatalog();
+            setRecipientRelationUid(nextRelationUid);
+
+            // The catalog belongs to the selected source, so it is refreshed for
+            // the NEW source immediately — with the value just chosen, not the
+            // one still in state. The previous catalog is dropped from a usable
+            // state inside `loadCatalog`, and the sequence number there prevents
+            // a slower response for the old source from publishing over this one.
+            // The sample list reloads on its own, because it is keyed by the
+            // selected source.
+            void loadCatalog({
+              sourceObjectUid: nextUid,
+              recipientRelationUid: nextRelationUid,
+            });
           }}
           style={styles.control}
         >
@@ -759,7 +869,28 @@ const TemplateEditor = () => {
             <button
               type="button"
               style={styles.secondaryButton}
-              onClick={() => void loadCatalog()}
+              onClick={() =>
+                void loadCatalog({ sourceObjectUid, recipientRelationUid })
+              }
+            >
+              {t('Retry')}
+            </button>
+          </div>
+        )}
+
+        {catalogState === 'SOURCE_UNAVAILABLE' && (
+          <div style={styles.actions} data-editor-catalog="source-unavailable">
+            <p style={styles.error}>
+              {t(
+                'This source is not available, so its variables cannot be shown. Choose another source.',
+              )}
+            </p>
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={() =>
+                void loadCatalog({ sourceObjectUid, recipientRelationUid })
+              }
             >
               {t('Retry')}
             </button>
@@ -776,7 +907,9 @@ const TemplateEditor = () => {
             <button
               type="button"
               style={styles.secondaryButton}
-              onClick={() => void loadCatalog()}
+              onClick={() =>
+                void loadCatalog({ sourceObjectUid, recipientRelationUid })
+              }
             >
               {t('Retry')}
             </button>
@@ -790,29 +923,43 @@ const TemplateEditor = () => {
         )}
 
         {catalogState === 'READY' && (
-          <ul style={styles.recipientList}>
-            {variables.map((variable) => (
-              <li key={variable.token} style={styles.recipientRow}>
-                <div style={styles.recipientHeader}>
-                  {/* ASCII token, forced LTR so it never reorders in RTL text. */}
-                  <span style={{ ...styles.recipientName, direction: 'ltr' }}>
-                    {variable.token}
-                  </span>
-                  <button
-                    type="button"
-                    style={styles.secondaryButton}
-                    onClick={() => handleInsertVariable(variable.token)}
-                  >
-                    {/* The label states what actually happens: this platform's
-                        remote-element polyfill exposes no selection API, so the
-                        token is appended. */}
-                    {t('Add to end of text')}
-                  </button>
-                </div>
-                <span style={styles.muted}>{t(variable.label)}</span>
-              </li>
+          <div data-editor-catalog="ready">
+            {variableGroups.map((group) => (
+              <div key={group.key} data-editor-variable-group={group.key}>
+                {/* Each group is titled, so the SOURCE record's fields are never
+                    confused with the RECIPIENT person's. The source group carries
+                    the source object's own workspace label from the server. */}
+                {group.title.length > 0 && (
+                  <p style={styles.groupTitle}>{t(group.title)}</p>
+                )}
+                <ul style={styles.recipientList}>
+                  {group.variables.map((variable) => (
+                    <li key={variable.token} style={styles.recipientRow}>
+                      <div style={styles.recipientHeader}>
+                        {/* ASCII token, forced LTR so it never reorders in RTL. */}
+                        <span
+                          style={{ ...styles.recipientName, direction: 'ltr' }}
+                        >
+                          {variable.token}
+                        </span>
+                        <button
+                          type="button"
+                          style={styles.secondaryButton}
+                          onClick={() => handleInsertVariable(variable.token)}
+                        >
+                          {/* The label states what actually happens: this
+                              platform's remote-element polyfill exposes no
+                              selection API, so the token is appended. */}
+                          {t('Add to end of text')}
+                        </button>
+                      </div>
+                      <span style={styles.muted}>{t(variable.label)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 

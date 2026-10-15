@@ -182,6 +182,18 @@ export const composerStyles = {
     fontWeight: 600,
     color: '#111',
   },
+  /**
+   * A picker group's heading. Deliberately lighter than `heading`: the groups are
+   * a way to tell the SOURCE record's fields from the RECIPIENT person's, not
+   * separate sections of the page.
+   */
+  groupTitle: {
+    margin: '12px 0 4px',
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#555',
+    textTransform: 'none',
+  },
   hint: {
     margin: 0,
     fontSize: 12,

@@ -25,6 +25,7 @@ import {
   fixtureCatalogTokens,
   templateMetadataObjects,
   unrestrictedPermissions,
+  PERSON_CATALOG_SOURCE,
 } from 'src/templates/__tests__/catalog-fixture';
 // Locks the W15-A template contract on the real production modules:
 //  - templates are a NATIVE app object (no parallel storage),
@@ -168,6 +169,7 @@ describe('the template variable catalog is runtime and permission-aware (W17/W17
     const catalog = buildTemplateCatalogFromMetadata({
       objects: templateMetadataObjects,
       permissions: unrestrictedPermissions,
+      source: PERSON_CATALOG_SOURCE,
     });
 
     expect(catalog.variables.map((variable) => variable.token)).toEqual([
@@ -185,6 +187,7 @@ describe('the template variable catalog is runtime and permission-aware (W17/W17
     const catalog = buildTemplateCatalogFromMetadata({
       objects: templateMetadataObjects,
       permissions: unrestrictedPermissions,
+      source: PERSON_CATALOG_SOURCE,
     });
 
     const aliases: [string, string][] = [

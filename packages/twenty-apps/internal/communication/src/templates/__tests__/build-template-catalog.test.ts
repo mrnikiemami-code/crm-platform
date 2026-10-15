@@ -22,12 +22,14 @@ import {
   createFakeMetadataClient,
   templateMetadataObjects,
   unrestrictedPermissions,
+  PERSON_CATALOG_SOURCE,
 } from 'src/templates/__tests__/catalog-fixture';
 
 const build = (permissions: TemplatePermissionSnapshot = unrestrictedPermissions) =>
   buildTemplateCatalogFromMetadata({
     objects: templateMetadataObjects,
     permissions,
+    source: PERSON_CATALOG_SOURCE,
   });
 
 const tokensOf = (permissions?: TemplatePermissionSnapshot) =>
@@ -452,6 +454,7 @@ describe('per-field catalog authorization (W19-A)', () => {
 
   it('authorizes a field ONLY when its own read returned the key', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      source: PERSON_CATALOG_SOURCE,
       metadataClient: createFakeMetadataClient() as never,
       client: makeClient({
         // `emails` and `linkedinLink` are deliberately NOT readable.
@@ -475,6 +478,7 @@ describe('per-field catalog authorization (W19-A)', () => {
 
   it('never authorizes a Company field when no Person with a Company was found', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      source: PERSON_CATALOG_SOURCE,
       metadataClient: createFakeMetadataClient() as never,
       client: makeClient({
         readablePersonKeys: ['name'],
@@ -492,6 +496,7 @@ describe('per-field catalog authorization (W19-A)', () => {
 
   it('returns an EMPTY, unavailable catalog when every probe fails', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      source: PERSON_CATALOG_SOURCE,
       metadataClient: createFakeMetadataClient() as never,
       client: makeClient({
         readablePersonKeys: [],
@@ -501,12 +506,17 @@ describe('per-field catalog authorization (W19-A)', () => {
     });
 
     expect(result.isAvailable).toBe(false);
-    expect(result.stage).toBe('ROLE_NOT_FOUND');
+    // Was 'ROLE_NOT_FOUND' before the catalog became source-driven. The intent is
+    // unchanged — nothing could be authorized, so the catalog is EMPTY and
+    // reported unavailable — but the label now says what it means for a catalog
+    // built around ONE source.
+    expect(result.stage).toBe('SOURCE_UNAVAILABLE');
     expect(result.catalog.variables).toHaveLength(0);
   });
 
   it('returns an EMPTY, unavailable catalog when no Person is readable', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      source: PERSON_CATALOG_SOURCE,
       metadataClient: createFakeMetadataClient() as never,
       client: {
         query: async () => ({ people: { edges: [] } }),
@@ -519,6 +529,7 @@ describe('per-field catalog authorization (W19-A)', () => {
 
   it('returns an EMPTY, unavailable catalog when the metadata read throws', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      source: PERSON_CATALOG_SOURCE,
       metadataClient: {
         query: async () => {
           throw new Error('boom: https://internal.example/secret');
