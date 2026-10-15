@@ -1,235 +1,179 @@
-# Communication Template Studio — three-task closure plan
+# Communication templates — user-flow completion plan
 
-Status: **ACTIVE ARCHITECTURE PLAN**
+Status: **ACTIVE — replaces all earlier W19-B1/B2/B3 and native-template execution instructions**
+Updated: 2026-10-15, following the user's screenshots and planning review.
+Repository/branch: `mrnikiemami-code/crm-platform` / `crm-platform`.
 
-Created: 2026-10-14
+## What completion means
 
-Authoritative baseline: `6f84b24a3e23106c01a4f92b26fb46d337fca619`
+A user can open «الگوهای پیامک», choose New or an explicit Edit action, choose a source,
+see its allowed fields, insert a variable, preview, save, reload and continue editing.
+The native Twenty table and record/side-panel mechanisms remain the shell.
+The existing `messageTemplate` object remains the only template store.
+No bespoke modal/backdrop/portal is to be reintroduced.
 
-Installed baseline on main/4D: Communication `0.1.40`
+The previous promise of three short tasks was not met. Repeated executions of
+CRM-NATIVE-TEMPLATES-02 were additional work, not evidence of completion.
+The three stages below describe remaining deliverables; they are not a claim that
+the original three-task/time commitment was achieved.
 
-This file is the bounded plan for closing the SMS-template experience. It must be
-read together with `CRM-PLATFORM-RECOVERY.md` before issuing or executing another
-Communication task. Do not replace this plan with an open-ended “Company sending”
-wave and do not combine all three tasks into one execution loop.
+## Current evidence and limits
 
-## Non-negotiable product model
+- Latest execution report: code/docs tip `9d4f0dc01e`, app 0.1.53 installed on main/4D.
+  Reconcile actual branch, host and browser before implementation; these are a reported
+  checkpoint, not a new independent live verification.
+- Native list and record storage exist; inline clicks/typing were previously demonstrated.
+  The old modal event mechanism was not repaired; that surface was retired.
+- User screenshots on 2026-10-15 show no visible Edit action, a raw New form exposing
+  duplicate source labels and technical identifier/relation fields, and no usable
+  source-to-variable flow. Earlier isolated create/edit claims do not accept this UX.
+- The user bridge exists in source but was reported NOT deployed because the renderer
+  build emitted no artifact. The editor remains blocked by the auth guard.
+- Stable metadata identifiers, conditional batch CAS, recipient resolution and sample
+  labels have reported implementation/API evidence. Browser completion is still open.
+- Source-record tokens `@source.*` are not implemented.
+- A session cookie proves identity, not data authorization. Delegated permission
+  enforcement still requires verification through the actual route and CoreApiClient.
 
-- The final SMS recipient is always a **Person**.
-- A template has one **source context**: Person itself, or another object whose
-  selected record has a readable singular relation to one Person.
-- “Singular” is judged from the selected source record: the source record resolves
-  to at most one Person. Reverse lists and other collection traversal are excluded.
-- Template creation stores metadata identifiers, not a selected Person and not a
-  sample record value.
-- A source-specific template is returned only in its matching source context.
-  For example, a Sales Follow-up template must never be returned when the user has
-  selected Person records; one Person can have several follow-ups, so guessing is
-  forbidden.
-- Incompatible objects and incompatible templates are excluded server-side before
-  the browser receives them. The server revalidates every source/relation/template
-  tuple and rejects a forged or stale mismatch with a stable application code.
-- Provider, persistence, Timeline and the existing `POST /communication/send`
-  path remain the authority. No second send route, provider or template table.
+## Order and status
 
-## Defects proven by the user's 2026-10-14 screenshots
-
-1. The page leaks the English title **“SMS Template Studio”** in a Persian UI.
-2. The production front component throws
-   `Uncaught TypeError: ot.focus is not a function`.
-3. The target entity is effectively fixed to «اشخاص».
-4. Clicking controls can close the editor unexpectedly; the modal lifecycle is not
-   reliable enough for data entry.
-5. Drag/drop still reaches a failing focus path and is not accepted as closed.
-6. The sample-Person control opens as an unattractive raw list; actual selection is
-   not reliably completed.
-7. The modal and its field/sample areas do not provide dependable bounded scrolling
-   on the real viewport.
-8. Spacing, hierarchy, actions and dense field cards are not yet sale-ready.
-
-Earlier automated or live claims that conflict with these screenshots are
-superseded. These defects must be reproduced against the real mounted component,
-fixed at the root and accepted again on main/4D.
-
-## Task 1 — W19-B1: Persian UX and runtime stability
-
-Goal: make the currently installed Person-only studio stable, Persian and pleasant
-to use before expanding its data model.
-
-- Replace every visible English studio title with Persian product copy. The page
-  title is exactly «مدیریت الگوهای پیامک».
-- Root-cause and remove the `focus is not a function` crash. Focus management must
-  call `focus()` only on a verified focusable DOM element; no minified/raw exception
-  may reach the user.
-- Make modal dismissal deterministic: only explicit Cancel/close, Escape and an
-  actual backdrop click may request close, all through the unsaved-change guard.
-  Clicks in inputs, comboboxes, field cards, dropdowns and scrollbars never close it.
-- Deliver a viewport-safe modal with fixed header/actions and a bounded scrollable
-  body. The variable palette and combobox list have their own sensible maximum
-  heights and scrolling.
-- Make the target and sample-Person inputs real searchable ARIA comboboxes with
-  loading, empty, selected and clear states. A Person can actually be selected and
-  previewed without the modal closing.
-- Restyle actions, spacing, form hierarchy, table and variable rows consistently.
-  Keep tokens canonical ASCII/LTR and the body multiline RTL.
-- Double-click/keyboard insertion remain first-class. Drag/drop must insert once or
-  safely do nothing; it must never crash, close the modal or move the caret wrongly.
-- Exercise the real production component and repeat live browser acceptance only on
-  main/4D. Package/deploy Task 1 so the user can inspect it before Task 2 starts.
-
-Exit gate: no console/front-component error; title fully Persian; modal remains open
-through edit/search/select/insert/drag; a sample Person is selected and preview is
-rendered; all scroll regions work in the real viewport.
-
-## Task 2 — W19-B2: dynamic eligible source model and preview
-
-Goal: replace the hardcoded Person target with a metadata-driven, unambiguous source
-model without enabling sending yet.
-
-- Discover eligible source objects at runtime: Person plus active/readable objects
-  with at least one active/readable singular relation from the source record to
-  Person. Exclude unrelated objects and collection-only relations before returning
-  data to the browser.
-- Extend the existing native `messageTemplate` object with optional stable metadata
-  identifiers for source object and recipient relation. A missing source on legacy
-  rows reads as Person; no write-back migration.
-- The Persian target combobox lists only eligible objects. If an object has one
-  eligible Person relation, select it automatically; if it has more than one, show
-  a second searchable combobox for the relation definition. Never ask for a concrete
-  Person while defining a template.
-- Build one permission-aware catalog containing readable safe scalar tokens from
-  the source record plus recipient tokens under `@person.*`. No relation collections,
-  arbitrary traversal, credential-looking fields or client-owned authority.
-- Preview selects a sample **source record**. The server resolves its stored Person
-  relation, then resolves the body. Null relation and missing values use translated,
-  stable reasons; provider text is not involved.
-- Add server-side compatibility checks and the stable code
-  `TEMPLATE_CONTEXT_MISMATCH`.
-- Package/deploy Task 2 on main/4D for live studio inspection; do not send an SMS.
-
-Exit gate: the studio lists Person and a disposable eligible related object, omits
-an unrelated/collection-only object, saves stable identifiers, reloads them, and
-previews source + recipient tokens against a selected source record.
-
-## Task 3 — W19-B3: generic command, strict template filtering and release closure
-
-Goal: connect the safe source model to single/bulk sending and finish the sale-ready
-flow.
-
-- Make the existing command a generic `RECORD_SELECTION` command by omitting its
-  fixed Person object identifier. The current `recordContext.objectNameSingular`
-  and selected record IDs determine the source context.
-- For an unsupported object, show only the translated explanation
-  «این موجودیت رابطهٔ تکی قابل استفاده با اشخاص ندارد.» and do not request
-  templates, preview or send.
-- Template-list routes filter server-side by the exact source object. Person context
-  returns only Person templates; Sales Follow-up context returns only Sales Follow-up
-  templates. Incompatible templates must not be sent to the browser as disabled
-  options.
-- Revalidate the source object, stored relation, selected records and template on
-  every preview/send. Never guess among multiple reverse records.
-- “بدون الگو” is available only when recipient resolution is unambiguous.
-- Snapshot source record ID, resolved Person ID, destination and final body, then use
-  the existing sequential coordinator and existing `/communication/send` route.
-  Preserve UNKNOWN/deadline/stop/no-retry semantics and truthful per-recipient results.
-- Prove Person and one related-object flow in the real main/4D UI, with mock/no-send
-  unless the user separately authorizes a real SMS. Package, deploy, update Recovery
-  and freeze the Communication release candidate.
-
-Exit gate: command behavior, strict context filtering, stale/forged mismatch defense,
-single and sequential bulk resolution, results and main/4D deployment all pass. No
-APPLE/app2 or other environment is accessed.
-
-## Permanent execution boundaries
-
-- Work, backup, install and live-test only main/4D at
-  `http://radiant-cyan-dragon.localhost:3001`.
-- APPLE/app2 and every other environment are UNTOUCHED / NOT ACCESSED.
-- Preserve all seven provider variables byte-identically and keep W7 disabled.
-- No real SMS, credential change, provider change, core/host change or SDK upgrade
-  unless a later explicit user instruction authorizes it.
-- Preserve unrelated worktree files. Commit implementation and Recovery separately;
-  push without force; record exact SHAs, package checksum and honest live evidence.
-- If live acceptance finds a defect inside the current task, fix it within that task
-  and rerun only relevant checks. Do not create a fourth architecture task.
-
-## Progress ledger
-
-| Task | Status | Deployed version | Evidence |
+| Stage | Deliverable | Status | Dependency |
 | --- | --- | --- | --- |
-| W19-B1 Persian UX and stability | **SUPERSEDED by the user's decision below** | 0.1.45 | See the "Native-flow decision" section |
-| W19-B2 Dynamic source model | Cancelled with the decision below | — | — |
-| W19-B3 Generic send and release closure | Cancelled with the decision below | — | — |
+| 1 | Complete Person template creation/editing in the real UI | **ACTIVE / NOT ACCEPTED** | Renderer/bridge delivery is internal work in this stage |
+| 2 | Extend that same working editor to related sources | NOT ACCEPTED; partial underlying implementation exists | Stage 1 accepted |
+| 3 | Connect single/bulk send and finish release acceptance | NOT ACCEPTED; existing send foundation is reused | Stage 2 accepted |
 
-## USER DECISION (2026-10-14): native flow replaces the bespoke studio
+Do not expand related-source UI or sending while Stage 1 is unusable.
+Fix failed acceptance within its stage; do not repeatedly issue the same broad task.
+A blocker report must identify the failed command/boundary and the next concrete action.
+Existing authorization for the limited host/bridge change persists.
 
-**Follow-up CRM-NATIVE-TEMPLATES-02 outcome:** items 1–2 of the follow-up are done (view
-renamed to «همهٔ الگوها» so the menu no longer repeats the object name, and the record tabs are
-Persian); the native delete path was located on the record page's command menu
-(«حذف الگوی پیام») with Admin soft-delete/destroy permission confirmed present, but cancel and
-confirm were not executed and remain UNVERIFIED; items 4–9 (dynamic metadata-driven source,
-stable identifiers, native source/relation pickers, insert-once and source+recipient preview
-on the native record page, studio removal) are NOT STARTED because a manifest `SELECT` field
-has **static** options and this SDK has no runtime-populated option source, while the only
-alternative — a custom front component — is the very surface that is broken in this host. See
-the `CRM-NATIVE-TEMPLATES-02` section of `CRM-PLATFORM-RECOVERY.md`.
+## Stage 1 — Person templates, end to end
 
-The user decided that «الگوهای پیامک» must use **the same native mechanism as the
-Companies page** — the platform's own list, create, edit and delete — and that the
-bespoke studio leaves the user path. This **supersedes the three-task plan above** for
-template management: W19-B1's remaining studio work and W19-B2 are cancelled, and W19-B3's
-sending scope is untouched by this decision.
+### Visible behavior
 
-Decisions taken with it, and why:
+1. Keep the native table, filtering, sorting and paging.
+2. Provide a visible «ویرایش» entry through the platform-supported row/record command
+   mechanism. Opening the title may remain a shortcut; it is not the only discoverable path.
+3. «الگوی پیام جدید» must lead to a usable template flow. Reuse supported native creation
+   and side-panel/record extension points. If record-id creation is a prerequisite for the
+   inline editor, expose only minimal business inputs, then open the editor immediately.
+   Do not leave a completed raw form as the final destination or create a second store.
+4. Show one source selector. Selecting «اشخاص» must load the permitted Person field
+   catalog in both New and Edit. Changing a table cell alone is not catalog selection.
+5. Show Persian field labels and canonical ASCII tokens; provide an explicit Insert action.
+   If caret APIs are unsupported, label the real behavior «افزودن به انتهای متن».
+   Do not claim caret insertion without runtime support.
+6. The editor provides title, multiline RTL body, source, variables, sample Person,
+   resolved preview, Save and Cancel/navigation with a dirty-state guard.
+   No new modal-based editor is required.
+7. Technical ids, relation API names, the redundant name field and duplicate source
+   controls must not appear in normal create/edit/table flows. Hide via supported layout
+   configuration; do not delete stored metadata or rewrite user records.
+8. Native soft-delete and trash restore remain; explain immediate reversible delete
+   honestly. Do not invent a delete-confirm flow absent from the platform.
 
-- **Sidebar.** The entry is a `VIEW` navigation item pointing at the app's own
-  `messageTemplate` TABLE view, so the platform supplies the table, the column header menu
-  (sort, aggregate, hide), search, filter, paging and the record create/edit/delete flow.
-  A navigation item's TYPE cannot be changed once it exists, so the studio's `PAGE_LAYOUT`
-  item is retired by dropping it from the manifest; the new item carries its own stable
-  identifier. The studio page layout is deleted, so the studio route no longer exists.
-- **Columns.** The view starts with the title, the source entity (`targetObject`) and
-  «آخرین بهروزرسانی». A view field's TARGET FIELD is treated as its identity by the sync, so
-  the two changed columns necessarily carry **new** view-field identifiers; the previous
-  channel/body columns are dropped from the list (both fields still exist and stay editable
-  on the record).
-- **No parallel storage.** Templates remain the native `messageTemplate` object. No row was
-  migrated or rewritten, and every pre-existing record is preserved.
+### Internal dependencies to finish, not separate product deliverables
 
-The bespoke studio's front component and its logic-function route are now **unreferenced
-dead weight**. Removing that code is deliberately left to a separate cleanup so this change
-stays reviewable; it can no longer be reached from the UI.
+- Repair the renderer build using repository package scripts/configuration, Node/package
+  manager and actual dependency resolution. Exit 0 without expected exports is failure.
+  Identify the artifact actually consumed by twenty-front, including physical copies.
+- Prefer the standard artifact build. A limited source alias is allowed only when the
+  repository's supported development configuration makes worker/runtime resolution correct.
+  No manual node_modules/dist patch or new bundler solely to bypass the problem.
+- Deliver the fixed-route, action-allow-listed user bridge already authorized in chat.
+  Host session supplies identity; no worker-provided URL/user/role/workspace authority;
+  no user token in worker/storage/logs; no generic proxy or free GraphQL.
+- Follow existing session/CSRF/origin and function/component authorization mechanisms.
+  Confirm delegated CoreApiClient uses the user's effective data/field permissions;
+  merely checking userWorkspaceId is insufficient. Keep app-only calls fail-closed.
+- Preserve real conditional CAS: one id+updatedAt batch update; no match means CONFLICT;
+  keep typed text on failure. Use the same record body, not parallel storage.
+- Stage working build and rollback before loading main/4D. Rebuild/reload/restart only
+  dependencies actually changed. Redeploy app only if its artifact changed.
 
-### W19-B1 re-run notes (CRM-W19-B1-RUNTIME-ROOT-CAUSE-CLOSURE)
+### Required acceptance — start from the sidebar, use browser input
 
-Versions reconciled on main/4D and **all three agree** — code `80ba2aa9c4` (0.1.43),
-installed application 0.1.43, and the loaded browser bundle 0.1.43 (read from the runtime
-revision marker rendered in the studio header). A stale deployment or cached bundle is
-therefore excluded by measurement.
+On disposable fixtures only:
+- New -> select Person -> visible permitted fields -> insert exactly once -> select sample
+  -> resolved preview -> save -> table -> reload -> visible Edit -> change -> save -> reload.
+- No technical inputs or duplicate source control in the normal flow.
+- Failure/CONFLICT retains typed text; no silent lost edits.
+- Permitted user succeeds; app-only/forged identity is refused before data access.
+- Restricted-user denial through the actual server permission path. Use an existing
+  suitable identity or isolated test fixture; never alter a real user's role.
+  If no live identity exists, report the live gap and provide a focused integration test;
+  do not claim that live check passed.
+- No runtime/front-component error and no blocked editor for the authorized user.
+Capture the visible New, fields, Edit and preview results, not just API/DB output.
 
-With real input on the installed build: `ایجاد الگوی جدید` opens the dialog, and then
-**every control inside the dialog is inert** (save, cancel/close, variable select/insert,
-variable search filtering), while controls outside the dialog keep working in the same
-session. The break was isolated by instrumentation: DOM events reach the dialog's
-elements and propagate through `#root` in both phases, the subtree belongs to the single
-React root, and its props carry real handlers — yet no handler is ever invoked.
+## Stage 2 — related sources in the same editor
 
-The exit gate cannot be met while the dialog subtree is inert, so Task 1 is **not
-accepted**. Re-run 2 (`CRM-W19-B1-EVENT-DISPATCH-ROOT-FIX`) read the real renderer path and
-narrowed the fault: a front component runs in a **worker inside a cross-origin sandboxed
-iframe**, the host renders its serialized tree through `@remote-dom` and forwards events
-over a `MessagePort`. Runtime capture shows the host forwards a click **identically** —
-same op code, node id, listener id and payload — for the working `ایجاد الگوی جدید` button
-and for the dead variable card inside the dialog, and the worker returns **no mutation**.
-Row buttons created in a later render (`ویرایش`) work, so "later-render nodes are dead" is
-disproved and the failing boundary is exactly the dialog subtree. The worker realm cannot be
-reached from outside (cross-origin sandbox; `contentDocument` is null), which is the concrete
-instrumentation blocker; the next step is a single diagnostic build that logs from inside the
-component through the bridged storage. No code change was shipped in either round: the
-mechanism is unidentified and speculative edits are out of bounds.
+- Discover Person plus active/readable objects with a singular usable relation to Person.
+  Collections, arbitrary reverse traversal and unauthorized sources are excluded server-side.
+- Persist object/field universalIdentifier values; resolve current API names from metadata.
+  Names are hints only. Missing legacy source means Person; invalid stored identifiers
+  must never silently fall back to Person. No write-back migration of user templates.
+- One eligible relation may be selected automatically; multiple require explicit choice.
+  Store relation definition, never a concrete sample Person in the template definition.
+- Source change refreshes the authorized catalog and clears stale sample/preview.
+  Preserve body; identify incompatible tokens rather than silently deleting/reinterpreting them.
+- Implement safe readable `@source.*` values alongside `@person.*`, sharing resolver logic
+  with later sending. No arbitrary traversal or credential fields.
+- Sample picker uses the selected source's metadata label identifier, handles TEXT/FULL_NAME,
+  has a Persian fallback, bounded server search and cursor paging.
+- Preview resolves the selected source record's stored relation; never accepts a client
+  Person override. Reject forged/stale contexts with TEMPLATE_CONTEXT_MISMATCH;
+  null relation yields RELATION_EMPTY with Persian explanation.
+- Acceptance: two disposable source records pointing to the SAME Person, different source
+  values -> equal Person tokens and different source tokens; save/reload identifiers;
+  unsupported objects absent; mismatch/null/denial paths covered.
+- Remove only remaining obsolete studio-specific paths after checking references;
+  retain shared catalog/preview/send behavior. Previously reported cleanup must be verified,
+  not blindly re-deleted.
 
-Two further facts that must be honoured by any fix: a component-side
-`document.addEventListener` can never receive host events (so the 0.1.43 document-level
-Escape handler is unreachable), and `position: fixed` inside the component resolves against
-the host widget container, not the browser viewport (the measured backdrop is `1509×748` at
-`(8,56)` while the body is `1745×982`).
+## Stage 3 — send and release closure
+
+- Reuse existing record-selection command, sequential coordinator, provider services,
+  persistence/Timeline and `POST /communication/send`; no parallel send route/table/provider.
+- Server lists only templates matching the exact selected source context.
+  Person selection must never offer a related-source template.
+- Revalidate permission, source, relation, selected record and template at preview/send;
+  resolve recipient/destination/body server-side. Unsupported context gets Persian explanation.
+- Preserve deadline, UNKNOWN, stop, no automatic retry and truthful per-recipient results.
+  Same phone does not authorize mixing source records or resolved message bodies.
+- Prove Person and related-source single/bulk flows with mock/no-send.
+  Mock results must not be presented as real provider delivery.
+- Final regression begins at the sidebar and covers New/Edit/fields/preview/save/reload,
+  native soft-delete/restore and command context filtering.
+- Record installed host/app provenance, package checksum, remaining limits and user-review
+  result. Do not label release accepted while a required user flow is blocked.
+
+## Execution and data boundaries
+
+- Only main/4D: `http://radiant-cyan-dragon.localhost:3001`.
+  APPLE/app2 and other environments remain NOT ACCESSED.
+- Preserve all seven provider variables byte-identically; W7 disabled; no real SMS without
+  explicit new authorization. No credential/provider change or SDK upgrade.
+- Limited host/renderer/bridge changes for the user-scoped Communication path are authorized.
+  This is not authorization for general authentication redesign or app-permission expansion.
+- Never change user templates, including trash. Fixtures must be created for the current
+  execution and tracked by exact ids. Cleanup may soft-delete only those ids.
+  No hard delete, no enumeration cleanup by deletedAt/name/predicate.
+- Preserve unrelated/untracked work. Commit/push without force.
+- Build from a known clean SHA/export and verify the source/artifact actually consumed.
+  Package version/marker and cached green tests alone do not prove provenance.
+- Run necessary behavior/integration checks; avoid unrelated full-suite loops.
+- Estimate implementation + build/deploy + acceptance before starting; report full elapsed time.
+  If the estimate is exceeded, explain progress and revise it. Do not stop with only cosmetic
+  work because an arbitrary window elapsed, and do not claim an unbounded completion guarantee.
+- Report each criterion PASS / FAIL / UNVERIFIED with the evidence scope.
+  Typechecks, unit counts and API output never substitute for browser acceptance.
+
+## Next authorized action
+
+**Execute Stage 1 only:** make the actual sidebar-to-New/Edit-to-fields-to-preview-to-save
+Person flow work. Finish renderer/bridge build as its dependency, hide technical form fields,
+wire a discoverable Edit action, then verify the entire flow in the browser.
+Do not issue another source-catalog or cosmetic-only completion report.
+Update this ledger and Recovery after real acceptance; retain precise blockers if still open.
