@@ -21,9 +21,67 @@ export type SourceRelationResult =
 /** A GraphQL selection key must be a plain identifier. */
 const SAFE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
 
-type RawNode = {
-  id?: unknown;
-  name?: { firstName?: string | null; lastName?: string | null } | null;
+/**
+ * Shown when a record genuinely has no title. An untitled option is forbidden:
+ * a blank row is indistinguishable from a loading bug, so the fallback names the
+ * situation instead.
+ */
+export const UNTITLED_RECORD_LABEL = 'بدون عنوان';
+
+/**
+ * How a label-identifier field must be read.
+ *
+ * A `FULL_NAME` field is a composite (`{ firstName, lastName }`) while a plain
+ * text field is a string, so the shape decides both the query selection and how
+ * the value is turned into text. Unknown shapes are read as scalars and simply
+ * fall back when they are not strings.
+ */
+export type LabelShape = 'FULL_NAME' | 'SCALAR';
+
+/** Reads the label field's type from the object's own metadata. */
+const resolveLabelShape = (source: {
+  labelFieldName: string | null;
+  labelFieldType?: string | null;
+}): LabelShape =>
+  source.labelFieldType === 'FULL_NAME' ? 'FULL_NAME' : 'SCALAR';
+
+/**
+ * Turns a fetched record into a readable title.
+ *
+ * Returns the fallback for a missing, empty or unusable value, so the picker can
+ * never render a title-less option.
+ */
+export const readRecordLabel = (
+  node: Record<string, unknown>,
+  labelFieldName: string | null,
+): string => {
+  if (labelFieldName === null) {
+    return UNTITLED_RECORD_LABEL;
+  }
+
+  const raw = node[labelFieldName];
+
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+
+    return trimmed.length > 0 ? trimmed : UNTITLED_RECORD_LABEL;
+  }
+
+  if (raw !== null && typeof raw === 'object') {
+    const composite = raw as {
+      firstName?: unknown;
+      lastName?: unknown;
+    };
+
+    const parts = [composite.firstName, composite.lastName]
+      .filter((part): part is string => typeof part === 'string')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    return parts.length > 0 ? parts.join(' ') : UNTITLED_RECORD_LABEL;
+  }
+
+  return UNTITLED_RECORD_LABEL;
 };
 
 /**
@@ -112,15 +170,30 @@ export const searchSourceRecords = async ({
   const term = source.objectName === 'person' ? '' : search.trim();
   const pattern = `%${term.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
 
+  // Search the DECLARED label field when it is a plain scalar text field, so a
+  // search matches what the user sees. A composite or absent label field falls
+  // back to no filter rather than guessing `name`, which only Person has.
+  const labelField = source.labelFieldName;
+  const canFilterOnLabel =
+    labelField !== null && SAFE_NAME_PATTERN.test(labelField);
+  const labelShape = resolveLabelShape(source);
+
   const nameFilter =
-    term.length === 0
+    term.length === 0 || !canFilterOnLabel
       ? undefined
-      : {
-          or: [
-            { name: { firstName: { ilike: pattern } } },
-            { name: { lastName: { ilike: pattern } } },
-          ],
-        };
+      : labelShape === 'FULL_NAME'
+        ? {
+            or: [
+              { [labelField]: { firstName: { ilike: pattern } } },
+              { [labelField]: { lastName: { ilike: pattern } } },
+            ],
+          }
+        : { [labelField]: { ilike: pattern } };
+
+  const nodeSelection =
+    labelField === null
+      ? { id: true }
+      : { id: true, [labelField]: true };
 
   const result = await client.query({
     [source.objectNamePlural]: {
@@ -130,32 +203,27 @@ export const searchSourceRecords = async ({
         ...(nameFilter === undefined ? {} : { filter: nameFilter }),
       },
       edges: {
-        node: {
-          id: true,
-          name: { firstName: true, lastName: true },
-        },
+        node: nodeSelection,
       },
     },
   });
 
   const container = (result as Record<string, unknown>)[
     source.objectNamePlural
-  ] as { edges?: { node?: RawNode | null }[] } | null | undefined;
+  ] as { edges?: { node?: Record<string, unknown> | null }[] } | null | undefined;
 
   const edges = container?.edges ?? [];
 
   return edges
     .map((edge) => edge?.node)
-    .filter((node): node is RawNode => node !== null && node !== undefined)
+    .filter(
+      (node): node is Record<string, unknown> =>
+        node !== null && node !== undefined,
+    )
     .map((node) => {
-      const parts = [
-        node.name?.firstName?.trim() ?? '',
-        node.name?.lastName?.trim() ?? '',
-      ].filter((part) => part.length > 0);
-
       const id = typeof node.id === 'string' ? node.id : '';
 
-      return { id, label: parts.join(' ') };
+      return { id, label: readRecordLabel(node, labelField) };
     })
     .filter((entry) => entry.id.length > 0);
 };

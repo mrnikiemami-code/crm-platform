@@ -42,6 +42,19 @@ export type EligibleTemplateSource = {
   labelSingular: string;
   labelPlural: string;
   /**
+   * The object's OWN label-identifier field name, resolved from metadata.
+   *
+   * Sample titles are read from this field — never from an assumed
+   * `name.firstName/lastName`, which only Person happens to have. `null` when
+   * metadata declares no label field.
+   */
+  labelFieldName: string | null;
+  /**
+   * The label field's metadata TYPE. A `FULL_NAME` field is a composite, so the
+   * reader needs to know how to turn it into text.
+   */
+  labelFieldType: string | null;
+  /**
    * Relations that can resolve the recipient. A Person source has none (the
    * record IS the person); any other source has at least one.
    */
@@ -72,6 +85,7 @@ type RawObject = {
   universalIdentifier?: string | null;
   nameSingular?: string | null;
   namePlural?: string | null;
+  labelIdentifierFieldMetadataId?: string | null;
   labelSingular?: string | null;
   labelPlural?: string | null;
   isActive?: boolean | null;
@@ -88,6 +102,7 @@ export const ELIGIBLE_SOURCES_QUERY = {
         universalIdentifier: true,
         nameSingular: true,
         namePlural: true,
+        labelIdentifierFieldMetadataId: true,
         labelSingular: true,
         labelPlural: true,
         isActive: true,
@@ -143,6 +158,36 @@ export const buildEligibleTemplateSources = (
 
   const personUid = person.universalIdentifier;
 
+  // The label field is whatever metadata declares as the object's identifier —
+  // never an assumed `name`. Read once per object and reused.
+  const resolveLabelFieldName = (object: RawObject): string | null => {
+    const labelFieldId = object.labelIdentifierFieldMetadataId;
+
+    if (!isNonEmpty(labelFieldId)) {
+      return null;
+    }
+
+    const field = (object.fieldsList ?? []).find(
+      (candidate) => candidate.id === labelFieldId,
+    );
+
+    return field !== undefined && isNonEmpty(field.name) ? field.name : null;
+  };
+
+  const resolveLabelFieldType = (object: RawObject): string | null => {
+    const labelFieldId = object.labelIdentifierFieldMetadataId;
+
+    if (!isNonEmpty(labelFieldId)) {
+      return null;
+    }
+
+    const field = (object.fieldsList ?? []).find(
+      (candidate) => candidate.id === labelFieldId,
+    );
+
+    return field !== undefined && isNonEmpty(field.type) ? field.type : null;
+  };
+
   const sources: EligibleTemplateSource[] = [
     {
       objectUid: personUid,
@@ -150,6 +195,8 @@ export const buildEligibleTemplateSources = (
       objectNamePlural: person.namePlural ?? PERSON_SOURCE_OBJECT_NAME,
       labelSingular: person.labelSingular ?? PERSON_SOURCE_OBJECT_NAME,
       labelPlural: person.labelPlural ?? PERSON_SOURCE_OBJECT_NAME,
+      labelFieldName: resolveLabelFieldName(person),
+      labelFieldType: resolveLabelFieldType(person),
       relations: [],
     },
   ];
@@ -209,6 +256,8 @@ export const buildEligibleTemplateSources = (
         : object.nameSingular,
       labelSingular: object.labelSingular ?? object.nameSingular,
       labelPlural: object.labelPlural ?? object.nameSingular,
+      labelFieldName: resolveLabelFieldName(object),
+      labelFieldType: resolveLabelFieldType(object),
       relations,
     });
   }
