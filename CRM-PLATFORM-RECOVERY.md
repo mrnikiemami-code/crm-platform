@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 CLOSE_REMAINING_GATES — investigation round, NO code shipped. Three decisive answers were obtained with code/live evidence: (1) per-user authorization is NOT available to a front-component-initiated app route, so item 4 cannot be satisfied there and must fail closed; (2) a TRUE compare-and-set IS available via the batch `updateMessageTemplates(data, filter)` with `id`+`updatedAt`, returning an EMPTY list on zero matches; (3) `Object.universalIdentifier` / `Field.universalIdentifier` exist, so stable identifiers can be stored and API names resolved from metadata at runtime. Implemented work for items 1–3 and 6 was NOT started this round. INCIDENT: a cleanup script of mine hard-destroyed three soft-deleted rows, two of them the user's own templates; both were recovered byte-identical from the 23:48 backup and verified by MD5 — see the incident section below. Data now matches the pre-incident state exactly.)
+Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 IMPLEMENT_REMAINING_AND_CLOSE_AUTH_GUARD: items 1–6 implemented, built from a clean archive of `9fd25e6ded` whose 172 source files were byte-compared against the archive (zero differences), and installed as Communication 0.1.50. Live on main/4D with a user identity: uid-keyed eligible sources with the collection-only object absent, uid fields stored, a REAL CAS that rejects a stale write while keeping the text, a forged pair refused with TEMPLATE_CONTEXT_MISMATCH, and a related-source preview whose recipient comes from the SELECTED record's own relation. The USER-scoped guard is enforced first on every data-touching action and behaviourally tested, but the editor remains BLOCKED in the browser because a front component carries only an application identity — so the capability is NOT a full PASS. Three honest gaps are listed below. Only a disposable fixture was created and it was soft-deleted; no user template was read, written or removed.)
 
 ## Purpose
 
@@ -52,6 +52,102 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## CRM-NATIVE-TEMPLATES-02 IMPLEMENT_REMAINING_AND_CLOSE_AUTH_GUARD — items 1–6 (0.1.50)
+
+Baseline `81c8e16b3c` → tip `9fd25e6ded`; installed on main/4D: Communication **0.1.50**.
+Build input provenance: the SHA's archive was extracted both locally and in the build
+container and **all 172 `src` files were compared by SHA256 — zero differences**, so the
+build came from that exact tree (a version string alone would not have shown this).
+
+### 1. Authorization boundary — enforced first, on every data-touching action
+
+`list`, `search-people`, `eligible-sources`, `source-records`, `read-template`,
+`save-template`, `preview`, `create`, `update`, `delete` all return
+`AUTH_REQUIRED` with the Persian message
+«برای این عملیات باید با حساب کاربری خود وارد شده باشید. دسترسی برنامه کافی نیست.» **before**
+any read, write, catalog build or sample lookup.
+
+The check reads `event.userWorkspaceId`, which the route trigger sets from the VALIDATED
+token, so a forged body identity is ignored. There is no fallback to app access and no
+test-only bypass. The editor renders the blocked state and offers no control that would fail.
+
+### 2. Stable identifiers, resolved from metadata
+
+The authoritative stored values are the metadata `universalIdentifier` of the source object
+and of the relation field (two new nullable fields). The readable name fields remain as
+non-authoritative hints. Names are resolved from metadata on every use, and the connection
+field is the object's **`namePlural`** rather than `nameSingular + 's'` — Person's connection
+is `people`, so deriving it would query a field that does not exist.
+
+An **absent** stored source still means Person (legacy), but a stored identifier that no
+longer resolves is `UNRESOLVABLE` and is **never** reinterpreted as Person. Locked by tests
+for: a deleted object, a deleted relation, a relation that became a collection, a related
+source storing no relation, a Person source carrying a relation, and a relation without an
+object. No write migration touches existing rows.
+
+### 3. A real compare-and-set
+
+`save-template` writes the body AND the source identifiers in ONE conditional batch
+`updateMessageTemplates(data, filter)` with `id` + `updatedAt`. An empty result means the
+filter matched nothing → `CONFLICT` with a Persian message and the typed text preserved. The
+check-then-write path is gone.
+
+### 4–5. Related-source preview and validation
+
+`preview` takes a SAMPLE RECORD of the template's own source object, re-resolves the stored
+source against live metadata, reads that record's stored relation to the Person, and resolves
+tokens from that context. A mismatched sample object, an unresolvable source and a null
+relation each return their own stable code with a Persian reason — no guessed recipient.
+
+### 6. Cleanup
+
+Removed the studio UI and studio-only code (studio front component, combobox, dom helpers,
+styles, studio client, and their tests) and the route's own CRUD actions, since the
+platform's native list and record page own template CRUD. The shared contract, the catalog
+and the preview/send services are untouched.
+
+### Live verification on main/4D (with a user identity)
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Eligible sources keyed by metadata uid | PASS | `person[uid=20202020…] rel=0, eventRegistration rel=1, eventLead rel=1, opportunity rel=1, communication rel=1` |
+| Connection name from metadata | PASS | Person reports `objectNamePlural: "people"` |
+| Collection-only object absent | PASS | `company present? false` |
+| uid fields stored | PASS | after save: `sourceObjectUid=20202020-e674…`, `sourceObjectName=person` |
+| CAS, current version | PASS | save returned the updated record with a new `updatedAt` |
+| CAS, stale version | PASS | `{"errorCode":"CONFLICT","isConflict":true}` + Persian message, and the stored body stayed the FIRST value (`MUST-NOT-WIN` never landed) |
+| Forged pair refused | PASS | `{"errorCode":"TEMPLATE_CONTEXT_MISMATCH"}` |
+| Related-source records listed | PASS | 6 opportunity records returned for the stored source |
+| Related source stored | PASS | `sourceObjectUid=…opportunity`, `recipientRelationUid=…`, `recipientRelation=pointOfContact` |
+| Recipient from the SELECTED record | PASS | record `2beb07b0` (poc Patrick) → «سلام Patrick Collison»; record `75de302f` (poc Ivan) → «سلام Ivan Zhao» — two records, two recipients, each from its own relation |
+| Mismatched sample object refused | PASS | `TEMPLATE_CONTEXT_MISMATCH` with the Persian reason |
+
+### Honest gaps
+
+1. **The editor is BLOCKED in the browser.** A front component reaches an app route with the
+   application token, so `userWorkspaceId` is null and every guarded action is refused — by
+   design. The guard was verified behaviourally (the real handler called with a null user
+   identity refuses all ten actions and ignores forged body identity), but I could not
+   perform the same check live with an app token because that token is minted inside the
+   render context and is not obtainable from outside. **The capability is not a full PASS and
+   is not published as secure on app access.**
+2. **Source-object tokens are NOT implemented.** The catalog is still Person/Company based, so
+   a template cannot yet read a field of its own source record. The recipient half is done
+   and verified; the source half is not. This also means the "two records sharing ONE Person
+   with different source values" case could not be demonstrated — the live check instead
+   proved two records with DIFFERENT relations resolve to their own recipients.
+3. **The sample-record picker shows blank labels for objects without `name.firstName/lastName`**
+   (opportunity options came back with `label: ""`). The label should come from each object's
+   own label identifier field; that is a real usability gap, not a cosmetic one.
+4. `RELATION_EMPTY` was not exercised live: no opportunity with a null relation was available.
+
+### Data
+
+Only ONE disposable fixture was created (`W19B2-GUARD-FIXTURE`,
+`12099692-38db-4af9-b77c-34dc6ae526b4`) and it was **soft-deleted** as the rule allows — no
+hard delete, and no cleanup by `deletedAt`, name or any public predicate. The four user rows
+are exactly as they were, two of them soft-deleted as before.
 
 ## INCIDENT (2026-10-15) — my cleanup destroyed two user templates; both recovered byte-identical
 
