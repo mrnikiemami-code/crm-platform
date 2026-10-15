@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 USER_SCOPED_EDITOR_COMPLETION — item 5 DONE and live (readable sample titles from each object's own label-identifier field, with the Persian «بدون عنوان» fallback so an untitled option is impossible); item 4 (@source.* tokens) and items 1–3 (the user-scoped editor) are NOT done. Items 1–3 need a host-side bridge that does not exist, and its full shape is now traced and recorded rather than half-built. Communication 0.1.52 is installed on main/4D. No user template was touched; no fixture rows were left behind.)
+Last updated: 2026-10-15 (CRM-NATIVE-TEMPLATES-02 IMPLEMENT_USER_BRIDGE_AND_FINISH_EDITOR — the user-scoped bridge is IMPLEMENTED IN SOURCE across the host (renderer type + noop + worker mapping), twenty-front (fixed route, action allow-list, session-cookie identity) and the app, and all three typecheck; but it is NOT LIVE because the renderer could not be rebuilt in this environment, so the bridge key never reaches the worker global and the editor stays blocked (the app safely falls back to the fail-closed route). No host change was deployed, so the running host is not broken. Item 4 (@source.*) is NOT done. Communication 0.1.53 is installed on main/4D; the app suite is 697/697; no user template was touched and the only fixture from this run was soft-deleted by exact id.)
 
 ## Purpose
 
@@ -52,6 +52,74 @@ source record.
 deployed or browser-tested. APPLE/app2 and every other environment remain UNTOUCHED /
 NOT ACCESSED. Preserve all seven provider variables byte-identically, keep W7
 disabled and send no real SMS without a new explicit authorization.
+
+## CRM-NATIVE-TEMPLATES-02 IMPLEMENT_USER_BRIDGE — bridge written and typechecked; blocked on the renderer build
+
+Baseline `676b217445` → tip `0bd83a4350`; installed on main/4D: Communication **0.1.53**
+(app suite 697/697). The host was NOT deployed, deliberately.
+
+### The mechanism, reused from the platform rather than invented
+
+The identity problem is solved by the pattern the app's OWN settings panels already use:
+`fetch('/s/communication/...', { credentials: 'include' })`, so the browser's session cookie
+authenticates the request and the server resolves the real user. The consequence that
+matters: **no token is handed to the worker, written to storage or logged**, and the worker
+cannot name an identity because it never supplies one.
+
+### What was implemented (all three packages typecheck)
+
+| File | Change |
+| --- | --- |
+| `twenty-front-component-renderer/src/types/FrontComponentHostCommunicationApi.ts` | `callCommunicationRoute({ action, payload })` declared |
+| `.../host/thread/constants/FrontComponentHostCommunicationApiNoop.ts` | refusing no-op |
+| `.../remote/worker/thread/utils/buildFrontComponentHostCommunicationApiFromThreadImports.ts` | forwarded to the worker |
+| `twenty-front/src/modules/front-components/utils/communicationRouteAllowList.ts` | NEW — `ALLOWED_COMMUNICATION_ACTIONS`, exact-match, so the bridge cannot drift into a generic proxy |
+| `twenty-front/.../hooks/useFrontComponentExecutionContext.ts` | host impl: FIXED route, allow-list check, `credentials: 'include'` |
+| `twenty-apps/internal/communication/.../template-variable-guide.front-component.tsx` | prefers the bridge; falls back to its own route, which fails closed |
+
+The allow-list is `read-template`, `save-template`, `eligible-sources`, `source-records`,
+`search-people`, `preview` — the same set the server authorizes. A component cannot supply a
+URL, a user id, a role or a workspace, so there is no generic proxy and no free GraphQL.
+
+**Safe by construction:** when the bridge is absent the app takes its old path, which returns
+`AUTH_REQUIRED`. Building against an older host therefore cannot silently downgrade to app
+access, and the `AUTH_REQUIRED` guard is unchanged.
+
+### Why it is NOT live — the exact remaining step
+
+`twenty-front-component-renderer` resolves through its built `dist` (`package.json` `types:
+dist/index.d.ts`), `node_modules` holds a physical copy, and the workspace `dist` is empty. The
+bridge key only reaches the worker global through that built artifact, so until it is rebuilt
+the app falls back and the editor stays blocked. **A rebuild could not be produced here:**
+`vite build` (v8.0.16) exits 0 in under a second with zero bytes on stdout and stderr and
+emits no `dist`, via the local bin shim, `node node_modules/vite/bin/vite.js build`, and `nx`
+(nx is not installed at the repo root).
+
+So the remaining work is a **build-plumbing** step, not a design one:
+
+1. make the renderer build emit `dist/`, or point `twenty-front`'s resolution at the renderer's
+   `src` (the app's HMR already loads host source, which is why the hook change is picked up);
+2. rebuild/restart the host so the dev server serves the new worker mapping;
+3. rebuild and redeploy the app (the 0.1.53 tarball already contains the bridge call);
+4. then run the browser acceptance that is still outstanding.
+
+### Still not done
+
+- **Item 4 (`@source.*`)** untouched: the catalog is still Person/Company based, so a template
+  cannot read its own source record and the "two records, same Person, different `@source.*`"
+  case cannot be shown.
+- **Every browser-level acceptance remains unproven**: read → edit → CAS save → reload →
+  preview as a user, low-privilege denial, `RELATION_EMPTY`, and the related-source preview via
+  the UI. What IS proven (API level, re-confirmed on 0.1.53): uid-keyed eligible sources with
+  `company` absent, readable labels for Person (`name`/FULL_NAME) and opportunity (`name`/TEXT),
+  a real CAS that rejects a stale write while keeping the text, a forged pair refused as
+  `TEMPLATE_CONTEXT_MISMATCH`, and a recipient resolved from the selected record.
+
+### Data
+
+One fixture was created this run (`01c744d5-c9f1-425e-99bd-d74846398f8a`, printed at creation)
+and **soft-deleted by that exact id** — no predicate-based cleanup and no hard delete. The four
+user rows are unchanged and the seven provider variables are untouched.
 
 ## CRM-NATIVE-TEMPLATES-02 USER_SCOPED_EDITOR_COMPLETION — item 5 done; 1–4 blocked on a missing host bridge
 
