@@ -439,10 +439,43 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
         metadataClient: new MetadataApiClient(),
       });
 
+      // The preview validates the CURRENT FORM CONTEXT, not the previously
+      // SAVED one. A source the user changed in the editor but has not saved yet
+      // must preview against what the form now shows — otherwise the sample
+      // record the picker just offered (from the form's source) is judged against
+      // the old stored source and rejected, forcing a save/reload just to look at
+      // a preview. The requested pair is validated against the eligible set
+      // first, so a forged or stale value is refused rather than previewed.
+      const requestedObjectUid = readTrimmed(body.sourceObjectUid);
+      const requestedRelationUid = readTrimmed(body.recipientRelationUid);
+
+      let effectiveObjectUid = stored.sourceObjectUid;
+      let effectiveRelationUid = stored.recipientRelationUid;
+
+      if (requestedObjectUid.length > 0) {
+        const eligible = resolveEligibleSource({
+          sources,
+          objectUid: requestedObjectUid,
+          relationUid: requestedRelationUid,
+        });
+
+        if (eligible === null) {
+          return {
+            success: false as const,
+            errorCode: TEMPLATE_STUDIO_ERROR_CODE.CONTEXT_MISMATCH,
+            message:
+              'منبع انتخاب‌شده برای پیش‌نمایش در دسترس نیست. یک منبع دیگر انتخاب کنید.',
+          };
+        }
+
+        effectiveObjectUid = eligible.objectUid;
+        effectiveRelationUid = eligible.relationUid;
+      }
+
       const resolvedSource = resolveStoredTemplateSource({
         sources,
-        storedObjectUid: stored.sourceObjectUid,
-        storedRelationUid: stored.recipientRelationUid,
+        storedObjectUid: effectiveObjectUid,
+        storedRelationUid: effectiveRelationUid,
       });
 
       if (resolvedSource.kind === 'UNRESOLVABLE') {

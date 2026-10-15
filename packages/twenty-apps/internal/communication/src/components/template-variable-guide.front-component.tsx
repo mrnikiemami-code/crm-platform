@@ -679,6 +679,11 @@ const TemplateEditor = () => {
         templateId,
         sampleRecordId,
         sampleObjectName: selectedSource.objectName,
+        // The source the FORM currently shows, validated server-side before use.
+        // Without it the server would resolve the template's STORED source, so a
+        // source changed but not yet saved would be previewed against the old one.
+        sourceObjectUid: selectedSource.objectUid,
+        recipientRelationUid,
         body,
       });
 
