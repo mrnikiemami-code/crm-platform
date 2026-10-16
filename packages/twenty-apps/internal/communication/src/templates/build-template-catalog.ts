@@ -182,6 +182,8 @@ export const AUTHORIZED_CATALOG_STAGE = {
   METADATA_ERROR: 'METADATA_ERROR',
   ROLE_QUERY_ERROR: 'ROLE_QUERY_ERROR',
   READ_PROBE_ERROR: 'READ_PROBE_ERROR',
+  /** The role read SUCCEEDED but did not contain the application's own role. */
+  APP_ROLE_NOT_FOUND: 'APP_ROLE_NOT_FOUND',
   /**
    * @deprecated No longer produced. The probe, not role metadata, is the
    * authority, so "the role could not be read" is not a case that can occur. A
@@ -810,7 +812,6 @@ export const readTemplatePermissions = async ({
       },
     },
   });
-
   const roles = rolesResult.getRoles ?? [];
 
   // The Application row's `defaultRoleId` is the precise pointer, but reading it
@@ -844,6 +845,9 @@ export const readTemplatePermissions = async ({
     );
 
   if (role === undefined) {
+    // The query SUCCEEDED but the application's own role is not among the roles
+    // the caller may see. A QUERY failure throws instead, so the caller can tell
+    // "denied" apart from "not listed".
     return null;
   }
 
@@ -1154,6 +1158,7 @@ export const buildAuthorizedTemplateCatalog = async ({
   // the application's role. A role that cannot be read yields NO catalog rather
   // than an unrestricted one.
   let permissions: TemplatePermissionSnapshot | null;
+  let permissionReadFailed = false;
 
   try {
     permissions = await readEffectiveTemplatePermissions({
@@ -1162,6 +1167,7 @@ export const buildAuthorizedTemplateCatalog = async ({
     });
   } catch {
     permissions = null;
+    permissionReadFailed = true;
   }
 
   if (permissions === null) {
@@ -1169,7 +1175,12 @@ export const buildAuthorizedTemplateCatalog = async ({
       catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
       sourceLabelPlural: sourceObject.labelPlural,
       isAvailable: false,
-      stage: AUTHORIZED_CATALOG_STAGE.ROLE_QUERY_ERROR,
+      // Two genuinely different causes, reported apart: the role query was
+      // DENIED (threw), or it succeeded but the application's own role was not
+      // among the roles the caller may see.
+      stage: permissionReadFailed
+        ? AUTHORIZED_CATALOG_STAGE.ROLE_QUERY_ERROR
+        : AUTHORIZED_CATALOG_STAGE.APP_ROLE_NOT_FOUND,
     };
   }
 
