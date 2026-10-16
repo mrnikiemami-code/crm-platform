@@ -86,6 +86,116 @@ The following reports are retained without rewriting their contents.
 They are not the active plan, are not proof of current live behavior, and may contain
 superseded conclusions. The checkpoint and linked plan above control subsequent work.
 
+## CRM-TEMPLATES-CONTEXTUAL-SEND-03 — the existing send path became record-aware; a live 500 fell out of it (0.1.61/0.1.62)
+
+Baseline `a2a3e536e20b5aa234f61593a9de3dd532a094bb` → tip `4cd531f841`; apps 0.1.61 then 0.1.62
+on main/4D; host unchanged. Wall clock 07:22–08:05 UTC. **HEAD = origin/crm-platform.**
+Two commits: `019f12f555` (contextual send), `4cd531f841` (the missing-record crash), plus Recovery.
+
+### 1. Two independent reasons the command could not work per record
+
+**The command did not exist for other objects.** `send-message.command-menu-item.ts` set
+`availabilityObjectUniversalIdentifier: person`, and `doesCommandMenuItemMatchObjectMetadataId`
+is `!isDefined(availabilityObjectMetadataId) || match` — so on an Opportunity the command was
+simply absent, with no explanation. It is now **unbound**, which that same predicate reads as
+"matches every object"; the component decides what it can act on and explains the rest.
+
+**The object identity never reached the app.** The host already resolved `objectNameSingular`
+in `useCommandMenuItemClick` and stored it in `viewableFrontComponentRecordContextComponentState`,
+but `SidePanelFrontComponentPage` forwarded only `selectedRecordIds`, dropping the object before
+the worker. It is now plumbed through the renderer, the host execution context and a
+`useObjectNameSingular` hook.
+
+**The hook is local to the app, deliberately.** The app builds against **published
+`twenty-sdk` 2.35.0**, whose type surface predates the field; adding it to the workspace SDK
+source does not change what the app resolves. The VALUE comes from the host at runtime, so only
+the published TYPE lags — the local hook casts narrowly for that reason and is documented as
+replaceable once the SDK catches up.
+
+### 2. The template list is filtered on the SERVER, per source
+
+`findMessageTemplates` did not even read `sourceObjectUid`, so nothing downstream could filter.
+`MessageTemplateRecord` now carries it, and `filterTemplatesForSource` narrows the list:
+
+| Source | Result (measured on the live route) |
+| --- | --- |
+| Person | `تست ارسال گروهی[legacy]`, `W15-MAIN Greeting[legacy]` |
+| Opportunity | `[]` (no such template exists yet) |
+| Unknown identifier | `[]` with `catalogStage: SOURCE_UNKNOWN` |
+
+A source-less row means Person, per the existing `resolveStoredTemplateSource` contract — which
+is why the user's two live templates still appear for Person and are hidden for an Opportunity.
+An unknown source yields **nothing** rather than the Person templates, because those are exactly
+the mismatched ones.
+
+### 3. The recipient is DERIVED, not supplied
+
+`resolveSendContext` reads the selected record, follows the template's stored relation and
+returns the Person at the other end; for a Person source the record IS the recipient and no
+second read is made. The derived recipient **replaces** any client-supplied `personId`, so a
+caller cannot redirect a contextual send — pinned by a handler test that sends a deliberately
+wrong `personId` and asserts the record's own person was persisted.
+
+`@source.*` and `@person.*` resolve from that same resolved context, and the catalog is built for
+that source, so the values and the field list cannot disagree with the record.
+`TEMPLATE_CONTEXT_MISMATCH` and `RELATION_EMPTY` are preserved as distinct outcomes, and a record
+whose relation is null produces **no send** rather than a guess.
+
+### 4. Traceability, and the crash the live run exposed
+
+`communication` gained a nullable `sourceRecordId` (verified present: `text`, nullable), written
+only from the server-resolved context, so two sends with different source values are
+distinguishable in history.
+
+**0.1.62 — found by the live acceptance, not by a test:** sending with a context record id that
+does not exist returned `ROUTE_TRIGGER_USER_UNCAUGHT_ERROR` (500, "Record not found") instead of
+the `RECORD_NOT_FOUND` outcome the resolver already modelled. The source-record read surfaces a
+MISSING record as a **thrown error** rather than an empty result, and the call sat outside any
+`try/catch`, so the route crashed instead of refusing. The read is now wrapped, and both callers
+wrap context resolution, so no context failure can escape as an unhandled route error. A test now
+pins the throwing read specifically.
+
+### 5. Acceptance (mock / no-send)
+
+| Check | Result |
+| --- | --- |
+| Rejections create NO history and no fake SENT | **PASS** — communications 1 → 1 across every rejected request |
+| Forged object name | **PASS** — `TEMPLATE_CONTEXT_MISMATCH`, "This record is not a template source." |
+| Missing record (after 0.1.62) | **PASS** — `PERSON_NOT_ACCESSIBLE` / "Record not found or not accessible.", not a 500 |
+| Phone list, forged object | **PASS** — `UNSUPPORTED_OBJECT`, no numbers offered, no Person fallback |
+| Phone list, missing record (after 0.1.62) | **PASS** — `RECORD_NOT_FOUND` |
+| No target at all | **PASS** — `personId is required`, no send |
+| Person templates vs Opportunity vs unknown | **PASS** — see the table in item 2 |
+| Existing Person behaviour | **PASS** — the same route, service, provider registry and persistence; the 23 pre-existing handler tests are unchanged and green |
+
+No parallel route, table, provider path or coordinator: the same `POST /communication/send`, the
+same send-and-persist service and persistence port. Deadline, UNKNOWN, stop and no-auto-retry are
+untouched, and the duplicate-removal policy was not modified.
+
+### 6. Status of the four surfaces, reported separately
+
+| Surface | Status |
+| --- | --- |
+| **catalog** | **DONE** — source-driven, filtered per source, no Person fallback (previous task) |
+| **new form** | **LIMITED, re-confirmed this run** — the «الگوی پیام جدید» panel still offers only «عنوان»/«متن»/«نام»; source selection, variables and preview appear only AFTER the record is created. Not fixed here and not claimed: item 6 explicitly says the catalog fix alone is not acceptance for the new form. |
+| **edit** | **DONE** — «ویرایش الگو» header button, source + variables + preview + save/reload (previous task) |
+| **send** | **DONE for Person; contextual send implemented and verified at the route level.** The command is now reachable for every record selection and the app branch is in place, but I could NOT complete the browser click-through on an Opportunity row: this automation's clicks miss the record table's custom checkbox (it is not an `input` in the DOM the renderer exposes), so the selection never activates and the command palette stays empty for a `RECORD_SELECTION` command. A human click on a row checkbox is the remaining one-second confirmation. |
+
+### Checks
+
+App: **typecheck 0**, **lint 0/0**, **731/731** in 68 files — 16 new tests
+(`filterTemplatesForSource`, `resolveSendContext`, the three contextual-send handler tests, and
+the throwing-read regression). Host/renderer/SDK changes are additive and the app's own suite is
+what builds against them.
+
+### Data
+
+**No fixture was created this run** — the task needed none, and the acceptance was performed with
+mock/no-send requests only. `messageTemplate` remains 9 rows (2 live user templates, the rest
+pre-existing soft-deleted rows), `communication` remains 1 row. Nothing was soft-deleted because
+nothing was created. Seven provider variables untouched, W7 disabled, no real SMS,
+APPLE/app2 untouched.
+
 ## CRM-TEMPLATES-SOURCE-CATALOG-FIX — the catalog now follows the selected source, and three latent defects fell out with it (0.1.58 → 0.1.60)
 
 Baseline `400cc0b1ad4b380019ec0e54c5f9d1206cd5d040` → tip `6f5401ee62`; apps 0.1.58, 0.1.59
