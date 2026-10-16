@@ -216,8 +216,7 @@ export const saveMessageTemplateConditionally = async ({
   targetObject: string;
   expectedUpdatedAt: string | null;
 }): Promise<
-  | { kind: 'SAVED'; template: TemplateRecordWithSource }
-  | { kind: 'CONFLICT' }
+  { kind: 'SAVED'; template: TemplateRecordWithSource } | { kind: 'CONFLICT' }
 > => {
   const filter =
     expectedUpdatedAt !== null && expectedUpdatedAt.length > 0
@@ -352,4 +351,85 @@ export const deleteMessageTemplate = async ({
   return typeof deletedId === 'string' && deletedId.length > 0
     ? deletedId
     : null;
+};
+
+// The host allocates a draft UUID before opening the editor. Retrying an
+// ambiguous response may return that exact write, but never overwrite it.
+export const createMessageTemplateWithSource = async ({
+  client,
+  id,
+  title,
+  body,
+  sourceObjectUid,
+  recipientRelationUid,
+}: {
+  client: Pick<CoreApiClient, 'query' | 'mutation'>;
+  id: string;
+  title: string;
+  body: string;
+  sourceObjectUid: string;
+  recipientRelationUid: string;
+}): Promise<TemplateRecordWithSource> => {
+  const fields = {
+    id: true,
+    title: true,
+    body: true,
+    targetObject: true,
+    sourceObjectUid: true,
+    recipientRelationUid: true,
+    updatedAt: true,
+  };
+  const readExisting = async () => {
+    const result = await client.query({
+      messageTemplates: {
+        __args: { first: 1, filter: { id: { eq: id } } },
+        edges: { node: fields },
+      },
+    });
+    const connection = result.messageTemplates as
+      | {
+          edges?: { node?: RawMutationNode | null }[];
+        }
+      | undefined;
+    const existing = toTemplateRecord(connection?.edges?.[0]?.node);
+    if (
+      existing !== null &&
+      (existing.title !== title ||
+        existing.body !== body ||
+        existing.sourceObjectUid !== sourceObjectUid ||
+        existing.recipientRelationUid !== recipientRelationUid)
+    )
+      throw new Error('Draft identifier already used');
+    return existing;
+  };
+  const existing = await readExisting();
+  if (existing !== null) return existing;
+  try {
+    const result = await client.mutation({
+      createMessageTemplate: {
+        __args: {
+          data: {
+            id,
+            name: title,
+            title,
+            body,
+            channel: 'SMS',
+            targetObject: 'PERSON',
+            sourceObjectUid,
+            recipientRelationUid,
+          },
+        },
+        ...fields,
+      },
+    });
+    const created = toTemplateRecord(
+      result.createMessageTemplate as RawMutationNode,
+    );
+    if (created === null) throw new Error('No created template returned');
+    return created;
+  } catch (error) {
+    const recovered = await readExisting();
+    if (recovered !== null) return recovered;
+    throw error;
+  }
 };

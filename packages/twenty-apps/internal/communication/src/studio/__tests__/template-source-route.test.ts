@@ -28,6 +28,7 @@ const transport = vi.fn();
 beforeEach(() => {
   vi.stubEnv('TWENTY_API_URL', 'https://crm.example.test');
   vi.stubEnv('TWENTY_APP_ACCESS_TOKEN', 'delegated-test-token');
+  metadataQuery.mockReset();
   generatedRead.mockReset();
   mutation.mockReset();
   transport.mockReset();
@@ -188,5 +189,82 @@ describe('template route with an independently owned source', () => {
     }
     expect(generatedRead).not.toHaveBeenCalled();
     expect(mutation).not.toHaveBeenCalled();
+  });
+  it('previews a draft with its selected source without reading or creating a template', async () => {
+    const result = await handler({
+      userWorkspaceId: 'real-user-membership',
+      body: {
+        action: 'preview',
+        sourceObjectUid: sourceUid,
+        recipientRelationUid: relationUid,
+        sampleObjectName: 'conferenceBooking',
+        sampleRecordId: 'source-a',
+        body: '@source.venue؛ @person.jobTitle',
+      },
+    });
+    expect(result.success).toBe(true);
+    expect(result.previews).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ previewText: 'تهران؛ مدیر فروش' }),
+      ]),
+    );
+    expect(
+      transport.mock.calls.every(
+        ([, options]) =>
+          !JSON.parse(String(options.body)).query.includes('messageTemplate'),
+      ),
+    ).toBe(true);
+    expect(mutation).not.toHaveBeenCalled();
+  });
+  it('fails closed for draft creation and preview without a host-authenticated user', async () => {
+    for (const action of ['create-template', 'preview']) {
+      expect(
+        await handler({ body: { action, userWorkspaceId: 'forged' } }),
+      ).toMatchObject({ errorCode: 'AUTH_REQUIRED' });
+    }
+    expect(transport).not.toHaveBeenCalled();
+    expect(metadataQuery).not.toHaveBeenCalled();
+    expect(mutation).not.toHaveBeenCalled();
+  });
+  it('creates title, exact body and validated source together and rejects a forged relation before any mutation', async () => {
+    transport.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ data: { messageTemplates: { edges: [] } } }),
+        ),
+    );
+    const input = {
+      action: 'create-template',
+      templateId: '187c3b8c-4a53-4de3-80be-9a683d044a75',
+      title: 'عنوان',
+      body: 'سلام @source.venue\nمتن',
+      sourceObjectUid: sourceUid,
+      recipientRelationUid: relationUid,
+    };
+    mutation.mockImplementation(async (request) => ({
+      createMessageTemplate: {
+        ...request.createMessageTemplate.__args.data,
+        updatedAt: 'now',
+      },
+    }));
+    expect(
+      await handler({ userWorkspaceId: 'user', body: input }),
+    ).toMatchObject({
+      success: true,
+      template: {
+        title: 'عنوان',
+        body: input.body,
+        sourceObjectUid: sourceUid,
+        recipientRelationUid: relationUid,
+      },
+    });
+    expect(mutation).toHaveBeenCalledTimes(1);
+    expect(
+      await handler({
+        userWorkspaceId: 'user',
+        body: { ...input, recipientRelationUid: 'forged' },
+      }),
+    ).toMatchObject({ errorCode: 'TEMPLATE_CONTEXT_MISMATCH' });
+    expect(mutation).toHaveBeenCalledTimes(1);
   });
 });

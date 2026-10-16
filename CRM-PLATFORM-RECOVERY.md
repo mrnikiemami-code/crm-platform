@@ -1,5 +1,16 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
+## 2026-10-16 — new-template form now shares the record editor (0.1.71; not deployed)
+
+Baseline: `a51ec331` (installed 0.1.70). The remaining user complaint was the generic title/body/name creation panel. Its entry points all converge on `RecordCreationFormProvider` → `SidePanelRecordCreationFormPage`; editing instead renders the Communication front component. The creation page now resolves the template object by its universal identifier and the create component by identifier plus application ownership, and renders that component with the host-allocated draft UUID. Other objects keep their native form. Missing component gives a Persian update message, not the incomplete legacy form.
+
+Create and edit now import one `template-editor.tsx`. Creation loads eligible sources, catalog, to-one relation choices, source samples, insertion and preview before any write. Multiple recipient relations require a choice. Draft preview omits templateId, validates the requested source and uses the existing catalog/preview engine; it creates no placeholder. `create-template` is added to the fixed host allow-list and the existing user guard. It writes title, body, stable source and relation identifiers in one native create mutation. The host draft UUID makes retry idempotent: an identical existing write is returned, a different record is never overwritten. A failed create keeps the draft. Success navigates to the record editor; later saves use existing CAS. Cancel/discard creates nothing.
+
+Validation: app **766/766 across 74 files**, typecheck exit 0, lint 0/0; host routing helper **4/4** (run with Vitest globals; Jest-compatible test assertions). New behavior tests cover source switching, insertion once, draft preview, double-click, retry after failure, cancel/discard, multiple to-one relations, authentication rejection, forged relation rejection, and ambiguous successful create recovery. The built creation bundle is checked through the real SDK Persian translation runtime. Fork SDK 2.42 build: **32 output files**. Package `communication-0.1.71.tgz`: **2,935,313 bytes**, SHA256 `e474829075dde6df07b5d4b3d696dd423f49c9eaac8827a2c1c6234035714fbf`. No data or provider settings were touched.
+
+**Not installed or browser-accepted.** Both local-bridge connectors returned MCP -32603 Internal error. This environment has no running main/4D host. Full twenty-front build/typecheck was not run here (host dependencies are absent); only its routing unit tests and the app build/typecheck were run. This release needs BOTH the twenty-front source update and the 0.1.71 app: installing the app alone leaves the old create entry point, and updating the host alone shows the explicit missing-editor message. No renderer or SDK runtime change is needed. The older statement “new form not started” is superseded for code, not for deployment.
+
+
 Last updated: 2026-10-16 — 0.1.69 INSTALLED and ACCEPTED on main/4D as **0.1.70**, after one real defect was found and fixed (a nil UUID rejected by the platform's UUID validation made every field probe throw, so all five sources failed). Cross-application sources now WORK — `eventLeads`, owned by another application and absent from this app's client, is readable through the workspace record API. The New form remains a separate open defect.
 
 ## Purpose

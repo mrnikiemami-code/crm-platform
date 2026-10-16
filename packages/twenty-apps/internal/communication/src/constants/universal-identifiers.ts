@@ -276,3 +276,6 @@ export const LIST_MESSAGE_TEMPLATES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
 // variable editor, so the native Variables tab stays authoritative and no
 // settings component is registered. No universal identifier is reserved here
 // because nothing was ever installed with one.
+
+export const CREATE_TEMPLATE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  '937d230a-4116-4e24-a227-2c113ec3da80';

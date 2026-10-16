@@ -18,6 +18,7 @@ import {
 import { findStudioPeople } from 'src/templates/data/find-studio-people';
 import { queryTemplateRecords } from 'src/templates/data/query-template-records';
 import {
+  createMessageTemplateWithSource,
   readMessageTemplate,
   saveMessageTemplateConditionally,
 } from 'src/templates/data/mutate-message-templates';
@@ -100,6 +101,7 @@ const USER_SCOPED_ACTIONS = new Set([
   'source-records',
   'read-template',
   'save-template',
+  'create-template',
   'preview',
   'create',
   'update',
@@ -333,6 +335,44 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     }
   }
 
+  if (action === 'create-template') {
+    const id = readTrimmed(body.templateId);
+    const title = readTrimmed(body.title);
+    const messageBody = readString(body.body);
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        id,
+      ) ||
+      title.length === 0 ||
+      messageBody.trim().length === 0
+    ) {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+    }
+    try {
+      const sources = await findEligibleTemplateSources({
+        metadataClient: new MetadataApiClient(),
+      });
+      const source = resolveEligibleSource({
+        sources,
+        objectUid: readTrimmed(body.sourceObjectUid),
+        relationUid: readTrimmed(body.recipientRelationUid),
+      });
+      if (source === null)
+        return fail(TEMPLATE_STUDIO_ERROR_CODE.CONTEXT_MISMATCH);
+      const template = await createMessageTemplateWithSource({
+        client,
+        id,
+        title,
+        body: messageBody,
+        sourceObjectUid: source.objectUid,
+        recipientRelationUid: source.relationUid,
+      });
+      return { success: true as const, template };
+    } catch {
+      return fail(TEMPLATE_STUDIO_ERROR_CODE.WRITE_FAILED);
+    }
+  }
+
   if (action === 'save-template') {
     // ONE conditional write for the body AND the source identifiers, so a
     // source change and a text change can never be persisted half-applied.
@@ -431,18 +471,19 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     const sampleRecordId = readTrimmed(body.sampleRecordId);
     const messageBody = readString(body.body);
 
-    if (
-      templateId.length === 0 ||
-      sampleRecordId.length === 0 ||
-      messageBody.trim().length === 0
-    ) {
+    if (sampleRecordId.length === 0 || messageBody.trim().length === 0) {
       return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
     }
 
     try {
-      const stored = await readMessageTemplate({ client, id: templateId });
+      // Draft previews resolve the selected source directly and never create
+      // a placeholder record. Existing records still require a permitted read.
+      const stored =
+        templateId.length > 0
+          ? await readMessageTemplate({ client, id: templateId })
+          : null;
 
-      if (stored === null) {
+      if (templateId.length > 0 && stored === null) {
         return fail(TEMPLATE_STUDIO_ERROR_CODE.NOT_FOUND);
       }
 
@@ -460,8 +501,11 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       const requestedObjectUid = readTrimmed(body.sourceObjectUid);
       const requestedRelationUid = readTrimmed(body.recipientRelationUid);
 
-      let effectiveObjectUid = stored.sourceObjectUid;
-      let effectiveRelationUid = stored.recipientRelationUid;
+      if (stored === null && requestedObjectUid.length === 0) {
+        return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
+      }
+      let effectiveObjectUid = stored?.sourceObjectUid ?? '';
+      let effectiveRelationUid = stored?.recipientRelationUid ?? '';
 
       if (requestedObjectUid.length > 0) {
         const eligible = resolveEligibleSource({
@@ -599,10 +643,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     }
   }
 
-  // The old studio's own create/update/delete actions were removed with it: the
-  // platform's native list and record page now own template CRUD, so keeping a
-  // second write path here would be a parallel, unaudited route to the same
-  // records. Only the editor's own guarded actions remain.
+  // Legacy studio actions remain retired; creation uses the shared editor.
   return fail(TEMPLATE_STUDIO_ERROR_CODE.INVALID_INPUT);
 };
 
@@ -610,7 +651,7 @@ export default defineLogicFunction({
   universalIdentifier: TEMPLATE_STUDIO_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER,
   name: 'communication-template-studio',
   description:
-    'Lists, creates, updates and deletes this workspace message templates and returns the authorized field catalog.',
+    'Creates and edits native templates with authorized source fields and draft previews.',
   timeoutSeconds: 30,
   handler,
   httpRouteTriggerSettings: {

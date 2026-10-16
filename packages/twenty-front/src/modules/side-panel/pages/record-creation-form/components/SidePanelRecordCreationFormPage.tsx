@@ -1,3 +1,8 @@
+import { resolveTemplateCreationEditor } from '@/side-panel/pages/record-creation-form/utils/resolveTemplateCreationEditor';
+import { Suspense, lazy } from 'react';
+import { FrontComponentSkeletonLoader } from '@/front-components/components/FrontComponentSkeletonLoader';
+import { frontComponentsSelector } from '@/front-components/states/frontComponentsSelector';
+
 import { SIDE_PANEL_FOCUS_ID } from '@/side-panel/constants/SidePanelFocusId';
 import { currentFocusIdSelector } from '@/ui/utilities/focus/states/currentFocusIdSelector';
 import { useHotkeysOnFocusedElement } from '@/ui/utilities/hotkey/hooks/useHotkeysOnFocusedElement';
@@ -26,6 +31,12 @@ import { Button } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { getOsControlSymbol } from 'twenty-ui/utilities';
 
+const TemplateFrontComponentRenderer = lazy(() =>
+  import('@/front-components/components/FrontComponentRenderer').then(
+    (module) => ({ default: module.FrontComponentRenderer }),
+  ),
+);
+
 const StyledContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -46,8 +57,37 @@ export const SidePanelRecordCreationFormPage = () => {
     recordCreationFormRequestComponentState,
   );
 
+  const { objectMetadataItems } = useObjectMetadataItems();
+  const frontComponents = useAtomStateValue(frontComponentsSelector);
+  const objectMetadataItem = objectMetadataItems.find(
+    (object) => object.id === recordCreationFormRequest?.objectMetadataId,
+  );
+
   if (!isDefined(recordCreationFormRequest)) {
     return null;
+  }
+
+  const editor = resolveTemplateCreationEditor(
+    objectMetadataItem,
+    frontComponents,
+  );
+  if (editor.kind === 'UNAVAILABLE') {
+    return (
+      <p role="alert">{t`ویرایشگر الگو در دسترس نیست. برنامهٔ ارتباطات را به‌روز کنید.`}</p>
+    );
+  }
+  if (editor.kind === 'EDITOR' && isDefined(objectMetadataItem)) {
+    return (
+      <Suspense fallback={<FrontComponentSkeletonLoader />}>
+        <TemplateFrontComponentRenderer
+          key={recordCreationFormRequest.requestId}
+          frontComponentId={editor.componentId}
+          selectedRecordIds={[recordCreationFormRequest.requestId]}
+          objectNameSingular={objectMetadataItem.nameSingular}
+          loadingFallback={<FrontComponentSkeletonLoader />}
+        />
+      </Suspense>
+    );
   }
 
   return (

@@ -283,5 +283,7 @@
   "No records exist for this source, so there is nothing to preview with.": "رکوردی برای این منبع موجود نیست؛ برای پیش‌نمایش به یک رکورد نمونه نیاز است.",
   "Incomplete preview": "پیش‌نمایش ناقص",
   "This field is empty on the selected sample record.": "این فیلد در رکورد نمونهٔ انتخاب‌شده خالی است.",
-  "This variable is unavailable for the selected source or your access.": "این متغیر برای منبع انتخاب‌شده یا سطح دسترسی شما در دسترس نیست."
+  "This variable is unavailable for the selected source or your access.": "این متغیر برای منبع انتخاب‌شده یا سطح دسترسی شما در دسترس نیست.",
+  "Create template": "ایجاد الگو",
+  "Enter a title, message and recipient source before saving.": "عنوان، متن و منبع گیرنده را پیش از ذخیره تکمیل کنید."
 }

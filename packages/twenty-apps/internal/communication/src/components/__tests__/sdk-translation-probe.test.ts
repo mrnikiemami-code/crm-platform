@@ -33,10 +33,9 @@ const readBakedCatalogs = (): Record<string, Record<string, string>> => {
 
   expect(firstLine.startsWith(prefix)).toBe(true);
 
-  return JSON.parse(firstLine.slice(prefix.length).replace(/;\s*$/, '')) as Record<
-    string,
-    Record<string, string>
-  >;
+  return JSON.parse(
+    firstLine.slice(prefix.length).replace(/;\s*$/, ''),
+  ) as Record<string, Record<string, string>>;
 };
 
 const setRuntime = (
@@ -53,6 +52,22 @@ describe('produced bundle translation (build-boundary witness)', () => {
       existsSync(bundlePath),
       `Missing ${bundlePath}. Build the app in the 2.42 toolchain before the suite; the translation witness must not pass by skipping.`,
     ).toBe(true);
+  });
+
+  it('bakes Persian creation copy into the new editor bundle', () => {
+    const newBundle = new URL(
+      '../../../.twenty/output/src/components/create-template.front-component.mjs',
+      import.meta.url,
+    );
+    const banner = readFileSync(newBundle, 'utf8').split('\n', 1)[0];
+    const prefix = `globalThis[${JSON.stringify(TRANSLATIONS_KEY)}]=`;
+    expect(banner.startsWith(prefix)).toBe(true);
+    setRuntime(
+      'fa-IR',
+      JSON.parse(banner.slice(prefix.length).replace(/;\s*$/, '')),
+    );
+    expect(sdkTranslate('Create template')).toBe('ایجاد الگو');
+    expect(sdkTranslate('Source entity')).toBe('موجودیت منبع');
   });
 
   it('translates real Persian keys through the produced bundle and real runtime', () => {
@@ -84,7 +99,11 @@ describe('produced bundle translation (build-boundary witness)', () => {
       'این پیش‌نمایش آمادهٔ ارسال نیست.',
     );
     // The timeout / stop warning.
-    expect(sdkTranslate('One result is unknown. Check the communication history before sending again.')).toBe(
+    expect(
+      sdkTranslate(
+        'One result is unknown. Check the communication history before sending again.',
+      ),
+    ).toBe(
       'یک نتیجه نامعلوم است. پیش از ارسال دوباره، سابقهٔ ارتباطات را بررسی کنید.',
     );
   });
