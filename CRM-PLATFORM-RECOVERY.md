@@ -162,6 +162,20 @@ the platform's own record-read enforcement. A user role id **is** readable and i
 additional restriction on top. What is NOT claimed: that the app can compute the user's effective
 permissions from role metadata — it cannot, on this build.
 
+**Where the effective permissions DO exist, for a future session.** A follow-up search of the front
+located the one place they are available: the `GetCurrentUser` query selects
+`currentUserWorkspace { objectsPermissions { objectMetadataId canReadObjectRecords restrictedFields … } }`,
+and `useLoadCurrentUser.ts` stores it in `currentUserWorkspaceState`. So the HOST has the user's
+resolved permissions already. Two cautions before anyone builds on that:
+
+1. `restrictedFields` is a JSON object **keyed by fieldMetadataId** whose entries carry `canRead`
+   (`getNonReadableFieldMetadataIdsFromObjectPermissions` filters `canRead === false`). The earlier
+   `readRestrictedFields` helper reads `name`/`id` shapes and therefore does not match it — it has
+   never matched, and is only reached on a role-metadata path that cannot execute anyway.
+2. Permissions arriving from the worker are **not** a security reference, by the task's own rule.
+   They would be usable to SHAPE the UI; the authority for what may be read stays the platform's own
+   enforcement (the probe), which is what this build relies on.
+
 ### 5. What the catalog is now
 
 | Concern | Rule |
