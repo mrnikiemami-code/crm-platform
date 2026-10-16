@@ -339,6 +339,21 @@ export const classifyObjectReachability = async ({
 
     return { reachability: OBJECT_REACHABILITY.NO_RECORDS, recordId: null };
   } catch (error) {
+    // Diagnostic only: the CLASSIFICATION is what callers see, never this text.
+    // Logged so an operator can tell a schema gap from a client-side build error
+    // without either reaching a client.
+    console.warn(
+      '[communication] object reachability query failed',
+      JSON.stringify({
+        objectNamePlural,
+        errorName: error instanceof Error ? error.name : typeof error,
+        errorMessage:
+          error instanceof Error
+            ? error.message.slice(0, 300)
+            : String(error).slice(0, 300),
+      }),
+    );
+
     return {
       reachability: isSchemaGapError(error)
         ? OBJECT_REACHABILITY.NOT_IN_SCHEMA
