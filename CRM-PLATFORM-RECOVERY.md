@@ -114,6 +114,22 @@ request never leaves the process. An earlier hypothesis that a request-time sche
 responsible was wrong and is superseded here: `direct-execution` does pass `req.application.id`, but
 for this app the client fails first.
 
+**How to re-confirm the boundary in one step** (do NOT re-derive it by reading the auth chain —
+that was tried and is a dead end):
+
+```bash
+# unzip the app's generated client and grep for the object
+docker exec twenty-worker-1 sh -c 'cd /tmp && rm -rf sdkcheck && mkdir sdkcheck && cd sdkcheck && \
+  unzip -o -q /app/packages/twenty-server/.local-storage/<workspaceId>/<appUid>/generated-sdk-client/twenty-client-sdk.zip'
+docker exec twenty-worker-1 node -e "const c=require('fs').readFileSync('/tmp/sdkcheck/dist/core.mjs','utf8');\
+  for (const n of ['eventLead','communications','opportunities']) console.log(n, c.split(n).length-1)"
+# eventLead 0   communications 3   opportunities 3
+```
+
+A grep for `req.application =` across `packages/twenty-server/src` returns **nothing** — the field is
+assigned by property name in `bind-data-to-request-object.util.ts` (`request.application = data.application`),
+so a search for that exact string is not a productive way to trace it.
+
 ### 2. Item 4 was a real defect, and it is fixed
 
 `userWorkspaceId` was being passed as `userRoleId` in three places. It identifies the **USER**, not
