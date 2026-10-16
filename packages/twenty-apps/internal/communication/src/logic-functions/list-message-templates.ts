@@ -86,6 +86,7 @@ const handler = async (
   }
 
   const { catalog, isAvailable, stage } = await buildAuthorizedTemplateCatalog({
+      client,
     metadataClient,
     source: { objectName: resolvedSource.objectName },
     userRoleId: event.userWorkspaceId ?? null,

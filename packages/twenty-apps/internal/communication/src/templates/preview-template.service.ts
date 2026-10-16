@@ -128,6 +128,7 @@ export const previewTemplate = async ({
     (
       await buildAuthorizedTemplateCatalog({
         metadataClient,
+        client,
         // Without a caller-supplied source this is the Person-scoped path (the
         // bulk send), which is exactly what its templates are resolved against.
         source: { objectName: PERSON_SOURCE_OBJECT_NAME },

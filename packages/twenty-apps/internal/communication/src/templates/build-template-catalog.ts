@@ -1,9 +1,14 @@
+import { type CoreApiClient } from 'twenty-client-sdk/core';
 import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 
 import {
   APPLICATION_UNIVERSAL_IDENTIFIER,
   DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
+import {
+  probeAuthorizedFieldTokens,
+  restrictCatalogToAuthorizedTokens,
+} from 'src/templates/probe-readable-fields';
 import {
   buildTemplateVariableCatalog,
   EMPTY_TEMPLATE_VARIABLE_CATALOG,
@@ -1099,11 +1104,13 @@ export const resolveRecipientRelationName = ({
  */
 export const buildAuthorizedTemplateCatalog = async ({
   metadataClient,
+  client,
   source,
   relationUid = '',
   userRoleId = null,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
+  client: Pick<CoreApiClient, 'query'>;
   source: TemplateCatalogSource;
   /**
    * The relation field's metadata `universalIdentifier`, when the source is a
@@ -1154,42 +1161,35 @@ export const buildAuthorizedTemplateCatalog = async ({
     objectName: sourceObject.nameSingular,
   };
 
-  // The permission snapshot is the INTERSECTION of the signed-in user's role and
-  // the application's role. A role that cannot be read yields NO catalog rather
-  // than an unrestricted one.
-  let permissions: TemplatePermissionSnapshot | null;
-  let permissionReadFailed = false;
+  // EFFECTIVE PERMISSIONS, read from the platform where it exposes them.
+  //
+  // Measured on this build: an app-scoped token CANNOT read `getRoles` (it is
+  // guarded by the ROLES permission flag, which an app does not hold), so the
+  // application's own role metadata is not available here. When a USER role id is
+  // supplied it IS readable, and its restrictions are applied. Whatever cannot be
+  // read is not assumed to be permissive: the record-read probe below is the
+  // authority, and it is the platform's own enforcement rather than a guess.
+  let effectivePermissions: TemplatePermissionSnapshot =
+    UNRESTRICTED_TEMPLATE_PERMISSIONS;
 
-  try {
-    permissions = await readEffectiveTemplatePermissions({
-      metadataClient,
-      userRoleId,
-    });
-  } catch {
-    permissions = null;
-    permissionReadFailed = true;
+  if (userRoleId !== null) {
+    try {
+      const userRole = await readRolePermissionsById({
+        metadataClient,
+        roleId: userRoleId,
+      });
+
+      if (userRole !== null) {
+        effectivePermissions = userRole;
+      }
+    } catch {
+      // Unreadable user role: fall through to the probe, which enforces anyway.
+    }
   }
 
-  if (permissions === null) {
-    return {
-      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
-      sourceLabelPlural: sourceObject.labelPlural,
-      isAvailable: false,
-      // Two genuinely different causes, reported apart: the role query was
-      // DENIED (threw), or it succeeded but the application's own role was not
-      // among the roles the caller may see.
-      stage: permissionReadFailed
-        ? AUTHORIZED_CATALOG_STAGE.ROLE_QUERY_ERROR
-        : AUTHORIZED_CATALOG_STAGE.APP_ROLE_NOT_FOUND,
-    };
-  }
-
-  // The catalog, built from METADATA + PERMISSIONS. No record is read, so the
-  // field list is a fact about the OBJECT and cannot be emptied by the absence of
-  // a sample record — which is what the old probe-based discovery did.
-  const catalog = buildTemplateCatalogFromMetadata({
+  const permitted = buildTemplateCatalogFromMetadata({
     objects,
-    permissions,
+    permissions: effectivePermissions,
     source: resolvedSource,
     recipientRelationName: resolveRecipientRelationName({
       objects,
@@ -1198,26 +1198,65 @@ export const buildAuthorizedTemplateCatalog = async ({
     }),
   });
 
-  // The SOURCE group must exist. Without it the editor would be showing only the
-  // recipient's fields for a source the user picked, which is the "Person
-  // variables for a non-Person source" failure by another route.
-  const hasSourceVariables = catalog.variables.some(
-    (variable) => variable.group === 'source',
-  );
+  // The platform's OWN enforcement, observed on a bounded read of the source
+  // object. A field is advertised only if the platform actually returned it.
+  //
+  // This is the authority, and it is deliberately NOT the source of the field
+  // LIST: the list comes from metadata above, so an object with no records keeps
+  // its fields, and a random row cannot decide what exists. The probe only ever
+  // REMOVES a field metadata already declared.
+  try {
+    const probe = await probeAuthorizedFieldTokens({
+      client,
+      catalog: permitted,
+      objectPluralNames: new Map(
+        objects.map((object) => [object.nameSingular, object.namePlural]),
+      ),
+    });
 
-  if (!hasSourceVariables) {
+    if (probe === null) {
+      // Nothing could be proven readable for this source. Reported as its own
+      // stage: the source exists in metadata but this caller cannot read a single
+      // field of it, which is a PERMISSION outcome and not "the object has no
+      // fields".
+      return {
+        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+        sourceLabelPlural: sourceObject.labelPlural,
+        isAvailable: false,
+        stage: AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
+      };
+    }
+
+    const catalog = restrictCatalogToAuthorizedTokens(
+      permitted,
+      probe.authorizedTokens,
+    );
+
+    // The SOURCE group must survive. Without it the editor would be showing only
+    // the recipient's fields for a source the user picked.
+    if (
+      !catalog.variables.some((variable) => variable.group === 'source')
+    ) {
+      return {
+        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+        sourceLabelPlural: sourceObject.labelPlural,
+        isAvailable: false,
+        stage: AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
+      };
+    }
+
+    return {
+      catalog,
+      sourceLabelPlural: sourceObject.labelPlural,
+      isAvailable: true,
+      stage: AUTHORIZED_CATALOG_STAGE.OK,
+    };
+  } catch {
     return {
       catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
       sourceLabelPlural: sourceObject.labelPlural,
       isAvailable: false,
-      stage: AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
+      stage: AUTHORIZED_CATALOG_STAGE.READ_PROBE_ERROR,
     };
   }
-
-  return {
-    catalog,
-    sourceLabelPlural: sourceObject.labelPlural,
-    isAvailable: true,
-    stage: AUTHORIZED_CATALOG_STAGE.OK,
-  };
 };

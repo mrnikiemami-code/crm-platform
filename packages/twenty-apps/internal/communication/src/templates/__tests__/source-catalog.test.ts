@@ -152,6 +152,7 @@ describe('the catalog follows the source, and never falls back to Person', () =>
 
   it('the runtime entry point reports SOURCE_UNKNOWN and an empty catalog', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      client: { query: async () => ({}) } as never,
       metadataClient: createFakeMetadataClient() as never,
       source: { objectName: 'doesNotExist' },
     });
@@ -162,25 +163,18 @@ describe('the catalog follows the source, and never falls back to Person', () =>
   });
 
   it('keeps the SOURCE field list even when the object has NO records', async () => {
-    // This replaces the old SOURCE_UNAVAILABLE expectation. That state existed
-    // because the catalog was proven by probing a random record: with an empty
-    // table the probe found nothing and the catalog came back EMPTY, as if the
-    // object declared no fields. The field list is now derived from metadata and
-    // permissions, so an empty source still yields its full list.
+    // A source with no readable record cannot have a field PROVEN, so this is an
+    // explicit SOURCE_UNAVAILABLE — a permission/unproven outcome — rather than an
+    // empty list that would look like the object declares no fields.
     const result = await buildAuthorizedTemplateCatalog({
+      client: { query: async () => ({}) } as never,
       metadataClient: createFakeMetadataClient() as never,
       source: OPPORTUNITY_CATALOG_SOURCE,
     });
 
-    expect(result.isAvailable).toBe(true);
-    expect(result.stage).toBe('OK');
-
-    const sourceTokens = result.catalog.variables
-      .filter((variable) => variable.group === 'source')
-      .map((variable) => variable.token);
-
-    expect(sourceTokens).toContain('source.name');
-    expect(sourceTokens).toContain('source.amount');
+    expect(result.isAvailable).toBe(false);
+    expect(result.stage).toBe('SOURCE_UNAVAILABLE');
+    expect(result.catalog.variables).toHaveLength(0);
   });
 
   it('reports SOURCE_UNAVAILABLE when the SOURCE object is unreadable by the roles', async () => {
@@ -188,6 +182,7 @@ describe('the catalog follows the source, and never falls back to Person', () =>
     // metadata but the effective permissions deny it, so there is no source field
     // — and the catalog must not degrade into the recipient's fields.
     const result = await buildAuthorizedTemplateCatalog({
+      client: { query: async () => ({}) } as never,
       metadataClient: createFakeMetadataClientWithRoles({
         userRole: {
           id: 'user-role',
@@ -381,10 +376,38 @@ describe('the picker never advertises an alias as a canonical token', () => {
 
 describe('the whole server pipeline, for a Person source', () => {
   it('advertises the person fields plus the company, with the aliases intact', async () => {
-    // The catalog no longer reads records, so the only input is metadata and
-    // permissions. `createFakeMetadataClient` grants both fully, which is what
-    // this test is about: the pipeline's SHAPE for a Person source.
+    // The PROBE is the platform's enforcement, so it answers which fields are
+    // readable. Everything the probe returns is advertised; nothing else is.
     const result = await buildAuthorizedTemplateCatalog({
+      client: {
+        query: async (payload: Record<string, unknown>) => {
+          if ('people' in payload) {
+            return {
+              people: {
+                edges: [{ node: { id: 'p1', company: { id: 'c1' } } }],
+              },
+            };
+          }
+
+          const selection = (payload.person ?? {}) as Record<string, unknown>;
+          const projected: Record<string, unknown> = {};
+
+          for (const key of Object.keys(selection)) {
+            if (key === '__args') {
+              continue;
+            }
+
+            if (key === 'company') {
+              projected.company = { name: null };
+              continue;
+            }
+
+            projected[key] = null;
+          }
+
+          return { person: { id: 'p1', ...projected } };
+        },
+      } as never,
       metadataClient: createFakeMetadataClient() as never,
       source: PERSON_CATALOG_SOURCE,
     });

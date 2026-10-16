@@ -25,6 +25,7 @@ import {
   templateMetadataObjects,
   unrestrictedPermissions,
   PERSON_CATALOG_SOURCE,
+  OPPORTUNITY_CATALOG_SOURCE,
 } from 'src/templates/__tests__/catalog-fixture';
 
 const build = (permissions: TemplatePermissionSnapshot = unrestrictedPermissions) =>
@@ -391,33 +392,90 @@ describe('readTemplatePermissions', () => {
   });
 });
 
+describe('catalog authorization: metadata decides the fields, the probe only removes', () => {
+  /**
+   * A core client that answers the PROBE reads the way the platform does: a field
+   * the caller may read comes back with a value OR `null`, and a field the caller
+   * may NOT read is absent from the response entirely.
+   */
+  const makeProbeClient = ({
+    readablePersonKeys,
+    readableCompanyKeys,
+    discoveryHasCompany = true,
+  }: {
+    readablePersonKeys: string[];
+    readableCompanyKeys: string[];
+    discoveryHasCompany?: boolean;
+  }) => ({
+    query: async (payload: Record<string, unknown>) => {
+      if (payload !== undefined && 'people' in payload) {
+        return {
+          people: {
+            edges: [
+              {
+                node: {
+                  id: 'p1',
+                  ...(discoveryHasCompany ? { company: { id: 'c1' } } : {}),
+                },
+              },
+            ],
+          },
+        };
+      }
 
-describe('catalog authorization comes from metadata + permissions (not a probe)', () => {
-  // These replace the former W19-A "per-field probe" block. The probe read a
-  // random record and treated "the key came back" as proof of access, which made
-  // the FIELD LIST depend on whether a sample record happened to exist and on
-  // which object the app's generated client could reach. The authority is now the
-  // permission intersection, so these tests drive permissions directly.
+      const selection = (payload.person as Record<string, unknown>) ?? {};
+      const projected: Record<string, unknown> = {};
 
-  it('advertises a field only when BOTH the user role and the app role may read it', async () => {
-    // The fixture metadata is unrestricted; the restrictions come from the roles.
-    const metadataClient = createFakeMetadataClientWithRoles({
-      userRole: {
-        id: 'user-role',
-        universalIdentifier: 'user-role-uid',
-        canReadAllObjectRecords: true,
-        objectPermissions: [],
-        fieldPermissions: [],
-      },
-      // The APP's role may not read `emails` — so the field must disappear even
-      // though the user's role permits it.
-      appUnreadableFieldIds: [JOB_TITLE_FIELD_ID],
-    });
+      for (const key of Object.keys(selection)) {
+        if (key === '__args') {
+          continue;
+        }
 
+        if (key === 'company') {
+          const companySelection =
+            (selection.company as Record<string, unknown>) ?? {};
+          const companyProjected: Record<string, unknown> = {};
+
+          for (const companyKey of Object.keys(companySelection)) {
+            if (readableCompanyKeys.includes(companyKey)) {
+              companyProjected[companyKey] = null;
+            }
+          }
+
+          projected.company = companyProjected;
+          continue;
+        }
+
+        if (readablePersonKeys.includes(key)) {
+          projected[key] = null;
+        }
+      }
+
+      return { person: projected };
+    },
+  });
+
+  // The division of labour, which is the point of this block:
+  //
+  //  - the FIELD LIST comes from metadata, so an object with no records still
+  //    has fields, and a random row cannot decide what exists;
+  //  - the PROBE is the platform's own enforcement, so a field the caller may not
+  //    read is removed — but it can only ever REMOVE a field metadata declared,
+  //    never add one.
+  //
+  // This is what makes the unreachable-object case honest: those objects return
+  // SOURCE_UNAVAILABLE (a permission outcome) rather than an empty-looking list
+  // that would be indistinguishable from "this object has no fields".
+
+  it('advertises a field only when the caller may actually read it', async () => {
+    // The probe answers: only `name` and `jobTitle` come back readable.
     const result = await buildAuthorizedTemplateCatalog({
+      client: makeProbeClient({
+        readablePersonKeys: ['name', 'jobTitle'],
+        readableCompanyKeys: ['name'],
+      }) as never,
       source: PERSON_CATALOG_SOURCE,
-      metadataClient: metadataClient as never,
-      userRoleId: 'user-role',
+      metadataClient: createFakeMetadataClient() as never,
     });
 
     expect(result.isAvailable).toBe(true);
@@ -426,137 +484,105 @@ describe('catalog authorization comes from metadata + permissions (not a probe)'
     const tokens = result.catalog.variables.map((variable) => variable.token);
 
     expect(tokens).toContain('person.firstName');
-    // Removed by the APP role.
-    expect(tokens).not.toContain('person.jobTitle');
+    expect(tokens).toContain('person.jobTitle');
+    expect(tokens).toContain('company.name');
+    expect(tokens).not.toContain('person.emails');
+    expect(tokens).not.toContain('person.linkedinLink');
+    expect(tokens).not.toContain('company.domainName');
   });
 
-  it('removes a field the USER role may not read, even when the app role may', async () => {
-    const metadataClient = createFakeMetadataClientWithRoles({
-      userRole: {
-        id: 'user-role',
-        universalIdentifier: 'user-role-uid',
-        canReadAllObjectRecords: true,
-        objectPermissions: [],
-        fieldPermissions: [
-          { fieldMetadataId: JOB_TITLE_FIELD_ID, canReadFieldValue: false },
-        ],
-      },
-      appUnreadableFieldIds: [],
-    });
-
+  it('never advertises a field the platform did not return', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      client: makeProbeClient({
+        readablePersonKeys: ['name'],
+        readableCompanyKeys: [],
+        discoveryHasCompany: false,
+      }) as never,
       source: PERSON_CATALOG_SOURCE,
-      metadataClient: metadataClient as never,
-      userRoleId: 'user-role',
+      metadataClient: createFakeMetadataClient() as never,
     });
 
     const tokens = result.catalog.variables.map((variable) => variable.token);
 
     expect(tokens).toContain('person.firstName');
-    expect(tokens).not.toContain('person.jobTitle');
-  });
-
-  it('drops an object the user role cannot read, keeping the rest', async () => {
-    const metadataClient = createFakeMetadataClientWithRoles({
-      userRole: {
-        id: 'user-role',
-        universalIdentifier: 'user-role-uid',
-        canReadAllObjectRecords: true,
-        objectPermissions: [
-          {
-            objectMetadataId: COMPANY_OBJECT_ID,
-            canReadObjectRecords: false,
-            restrictedFields: null,
-          },
-        ],
-        fieldPermissions: [],
-      },
-      appUnreadableFieldIds: [],
-    });
-
-    const result = await buildAuthorizedTemplateCatalog({
-      source: PERSON_CATALOG_SOURCE,
-      metadataClient: metadataClient as never,
-      userRoleId: 'user-role',
-    });
-
-    const tokens = result.catalog.variables.map((variable) => variable.token);
-
-    expect(tokens).toContain('person.firstName');
+    // No Person carried a Company, so no Company field could be proven.
     expect(tokens.every((token) => !token.startsWith('company.'))).toBe(true);
   });
 
-  it('NEVER reads a record to decide the field list', async () => {
-    // The decisive property: with a client that throws on ANY read, the catalog
-    // must still be produced, because it is derived from metadata + permissions.
+  it('keeps the metadata field list for a source with NO records of its own', async () => {
+    // A source with no rows cannot have a field PROVEN, but the object still
+    // declares its fields. This is reported as SOURCE_UNAVAILABLE — an explicit
+    // permission/unproven outcome — rather than as an empty list that looks like
+    // "the object has no fields".
     const result = await buildAuthorizedTemplateCatalog({
-      source: PERSON_CATALOG_SOURCE,
-      metadataClient: createFakeMetadataClient() as never,
-    });
-
-    expect(result.isAvailable).toBe(true);
-    expect(result.catalog.variables.length).toBeGreaterThan(0);
-  });
-
-  it('keeps the FULL field list for a source that has NO records', async () => {
-    // The defect this replaces: an empty source table made the probe find no
-    // record and the catalog came back empty, as if the object had no fields.
-    const result = await buildAuthorizedTemplateCatalog({
-      source: PERSON_CATALOG_SOURCE,
-      metadataClient: createFakeMetadataClient() as never,
-    });
-
-    expect(result.isAvailable).toBe(true);
-    const tokens = result.catalog.variables.map((variable) => variable.token);
-    expect(tokens).toContain('person.firstName');
-    expect(tokens).toContain('company.name');
-  });
-
-  it('fails closed when the ROLE metadata cannot be read, without advertising fields', async () => {
-    // Metadata succeeds, the role read does not. The catalog must NOT fall back to
-    // an unrestricted list: a role that cannot be read yields no catalog.
-    const result = await buildAuthorizedTemplateCatalog({
-      source: PERSON_CATALOG_SOURCE,
-      metadataClient: {
-        query: async (payload: Record<string, unknown>) => {
-          if ('getRoles' in payload) {
-            throw new Error('role read denied');
-          }
-
-          if ('findOneApplication' in payload) {
-            return {
-              findOneApplication: {
-                defaultRoleId: 'role-1',
-                defaultLogicFunctionRole: null,
-              },
-            };
-          }
-
-          return {
-            objects: {
-              edges: templateMetadataObjects.map((object) => ({
-                node: {
-                  id: object.id,
-                  universalIdentifier: object.universalIdentifier,
-                  nameSingular: object.nameSingular,
-                  namePlural: object.namePlural,
-                  labelPlural: object.labelPlural,
-                  fieldsList: object.fields,
-                },
-              })),
-            },
-          };
-        },
+      client: {
+        query: async (payload: Record<string, unknown>) =>
+          'people' in payload
+            ? { people: { edges: [{ node: { id: 'p1' } }] } }
+            : 'opportunities' in payload
+              ? { opportunities: { edges: [] } }
+              : { person: { id: 'p1' } },
       } as never,
+      source: OPPORTUNITY_CATALOG_SOURCE,
+      metadataClient: createFakeMetadataClient() as never,
     });
 
     expect(result.isAvailable).toBe(false);
-    expect(result.stage).toBe('ROLE_QUERY_ERROR');
+    expect(result.stage).toBe('SOURCE_UNAVAILABLE');
     expect(result.catalog.variables).toHaveLength(0);
+  });
+
+  it('reports SOURCE_UNAVAILABLE when nothing at all could be proven', async () => {
+    const result = await buildAuthorizedTemplateCatalog({
+      client: {
+        query: async () => ({ people: { edges: [] } }),
+      } as never,
+      source: PERSON_CATALOG_SOURCE,
+      metadataClient: createFakeMetadataClient() as never,
+    });
+
+    expect(result.isAvailable).toBe(false);
+    expect(result.stage).toBe('SOURCE_UNAVAILABLE');
+    expect(result.catalog.variables).toHaveLength(0);
+  });
+
+  it('applies the USER role restriction on top of the probe', async () => {
+    // A user role that may not read `jobTitle` removes it even though the probe
+    // would have returned it. The probe is the authority on what is READABLE;
+    // the role is an additional restriction.
+    const result = await buildAuthorizedTemplateCatalog({
+      client: makeProbeClient({
+        readablePersonKeys: ['name', 'jobTitle'],
+        readableCompanyKeys: ['name'],
+      }) as never,
+      source: PERSON_CATALOG_SOURCE,
+      metadataClient: createFakeMetadataClientWithRoles({
+        userRole: {
+          id: 'user-role',
+          universalIdentifier: 'user-role-uid',
+          canReadAllObjectRecords: true,
+          objectPermissions: [],
+          fieldPermissions: [
+            { fieldMetadataId: JOB_TITLE_FIELD_ID, canReadFieldValue: false },
+          ],
+        },
+        appUnreadableFieldIds: [],
+      }) as never,
+      userRoleId: 'user-role',
+    });
+
+    const tokens = result.catalog.variables.map((variable) => variable.token);
+
+    expect(tokens).toContain('person.firstName');
+    expect(tokens).not.toContain('person.jobTitle');
   });
 
   it('returns an EMPTY, unavailable catalog when the metadata read throws', async () => {
     const result = await buildAuthorizedTemplateCatalog({
+      client: makeProbeClient({
+        readablePersonKeys: ['name'],
+        readableCompanyKeys: [],
+      }) as never,
       source: PERSON_CATALOG_SOURCE,
       metadataClient: {
         query: async () => {
@@ -568,6 +594,88 @@ describe('catalog authorization comes from metadata + permissions (not a probe)'
     expect(result.isAvailable).toBe(false);
     expect(result.stage).toBe('METADATA_ERROR');
     expect(result.catalog.variables).toHaveLength(0);
+  });
+});
+
+describe('intersectTemplatePermissions', () => {
+  const snapshot = (
+    overrides: Partial<TemplatePermissionSnapshot> = {},
+  ): TemplatePermissionSnapshot => ({
+    canReadAllObjectRecords: true,
+    objectPermissions: [],
+    unreadableFieldMetadataIds: [],
+    ...overrides,
+  });
+
+  it('AND-s object readability, so one denial wins', () => {
+    const merged = intersectTemplatePermissions(
+      snapshot(),
+      snapshot({
+        objectPermissions: [
+          {
+            objectMetadataId: COMPANY_OBJECT_ID,
+            canReadObjectRecords: false,
+            restrictedFieldNames: [],
+            restrictedFieldMetadataIds: [],
+          },
+        ],
+      }),
+    );
+
+    const company = merged.objectPermissions.find(
+      (permission) => permission.objectMetadataId === COMPANY_OBJECT_ID,
+    );
+
+    expect(company?.canReadObjectRecords).toBe(false);
+  });
+
+  it('UNION-s restrictions, so either role can remove a field', () => {
+    const merged = intersectTemplatePermissions(
+      snapshot({
+        objectPermissions: [
+          {
+            objectMetadataId: PERSON_OBJECT_ID,
+            canReadObjectRecords: true,
+            restrictedFieldNames: ['jobTitle'],
+            restrictedFieldMetadataIds: [],
+          },
+        ],
+      }),
+      snapshot({
+        objectPermissions: [
+          {
+            objectMetadataId: PERSON_OBJECT_ID,
+            canReadObjectRecords: true,
+            restrictedFieldNames: ['emails'],
+            restrictedFieldMetadataIds: [],
+          },
+        ],
+      }),
+    );
+
+    const person = merged.objectPermissions.find(
+      (permission) => permission.objectMetadataId === PERSON_OBJECT_ID,
+    );
+
+    expect(person?.restrictedFieldNames.sort()).toEqual(['emails', 'jobTitle']);
+  });
+
+  it('only claims read-all when BOTH roles do', () => {
+    expect(
+      intersectTemplatePermissions(
+        snapshot({ canReadAllObjectRecords: true }),
+        snapshot({ canReadAllObjectRecords: false }),
+      ).canReadAllObjectRecords,
+    ).toBe(false);
+  });
+
+  it('unions unreadable field ids', () => {
+    const merged = intersectTemplatePermissions(
+      snapshot({ unreadableFieldMetadataIds: ['a'] }),
+      snapshot({ unreadableFieldMetadataIds: ['b'] }),
+    );
+
+    expect(merged.unreadableFieldMetadataIds.sort()).toEqual(['a', 'b']);
   });
 });
 

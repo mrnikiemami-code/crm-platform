@@ -200,6 +200,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
 
       const { catalog, isAvailable, stage, sourceLabelPlural } =
         await buildAuthorizedTemplateCatalog({
+      client,
           metadataClient,
           source: { objectName: resolvedSource.objectName },
           relationUid:
@@ -544,6 +545,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       // resolve `@source.*` from a different source than the form shows. The
       // sample record is passed as the source record, so `@source.*` reads IT.
       const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
+      client,
         metadataClient: new MetadataApiClient(),
         source: { objectName: sourceObjectName },
         relationUid:
