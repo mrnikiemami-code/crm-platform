@@ -147,6 +147,27 @@ describe('resolveSendContext', () => {
     expect(result.outcome).toBe(SEND_CONTEXT_OUTCOME.RECORD_NOT_FOUND);
   });
 
+  it('reports RECORD_NOT_FOUND when the record read THROWS instead of returning empty', async () => {
+    // Verified live: a missing record surfaces as a thrown error from the API
+    // rather than an empty result, which produced an uncaught 500 on the send
+    // route before this was handled. It must be a classified refusal.
+    const client = {
+      query: async () => {
+        throw new Error('Record not found');
+      },
+    };
+
+    const result = await resolveSendContext({
+      client: client as never,
+      sources,
+      objectName: 'opportunity',
+      recordId: 'gone',
+      relationUid: CONTACT_RELATION_UID,
+    });
+
+    expect(result.outcome).toBe(SEND_CONTEXT_OUTCOME.RECORD_NOT_FOUND);
+  });
+
   it('refuses an object that is not an eligible source', async () => {
     const { client, queries } = buildClient({ id: 'x' });
 

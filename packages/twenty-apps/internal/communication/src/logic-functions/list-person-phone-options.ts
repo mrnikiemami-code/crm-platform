@@ -47,20 +47,32 @@ const handler = async (event: RoutePayload<ListPhoneOptionsRequest>) => {
   let effectivePersonId = personId;
 
   if (contextObjectName.length > 0 && contextRecordId.length > 0) {
-    const sources = await findEligibleTemplateSources({
-      metadataClient: new MetadataApiClient(),
-    });
+    let sendContext;
 
-    const sendContext = await resolveSendContext({
-      client,
-      sources,
-      objectName: contextObjectName,
-      recordId: contextRecordId,
-      relationUid:
-        body !== null && typeof body === 'object'
-          ? readOptional(body.contextRelationUid)
-          : '',
-    });
+    try {
+      const sources = await findEligibleTemplateSources({
+        metadataClient: new MetadataApiClient(),
+      });
+
+      sendContext = await resolveSendContext({
+        client,
+        sources,
+        objectName: contextObjectName,
+        recordId: contextRecordId,
+        relationUid:
+          body !== null && typeof body === 'object'
+            ? readOptional(body.contextRelationUid)
+            : '',
+      });
+    } catch {
+      // A record that cannot be read is a clean refusal, never an uncaught route
+      // error and never a fallback to a Person.
+      return {
+        success: false,
+        error: 'The selected record does not resolve to a person.',
+        failureCode: 'RECORD_NOT_READABLE',
+      };
+    }
 
     if (sendContext.outcome !== SEND_CONTEXT_OUTCOME.RESOLVED) {
       // Reported as one stable failure: the record does not resolve to a single

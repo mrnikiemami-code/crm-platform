@@ -138,12 +138,22 @@ export const resolveSendContext = async ({
     return { outcome: SEND_CONTEXT_OUTCOME.UNSUPPORTED_OBJECT };
   }
 
-  const related = await readSourceRecordRelation({
-    client,
-    objectName: resolvedObjectName,
-    relationName: resolvedRelationName,
-    recordId,
-  });
+  // The source record read is wrapped because a MISSING record surfaces as a
+  // thrown error from the API rather than an empty result (verified live: the
+  // route returned an uncaught 500 before this). A record that cannot be read is
+  // a clean, classified refusal — never an unhandled exception, and never a
+  // reason to guess a recipient.
+  let related;
+  try {
+    related = await readSourceRecordRelation({
+      client,
+      objectName: resolvedObjectName,
+      relationName: resolvedRelationName,
+      recordId,
+    });
+  } catch {
+    return { outcome: SEND_CONTEXT_OUTCOME.RECORD_NOT_FOUND };
+  }
 
   if (related.kind === 'NOT_FOUND') {
     return { outcome: SEND_CONTEXT_OUTCOME.RECORD_NOT_FOUND };

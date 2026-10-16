@@ -117,15 +117,27 @@ export const sendPersonCommunicationHandler = async (
   let sourceRecord: { objectName: string; recordId: string } | null = null;
 
   if (contextObjectName.length > 0 && contextRecordId.length > 0) {
-    const sources = await findEligibleTemplateSources({ metadataClient });
+    // The context resolution itself is wrapped: a metadata or record read that
+    // fails must become a classified refusal, never an uncaught route error.
+    let sources;
+    let sendContext;
 
-    const sendContext = await resolveSendContext({
-      client,
-      sources,
-      objectName: contextObjectName,
-      recordId: contextRecordId,
-      relationUid: parameters.contextRelationUid?.trim() ?? '',
-    });
+    try {
+      sources = await findEligibleTemplateSources({ metadataClient });
+      sendContext = await resolveSendContext({
+        client,
+        sources,
+        objectName: contextObjectName,
+        recordId: contextRecordId,
+        relationUid: parameters.contextRelationUid?.trim() ?? '',
+      });
+    } catch {
+      return fail(
+        'The selected record could not be read.',
+        'TEMPLATE_CONTEXT_MISMATCH',
+        { isOutcomeKnown: true },
+      );
+    }
 
     if (sendContext.outcome !== SEND_CONTEXT_OUTCOME.RESOLVED) {
       // The remaining outcomes are UNSUPPORTED_OBJECT and RECORD_NOT_FOUND.
