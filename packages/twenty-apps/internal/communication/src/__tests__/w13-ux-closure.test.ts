@@ -35,6 +35,8 @@ const navigationConfig = navigationMenuItemResult.config as unknown as {
 const commandConfig = commandMenuItemResult.config as unknown as {
   label: string;
   shortLabel: string;
+  availabilityType?: string;
+  availabilityObjectUniversalIdentifier?: string;
 };
 
 const catalog = JSON.parse(
@@ -47,20 +49,24 @@ describe('send is separated from manual record creation (W13)', () => {
     expect(objectConfig.isUIEditable).toBe(false);
   });
 
-  it('names the Person command after the real capability', () => {
-    expect(commandConfig.label).toBe('Send SMS');
-    expect(commandConfig.shortLabel).toBe('Send SMS');
+  it('names the command after the real capability, in Persian', () => {
+    // The label is Persian IN THE MANIFEST, for the same reason «ویرایش الگو» is:
+    // the platform's `CommandMenuItemRenderer` passes an app command's label
+    // straight to the rendered text with no translation call, so a catalog entry
+    // cannot translate it. This test previously asserted the English manifest
+    // label AND a catalog entry for it, which is exactly the arrangement that
+    // renders English in a Persian workspace.
+    expect(commandConfig.label).toBe('ارسال پیامک');
+    expect(commandConfig.shortLabel).toBe('ارسال پیامک');
   });
 
-  it('translates the command label through the metadata catalog', () => {
-    const labels = catalog['commandMenuItem.label'] as Record<string, string>;
-    const shortLabels = catalog['commandMenuItem.shortLabel'] as Record<
-      string,
-      string
-    >;
-
-    expect(labels[commandConfig.label]).toBeDefined();
-    expect(shortLabels[commandConfig.shortLabel]).toBeDefined();
+  it('is available for EVERY record selection, not only Person', () => {
+    // A missing object binding means "matches every object"
+    // (`doesCommandMenuItemMatchObjectMetadataId`). Binding it to Person would
+    // make the command absent on an Opportunity, so the user would get no
+    // explanation at all. The component decides what it can act on.
+    expect(commandConfig.availabilityType).toBe('RECORD_SELECTION');
+    expect(commandConfig.availabilityObjectUniversalIdentifier).toBeUndefined();
   });
 });
 

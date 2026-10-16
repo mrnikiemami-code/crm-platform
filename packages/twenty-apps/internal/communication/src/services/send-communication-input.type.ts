@@ -13,6 +13,11 @@ export type SendCommunicationInput = {
   targetPersonId?: string;
   /** Optional workspace member recorded as the sender. */
   senderId?: string;
+  /**
+   * Optional SOURCE RECORD the message was composed from, when it was not the
+   * recipient Person. Lets history show which record produced the text.
+   */
+  sourceRecordId?: string;
 };
 
 // The subject is intentionally NOT duplicated here. `message.subject` is the

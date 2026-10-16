@@ -657,3 +657,275 @@ describe('sendPersonCommunicationHandler', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// CONTEXTUAL SEND
+//
+// When the host reports which object the record was selected from, the recipient
+// is DERIVED from that record and a client-supplied `personId` cannot redirect
+// the send. These tests exist because that is the difference between "the record
+// decides who gets the message" and "whoever calls the route decides".
+// ---------------------------------------------------------------------------
+describe('sendPersonCommunicationHandler — contextual send', () => {
+  beforeEach(configureProvider);
+
+  afterEach(() => {
+    process.env = { ...SAVED_ENV };
+  });
+
+  // A metadata client that makes `opportunity` a REAL eligible source: it needs a
+  // universalIdentifier on the object and a MANY_TO_ONE relation to Person, which
+  // the shared catalog fixture does not model (it exists for FIELD filtering, not
+  // source discovery). Person and Company are included so the catalog can still be
+  // built and the probe still authorizes.
+  const PERSON_UID = 'person-object-uid';
+  const OPPORTUNITY_UID = 'opportunity-object-uid';
+  const CONTACT_RELATION_UID = 'contact-relation-uid';
+
+  const field = (
+    id: string,
+    name: string,
+    type: string,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    id,
+    universalIdentifier: `uid-${id}`,
+    name,
+    type,
+    label: name,
+    isActive: true,
+    isSystem: false,
+    ...extra,
+  });
+
+  const buildContextMetadataClient = () => ({
+    query: async (payload: Record<string, unknown>) => {
+      if ('getRoles' in payload) {
+        return {
+          getRoles: [
+            {
+              id: 'role-1',
+              universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
+              canReadAllObjectRecords: true,
+              objectPermissions: [],
+              fieldPermissions: [],
+            },
+          ],
+        };
+      }
+
+      if ('findOneApplication' in payload) {
+        return {
+          findOneApplication: { defaultRoleId: 'role-1', defaultLogicFunctionRole: null },
+        };
+      }
+
+      return {
+        objects: {
+          edges: [
+            {
+              node: {
+                id: 'obj-person',
+                universalIdentifier: PERSON_UID,
+                nameSingular: 'person',
+                namePlural: 'people',
+                labelIdentifierFieldMetadataId: 'f-name',
+                labelSingular: 'Person',
+                labelPlural: 'People',
+                isActive: true,
+                isSystem: false,
+                fieldsList: [
+                  field('f-name', 'name', 'FULL_NAME'),
+                  field('f-job', 'jobTitle', 'TEXT'),
+                ],
+              },
+            },
+            {
+              node: {
+                id: 'obj-company',
+                universalIdentifier: 'company-object-uid',
+                nameSingular: 'company',
+                namePlural: 'companies',
+                labelIdentifierFieldMetadataId: 'f-cname',
+                labelSingular: 'Company',
+                labelPlural: 'Companies',
+                isActive: true,
+                isSystem: false,
+                fieldsList: [field('f-cname', 'name', 'TEXT')],
+              },
+            },
+            {
+              node: {
+                id: 'obj-opportunity',
+                universalIdentifier: OPPORTUNITY_UID,
+                nameSingular: 'opportunity',
+                namePlural: 'opportunities',
+                labelIdentifierFieldMetadataId: 'f-opp-name',
+                labelSingular: 'Opportunity',
+                labelPlural: 'فرصت‌ها',
+                isActive: true,
+                isSystem: false,
+                fieldsList: [
+                  field('f-opp-name', 'name', 'TEXT'),
+                  field('f-opp-amount', 'amount', 'CURRENCY'),
+                  field('f-opp-contact', 'pointOfContact', 'RELATION', {
+                    universalIdentifier: CONTACT_RELATION_UID,
+                    relation: {
+                      type: 'MANY_TO_ONE',
+                      targetObjectMetadata: { id: 'obj-person', universalIdentifier: PERSON_UID },
+                    },
+                  }),
+                ],
+              },
+            },
+          ],
+        },
+      };
+    },
+  });
+
+  const buildContextClient = ({
+    relationTarget,
+  }: {
+    relationTarget: { id: string } | null;
+  }) => {
+    const mutations: MutationCall[] = [];
+
+    const client = {
+      query: async (payload?: Record<string, unknown>) => {
+        if (payload !== undefined && typeof payload === 'object') {
+          if ('people' in payload) {
+            return {
+              people: {
+                edges: [
+                  {
+                    node: {
+                      id: 'person-1',
+                      phones: { primaryPhoneNumber: '09120000000' },
+                    },
+                  },
+                ],
+              },
+            };
+          }
+
+          // The source-record read (an Opportunity), which resolves the recipient.
+          if ('opportunity' in payload) {
+            return {
+              opportunity: {
+                id: 'opp-1',
+                name: 'Platform Migration',
+                pointOfContact: relationTarget,
+              },
+            };
+          }
+
+          if ('person' in payload) {
+            return {
+              person: {
+                id: 'person-1',
+                name: { firstName: 'سارا', lastName: 'احمدی' },
+                jobTitle: 'مدیر فروش',
+                phones: { primaryPhoneNumber: '09120000000' },
+              },
+            };
+          }
+        }
+
+        return PERSON_WITH_PHONE;
+      },
+      mutation: async (payload: Record<string, Record<string, unknown>>) => {
+        const [mutationName] = Object.keys(payload);
+        const body = payload[mutationName] as { __args: Record<string, unknown> };
+
+        mutations.push({ mutationName, args: body.__args });
+
+        if (mutationName === 'createCommunication') {
+          return { createCommunication: { id: 'communication-1' } };
+        }
+
+        return {};
+      },
+    };
+
+    return { client, mutations };
+  };
+
+  const contextParameters = {
+    // A DELIBERATELY WRONG person id, to prove it is ignored.
+    personId: 'attacker-chosen-person',
+    channel: 'SMS' as const,
+    recipient: '09120000000',
+    body: 'سلام',
+    contextObjectName: 'opportunity',
+    contextRecordId: 'opp-1',
+    contextRelationUid: 'contact-relation-uid',
+  };
+
+  it('derives the recipient from the record and records WHICH record it came from', async () => {
+    const { client, mutations } = buildContextClient({
+      relationTarget: { id: 'person-1' },
+    });
+
+    const result = await sendPersonCommunicationHandler(contextParameters, {
+      client: client as never,
+      registry: buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: 'provider-1',
+      }).registry,
+      metadataClient: buildContextMetadataClient() as never,
+    });
+
+    expect(result.success).toBe(true);
+
+    const created = mutations.find(
+      (mutation) => mutation.mutationName === 'createCommunication',
+    );
+
+    // The record's own recipient is what got persisted, and the record id is
+    // recorded so two sends from different records are distinguishable.
+    expect(created?.args).toMatchObject({
+      data: { targetPersonId: 'person-1', sourceRecordId: 'opp-1' },
+    });
+  });
+
+  it('refuses a record whose relation is empty, and does NOT send', async () => {
+    const { client, mutations } = buildContextClient({ relationTarget: null });
+
+    const result = await sendPersonCommunicationHandler(contextParameters, {
+      client: client as never,
+      registry: buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: 'provider-1',
+      }).registry,
+      metadataClient: buildContextMetadataClient() as never,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.failureCode).toBe('TEMPLATE_CONTEXT_MISMATCH');
+    // Nothing was written and nothing was sent: there was no destination.
+    expect(mutations).toHaveLength(0);
+  });
+
+  it('refuses an object that is not a template source', async () => {
+    const { client, mutations } = buildContextClient({
+      relationTarget: { id: 'person-1' },
+    });
+
+    const result = await sendPersonCommunicationHandler(
+      { ...contextParameters, contextObjectName: 'company' },
+      {
+        client: client as never,
+        registry: buildRegistryWithStubProvider({
+        status: 'SENT',
+        providerMessageId: 'provider-1',
+      }).registry,
+        metadataClient: buildContextMetadataClient() as never,
+      },
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.failureCode).toBe('TEMPLATE_CONTEXT_MISMATCH');
+    expect(mutations).toHaveLength(0);
+  });
+});

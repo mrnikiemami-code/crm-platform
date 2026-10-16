@@ -26,7 +26,18 @@ const handler = async (
   const messageBody = typeof body.body === 'string' ? body.body : '';
   const subject = typeof body.subject === 'string' ? body.subject : undefined;
 
-  if (personId.length === 0) {
+  const readOptionalString = (value: unknown): string | null =>
+    typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+  const contextObjectName = readOptionalString(body.contextObjectName);
+  const contextRecordId = readOptionalString(body.contextRecordId);
+  const isContextual = contextObjectName !== null && contextRecordId !== null;
+
+  // `personId` is required EXCEPT for a contextual send, where the recipient is
+  // derived from the record and a client-supplied id is deliberately ignored.
+  // Requiring one there would force the client to name a person it is not
+  // allowed to choose.
+  if (personId.length === 0 && !isContextual) {
     return { success: false, error: '`personId` is required.' };
   }
 
@@ -42,6 +53,13 @@ const handler = async (
     ...(subject === undefined ? {} : { subject }),
     // Trusted, server-resolved sender. The client never supplies this.
     workspaceMemberId: context?.workspaceMemberId ?? null,
+    // The record context, forwarded so the handler can derive the recipient and
+    // the source values from the record itself. These are NOT trusted as values:
+    // they are identifiers that are re-resolved against live metadata, and the
+    // record's own recipient wins over `personId` above.
+    contextObjectName,
+    contextRecordId,
+    contextRelationUid: readOptionalString(body.contextRelationUid),
   });
 };
 

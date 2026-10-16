@@ -12,7 +12,15 @@ export type MessageTemplateRecord = {
   body: string;
   channel: string;
   targetObject: string;
-  /** ISO timestamp of the last write, shown as «آخرین ویرایش» in the studio. */
+  /**
+   * Stable metadata `universalIdentifier` of the object this template is written
+   * FOR, or `''` for a row that predates the source model (read as Person).
+   *
+   * Without this a picker cannot tell a Person template from an Opportunity one,
+   * so it would either offer templates that cannot resolve in the current
+   * context or refuse ones that can.
+   */
+  sourceObjectUid: string;
   updatedAt: string;
 };
 
@@ -22,6 +30,7 @@ type RawMessageTemplateNode = {
   body?: string | null;
   channel?: string | null;
   targetObject?: string | null;
+  sourceObjectUid?: string | null;
   updatedAt?: string | null;
 };
 
@@ -49,6 +58,7 @@ export const findMessageTemplates = async ({
           body: true,
           channel: true,
           targetObject: true,
+          sourceObjectUid: true,
           updatedAt: true,
         },
       },
@@ -72,6 +82,11 @@ export const findMessageTemplates = async ({
       // An existing row has no value and is read as PERSON — a read-time
       // default only, never written back.
       targetObject: readTemplateTargetObject(node.targetObject),
+      // Empty string is a REAL value here (a legacy, source-less row), so it is
+      // not defaulted to a Person uid: the caller decides what an empty source
+      // means, and `resolveStoredTemplateSource` is the one place that does.
+      sourceObjectUid:
+        typeof node.sourceObjectUid === 'string' ? node.sourceObjectUid : '',
       updatedAt: typeof node.updatedAt === 'string' ? node.updatedAt : '',
     }));
 };

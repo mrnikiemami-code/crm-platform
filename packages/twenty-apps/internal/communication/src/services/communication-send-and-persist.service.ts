@@ -149,6 +149,9 @@ export class CommunicationSendAndPersistService {
         ? {}
         : { targetPersonId: input.targetPersonId }),
       ...(input.senderId === undefined ? {} : { senderId: input.senderId }),
+      ...(input.sourceRecordId === undefined
+        ? {}
+        : { sourceRecordId: input.sourceRecordId }),
       queuedAt: this.now().toISOString(),
     });
 

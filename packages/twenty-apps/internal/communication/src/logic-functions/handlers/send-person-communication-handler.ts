@@ -18,9 +18,16 @@ import {
 } from 'src/services/communication-send-and-persist.service';
 import { CommunicationSendService } from 'src/services/communication-send.service';
 import { buildAuthorizedTemplateCatalog } from 'src/templates/build-template-catalog';
-import { PERSON_SOURCE_OBJECT_NAME } from 'src/templates/data/find-eligible-template-sources';
+import {
+  findEligibleTemplateSources,
+  PERSON_SOURCE_OBJECT_NAME,
+} from 'src/templates/data/find-eligible-template-sources';
 import { interpolateTemplate } from 'src/templates/interpolate-template';
 import { resolveTemplateValues } from 'src/templates/resolve-template-values';
+import {
+  resolveSendContext,
+  SEND_CONTEXT_OUTCOME,
+} from 'src/templates/resolve-send-context';
 
 export type SendPersonCommunicationParameters = {
   personId: string;
@@ -34,6 +41,19 @@ export type SendPersonCommunicationParameters = {
    * from the client; supplied by the trusted logic-function execution context.
    */
   workspaceMemberId?: string | null;
+  /**
+   * The object the record was selected from, as reported by the HOST's command
+   * context. When present, the send is CONTEXTUAL: the recipient, the source
+   * values and the final text are all derived from that record rather than from
+   * `personId`/`body` alone.
+   *
+   * Optional so the existing Person flows keep working unchanged.
+   */
+  contextObjectName?: string | null;
+  /** The selected record id, for a contextual send. */
+  contextRecordId?: string | null;
+  /** The template's stored relation, which selects the path to the Person. */
+  contextRelationUid?: string | null;
 };
 
 export type SendPersonCommunicationDependencies = {
@@ -84,11 +104,63 @@ export const sendPersonCommunicationHandler = async (
 
   const client = dependencies.client ?? new CoreApiClient();
 
+  // --- resolve the record context FIRST ------------------------------------
+  // A CONTEXTUAL send derives its recipient from the selected record, so the
+  // context has to be resolved before anything that depends on the person. The
+  // block below also decides whether this IS a contextual send at all.
+  const metadataClient = dependencies.metadataClient ?? new MetadataApiClient();
+  const contextObjectName = parameters.contextObjectName?.trim() ?? '';
+  const contextRecordId = parameters.contextRecordId?.trim() ?? '';
+
+  let effectivePersonId = parameters.personId;
+  let catalogSourceObjectName = PERSON_SOURCE_OBJECT_NAME;
+  let sourceRecord: { objectName: string; recordId: string } | null = null;
+
+  if (contextObjectName.length > 0 && contextRecordId.length > 0) {
+    const sources = await findEligibleTemplateSources({ metadataClient });
+
+    const sendContext = await resolveSendContext({
+      client,
+      sources,
+      objectName: contextObjectName,
+      recordId: contextRecordId,
+      relationUid: parameters.contextRelationUid?.trim() ?? '',
+    });
+
+    if (sendContext.outcome !== SEND_CONTEXT_OUTCOME.RESOLVED) {
+      // The remaining outcomes are UNSUPPORTED_OBJECT and RECORD_NOT_FOUND.
+      // Both are refused with their own classification, and neither ever becomes
+      // a Person send: the record did not resolve, so there is no context.
+      const isRecordMissing =
+        sendContext.outcome === SEND_CONTEXT_OUTCOME.RECORD_NOT_FOUND;
+
+      return fail(
+        isRecordMissing
+          ? 'Record not found or not accessible.'
+          : 'This record is not a template source.',
+        isRecordMissing ? 'PERSON_NOT_ACCESSIBLE' : 'TEMPLATE_CONTEXT_MISMATCH',
+        { isOutcomeKnown: true },
+      );
+    }
+
+    // The record's own recipient REPLACES the requested one. A client that sent
+    // a different personId cannot redirect a contextual send.
+    effectivePersonId = sendContext.recipientPersonId;
+    catalogSourceObjectName = sendContext.objectName;
+    sourceRecord = sendContext.sourceRecord;
+  }
+
+  if (effectivePersonId.trim().length === 0) {
+    return fail('`personId` is required.', 'INVALID_INPUT');
+  }
+
   // Validate Person access server-side and confirm the recipient really
-  // belongs to that Person.
+  // belongs to that Person. For a CONTEXTUAL send the person is the one the
+  // record resolved to, so this check is what proves the derived recipient is
+  // actually reachable — not the client's claim.
   const phoneOptions = await findPersonPhoneOptions({
     client,
-    personId: parameters.personId,
+    personId: effectivePersonId,
   });
 
   if (phoneOptions === null) {
@@ -106,32 +178,48 @@ export const sendPersonCommunicationHandler = async (
     );
   }
 
-  // Resolve any template variables SERVER-SIDE, against the authorized Person
-  // fields re-read here through the workspace-scoped client. The client's body
-  // may contain literal `@token` placeholders; those are substituted here and
-  // NEVER sent literally. The catalog is the same metadata-driven, permission-
-  // aware one the manager and preview use, so the send path can never accept a
-  // token the manager would not advertise. An unknown or empty variable blocks
-  // the send with a stable classification.
+  // Resolve any template variables SERVER-SIDE, against the authorized fields
+  // re-read here through the workspace-scoped client. The client's body may
+  // contain literal `@token` placeholders; those are substituted here and NEVER
+  // sent literally. The catalog is the same metadata-driven, permission-aware one
+  // the manager and preview use, so the send path can never accept a token the
+  // manager would not advertise. An unknown or empty variable blocks the send
+  // with a stable classification.
+  //
+  // CONTEXTUAL SEND: when the host reported which object the record was selected
+  // from, the context is resolved from THAT record — its source, its relation and
+  // the Person at the other end. The recipient and the values then come from the
+  // record, so a client-supplied `personId` or a client-written body cannot stand
+  // in for the record's own context.
+  // CONTEXTUAL SEND: the context was already resolved above, before the person
+  // checks, so the catalog and the values are built for the source the record
+  // resolved to and `@source.*` reads THAT record.
   const { catalog } = await buildAuthorizedTemplateCatalog({
-    metadataClient: dependencies.metadataClient ?? new MetadataApiClient(),
+    metadataClient,
     client,
-    // The single send addresses one PERSON, so its templates resolve against the
-    // Person catalog. A template written for a related source is not sent through
-    // this path.
-    source: { objectName: PERSON_SOURCE_OBJECT_NAME },
+    source: { objectName: catalogSourceObjectName },
   });
 
   const resolved = await resolveTemplateValues({
     client,
-    personId: parameters.personId,
-    // This path has no source record: the recipient person IS the record.
-    sourceRecord: null,
+    personId: effectivePersonId,
+    sourceRecord,
     catalog,
   });
 
   if (!resolved.isAccessible) {
     return fail('Person not found or not accessible.', 'PERSON_NOT_ACCESSIBLE');
+  }
+
+  // A contextual send whose SOURCE record could not be read must not go out with
+  // the source's tokens silently blank: the text would be wrong in a way nobody
+  // would notice until the recipient did.
+  if (!resolved.isSourceAccessible) {
+    return fail(
+      'The source record could not be read, so its variables cannot be resolved.',
+      'TEMPLATE_VARIABLE_UNRESOLVED',
+      { isOutcomeKnown: true },
+    );
   }
 
   const interpolation = interpolateTemplate({
@@ -173,10 +261,15 @@ export const sendPersonCommunicationHandler = async (
         body: interpolation.text,
         ...(isNonEmptyString(subject) ? { subject } : {}),
       },
-      targetPersonId: parameters.personId,
+      targetPersonId: effectivePersonId,
       ...(isNonEmptyString(parameters.workspaceMemberId)
         ? { senderId: parameters.workspaceMemberId }
         : {}),
+      // Only for a CONTEXTUAL send: it records WHICH record produced the text, so
+      // two messages with different source values are distinguishable in history.
+      ...(sourceRecord === null
+        ? {}
+        : { sourceRecordId: sourceRecord.recordId }),
     }));
   } catch (error) {
     // The provider outcome is known for CommunicationOutcomePersistenceError:

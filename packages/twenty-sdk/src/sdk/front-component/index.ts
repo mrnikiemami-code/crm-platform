@@ -16,6 +16,7 @@ export { useFrontComponentId } from './hooks/useFrontComponentId';
 export { useTranslate } from './hooks/useTranslate';
 export type { UseTranslateResult } from './hooks/useTranslate';
 export { useLocale } from './hooks/useLocale';
+export { useObjectNameSingular } from './hooks/useObjectNameSingular';
 export { useRecordId } from './hooks/useRecordId';
 export { useToolCall } from './hooks/useToolCall';
 export { useSelectedRecordIds } from './hooks/useSelectedRecordIds';

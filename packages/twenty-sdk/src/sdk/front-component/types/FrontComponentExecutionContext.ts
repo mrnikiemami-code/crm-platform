@@ -11,6 +11,16 @@ export type FrontComponentExecutionContext = {
   recordId: string | null;
   /** All selected record IDs */
   selectedRecordIds: string[];
+  /**
+   * The `nameSingular` of the object the records were selected FROM, when the
+   * component was opened from a record context (a record page or a record
+   * index). It is how a component can tell «اشخاص» from «فرصت‌ها» without
+   * guessing: the ids alone do not say which object they belong to.
+   *
+   * `null` when the component was opened with no record context at all, which is
+   * a different thing from an empty selection.
+   */
+  objectNameSingular: string | null;
   timelineActivityId: string | null;
   /** Resolved color scheme of the host UI ('System' is already resolved) */
   colorScheme: 'light' | 'dark';

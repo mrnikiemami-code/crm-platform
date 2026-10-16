@@ -54,6 +54,9 @@ describe('findMessageTemplates (native workspace path)', () => {
         // An existing row with no stored value is read as PERSON — a read-time
         // default only, never a write-back migration.
         targetObject: 'PERSON',
+        // Empty is a REAL value: a legacy, source-less row. The caller decides
+        // what that means; the stored-source resolver is the one place that does.
+        sourceObjectUid: '',
         updatedAt: '',
       },
       {
@@ -62,6 +65,7 @@ describe('findMessageTemplates (native workspace path)', () => {
         body: 'یادآوری برای @company',
         channel: 'SMS',
         targetObject: 'PERSON',
+        sourceObjectUid: '',
         updatedAt: '',
       },
     ]);
@@ -86,13 +90,15 @@ describe('findMessageTemplates (native workspace path)', () => {
 
     const [template] = await findMessageTemplates({ client });
 
-    // The template carries only its own text — no phone, no person id.
+    // The template carries only its own text — no phone, no person id. The
+    // source is the OBJECT it was written for, which is not recipient data.
     expect(Object.keys(template)).toEqual([
       'id',
       'title',
       'body',
       'channel',
       'targetObject',
+      'sourceObjectUid',
       'updatedAt',
     ]);
   });

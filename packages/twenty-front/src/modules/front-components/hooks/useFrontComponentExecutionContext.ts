@@ -121,6 +121,7 @@ export const useFrontComponentExecutionContext = ({
   applicationId,
   commandMenuItemId,
   selectedRecordIds,
+  objectNameSingular,
   timelineActivityId,
   toolCall,
   colorScheme,
@@ -129,6 +130,8 @@ export const useFrontComponentExecutionContext = ({
   applicationId: string;
   commandMenuItemId?: string;
   selectedRecordIds?: string[];
+  /** `nameSingular` of the object the records were selected from. */
+  objectNameSingular?: string;
   timelineActivityId?: string;
   toolCall?: FrontComponentToolCall;
   colorScheme: 'light' | 'dark';
@@ -429,6 +432,9 @@ export const useFrontComponentExecutionContext = ({
     userId: currentUser?.id ?? null,
     recordId: selectedRecordIds?.length === 1 ? selectedRecordIds[0] : null,
     selectedRecordIds: selectedRecordIds ?? [],
+    // Resolved by the host from the command context, never guessed from an id.
+    // `null` means "no record context", which is not the same as no selection.
+    objectNameSingular: objectNameSingular ?? null,
     timelineActivityId: timelineActivityId ?? null,
     toolCall,
     colorScheme,

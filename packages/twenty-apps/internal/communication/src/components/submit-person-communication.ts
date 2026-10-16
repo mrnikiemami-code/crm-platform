@@ -7,6 +7,17 @@ export type SubmitPersonCommunicationRequest = {
   channel: string;
   recipient: string;
   body: string;
+  /**
+   * The object the record was selected from, as reported by the host's command
+   * context. Present for a CONTEXTUAL send: the server then derives the recipient
+   * and the source values from the record itself, so these identifiers are the
+   * only thing the client contributes and neither is trusted as a value.
+   *
+   * Absent for the plain Person flows, which keep their existing behavior.
+   */
+  contextObjectName?: string;
+  contextRecordId?: string;
+  contextRelationUid?: string;
 };
 
 export type SubmitTransportResponse = {

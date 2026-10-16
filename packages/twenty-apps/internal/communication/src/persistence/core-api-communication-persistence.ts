@@ -88,6 +88,9 @@ export class CoreApiCommunicationPersistence
             ...(record.senderId === undefined
               ? {}
               : { senderId: record.senderId }),
+            ...(record.sourceRecordId === undefined
+              ? {}
+              : { sourceRecordId: record.sourceRecordId }),
           },
         },
         id: true,

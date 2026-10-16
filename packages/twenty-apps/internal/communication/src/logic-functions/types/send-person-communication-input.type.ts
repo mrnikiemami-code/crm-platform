@@ -8,6 +8,15 @@ export type SendPersonCommunicationRequest = {
   recipient?: unknown;
   body?: unknown;
   subject?: unknown;
+  /**
+   * The object the record was selected from, as reported by the host's command
+   * context. When present the send is CONTEXTUAL: the recipient, the source
+   * values and the final text come from that record, so the client cannot
+   * substitute a different person or a different text.
+   */
+  contextObjectName?: unknown;
+  contextRecordId?: unknown;
+  contextRelationUid?: unknown;
 };
 
 // Classification of a failed send, so a caller can distinguish a provider
@@ -16,6 +25,7 @@ export type SendPersonCommunicationFailureCode =
   | 'INVALID_INPUT'
   | 'PERSON_NOT_ACCESSIBLE'
   | 'TEMPLATE_VARIABLE_UNRESOLVED'
+  | 'TEMPLATE_CONTEXT_MISMATCH'
   | 'PROVIDER_FAILED'
   | 'OUTCOME_UNKNOWN'
   | 'OUTCOME_NOT_PERSISTED'

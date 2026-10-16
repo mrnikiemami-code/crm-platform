@@ -25,17 +25,20 @@ export const SidePanelFrontComponentPage = () => {
     return null;
   }
 
-  // The FULL selection is forwarded. An empty selection is `[]` (not
-  // `undefined`), so the renderer can distinguish "nothing selected" from "no
-  // record context at all"; the single-record path stays a one-element array.
+  // The FULL selection is forwarded, together with the OBJECT the records were
+  // selected from. The ids alone do not say which kind of record they are, so a
+  // component that must act on a specific entity cannot work without this.
   const selectedRecordIds =
     viewableFrontComponentRecordContext?.selectedRecordIds;
+  const objectNameSingular =
+    viewableFrontComponentRecordContext?.objectNameSingular;
 
   return (
     <Suspense fallback={<FrontComponentSkeletonLoader />}>
       <FrontComponentRenderer
         frontComponentId={viewableFrontComponentId}
         selectedRecordIds={selectedRecordIds}
+        objectNameSingular={objectNameSingular}
         loadingFallback={<FrontComponentSkeletonLoader />}
       />
     </Suspense>

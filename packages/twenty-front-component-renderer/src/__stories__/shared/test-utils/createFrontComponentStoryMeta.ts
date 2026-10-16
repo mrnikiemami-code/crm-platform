@@ -37,6 +37,7 @@ export const FRONT_COMPONENT_STORY_DEFAULT_ARGS: NonNullable<
     frontComponentId: 'unset',
     userId: null,
     recordId: null,
+    objectNameSingular: null,
     selectedRecordIds: [],
     timelineActivityId: null,
     colorScheme: 'light',

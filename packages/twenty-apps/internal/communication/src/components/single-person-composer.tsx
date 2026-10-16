@@ -94,7 +94,28 @@ const resolveTemplatesState = (response: {
 // The single-person form: exactly the W5 vertical slice, extracted so the
 // top-level composer can choose between it and the bulk form without changing
 // any single-send behavior.
-export const SinglePersonComposer = ({ personId }: { personId: string | null }) => {
+export const SinglePersonComposer = ({
+  personId,
+  contextSourceObjectUid = null,
+  contextObjectName = null,
+  contextRecordId = null,
+  contextRelationUid = null,
+}: {
+  personId: string | null;
+  /**
+   * The stable identifier of the source being composed for. `null` keeps the
+   * Person-scoped behavior; a non-null value narrows the template list.
+   */
+  contextSourceObjectUid?: string | null;
+  /**
+   * The record the send is composed FROM, when the selection was not a Person.
+   * Forwarded as identifiers only: the server re-resolves them and its own
+   * derived recipient wins over `personId`.
+   */
+  contextObjectName?: string | null;
+  contextRecordId?: string | null;
+  contextRelationUid?: string | null;
+}) => {
   const { t } = useTranslate();
   const locale = useLocale();
 
@@ -139,6 +160,18 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
   if (phonesConnectionRef.current === null) {
     phonesConnectionRef.current = createPhoneOptionsConnection({
       transport: (selectedPersonId) => {
+        // CONTEXTUAL: the server derives the recipient from the record, so the
+        // numbers offered are exactly the ones the send will accept. The person id
+        // is still sent for the plain Person path, where it is the recipient.
+        if (contextObjectName !== null && contextRecordId !== null) {
+          return callAppRoute('/communication/person-phones', 'POST', {
+            personId: selectedPersonId ?? '',
+            contextObjectName,
+            contextRecordId,
+            contextRelationUid: contextRelationUid ?? '',
+          });
+        }
+
         if (!selectedPersonId) {
           throw new Error('No person is selected.');
         }
@@ -177,6 +210,13 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
         const response = await callAppRoute(
           '/communication/message-templates',
           'POST',
+          // SOURCE-SCOPED: the picker must only offer templates that can resolve
+          // in THIS context. Without the source the server returned every
+          // template, including ones written for another object whose `@source.*`
+          // tokens cannot resolve here.
+          {
+            sourceObjectUid: contextSourceObjectUid ?? '',
+          },
         );
 
         if (!cancelled) {
@@ -242,9 +282,12 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
         : t('No templates available');
 
   const trimmedBody = body.trim();
+  // A CONTEXTUAL send has no `personId` of its own: the recipient is derived from
+  // the record server-side, so the person-id requirement does not apply to it.
+  const isContextual = contextObjectName !== null && contextRecordId !== null;
   const canSubmit =
     !sending &&
-    personId !== null &&
+    (isContextual || personId !== null) &&
     isPhoneSelectionReady(phonesState) &&
     selectedPhone.length > 0 &&
     trimmedBody.length > 0;
@@ -254,7 +297,7 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
     // immediate submission is rejected in the same tick. It is owned by the
     // shared submission helper so the shipped behavior is exactly what the
     // focused tests exercise.
-    if (!canSubmit || personId === null) {
+    if (!canSubmit || (!isContextual && personId === null)) {
       return;
     }
 
@@ -269,10 +312,22 @@ export const SinglePersonComposer = ({ personId }: { personId: string | null }) 
 
     const outcomeResult = await submitPersonCommunication(
       {
-        personId,
+        // A contextual send carries no person id: the server derives the
+        // recipient from the record and refuses a client-supplied one for it.
+        personId: personId ?? '',
         channel,
         recipient: selectedPhone,
         body: trimmedBody,
+        // The record context, so the server derives the recipient and the source
+        // values from the record rather than trusting this form. Absent for a
+        // plain Person send, which keeps its existing behavior.
+        ...(contextObjectName === null || contextRecordId === null
+          ? {}
+          : {
+              contextObjectName,
+              contextRecordId,
+              contextRelationUid: contextRelationUid ?? '',
+            }),
       },
       {
         isSubmittingRef,

@@ -4,6 +4,7 @@ import {
   COMMUNICATION_BODY_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_CHANNEL_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_DELIVERED_AT_FIELD_UNIVERSAL_IDENTIFIER,
+  COMMUNICATION_SOURCE_RECORD_ID_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_DIRECTION_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_FAILURE_REASON_FIELD_UNIVERSAL_IDENTIFIER,
   COMMUNICATION_NAME_FIELD_UNIVERSAL_IDENTIFIER,
@@ -267,6 +268,25 @@ export default defineObject({
       description: 'When the provider confirmed delivery',
       icon: 'IconCircleCheck',
       isNullable: true,
+    },
+    {
+      // WHICH record the message was composed from, when that record is not the
+      // recipient Person. It is what makes two sends with DIFFERENT source values
+      // distinguishable in history: the body alone would not say which Opportunity
+      // produced it.
+      //
+      // A plain metadata id, never a credential, written only from the
+      // server-resolved context. Nullable because every existing row predates it
+      // and every Person-source send leaves it empty.
+      universalIdentifier:
+        COMMUNICATION_SOURCE_RECORD_ID_FIELD_UNIVERSAL_IDENTIFIER,
+      type: FieldType.TEXT,
+      name: 'sourceRecordId',
+      label: 'Source record id',
+      description: 'The record this message was composed from, when not the recipient',
+      icon: 'IconFileText',
+      isNullable: true,
+      isUIEditable: false,
     },
   ],
 });

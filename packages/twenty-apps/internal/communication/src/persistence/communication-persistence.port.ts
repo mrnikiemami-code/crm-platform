@@ -12,6 +12,16 @@ export type QueuedCommunicationRecord = {
   subject?: string;
   targetPersonId?: string;
   senderId?: string;
+  /**
+   * The SOURCE RECORD the message was composed from, when it was not the
+   * recipient Person itself. Recorded so a sent message can be traced back to the
+   * Opportunity (or other record) whose values produced it — without it, two
+   * messages with different source text would be indistinguishable in history.
+   *
+   * This is a plain metadata id, never a credential, and it is written only from
+   * the server-resolved context.
+   */
+  sourceRecordId?: string;
   queuedAt: string;
 };
 
