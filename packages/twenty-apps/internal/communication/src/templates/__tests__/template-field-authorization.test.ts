@@ -28,8 +28,8 @@ describe('template field permissions without sampling data', () => {
       expect(selection.__args.first).toBe(1);
       expect(selection.__args.filter).toEqual({
         and: [
-          { id: { eq: '00000000-0000-0000-0000-000000000000' } },
-          { id: { neq: '00000000-0000-0000-0000-000000000000' } },
+          { id: { eq: '11111111-2222-4333-8444-555555555555' } },
+          { id: { neq: '11111111-2222-4333-8444-555555555555' } },
         ],
       });
     }

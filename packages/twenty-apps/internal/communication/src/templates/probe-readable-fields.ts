@@ -26,10 +26,19 @@ export const FIELD_PROBE_DISCOVERY_PAGE_SIZE = 25;
 
 // Contradictory predicates guarantee no record is inspected. The workspace ORM
 // validates selected columns before executing SQL, including on an empty table.
+//
+// The id MUST be a well-formed v4 UUID. The nil UUID (`00000000-0000-...`) is
+// rejected by the platform's own UUID validation — "Invalid UUID value ... for
+// field id" — which made EVERY field probe throw and turned the whole catalog
+// into READ_PROBE_ERROR for all five sources. A syntactically valid v4 that
+// simply does not exist is accepted, returns an empty connection, and still
+// exercises column validation.
+const NO_RECORDS_ID = '11111111-2222-4333-8444-555555555555';
+
 const NO_RECORDS_FILTER = {
   and: [
-    { id: { eq: '00000000-0000-0000-0000-000000000000' } },
-    { id: { neq: '00000000-0000-0000-0000-000000000000' } },
+    { id: { eq: NO_RECORDS_ID } },
+    { id: { neq: NO_RECORDS_ID } },
   ],
 };
 

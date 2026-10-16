@@ -88,7 +88,7 @@ beforeEach(() => {
     const query = JSON.parse(String(options.body)).query as string;
     const root = /TemplateRecordRead \{ (\w+)/.exec(query)?.[1] ?? '';
     let data: Record<string, unknown>;
-    if (query.includes('00000000-0000-0000-0000-000000000000'))
+    if (query.includes('11111111-2222-4333-8444-555555555555'))
       data = { [root]: { edges: [] } };
     else if (root === 'messageTemplate')
       data = {
@@ -153,7 +153,7 @@ describe('template route with an independently owned source', () => {
     );
     for (const [, options] of transport.mock.calls)
       expect(JSON.parse(String(options.body)).query).toContain(
-        '00000000-0000-0000-0000-000000000000',
+        '11111111-2222-4333-8444-555555555555',
       );
     expect(generatedRead).not.toHaveBeenCalled();
     expect(mutation).not.toHaveBeenCalled();
