@@ -201,8 +201,12 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       const { catalog, isAvailable, stage, sourceLabelPlural } =
         await buildAuthorizedTemplateCatalog({
           metadataClient,
-          client,
           source: { objectName: resolvedSource.objectName },
+          relationUid:
+            resolvedSource.kind === 'RESOLVED'
+              ? resolvedSource.relationUid
+              : '',
+          userRoleId: event.userWorkspaceId ?? null,
         });
 
       return {
@@ -541,8 +545,12 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       // sample record is passed as the source record, so `@source.*` reads IT.
       const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
         metadataClient: new MetadataApiClient(),
-        client,
         source: { objectName: sourceObjectName },
+        relationUid:
+          resolvedSource.kind === 'RESOLVED'
+            ? resolvedSource.relationUid
+            : '',
+        userRoleId: event.userWorkspaceId ?? null,
       });
 
       if (!isAvailable) {

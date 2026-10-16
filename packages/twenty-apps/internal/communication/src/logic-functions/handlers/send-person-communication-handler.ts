@@ -208,7 +208,6 @@ export const sendPersonCommunicationHandler = async (
   // resolved to and `@source.*` reads THAT record.
   const { catalog } = await buildAuthorizedTemplateCatalog({
     metadataClient,
-    client,
     source: { objectName: catalogSourceObjectName },
   });
 

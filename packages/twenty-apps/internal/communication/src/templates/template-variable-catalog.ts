@@ -67,7 +67,49 @@ export type TemplateVariableDefinition = {
   subFieldName?: string;
   kind: TemplateValueKind;
   group: TemplateVariableGroup;
+  /**
+   * The owning object's metadata `universalIdentifier`.
+   *
+   * Part of the descriptor's IDENTITY, not decoration: two objects can expose a
+   * field with the SAME API name, and a token alone cannot tell them apart. Any
+   * dedupe or comparison must use this rather than a display label.
+   */
+  objectUid: string;
+  /** The field's metadata `universalIdentifier` — the identity of the field. */
+  fieldUid: string;
+  /**
+   * The metadata TYPE the field was declared with (e.g. `FULL_NAME`, `CURRENCY`).
+   *
+   * Kept alongside `kind` because they are different things: `kind` says how to
+   * turn a value into text, `metadataType` says what the workspace declared. A
+   * single `kind` can be reached from more than one metadata type.
+   */
+  metadataType: string;
+  /**
+   * The full read PATH from the record root, outermost first, e.g.
+   * `['pointOfContact', 'name']` for a recipient's name reached through the
+   * source record's relation. Empty means "read directly on the record".
+   *
+   * This is what lets the resolver read by PATH instead of by a bare object name.
+   */
+  readPath: readonly string[];
 };
+
+/**
+ * Identity of a catalog entry.
+ *
+ * Uses the OBJECT and FIELD identifiers and the SUB-FIELD path, never the token
+ * text and never a label. Two objects can declare the same field name, and one
+ * FULL_NAME field yields three tokens — all three are distinct entries of the
+ * SAME field, which is exactly what this key distinguishes.
+ */
+export const templateFieldIdentity = (
+  definition: Pick<
+    TemplateVariableDefinition,
+    'objectUid' | 'fieldUid' | 'subFieldName'
+  >,
+): string =>
+  `${definition.objectUid}:${definition.fieldUid}:${definition.subFieldName ?? ''}`;
 
 export type TemplateVariableCatalog = {
   /** Canonical entries, in picker order. */

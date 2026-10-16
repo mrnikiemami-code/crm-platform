@@ -87,8 +87,8 @@ const handler = async (
 
   const { catalog, isAvailable, stage } = await buildAuthorizedTemplateCatalog({
     metadataClient,
-    client,
     source: { objectName: resolvedSource.objectName },
+    userRoleId: event.userWorkspaceId ?? null,
   });
 
   // The catalog is EMPTY whenever it could not be authorized. The status tells

@@ -13,6 +13,7 @@ import {
   OPPORTUNITY_CATALOG_SOURCE,
   PERSON_CATALOG_SOURCE,
   createFakeMetadataClient,
+  createFakeMetadataClientWithRoles,
   templateMetadataObjects,
   unrestrictedPermissions,
 } from 'src/templates/__tests__/catalog-fixture';
@@ -152,7 +153,6 @@ describe('the catalog follows the source, and never falls back to Person', () =>
   it('the runtime entry point reports SOURCE_UNKNOWN and an empty catalog', async () => {
     const result = await buildAuthorizedTemplateCatalog({
       metadataClient: createFakeMetadataClient() as never,
-      client: { query: async () => ({}) } as never,
       source: { objectName: 'doesNotExist' },
     });
 
@@ -161,19 +161,51 @@ describe('the catalog follows the source, and never falls back to Person', () =>
     expect(result.catalog.variables).toEqual([]);
   });
 
-  it('reports SOURCE_UNAVAILABLE when no source field could be authorized', async () => {
-    // The source object exists but no record of it is readable, so no field of
-    // it can be proven — and the catalog must not degrade into the recipient's
-    // fields, which is the same defect wearing a different hat.
+  it('keeps the SOURCE field list even when the object has NO records', async () => {
+    // This replaces the old SOURCE_UNAVAILABLE expectation. That state existed
+    // because the catalog was proven by probing a random record: with an empty
+    // table the probe found nothing and the catalog came back EMPTY, as if the
+    // object declared no fields. The field list is now derived from metadata and
+    // permissions, so an empty source still yields its full list.
     const result = await buildAuthorizedTemplateCatalog({
       metadataClient: createFakeMetadataClient() as never,
-      client: {
-        query: async (payload: Record<string, unknown>) =>
-          'opportunities' in payload
-            ? { opportunities: { edges: [] } }
-            : { person: { id: 'p1' } },
-      } as never,
       source: OPPORTUNITY_CATALOG_SOURCE,
+    });
+
+    expect(result.isAvailable).toBe(true);
+    expect(result.stage).toBe('OK');
+
+    const sourceTokens = result.catalog.variables
+      .filter((variable) => variable.group === 'source')
+      .map((variable) => variable.token);
+
+    expect(sourceTokens).toContain('source.name');
+    expect(sourceTokens).toContain('source.amount');
+  });
+
+  it('reports SOURCE_UNAVAILABLE when the SOURCE object is unreadable by the roles', async () => {
+    // The genuine "nothing usable for this source" case: the object exists in
+    // metadata but the effective permissions deny it, so there is no source field
+    // — and the catalog must not degrade into the recipient's fields.
+    const result = await buildAuthorizedTemplateCatalog({
+      metadataClient: createFakeMetadataClientWithRoles({
+        userRole: {
+          id: 'user-role',
+          universalIdentifier: 'user-role-uid',
+          canReadAllObjectRecords: true,
+          objectPermissions: [
+            {
+              objectMetadataId: '66666666-6666-4666-8666-666666666666',
+              canReadObjectRecords: false,
+              restrictedFields: null,
+            },
+          ],
+          fieldPermissions: [],
+        },
+        appUnreadableFieldIds: [],
+      }) as never,
+      source: OPPORTUNITY_CATALOG_SOURCE,
+      userRoleId: 'user-role',
     });
 
     expect(result.isAvailable).toBe(false);
@@ -348,41 +380,12 @@ describe('the picker never advertises an alias as a canonical token', () => {
 });
 
 describe('the whole server pipeline, for a Person source', () => {
-  it('authorizes the person fields plus the company, with the aliases intact', async () => {
-    // A fake core client that reports every selected key as readable EXCEPT the
-    // Company, where only `name` comes back — so the authority of the probe is
-    // exercised rather than assumed.
-    const client = {
-      query: async (payload: Record<string, unknown>) => {
-        if ('people' in payload) {
-          return {
-            people: { edges: [{ node: { id: 'p1', company: { id: 'c1' } } }] },
-          };
-        }
-
-        const selection = (payload.person ?? {}) as Record<string, unknown>;
-        const projected: Record<string, unknown> = {};
-
-        for (const key of Object.keys(selection)) {
-          if (key === '__args') {
-            continue;
-          }
-
-          if (key === 'company') {
-            projected.company = { name: null };
-            continue;
-          }
-
-          projected[key] = null;
-        }
-
-        return { person: { id: 'p1', ...projected } };
-      },
-    };
-
+  it('advertises the person fields plus the company, with the aliases intact', async () => {
+    // The catalog no longer reads records, so the only input is metadata and
+    // permissions. `createFakeMetadataClient` grants both fully, which is what
+    // this test is about: the pipeline's SHAPE for a Person source.
     const result = await buildAuthorizedTemplateCatalog({
       metadataClient: createFakeMetadataClient() as never,
-      client: client as never,
       source: PERSON_CATALOG_SOURCE,
     });
 

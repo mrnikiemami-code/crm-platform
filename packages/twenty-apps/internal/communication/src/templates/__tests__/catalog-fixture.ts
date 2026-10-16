@@ -17,7 +17,18 @@ const field = (
   type: string,
   label: string,
   isSystem = false,
-) => ({ id, name, type, label, isActive: true, isSystem });
+) => ({
+  id,
+  // Identity from metadata. Derived from the id so every fixture field has a
+  // stable, distinct one — the same relationship the real metadata has.
+  universalIdentifier: `uid-${id}`,
+  name,
+  type,
+  label,
+  description: '',
+  isActive: true,
+  isSystem,
+});
 
 export const PERSON_OBJECT_ID = '11111111-1111-4111-8111-111111111111';
 export const COMPANY_OBJECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -38,6 +49,7 @@ export const templateMetadataObjects: TemplateMetadataObject[] = [
   {
     id: PERSON_OBJECT_ID,
     nameSingular: 'person',
+    universalIdentifier: 'uid-person',
     namePlural: 'people',
     labelPlural: 'People',
     fields: [
@@ -64,6 +76,7 @@ export const templateMetadataObjects: TemplateMetadataObject[] = [
   {
     id: COMPANY_OBJECT_ID,
     nameSingular: 'company',
+    universalIdentifier: 'uid-company',
     namePlural: 'companies',
     labelPlural: 'Companies',
     fields: [
@@ -85,6 +98,7 @@ export const templateMetadataObjects: TemplateMetadataObject[] = [
     // case the user reported as still showing Person variables.
     id: '66666666-6666-4666-8666-666666666666',
     nameSingular: 'opportunity',
+    universalIdentifier: 'uid-opportunity',
     namePlural: 'opportunities',
     labelPlural: 'فرصت‌ها',
     fields: [
@@ -111,6 +125,94 @@ export const unrestrictedPermissions: TemplatePermissionSnapshot = {
   objectPermissions: [],
   unreadableFieldMetadataIds: [],
 };
+
+/**
+ * A metadata client whose role reads are DRIVEN BY THE TEST.
+ *
+ * The catalog's authorization is the intersection of the user's role and the
+ * app's role, so tests must be able to state both. `createFakeMetadataClient`
+ * returns one fixed, fully-permissive app role and is kept for suites that do not
+ * care about permissions.
+ */
+export const createFakeMetadataClientWithRoles = ({
+  userRole,
+  appUnreadableFieldIds = [],
+  appObjectPermissions = [],
+}: {
+  /** The role `getRoles` returns for the user's role id, or `null` for none. */
+  userRole: {
+    id: string;
+    universalIdentifier: string;
+    canReadAllObjectRecords: boolean;
+    objectPermissions: {
+      objectMetadataId: string;
+      canReadObjectRecords: boolean | null;
+      restrictedFields: unknown;
+    }[];
+    fieldPermissions: { fieldMetadataId: string; canReadFieldValue: boolean }[];
+  } | null;
+  /** Field ids the APP's own role may not read. */
+  appUnreadableFieldIds?: string[];
+  /** Object-level restrictions on the APP's own role. */
+  appObjectPermissions?: {
+    objectMetadataId: string;
+    canReadObjectRecords: boolean | null;
+    restrictedFields: unknown;
+  }[];
+}) => ({
+  query: async (payload: Record<string, unknown>) => {
+    if ('getRoles' in payload) {
+      const roles = [
+        {
+          id: 'role-1',
+          universalIdentifier: 'a7517c4b-7257-409f-9bfd-b15817bdc623',
+          canReadAllObjectRecords: true,
+          objectPermissions: appObjectPermissions,
+          fieldPermissions: appUnreadableFieldIds.map((fieldMetadataId) => ({
+            fieldMetadataId,
+            canReadFieldValue: false,
+          })),
+        },
+      ];
+
+      if (userRole !== null) {
+        roles.push({
+          id: userRole.id,
+          universalIdentifier: userRole.universalIdentifier,
+          canReadAllObjectRecords: userRole.canReadAllObjectRecords,
+          objectPermissions: userRole.objectPermissions,
+          fieldPermissions: userRole.fieldPermissions,
+        } as (typeof roles)[number]);
+      }
+
+      return { getRoles: roles };
+    }
+
+    if ('findOneApplication' in payload) {
+      return {
+        findOneApplication: {
+          defaultRoleId: 'role-1',
+          defaultLogicFunctionRole: null,
+        },
+      };
+    }
+
+    return {
+      objects: {
+        edges: templateMetadataObjects.map((object) => ({
+          node: {
+            id: object.id,
+            universalIdentifier: object.universalIdentifier,
+            nameSingular: object.nameSingular,
+            namePlural: object.namePlural,
+            labelPlural: object.labelPlural,
+            fieldsList: object.fields,
+          },
+        })),
+      },
+    };
+  },
+});
 
 /**
  * A fake metadata client returning the fixture metadata AND the app execution

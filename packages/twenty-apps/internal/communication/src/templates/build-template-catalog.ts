@@ -1,15 +1,9 @@
 import { type MetadataApiClient } from 'twenty-client-sdk/metadata';
 
-import { type CoreApiClient } from 'twenty-client-sdk/core';
-
 import {
   APPLICATION_UNIVERSAL_IDENTIFIER,
   DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
-import {
-  probeAuthorizedFieldTokens,
-  restrictCatalogToAuthorizedTokens,
-} from 'src/templates/probe-readable-fields';
 import {
   buildTemplateVariableCatalog,
   EMPTY_TEMPLATE_VARIABLE_CATALOG,
@@ -78,6 +72,22 @@ const SECRET_FIELD_NAME_PATTERN =
 // that is not one is skipped rather than quoted or escaped.
 const SAFE_FIELD_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
 
+/**
+ * A field an app wrote for its OWN bookkeeping, matched by its `description`.
+ *
+ * This workspace's Communication object declares `sourceRecordId` as "The record
+ * this message was composed from, when not the recipient", and the catalog was
+ * advertising it as a template variable. A description is free text an operator
+ * writes, so this is a narrow, explicit marker rather than a heuristic: it only
+ * excludes a field whose description says it exists to RECORD where something
+ * came from, which is never something a message should quote.
+ *
+ * The field is still written and read by the app — this only keeps it out of the
+ * user-facing variable list.
+ */
+const INTERNAL_PROVENANCE_DESCRIPTION_PATTERN =
+  /composed from|where this (record|message) came from|source record of/i;
+
 // The six legacy aliases, attached to the canonical definitions that replaced
 // them. Saved templates that use the old names keep resolving to the SAME value.
 const LEGACY_FIRST_NAME_ALIASES = ['name', 'firstName'] as const;
@@ -93,10 +103,16 @@ export type TemplateMetadataField = {
   label: string;
   isActive: boolean;
   isSystem: boolean;
+  /** Metadata `universalIdentifier` — the field's stable identity. */
+  universalIdentifier: string;
+  /** Free-text description; used ONLY to keep app bookkeeping out of the list. */
+  description: string;
 };
 
 export type TemplateMetadataObject = {
   id: string;
+  /** Metadata `universalIdentifier` — the object's stable identity. */
+  universalIdentifier: string;
   nameSingular: string;
   namePlural: string;
   labelPlural: string;
@@ -259,6 +275,11 @@ const isSafeField = (
     return false;
   }
 
+  // An app's own provenance/bookkeeping field is never a template variable.
+  if (INTERNAL_PROVENANCE_DESCRIPTION_PATTERN.test(field.description)) {
+    return false;
+  }
+
   return allowedNames.has(field.type);
 };
 
@@ -281,10 +302,18 @@ export const buildTemplateCatalogFromMetadata = ({
   objects,
   permissions,
   source,
+  recipientRelationName = null,
 }: {
   objects: readonly TemplateMetadataObject[];
   permissions: TemplatePermissionSnapshot;
   source: TemplateCatalogSource;
+  /**
+   * The relation field NAME (metadata-resolved) that reaches the recipient from
+   * the source record, or `null` for a Person source where the record IS the
+   * recipient. It becomes the recipient entries' `readPath`, so recipient values
+   * are read by following that relation rather than by a bare object name.
+   */
+  recipientRelationName?: string | null;
 }): TemplateVariableCatalog => {
   const objectByName = new Map(
     objects.map((object) => [object.nameSingular, object]),
@@ -348,10 +377,17 @@ export const buildTemplateCatalogFromMetadata = ({
     objectName,
     prefix,
     group,
+    readPath = [],
   }: {
     objectName: string;
     prefix: string;
     group: TemplateVariableGroup;
+    /**
+     * The path from the RECORD ROOT to this object, outermost first. Empty means
+     * the object IS the record. `['pointOfContact']` means the recipient reached
+     * through the source record's relation.
+     */
+    readPath?: readonly string[];
   }): TemplateVariableDefinition[] => {
     const object = objectByName.get(objectName);
 
@@ -394,6 +430,11 @@ export const buildTemplateCatalogFromMetadata = ({
         fieldName: field.name,
         kind: SAFE_SCALAR_KIND_BY_TYPE[field.type],
         group,
+        // Identity, from metadata. The token is a spelling; these are the facts.
+        objectUid: object.universalIdentifier,
+        fieldUid: field.universalIdentifier,
+        metadataType: field.type,
+        readPath: [...readPath, field.name],
       });
     }
 
@@ -401,69 +442,124 @@ export const buildTemplateCatalogFromMetadata = ({
   };
 
   /**
-   * The Person's three name tokens, derived from the workspace's OWN FULL_NAME
-   * field. Absent when the workspace has none, or the field is unreadable.
+   * The three name tokens for one object, derived from a FULL_NAME field the
+   * object actually declares.
+   *
+   * `fullNameField` is passed in rather than searched for here, so the CALLER
+   * decides which field it came from. That matters for the label: a workspace can
+   * declare more than one FULL_NAME field, and the tokens are named after the
+   * real field (`name` → «نام», `fullName` → «نام کامل») instead of every object
+   * being assumed to have one called `name`.
    */
   const buildFullNameEntries = ({
     objectName,
     prefix,
     group,
     withLegacyAliases,
+    fullNameField,
+    disambiguateLabel = false,
   }: {
     objectName: string;
     prefix: string;
     group: TemplateVariableGroup;
     withLegacyAliases: boolean;
+    fullNameField: TemplateMetadataField;
+    /**
+     * True only when the object declares MORE THAN ONE usable FULL_NAME field.
+     * Then the label carries the field's own name so the two are tellable apart;
+     * with a single field the familiar plain labels are kept, because changing
+     * them for no reason is churn a user would see.
+     */
+    disambiguateLabel?: boolean;
   }): TemplateVariableDefinition[] => {
     const object = objectByName.get(objectName);
-    const fullNameField = object?.fields.find(
-      (field) => field.type === 'FULL_NAME',
-    );
 
     const isUsable =
       object !== undefined &&
       isObjectReadable(object.id) &&
-      fullNameField !== undefined &&
-      restrictedNamesByObjectId.get(object.id)?.has(fullNameField.name) !== true &&
+      restrictedNamesByObjectId.get(object.id)?.has(fullNameField.name) !==
+        true &&
       restrictedIdsByObjectId.get(object.id)?.has(fullNameField.id) !== true &&
       !unreadableFieldIds.has(fullNameField.id);
 
-    if (!isUsable) {
+    if (!isUsable || object === undefined) {
       return [];
     }
 
+    const base = {
+      objectName,
+      fieldName: fullNameField.name,
+      kind: 'FULL_NAME' as const,
+      group,
+      objectUid: object.universalIdentifier,
+      fieldUid: fullNameField.universalIdentifier,
+      metadataType: fullNameField.type,
+      readPath: [fullNameField.name],
+    };
+
     return [
       {
+        ...base,
         token: `${prefix}.firstName`,
         aliases: withLegacyAliases ? LEGACY_FIRST_NAME_ALIASES : [],
-        label: 'First name',
-        objectName,
-        fieldName: fullNameField!.name,
+        // Named after the REAL field only when disambiguation is needed, so two
+        // FULL_NAME fields stay tellable apart without churning the single-field
+        // labels a user already knows.
+        label: disambiguateLabel
+          ? `${fullNameField.label}: first name`
+          : 'First name',
         subFieldName: 'firstName',
-        kind: 'FULL_NAME',
-        group,
       },
       {
+        ...base,
         token: `${prefix}.lastName`,
         aliases: withLegacyAliases ? LEGACY_LAST_NAME_ALIASES : [],
-        label: 'Last name',
-        objectName,
-        fieldName: fullNameField!.name,
+        label: disambiguateLabel
+          ? `${fullNameField.label}: last name`
+          : 'Last name',
         subFieldName: 'lastName',
-        kind: 'FULL_NAME',
-        group,
       },
       {
+        ...base,
         token: `${prefix}.fullName`,
         aliases: withLegacyAliases ? LEGACY_FULL_NAME_ALIASES : [],
-        label: 'Full name',
-        objectName,
-        fieldName: fullNameField!.name,
+        label: disambiguateLabel ? fullNameField.label : 'Full name',
         subFieldName: 'fullName',
-        kind: 'FULL_NAME',
-        group,
       },
     ];
+  };
+
+  /**
+   * EVERY usable FULL_NAME field of an object, not just the first.
+   *
+   * A workspace may declare more than one (a `name` and a separate `fullName`),
+   * and picking only the first would silently hide the others — and would give
+   * the SAME `firstName`/`lastName`/`fullName` tokens to whichever it happened to
+   * pick, making the choice depend on metadata order.
+   */
+  const usableFullNameFieldsOf = (objectName: string): TemplateMetadataField[] => {
+    const object = objectByName.get(objectName);
+
+    if (object === undefined || !isObjectReadable(object.id)) {
+      return [];
+    }
+
+    return object.fields.filter(
+      (field) =>
+        field.type === 'FULL_NAME' &&
+        // NOT `isSafeField`: that checks the SCALAR type allow-list, which
+        // deliberately excludes FULL_NAME because it is a composite handled by its
+        // own sub-field tokens. The name/description guards are applied directly
+        // instead, so a blocked or secret-looking name is still refused.
+        field.isActive &&
+        SAFE_FIELD_NAME_PATTERN.test(field.name) &&
+        !BLOCKED_FIELD_NAMES.has(field.name) &&
+        !SECRET_FIELD_NAME_PATTERN.test(field.name) &&
+        !INTERNAL_PROVENANCE_DESCRIPTION_PATTERN.test(field.description) &&
+        restrictedNamesByObjectId.get(object.id)?.has(field.name) !== true &&
+        restrictedIdsByObjectId.get(object.id)?.has(field.id) !== true &&
+        !unreadableFieldIds.has(field.id),
+    );
   };
 
   const isPersonSource = source.objectName === 'person';
@@ -471,16 +567,22 @@ export const buildTemplateCatalogFromMetadata = ({
   // --- the SOURCE RECORD's own fields -------------------------------------
   // For a Person source the prefix is `person` and the legacy aliases hang here,
   // because the record IS the recipient.
+  const sourcePrefix = isPersonSource ? 'person' : 'source';
   const sourceEntries = [
-    ...buildFullNameEntries({
-      objectName: source.objectName,
-      prefix: isPersonSource ? 'person' : 'source',
-      group: 'source',
-      withLegacyAliases: isPersonSource,
-    }),
+    ...usableFullNameFieldsOf(source.objectName).flatMap((fullNameField) =>
+      buildFullNameEntries({
+        objectName: source.objectName,
+        prefix: sourcePrefix,
+        group: 'source',
+        withLegacyAliases: isPersonSource,
+        fullNameField,
+        disambiguateLabel:
+          usableFullNameFieldsOf(source.objectName).length > 1,
+      }),
+    ),
     ...buildEntriesForObject({
       objectName: source.objectName,
-      prefix: isPersonSource ? 'person' : 'source',
+      prefix: sourcePrefix,
       group: 'source',
     }),
   ];
@@ -488,32 +590,70 @@ export const buildTemplateCatalogFromMetadata = ({
   // --- the RECIPIENT PERSON's fields --------------------------------------
   // Omitted for a Person source: those are the same fields, and listing them
   // twice is the duplication that made the old picker confusing.
+  //
+  // `readPath` carries the relation, so a recipient value is read by following
+  // the SOURCE RECORD's own relation — never by a bare object name. The path is
+  // the relation field name the caller resolved from metadata.
+  const recipientReadPath =
+    recipientRelationName === null ? [] : [recipientRelationName];
+
   const recipientEntries = isPersonSource
     ? []
     : [
-        ...buildFullNameEntries({
-          objectName: 'person',
-          prefix: 'person',
-          group: 'recipient',
-          withLegacyAliases: true,
-        }),
+        ...usableFullNameFieldsOf('person').flatMap((fullNameField) =>
+          buildFullNameEntries({
+            objectName: 'person',
+            prefix: 'person',
+            group: 'recipient',
+            withLegacyAliases: true,
+            fullNameField,
+            disambiguateLabel: usableFullNameFieldsOf('person').length > 1,
+          }),
+        ),
         ...buildEntriesForObject({
           objectName: 'person',
           prefix: 'person',
           group: 'recipient',
+          readPath: recipientReadPath,
         }),
       ];
 
   // --- the recipient's COMPANY -------------------------------------------
-  // Kept for every source, because it is what the six legacy aliases and the
-  // existing saved templates (`@company`, `@company.name`) resolve through.
-  const companyEntries = [
-    ...buildEntriesForObject({
-      objectName: 'company',
-      prefix: 'company',
-      group: 'company',
-    }),
-  ];
+  // KEPT for every source, including a Person one. Two reasons, and the second is
+  // the important one:
+  //
+  //  1. The six legacy aliases (`@company`, `@company.name`) and the user's
+  //     existing saved templates resolve through these.
+  //  2. For a Person source the Person IS the record, so its `company` field is
+  //     reached DIRECTLY on the record — which is a simpler and MORE correct path
+  //     than going through a recipient relation. Dropping this group for a Person
+  //     source would have silently broken `@company` in a live user template.
+  //
+  // The read path reflects that: the recipient relation (if any), then the
+  // Person's own `company` field.
+  const personObject = objectByName.get('person');
+  const companyFieldName = personObject?.fields.find(
+    (field) => field.name === 'company',
+  )?.name;
+
+  const companyReadPath =
+    companyFieldName === undefined
+      ? []
+      : isPersonSource
+        ? [companyFieldName]
+        : [...recipientReadPath, companyFieldName];
+
+  const companyEntries =
+    companyFieldName === undefined
+      ? []
+      : [
+          ...buildEntriesForObject({
+            objectName: 'company',
+            prefix: 'company',
+            group: 'company',
+            readPath: companyReadPath,
+          }),
+        ];
 
   return buildTemplateVariableCatalog([
     ...sourceEntries,
@@ -526,15 +666,18 @@ export const buildTemplateCatalogFromMetadata = ({
 
 type RawMetadataField = {
   id?: string | null;
+  universalIdentifier?: string | null;
   name?: string | null;
   type?: string | null;
   label?: string | null;
+  description?: string | null;
   isActive?: boolean | null;
   isSystem?: boolean | null;
 };
 
 type RawMetadataObject = {
   id?: string | null;
+  universalIdentifier?: string | null;
   nameSingular?: string | null;
   namePlural?: string | null;
   labelPlural?: string | null;
@@ -553,14 +696,17 @@ export const readTemplateMetadataObjects = async ({
       edges: {
         node: {
           id: true,
+          universalIdentifier: true,
           nameSingular: true,
           namePlural: true,
           labelPlural: true,
           fieldsList: {
             id: true,
+            universalIdentifier: true,
             name: true,
             type: true,
             label: true,
+            description: true,
             isActive: true,
             isSystem: true,
           },
@@ -586,6 +732,10 @@ export const readTemplateMetadataObjects = async ({
     )
     .map((node) => ({
       id: node.id,
+      universalIdentifier:
+        typeof node.universalIdentifier === 'string'
+          ? node.universalIdentifier
+          : '',
       nameSingular: node.nameSingular,
       namePlural:
         typeof node.namePlural === 'string' && node.namePlural.length > 0
@@ -608,9 +758,15 @@ export const readTemplateMetadataObjects = async ({
         )
         .map((field) => ({
           id: field.id,
+          universalIdentifier:
+            typeof field.universalIdentifier === 'string'
+              ? field.universalIdentifier
+              : '',
           name: field.name,
           type: field.type,
           label: typeof field.label === 'string' ? field.label : field.name,
+          description:
+            typeof field.description === 'string' ? field.description : '',
           isActive: field.isActive !== false,
           isSystem: field.isSystem === true,
         })),
@@ -710,39 +866,254 @@ export const readTemplatePermissions = async ({
 };
 
 /**
+ * Reads the permissions that apply to a request, as the INTERSECTION of the two
+ * roles that both have to permit a field.
+ *
+ * Why two. A template variable is only usable if the SIGNED-IN USER may read the
+ * field AND the APPLICATION's own role may read it — the app is the identity that
+ * actually performs the read. Taking only one of them is wrong in a different way
+ * each time: the app role alone ignores the user's own restrictions, and the user
+ * alone ignores that the app might not be allowed to read the field it is about
+ * to query. The intersection is the only set that is safe for both.
+ *
+ * A role that cannot be read is NOT treated as "allow everything": the caller
+ * fails closed, so an unreadable role yields no catalog rather than an
+ * unrestricted one.
+ *
+ * `userRoleId` is resolved from the platform's own authenticated-user context by
+ * the caller, never from anything a client sent.
+ */
+export const readEffectiveTemplatePermissions = async ({
+  metadataClient,
+  userRoleId,
+}: {
+  metadataClient: Pick<MetadataApiClient, 'query'>;
+  /** The signed-in user's role id, from the platform context. */
+  userRoleId: string | null;
+}): Promise<TemplatePermissionSnapshot | null> => {
+  const [appRole, userRole] = await Promise.all([
+    readTemplatePermissions({ metadataClient }),
+    userRoleId === null
+      ? Promise.resolve(null)
+      : readRolePermissionsById({ metadataClient, roleId: userRoleId }),
+  ]);
+
+  if (appRole === null) {
+    return null;
+  }
+
+  // No user role could be resolved: the app role alone is the honest answer, and
+  // it is still a restriction (never an implicit allow-all).
+  if (userRole === null) {
+    return appRole;
+  }
+
+  return intersectTemplatePermissions(appRole, userRole);
+};
+
+/**
+ * The intersection of two permission snapshots.
+ *
+ * Object readability is AND-ed, so an object readable by only one of the roles is
+ * not readable. Restricted field names/ids and unreadable field ids are UNION-ed,
+ * because a restriction from EITHER role must remove the field. "Read all objects"
+ * is only true when BOTH roles grant it.
+ */
+export const intersectTemplatePermissions = (
+  left: TemplatePermissionSnapshot,
+  right: TemplatePermissionSnapshot,
+): TemplatePermissionSnapshot => {
+  const leftByObjectId = new Map(
+    left.objectPermissions.map((permission) => [
+      permission.objectMetadataId,
+      permission,
+    ]),
+  );
+  const rightByObjectId = new Map(
+    right.objectPermissions.map((permission) => [
+      permission.objectMetadataId,
+      permission,
+    ]),
+  );
+
+  const objectIds = new Set([
+    ...leftByObjectId.keys(),
+    ...rightByObjectId.keys(),
+  ]);
+
+  const objectPermissions: TemplatePermissionSnapshot['objectPermissions'] = [];
+
+  for (const objectMetadataId of objectIds) {
+    const leftPermission = leftByObjectId.get(objectMetadataId);
+    const rightPermission = rightByObjectId.get(objectMetadataId);
+
+    // Absent means "no override" for that role, so the role's own default applies.
+    const leftRead =
+      leftPermission?.canReadObjectRecords ?? left.canReadAllObjectRecords;
+    const rightRead =
+      rightPermission?.canReadObjectRecords ?? right.canReadAllObjectRecords;
+
+    objectPermissions.push({
+      objectMetadataId,
+      canReadObjectRecords: leftRead && rightRead,
+      restrictedFieldNames: [
+        ...new Set([
+          ...(leftPermission?.restrictedFieldNames ?? []),
+          ...(rightPermission?.restrictedFieldNames ?? []),
+        ]),
+      ],
+      restrictedFieldMetadataIds: [
+        ...new Set([
+          ...(leftPermission?.restrictedFieldMetadataIds ?? []),
+          ...(rightPermission?.restrictedFieldMetadataIds ?? []),
+        ]),
+      ],
+    });
+  }
+
+  return {
+    canReadAllObjectRecords:
+      left.canReadAllObjectRecords && right.canReadAllObjectRecords,
+    objectPermissions,
+    unreadableFieldMetadataIds: [
+      ...new Set([
+        ...left.unreadableFieldMetadataIds,
+        ...right.unreadableFieldMetadataIds,
+      ]),
+    ],
+  };
+};
+
+/**
+ * Reads ONE role's permission projection by id.
+ *
+ * Returns `null` when the role is not in the readable role list, which the caller
+ * treats as "could not be read" and never as "unrestricted".
+ */
+export const readRolePermissionsById = async ({
+  metadataClient,
+  roleId,
+}: {
+  metadataClient: Pick<MetadataApiClient, 'query'>;
+  roleId: string;
+}): Promise<TemplatePermissionSnapshot | null> => {
+  try {
+    const rolesResult = await metadataClient.query({
+      getRoles: {
+        id: true,
+        universalIdentifier: true,
+        canReadAllObjectRecords: true,
+        objectPermissions: {
+          objectMetadataId: true,
+          canReadObjectRecords: true,
+          restrictedFields: true,
+        },
+        fieldPermissions: {
+          fieldMetadataId: true,
+          canReadFieldValue: true,
+        },
+      },
+    });
+
+    const role = (rolesResult.getRoles ?? []).find(
+      (candidate) => candidate.id === roleId,
+    );
+
+    if (role === undefined) {
+      return null;
+    }
+
+    return {
+      canReadAllObjectRecords: role.canReadAllObjectRecords === true,
+      objectPermissions: (role.objectPermissions ?? []).map((permission) => {
+        const restricted = readRestrictedFields(permission.restrictedFields);
+
+        return {
+          objectMetadataId: permission.objectMetadataId,
+          canReadObjectRecords: permission.canReadObjectRecords ?? undefined,
+          restrictedFieldNames: restricted.names,
+          restrictedFieldMetadataIds: restricted.ids,
+        };
+      }),
+      unreadableFieldMetadataIds: (role.fieldPermissions ?? [])
+        .filter((permission) => permission.canReadFieldValue === false)
+        .map((permission) => permission.fieldMetadataId),
+    };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Resolves a relation field's NAME from its metadata `universalIdentifier`.
+ *
+ * The recipient entries' `readPath` is a real field name, so this is the bridge
+ * from the identifier the template stores to the name the query must use. Returns
+ * `null` when the identifier is empty (a Person source) or no longer resolves —
+ * and an unresolvable relation is reported by the caller, never guessed.
+ */
+export const resolveRecipientRelationName = ({
+  objects,
+  sourceObjectName,
+  relationUid,
+}: {
+  objects: readonly TemplateMetadataObject[];
+  sourceObjectName: string;
+  relationUid: string;
+}): string | null => {
+  if (relationUid.length === 0) {
+    return null;
+  }
+
+  const sourceObject = objects.find(
+    (object) => object.nameSingular === sourceObjectName,
+  );
+
+  const relation = sourceObject?.fields.find(
+    (field) => field.universalIdentifier === relationUid,
+  );
+
+  return relation === undefined ? null : relation.name;
+};
+
+/**
  * The single server-authoritative entry point every consumer uses.
  *
- * FAIL CLOSED, and authorized by the platform's OWN record read.
- *
- * Why not the role metadata: an app-scoped token cannot read workspace roles
- * (`getRoles`) or application role rows on this platform build — verified live on
- * main/4D, where every such query is denied with "Entity performing the request
- * does not have permission". So the app cannot derive field-level access from
- * role metadata, and pretending to would be a fiction.
- *
- * What is authoritative instead: the platform enforces access on the ACTUAL
- * record read. A probe read of one accessible Person therefore reports exactly
- * which candidate fields this caller may read — a readable-but-empty field comes
- * back as `null`, while a field the caller may NOT read is absent from the
- * response entirely. The catalog is the CANDIDATE metadata catalog restricted to
- * the fields that read actually returned.
+ * AUTHORIZATION is the INTERSECTION of the signed-in user's role and the
+ * application's own role (see `readEffectiveTemplatePermissions`), and the field
+ * list is the CANDIDATE metadata catalog restricted to that intersection. It is
+ * NOT derived from probing a random record: a field belongs to the catalog when
+ * metadata says the object declares it and both roles may read it, which is a
+ * fact about the OBJECT rather than about whether some record happened to have a
+ * value. A source object with no records therefore still yields its full field
+ * list.
  *
  * Consequences, stated honestly:
- *  - Fields are never advertised merely because metadata enumeration succeeded;
- *    advertising requires a successful authorized read.
- *  - A workspace with no readable Person yields an EMPTY, UNAVAILABLE catalog,
- *    which is safe (there is nothing to template against) and never guesses.
- *  - Record reads stay server-authoritative; every probe is a bounded read and
- *    writes nothing. Probes run with bounded concurrency.
+ *  - Fields are advertised from metadata + permissions, never from a record read.
+ *  - An unreadable role yields an EMPTY, UNAVAILABLE catalog: fail closed.
+ *  - Nothing is written by this function.
  */
 export const buildAuthorizedTemplateCatalog = async ({
   metadataClient,
-  client,
   source,
+  relationUid = '',
+  userRoleId = null,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
-  client: Pick<CoreApiClient, 'query'>;
   source: TemplateCatalogSource;
+  /**
+   * The relation field's metadata `universalIdentifier`, when the source is a
+   * RELATED object. It is resolved to the relation's field NAME here, which is
+   * what the recipient entries' `readPath` is built from. Empty for a Person
+   * source, where the record IS the recipient.
+   */
+  relationUid?: string;
+  /**
+   * The signed-in user's role id, from the platform's own context. `null` means
+   * no user role could be resolved, in which case only the application's role
+   * restricts the catalog — which is still a restriction, never an allow-all.
+   */
+  userRoleId?: string | null;
 }): Promise<AuthorizedTemplateCatalogResult> => {
   let objects: TemplateMetadataObject[];
 
@@ -779,70 +1150,63 @@ export const buildAuthorizedTemplateCatalog = async ({
     objectName: sourceObject.nameSingular,
   };
 
-  // The candidate catalog: the SOURCE object's safe scalars, plus the recipient
-  // Person's (and its Company's) for a related source. None of it is authorized
-  // yet — each field must pass its OWN bounded read below.
-  const candidates = buildTemplateCatalogFromMetadata({
-    objects,
-    permissions: UNRESTRICTED_TEMPLATE_PERMISSIONS,
-    source: resolvedSource,
-  });
+  // The permission snapshot is the INTERSECTION of the signed-in user's role and
+  // the application's role. A role that cannot be read yields NO catalog rather
+  // than an unrestricted one.
+  let permissions: TemplatePermissionSnapshot | null;
 
   try {
-    const probe = await probeAuthorizedFieldTokens({
-      client,
-      catalog: candidates,
-      objectPluralNames: new Map(
-        objects.map((object) => [object.nameSingular, object.namePlural]),
-      ),
+    permissions = await readEffectiveTemplatePermissions({
+      metadataClient,
+      userRoleId,
     });
-
-    if (probe === null) {
-      // Nothing at all could be authorized. Since the catalog is built for ONE
-      // source, this genuinely means "nothing is usable for this source" — the
-      // old `ROLE_NOT_FOUND` name dates from the role-metadata era, when the
-      // role read (not the probe) was the authority.
-      return {
-        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
-        sourceLabelPlural: sourceObject.labelPlural,
-        isAvailable: false,
-        stage: AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
-      };
-    }
-
-    const authorized = restrictCatalogToAuthorizedTokens(
-      candidates,
-      probe.authorizedTokens,
-    );
-
-    // The SOURCE group must survive its own probes. Without it the editor would
-    // be showing only the recipient's fields for a source the user picked, which
-    // is the "Person variables for a non-Person source" failure by another route.
-    const hasSourceVariables = authorized.variables.some(
-      (variable) => variable.group === 'source',
-    );
-
-    if (!hasSourceVariables) {
-      return {
-        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
-        sourceLabelPlural: sourceObject.labelPlural,
-        isAvailable: false,
-        stage: AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
-      };
-    }
-
-    return {
-      catalog: authorized,
-      sourceLabelPlural: sourceObject.labelPlural,
-      isAvailable: true,
-      stage: AUTHORIZED_CATALOG_STAGE.OK,
-    };
   } catch {
+    permissions = null;
+  }
+
+  if (permissions === null) {
     return {
       catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
-      sourceLabelPlural: '',
+      sourceLabelPlural: sourceObject.labelPlural,
       isAvailable: false,
-      stage: AUTHORIZED_CATALOG_STAGE.READ_PROBE_ERROR,
+      stage: AUTHORIZED_CATALOG_STAGE.ROLE_QUERY_ERROR,
     };
   }
+
+  // The catalog, built from METADATA + PERMISSIONS. No record is read, so the
+  // field list is a fact about the OBJECT and cannot be emptied by the absence of
+  // a sample record — which is what the old probe-based discovery did.
+  const catalog = buildTemplateCatalogFromMetadata({
+    objects,
+    permissions,
+    source: resolvedSource,
+    recipientRelationName: resolveRecipientRelationName({
+      objects,
+      sourceObjectName: resolvedSource.objectName,
+      relationUid,
+    }),
+  });
+
+  // The SOURCE group must exist. Without it the editor would be showing only the
+  // recipient's fields for a source the user picked, which is the "Person
+  // variables for a non-Person source" failure by another route.
+  const hasSourceVariables = catalog.variables.some(
+    (variable) => variable.group === 'source',
+  );
+
+  if (!hasSourceVariables) {
+    return {
+      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+      sourceLabelPlural: sourceObject.labelPlural,
+      isAvailable: false,
+      stage: AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
+    };
+  }
+
+  return {
+    catalog,
+    sourceLabelPlural: sourceObject.labelPlural,
+    isAvailable: true,
+    stage: AUTHORIZED_CATALOG_STAGE.OK,
+  };
 };
