@@ -16,6 +16,7 @@ import {
   resolveStoredTemplateSource,
 } from 'src/templates/data/find-eligible-template-sources';
 import { findStudioPeople } from 'src/templates/data/find-studio-people';
+import { queryTemplateRecords } from 'src/templates/data/query-template-records';
 import {
   readMessageTemplate,
   saveMessageTemplateConditionally,
@@ -131,7 +132,12 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
     };
   }
 
-  const client = new CoreApiClient();
+  // Native writes retain the SDK's CAS implementation; metadata-driven reads
+  // use the same delegated identity without its generated schema restriction.
+  const client = {
+    query: queryTemplateRecords,
+    mutation: (...args: unknown[]) => new CoreApiClient().mutation(...args),
+  };
 
   if (action === 'catalog') {
     // The authorized variable catalog for the editor's variable list.
@@ -200,6 +206,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
 
       const { catalog, isAvailable, stage, sourceLabelPlural } =
         await buildAuthorizedTemplateCatalog({
+          authorizeWithoutRecords: true,
       client,
           metadataClient,
           source: { objectName: resolvedSource.objectName },
@@ -545,6 +552,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       // resolve `@source.*` from a different source than the form shows. The
       // sample record is passed as the source record, so `@source.*` reads IT.
       const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
+        authorizeWithoutRecords: true,
       client,
         metadataClient: new MetadataApiClient(),
         source: { objectName: sourceObjectName },

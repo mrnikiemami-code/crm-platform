@@ -31,6 +31,7 @@ import { MESSAGE_TEMPLATE_VARIABLE_GUIDE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } 
 // operations rather than pretending they worked.
 
 type VariableItem = { token: string; label: string };
+type PreviewIssue = { token: string; kind: 'EMPTY_FIELD' | 'UNKNOWN_VARIABLE' };
 
 type SourceRelation = {
   relationUid: string;
@@ -268,7 +269,18 @@ const TemplateEditor = () => {
   const [sampleRecordId, setSampleRecordId] = useState('');
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewIssues, setPreviewIssues] = useState<PreviewIssue[]>([]);
+  const [isPreviewIncomplete, setIsPreviewIncomplete] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const previewRequestIdRef = useRef(0);
+  const clearPreview = useCallback(() => {
+    previewRequestIdRef.current += 1;
+    setPreviewText(null);
+    setPreviewError(null);
+    setPreviewIssues([]);
+    setIsPreviewIncomplete(false);
+    setIsPreviewing(false);
+  }, []);
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -592,6 +604,7 @@ const TemplateEditor = () => {
     });
 
     setBody(next.body);
+    clearPreview();
     setSavedNotice(false);
   };
 
@@ -617,6 +630,7 @@ const TemplateEditor = () => {
 
     setTitle(snapshot.title);
     setBody(snapshot.body);
+    clearPreview();
     setSourceObjectUid(snapshot.sourceObjectUid);
     setRecipientRelationUid(snapshot.recipientRelationUid);
     setIsConfirmingDiscard(false);
@@ -692,6 +706,8 @@ const TemplateEditor = () => {
       return;
     }
 
+    clearPreview();
+    const requestId = previewRequestIdRef.current;
     setIsPreviewing(true);
     setPreviewError(null);
     setPreviewText(null);
@@ -710,6 +726,8 @@ const TemplateEditor = () => {
         body,
       });
 
+      if (requestId !== previewRequestIdRef.current) return;
+
       if (payload === null) {
         return;
       }
@@ -724,11 +742,28 @@ const TemplateEditor = () => {
       const previews = Array.isArray(payload.previews) ? payload.previews : [];
       const first = asRecord(previews[0]);
 
+      if (first === null || typeof first.previewText !== 'string') {
+        setPreviewError(t('The preview could not be built.'));
+        return;
+      }
+
+      const issues = Array.isArray(first.issues)
+        ? first.issues.flatMap((entry: unknown): PreviewIssue[] => {
+            const issue = asRecord(entry);
+            return issue !== null && typeof issue.token === 'string' &&
+              (issue.kind === 'EMPTY_FIELD' || issue.kind === 'UNKNOWN_VARIABLE')
+              ? [{ token: issue.token, kind: issue.kind }]
+              : [];
+          })
+        : [];
+      setPreviewIssues(issues);
+      setIsPreviewIncomplete(issues.length > 0 || first.hasUnresolvedVariables === true || payload.hasUnresolvedVariables === true);
+
       setPreviewText(readString(first?.previewText));
     } catch {
-      setPreviewError(t('The preview could not be built.'));
+      if (requestId === previewRequestIdRef.current) setPreviewError(t('The preview could not be built.'));
     } finally {
-      setIsPreviewing(false);
+      if (requestId === previewRequestIdRef.current) setIsPreviewing(false);
     }
   };
 
@@ -792,6 +827,7 @@ const TemplateEditor = () => {
           value={sourceObjectUid}
           onChange={(event) => {
             const nextUid = event.target.value;
+            clearPreview();
             setSourceObjectUid(nextUid);
             setSampleRecordId('');
             setPreviewText(null);
@@ -840,9 +876,11 @@ const TemplateEditor = () => {
             aria-label={t('Recipient relation')}
             value={recipientRelationUid}
             onChange={(event) => {
-              setRecipientRelationUid(event.target.value);
+              const nextRelationUid = event.target.value;
+              setRecipientRelationUid(nextRelationUid);
               setSampleRecordId('');
-              setPreviewText(null);
+              clearPreview();
+              void loadCatalog({ sourceObjectUid, recipientRelationUid: nextRelationUid });
             }}
             style={styles.control}
           >
@@ -865,6 +903,7 @@ const TemplateEditor = () => {
           rows={10}
           onChange={(event) => {
             setBody(event.target.value);
+            clearPreview();
             setSavedNotice(false);
           }}
           style={{
@@ -1050,7 +1089,10 @@ const TemplateEditor = () => {
         <select
           aria-label={t('Sample record')}
           value={sampleRecordId}
-          onChange={(event) => setSampleRecordId(event.target.value)}
+          onChange={(event) => {
+            setSampleRecordId(event.target.value);
+            clearPreview();
+          }}
           disabled={sampleState !== 'READY'}
           style={styles.control}
         >
@@ -1096,7 +1138,26 @@ const TemplateEditor = () => {
             {isPreviewing ? t('Previewing…') : t('Preview')}
           </button>
         </div>
-        {previewText !== null && <p style={styles.preview}>{previewText}</p>}
+        {previewText !== null && (
+          <div data-editor-preview-result={isPreviewIncomplete ? 'incomplete' : 'complete'}>
+            {isPreviewIncomplete && <p role="status" style={styles.error}>{t('Incomplete preview')}</p>}
+            <p style={styles.preview}>{previewText}</p>
+            {previewIssues.length > 0 && (
+              <ul style={styles.error}>
+                {previewIssues.map((issue) => {
+                  const field = variableGroups.flatMap((group) => group.variables).find((variable) => variable.token.toLowerCase() === issue.token.toLowerCase());
+                  return <li key={`${issue.kind}:${issue.token}`}>
+                    <bdi dir="ltr">{issue.token}</bdi>{' — '}
+                    {field === undefined ? '' : `${t(field.label)}: `}
+                    {issue.kind === 'EMPTY_FIELD'
+                      ? t('This field is empty on the selected sample record.')
+                      : t('This variable is unavailable for the selected source or your access.')}
+                  </li>;
+                })}
+              </ul>
+            )}
+          </div>
+        )}
         {previewError !== null && <p style={styles.error}>{previewError}</p>}
       </div>
     </div>

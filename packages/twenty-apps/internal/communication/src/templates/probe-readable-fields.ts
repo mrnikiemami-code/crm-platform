@@ -24,6 +24,58 @@ export const FIELD_PROBE_CONCURRENCY = 4;
 /** How many People the target-discovery read may inspect. */
 export const FIELD_PROBE_DISCOVERY_PAGE_SIZE = 25;
 
+// Contradictory predicates guarantee no record is inspected. The workspace ORM
+// validates selected columns before executing SQL, including on an empty table.
+const NO_RECORDS_FILTER = {
+  and: [
+    { id: { eq: '00000000-0000-0000-0000-000000000000' } },
+    { id: { neq: '00000000-0000-0000-0000-000000000000' } },
+  ],
+};
+
+export const authorizeTemplateFieldsWithoutRecords = async ({
+  client,
+  catalog,
+  objectPluralNames,
+}: {
+  client: Pick<CoreApiClient, 'query'>;
+  catalog: TemplateVariableCatalog;
+  objectPluralNames: ReadonlyMap<string, string>;
+}): Promise<TemplateVariableCatalog> => {
+  const fields = [...new Map(catalog.variables.map((definition) => [
+    templateFieldKey(definition), definition,
+  ])).values()];
+  const outcomes = await mapWithBoundedConcurrency({
+    items: fields,
+    concurrency: FIELD_PROBE_CONCURRENCY,
+    worker: async (definition) => {
+      const pluralName = objectPluralNames.get(definition.objectName);
+      if (pluralName === undefined) throw new Error('Missing object metadata');
+      try {
+        const result = await client.query({
+          [pluralName]: {
+            __args: { first: 1, filter: NO_RECORDS_FILTER },
+            edges: { node: { id: true, [definition.fieldName]: selectionFor(definition) } },
+          },
+        });
+        const connection = result[pluralName];
+        if (!isRecord(connection) || !Array.isArray(connection.edges)) {
+          throw new Error('Invalid field authorization response');
+        }
+        return true;
+      } catch (error) {
+        if (isPermissionError(error)) return false;
+        // A broken query is not a permission decision. Do not silently drop it.
+        throw error;
+      }
+    },
+  });
+  const authorizedKeys = new Set(fields.filter((_, index) => outcomes[index]).map(templateFieldKey));
+  return buildTemplateVariableCatalog(catalog.variables.filter((definition) =>
+    authorizedKeys.has(templateFieldKey(definition)),
+  ));
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 

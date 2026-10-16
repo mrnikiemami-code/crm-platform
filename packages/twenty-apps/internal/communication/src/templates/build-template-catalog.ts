@@ -6,6 +6,7 @@ import {
   DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 import {
+  authorizeTemplateFieldsWithoutRecords,
   classifyObjectReachability,
   discoverFieldProbeTargets,
   OBJECT_REACHABILITY,
@@ -1123,6 +1124,7 @@ export const buildAuthorizedTemplateCatalog = async ({
   source,
   relationUid = '',
   userRoleId = null,
+  authorizeWithoutRecords = false,
 }: {
   metadataClient: Pick<MetadataApiClient, 'query'>;
   client: Pick<CoreApiClient, 'query'>;
@@ -1140,6 +1142,7 @@ export const buildAuthorizedTemplateCatalog = async ({
    * restricts the catalog — which is still a restriction, never an allow-all.
    */
   userRoleId?: string | null;
+  authorizeWithoutRecords?: boolean;
 }): Promise<AuthorizedTemplateCatalogResult> => {
   let objects: TemplateMetadataObject[];
 
@@ -1212,6 +1215,30 @@ export const buildAuthorizedTemplateCatalog = async ({
       relationUid,
     }),
   });
+
+  if (authorizeWithoutRecords) {
+    try {
+      const catalog = await authorizeTemplateFieldsWithoutRecords({
+        client,
+        catalog: permitted,
+        objectPluralNames: new Map(objects.map((object) => [object.nameSingular, object.namePlural])),
+      });
+      const isAvailable = catalog.variables.some((variable) => variable.group === 'source');
+      return {
+        catalog: isAvailable ? catalog : EMPTY_TEMPLATE_VARIABLE_CATALOG,
+        sourceLabelPlural: sourceObject.labelPlural,
+        isAvailable,
+        stage: isAvailable ? AUTHORIZED_CATALOG_STAGE.OK : AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
+      };
+    } catch {
+      return {
+        catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+        sourceLabelPlural: sourceObject.labelPlural,
+        isAvailable: false,
+        stage: AUTHORIZED_CATALOG_STAGE.READ_PROBE_ERROR,
+      };
+    }
+  }
 
   // REACHABILITY of each object this catalog would read, decided by a bounded
   // query whose FAILURE MODE distinguishes the three outcomes. This is what makes

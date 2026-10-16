@@ -275,5 +275,13 @@
   "LinkedIn": "لینکدین",
   "Domain Name": "نام دامنه",
   "Annual Revenue": "درآمد سالانه",
-  "Loyalty Tier": "سطح باشگاه مشتریان"
+  "Loyalty Tier": "سطح باشگاه مشتریان",
+  "Job Title": "عنوان شغلی",
+  "Loading records…": "در حال دریافت رکوردها…",
+  "No records exist for this source.": "رکوردی برای این منبع موجود نیست.",
+  "The records could not be loaded.": "دریافت رکوردهای این منبع ناموفق بود.",
+  "No records exist for this source, so there is nothing to preview with.": "رکوردی برای این منبع موجود نیست؛ برای پیش‌نمایش به یک رکورد نمونه نیاز است.",
+  "Incomplete preview": "پیش‌نمایش ناقص",
+  "This field is empty on the selected sample record.": "این فیلد در رکورد نمونهٔ انتخاب‌شده خالی است.",
+  "This variable is unavailable for the selected source or your access.": "این متغیر برای منبع انتخاب‌شده یا سطح دسترسی شما در دسترس نیست."
 }
