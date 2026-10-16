@@ -1,6 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-16 — entity-query and preview repair implemented in source (app 0.1.69), **NOT DEPLOYED OR ACCEPTED LIVE**. The previous Stage 1 COMPLETE headline is superseded: the New form remains incomplete and the user's screenshots exposed unresolved preview variables and unavailable cross-application sources. See the current repair checkpoint below.
+Last updated: 2026-10-16 — 0.1.69 INSTALLED and ACCEPTED on main/4D as **0.1.70**, after one real defect was found and fixed (a nil UUID rejected by the platform's UUID validation made every field probe throw, so all five sources failed). Cross-application sources now WORK — `eventLeads`, owned by another application and absent from this app's client, is readable through the workspace record API. The New form remains a separate open defect.
 
 ## Purpose
 
@@ -15,6 +15,57 @@ Local source path used during development: `D:\CrmSource\twenty`
 ---
 
 # CURRENT CHECKPOINT
+
+## 2026-10-16 — 0.1.69 INSTALLED and ACCEPTED on main/4D, after one real defect was found and fixed (0.1.70)
+
+The architect's repair was correct in design. Installation exposed **one defect that made every
+source unusable**, and it is now fixed and accepted live.
+
+**The defect.** The no-records field-authorization filter used the NIL UUID
+(`00000000-0000-0000-0000-000000000000`). The platform's own UUID validation rejects it —
+`Invalid UUID value '00000000-0000-0000-0000-000000000000' for field "id"` — so every field probe
+THREW. `authorizeTemplateFieldsWithoutRecords` rethrew (correctly: a broken query is not a
+permission decision), and the whole catalog became `READ_PROBE_ERROR` for **all five** sources,
+including Person. Measured directly against the workspace:
+
+| Filter id | Result |
+| --- | --- |
+| nil UUID `00000000-…` | `ERROR: Invalid UUID value … for field "id"` |
+| well-formed v4 that does not exist | `OK`, empty connection, column validation still exercised |
+
+Fixed by using a syntactically valid v4 that does not exist. **This is the only code change in this
+task**, and it is `0.1.70`.
+
+**The architect's core claim is CONFIRMED, not just plausible.** `eventLeads` — an object owned by a
+DIFFERENT application and absent from this app's generated client — is now readable through the
+workspace record API: `query{ eventLeads(first:1, filter:{id:{eq:"<v4>"}}){ edges { node { id name } } } }`
+returns `OK`. The cross-application blocker recorded in the previous task is therefore **resolved**;
+that entry's "PARTIAL" is superseded.
+
+### Live acceptance (app 0.1.70, main/4D)
+
+| Row | Result |
+| --- | --- |
+| All five sources show their own readable fields | **PASS** — افراد 6, فرصت‌ها 4, ارتباطات 13, سرنخ‌ها 6, ثبت‌نام‌ها 5 (each + recipient 6 + company 4 where related) |
+| Source change leaves no previous fields, keeps typed text | **PASS** — every switch, body preserved |
+| Source-specific variable + sample record previews that record's value | **PASS** — «منبع: API Integration Deal» vs «منبع: Platform Migration» |
+| `@person.jobTitle` for a person WITH a title | **PASS** — «عنوان: مدیر آزمون ۰۱۶۹» |
+| Empty job title → incomplete preview + Persian reason | **PASS** — «پیش‌نمایش ناقص» + «این فیلد در رکورد نمونهٔ انتخاب‌شده خالی است.» |
+| Invalid variable → explicit reason, not claimed complete | **PASS** — «پیش‌نمایش ناقص» + «این متغیر برای منبع انتخاب‌شده یا سطح دسترسی شما در دسترس نیست.» |
+| Body/sample change after preview clears the old result | **PASS** — the previous preview is replaced, no stale text |
+| Save and reload restore text, source and relation | **PASS** — DB holds body + opportunity uid + `pointOfContact` uid |
+
+### Data
+
+Two fixtures created for THIS run and **soft-deleted by exact id** at the end:
+`f0a10000-0000-4000-8000-000000000169` (a Person with a job title — **0 of the 11 existing people
+have one**, so this row was otherwise untestable) and `f0a10000-0000-4000-8000-000000000170` (the
+acceptance template). Both verified present with `deletedAt` set; the user's two live templates are
+untouched. Backup taken and restore-verified before the install:
+`D:\twenty-main-backup\pre-0169-20261016-1925\main-default.dump`.
+
+**Still open, unchanged:** the «الگوی پیام جدید» form is not repaired by this task and remains a
+separate defect.
 
 ## 2026-10-16 — direct source/preview repair by architect
 
