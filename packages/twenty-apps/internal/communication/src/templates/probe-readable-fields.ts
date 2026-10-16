@@ -42,9 +42,14 @@ export const authorizeTemplateFieldsWithoutRecords = async ({
   catalog: TemplateVariableCatalog;
   objectPluralNames: ReadonlyMap<string, string>;
 }): Promise<TemplateVariableCatalog> => {
-  const fields = [...new Map(catalog.variables.map((definition) => [
-    templateFieldKey(definition), definition,
-  ])).values()];
+  const fields = [
+    ...new Map(
+      catalog.variables.map((definition) => [
+        templateFieldKey(definition),
+        definition,
+      ]),
+    ).values(),
+  ];
   const outcomes = await mapWithBoundedConcurrency({
     items: fields,
     concurrency: FIELD_PROBE_CONCURRENCY,
@@ -55,7 +60,12 @@ export const authorizeTemplateFieldsWithoutRecords = async ({
         const result = await client.query({
           [pluralName]: {
             __args: { first: 1, filter: NO_RECORDS_FILTER },
-            edges: { node: { id: true, [definition.fieldName]: selectionFor(definition) } },
+            edges: {
+              node: {
+                id: true,
+                [definition.fieldName]: selectionFor(definition),
+              },
+            },
           },
         });
         const connection = result[pluralName];
@@ -70,10 +80,14 @@ export const authorizeTemplateFieldsWithoutRecords = async ({
       }
     },
   });
-  const authorizedKeys = new Set(fields.filter((_, index) => outcomes[index]).map(templateFieldKey));
-  return buildTemplateVariableCatalog(catalog.variables.filter((definition) =>
-    authorizedKeys.has(templateFieldKey(definition)),
-  ));
+  const authorizedKeys = new Set(
+    fields.filter((_, index) => outcomes[index]).map(templateFieldKey),
+  );
+  return buildTemplateVariableCatalog(
+    catalog.variables.filter((definition) =>
+      authorizedKeys.has(templateFieldKey(definition)),
+    ),
+  );
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -112,9 +126,7 @@ export const mapWithBoundedConcurrency = async <Item, Result>({
     }
   };
 
-  await Promise.all(
-    Array.from({ length: limit }, () => run()),
-  );
+  await Promise.all(Array.from({ length: limit }, () => run()));
 
   return results;
 };
@@ -482,7 +494,9 @@ export const probeAuthorizedFieldTokens = async ({
     items: keys,
     concurrency,
     worker: async (key) => {
-      const definition = definitionsByKey.get(key) as TemplateVariableDefinition;
+      const definition = definitionsByKey.get(
+        key,
+      ) as TemplateVariableDefinition;
       // A Company field is proven through the Person that HAS a Company, so the
       // target key is `company`. Every other field is proven on a record of its
       // OWN object.

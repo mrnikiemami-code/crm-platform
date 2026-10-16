@@ -167,7 +167,8 @@ const toSource = (value: unknown): EligibleSource | null => {
  * from a front component. Rather than pretend, the caller is told which behaviour
  * was used and the textarea position is preserved when the API IS available.
  */
-export const insertTokenIntoBody = ({  body,
+export const insertTokenIntoBody = ({
+  body,
   token,
   selectionStart,
   selectionEnd,
@@ -236,7 +237,12 @@ const TemplateEditor = () => {
   // collapsing SOURCE_UNAVAILABLE into UNAVAILABLE would hide that it is the
   // user's source choice that cannot be used.
   const [catalogState, setCatalogState] = useState<
-    'LOADING' | 'READY' | 'EMPTY' | 'UNAVAILABLE' | 'SOURCE_UNAVAILABLE' | 'ERROR'
+    | 'LOADING'
+    | 'READY'
+    | 'EMPTY'
+    | 'UNAVAILABLE'
+    | 'SOURCE_UNAVAILABLE'
+    | 'ERROR'
   >('LOADING');
   const [sources, setSources] = useState<EligibleSource[]>([]);
   const [snapshot, setSnapshot] = useState<TemplateSnapshot | null>(null);
@@ -293,32 +299,14 @@ const TemplateEditor = () => {
    * the application token. Either way an `AUTH_REQUIRED` answer switches the whole
    * editor into the blocked state rather than being mistaken for a normal failure.
    */
-  const callGuarded = useCallback(
-    async (payload: Record<string, unknown>) => {
-      const bridge = readCommunicationBridge();
-      const action = readString(payload.action);
-      const args: Record<string, unknown> = { ...payload };
-      delete args.action;
+  const callGuarded = useCallback(async (payload: Record<string, unknown>) => {
+    const bridge = readCommunicationBridge();
+    const action = readString(payload.action);
+    const args: Record<string, unknown> = { ...payload };
+    delete args.action;
 
-      if (bridge !== null) {
-        const result = asRecord(await bridge({ action, payload: args }));
-
-        if (readString(result?.errorCode) === 'AUTH_REQUIRED') {
-          setState({ kind: 'AUTH_REQUIRED' });
-
-          return null;
-        }
-
-        return result;
-      }
-
-      const response = await callAppRoute(
-        '/communication/template-studio',
-        'POST',
-        payload,
-      );
-
-      const result = asRecord(response.data);
+    if (bridge !== null) {
+      const result = asRecord(await bridge({ action, payload: args }));
 
       if (readString(result?.errorCode) === 'AUTH_REQUIRED') {
         setState({ kind: 'AUTH_REQUIRED' });
@@ -327,9 +315,24 @@ const TemplateEditor = () => {
       }
 
       return result;
-    },
-    [],
-  );
+    }
+
+    const response = await callAppRoute(
+      '/communication/template-studio',
+      'POST',
+      payload,
+    );
+
+    const result = asRecord(response.data);
+
+    if (readString(result?.errorCode) === 'AUTH_REQUIRED') {
+      setState({ kind: 'AUTH_REQUIRED' });
+
+      return null;
+    }
+
+    return result;
+  }, []);
 
   /**
    * Loads the authorized variable catalog for the editor's variable list.
@@ -600,7 +603,9 @@ const TemplateEditor = () => {
           ? textarea.selectionStart
           : null,
       selectionEnd:
-        typeof textarea?.selectionEnd === 'number' ? textarea.selectionEnd : null,
+        typeof textarea?.selectionEnd === 'number'
+          ? textarea.selectionEnd
+          : null,
     });
 
     setBody(next.body);
@@ -702,7 +707,11 @@ const TemplateEditor = () => {
   };
 
   const handlePreview = async () => {
-    if (sampleRecordId.length === 0 || isPreviewing || selectedSource === undefined) {
+    if (
+      sampleRecordId.length === 0 ||
+      isPreviewing ||
+      selectedSource === undefined
+    ) {
       return;
     }
 
@@ -750,18 +759,25 @@ const TemplateEditor = () => {
       const issues = Array.isArray(first.issues)
         ? first.issues.flatMap((entry: unknown): PreviewIssue[] => {
             const issue = asRecord(entry);
-            return issue !== null && typeof issue.token === 'string' &&
-              (issue.kind === 'EMPTY_FIELD' || issue.kind === 'UNKNOWN_VARIABLE')
+            return issue !== null &&
+              typeof issue.token === 'string' &&
+              (issue.kind === 'EMPTY_FIELD' ||
+                issue.kind === 'UNKNOWN_VARIABLE')
               ? [{ token: issue.token, kind: issue.kind }]
               : [];
           })
         : [];
       setPreviewIssues(issues);
-      setIsPreviewIncomplete(issues.length > 0 || first.hasUnresolvedVariables === true || payload.hasUnresolvedVariables === true);
+      setIsPreviewIncomplete(
+        issues.length > 0 ||
+          first.hasUnresolvedVariables === true ||
+          payload.hasUnresolvedVariables === true,
+      );
 
       setPreviewText(readString(first?.previewText));
     } catch {
-      if (requestId === previewRequestIdRef.current) setPreviewError(t('The preview could not be built.'));
+      if (requestId === previewRequestIdRef.current)
+        setPreviewError(t('The preview could not be built.'));
     } finally {
       if (requestId === previewRequestIdRef.current) setIsPreviewing(false);
     }
@@ -880,7 +896,10 @@ const TemplateEditor = () => {
               setRecipientRelationUid(nextRelationUid);
               setSampleRecordId('');
               clearPreview();
-              void loadCatalog({ sourceObjectUid, recipientRelationUid: nextRelationUid });
+              void loadCatalog({
+                sourceObjectUid,
+                recipientRelationUid: nextRelationUid,
+              });
             }}
             style={styles.control}
           >
@@ -1060,9 +1079,7 @@ const TemplateEditor = () => {
 
       {isConfirmingDiscard && (
         <div style={styles.warning} data-editor-discard>
-          <p style={styles.muted}>
-            {t('This template has unsaved changes.')}
-          </p>
+          <p style={styles.muted}>{t('This template has unsaved changes.')}</p>
           <div style={styles.actions}>
             <button
               type="button"
@@ -1084,7 +1101,11 @@ const TemplateEditor = () => {
 
       {saveError !== null && <p style={styles.error}>{saveError}</p>}
 
-      <div style={styles.field} data-editor-preview data-sample-state={sampleState}>
+      <div
+        style={styles.field}
+        data-editor-preview
+        data-sample-state={sampleState}
+      >
         <span style={styles.label}>{t('Preview')}</span>
         <select
           aria-label={t('Sample record')}
@@ -1115,7 +1136,9 @@ const TemplateEditor = () => {
             shown as if the user simply had not chosen one. */}
         {sampleState === 'EMPTY' && (
           <p style={styles.muted} data-editor-sample="empty">
-            {t('No records exist for this source, so there is nothing to preview with.')}
+            {t(
+              'No records exist for this source, so there is nothing to preview with.',
+            )}
           </p>
         )}
         {sampleState === 'ERROR' && (
@@ -1139,20 +1162,41 @@ const TemplateEditor = () => {
           </button>
         </div>
         {previewText !== null && (
-          <div data-editor-preview-result={isPreviewIncomplete ? 'incomplete' : 'complete'}>
-            {isPreviewIncomplete && <p role="status" style={styles.error}>{t('Incomplete preview')}</p>}
+          <div
+            data-editor-preview-result={
+              isPreviewIncomplete ? 'incomplete' : 'complete'
+            }
+          >
+            {isPreviewIncomplete && (
+              <p role="status" style={styles.error}>
+                {t('Incomplete preview')}
+              </p>
+            )}
             <p style={styles.preview}>{previewText}</p>
             {previewIssues.length > 0 && (
               <ul style={styles.error}>
                 {previewIssues.map((issue) => {
-                  const field = variableGroups.flatMap((group) => group.variables).find((variable) => variable.token.toLowerCase() === issue.token.toLowerCase());
-                  return <li key={`${issue.kind}:${issue.token}`}>
-                    <bdi dir="ltr">{issue.token}</bdi>{' — '}
-                    {field === undefined ? '' : `${t(field.label)}: `}
-                    {issue.kind === 'EMPTY_FIELD'
-                      ? t('This field is empty on the selected sample record.')
-                      : t('This variable is unavailable for the selected source or your access.')}
-                  </li>;
+                  const field = variableGroups
+                    .flatMap((group) => group.variables)
+                    .find(
+                      (variable) =>
+                        variable.token.toLowerCase() ===
+                        issue.token.toLowerCase(),
+                    );
+                  return (
+                    <li key={`${issue.kind}:${issue.token}`}>
+                      <bdi dir="ltr">{issue.token}</bdi>
+                      {' — '}
+                      {field === undefined ? '' : `${t(field.label)}: `}
+                      {issue.kind === 'EMPTY_FIELD'
+                        ? t(
+                            'This field is empty on the selected sample record.',
+                          )
+                        : t(
+                            'This variable is unavailable for the selected source or your access.',
+                          )}
+                    </li>
+                  );
                 })}
               </ul>
             )}

@@ -378,13 +378,10 @@ export const buildTemplateCatalogFromMetadata = ({
     }
   }
 
-  const unreadableFieldIds = new Set(
-    permissions.unreadableFieldMetadataIds,
-  );
+  const unreadableFieldIds = new Set(permissions.unreadableFieldMetadataIds);
 
   const isObjectReadable = (objectId: string): boolean =>
-    readOverrideByObjectId.get(objectId) ??
-    permissions.canReadAllObjectRecords;
+    readOverrideByObjectId.get(objectId) ?? permissions.canReadAllObjectRecords;
 
   /**
    * Builds the entries for ONE object, under an explicit token PREFIX and group.
@@ -560,7 +557,9 @@ export const buildTemplateCatalogFromMetadata = ({
    * the SAME `firstName`/`lastName`/`fullName` tokens to whichever it happened to
    * pick, making the choice depend on metadata order.
    */
-  const usableFullNameFieldsOf = (objectName: string): TemplateMetadataField[] => {
+  const usableFullNameFieldsOf = (
+    objectName: string,
+  ): TemplateMetadataField[] => {
     const object = objectByName.get(objectName);
 
     if (object === undefined || !isObjectReadable(object.id)) {
@@ -599,8 +598,7 @@ export const buildTemplateCatalogFromMetadata = ({
         group: 'source',
         withLegacyAliases: isPersonSource,
         fullNameField,
-        disambiguateLabel:
-          usableFullNameFieldsOf(source.objectName).length > 1,
+        disambiguateLabel: usableFullNameFieldsOf(source.objectName).length > 1,
       }),
     ),
     ...buildEntriesForObject({
@@ -738,20 +736,20 @@ export const readTemplateMetadataObjects = async ({
     },
   });
 
-  const nodes: RawMetadataObject[] =
-    (result.objects?.edges ?? [])
-      .map((edge) => edge?.node as RawMetadataObject | null | undefined)
-      .filter(
-        (node): node is RawMetadataObject => node !== null && node !== undefined,
-      );
+  const nodes: RawMetadataObject[] = (result.objects?.edges ?? [])
+    .map((edge) => edge?.node as RawMetadataObject | null | undefined)
+    .filter(
+      (node): node is RawMetadataObject => node !== null && node !== undefined,
+    );
 
   return nodes
     .filter(
-      (node): node is RawMetadataObject & {
+      (
+        node,
+      ): node is RawMetadataObject & {
         id: string;
         nameSingular: string;
-      } =>
-        typeof node.id === 'string' && typeof node.nameSingular === 'string',
+      } => typeof node.id === 'string' && typeof node.nameSingular === 'string',
     )
     .map((node) => ({
       id: node.id,
@@ -770,7 +768,9 @@ export const readTemplateMetadataObjects = async ({
           : node.nameSingular,
       fields: (node.fieldsList ?? [])
         .filter(
-          (field): field is RawMetadataField & {
+          (
+            field,
+          ): field is RawMetadataField & {
             id: string;
             name: string;
             type: string;
@@ -1221,14 +1221,20 @@ export const buildAuthorizedTemplateCatalog = async ({
       const catalog = await authorizeTemplateFieldsWithoutRecords({
         client,
         catalog: permitted,
-        objectPluralNames: new Map(objects.map((object) => [object.nameSingular, object.namePlural])),
+        objectPluralNames: new Map(
+          objects.map((object) => [object.nameSingular, object.namePlural]),
+        ),
       });
-      const isAvailable = catalog.variables.some((variable) => variable.group === 'source');
+      const isAvailable = catalog.variables.some(
+        (variable) => variable.group === 'source',
+      );
       return {
         catalog: isAvailable ? catalog : EMPTY_TEMPLATE_VARIABLE_CATALOG,
         sourceLabelPlural: sourceObject.labelPlural,
         isAvailable,
-        stage: isAvailable ? AUTHORIZED_CATALOG_STAGE.OK : AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
+        stage: isAvailable
+          ? AUTHORIZED_CATALOG_STAGE.OK
+          : AUTHORIZED_CATALOG_STAGE.SOURCE_UNAVAILABLE,
       };
     } catch {
       return {
@@ -1358,9 +1364,7 @@ export const buildAuthorizedTemplateCatalog = async ({
 
     // The SOURCE group must survive. Without it the editor would be showing only
     // the recipient's fields for a source the user picked.
-    if (
-      !catalog.variables.some((variable) => variable.group === 'source')
-    ) {
+    if (!catalog.variables.some((variable) => variable.group === 'source')) {
       return {
         catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
         sourceLabelPlural: sourceObject.labelPlural,

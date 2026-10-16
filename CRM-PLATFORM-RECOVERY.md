@@ -1,18 +1,6 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-Last updated: 2026-10-15 — STAGE 1 COMPLETE (0.1.57). All five acceptance items now pass on
-main/4D: the record was created through the real UI from the sidebar, the create panel offers
-only «عنوان»/«متن», a second edit→save→reload cycle was executed *after* a reload, and a genuine
-CONFLICT was reproduced in two tabs with the second tab's typed text preserved and the first
-tab's value intact. The Edit action is now a visible Persian «ویرایش الگو» header button on the
-record page — its English rendering was traced to `CommandMenuItemRenderer`, which renders an
-app command's label with no translation call, so the copy is declared in the manifest. The
-renderer build command is recorded in full and the earlier "broken build / physical copy"
-diagnosis is explicitly superseded. Two residual limitations are reported rather than glossed:
-the engine's `name` field cannot be hidden from the manifest (the SDK types reject
-`isLabelSyncedWithName`), and the row-selection command bar could not be confirmed by this
-automation's synthetic clicks. App 0.1.56 → 0.1.57, host unchanged. No user template was
-touched; the run's UI-created fixture was soft-deleted by exact id.
+Last updated: 2026-10-16 — entity-query and preview repair implemented in source (app 0.1.69), **NOT DEPLOYED OR ACCEPTED LIVE**. The previous Stage 1 COMPLETE headline is superseded: the New form remains incomplete and the user's screenshots exposed unresolved preview variables and unavailable cross-application sources. See the current repair checkpoint below.
 
 ## Purpose
 
@@ -27,6 +15,22 @@ Local source path used during development: `D:\CrmSource\twenty`
 ---
 
 # CURRENT CHECKPOINT
+
+## 2026-10-16 — direct source/preview repair by architect
+
+This section overrides older claims that cross-application record reads require changing object ownership or widening the generated schema. Source implementation is complete for this repair, but browser acceptance is pending; the New form is still a separate open defect.
+
+- `query-template-records.ts` sends server-built read selections to the existing `/graphql` record API using **only** the delegated `TWENTY_APP_ACCESS_TOKEN`. There is no worker query endpoint, arbitrary URL, API-key fallback, role change, or token exposure.
+- Code evidence: `use-direct-execution.hook.ts` recognizes workspace root fields from the workspace resolver map. `DirectExecutionService.executeWorkspaceQuery` uses the workspace metadata maps rather than the application-filtered introspection schema. The same query runners and ORM permission intersection remain in force.
+- The editor's catalog uses contradictory `id eq X AND id neq X` filters for individual field permission checks. No real row can match. `WorkspaceRepository.onBeforeExecute` validates selected columns before SQL execution, so empty tables and null values do not remove readable fields. Permission denial removes that field; other query/transport failures do not masquerade as denial.
+- Catalog, source samples, source-relation reads and preview values all use this read path. CAS writes still use the existing generated SDK mutation. The application-token route guard is unchanged.
+- The editor now renders `issues` and `hasUnresolvedVariables`, labels incomplete previews, and distinguishes empty sample values from unavailable variables. Body/source/relation/sample changes invalidate prior previews; late responses are ignored. Choosing another recipient relation reloads its catalog.
+- Relevant UI strings, including sample-load failures, now have Persian translations.
+
+Validation: the real route handler is tested with a source absent from the generated client, and two source records sharing one Person resolve distinct `@source.venue` values while `@person.jobTitle` resolves consistently. UI tests reproduce the screenshot's unresolved job title and verify its reason is shown and stale previews are removed. Transport tests cover denied/partial GraphQL responses, credential absence and injection inputs. No data, SMS provider settings, or live workspace roles were modified.
+
+Deployment status: **not installed on main/4D**. The local bridge returned an internal error. Opening the CRM browser URL timed out and reset the transient workspace; changes were reconstructed and re-tested before publishing. Earlier pre-reset build/full-suite evidence is retained as such, not represented as browser acceptance. Do not tell the user their running browser is repaired before installation and a real source/preview check.
+
 
 Last rewritten: 2026-10-15 after the user's screenshots and planning review.
 This checkpoint and the linked active plan override all older execution instructions below.

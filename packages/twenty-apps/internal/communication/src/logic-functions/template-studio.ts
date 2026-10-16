@@ -108,8 +108,7 @@ const USER_SCOPED_ACTIONS = new Set([
 
 /** True when the platform authenticated a USER for this request. */
 const hasAuthenticatedUser = (event: RoutePayload<StudioRequest>): boolean =>
-  typeof event.userWorkspaceId === 'string' &&
-  event.userWorkspaceId.length > 0;
+  typeof event.userWorkspaceId === 'string' && event.userWorkspaceId.length > 0;
 
 const handler = async (event: RoutePayload<StudioRequest>) => {
   const body = event.body;
@@ -207,14 +206,13 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       const { catalog, isAvailable, stage, sourceLabelPlural } =
         await buildAuthorizedTemplateCatalog({
           authorizeWithoutRecords: true,
-      client,
+          client,
           metadataClient,
           source: { objectName: resolvedSource.objectName },
           relationUid:
             resolvedSource.kind === 'RESOLVED'
               ? resolvedSource.relationUid
               : '',
-      
         });
 
       return {
@@ -380,7 +378,8 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
         id: templateId,
         // A title, when provided, is written with the body so the list shows the
         // name the user typed. The route rejects an empty one before this point.
-        title: readTrimmed(body.title).length > 0 ? readTrimmed(body.title) : null,
+        title:
+          readTrimmed(body.title).length > 0 ? readTrimmed(body.title) : null,
         body: messageBody,
         sourceObjectUid: resolved.objectUid,
         recipientRelationUid: resolved.relationUid,
@@ -553,14 +552,11 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
       // sample record is passed as the source record, so `@source.*` reads IT.
       const { catalog, isAvailable } = await buildAuthorizedTemplateCatalog({
         authorizeWithoutRecords: true,
-      client,
+        client,
         metadataClient: new MetadataApiClient(),
         source: { objectName: sourceObjectName },
         relationUid:
-          resolvedSource.kind === 'RESOLVED'
-            ? resolvedSource.relationUid
-            : '',
-    
+          resolvedSource.kind === 'RESOLVED' ? resolvedSource.relationUid : '',
       });
 
       if (!isAvailable) {
