@@ -163,18 +163,31 @@ describe('the catalog follows the source, and never falls back to Person', () =>
   });
 
   it('keeps the SOURCE field list even when the object has NO records', async () => {
-    // A source with no readable record cannot have a field PROVEN, so this is an
-    // explicit SOURCE_UNAVAILABLE — a permission/unproven outcome — rather than an
-    // empty list that would look like the object declares no fields.
+    // The field list must not depend on a record existing. A source with no rows
+    // returns its full catalog; the SAMPLE PICKER is what reports that there is
+    // nothing to preview with.
     const result = await buildAuthorizedTemplateCatalog({
-      client: { query: async () => ({}) } as never,
+      client: {
+        query: async (payload: Record<string, unknown>) =>
+          'people' in payload
+            ? { people: { edges: [{ node: { id: 'p1' } }] } }
+            : 'opportunities' in payload
+              ? { opportunities: { edges: [] } }
+              : { person: { id: 'p1' } },
+      } as never,
       metadataClient: createFakeMetadataClient() as never,
       source: OPPORTUNITY_CATALOG_SOURCE,
     });
 
-    expect(result.isAvailable).toBe(false);
-    expect(result.stage).toBe('SOURCE_UNAVAILABLE');
-    expect(result.catalog.variables).toHaveLength(0);
+    expect(result.isAvailable).toBe(true);
+    expect(result.stage).toBe('OK');
+
+    const sourceTokens = result.catalog.variables
+      .filter((variable) => variable.group === 'source')
+      .map((variable) => variable.token);
+
+    expect(sourceTokens).toContain('source.name');
+    expect(sourceTokens).toContain('source.amount');
   });
 
   it('reports SOURCE_UNAVAILABLE when the SOURCE object is unreadable by the roles', async () => {

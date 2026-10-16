@@ -256,6 +256,15 @@ const TemplateEditor = () => {
   const [sampleRecords, setSampleRecords] = useState<
     { id: string; label: string }[]
   >([]);
+  /**
+   * Whether the sample list for the CURRENT source has been loaded, so an EMPTY
+   * list can be told apart from "not loaded yet". Without this, a source with no
+   * records looks identical to one the user has not chosen from — which is the
+   * difference between «رکوردی موجود نیست» and «یک رکورد انتخاب کنید».
+   */
+  const [sampleState, setSampleState] = useState<
+    'LOADING' | 'READY' | 'EMPTY' | 'ERROR'
+  >('LOADING');
   const [sampleRecordId, setSampleRecordId] = useState('');
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -515,6 +524,11 @@ const TemplateEditor = () => {
 
     let cancelled = false;
 
+    // The PREVIOUS source's records are dropped immediately, so a stale list can
+    // never be picked from while the new one loads.
+    setSampleRecords([]);
+    setSampleState('LOADING');
+
     const loadRecords = async () => {
       const result = await callGuarded({
         action: 'source-records',
@@ -522,22 +536,31 @@ const TemplateEditor = () => {
         search: '',
       });
 
-      if (cancelled || result === null || result.success !== true) {
+      if (cancelled) {
         return;
       }
 
-      setSampleRecords(
-        Array.isArray(result.records)
-          ? result.records
-              .map((entry) => asRecord(entry))
-              .filter((entry): entry is Record<string, unknown> => entry !== null)
-              .map((entry) => ({
-                id: readString(entry.id),
-                label: readString(entry.label),
-              }))
-              .filter((entry) => entry.id.length > 0)
-          : [],
-      );
+      if (result === null || result.success !== true) {
+        setSampleState('ERROR');
+
+        return;
+      }
+
+      const records = Array.isArray(result.records)
+        ? result.records
+            .map((entry) => asRecord(entry))
+            .filter((entry): entry is Record<string, unknown> => entry !== null)
+            .map((entry) => ({
+              id: readString(entry.id),
+              label: readString(entry.label),
+            }))
+            .filter((entry) => entry.id.length > 0)
+        : [];
+
+      setSampleRecords(records);
+      // A successful, EMPTY answer is a real state: this object has no records to
+      // preview with, which is reported as such rather than as "choose one".
+      setSampleState(records.length === 0 ? 'EMPTY' : 'READY');
     };
 
     void loadRecords();
@@ -1022,21 +1045,42 @@ const TemplateEditor = () => {
 
       {saveError !== null && <p style={styles.error}>{saveError}</p>}
 
-      <div style={styles.field} data-editor-preview>
+      <div style={styles.field} data-editor-preview data-sample-state={sampleState}>
         <span style={styles.label}>{t('Preview')}</span>
         <select
           aria-label={t('Sample record')}
           value={sampleRecordId}
           onChange={(event) => setSampleRecordId(event.target.value)}
+          disabled={sampleState !== 'READY'}
           style={styles.control}
         >
-          <option value="">{t('Select a sample record to preview.')}</option>
+          <option value="">
+            {sampleState === 'LOADING'
+              ? t('Loading records…')
+              : sampleState === 'EMPTY'
+                ? t('No records exist for this source.')
+                : sampleState === 'ERROR'
+                  ? t('The records could not be loaded.')
+                  : t('Select a sample record to preview.')}
+          </option>
           {sampleRecords.map((record) => (
             <option key={record.id} value={record.id}>
               {record.label}
             </option>
           ))}
         </select>
+        {/* The sample list's own state, so "this object has no records" is never
+            shown as if the user simply had not chosen one. */}
+        {sampleState === 'EMPTY' && (
+          <p style={styles.muted} data-editor-sample="empty">
+            {t('No records exist for this source, so there is nothing to preview with.')}
+          </p>
+        )}
+        {sampleState === 'ERROR' && (
+          <p style={styles.error} data-editor-sample="error">
+            {t('The records could not be loaded.')}
+          </p>
+        )}
         <p style={styles.muted}>
           {isPersonSource
             ? t('The selected person is the recipient.')

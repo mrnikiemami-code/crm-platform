@@ -6,6 +6,10 @@ import {
   DEFAULT_FUNCTION_ROLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 import {
+  classifyObjectReachability,
+  discoverFieldProbeTargets,
+  OBJECT_REACHABILITY,
+  type ObjectReachability,
   probeAuthorizedFieldTokens,
   restrictCatalogToAuthorizedTokens,
 } from 'src/templates/probe-readable-fields';
@@ -209,6 +213,17 @@ export const AUTHORIZED_CATALOG_STAGE = {
    * is no readable record of that object to prove access against.
    */
   SOURCE_UNAVAILABLE: 'SOURCE_UNAVAILABLE',
+  /**
+   * The source object is not in the schema this REQUEST is served against.
+   *
+   * On this platform an app-token request is served a schema filtered to the
+   * Standard application plus the calling app, so another application's objects
+   * are genuinely absent. A code/platform boundary — NOT a permission decision
+   * and NOT "the object has no fields".
+   */
+  SOURCE_NOT_IN_SCHEMA: 'SOURCE_NOT_IN_SCHEMA',
+  /** The source query was rejected for a reason that is not a schema gap. */
+  SOURCE_QUERY_REJECTED: 'SOURCE_QUERY_REJECTED',
 } as const;
 
 export type AuthorizedTemplateCatalogStage =
@@ -1198,27 +1213,109 @@ export const buildAuthorizedTemplateCatalog = async ({
     }),
   });
 
-  // The platform's OWN enforcement, observed on a bounded read of the source
-  // object. A field is advertised only if the platform actually returned it.
+  // REACHABILITY of each object this catalog would read, decided by a bounded
+  // query whose FAILURE MODE distinguishes the three outcomes. This is what makes
+  // "no records", "not in this request's schema" and "refused" tellable apart —
+  // and what stops an empty table from looking like an object with no fields.
+  const neededObjects = new Set(
+    permitted.variables.map((variable) =>
+      // A Company field is read through the Person, so it needs the PERSON target.
+      variable.objectName === 'company' ? 'person' : variable.objectName,
+    ),
+  );
+
+  const recordIdByObjectName = new Map<string, string | null>();
+  let sourceReachability: ObjectReachability = OBJECT_REACHABILITY.REACHABLE;
+
+  for (const objectName of neededObjects) {
+    const pluralName = objects.find(
+      (object) => object.nameSingular === objectName,
+    )?.namePlural;
+
+    if (pluralName === undefined) {
+      recordIdByObjectName.set(objectName, null);
+      continue;
+    }
+
+    const reachability = await classifyObjectReachability({
+      client,
+      objectNamePlural: pluralName,
+    });
+
+    if (objectName === resolvedSource.objectName) {
+      sourceReachability = reachability.reachability;
+    }
+
+    recordIdByObjectName.set(objectName, reachability.recordId);
+
+    // A Company is reached THROUGH a Person that HAS one, so it shares the
+    // Person's target. `discoverFieldProbeTargets` finds such a Person because a
+    // null relation returns no keys and is not evidence either way. It is guarded
+    // because it is a best-effort target search, not a reachability decision: a
+    // failure here means Company fields cannot be proven, not that the source is
+    // unreachable.
+    if (objectName === 'person') {
+      try {
+        const personTargets = await discoverFieldProbeTargets({ client });
+        recordIdByObjectName.set(
+          'company',
+          personTargets?.companyPersonId ?? null,
+        );
+      } catch {
+        recordIdByObjectName.set('company', null);
+      }
+    }
+  }
+
+  // The SOURCE object itself could not be reached. Reported as the DISTINCT
+  // reason rather than as an empty field list.
+  if (sourceReachability === OBJECT_REACHABILITY.NOT_IN_SCHEMA) {
+    return {
+      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+      sourceLabelPlural: sourceObject.labelPlural,
+      isAvailable: false,
+      stage: AUTHORIZED_CATALOG_STAGE.SOURCE_NOT_IN_SCHEMA,
+    };
+  }
+
+  if (sourceReachability === OBJECT_REACHABILITY.QUERY_REJECTED) {
+    return {
+      catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
+      sourceLabelPlural: sourceObject.labelPlural,
+      isAvailable: false,
+      stage: AUTHORIZED_CATALOG_STAGE.SOURCE_QUERY_REJECTED,
+    };
+  }
+
+  // NO RECORDS is a legitimate state, not a failure: the catalog is returned in
+  // full so the user can write the template, and the SAMPLE PICKER is what will
+  // report that there is nothing to preview with.
+  if (sourceReachability === OBJECT_REACHABILITY.NO_RECORDS) {
+    return {
+      catalog: permitted,
+      sourceLabelPlural: sourceObject.labelPlural,
+      isAvailable: true,
+      stage: AUTHORIZED_CATALOG_STAGE.OK,
+    };
+  }
+
+  // The platform's OWN enforcement, observed on a bounded read of a record this
+  // caller CAN reach. A field is advertised only if the platform actually
+  // returned it.
   //
-  // This is the authority, and it is deliberately NOT the source of the field
-  // LIST: the list comes from metadata above, so an object with no records keeps
-  // its fields, and a random row cannot decide what exists. The probe only ever
+  // This is the authority on VISIBILITY, and it is deliberately NOT the source of
+  // the field LIST: the list comes from metadata above. The probe only ever
   // REMOVES a field metadata already declared.
   try {
     const probe = await probeAuthorizedFieldTokens({
       client,
       catalog: permitted,
-      objectPluralNames: new Map(
-        objects.map((object) => [object.nameSingular, object.namePlural]),
-      ),
+      recordIdByObjectName,
     });
 
     if (probe === null) {
-      // Nothing could be proven readable for this source. Reported as its own
-      // stage: the source exists in metadata but this caller cannot read a single
-      // field of it, which is a PERMISSION outcome and not "the object has no
-      // fields".
+      // Every field was refused on a record we COULD read. That is a permission
+      // outcome, and it is distinct from the object being unreachable.
       return {
         catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
         sourceLabelPlural: sourceObject.labelPlural,

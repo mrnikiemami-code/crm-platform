@@ -509,11 +509,11 @@ describe('catalog authorization: metadata decides the fields, the probe only rem
     expect(tokens.every((token) => !token.startsWith('company.'))).toBe(true);
   });
 
-  it('keeps the metadata field list for a source with NO records of its own', async () => {
-    // A source with no rows cannot have a field PROVEN, but the object still
-    // declares its fields. This is reported as SOURCE_UNAVAILABLE — an explicit
-    // permission/unproven outcome — rather than as an empty list that looks like
-    // "the object has no fields".
+  it('returns the FULL field list for a source that has NO records', async () => {
+    // The requirement this encodes: the field list must not depend on a record.
+    // A source with no rows is a DATA situation, so the catalog is returned in
+    // full and it is the SAMPLE PICKER that reports there is nothing to preview
+    // with — not an empty catalog that looks like "this object has no fields".
     const result = await buildAuthorizedTemplateCatalog({
       client: {
         query: async (payload: Record<string, unknown>) =>
@@ -527,17 +527,69 @@ describe('catalog authorization: metadata decides the fields, the probe only rem
       metadataClient: createFakeMetadataClient() as never,
     });
 
-    expect(result.isAvailable).toBe(false);
-    expect(result.stage).toBe('SOURCE_UNAVAILABLE');
-    expect(result.catalog.variables).toHaveLength(0);
+    expect(result.isAvailable).toBe(true);
+    expect(result.stage).toBe('OK');
+
+    const sourceTokens = result.catalog.variables
+      .filter((variable) => variable.group === 'source')
+      .map((variable) => variable.token);
+
+    expect(sourceTokens).toContain('source.name');
+    expect(sourceTokens).toContain('source.amount');
   });
 
-  it('reports SOURCE_UNAVAILABLE when nothing at all could be proven', async () => {
+  it('distinguishes NOT_IN_SCHEMA from NO_RECORDS from a refusal', async () => {
+    // The three outcomes must never collapse into one. A schema gap is reported
+    // as its own stage, because it is a code/platform boundary rather than a
+    // permission decision or an empty table.
+    const notInSchema = await buildAuthorizedTemplateCatalog({
+      client: {
+        query: async () => {
+          throw new Error(
+            'Cannot query field "opportunities" on type "Query".',
+          );
+        },
+      } as never,
+      source: OPPORTUNITY_CATALOG_SOURCE,
+      metadataClient: createFakeMetadataClient() as never,
+    });
+
+    expect(notInSchema.isAvailable).toBe(false);
+    expect(notInSchema.stage).toBe('SOURCE_NOT_IN_SCHEMA');
+
+    const rejected = await buildAuthorizedTemplateCatalog({
+      client: {
+        query: async () => {
+          throw new Error('Entity performing the request does not have permission');
+        },
+      } as never,
+      source: OPPORTUNITY_CATALOG_SOURCE,
+      metadataClient: createFakeMetadataClient() as never,
+    });
+
+    expect(rejected.isAvailable).toBe(false);
+    expect(rejected.stage).toBe('SOURCE_QUERY_REJECTED');
+  });
+
+  it('reports SOURCE_UNAVAILABLE when a readable record refuses every field', async () => {
+    // The object IS reachable and has a record, but the platform returns none of
+    // the fields. That is a PERMISSION outcome, distinct from the two above.
     const result = await buildAuthorizedTemplateCatalog({
       client: {
-        query: async () => ({ people: { edges: [] } }),
+        query: async (payload: Record<string, unknown>) => {
+          if ('people' in payload) {
+            return { people: { edges: [{ node: { id: 'p1' } }] } };
+          }
+
+          if ('opportunities' in payload) {
+            return { opportunities: { edges: [{ node: { id: 'o1' } }] } };
+          }
+
+          // Every per-field read comes back with nothing.
+          return { opportunity: { id: 'o1' } };
+        },
       } as never,
-      source: PERSON_CATALOG_SOURCE,
+      source: OPPORTUNITY_CATALOG_SOURCE,
       metadataClient: createFakeMetadataClient() as never,
     });
 

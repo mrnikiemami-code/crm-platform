@@ -89,7 +89,7 @@ const handler = async (
       client,
     metadataClient,
     source: { objectName: resolvedSource.objectName },
-    userRoleId: event.userWorkspaceId ?? null,
+
   });
 
   // The catalog is EMPTY whenever it could not be authorized. The status tells

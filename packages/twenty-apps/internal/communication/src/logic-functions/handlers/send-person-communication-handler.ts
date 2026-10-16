@@ -206,8 +206,12 @@ export const sendPersonCommunicationHandler = async (
   // CONTEXTUAL SEND: the context was already resolved above, before the person
   // checks, so the catalog and the values are built for the source the record
   // resolved to and `@source.*` reads THAT record.
+  //
+  // No role id is passed. `workspaceMemberId` identifies the SENDER, not a role,
+  // and an app-scoped token cannot read role metadata anyway; the platform's own
+  // read enforcement is the authority on visibility.
   const { catalog } = await buildAuthorizedTemplateCatalog({
-      client,
+    client,
     metadataClient,
     source: { objectName: catalogSourceObjectName },
   });

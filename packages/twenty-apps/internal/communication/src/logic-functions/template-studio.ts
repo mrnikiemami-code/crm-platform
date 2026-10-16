@@ -207,7 +207,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
             resolvedSource.kind === 'RESOLVED'
               ? resolvedSource.relationUid
               : '',
-          userRoleId: event.userWorkspaceId ?? null,
+      
         });
 
       return {
@@ -552,7 +552,7 @@ const handler = async (event: RoutePayload<StudioRequest>) => {
           resolvedSource.kind === 'RESOLVED'
             ? resolvedSource.relationUid
             : '',
-        userRoleId: event.userWorkspaceId ?? null,
+    
       });
 
       if (!isAvailable) {

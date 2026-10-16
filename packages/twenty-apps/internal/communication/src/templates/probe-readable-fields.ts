@@ -246,6 +246,109 @@ export type FieldProbeResult = {
 } | null;
 
 /**
+ * Why a source object's records could or could not be reached.
+ *
+ * These are THREE DIFFERENT things and must never be collapsed into one:
+ * a build that cannot express the query is a CODE/platform problem, an empty
+ * table is a DATA situation, and a refusal is a PERMISSION outcome. Reporting
+ * "no fields" for all three is what made the original defect invisible.
+ */
+export const OBJECT_REACHABILITY = {
+  /** A record was read; the per-field probe can decide visibility. */
+  REACHABLE: 'REACHABLE',
+  /** The query is valid but the object has NO rows. Not an error. */
+  NO_RECORDS: 'NO_RECORDS',
+  /**
+   * The object is not in the schema this request is served against. On this
+   * platform an app-token request gets a schema filtered to the Standard
+   * application plus the calling app, so another application's objects are
+   * genuinely absent. A validation error, not a permission decision.
+   */
+  NOT_IN_SCHEMA: 'NOT_IN_SCHEMA',
+  /** The query was rejected for a reason that is not a schema gap. */
+  QUERY_REJECTED: 'QUERY_REJECTED',
+} as const;
+
+export type ObjectReachability =
+  (typeof OBJECT_REACHABILITY)[keyof typeof OBJECT_REACHABILITY];
+
+export type ObjectReachabilityResult = {
+  reachability: ObjectReachability;
+  /** The record id, when one was reached. */
+  recordId: string | null;
+};
+
+const SCHEMA_GAP_PATTERNS = [
+  /cannot query field/i,
+  /cannot query field .* on type/i,
+  /field .* is not defined/i,
+  /unknown field/i,
+  /not defined by type/i,
+];
+
+const isSchemaGapError = (error: unknown): boolean => {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : '';
+
+  return SCHEMA_GAP_PATTERNS.some((pattern) => pattern.test(message));
+};
+
+/**
+ * Asks the platform whether this object's records are reachable, and WHY not.
+ *
+ * The query is the smallest valid one for the object: its connection field with
+ * a single `id`. That makes the three outcomes distinguishable, because the
+ * failure MODE differs — a schema gap is a validation error before execution,
+ * an empty table is a successful empty connection, and a refusal is a
+ * permission error on a real query.
+ */
+export const classifyObjectReachability = async ({
+  client,
+  objectNamePlural,
+}: {
+  client: Pick<CoreApiClient, 'query'>;
+  objectNamePlural: string;
+}): Promise<ObjectReachabilityResult> => {
+  try {
+    const result = (await client.query({
+      [objectNamePlural]: {
+        __args: { first: 1 },
+        edges: { node: { id: true } },
+      },
+    })) as Record<string, unknown>;
+
+    const connection = isRecord(result[objectNamePlural])
+      ? (result[objectNamePlural] as Record<string, unknown>)
+      : null;
+    const edges = Array.isArray(connection?.edges) ? connection.edges : [];
+
+    for (const edge of edges) {
+      const node = isRecord(edge) ? (edge.node as unknown) : null;
+
+      if (isRecord(node) && typeof node.id === 'string' && node.id.length > 0) {
+        return {
+          reachability: OBJECT_REACHABILITY.REACHABLE,
+          recordId: node.id,
+        };
+      }
+    }
+
+    return { reachability: OBJECT_REACHABILITY.NO_RECORDS, recordId: null };
+  } catch (error) {
+    return {
+      reachability: isSchemaGapError(error)
+        ? OBJECT_REACHABILITY.NOT_IN_SCHEMA
+        : OBJECT_REACHABILITY.QUERY_REJECTED,
+      recordId: null,
+    };
+  }
+};
+
+/**
  * Probes every candidate field through its OWN bounded read.
  *
  * Returns `null` when there is no readable Person, or when every probe fails —
@@ -253,20 +356,33 @@ export type FieldProbeResult = {
  * deduped by metadata field first, so a FULL_NAME field is read once and its
  * three tokens share the result.
  */
+/**
+ * Probes every candidate field through its OWN bounded read, on a record the
+ * CALLER has already reached.
+ *
+ * `recordIdByObjectName` is passed in rather than discovered here, so the probe
+ * never decides WHETHER an object is usable — that is `classifyObjectReachability`'s
+ * job, and the two outcomes (no records vs not in schema vs refused) stay apart.
+ * The probe only answers the narrower question it is actually good at: for this
+ * record, which of these fields come back?
+ *
+ * An object with no reachable record is simply not probed, and its fields are
+ * reported as unproven — never as "the object has none".
+ */
 export const probeAuthorizedFieldTokens = async ({
   client,
   catalog,
-  objectPluralNames,
+  recordIdByObjectName,
   concurrency = FIELD_PROBE_CONCURRENCY,
 }: {
   client: Pick<CoreApiClient, 'query'>;
   catalog: TemplateVariableCatalog;
   /**
-   * `nameSingular` → `namePlural`, for the objects in the catalog. Needed to
-   * reach a source object's records. Person/Company are resolved structurally
-   * (Person directly, Company through Person) and do not use it.
+   * The record id to read each object THROUGH, keyed by the object's
+   * `nameSingular`. A `company` entry is the id of a PERSON that has a Company,
+   * because a Company is reached through the Person's relation.
    */
-  objectPluralNames: ReadonlyMap<string, string>;
+  recordIdByObjectName: ReadonlyMap<string, string | null>;
   concurrency?: number;
 }): Promise<FieldProbeResult> => {
   // One representative definition per metadata field.
@@ -286,62 +402,20 @@ export const probeAuthorizedFieldTokens = async ({
     return null;
   }
 
-  // The objects this catalog actually needs to read. Only these are discovered,
-  // so an unused object costs no extra read.
-  const neededObjectNames = new Set(
-    [...definitionsByKey.values()].map((definition) =>
-      // A Company field is read through the Person, so it needs the PERSON target.
-      definition.objectName === 'company' ? 'person' : definition.objectName,
-    ),
-  );
-
-  // Person discovery also yields the Company target (a Person that HAS a
-  // Company), because a Company field can only be proven on a record that has
-  // one — a null relation returns no keys and is not evidence either way.
-  const personTargets = neededObjectNames.has('person')
-    ? await discoverFieldProbeTargets({ client })
-    : null;
-
-  const recordIdByObjectName = new Map<string, string | null>();
-
-  for (const objectName of neededObjectNames) {
-    if (objectName === 'person') {
-      recordIdByObjectName.set('person', personTargets?.personId ?? null);
-      recordIdByObjectName.set(
-        'company',
-        personTargets?.companyPersonId ?? null,
-      );
-      continue;
-    }
-
-    const pluralName = objectPluralNames.get(objectName);
-
-    recordIdByObjectName.set(
-      objectName,
-      pluralName === undefined
-        ? null
-        : await discoverRecordIdForObject({
-            client,
-            objectNamePlural: pluralName,
-          }),
-    );
-  }
-
   const outcomes = await mapWithBoundedConcurrency({
     items: keys,
     concurrency,
     worker: async (key) => {
       const definition = definitionsByKey.get(key) as TemplateVariableDefinition;
       // A Company field is proven through the Person that HAS a Company, so the
-      // target key is `company` (which `discoverFieldProbeTargets` filled with
-      // such a Person, or `null` when none was found). Every other field is
-      // proven through a record of its OWN object.
+      // target key is `company`. Every other field is proven on a record of its
+      // OWN object.
       const targetKey =
         definition.objectName === 'company' ? 'company' : definition.objectName;
       const recordId = recordIdByObjectName.get(targetKey);
 
       if (recordId === null || recordId === undefined) {
-        // No readable record to prove the field on, so it is not authorized.
+        // No reachable record to prove the field on, so it is not authorized.
         return 'NOT_AUTHORIZED' as ProbeOutcome;
       }
 
