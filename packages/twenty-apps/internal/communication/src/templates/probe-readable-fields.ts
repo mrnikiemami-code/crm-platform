@@ -259,13 +259,16 @@ export const OBJECT_REACHABILITY = {
   /** The query is valid but the object has NO rows. Not an error. */
   NO_RECORDS: 'NO_RECORDS',
   /**
-   * The object is not in the schema this request is served against. On this
-   * platform an app-token request gets a schema filtered to the Standard
-   * application plus the calling app, so another application's objects are
-   * genuinely absent. A validation error, not a permission decision.
+   * The object could not be queried at all.
+   *
+   * The overwhelmingly common cause on this platform is a SCHEMA BOUNDARY: the
+   * app's generated client is built per application, so another application's
+   * objects are absent from it and the request never leaves the process. A
+   * permission refusal is reported separately because it is something the user's
+   * role could change.
    */
-  NOT_IN_SCHEMA: 'NOT_IN_SCHEMA',
-  /** The query was rejected for a reason that is not a schema gap. */
+  NOT_QUERYABLE: 'NOT_QUERYABLE',
+  /** The query was explicitly REFUSED — a permission outcome. */
   QUERY_REJECTED: 'QUERY_REJECTED',
 } as const;
 
@@ -278,15 +281,21 @@ export type ObjectReachabilityResult = {
   recordId: string | null;
 };
 
-const SCHEMA_GAP_PATTERNS = [
-  /cannot query field/i,
-  /cannot query field .* on type/i,
-  /field .* is not defined/i,
-  /unknown field/i,
-  /not defined by type/i,
+/**
+ * Errors that are a PERMISSION decision rather than a schema boundary.
+ *
+ * The distinction matters because the two need different responses: a refusal is
+ * something the user's role could change, while a schema boundary is not.
+ */
+const PERMISSION_ERROR_PATTERNS = [
+  /permission/i,
+  /not authorized/i,
+  /unauthorized/i,
+  /forbidden/i,
+  /access denied/i,
 ];
 
-const isSchemaGapError = (error: unknown): boolean => {
+const isPermissionError = (error: unknown): boolean => {
   const message =
     error instanceof Error
       ? error.message
@@ -294,7 +303,7 @@ const isSchemaGapError = (error: unknown): boolean => {
         ? error
         : '';
 
-  return SCHEMA_GAP_PATTERNS.some((pattern) => pattern.test(message));
+  return PERMISSION_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 };
 
 /**
@@ -355,9 +364,9 @@ export const classifyObjectReachability = async ({
     );
 
     return {
-      reachability: isSchemaGapError(error)
-        ? OBJECT_REACHABILITY.NOT_IN_SCHEMA
-        : OBJECT_REACHABILITY.QUERY_REJECTED,
+      reachability: isPermissionError(error)
+        ? OBJECT_REACHABILITY.QUERY_REJECTED
+        : OBJECT_REACHABILITY.NOT_QUERYABLE,
       recordId: null,
     };
   }

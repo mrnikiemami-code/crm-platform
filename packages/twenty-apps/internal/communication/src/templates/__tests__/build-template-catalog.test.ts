@@ -555,7 +555,7 @@ describe('catalog authorization: metadata decides the fields, the probe only rem
     });
 
     expect(notInSchema.isAvailable).toBe(false);
-    expect(notInSchema.stage).toBe('SOURCE_NOT_IN_SCHEMA');
+    expect(notInSchema.stage).toBe('SOURCE_NOT_QUERYABLE');
 
     const rejected = await buildAuthorizedTemplateCatalog({
       client: {

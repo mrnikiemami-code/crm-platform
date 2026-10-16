@@ -214,14 +214,14 @@ export const AUTHORIZED_CATALOG_STAGE = {
    */
   SOURCE_UNAVAILABLE: 'SOURCE_UNAVAILABLE',
   /**
-   * The source object is not in the schema this REQUEST is served against.
+   * The source object could not be queried at all.
    *
-   * On this platform an app-token request is served a schema filtered to the
-   * Standard application plus the calling app, so another application's objects
-   * are genuinely absent. A code/platform boundary — NOT a permission decision
-   * and NOT "the object has no fields".
+   * The common cause on this platform is a SCHEMA BOUNDARY: an app's generated
+   * client is built per application, so another application's objects are absent
+   * from it. A code/platform boundary — NOT a permission decision and NOT "the
+   * object has no fields".
    */
-  SOURCE_NOT_IN_SCHEMA: 'SOURCE_NOT_IN_SCHEMA',
+  SOURCE_NOT_QUERYABLE: 'SOURCE_NOT_QUERYABLE',
   /** The source query was rejected for a reason that is not a schema gap. */
   SOURCE_QUERY_REJECTED: 'SOURCE_QUERY_REJECTED',
 } as const;
@@ -1269,12 +1269,12 @@ export const buildAuthorizedTemplateCatalog = async ({
 
   // The SOURCE object itself could not be reached. Reported as the DISTINCT
   // reason rather than as an empty field list.
-  if (sourceReachability === OBJECT_REACHABILITY.NOT_IN_SCHEMA) {
+  if (sourceReachability === OBJECT_REACHABILITY.NOT_QUERYABLE) {
     return {
       catalog: EMPTY_TEMPLATE_VARIABLE_CATALOG,
       sourceLabelPlural: sourceObject.labelPlural,
       isAvailable: false,
-      stage: AUTHORIZED_CATALOG_STAGE.SOURCE_NOT_IN_SCHEMA,
+      stage: AUTHORIZED_CATALOG_STAGE.SOURCE_NOT_QUERYABLE,
     };
   }
 
