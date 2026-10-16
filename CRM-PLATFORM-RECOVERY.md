@@ -86,6 +86,133 @@ The following reports are retained without rewriting their contents.
 They are not the active plan, are not proof of current live behavior, and may contain
 superseded conclusions. The checkpoint and linked plan above control subsequent work.
 
+## CRM-TEMPLATES-METADATA-QUERY-CORRECTION — why three of four sources had no variables, and what the catalog is now (0.1.63 → 0.1.65)
+
+Baseline `1c667119a048f6609b54502858ef29fb7cda8d0f` → tip `0fd2e852c3`; apps 0.1.63, 0.1.64
+then 0.1.65 on main/4D; host unchanged. Wall clock 10:32–11:20 UTC. **HEAD = origin/crm-platform.**
+
+### 1. The measured starting point (the defect, reproduced)
+
+The task reported "the catalog is not precise and repeats the selected entity". Measuring the live
+route first, rather than guessing:
+
+| Source | Before | After |
+| --- | --- | --- |
+| اشخاص | READY, 6 source + 4 company | READY, 6 + 4 |
+| فرصت‌ها | **SOURCE_UNKNOWN, 0 fields** | READY, 4 source + 6 recipient + 4 company |
+| ارتباطات | **SOURCE_UNKNOWN, 0 fields** | READY, 13 + 6 + 4 |
+| سرنخ‌های همایش | **SOURCE_UNKNOWN, 0 fields** | `SOURCE_UNAVAILABLE` (explicit) |
+
+Three of four sources returned **no variables at all**, and the audit showed **zero** duplicate
+descriptors. So the reported "repetition" was not the primary symptom.
+
+### 2. The actual cause, found by reading the deployed artifact
+
+The catalog was authorized by **probing one random record per field** and treating "the key came
+back" as proof of access. That conflated two different questions — *which fields exist* and *which
+are visible* — and made the first one depend on a record.
+
+The decisive evidence was the **generated SDK client**, which is built **per application**:
+
+```
+/…/generated-sdk-client/twenty-client-sdk.zip → dist/core.mjs (908 KB)
+  communications = 3      person = 48     sourceRecordId = 7
+  opportunities  = 3      eventLead = 0   eventRegistrations = 0
+```
+
+`eventLead` and `eventRegistrations` are **absent** from the client the app queries with, because
+those objects belong to a **different custom application**:
+
+| Object | Owning application |
+| --- | --- |
+| communication | `768bca20…` — **this app** |
+| person / opportunity / company | `20202020-64aa-4b6f…` — Standard |
+| eventLead / eventRegistrations | `deceaeac-0fb2-4105-83b7…` — **another app** |
+
+The probe's read therefore failed for them, every field was declared unauthorized, and the catalog
+came back empty. Confirmed on the app's own route: `source-records` returned 1 record for
+`communication` and 6 for `opportunity`, and `UNEXPECTED` for both event objects.
+
+### 3. Two more real defects the matrix exposed
+
+- **A field list derived from a RECORD also leaked data.** The working `communication` catalog
+  advertised `@source.sourceRecordId` — this app's own provenance column ("The record this message
+  was composed from"). It is now excluded by an explicit marker on the field's own description, and
+  verified absent.
+- **The `Company` group was injected for every source.** It is now emitted only when the source can
+  reach a Company, with a read path through the recipient relation and the Person's own `company`
+  field. For a **Person** source the record *is* the recipient, so the path is just the `company`
+  field — which is why that group is **kept** there and the user's live `W15-MAIN Greeting`
+  (`@company`) still resolves.
+
+### 4. The platform's real permission boundary (measured, and it changed the design twice)
+
+- **An app-scoped token CANNOT read `getRoles`.** The resolver is guarded by
+  `SettingsPermissionGuard(PermissionFlagType.ROLES)` in `role.resolver.ts`, which an app does not
+  hold. Probed field by field: `getRoles { id }`, `{ canReadAllObjectRecords }`,
+  `{ objectPermissions { … } }`, `{ fieldPermissions { … } }` all answer a **USER** token fine, but
+  the app route's own client throws. The earlier code comment asserting this is correct.
+- **`UserWorkspace.objectsPermissions` is only reachable as a user**, so it is not available to an
+  app route either.
+- **A 0.1.64 diagnostic build settled it**, separating the two failure modes: the app route reports
+  `ROLE_QUERY_ERROR`, i.e. the query **threw**, not "the role was missing from the result".
+
+**Consequence, stated plainly:** the field list comes from metadata, and visibility is filtered by
+the platform's own record-read enforcement. A user role id **is** readable and is applied as an
+additional restriction on top. What is NOT claimed: that the app can compute the user's effective
+permissions from role metadata — it cannot, on this build.
+
+### 5. What the catalog is now
+
+| Concern | Rule |
+| --- | --- |
+| Which fields EXIST | metadata, per object, safe scalar types only |
+| Which are VISIBLE | the platform's own read enforcement, plus the user role's restrictions |
+| Descriptor identity | object UID + field UID + metadata type + read path + token; dedupe on identity, never a label |
+| FULL_NAME | built from the field the object **declares**; all of them, not the first; labels only disambiguate when an object declares more than one |
+| Names | `nameSingular`/`namePlural` from metadata, never `+ 's'` |
+| Composites | exactly the platform's own shapes in `mapFieldMetadataToGraphQLQuery.ts` (FULL_NAME `{firstName,lastName}`, CURRENCY `{amountMicros,currencyCode}`, LINKS `{primaryLinkUrl,…}`, EMAILS `{primaryEmail}`) |
+| Unreachable object | `SOURCE_UNAVAILABLE` — an explicit outcome, not an empty list that looks like "no fields" |
+
+`@source.name` appears on both فرصت‌ها and ارتباطات. That is **not** a duplicate descriptor: they are
+different fields on different objects, and the identity key distinguishes them.
+
+### 6. Live acceptance
+
+Route matrix (above) plus the browser round-trip on the template record page, switching all four
+sources in sequence:
+
+| Selected | Groups rendered | State |
+| --- | --- | --- |
+| افراد | «افراد» 6, company 4 | `ready` |
+| ثبت‌نام های همایش | — | `source-unavailable` |
+| سرنخ های همایش | — | `source-unavailable` |
+| فرصت‌ها | «فرصت‌ها» 4, recipient 6, company 4 | `ready` |
+| ارتباطات | «ارتباطات» 13, recipient 6, company 4 | `ready` |
+
+Every error state is distinct and Persian; `sourceRecordId` is absent; no `@source.*` token appears
+for a Person source.
+
+### 7. Checks
+
+App: **typecheck 0**, **lint 0/0**, **741/741** in 68 files. The probe-based tests were replaced by
+ones that pin the new division of labour, including that the probe can only REMOVE a metadata field
+and that an unreadable source reports `SOURCE_UNAVAILABLE` rather than an empty list.
+
+### 8. Data
+
+No fixture was created this run; the task needed none and the acceptance used read-only routes plus
+one read-only page visit. `messageTemplate` remains 9 rows (2 live user templates), `communication`
+1 row, and `W15-MAIN Greeting` / «تست ارسال گروهی» are untouched — which the `@company` check above
+specifically verifies. No soft-delete was performed because nothing was created. Seven provider
+variables intact, W7 disabled, no real SMS, APPLE/app2 untouched.
+
+### 9. The `new form` limitation is unchanged
+
+«الگوی پیام جدید» still offers only «عنوان»/«متن»/«نام»; source selection, variables and preview
+appear only after the record is created. Not addressed here, by scope, and still recorded as an open
+defect.
+
 ## CRM-TEMPLATES-CONTEXTUAL-SEND-03 — the existing send path became record-aware; a live 500 fell out of it (0.1.61/0.1.62)
 
 Baseline `a2a3e536e20b5aa234f61593a9de3dd532a094bb` → tip `4cd531f841`; apps 0.1.61 then 0.1.62
