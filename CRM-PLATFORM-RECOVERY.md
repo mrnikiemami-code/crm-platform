@@ -86,6 +86,80 @@ The following reports are retained without rewriting their contents.
 They are not the active plan, are not proof of current live behavior, and may contain
 superseded conclusions. The checkpoint and linked plan above control subsequent work.
 
+## CRM-TEMPLATE-ENTITY-QUERY-FIX-01 — the three outcomes are now distinct; two sources remain PARTIAL (0.1.66 → 0.1.68)
+
+Baseline `2a90b02e21df142009eec5c57dbb843fda430d4a` → tip `67cf0e6b2b`; apps 0.1.66, 0.1.67
+then 0.1.68 on main/4D; host unchanged. Wall clock 16:35–17:30 UTC. **HEAD = origin/crm-platform.**
+
+### 1. The cause, measured
+
+The catalog collapsed **three different outcomes** into one empty field list, so none of them was
+diagnosable:
+
+| Situation | Was | Now |
+| --- | --- | --- |
+| Object has no rows | empty catalog | **full catalog** + the sample picker says «رکوردی موجود نیست» |
+| Object not in the client's schema | empty catalog | `SOURCE_NOT_QUERYABLE` |
+| Every field refused | empty catalog | `SOURCE_UNAVAILABLE` |
+
+`classifyObjectReachability` decides which, from the **failure mode** of one minimal valid query: an
+empty table is a successful empty connection, a refusal is a permission error, and anything else is
+"not queryable".
+
+**And the boundary is the CLIENT, not the request.** Verified against the deployed artifact: the
+generated `dist/core.mjs` embeds its own schema, and `eventLeads` is absent from it (index `-1`)
+while `communications` and `opportunities` are present. `eventLead`/`eventRegistrations` belong to a
+**different application** (`deceaeac…`), and an app's client is built per application — so the
+request never leaves the process. An earlier hypothesis that a request-time schema filter was
+responsible was wrong and is superseded here: `direct-execution` does pass `req.application.id`, but
+for this app the client fails first.
+
+### 2. Item 4 was a real defect, and it is fixed
+
+`userWorkspaceId` was being passed as `userRoleId` in three places. It identifies the **USER**, not
+their **ROLE**, so it matched nothing — a silent no-op that read as if role restrictions were being
+applied. It is now omitted, with the reason recorded in place: an app-scoped token cannot read role
+metadata at all (measured earlier: `getRoles` is guarded by `PermissionFlagType.ROLES`), so the
+platform's own read enforcement is the authority on visibility.
+
+### 3. Item 5 was already satisfied, and is now pinned by tests
+
+Discovery is metadata-driven with no hard-coded name list; Person is directly eligible; other
+sources need a **MANY_TO_ONE** relation to Person; `ONE_TO_MANY` is excluded; several relations force
+an explicit choice; nothing substitutes a random record or person.
+
+### 4. Acceptance
+
+| Row | Result |
+| --- | --- |
+| افراد → person fields, no duplicate source group | **PASS** — `source:6` + `company:4`, no `source.*` |
+| فرصت‌ها and ارتباطات → their own fields, no leftovers | **PASS** — `source:4` and `source:13`, each with `recipient:6` + `company:4` |
+| سرنخ‌ها and ثبت‌نام‌های همایش → readable fields, SDK membership not a blocker | **FAIL → PARTIAL.** Still `SOURCE_NOT_QUERYABLE`. These objects belong to another application and are absent from this app's generated client, so no query is possible from here. |
+| Allowed entity with NO records → catalog shown, sample says «no records» | **PASS** — full catalog, `sampleState: EMPTY`, picker disabled |
+| Another app's custom field → shown and read correctly | **PARTIAL** — same blocker as above |
+| Two records, one shared person, different source values | **PASS** (verified in the previous task; unchanged) |
+| Save and reload → source, relation, text, catalog all return | **PASS** (unchanged; verified previously) |
+
+Browser verification: switching all four sources in sequence, the typed body `KEEP @person.firstName`
+survived **every** switch unchanged, the previous source's fields never lingered, and the unavailable
+sources disabled the sample picker rather than offering an empty list.
+
+**This task is PARTIAL, not PASS.** Two of the seven acceptance rows cannot pass from this app, and
+an error message is explicitly not acceptance. The remaining path needs a platform mechanism for
+cross-application object access; there is no manifest field for it today, and changing object
+ownership or widening schema scope is out of scope by the task's own rule.
+
+### 5. Checks
+
+App: **typecheck 0**, **lint 0/0**, **742/742** in 68 files, including tests that pin the three
+outcomes apart and that the field list survives an object with no records.
+
+### 6. Data
+
+No fixture was created; the acceptance used read-only routes and one read-only page visit, and the
+typed text was never saved. `messageTemplate` remains 9 rows with both user templates untouched.
+Nothing was soft-deleted because nothing was created.
+
 ## CRM-TEMPLATES-METADATA-QUERY-CORRECTION — why three of four sources had no variables, and what the catalog is now (0.1.63 → 0.1.65)
 
 Baseline `1c667119a048f6609b54502858ef29fb7cda8d0f` → tip `0fd2e852c3`; apps 0.1.63, 0.1.64
