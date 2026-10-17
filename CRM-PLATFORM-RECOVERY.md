@@ -1,16 +1,5 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
-## 2026-10-16 — new-template form now shares the record editor (0.1.71; not deployed)
-
-Baseline: `a51ec331` (installed 0.1.70). The remaining user complaint was the generic title/body/name creation panel. Its entry points all converge on `RecordCreationFormProvider` → `SidePanelRecordCreationFormPage`; editing instead renders the Communication front component. The creation page now resolves the template object by its universal identifier and the create component by identifier plus application ownership, and renders that component with the host-allocated draft UUID. Other objects keep their native form. Missing component gives a Persian update message, not the incomplete legacy form.
-
-Create and edit now import one `template-editor.tsx`. Creation loads eligible sources, catalog, to-one relation choices, source samples, insertion and preview before any write. Multiple recipient relations require a choice. Draft preview omits templateId, validates the requested source and uses the existing catalog/preview engine; it creates no placeholder. `create-template` is added to the fixed host allow-list and the existing user guard. It writes title, body, stable source and relation identifiers in one native create mutation. The host draft UUID makes retry idempotent: an identical existing write is returned, a different record is never overwritten. A failed create keeps the draft. Success navigates to the record editor; later saves use existing CAS. Cancel/discard creates nothing.
-
-Validation: app **766/766 across 74 files**, typecheck exit 0, lint 0/0; host routing helper **4/4** (run with Vitest globals; Jest-compatible test assertions). New behavior tests cover source switching, insertion once, draft preview, double-click, retry after failure, cancel/discard, multiple to-one relations, authentication rejection, forged relation rejection, and ambiguous successful create recovery. The built creation bundle is checked through the real SDK Persian translation runtime. Fork SDK 2.42 build: **32 output files**. Package `communication-0.1.71.tgz`: **2,935,313 bytes**, SHA256 `e474829075dde6df07b5d4b3d696dd423f49c9eaac8827a2c1c6234035714fbf`. No data or provider settings were touched.
-
-**Not installed or browser-accepted.** Both local-bridge connectors returned MCP -32603 Internal error. This environment has no running main/4D host. Full twenty-front build/typecheck was not run here (host dependencies are absent); only its routing unit tests and the app build/typecheck were run. This release needs BOTH the twenty-front source update and the 0.1.71 app: installing the app alone leaves the old create entry point, and updating the host alone shows the explicit missing-editor message. No renderer or SDK runtime change is needed. The older statement “new form not started” is superseded for code, not for deployment.
-
-
 Last updated: 2026-10-16 — 0.1.69 INSTALLED and ACCEPTED on main/4D as **0.1.70**, after one real defect was found and fixed (a nil UUID rejected by the platform's UUID validation made every field probe throw, so all five sources failed). Cross-application sources now WORK — `eventLeads`, owned by another application and absent from this app's client, is readable through the workspace record API. The New form remains a separate open defect.
 
 ## Purpose
@@ -26,6 +15,59 @@ Local source path used during development: `D:\CrmSource\twenty`
 ---
 
 # CURRENT CHECKPOINT
+
+## 2026-10-17 — shared create editor INSTALLED and ACCEPTED (Communication 0.1.71)
+
+Baseline `a51ec33145` → tip `8a86b29a3a`, fast-forward only, worktree preserved. The New command now
+opens the **same editor** as the record page, and all acceptance rows pass in the browser.
+
+### The host change is live WITHOUT a restart
+
+`twenty-front` is served by a dev server on port **3001** (a Windows node/nx process), so it picked the
+new `resolveTemplateCreationEditor` up by HMR. Confirmed by fetching the module from the dev server and
+seeing the new identifiers in it — no rebuild, no restart. **`twenty-server-1` was not touched.**
+
+### Acceptance
+
+| Row | Result |
+| --- | --- |
+| A — full editor before any record exists | **PASS** — title, source, body, variables, sample, preview; no technical ids |
+| B — all five sources show their own fields; typed text kept, no leftovers | **PASS** — افراد 6, ثبت‌نام‌ها 5, سرنخ‌ها 6, فرصت‌ها 4, ارتباطات 13; body preserved across every switch |
+| C — explicit relation only when needed; no collection offered | **PASS** — no picker appears, because every source here has exactly ONE eligible MANY_TO_ONE relation, which is auto-selected and was stored correctly |
+| D — one insertion, sample shows that record's value | **PASS** — `@source.name` inserted exactly once; preview «منبع: Platform Migration» |
+| E — drafting/switching/previewing creates NO record | **PASS** — 10 rows before and after |
+| F — Create makes ONE row and opens it | **PASS** — `064d3d6b…`, title/body/`sourceObjectUid`/`recipientRelationUid` all stored |
+| G — list + reload + edit→save→reload | **PASS** — row appears; edit persisted through reload |
+| H — cancel with discard creates NOTHING | **PASS** — discard prompt shown, then 0 draft rows |
+| I — 0.1.70 edit/preview not regressed | **PASS** — «منبع: Platform Migration — ویرایش‌شده ۰۱۷۱» |
+
+### Two measurement traps worth recording
+
+1. **The API port is 3002**, not 3000. Direct route diagnostics against 3000 gave inconsistent results
+   and one spurious `UNEXPECTED`; the browser was unaffected.
+2. **Do not sweep source options in one pass.** `catalogState` can still read `ready` from the
+   PREVIOUS source while the new request is in flight, so a naive sweep reports empty groups. Settle on
+   the rendered group TITLE matching the selected source's label, then read the groups. Doing that, all
+   five sources are correct.
+
+### Deployment
+
+Communication **0.1.71**, package `communication-0.1.71.tgz` — **2,934,359 bytes**, SHA256
+`740502a5520916d61c9c7fcae2e15e0cc4f734b70870268b3acabb5a9338c8d3`; `fa-IR` verified with 268 keys.
+Built with this fork's own SDK (`/tool`, 2.42.0). Backup and restore-verification:
+`D:\twenty-main-backup\pre-0171-20261017-1548\main-default.dump`.
+
+The declared `@testing-library/user-event` dependency was **missing from the build container** and had
+to be supplied — the same gap that broke the 0.1.69 build. It belongs in the build image.
+
+### Data
+
+One fixture created by the UI and **soft-deleted by exact id**: `064d3d6b-2a8b-4b6c-9ac7-27ba0eaf1d21`.
+The two user templates are untouched. A third live row, «تست», appeared at 14:15 UTC **created by the
+user**, not by this run — noted so it is not mistaken for a fixture leak.
+
+**Still open:** nothing from this task. The «الگوی پیام جدید» defect recorded on 2026-10-16 is now
+CLOSED by 0.1.71.
 
 ## 2026-10-16 — 0.1.69 INSTALLED and ACCEPTED on main/4D, after one real defect was found and fixed (0.1.70)
 
