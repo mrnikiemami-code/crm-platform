@@ -19,6 +19,8 @@ import {
 // their own elements; no modal, portal or document-level events are involved.
 // The host bridge authenticates the user; the app-token path fails closed.
 
+type EditorField = 'title' | 'body' | 'source' | 'relation';
+
 type VariableItem = { token: string; label: string };
 type PreviewIssue = { token: string; kind: 'EMPTY_FIELD' | 'UNKNOWN_VARIABLE' };
 
@@ -256,6 +258,9 @@ export const TemplateEditor = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<EditorField, string>>
+  >({});
   const [savedNotice, setSavedNotice] = useState(false);
   const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
 
@@ -286,6 +291,53 @@ export const TemplateEditor = ({
     setIsPreviewIncomplete(false);
     setIsPreviewing(false);
   }, []);
+
+  // Use the platform's existing toast and keep a persistent inline message.
+  const showError = async (
+    message: string,
+    target: 'save' | 'preview' = 'save',
+  ) => {
+    if (target === 'save') setSaveError(message);
+    else setPreviewError(message);
+    try {
+      await enqueueSnackbar({ message, variant: 'error' });
+    } catch {
+      // A disconnected toast bridge must not hide the in-form error.
+    }
+  };
+
+  const clearFieldError = (field: EditorField) => {
+    setFieldErrors((previous) => ({ ...previous, [field]: undefined }));
+    setSaveError(null);
+  };
+
+  const saveFailureMessage = (code: string) => {
+    switch (code) {
+      case 'CONFLICT':
+        return t(
+          'Someone else changed this template. Your text is kept. Reload before saving.',
+        );
+      case 'TEMPLATE_CONTEXT_MISMATCH':
+        return t(
+          'The selected source or recipient relation is no longer available. Choose them again.',
+        );
+      case 'INVALID_INPUT':
+        return t(
+          'The template information is invalid. Check the title, message and recipient source.',
+        );
+      case 'NOT_FOUND':
+        return t('This template no longer exists. Your text has been kept.');
+      case 'FORBIDDEN':
+      case 'PERMISSION_DENIED':
+        return t(
+          'You do not have permission to save this template. Your text has been kept.',
+        );
+      default:
+        return t(
+          'The template could not be saved. Your changes have been kept. Please try again.',
+        );
+    }
+  };
 
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -629,6 +681,7 @@ export const TemplateEditor = ({
     });
 
     setBody(next.body);
+    clearFieldError('body');
     clearPreview();
     setSavedNotice(false);
   };
@@ -660,6 +713,7 @@ export const TemplateEditor = ({
     setSourceObjectUid(snapshot.sourceObjectUid);
     setRecipientRelationUid(snapshot.recipientRelationUid);
     setIsConfirmingDiscard(false);
+    setFieldErrors({});
     setSaveError(null);
     setSavedNotice(false);
     setSampleRecordId('');
@@ -678,15 +732,22 @@ export const TemplateEditor = ({
       return;
     }
 
-    if (
-      title.trim().length === 0 ||
-      body.trim().length === 0 ||
-      sourceObjectUid.length === 0 ||
-      (!isPersonSource && recipientRelationUid.length === 0)
+    const errors: Partial<Record<EditorField, string>> = {};
+    if (title.trim().length === 0) errors.title = t('A title is required.');
+    if (body.trim().length === 0) errors.body = t('Enter the message text.');
+    if (selectedSource === undefined)
+      errors.source = t('Choose a source entity.');
+    else if (
+      !isPersonSource &&
+      !relationOptions.some(
+        (relation) => relation.relationUid === recipientRelationUid,
+      )
     ) {
-      setSaveError(
-        t('Enter a title, message and recipient source before saving.'),
-      );
+      errors.relation = t('Choose the relation that identifies the recipient.');
+    }
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      await showError(Object.values(errors).join(' '));
       return;
     }
     savingRef.current = true;
@@ -710,24 +771,19 @@ export const TemplateEditor = ({
       }
 
       if (payload.success !== true) {
-        if (payload.isConflict === true) {
-          // The typed text is KEPT: discarding the user's work is exactly what
-          // they are trying to avoid.
-          setSaveError(
-            readString(payload.message) ||
-              t('Someone else changed this template. Reload before saving.'),
-          );
-          return;
-        }
-
-        setSaveError(t('The template could not be saved.'));
+        await showError(
+          saveFailureMessage(
+            readString(payload.errorCode) ||
+              (payload.isConflict === true ? 'CONFLICT' : ''),
+          ),
+        );
         return;
       }
 
       const updated = asRecord(payload.template);
 
       if (updated === null || readString(updated.id).length === 0) {
-        setSaveError(t('The template could not be saved.'));
+        await showError(saveFailureMessage(''));
         return;
       }
       if (updated !== null) {
@@ -740,27 +796,34 @@ export const TemplateEditor = ({
         });
       }
 
+      setSavedNotice(true);
+      try {
+        await enqueueSnackbar({
+          message: t('The template was saved.'),
+          variant: 'success',
+        });
+      } catch {
+        // The saved state is authoritative even if the notification fails.
+      }
       if (isCreating) {
         setCreatedTemplateId(readString(updated.id));
-        // After a successful write, any later Save uses CAS on this record.
-        // Navigation failing must never cause a second creation.
+        // Retain the saved id even if navigation fails, so retry cannot create
+        // another record. Creation returns to the existing native list.
         try {
-          await navigate(AppPath.RecordShowPage, {
-            objectNameSingular: 'messageTemplate',
-            objectRecordId: readString(updated.id),
+          await navigate(AppPath.RecordIndexPage, {
+            objectNamePlural: 'messageTemplates',
           });
           await closeSidePanel();
         } catch {
-          // The saved record remains editable here if navigation is unavailable.
+          await showError(
+            t(
+              'The template was saved, but the list could not be opened. Open SMS templates from the sidebar.',
+            ),
+          );
         }
       }
-      setSavedNotice(true);
-      await enqueueSnackbar({
-        message: t('The template was saved.'),
-        variant: 'success',
-      });
     } catch {
-      setSaveError(t('The template could not be saved.'));
+      await showError(saveFailureMessage(''));
     } finally {
       savingRef.current = false;
       setIsSaving(false);
@@ -803,8 +866,9 @@ export const TemplateEditor = ({
       }
 
       if (payload.success !== true) {
-        setPreviewError(
+        await showError(
           readString(payload.message) || t('The preview could not be built.'),
+          'preview',
         );
         return;
       }
@@ -813,7 +877,7 @@ export const TemplateEditor = ({
       const first = asRecord(previews[0]);
 
       if (first === null || typeof first.previewText !== 'string') {
-        setPreviewError(t('The preview could not be built.'));
+        await showError(t('The preview could not be built.'), 'preview');
         return;
       }
 
@@ -838,7 +902,7 @@ export const TemplateEditor = ({
       setPreviewText(readString(first?.previewText));
     } catch {
       if (requestId === previewRequestIdRef.current)
-        setPreviewError(t('The preview could not be built.'));
+        await showError(t('The preview could not be built.'), 'preview');
     } finally {
       if (requestId === previewRequestIdRef.current) setIsPreviewing(false);
     }
@@ -888,24 +952,42 @@ export const TemplateEditor = ({
         <input
           type="text"
           aria-label={t('Title')}
+          aria-required="true"
+          aria-invalid={fieldErrors.title !== undefined}
+          aria-describedby={
+            fieldErrors.title ? 'template-title-error' : undefined
+          }
           disabled={isSaving}
           value={title}
           onChange={(event) => {
             setTitle(event.target.value);
+            clearFieldError('title');
             setSavedNotice(false);
           }}
           style={styles.control}
         />
+        {fieldErrors.title && (
+          <p id="template-title-error" role="alert" style={styles.error}>
+            {fieldErrors.title}
+          </p>
+        )}
       </div>
 
       <div style={styles.field} data-editor-source>
         <span style={styles.label}>{t('Source entity')}</span>
         <select
           aria-label={t('Source entity')}
+          aria-required="true"
+          aria-invalid={fieldErrors.source !== undefined}
+          aria-describedby={
+            fieldErrors.source ? 'template-source-error' : undefined
+          }
           disabled={isSaving}
           value={sourceObjectUid}
           onChange={(event) => {
             const nextUid = event.target.value;
+            clearFieldError('source');
+            clearFieldError('relation');
             clearPreview();
             setSourceObjectUid(nextUid);
             setSampleRecordId('');
@@ -946,6 +1028,16 @@ export const TemplateEditor = ({
             </option>
           ))}
         </select>
+        {fieldErrors.source && (
+          <p id="template-source-error" role="alert" style={styles.error}>
+            {fieldErrors.source}
+          </p>
+        )}
+        {fieldErrors.relation && relationOptions.length <= 1 && (
+          <p id="template-relation-error" role="alert" style={styles.error}>
+            {fieldErrors.relation}
+          </p>
+        )}
       </div>
 
       {relationOptions.length > 1 && (
@@ -953,10 +1045,16 @@ export const TemplateEditor = ({
           <span style={styles.label}>{t('Recipient relation')}</span>
           <select
             aria-label={t('Recipient relation')}
+            aria-required="true"
+            aria-invalid={fieldErrors.relation !== undefined}
+            aria-describedby={
+              fieldErrors.relation ? 'template-relation-error' : undefined
+            }
             disabled={isSaving}
             value={recipientRelationUid}
             onChange={(event) => {
               const nextRelationUid = event.target.value;
+              clearFieldError('relation');
               setRecipientRelationUid(nextRelationUid);
               setSampleRecordId('');
               clearPreview();
@@ -974,6 +1072,11 @@ export const TemplateEditor = ({
               </option>
             ))}
           </select>
+          {fieldErrors.relation && (
+            <p id="template-relation-error" role="alert" style={styles.error}>
+              {fieldErrors.relation}
+            </p>
+          )}
         </div>
       )}
 
@@ -982,11 +1085,17 @@ export const TemplateEditor = ({
         <textarea
           ref={bodyRef}
           aria-label={t('Message body')}
+          aria-required="true"
+          aria-invalid={fieldErrors.body !== undefined}
+          aria-describedby={
+            fieldErrors.body ? 'template-body-error' : undefined
+          }
           disabled={isSaving}
           value={body}
           rows={10}
           onChange={(event) => {
             setBody(event.target.value);
+            clearFieldError('body');
             clearPreview();
             setSavedNotice(false);
           }}
@@ -998,6 +1107,11 @@ export const TemplateEditor = ({
             fontFamily: 'inherit',
           }}
         />
+        {fieldErrors.body && (
+          <p id="template-body-error" role="alert" style={styles.error}>
+            {fieldErrors.body}
+          </p>
+        )}
       </div>
 
       <div style={styles.field} data-editor-variables>
@@ -1119,14 +1233,7 @@ export const TemplateEditor = ({
         <button
           type="button"
           style={styles.primaryButton}
-          disabled={
-            isSaving ||
-            !isDirty ||
-            title.trim().length === 0 ||
-            body.trim().length === 0 ||
-            sourceObjectUid.length === 0 ||
-            (!isPersonSource && recipientRelationUid.length === 0)
-          }
+          disabled={isSaving || (!isCreating && !isDirty)}
           onClick={() => void handleSave()}
         >
           {isSaving
@@ -1177,7 +1284,11 @@ export const TemplateEditor = ({
         </div>
       )}
 
-      {saveError !== null && <p style={styles.error}>{saveError}</p>}
+      {saveError !== null && (
+        <p role="alert" style={styles.error}>
+          {saveError}
+        </p>
+      )}
 
       <div
         style={styles.field}
@@ -1284,7 +1395,11 @@ export const TemplateEditor = ({
             )}
           </div>
         )}
-        {previewError !== null && <p style={styles.error}>{previewError}</p>}
+        {previewError !== null && (
+          <p role="alert" style={styles.error}>
+            {previewError}
+          </p>
+        )}
       </div>
     </div>
   );

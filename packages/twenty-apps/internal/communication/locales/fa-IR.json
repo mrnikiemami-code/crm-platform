@@ -285,5 +285,16 @@
   "This field is empty on the selected sample record.": "این فیلد در رکورد نمونهٔ انتخاب‌شده خالی است.",
   "This variable is unavailable for the selected source or your access.": "این متغیر برای منبع انتخاب‌شده یا سطح دسترسی شما در دسترس نیست.",
   "Create template": "ایجاد الگو",
-  "Enter a title, message and recipient source before saving.": "عنوان، متن و منبع گیرنده را پیش از ذخیره تکمیل کنید."
+  "Enter a title, message and recipient source before saving.": "عنوان، متن و منبع گیرنده را پیش از ذخیره تکمیل کنید.",
+  "A title is required.": "عنوان الگو را وارد کنید.",
+  "Enter the message text.": "متن پیام را وارد کنید.",
+  "Choose a source entity.": "موجودیت منبع را انتخاب کنید.",
+  "Choose the relation that identifies the recipient.": "رابطه‌ای را که گیرنده را مشخص می‌کند انتخاب کنید.",
+  "Someone else changed this template. Your text is kept. Reload before saving.": "این الگو در جای دیگری تغییر کرده است. متن شما حفظ شده؛ پیش از ذخیره، صفحه را تازه کنید.",
+  "The selected source or recipient relation is no longer available. Choose them again.": "منبع یا رابطهٔ گیرنده دیگر در دسترس نیست. آن‌ها را دوباره انتخاب کنید.",
+  "The template information is invalid. Check the title, message and recipient source.": "اطلاعات الگو معتبر نیست. عنوان، متن و منبع گیرنده را بررسی کنید.",
+  "This template no longer exists. Your text has been kept.": "این الگو دیگر وجود ندارد. متن شما حفظ شده است.",
+  "You do not have permission to save this template. Your text has been kept.": "اجازهٔ ذخیرهٔ این الگو را ندارید. متن شما حفظ شده است.",
+  "The template could not be saved. Your changes have been kept. Please try again.": "ذخیرهٔ الگو انجام نشد. تغییرات شما حفظ شده است؛ دوباره تلاش کنید.",
+  "The template was saved, but the list could not be opened. Open SMS templates from the sidebar.": "الگو ذخیره شد، اما فهرست باز نشد. از منوی کناری «الگوهای پیامک» را باز کنید."
 }

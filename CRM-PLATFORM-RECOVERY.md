@@ -1,5 +1,16 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
+## 2026-10-17 — explicit validation and return to list (Communication 0.1.72; not deployed)
+
+The 0.1.71 create button was disabled whenever title/body/source/relation was missing. That made its validation handler unreachable and gave the user no reason. Invalid creation forms now remain actionable; Save reports each missing field in Persian, marks it with aria-invalid/associated inline feedback, and uses the existing SDK enqueueSnackbar(error). This is the same native host toast used by single-person-composer; no custom message box was added. Validation performs no write. Stable save failure codes and preview failures use the same notification surface plus persistent inline errors. Typed content remains intact.
+
+Successful creation now navigates to AppPath.RecordIndexPage with objectNamePlural=messageTemplates and closes the creation panel, rather than opening the new record editor. A navigation error after a successful write explicitly says the template WAS saved and gives the sidebar route; it is never reported as a failed save or retried as another creation. Existing record editing retains its save-in-place behavior and CAS.
+
+Validation: **771/771 tests across 74 files**, app typecheck exit 0, lint 0 warnings/errors. UI regressions cover empty and whitespace-only title, empty body, correction of field errors, required recipient relation, no write on invalid input, native error severity, server context rejection, retained text, conflict, return-to-list after success, and failed navigation after a successful create. Built Persian catalog checked using the real SDK translation runtime. Fork SDK 2.42 build succeeded (32 files). Package `communication-0.1.72.tgz`: **2,941,235 bytes**, SHA256 `aec2c14df3f70f605b2c04cb7affc9ab8d140bebf2d18c17abadc2a655e635ca`.
+
+**Deployment/live acceptance not performed**: local bridge health again returned MCP -32603 Internal error. This patch changes only Communication; the twenty-front integration from 0.1.71 is still required as the baseline, but has no additional host change in 0.1.72. No live records, provider settings or roles were touched; no SMS sent.
+
+
 ## 2026-10-16 — new-template form now shares the record editor (0.1.71; not deployed)
 
 Baseline: `a51ec331` (installed 0.1.70). The remaining user complaint was the generic title/body/name creation panel. Its entry points all converge on `RecordCreationFormProvider` → `SidePanelRecordCreationFormPage`; editing instead renders the Communication front component. The creation page now resolves the template object by its universal identifier and the create component by identifier plus application ownership, and renders that component with the host-allocated draft UUID. Other objects keep their native form. Missing component gives a Persian update message, not the incomplete legacy form.

@@ -1,10 +1,10 @@
 # Shared template creation and editing
 
-Implemented in Communication 0.1.71 against a51ec331.
+Initial implementation: Communication 0.1.71 against a51ec331. Validation and navigation correction: 0.1.72.
 
 ## Result
 
-The existing native New command opens the same editor as the record page: title, one source selector, explicit recipient relation when needed, body, source-specific variables, sample and preview. It creates no record until Create. After successful creation it opens that record. Cancel/discard creates no record.
+The existing native New command opens the same editor as the record page: title, one source selector, explicit recipient relation when needed, body, source-specific variables, sample and preview. It creates no record until Create. An incomplete form keeps Create actionable and explains the missing fields with native error toasts and persistent inline feedback. After successful creation it returns to the native template list. Cancel/discard creates no record.
 
 The native list, deletion, existing record layout and CAS edit save remain in place. No new table or user-data migration.
 
@@ -18,7 +18,7 @@ The native list, deletion, existing record layout and CAS edit save remain in pl
 
 ## Deployment state
 
-Not installed from this environment. Both local bridges returned Internal error. Update twenty-front and install Communication 0.1.71 together; the renderer package is unchanged. Reload the host source/build according to its existing runtime. The app tarball alone cannot replace the native host creation page.
+Not installed from this environment. Both local bridges returned Internal error. Update twenty-front and install Communication 0.1.72 together; the renderer package is unchanged. Reload the host source/build according to its existing runtime. The app tarball alone cannot replace the native host creation page.
 
 ## User acceptance still requiring main/4D
 

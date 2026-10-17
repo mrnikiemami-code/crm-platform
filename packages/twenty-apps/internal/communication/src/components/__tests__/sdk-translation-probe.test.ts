@@ -67,6 +67,12 @@ describe('produced bundle translation (build-boundary witness)', () => {
       JSON.parse(banner.slice(prefix.length).replace(/;\s*$/, '')),
     );
     expect(sdkTranslate('Create template')).toBe('ایجاد الگو');
+    expect(sdkTranslate('A title is required.')).toBe(
+      'عنوان الگو را وارد کنید.',
+    );
+    expect(sdkTranslate('Enter the message text.')).toBe(
+      'متن پیام را وارد کنید.',
+    );
     expect(sdkTranslate('Source entity')).toBe('موجودیت منبع');
   });
 
