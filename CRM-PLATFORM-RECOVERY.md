@@ -1,5 +1,13 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
+## 2026-10-18 — Brand Independence execution plan (documentation only)
+
+The user authorized a technical execution program to remove Twenty-facing branding, links, remote assets, outbound vendor dependencies and upstream installation/update dependencies. Codex owns supervision and final independent acceptance; Cursor executes bounded tasks. Help is explicitly internal/same-origin, including its search and support entry points. No screenshots are requested.
+
+Canonical plan: [docs/plans/brand-independence.md](docs/plans/brand-independence.md). Active first task: [BI-01 internal Help](docs/tasks/BI-01-internal-help.md). Execution ledger and review protocol: [docs/recovery/brand-independence.md](docs/recovery/brand-independence.md). Start recovery there for this program.
+
+Source baseline audited: `acb99294fe49f29d90a4064eef9546a7842f4bbf`. This commit only records the plan/task; implementation, deployment and acceptance are NOT performed. Existing worktrees and customer records/settings are untouched. Cursor must preserve unrelated changes, work on a separate branch, report exact SHAs and A–J evidence, then stop for Codex review before the next task or main-branch merge.
+
 ## 2026-10-17 — explicit validation and return to list (Communication 0.1.72; not deployed)
 
 The 0.1.71 create button was disabled whenever title/body/source/relation was missing. That made its validation handler unreachable and gave the user no reason. Invalid creation forms now remain actionable; Save reports each missing field in Persian, marks it with aria-invalid/associated inline feedback, and uses the existing SDK enqueueSnackbar(error). This is the same native host toast used by single-person-composer; no custom message box was added. Validation performs no write. Stable save failure codes and preview failures use the same notification surface plus persistent inline errors. Typed content remains intact.
