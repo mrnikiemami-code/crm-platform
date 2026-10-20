@@ -107,7 +107,6 @@ export const SettingsApplicationsDeveloperTab = () => {
               window.location.assign(
                 getDocumentationUrl({
                   locale: currentWorkspaceMember?.locale,
-                  path: '/developers/extend/apps/getting-started',
                 }),
               )
             }

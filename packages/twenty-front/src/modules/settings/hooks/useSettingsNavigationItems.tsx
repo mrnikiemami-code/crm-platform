@@ -10,7 +10,7 @@ import {
 } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { t } from '@lingui/core/macro';
-import { HELP_CENTER_BASE_PATH } from 'twenty-shared/constants';
+import { navigateToHelpCenter } from '@/support/utils/navigateToHelpCenter';
 import {
   IconAppWindow,
   IconApps,
@@ -189,7 +189,7 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
             // Same-origin navigation into the built-in help centre. A full
             // document navigation (not a new tab) keeps Help inside the app and
             // proves direct URL / refresh work the same way as a menu click.
-            window.location.assign(HELP_CENTER_BASE_PATH);
+            navigateToHelpCenter();
           },
           Icon: IconHelpCircle,
         },

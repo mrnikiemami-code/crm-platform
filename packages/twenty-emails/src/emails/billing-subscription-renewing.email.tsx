@@ -12,6 +12,7 @@ type BillingSubscriptionRenewingEmailProps = {
   renewsAt: Date;
   link: string;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 // Sent 7 days before a yearly subscription renews. Goal: never let a large annual
@@ -23,6 +24,7 @@ export const BillingSubscriptionRenewingEmail = ({
   renewsAt,
   link,
   locale,
+  serverUrl,
 }: BillingSubscriptionRenewingEmailProps) => {
   const i18n = createI18nInstance(locale);
   const formattedDate = i18n.date(renewsAt, {
@@ -32,7 +34,7 @@ export const BillingSubscriptionRenewingEmail = ({
   });
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Your plan renews soon')} />
       <MainText>
         {userName?.length > 1 ? (

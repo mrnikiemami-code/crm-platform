@@ -27,6 +27,7 @@ import { WorkspaceDomainsService } from 'src/engine/core-modules/domain/workspac
 import { EmailService } from 'src/engine/core-modules/email/email.service';
 import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { getPublishedHelpOriginFromConfig } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { UserVarsService } from 'src/engine/core-modules/user/user-vars/services/user-vars.service';
 import { UserService } from 'src/engine/core-modules/user/services/user.service';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -333,6 +334,9 @@ export class BillingReminderService {
             ),
             link: billingSettingsUrl,
             locale,
+            serverUrl: getPublishedHelpOriginFromConfig(
+              this.twentyConfigService,
+            ),
           }),
         };
       case 'trial-converting':
@@ -345,6 +349,9 @@ export class BillingReminderService {
             interval: reminder.interval,
             link: billingSettingsUrl,
             locale,
+            serverUrl: getPublishedHelpOriginFromConfig(
+              this.twentyConfigService,
+            ),
           }),
         };
       case 'subscription-renewing':
@@ -356,6 +363,9 @@ export class BillingReminderService {
             renewsAt: reminder.renewsAt,
             link: billingSettingsUrl,
             locale,
+            serverUrl: getPublishedHelpOriginFromConfig(
+              this.twentyConfigService,
+            ),
           }),
         };
     }

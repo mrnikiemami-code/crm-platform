@@ -35,6 +35,7 @@ import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { OnboardingService } from 'src/engine/core-modules/onboarding/onboarding.service';
 import { ThrottlerService } from 'src/engine/core-modules/throttler/throttler.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { getPublishedHelpOriginFromConfig } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { type SendInvitationsDTO } from 'src/engine/core-modules/workspace-invitation/dtos/send-invitations.dto';
 import { castAppTokenToWorkspaceInvitationUtil } from 'src/engine/core-modules/workspace-invitation/utils/cast-app-token-to-workspace-invitation.util';
@@ -393,7 +394,7 @@ export class WorkspaceInvitationService {
             firstName: sender.name.firstName,
             lastName: sender.name.lastName,
           },
-          serverUrl: this.twentyConfigService.get('SERVER_URL'),
+          serverUrl: getPublishedHelpOriginFromConfig(this.twentyConfigService),
           locale: sender.locale,
         };
 

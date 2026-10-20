@@ -13,6 +13,7 @@ type WarnSuspendedWorkspaceEmailProps = {
   workspaceDisplayName: string | undefined;
   link: string;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 export const WarnSuspendedWorkspaceEmail = ({
@@ -22,6 +23,7 @@ export const WarnSuspendedWorkspaceEmail = ({
   workspaceDisplayName,
   link,
   locale,
+  serverUrl,
 }: WarnSuspendedWorkspaceEmailProps) => {
   const i18n = createI18nInstance(locale);
   const daysLeft = inactiveDaysBeforeDelete - daysSinceInactive;
@@ -29,7 +31,7 @@ export const WarnSuspendedWorkspaceEmail = ({
   const remainingDays = daysLeft > 0 ? daysLeft : 0;
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Your workspace is paused')} />
       <MainText>
         {userName?.length > 1 ? (

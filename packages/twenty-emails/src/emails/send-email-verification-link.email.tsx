@@ -10,12 +10,14 @@ type SendEmailVerificationLinkEmailProps = {
   link: string;
   locale: keyof typeof APP_LOCALES;
   isEmailUpdate?: boolean;
+  serverUrl?: string;
 };
 
 export const SendEmailVerificationLinkEmail = ({
   link,
   locale,
   isEmailUpdate = false,
+  serverUrl,
 }: SendEmailVerificationLinkEmailProps) => {
   const i18n = createI18nInstance(locale);
   const title = isEmailUpdate
@@ -29,7 +31,7 @@ export const SendEmailVerificationLinkEmail = ({
     : i18n._('Verify Email');
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={title} />
       <MainText>
         <Trans id={bodyId} />

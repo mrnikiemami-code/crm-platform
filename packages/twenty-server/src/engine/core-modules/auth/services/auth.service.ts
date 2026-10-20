@@ -65,6 +65,7 @@ import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/service
 import { GuardRedirectService } from 'src/engine/core-modules/guard-redirect/services/guard-redirect.service';
 import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { getPublishedHelpOriginFromConfig } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
 import { UserService } from 'src/engine/core-modules/user/services/user.service';
 import { UserEntity } from 'src/engine/core-modules/user/user.entity';
@@ -740,6 +741,7 @@ export class AuthService {
       email: user.email,
       link: this.domainServerConfigService.getBaseUrl().toString(),
       locale: firstUserWorkspace.locale,
+      serverUrl: getPublishedHelpOriginFromConfig(this.twentyConfigService),
     });
 
     const html = await renderEmail(emailTemplate, { pretty: true });

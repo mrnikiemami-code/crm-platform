@@ -30,4 +30,4 @@ cd my-twenty-app
 yarn twenty dev
 \`\`\`
 
-See the [Getting Started guide](https://twenty.com/developers/extend/apps/getting-started) for the full walkthrough, and [Building Apps](https://twenty.com/developers/extend/apps/building) for the \`defineApplication\` / \`defineEntity\` APIs.`;
+See the in-app Help for the guides that ship with this installation. The \`defineApplication\` / \`defineEntity\` APIs are part of the app SDK.`;

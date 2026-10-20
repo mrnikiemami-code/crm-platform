@@ -10726,7 +10726,7 @@ msgid ""
 "npx create-twenty-app@latest my-twenty-app\n"
 "```\n"
 "\n"
-"See the [Getting Started guide](https://twenty.com/developers/extend/apps/getting-started) for the full walkthrough, and [Building Apps](https://twenty.com/developers/extend/apps/building) for the `defineApplication` / `defineEntity` APIs."
+"See the [Getting Started guide](/help) for the full walkthrough, and [Building Apps](/help) for the `defineApplication` / `defineEntity` APIs."
 msgstr ""
 
 #. js-lingui-id: yY8wAv
@@ -20426,7 +20426,7 @@ msgid ""
 "yarn twenty dev\n"
 "```\n"
 "\n"
-"See the [Getting Started guide](https://twenty.com/developers/extend/apps/getting-started) for the full walkthrough, and [Building Apps](https://twenty.com/developers/extend/apps/building) for the `defineApplication` / `defineEntity` APIs."
+"See the [Getting Started guide](/help) for the full walkthrough, and [Building Apps](/help) for the `defineApplication` / `defineEntity` APIs."
 msgstr ""
 
 #. js-lingui-id: VsxjzF

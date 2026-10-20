@@ -24,6 +24,7 @@ import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrap
 import { decodeJwtHeader } from 'src/engine/core-modules/jwt/utils/decode-jwt-header.util';
 import { isAsymmetricJwtHeader } from 'src/engine/core-modules/jwt/utils/is-asymmetric-jwt-header.util';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { getPublishedHelpOriginFromConfig } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 import { getDomainFromEmail } from 'src/utils/get-domain-from-email';
@@ -112,7 +113,7 @@ export class ApprovedAccessDomainService {
         firstName: sender.name.firstName,
         lastName: sender.name.lastName,
       },
-      serverUrl: this.twentyConfigService.get('SERVER_URL'),
+      serverUrl: getPublishedHelpOriginFromConfig(this.twentyConfigService),
       locale: sender.locale,
     });
     const html = await renderEmail(emailTemplate);

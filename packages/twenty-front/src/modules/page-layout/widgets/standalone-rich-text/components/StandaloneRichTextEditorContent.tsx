@@ -8,6 +8,7 @@ import { DashboardsBlockEditor } from '@/page-layout/widgets/standalone-rich-tex
 import { StandaloneRichTextWidgetAutoFocusEffect } from '@/page-layout/widgets/standalone-rich-text/components/StandaloneRichTextWidgetAutoFocusEffect';
 import { DASHBOARD_BLOCK_SCHEMA } from '@/page-layout/widgets/standalone-rich-text/constants/DashboardBlockSchema';
 import { filterSupportedBlocks } from '@/page-layout/widgets/standalone-rich-text/utils/filterSupportedBlocks';
+import { internalizeProductOwnedHelpLinks } from '@/page-layout/widgets/standalone-rich-text/utils/internalizeProductOwnedHelpLinks';
 
 import { BLOCK_EDITOR_GLOBAL_HOTKEYS_CONFIG } from '@/blocknote-editor/constants/BlockEditorGlobalHotkeysConfig';
 import { parseInitialBlocknote } from '@/blocknote-editor/utils/parseInitialBlocknote';
@@ -57,9 +58,18 @@ export const StandaloneRichTextEditorContent = ({
     );
   }, [isDashboardInEditModeState, isEditable, store]);
 
-  const [initialContent] = useState(() =>
-    filterSupportedBlocks(parseInitialBlocknote(currentBody)),
-  );
+  const [initialContent] = useState(() => {
+    const parsedBody = parseInitialBlocknote(currentBody);
+
+    // Existing dashboards persisted the product's old upstream Help link. In
+    // read-only mode it is rewritten to the in-app help centre at render time;
+    // the stored body is never modified, and editing still shows it verbatim.
+    const renderedBody = isEditable
+      ? parsedBody
+      : internalizeProductOwnedHelpLinks(parsedBody);
+
+    return filterSupportedBlocks(renderedBody);
+  });
 
   const editor = useCreateBlockNote({
     initialContent,

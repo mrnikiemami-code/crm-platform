@@ -11,6 +11,7 @@ type CleanSuspendedWorkspaceEmailProps = {
   userName: string;
   workspaceDisplayName: string | undefined;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 export const CleanSuspendedWorkspaceEmail = ({
@@ -18,11 +19,12 @@ export const CleanSuspendedWorkspaceEmail = ({
   userName,
   workspaceDisplayName,
   locale,
+  serverUrl,
 }: CleanSuspendedWorkspaceEmailProps) => {
   const i18n = createI18nInstance(locale);
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Your workspace has been deleted')} />
       <MainText>
         {userName?.length > 1 ? (

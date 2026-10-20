@@ -9,7 +9,7 @@ describe('getDocumentationUrl', () => {
     expect(
       getDocumentationUrl({
         locale: 'fr-FR',
-        path: '/developers/extend/apps/getting-started',
+        path: '/legacy-topic',
       }),
     ).toBe(HELP_CENTER_BASE_PATH);
   });

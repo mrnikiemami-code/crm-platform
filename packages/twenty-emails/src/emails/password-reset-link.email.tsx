@@ -12,6 +12,7 @@ type PasswordResetLinkEmailProps = {
   hasPassword: boolean;
   link: string;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 export const PasswordResetLinkEmail = ({
@@ -19,6 +20,7 @@ export const PasswordResetLinkEmail = ({
   hasPassword,
   link,
   locale,
+  serverUrl,
 }: PasswordResetLinkEmailProps) => {
   const i18n = createI18nInstance(locale);
   const headline = hasPassword
@@ -27,7 +29,7 @@ export const PasswordResetLinkEmail = ({
   const ctaLabel = hasPassword ? i18n._('Reset') : i18n._('Set');
 
   return (
-    <BaseEmail locale={locale}>
+    <BaseEmail locale={locale} serverUrl={serverUrl}>
       <Title value={headline} />
       <MainText>
         <Trans

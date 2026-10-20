@@ -23,7 +23,7 @@ type SendInviteLinkEmailProps = {
     firstName: string;
     lastName: string;
   };
-  serverUrl: string;
+  serverUrl?: string;
   locale: keyof typeof APP_LOCALES;
 };
 
@@ -35,9 +35,10 @@ export const SendInviteLinkEmail = ({
   locale,
 }: SendInviteLinkEmailProps) => {
   const i18n = createI18nInstance(locale);
-  const workspaceLogo = workspace.logo
-    ? getImageAbsoluteURI({ imageUrl: workspace.logo, baseUrl: serverUrl })
-    : null;
+  const workspaceLogo =
+    workspace.logo && serverUrl
+      ? getImageAbsoluteURI({ imageUrl: workspace.logo, baseUrl: serverUrl })
+      : null;
 
   const senderName = capitalize(sender.firstName);
   const senderEmail = sender.email;

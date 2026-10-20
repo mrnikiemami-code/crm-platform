@@ -13,6 +13,7 @@ type BillingTrialConvertingEmailProps = {
   interval: 'month' | 'year';
   link: string;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 // Sent 7 days before a trial WITH a credit card ends, i.e. before the first charge.
@@ -25,6 +26,7 @@ export const BillingTrialConvertingEmail = ({
   interval,
   link,
   locale,
+  serverUrl,
 }: BillingTrialConvertingEmailProps) => {
   const i18n = createI18nInstance(locale);
   const formattedDate = i18n.date(trialEndsAt, {
@@ -34,7 +36,7 @@ export const BillingTrialConvertingEmail = ({
   });
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('A heads up before your trial ends')} />
       <MainText>
         {userName?.length > 1 ? (

@@ -5,6 +5,7 @@ import { ApiPath } from 'twenty-shared/types';
 
 import { buildApiCatalog } from 'src/engine/core-modules/well-known/utils/build-api-catalog.util';
 import { buildMcpServerCard } from 'src/engine/core-modules/well-known/utils/build-mcp-server-card.util';
+import { resolvePublishedHelpUrl } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { NoPermissionGuard } from 'src/engine/guards/no-permission.guard';
 import { PublicEndpointGuard } from 'src/engine/guards/public-endpoint.guard';
@@ -42,6 +43,18 @@ export class WellKnownController {
   )
   @Header('Cache-Control', DISCOVERY_CACHE_CONTROL)
   getApiCatalog(@Req() request: Request): string {
-    return JSON.stringify(buildApiCatalog(getRequestBaseUrl(request)), null, 2);
+    // API anchors/descriptors follow the host that serves them; the help link
+    // follows validated installation configuration, so a spoofed Host cannot
+    // redirect readers and a split API/front deployment points at the UI.
+    const helpUrl = resolvePublishedHelpUrl({
+      frontendUrl: this.twentyConfigService.get('FRONTEND_URL'),
+      serverUrl: this.twentyConfigService.get('SERVER_URL'),
+    });
+
+    return JSON.stringify(
+      buildApiCatalog(getRequestBaseUrl(request), helpUrl),
+      null,
+      2,
+    );
   }
 }

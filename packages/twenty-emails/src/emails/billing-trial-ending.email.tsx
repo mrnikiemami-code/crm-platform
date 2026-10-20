@@ -13,6 +13,7 @@ type BillingTrialEndingEmailProps = {
   dataRetentionDays: number;
   link: string;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 // Sent the day before a trial WITHOUT a credit card ends. Goal: get the user to
@@ -25,6 +26,7 @@ export const BillingTrialEndingEmail = ({
   dataRetentionDays,
   link,
   locale,
+  serverUrl,
 }: BillingTrialEndingEmailProps) => {
   const i18n = createI18nInstance(locale);
   const formattedDate = i18n.date(trialEndsAt, {
@@ -34,7 +36,7 @@ export const BillingTrialEndingEmail = ({
   });
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Your trial is ending soon')} />
       <MainText>
         {userName?.length > 1 ? (

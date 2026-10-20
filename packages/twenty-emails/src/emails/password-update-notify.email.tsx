@@ -11,6 +11,7 @@ type PasswordUpdateNotifyEmailProps = {
   email: string;
   link: string;
   locale: keyof typeof APP_LOCALES;
+  serverUrl?: string;
 };
 
 export const PasswordUpdateNotifyEmail = ({
@@ -18,12 +19,13 @@ export const PasswordUpdateNotifyEmail = ({
   email,
   link,
   locale,
+  serverUrl,
 }: PasswordUpdateNotifyEmailProps) => {
   const i18n = createI18nInstance(locale);
   const formattedDate = i18n.date(new Date());
 
   return (
-    <BaseEmail locale={locale}>
+    <BaseEmail locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Password updated')} />
       <MainText>
         {userName?.length > 1 ? (

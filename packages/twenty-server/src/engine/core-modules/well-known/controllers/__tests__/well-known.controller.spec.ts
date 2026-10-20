@@ -56,7 +56,13 @@ describe('WellKnownController', () => {
   });
 
   describe('getApiCatalog', () => {
+    const configReturning =
+      (values: Record<string, string | undefined>) => (key: string) =>
+        values[key];
+
     it('returns a parseable linkset anchored on the request host', () => {
+      configGet.mockImplementation(configReturning({}));
+
       const body = controller.getApiCatalog(
         buildMockRequest('workspace.twenty.com'),
       );
@@ -69,6 +75,8 @@ describe('WellKnownController', () => {
     });
 
     it('respects the forwarded protocol', () => {
+      configGet.mockImplementation(configReturning({}));
+
       const body = controller.getApiCatalog(
         buildMockRequest('localhost:3000', 'http'),
       );
@@ -76,6 +84,59 @@ describe('WellKnownController', () => {
       expect(JSON.parse(body).linkset[0].anchor).toBe(
         'http://localhost:3000/rest',
       );
+    });
+
+    it('never derives the help origin from a hostile Host header', () => {
+      configGet.mockImplementation(
+        configReturning({ SERVER_URL: 'https://api.customer.example' }),
+      );
+
+      const body = controller.getApiCatalog(
+        buildMockRequest('attacker.example', 'https'),
+      );
+
+      for (const entry of JSON.parse(body).linkset) {
+        expect(entry['service-doc'][0].href).toBe(
+          'https://api.customer.example/help',
+        );
+        // The API anchor follows the serving host; only Help is off-limits.
+        expect(entry.anchor.startsWith('https://attacker.example')).toBe(true);
+      }
+    });
+
+    it('points help at the front origin when API and front are split', () => {
+      configGet.mockImplementation(
+        configReturning({
+          FRONTEND_URL: 'https://app.customer.example',
+          SERVER_URL: 'https://api.customer.example',
+        }),
+      );
+
+      const body = controller.getApiCatalog(
+        buildMockRequest('api.customer.example'),
+      );
+
+      for (const entry of JSON.parse(body).linkset) {
+        expect(entry.anchor.startsWith('https://api.customer.example')).toBe(
+          true,
+        );
+        expect(entry['service-doc'][0].href).toBe(
+          'https://app.customer.example/help',
+        );
+      }
+    });
+
+    it('omits help links when no valid published origin is configured', () => {
+      configGet.mockImplementation(
+        configReturning({ FRONTEND_URL: 'not-a-url', SERVER_URL: '' }),
+      );
+
+      const body = controller.getApiCatalog(
+        buildMockRequest('workspace.twenty.com'),
+      );
+
+      expect(JSON.parse(body).linkset[0]['service-doc']).toBeUndefined();
+      expect(body).not.toContain('/help');
     });
   });
 });

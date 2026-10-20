@@ -18,6 +18,7 @@ import { UserInputError } from 'src/engine/core-modules/graphql/utils/graphql-er
 import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { NodeEnvironment } from 'src/engine/core-modules/twenty-config/interfaces/node-environment.interface';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { getPublishedHelpOriginFromConfig } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { TwoFactorAuthenticationService } from 'src/engine/core-modules/two-factor-authentication/two-factor-authentication.service';
 import { twoFactorAuthenticationMethodsValidator } from 'src/engine/core-modules/two-factor-authentication/two-factor-authentication.validation';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
@@ -247,6 +248,9 @@ export class AdminPanelServerAdminService {
               canAccessFullAdminPanel: targetUser.canAccessFullAdminPanel,
               canImpersonate: targetUser.canImpersonate,
               locale,
+              serverUrl: getPublishedHelpOriginFromConfig(
+                this.twentyConfigService,
+              ),
             });
             const html = await renderEmail(emailTemplate, { pretty: true });
             const text = await renderEmail(emailTemplate, { plainText: true });

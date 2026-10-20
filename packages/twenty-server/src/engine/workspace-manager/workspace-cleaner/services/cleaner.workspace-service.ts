@@ -26,6 +26,7 @@ import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { MetricsService } from 'src/engine/core-modules/metrics/metrics.service';
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
+import { getPublishedHelpOriginFromConfig } from 'src/engine/core-modules/well-known/utils/resolve-published-help-url.util';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { UserService } from 'src/engine/core-modules/user/services/user.service';
 import { UserVarsService } from 'src/engine/core-modules/user/user-vars/services/user-vars.service';
@@ -115,6 +116,7 @@ export class CleanerWorkspaceService {
       workspaceDisplayName: `${workspaceDisplayName}`,
       link: billingSettingsUrl,
       locale: workspaceMember.locale,
+      serverUrl: getPublishedHelpOriginFromConfig(this.twentyConfigService),
     };
     const emailTemplate = WarnSuspendedWorkspaceEmail(emailData);
     const html = await renderEmail(emailTemplate, { pretty: true });
@@ -191,6 +193,7 @@ export class CleanerWorkspaceService {
       userName: `${workspaceMember.name.firstName} ${workspaceMember.name.lastName}`,
       workspaceDisplayName,
       locale: workspaceMember.locale,
+      serverUrl: getPublishedHelpOriginFromConfig(this.twentyConfigService),
     };
     const emailTemplate = CleanSuspendedWorkspaceEmail(emailData);
     const html = await renderEmail(emailTemplate, { pretty: true });
