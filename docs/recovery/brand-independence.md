@@ -1,18 +1,67 @@
 # Brand Independence — Execution Recovery
 
-## Current checkpoint — 2026-10-20 — CHANGES_REQUESTED
+## Current checkpoint — 2026-10-20 — BI-01-R1 SUBMITTED_FOR_CODEX
 
 - Owner/reviewer: Codex. Executor: Cursor. Final independent program acceptance: Codex.
 - Main implementation baseline audited: `acb99294fe49f29d90a4064eef9546a7842f4bbf`. Planning/task commit: `d31537cafcce6d41fdfe45e4cdbb03de69625093`.
-- Cursor submission branch: `bi-01-internal-help`; Code SHA `ecda1c02bf1c6d65b15dc2c7ec18e60877b86d39`; docs/tip `2c5295dd8dd0a71307b4192c2d0b7a8cc55cafd1`.
-- Main before this review-docs update: `67ed54133aa54444b2c1fff5a08dd49311898f45`. Implementation is NOT merged into main.
-- Codex review: **PARTIAL / CHANGES_REQUESTED**. No final acceptance and no next program stage authorized yet.
-- Active correction: [BI-01-R1](../tasks/BI-01-R1-internal-help-closure.md). Review/evidence: [BI-01-review](../reviews/BI-01-review.md). Original task: [BI-01](../tasks/BI-01-internal-help.md). Plan: [brand-independence](../plans/brand-independence.md).
-- Confirmed good: one pure shared content/search module, four real topics, removal of HTTP from Help tool and Front-chat bootstrap from its hook; 18 existing shared search tests passed independently in a focused Vitest run, plus direct search probes. 28 TS/TSX files transpile without syntax errors; this is NOT a full typecheck/build.
-- Blocking corrections: R1 active Markdown Help links still go to Twenty; R2 production email templates omit published origin and emit relative `/help`; R3 API catalog Help origin is still derived from request Host; R4 full build/typecheck, actual route/network/regression and old-dashboard evidence incomplete.
-- Runtime main/4D verification of this branch: UNVERIFIED. Port 3001 reportedly still serves main. No live service, data, role or provider setting changed by Codex review; no real SMS.
-- Explicit user rules: zero communication with Twenty; Help internal/same-origin with no external fallback. No screenshots. Preserve customer data/worktrees, no hard delete or predicate cleanup. Technical scope only.
-- Next: Cursor fixes only R1–R4 on the existing task branch with main handoff preserved, reports exact SHAs + A–J evidence, then stops. Codex re-reviews before merge or BI-02.
+- Correction base (required): `d31537cafcce6d41fdfe45e4cdbb03de69625093`. Merge of `origin/crm-platform` (review docs `49b1db287d6ab7c1fe1a2a4bbe5b9baf94a966df`) into the task branch: `473d2bbacc`.
+- Cursor submission branch: `bi-01-internal-help`; R1 code SHA `3ad58bacb94e5925497cec33cf550629bbb48d85`; docs SHA is the docs commit pushed after this file (recorded in the final report).
+- Codex review of BI-01: **PARTIAL / CHANGES_REQUESTED** ([BI-01-review](../reviews/BI-01-review.md)). BI-01-R1 corrections implemented; main-branch review/task handoff preserved by normal merge, no rebase/force/reset.
+- Active task: [BI-01-R1](../tasks/BI-01-R1-internal-help-closure.md). Original task: [BI-01](../tasks/BI-01-internal-help.md). Plan: [brand-independence](../plans/brand-independence.md).
+- No merge to `crm-platform`, no BI-02, no data/provider/auth/role change, no real email/SMS/LLM/provider call, no screenshots.
+- Explicit user rules: zero communication with Twenty; help content internal/same-origin with no external fallback; preserve customer data/worktrees; technical scope only.
+- Next: Codex re-review of R1–R4 evidence below. Do not treat this docs commit as code acceptance.
+
+### BI-01-R1 — executor report (R1–R4)
+
+| Item | Correction | Evidence |
+|---|---|---|
+| R1 | Standards/custom application descriptions (`getStandardApplicationDescription.ts`, `getCustomApplicationDescription.ts`) no longer link to `twenty.com`; shipped `src/locales/*.po` and `src/locales/generated/*.ts` dev-guide strings point to the in-app `/help` pages. Customer-authored descriptions are untouched. | `applicationDescriptions.spec.ts` renders both resolved descriptions and asserts zero external `href`; grep of the two utils and all 44 shipped locale bundles returns no app-help `twenty.com/developers/extend/apps` URL. |
+| R2 | `Footer.buildAbsoluteHelpUrl` accepts only absolute `http:`/`https:` URLs with host and no embedded credentials; invalid/absent origin omits the Help link instead of emitting `/help`. Every production email template now accepts `serverUrl` and forwards it to `BaseEmail → Footer`. All server callers pipeline validated `FRONTEND_URL`/`SERVER_URL` through `getPublishedHelpOriginFromConfig(twentyConfigService)` (auth, reset-password, email-verification, password-update notify, billing reminders, suspended-workspace warnings, workspace invitation, approved-access-domain, admin panel, cleaner). CTA tokens/expiry untouched. | `email-help-links.spec.ts` renders real email HTML for password-reset, verify-email, password-update, billing, suspended-workspace, invite and approved-domain emails: absolute `https://crm.example/help` per template; absent origin → no Help href; `javascript:`/protocol-relative origin → no Help href. |
+| R3 | `getApiCatalog` resolves `service-doc` from `resolvePublishedHelpUrl(frontendUrl, serverUrl)` (config only), never from the request. Canonical API/MCP anchors and service description unchanged; `build-api-catalog.util` takes the help URL explicitly and omits `service-doc` when no valid origin exists. | `well-known.controller.spec.ts` + `build-api-catalog.util.spec.ts`: hostile `Host: arbitrary-host.example` does not leak into `service-doc`; split front (`https://ui.example`) / API (`https://api.example`) yields `https://ui.example/help`; no origin → no `service-doc`. |
+| R4 | Full typecheck/build executed on this checkout; DOM/navigation tests added; legacy dashboard links rewritten at read time only. | Commands and results below; live-browser UI remains UNVERIFIED for an environment reason documented below. |
+
+### R4 — commands actually run (worktree `D:\CrmSource\twenty-bi01`, Node 24.16.0)
+
+| Command | Result |
+|---|---|
+| `nx build twenty-shared` | SUCCESS |
+| `nx build twenty-emails` | SUCCESS |
+| `nx typecheck twenty-shared` | SUCCESS |
+| `nx typecheck twenty-emails` | SUCCESS |
+| `nx typecheck twenty-server` | SUCCESS |
+| `nx typecheck twenty-front` | SUCCESS |
+| `nx build twenty-front --excludeTaskDependencies` | SUCCESS (clean production rebuild, `--skip-nx-cache`, 1066 JS chunks) |
+| `jest` (twenty-server): `well-known`, `email/__tests__`, `search-help-center-tool` | 10 suites / 87 tests PASS |
+| `jest` (twenty-front): `pages/help`, `useSettingsNavigationItems.docs`, `applicationDescriptions.spec`, `support/utils`, `standalone-rich-text/utils` | 6 suites / 31 tests PASS |
+| `git diff --check d31537ca HEAD` | Only pre-existing trailing whitespace in Codex-owned docs; BI-01 EOF whitespace removed |
+
+`^build` dependency chain (barrel generation for every linked package) hung on this host; prerequisites were built individually with `--excludeTaskDependencies` after linking the local `twenty-front-component-renderer` / `twenty-sdk` junctions. No dist artifact is committed.
+
+### R4 — runtime, dashboard, DOM and network evidence
+
+- Serving: `vite preview` on `127.0.0.1:3102` from this worktree's `packages/twenty-front/build`.
+- HTTP: `/help`, `/help/create-template`, `/help/edit-and-save`, `/help/this-slug-does-not-exist` → `200` with the SPA `#root` container (deep-link/refresh served by the app shell, not a 404).
+- DOM/navigation: `HelpCenter.dom.test.tsx` (React Router + Testing Library) executes topic index render, search filtering, topic click → article route, unknown slug → not-found, deep link and back-to-index; `useSettingsNavigationItems.docs.test.tsx` executes Settings → Documentation navigation to `/help`. These are jsdom DOM tests, not a browser capture.
+- **Live browser render: UNVERIFIED — pre-existing build-infrastructure defect, not a BI-01 regression.** Headless Chrome against the served artifact fails on *every* route (including `/`) with `TypeError: (0, c.jsxDEV) is not a function`: the `@wyw-in-js` transform in this worktree emits development-JSX calls while `react/jsx-runtime` only exports `jsx`/`jsxs`. Reproduced after a cache-skipped `NODE_ENV=production` rebuild. Therefore no browser network capture of the help UI can honestly be claimed; server-side local search is proven separately (tool tests: `fetch` spy never called).
+- Client bundles are built from source with zero network fetches to any help/docs origin; Help pages import only `twenty-shared/constants` content.
+- Old dashboards: `internalizeProductOwnedHelpLinks` rewrites only product-owned legacy `docs.twenty.com` blocknote links to `/help` at render time in `StandaloneRichTextEditorContent` (read-only mode). It is pure traversal — no DB write, no migration, no customer-content rewrite; unknown/customer URLs pass through unchanged. Unit tests cover legacy product link, mixed trees, nested nodes and customer-owned links. Live dashboard rendering in this runtime: UNVERIFIED (browser blocker above); no live/customer dashboard was touched.
+- No live service on port 3001 was restarted or interrupted; no data, role, provider or SMTP setting changed.
+
+### Acceptance A–J (executor, BI-01-R1 scope)
+
+| Row | Result | Evidence |
+|---|---|---|
+| A | PASS (DOM test) / live browser UNVERIFIED | Help index renders four topics and search input; Settings → Documentation navigation asserted in jsdom. Browser capture blocked by `jsxDEV` defect on all routes. |
+| B | PASS (DOM test) / live reload UNVERIFIED in browser | Known slug renders article, unknown slug renders not-found with back link, deep link via `MemoryRouter`/`Routes`; HTTP reload of `/help/:slug` returns the app shell. |
+| C | PASS | Search tests: Persian/Arabic fold, ZWNJ, empty query → full list, no-match → `[]`. |
+| D | PASS (tool/unit) | `SearchHelpCenterTool` executes against shared content; `fetch` spy never called. Browser network capture not possible (see R4 blocker). |
+| E | PASS (tool/unit) | Tool result equals `searchHelpArticles`; no HTTP client, Mintlify config or external provider imported. |
+| F | PASS (code + rendered HTML tests) | R1 descriptions/translations internal; R2 real email HTML has absolute `https://crm.example/help` and omits Help when origin missing/invalid; R3 catalog `service-doc` from config only. Legacy dashboards rewritten read-time, no DB mutation; live dashboard UNVERIFIED. |
+| G | PASS (code) | `useInstantiateSupportChat` returns `{ isFrontChatLoaded: false }`; Support menu items removed; Documentation/support opens stay same-origin. |
+| H | PASS (scope) | Diff limited to help links/content, email origin plumbing, catalog origin and tests; no auth/role/provider/template-behavior change. Runtime template smoke on this artifact UNVERIFIED (browser blocker). |
+| I | PASS | Builds/typechecks and focused suites above; `git diff --check` clean for BI-01 files. |
+| J | PASS (honest ledger) | This section: live browser and live dashboard rows explicitly UNVERIFIED. No screenshots. |
 
 ## تحویل BI-01 (تاریخی؛ توسط Codex رد و با BI-01-R1 جایگزین شد)
 
@@ -66,7 +115,7 @@
 
 | Delivery | Executor result | Codex review | Remaining |
 |---|---|---|---|
-| BI-01 internal Help | SUBMITTED ecda1c02 / docs 2c5295dd | CHANGES_REQUESTED | BI-01-R1 R1–R4; see review |
+| BI-01 internal Help | R1 SUBMITTED `3ad58bac` / docs pending | CHANGES_REQUESTED (BI-01), R1 re-review pending | Codex re-review of R1–R4; live browser row UNVERIFIED |
 | Brand/assets | NOT STARTED | PENDING | Full plan stage 2 |
 | Remaining links/social/email branding | NOT STARTED | PENDING | Full plan stage 3 |
 | Remaining runtime egress/data references | NOT STARTED | PENDING | Full plan stage 4 |
