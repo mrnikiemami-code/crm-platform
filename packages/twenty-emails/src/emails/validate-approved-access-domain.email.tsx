@@ -45,7 +45,7 @@ export const SendApprovedAccessDomainValidation = ({
   const senderEmail = sender.email;
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Validate domain')} />
       <MainText>
         <Trans

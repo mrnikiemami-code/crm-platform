@@ -10,11 +10,13 @@ export const AiChatApiKeyNotConfiguredMessage = () => {
   const currentWorkspaceMember = useAtomStateValue(currentWorkspaceMemberState);
 
   const handleDocsClick = () => {
-    const docsUrl = getDocumentationUrl({
-      locale: currentWorkspaceMember?.locale,
-      path: DOCUMENTATION_PATHS.DEVELOPERS_SELF_HOST_CAPABILITIES_SETUP,
-    });
-    window.open(docsUrl, '_blank', 'noopener,noreferrer');
+    // Same-origin help centre (BI-01): never open an external docs tab.
+    window.location.assign(
+      getDocumentationUrl({
+        locale: currentWorkspaceMember?.locale,
+        path: DOCUMENTATION_PATHS.DEVELOPERS_SELF_HOST_CAPABILITIES_SETUP,
+      }),
+    );
   };
 
   return (

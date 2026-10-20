@@ -49,13 +49,13 @@ describe('buildApiCatalog', () => {
     ]);
   });
 
-  it('gives every surface human documentation', () => {
+  it('gives every surface same-origin human documentation', () => {
     const catalog = buildApiCatalog(baseUrl);
 
     for (const entry of catalog.linkset) {
-      expect(entry['service-doc']?.[0]?.href).toMatch(
-        /^https:\/\/docs\.twenty\.com\//,
-      );
+      expect(entry['service-doc']?.[0]?.href).toBe(`${baseUrl}/help`);
+      expect(entry['service-doc']?.[0]?.href).not.toMatch(/docs\.twenty\.com/);
     }
   });
 });
+

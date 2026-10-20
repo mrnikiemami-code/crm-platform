@@ -5,7 +5,6 @@ import { useAuth } from '@/auth/hooks/useAuth';
 import { availableWorkspacesState } from '@/auth/states/availableWorkspacesState';
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { countAvailableWorkspaces } from '@/auth/utils/availableWorkspacesUtils';
-import { supportChatState } from '@/client-config/states/supportChatState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
 import { useBuildWorkspaceUrl } from '@/domain-manager/hooks/useBuildWorkspaceUrl';
 import { useRedirectToDefaultDomain } from '@/domain-manager/hooks/useRedirectToDefaultDomain';
@@ -25,14 +24,12 @@ import { useColorScheme } from '@/ui/theme/hooks/useColorScheme';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { useLingui } from '@lingui/react/macro';
-import { isNonEmptyString } from '@sniptt/guards';
 import { AppPath, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
 import { Avatar } from 'twenty-ui/primitives/data-display';
 import {
   IconDotsVertical,
   IconLogout,
-  IconMessage,
   IconPlus,
   IconSettings,
   IconSwitchHorizontal,
@@ -61,10 +58,6 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
   const { closeDropdown } = useCloseDropdown();
   const { signOut } = useAuth();
   const { colorScheme, colorSchemeList } = useColorScheme();
-  const supportChat = useAtomStateValue(supportChatState);
-  const isSupportChatConfigured =
-    supportChat?.supportDriver === 'FRONT' &&
-    isNonEmptyString(supportChat.supportFrontChatId);
 
   const setMultiWorkspaceDropdown = useSetAtomState(
     multiWorkspaceDropdownState,
@@ -79,11 +72,6 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
   const handleSettings = () => {
     closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
     navigateSettings(SettingsPath.ProfilePage);
-  };
-
-  const handleSupport = () => {
-    window.FrontChat?.('show');
-    closeDropdown(MULTI_WORKSPACE_DROPDOWN_ID);
   };
 
   const handleChange = async (availableWorkspace: AvailableWorkspace) => {
@@ -243,12 +231,6 @@ export const MultiWorkspaceDropdownDefaultComponents = () => {
         >
           <ListItem startIcon={<IconUserPlus />}>{t`Invite user`}</ListItem>
         </UndecoratedLink>
-        {isSupportChatConfigured && (
-          <ListItem
-            startIcon={<IconMessage />}
-            onClick={handleSupport}
-          >{t`Support`}</ListItem>
-        )}
       </DropdownMenuItemsContainer>
     </DropdownContent>
   );

@@ -1,102 +1,83 @@
 import { Injectable } from '@nestjs/common';
 
-import { isAxiosError } from 'axios';
+import {
+  searchHelpArticles,
+  HELP_ARTICLES,
+} from 'twenty-shared/constants';
 
-import { SecureHttpClientService } from 'src/engine/core-modules/secure-http-client/secure-http-client.service';
 import { SearchHelpCenterInputZodSchema } from 'src/engine/core-modules/tool/tools/search-help-center-tool/search-help-center-tool.schema';
-import { buildHelpCenterErrorDetail } from 'src/engine/core-modules/tool/tools/search-help-center-tool/utils/build-help-center-error-detail.util';
-import { extractHelpCenterResults } from 'src/engine/core-modules/tool/tools/search-help-center-tool/utils/extract-help-center-results.util';
 import { type ToolInput } from 'src/engine/core-modules/tool/types/tool-input.type';
 import { type ToolOutput } from 'src/engine/core-modules/tool/types/tool-output.type';
 import { type ToolExecutionContext } from 'src/engine/core-modules/tool/types/tool-execution-context.type';
 import { type Tool } from 'src/engine/core-modules/tool/types/tool.type';
-import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 
-const HELP_CENTER_REQUEST_TIMEOUT_MS = 10_000;
-const HELP_CENTER_REQUEST_RETRIES = 2;
-
+/**
+ * Searches the PRODUCT'S OWN help centre.
+ *
+ * It reads the same module the `/help` pages render, so the assistant and the UI
+ * can never disagree about which articles exist or what they say. There is no
+ * HTTP client, no retry, no API key and no fallback: the content is compiled into
+ * this build, so the search works with the network entirely unavailable and
+ * cannot leak a query to a third party.
+ *
+ * This deliberately replaces the previous implementation, which POSTed to
+ * `twenty-help-search.com` and, when Mintlify credentials were configured, to
+ * `api-dsc.mintlify.com`. Those settings may still exist in a workspace; they are
+ * now unused, and a stale key can never cause an outbound request.
+ */
 @Injectable()
 export class SearchHelpCenterTool implements Tool {
   description =
-    'Search Twenty documentation and help center to find information about features, setup, usage, and troubleshooting.';
+    "Search this application's built-in help centre (Persian) to find information about message templates: creating a template, editing and saving, source entities and variables, preview and save errors.";
   inputSchema = SearchHelpCenterInputZodSchema;
-
-  constructor(
-    private readonly twentyConfigService: TwentyConfigService,
-    private readonly secureHttpClientService: SecureHttpClientService,
-  ) {}
 
   async execute(
     parameters: ToolInput,
     _context: ToolExecutionContext,
   ): Promise<ToolOutput> {
-    const { query } = parameters;
+    const query =
+      typeof parameters.query === 'string' ? parameters.query : '';
 
     try {
-      const MINTLIFY_API_KEY = this.twentyConfigService.get('MINTLIFY_API_KEY');
-      const MINTLIFY_SUBDOMAIN =
-        this.twentyConfigService.get('MINTLIFY_SUBDOMAIN');
+      const results = searchHelpArticles(query);
 
-      const useDirectApi = MINTLIFY_API_KEY && MINTLIFY_SUBDOMAIN;
-
-      const endpoint = useDirectApi
-        ? `https://api-dsc.mintlify.com/v1/search/${MINTLIFY_SUBDOMAIN}`
-        : 'https://twenty-help-search.com/search/twenty';
-
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(useDirectApi && { Authorization: `Bearer ${MINTLIFY_API_KEY}` }),
-      };
-
-      const httpClient = this.secureHttpClientService.getHttpClient({
-        timeout: HELP_CENTER_REQUEST_TIMEOUT_MS,
-        retries: HELP_CENTER_REQUEST_RETRIES,
-        shouldResetTimeout: true,
-      });
-
-      const response = await httpClient.post(
-        endpoint,
-        { query, pageSize: 10 },
-        { headers },
-      );
-
-      const extraction = extractHelpCenterResults(response.data);
-
-      if (!extraction.isReadable) {
+      // An empty query BROWSES the help centre. Reported as success with the full
+      // list, because "show me the help" is a valid request, not an error.
+      if (query.trim().length === 0) {
         return {
-          success: false,
-          message: `Failed to search help center for "${query}"`,
-          error:
-            'Help center search returned a response in an unrecognized shape',
+          success: true,
+          message: `Listing all ${results.length} help articles`,
+          result: results,
         };
       }
 
-      const { results } = extraction;
-
       if (results.length === 0) {
+        // A successful, empty result. The caller phrases "nothing found"; this
+        // layer does not invent an article or fall back to a remote search.
         return {
           success: true,
-          message: `No help center articles found for "${query}"`,
+          message: `No help articles found for "${query}"`,
           result: [],
         };
       }
 
       return {
         success: true,
-        message: `Found ${results.length} relevant help center article${results.length === 1 ? '' : 's'} for "${query}"`,
+        message: `Found ${results.length} help article${results.length === 1 ? '' : 's'} for "${query}"`,
         result: results,
       };
-    } catch (error) {
-      const errorDetail = isAxiosError(error)
-        ? buildHelpCenterErrorDetail(error)
-        : error instanceof Error
-          ? error.message
-          : 'Help center search failed';
+    } catch {
+      // The search is local and pure, so this is only reachable if the tool is
+      // called with a pathological input. Reported with a stable message: no
+      // exception text, no path, no internal detail.
+      const articleCount = Array.isArray(HELP_ARTICLES)
+        ? HELP_ARTICLES.length
+        : 0;
 
       return {
         success: false,
-        message: `Failed to search help center for "${query}"`,
-        error: errorDetail,
+        message: `Failed to search the help centre for "${query}"`,
+        error: `The built-in help centre could not be searched (${articleCount} articles are available).`,
       };
     }
   }

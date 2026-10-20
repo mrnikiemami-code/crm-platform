@@ -251,12 +251,11 @@ export const WorkflowEditActionFormBuilder = ({
               onClose={() => setIsCalloutVisible(false)}
               action={{
                 label: t`Learn more`,
-                onClick: () =>
-                  window.open(
-                    'https://docs.twenty.com/user-guide/workflows/capabilities/workflow-actions#form',
-                    '_blank',
-                    'noopener,noreferrer',
-                  ),
+                onClick: () => {
+                  // Same-origin help centre — never open external docs from a
+                  // product-built callout (BI-01).
+                  window.location.assign('/help');
+                },
               }}
             />
           </StyledCalloutContainer>

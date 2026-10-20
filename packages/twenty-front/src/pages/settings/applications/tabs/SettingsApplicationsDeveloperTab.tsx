@@ -104,12 +104,11 @@ export const SettingsApplicationsDeveloperTab = () => {
             startIcon={<IconArrowUpRight />}
             size="sm"
             onClick={() =>
-              window.open(
+              window.location.assign(
                 getDocumentationUrl({
                   locale: currentWorkspaceMember?.locale,
                   path: '/developers/extend/apps/getting-started',
                 }),
-                '_blank',
               )
             }
             variant="outline"

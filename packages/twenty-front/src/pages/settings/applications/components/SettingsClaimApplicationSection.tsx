@@ -233,12 +233,11 @@ export const SettingsClaimApplicationSection = () => {
             action={{
               label: t`Read documentation`,
               onClick: () =>
-                window.open(
+                window.location.assign(
                   getDocumentationUrl({
                     locale: currentWorkspaceMember?.locale,
                     path: claimError.docPath,
                   }),
-                  '_blank',
                 ),
             }}
             isClosable

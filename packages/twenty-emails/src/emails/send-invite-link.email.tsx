@@ -44,7 +44,7 @@ export const SendInviteLinkEmail = ({
   const workspaceName = workspace.name;
 
   return (
-    <BaseEmail width={333} locale={locale}>
+    <BaseEmail width={333} locale={locale} serverUrl={serverUrl}>
       <Title value={i18n._('Join your team on Twenty')} />
       <MainText>
         <Trans

@@ -313,13 +313,7 @@ export const SettingsBillingCreditsSection = ({
         <Button
           startIcon={<IconExternalLink />}
           size="sm"
-          onClick={() =>
-            window.open(
-              creditsDocumentationUrl,
-              '_blank',
-              'noopener,noreferrer',
-            )
-          }
+          onClick={() => window.location.assign(creditsDocumentationUrl)}
           variant="outline"
         >{t`How credits work`}</Button>
       </StyledCreditUsageFooterActions>

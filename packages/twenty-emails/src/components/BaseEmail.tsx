@@ -12,9 +12,16 @@ type BaseEmailProps = {
   children: JSX.Element | JSX.Element[] | string;
   width?: number;
   locale: keyof typeof APP_LOCALES;
+  /** Published installation origin used to build absolute Help footer links. */
+  serverUrl?: string;
 };
 
-export const BaseEmail = ({ children, width, locale }: BaseEmailProps) => {
+export const BaseEmail = ({
+  children,
+  width,
+  locale,
+  serverUrl,
+}: BaseEmailProps) => {
   const i18nInstance = createI18nInstance(locale);
 
   return (
@@ -24,7 +31,7 @@ export const BaseEmail = ({ children, width, locale }: BaseEmailProps) => {
         <Container width={width || 290}>
           <Logo />
           {children}
-          <Footer i18n={i18nInstance} />
+          <Footer i18n={i18nInstance} serverUrl={serverUrl} />
         </Container>
       </Html>
     </I18nProvider>

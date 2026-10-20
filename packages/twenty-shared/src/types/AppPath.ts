@@ -40,6 +40,12 @@ export enum AppPath {
   // Deep link for twenty.com/dpa → in-app DPA generator (login-gated redirect).
   Dpa = '/dpa',
 
+  // Built-in help centre. Same-origin and self-contained: the pages render local
+  // content and never link out, so a help URL opened directly or refreshed stays
+  // inside the app.
+  Help = '/help',
+  HelpArticle = '/help/:helpArticleSlug',
+
   // 404 page not found
   NotFoundWildcard = '*',
   NotFound = '/not-found',

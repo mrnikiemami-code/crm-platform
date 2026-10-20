@@ -59,6 +59,18 @@ const NotFound = lazy(() =>
   })),
 );
 
+const HelpIndexPage = lazy(() =>
+  import('~/pages/help/HelpIndexPage').then((module) => ({
+    default: module.HelpIndexPage,
+  })),
+);
+
+const HelpArticleRoute = lazy(() =>
+  import('~/pages/help/HelpArticleRoute').then((module) => ({
+    default: module.HelpArticleRoute,
+  })),
+);
+
 type CreateWorkspaceRouteObjectsArgs = {
   isAdminPageEnabled?: boolean;
   isWorkflowCoreIndexPageEnabled?: boolean;
@@ -150,6 +162,22 @@ export const createWorkspaceRouteObjects = ({
       element: (
         <LazyRoute>
           <MobileHomePage />
+        </LazyRoute>
+      ),
+    },
+    {
+      path: AppPath.Help,
+      element: (
+        <LazyRoute>
+          <HelpIndexPage />
+        </LazyRoute>
+      ),
+    },
+    {
+      path: AppPath.HelpArticle,
+      element: (
+        <LazyRoute>
+          <HelpArticleRoute />
         </LazyRoute>
       ),
     },

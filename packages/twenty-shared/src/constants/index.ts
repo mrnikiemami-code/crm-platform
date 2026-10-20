@@ -47,6 +47,15 @@ export { FIELD_TYPE_DEFAULT_ICONS } from './FieldTypeDefaultIcons';
 export { FILES_FIELD_MAX_NUMBER_OF_VALUES } from './FilesFieldMaxNumberOfValues';
 export { GIN_COMPATIBLE_FIELD_TYPES } from './GinCompatibleFieldTypes';
 export { GROUP_BY_DATE_GRANULARITY_THAT_REQUIRE_TIME_ZONE } from './GroupByDateGranularityThatRequireTimeZone';
+export type { HelpArticle, HelpSearchResult } from './HelpCenter';
+export {
+  HELP_CENTER_BASE_PATH,
+  HELP_ARTICLES,
+  normalizeHelpSearchText,
+  getHelpArticlePath,
+  findHelpArticle,
+  searchHelpArticles,
+} from './HelpCenter';
 export { IANA_TIME_ZONES } from './IanaTimeZones';
 export { IMAGE_IDENTIFIER_FIELD_METADATA_TYPES } from './ImageIdentifierFieldMetadataTypes';
 export { INTERNAL_CREDITS_PER_DISPLAY_CREDIT } from './InternalCreditsPerDisplayCredit';

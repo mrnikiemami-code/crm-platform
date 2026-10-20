@@ -188,7 +188,7 @@ const createWelcomeRichText = ({
             },
             {
               type: 'link',
-              href: 'https://docs.twenty.com/getting-started/introduction',
+              href: '/help',
               content: [
                 {
                   type: 'text',
@@ -199,7 +199,7 @@ const createWelcomeRichText = ({
             },
             {
               type: 'text',
-              text: ' or contact us through the Support section in Settings.',
+              text: ' or open Help from Settings → Documentation.',
               styles: {},
             },
           ],
