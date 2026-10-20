@@ -1,15 +1,18 @@
 # Brand Independence — Execution Recovery
 
-## Current checkpoint — 2026-10-18
+## Current checkpoint — 2026-10-20 — CHANGES_REQUESTED
 
-- Program: BRAND-INDEPENDENCE; scope is technical brand/network/packaging independence.
-- Owner/reviewer: Codex. Executor: Cursor. Final independent program review: Codex.
-- Source baseline audited: `acb99294fe49f29d90a4064eef9546a7842f4bbf`.
-- Planning/task commit: `d31537cafcce6d41fdfe45e4cdbb03de69625093` on `crm-platform`; verified present remotely.
-- Canonical plan: [../plans/brand-independence.md](../plans/brand-independence.md).
-- Active task: [BI-01](../tasks/BI-01-internal-help.md), ISSUED_TO_USER_FOR_CURSOR. No execution report/code SHA received yet; actual executor activity is UNKNOWN, not independently observed.
-- Explicit requirement: every product Help path and search must be internal/same-origin. No outbound help/search/chat fallback. User does not require screenshots.
-- Existing product changes and deployments are not superseded by this documentation. No application code, live data, settings or infrastructure changed by this planning commit.
+- Owner/reviewer: Codex. Executor: Cursor. Final independent program acceptance: Codex.
+- Main implementation baseline audited: `acb99294fe49f29d90a4064eef9546a7842f4bbf`. Planning/task commit: `d31537cafcce6d41fdfe45e4cdbb03de69625093`.
+- Cursor submission branch: `bi-01-internal-help`; Code SHA `ecda1c02bf1c6d65b15dc2c7ec18e60877b86d39`; docs/tip `2c5295dd8dd0a71307b4192c2d0b7a8cc55cafd1`.
+- Main before this review-docs update: `67ed54133aa54444b2c1fff5a08dd49311898f45`. Implementation is NOT merged into main.
+- Codex review: **PARTIAL / CHANGES_REQUESTED**. No final acceptance and no next program stage authorized yet.
+- Active correction: [BI-01-R1](../tasks/BI-01-R1-internal-help-closure.md). Review/evidence: [BI-01-review](../reviews/BI-01-review.md). Original task: [BI-01](../tasks/BI-01-internal-help.md). Plan: [brand-independence](../plans/brand-independence.md).
+- Confirmed good: one pure shared content/search module, four real topics, removal of HTTP from Help tool and Front-chat bootstrap from its hook; 18 existing shared search tests passed independently in a focused Vitest run, plus direct search probes. 28 TS/TSX files transpile without syntax errors; this is NOT a full typecheck/build.
+- Blocking corrections: R1 active Markdown Help links still go to Twenty; R2 production email templates omit published origin and emit relative `/help`; R3 API catalog Help origin is still derived from request Host; R4 full build/typecheck, actual route/network/regression and old-dashboard evidence incomplete.
+- Runtime main/4D verification of this branch: UNVERIFIED. Port 3001 reportedly still serves main. No live service, data, role or provider setting changed by Codex review; no real SMS.
+- Explicit user rules: zero communication with Twenty; Help internal/same-origin with no external fallback. No screenshots. Preserve customer data/worktrees, no hard delete or predicate cleanup. Technical scope only.
+- Next: Cursor fixes only R1–R4 on the existing task branch with main handoff preserved, reports exact SHAs + A–J evidence, then stops. Codex re-reviews before merge or BI-02.
 
 ## Supervision protocol
 
@@ -23,7 +26,7 @@
 
 | Delivery | Executor result | Codex review | Remaining |
 |---|---|---|---|
-| BI-01 internal Help | ISSUED; no result received | PENDING | Code SHA, diff and A–J evidence |
+| BI-01 internal Help | SUBMITTED ecda1c02 / docs 2c5295dd | CHANGES_REQUESTED | BI-01-R1 R1–R4; see review |
 | Brand/assets | NOT STARTED | PENDING | Full plan stage 2 |
 | Remaining links/social/email branding | NOT STARTED | PENDING | Full plan stage 3 |
 | Remaining runtime egress/data references | NOT STARTED | PENDING | Full plan stage 4 |
@@ -34,7 +37,7 @@
 
 Record: exact baseline and code/docs SHAs; branch; files and rationale; runtime loaded; test commands/exit codes; route/DOM/network text; each acceptance row; deployment and rollback state; touched data/settings; limitations. No screenshots required. Do not record tokens, credentials or customer content.
 
-## تحویل به چت جدید — ۱۸ اکتبر ۲۰۲۶
+## تحویل قبلی — ۱۸ اکتبر ۲۰۲۶ (تاریخی؛ وضعیت جاری در ابتدای همین فایل است)
 
 ### هدف و تصمیم‌های قطعی کاربر
 
@@ -96,3 +99,8 @@ Record: exact baseline and code/docs SHAs; branch; files and rationale; runtime 
 ### عبارت تحویل کوتاه برای چت جدید
 
 «ریکاوری CRM Brand Independence را از docs/recovery/brand-independence.md در شاخهٔ crm-platform بخوان. تو ناظر و پذیرندهٔ نهایی هستی، Cursor اجراکننده است. BI-01 Help داخلی تسک فعال است؛ گزارش آن را بررسی کن و پیش از تأیید، مرحلهٔ بعد را شروع نکن. اسکرین‌شات نمی‌خواهیم. صفر ارتباط با Twenty شرط قطعی است.»
+
+
+## عبارت تحویل فعلی به چت جدید — ۲۰ اکتبر ۲۰۲۶
+
+«ریکاوری CRM را از docs/recovery/brand-independence.md در شاخهٔ crm-platform بخوان. BI-01 با Code SHA ecda1c02 بررسی شده و CHANGES_REQUESTED است. تسک فعال BI-01-R1 است؛ گزارش docs/reviews/BI-01-review.md و چهار اصلاح را بخوان. ۱۸ تست جست‌وجو پاس شده، اما لینک خارجی، لینک ایمیل، origin و شواهد runtime/build باز هستند. فقط اصلاح همین تسک را هدایت و بررسی کن؛ BI-02 یا ادغام کد تا پذیرش شروع نشود. صفر ارتباط با Twenty و بدون screenshot شرط قطعی است.»
