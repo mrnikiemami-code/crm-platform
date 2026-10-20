@@ -1,6 +1,6 @@
 # BI-01 — راهنمای کاملاً داخلی و حذف Help خارجی
 
-Status: READY_FOR_CURSOR — implementation not started  
+Status: SUBMITTED_FOR_CODEX — implementation complete on `bi-01-internal-help`; awaiting review  
 Program: BRAND-INDEPENDENCE  
 Owner/reviewer: Codex  
 Executor: Cursor  
