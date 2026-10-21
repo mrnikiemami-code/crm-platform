@@ -1,6 +1,6 @@
-import * as prettier from '@prettier/sync';
 import * as fs from 'fs';
 import * as path from 'path';
+import { format } from 'prettier';
 import { IndentationText, Project, QuoteKind } from 'ts-morph';
 import { fileURLToPath } from 'url';
 
@@ -63,13 +63,15 @@ const getUtilityComponentSchemas = (): ComponentSchema[] => [
   },
 ];
 
-const writeGeneratedFile = (
+const writeGeneratedFile = async (
   dir: string,
   filename: string,
   content: string,
-): void => {
+): Promise<void> => {
   const filePath = path.join(dir, filename);
-  const formattedContent = prettier.format(content, {
+  // Async Prettier: the sync wrapper (`@prettier/sync`) leaves its worker
+  // threads alive on Node 24 / Windows, so the process never exits.
+  const formattedContent = await format(content, {
     parser: 'typescript',
     filepath: filePath,
     singleQuote: true,
@@ -79,7 +81,7 @@ const writeGeneratedFile = (
   fs.writeFileSync(filePath, formattedContent, 'utf-8');
 };
 
-const main = (): void => {
+const main = async (): Promise<void> => {
   const htmlElements = getHtmlElementSchemas();
   const utilityComponents = getUtilityComponentSchemas();
   const allComponents = [...htmlElements, ...utilityComponents];
@@ -96,7 +98,7 @@ const main = (): void => {
   });
 
   const hostRegistry = generateHostRegistry(project, allComponents);
-  writeGeneratedFile(
+  await writeGeneratedFile(
     HOST_GENERATED_DIR,
     OUTPUT_FILES.HOST_REGISTRY,
     hostRegistry.getFullText(),
@@ -108,18 +110,21 @@ const main = (): void => {
     HTML_COMMON_PROPERTIES,
     COMMON_HTML_EVENTS,
   );
-  writeGeneratedFile(
+  await writeGeneratedFile(
     REMOTE_GENERATED_DIR,
     OUTPUT_FILES.REMOTE_ELEMENTS,
     remoteElements.getFullText(),
   );
 
   const remoteComponents = generateRemoteComponents(project, allComponents);
-  writeGeneratedFile(
+  await writeGeneratedFile(
     REMOTE_GENERATED_DIR,
     OUTPUT_FILES.REMOTE_COMPONENTS,
     remoteComponents.getFullText(),
   );
 };
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

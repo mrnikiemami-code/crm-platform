@@ -89,7 +89,7 @@
     "react-dom": "^19.0.0"
   },
   "scripts": {
-    "build": "npx vite build"
+    "build": "NODE_ENV=production npx vite build"
   },
   "files": [
     "dist",

@@ -1,8 +1,12 @@
-import prettier from '@prettier/sync';
 import * as fs from 'fs';
 import { globSync } from 'glob';
 import path from 'path';
-import { type Options } from 'prettier';
+import {
+  format,
+  resolveConfig,
+  resolveConfigFile,
+  type Options,
+} from 'prettier';
 import slash from 'slash';
 import ts from 'typescript';
 
@@ -19,13 +23,12 @@ const NX_PROJECT_CONFIGURATION_PATH = path.join(
   NX_PROJECT_CONFIGURATION_FILENAME,
 );
 
-const prettierConfigFile = prettier.resolveConfigFile();
-if (prettierConfigFile == null) {
-  throw new Error('Prettier config file not found');
-}
-const prettierConfiguration = prettier.resolveConfig(prettierConfigFile);
-const prettierFormat = (str: string, parser: Options['parser']) =>
-  prettier.format(str, {
+const prettierFormat = async (
+  str: string,
+  parser: Options['parser'],
+  prettierConfiguration: Options | null,
+) =>
+  format(str, {
     ...prettierConfiguration,
     parser,
   });
@@ -34,11 +37,18 @@ type createTypeScriptFileArgs = {
   content: string;
   filename: string;
 };
-const createTypeScriptFile = ({
-  content,
-  path: filePath,
-  filename,
-}: createTypeScriptFileArgs) => {
+const resolvePrettierConfiguration = async (): Promise<Options | null> => {
+  const prettierConfigFile = await resolveConfigFile();
+  if (prettierConfigFile == null) {
+    throw new Error('Prettier config file not found');
+  }
+  return resolveConfig(prettierConfigFile);
+};
+
+const createTypeScriptFile = async (
+  { content, path: filePath, filename }: createTypeScriptFileArgs,
+  prettierConfiguration: Options | null,
+) => {
   const header = `
 /*
  * _____                    _
@@ -49,9 +59,10 @@ const createTypeScriptFile = ({
  *                              |___/
  */
 `;
-  const formattedContent = prettierFormat(
+  const formattedContent = await prettierFormat(
     `${header}\n${content}\n`,
     'typescript',
+    prettierConfiguration,
   );
   fs.writeFileSync(
     path.join(filePath, `${filename}.ts`),
@@ -149,45 +160,60 @@ type WriteInJsonFileArgs = {
   content: JsonUpdate;
   file: string;
 };
-const updateJsonFile = ({ content, file }: WriteInJsonFileArgs) => {
+const updateJsonFile = async (
+  { content, file }: WriteInJsonFileArgs,
+  prettierConfiguration: Options | null,
+) => {
   const updatedJsonFile = JSON.stringify(content);
-  const formattedContent = prettier.format(updatedJsonFile, {
+  const formattedContent = await format(updatedJsonFile, {
     ...prettierConfiguration,
     filepath: file,
   });
   fs.writeFileSync(file, formattedContent, 'utf-8');
 };
 
-const writeInPackageJson = (update: JsonUpdate) => {
+const writeInPackageJson = async (
+  update: JsonUpdate,
+  prettierConfiguration: Options | null,
+) => {
   const rawJsonFile = fs.readFileSync(PACKAGE_JSON_PATH, 'utf-8');
   const initialJsonFile = JSON.parse(rawJsonFile);
 
-  updateJsonFile({
-    file: PACKAGE_JSON_PATH,
-    content: {
-      ...initialJsonFile,
-      ...update,
+  await updateJsonFile(
+    {
+      file: PACKAGE_JSON_PATH,
+      content: {
+        ...initialJsonFile,
+        ...update,
+      },
     },
-  });
+    prettierConfiguration,
+  );
 };
 
-const updateNxProjectConfigurationBuildOutputs = (outputs: JsonUpdate) => {
+const updateNxProjectConfigurationBuildOutputs = async (
+  outputs: JsonUpdate,
+  prettierConfiguration: Options | null,
+) => {
   const rawJsonFile = fs.readFileSync(NX_PROJECT_CONFIGURATION_PATH, 'utf-8');
   const initialJsonFile = JSON.parse(rawJsonFile);
 
-  updateJsonFile({
-    file: NX_PROJECT_CONFIGURATION_PATH,
-    content: {
-      ...initialJsonFile,
-      targets: {
-        ...initialJsonFile.targets,
-        build: {
-          ...initialJsonFile.targets.build,
-          outputs,
+  await updateJsonFile(
+    {
+      file: NX_PROJECT_CONFIGURATION_PATH,
+      content: {
+        ...initialJsonFile,
+        targets: {
+          ...initialJsonFile.targets,
+          build: {
+            ...initialJsonFile.targets.build,
+            outputs,
+          },
         },
       },
     },
-  });
+    prettierConfiguration,
+  );
 };
 
 type ExportOccurrence = {
@@ -486,7 +512,8 @@ const retrieveExportsByBarrel = (barrelDirectories: string[]) => {
   });
 };
 
-const main = () => {
+const main = async () => {
+  const prettierConfiguration = await resolvePrettierConfiguration();
   const moduleDirectories = getSubDirectoryPaths(SRC_PATH);
   const exportsByBarrel = retrieveExportsByBarrel(moduleDirectories);
   const moduleIndexFiles = generateModuleIndexFiles(exportsByBarrel);
@@ -495,8 +522,16 @@ const main = () => {
   const nxBuildOutputsPath =
     computeProjectNxBuildOutputsPath(moduleDirectories);
 
-  updateNxProjectConfigurationBuildOutputs(nxBuildOutputsPath);
-  writeInPackageJson(packageJsonConfig);
-  moduleIndexFiles.forEach(createTypeScriptFile);
+  await updateNxProjectConfigurationBuildOutputs(
+    nxBuildOutputsPath,
+    prettierConfiguration,
+  );
+  await writeInPackageJson(packageJsonConfig, prettierConfiguration);
+  for (const moduleIndexFile of moduleIndexFiles) {
+    await createTypeScriptFile(moduleIndexFile, prettierConfiguration);
+  }
 };
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
