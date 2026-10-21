@@ -18,8 +18,65 @@ Validation: **771/771 tests across 74 files**, app typecheck exit 0, lint 0 warn
 
 **Deployment/live acceptance not performed**: local bridge health again returned MCP -32603 Internal error. This patch changes only Communication; the twenty-front integration from 0.1.71 is still required as the baseline, but has no additional host change in 0.1.72. No live records, provider settings or roles were touched; no SMS sent.
 
+**Two distinct 0.1.72 package identities — not interchangeable.** The statement above describes the **earlier build** of this version: `communication-0.1.72.tgz`, **2,941,235 bytes**, SHA-256 `aec2c14df3f70f605b2c04cb7affc9ab8d140bebf2d18c17abadc2a655e635ca`. A **separate, later artifact** carries the same version string and is the one the installation report records as uploaded and upgraded into main/4D: `communication-0.1.72.tgz`, **2,940,226 bytes**, SHA-256 `5f73f5c712f89eaa679de70f97fc2414a25aaf224891b55da0fc102e647f75fd` — see [docs/0172-acceptance.md](docs/0172-acceptance.md). Different byte size, different digest: two builds. Neither set of metadata is evidence for the other, and the tests/build line above belongs to the 2,941,235-byte build only.
 
-## 2026-10-16 — new-template form now shares the record editor (0.1.71; not deployed)
+**Live runtime identity was not independently rechecked in the task-022 provenance audit.** That audit hashed the on-disk later artifact (2,940,226 bytes, SHA-256 `5f73f5c7…`) and cross-checked its compiled `create-template` bundle against the size (346,254 bytes) and markers recorded in the installation report, which matched; but no Twenty runtime was observable on the audit machine — no node or container process and no 3000/3001/3002 listener — so the bundle actually served by main/4D was **not** re-read. The installed-version claim therefore rests on the recorded install, not on a fresh live probe.
+
+
+## 2026-10-17 — shared create editor INSTALLED and ACCEPTED (Communication 0.1.71)
+
+Baseline `a51ec33145` → tip `8a86b29a3a`, fast-forward only, worktree preserved. The New command now
+opens the **same editor** as the record page, and all acceptance rows pass in the browser.
+
+### The host change is live WITHOUT a restart
+
+`twenty-front` is served by a dev server on port **3001** (a Windows node/nx process), so it picked the
+new `resolveTemplateCreationEditor` up by HMR. Confirmed by fetching the module from the dev server and
+seeing the new identifiers in it — no rebuild, no restart. **`twenty-server-1` was not touched.**
+
+### Acceptance
+
+| Row | Result |
+| --- | --- |
+| A — full editor before any record exists | **PASS** — title, source, body, variables, sample, preview; no technical ids |
+| B — all five sources show their own fields; typed text kept, no leftovers | **PASS** — افراد 6, ثبت‌نام‌ها 5, سرنخ‌ها 6, فرصت‌ها 4, ارتباطات 13; body preserved across every switch |
+| C — explicit relation only when needed; no collection offered | **PASS** — no picker appears, because every source here has exactly ONE eligible MANY_TO_ONE relation, which is auto-selected and was stored correctly |
+| D — one insertion, sample shows that record's value | **PASS** — `@source.name` inserted exactly once; preview «منبع: Platform Migration» |
+| E — drafting/switching/previewing creates NO record | **PASS** — 10 rows before and after |
+| F — Create makes ONE row and opens it | **PASS** — `064d3d6b…`, title/body/`sourceObjectUid`/`recipientRelationUid` all stored |
+| G — list + reload + edit→save→reload | **PASS** — row appears; edit persisted through reload |
+| H — cancel with discard creates NOTHING | **PASS** — discard prompt shown, then 0 draft rows |
+| I — 0.1.70 edit/preview not regressed | **PASS** — «منبع: Platform Migration — ویرایش‌شده ۰۱۷۱» |
+
+### Two measurement traps worth recording
+
+1. **The API port is 3002**, not 3000. Direct route diagnostics against 3000 gave inconsistent results
+   and one spurious `UNEXPECTED`; the browser was unaffected.
+2. **Do not sweep source options in one pass.** `catalogState` can still read `ready` from the
+   PREVIOUS source while the new request is in flight, so a naive sweep reports empty groups. Settle on
+   the rendered group TITLE matching the selected source's label, then read the groups. Doing that, all
+   five sources are correct.
+
+### Deployment
+
+Communication **0.1.71**, package `communication-0.1.71.tgz` — **2,934,359 bytes**, SHA256
+`740502a5520916d61c9c7fcae2e15e0cc4f734b70870268b3acabb5a9338c8d3`; `fa-IR` verified with 268 keys.
+Built with this fork's own SDK (`/tool`, 2.42.0). Backup and restore-verification:
+`D:\twenty-main-backup\pre-0171-20261017-1548\main-default.dump`.
+
+The declared `@testing-library/user-event` dependency was **missing from the build container** and had
+to be supplied — the same gap that broke the 0.1.69 build. It belongs in the build image.
+
+### Data
+
+One fixture created by the UI and **soft-deleted by exact id**: `064d3d6b-2a8b-4b6c-9ac7-27ba0eaf1d21`.
+The two user templates are untouched. A third live row, «تست», appeared at 14:15 UTC **created by the
+user**, not by this run — noted so it is not mistaken for a fixture leak.
+
+**Still open:** nothing from this task. The «الگوی پیام جدید» defect recorded on 2026-10-16 is now
+CLOSED by 0.1.71.
+
+## 2026-10-16 — new-template form now shares the record editor (0.1.71 development build)
 
 Baseline: `a51ec331` (installed 0.1.70). The remaining user complaint was the generic title/body/name creation panel. Its entry points all converge on `RecordCreationFormProvider` → `SidePanelRecordCreationFormPage`; editing instead renders the Communication front component. The creation page now resolves the template object by its universal identifier and the create component by identifier plus application ownership, and renders that component with the host-allocated draft UUID. Other objects keep their native form. Missing component gives a Persian update message, not the incomplete legacy form.
 
@@ -27,10 +84,12 @@ Create and edit now import one `template-editor.tsx`. Creation loads eligible so
 
 Validation: app **766/766 across 74 files**, typecheck exit 0, lint 0/0; host routing helper **4/4** (run with Vitest globals; Jest-compatible test assertions). New behavior tests cover source switching, insertion once, draft preview, double-click, retry after failure, cancel/discard, multiple to-one relations, authentication rejection, forged relation rejection, and ambiguous successful create recovery. The built creation bundle is checked through the real SDK Persian translation runtime. Fork SDK 2.42 build: **32 output files**. Package `communication-0.1.71.tgz`: **2,935,313 bytes**, SHA256 `e474829075dde6df07b5d4b3d696dd423f49c9eaac8827a2c1c6234035714fbf`. No data or provider settings were touched.
 
-**Not installed or browser-accepted.** Both local-bridge connectors returned MCP -32603 Internal error. This environment has no running main/4D host. Full twenty-front build/typecheck was not run here (host dependencies are absent); only its routing unit tests and the app build/typecheck were run. This release needs BOTH the twenty-front source update and the 0.1.71 app: installing the app alone leaves the old create entry point, and updating the host alone shows the explicit missing-editor message. No renderer or SDK runtime change is needed. The older statement “new form not started” is superseded for code, not for deployment.
+**Historical note on this development build.** When this record was written it had not been installed or browser-accepted: both local-bridge connectors returned MCP -32603 Internal error, that environment had no running main/4D host, and full twenty-front build/typecheck was not run there (host dependencies are absent) — only its routing unit tests and the app build/typecheck were run. The release needs BOTH the twenty-front source update and the 0.1.71 app: installing the app alone leaves the old create entry point, and updating the host alone shows the explicit missing-editor message. No renderer or SDK runtime change is needed. The older statement “new form not started” is superseded for code.
+
+This entry describes an **earlier development build** of 0.1.71 — `communication-0.1.71.tgz`, **2,935,313 bytes**, SHA256 `e474829075dde6df07b5d4b3d696dd423f49c9eaac8827a2c1c6234035714fbf` — which is a different artifact from the accepted installation (**2,934,359 bytes**, SHA256 `740502a5…`) recorded in the 2026-10-17 INSTALLED and ACCEPTED section above. 0.1.71 is installed; this section is retained for its unique implementation and measurement history, not as current status.
 
 
-Last updated: 2026-10-16 — 0.1.69 INSTALLED and ACCEPTED on main/4D as **0.1.70**, after one real defect was found and fixed (a nil UUID rejected by the platform's UUID validation made every field probe throw, so all five sources failed). Cross-application sources now WORK — `eventLeads`, owned by another application and absent from this app's client, is readable through the workspace record API. The New form remains a separate open defect.
+Last updated: 2026-10-18 — Brand Independence execution plan recorded (documentation only). Communication **0.1.71** is INSTALLED and ACCEPTED on main/4D, and **0.1.72** is the installed app per [docs/0172-acceptance.md](docs/0172-acceptance.md); 0.1.71 closed the «الگوی پیام جدید» create-form defect. Live runtime identity was not independently rechecked in the task-022 provenance audit. The 0.1.69/0.1.70 checkpoint is retained in its own dated section below, including the nil-UUID defect that made every field probe throw and the now-working cross-application `eventLeads` reads.
 
 ## Purpose
 
