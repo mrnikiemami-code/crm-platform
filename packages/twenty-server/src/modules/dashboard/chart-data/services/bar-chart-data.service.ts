@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { CalendarStartDay } from 'twenty-shared/constants';
+import { type APP_LOCALES, SOURCE_LOCALE } from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
 
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { I18nService } from 'src/engine/core-modules/i18n/i18n.service';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
@@ -21,6 +23,7 @@ import {
 } from 'src/modules/dashboard/chart-data/exceptions/chart-data.exception';
 import { ChartDataQueryService } from 'src/modules/dashboard/chart-data/services/chart-data-query.service';
 import { ChartRelationLabelService } from 'src/modules/dashboard/chart-data/services/chart-relation-label.service';
+import { withChartI18n } from 'src/modules/dashboard/chart-data/utils/chart-i18n.storage';
 import { filterOutEmptyChartBuckets } from 'src/modules/dashboard/chart-data/utils/filter-out-empty-chart-buckets.util';
 import { filterOutUnresolvedRelationBuckets } from 'src/modules/dashboard/chart-data/utils/filter-out-unresolved-relation-buckets.util';
 import { getFieldMetadata } from 'src/modules/dashboard/chart-data/utils/get-field-metadata.util';
@@ -33,6 +36,7 @@ type GetBarChartDataParams = {
   objectMetadataId: string;
   configuration: BarChartConfigurationDTO;
   authContext: WorkspaceAuthContext;
+  locale?: keyof typeof APP_LOCALES;
 };
 
 @Injectable()
@@ -41,6 +45,7 @@ export class BarChartDataService {
     private readonly workspaceManyOrAllFlatEntityMapsCacheService: WorkspaceManyOrAllFlatEntityMapsCacheService,
     private readonly chartDataQueryService: ChartDataQueryService,
     private readonly chartRelationLabelService: ChartRelationLabelService,
+    private readonly i18nService: I18nService,
   ) {}
 
   async getBarChartData({
@@ -48,7 +53,24 @@ export class BarChartDataService {
     objectMetadataId,
     configuration,
     authContext,
+    locale = SOURCE_LOCALE,
   }: GetBarChartDataParams): Promise<BarChartDataDTO> {
+    return withChartI18n(this.i18nService.getI18nInstance(locale), () =>
+      this.getBarChartDataLocalized({
+        workspaceId,
+        objectMetadataId,
+        configuration,
+        authContext,
+      }),
+    );
+  }
+
+  private async getBarChartDataLocalized({
+    workspaceId,
+    objectMetadataId,
+    configuration,
+    authContext,
+  }: Omit<GetBarChartDataParams, 'locale'>): Promise<BarChartDataDTO> {
     try {
       const { flatObjectMetadataMaps, flatFieldMetadataMaps } =
         await this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(

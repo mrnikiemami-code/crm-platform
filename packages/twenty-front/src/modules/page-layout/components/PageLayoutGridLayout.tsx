@@ -66,6 +66,16 @@ const StyledGridContainer = styled.div`
   user-select: none;
   width: 100%;
 
+  // react-grid-layout writes physical left + LTR translate; under direction:rtl
+  // that pins every item to the inline-end edge then shifts further off-canvas.
+  .react-grid-layout {
+    direction: ltr;
+  }
+
+  .react-grid-item {
+    direction: rtl;
+  }
+
   .react-grid-placeholder {
     background: ${themeCssVariables.color.blue7} !important;
 

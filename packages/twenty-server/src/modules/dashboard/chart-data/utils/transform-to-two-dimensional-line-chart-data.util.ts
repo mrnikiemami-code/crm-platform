@@ -18,7 +18,8 @@ import { RelationLabelResolution } from 'src/modules/dashboard/chart-data/types/
 import { applyCumulativeToLineDataPoints } from 'src/modules/dashboard/chart-data/utils/apply-cumulative-to-line-data-points.util';
 import { applyGapFilling } from 'src/modules/dashboard/chart-data/utils/apply-gap-filling.util';
 import { buildFormattedToRawLookupDto } from 'src/modules/dashboard/chart-data/utils/build-formatted-to-raw-lookup-dto.util';
-import { getAggregateOperationLabel } from 'src/modules/dashboard/chart-data/utils/get-aggregate-operation-label.util';
+import { buildChartAggregateAxisLabel } from 'src/modules/dashboard/chart-data/utils/build-chart-aggregate-axis-label.util';
+import { getLocalizedChartFieldLabel } from 'src/modules/dashboard/chart-data/utils/get-localized-chart-field-label.util';
 import { getSelectOptions } from 'src/modules/dashboard/chart-data/utils/get-select-options.util';
 import { processTwoDimensionalResults } from 'src/modules/dashboard/chart-data/utils/process-two-dimensional-results.util';
 import { sortChartDataIfNeeded } from 'src/modules/dashboard/chart-data/utils/sort-chart-data-if-needed.util';
@@ -188,8 +189,11 @@ export const transformToTwoDimensionalLineChartData = ({
     };
   });
 
-  const xAxisLabel = primaryAxisGroupByField.label;
-  const yAxisLabel = `${getAggregateOperationLabel(configuration.aggregateOperation)} of ${aggregateField.label}`;
+  const xAxisLabel = getLocalizedChartFieldLabel(primaryAxisGroupByField);
+  const yAxisLabel = buildChartAggregateAxisLabel({
+    aggregateOperation: configuration.aggregateOperation,
+    aggregateField,
+  });
 
   const hasTooManySeries = seriesIds.length > maxSeries;
   const hasTooManyDataPoints =

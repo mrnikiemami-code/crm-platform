@@ -24,6 +24,7 @@ const StyledTooltip = styled.div`
   );
   min-width: ${GRAPH_TOOLTIP_MIN_WIDTH_PX}px;
   pointer-events: auto;
+  unicode-bidi: plaintext;
 `;
 
 const StyledTooltipContent = styled.div`
@@ -72,6 +73,7 @@ const StyledTooltipHeader = styled.div`
   font-weight: ${themeCssVariables.font.weight.medium};
   line-height: 140%;
   overflow: hidden;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
@@ -100,6 +102,7 @@ const StyledTooltipLabel = styled.span<{ isHighlighted?: boolean }>`
       : themeCssVariables.font.weight.regular};
   min-width: 0;
   overflow: hidden;
+  text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;

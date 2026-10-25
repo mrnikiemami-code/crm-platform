@@ -1,4 +1,4 @@
-import { t } from '@lingui/core/macro';
+import { msg } from '@lingui/core/macro';
 import { isNonEmptyString, isNumber } from '@sniptt/guards';
 import {
   FieldMetadataType,
@@ -13,6 +13,7 @@ import {
 
 import { type FlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/flat-field-metadata.type';
 import { GRAPH_DEFAULT_DATE_GRANULARITY } from 'src/modules/dashboard/chart-data/constants/graph-default-date-granularity.constant';
+import { getChartI18n } from 'src/modules/dashboard/chart-data/utils/chart-i18n.storage';
 import { formatDateByGranularity } from 'src/modules/dashboard/chart-data/utils/format-date-by-granularity';
 
 type FormatDimensionValueParams = {
@@ -56,8 +57,10 @@ export const formatDimensionValue = ({
   firstDayOfTheWeek,
   relationLabelByRecordId,
 }: FormatDimensionValueParams): string => {
+  const i18n = getChartI18n();
+
   if (!isDefined(value)) {
-    return t`Not Set`;
+    return i18n._(msg`Not Set`);
   }
 
   const effectiveDateGranularity = (dateGranularity ??
@@ -87,7 +90,7 @@ export const formatDimensionValue = ({
     }
 
     case FieldMetadataType.BOOLEAN: {
-      return value === true ? t`Yes` : t`No`;
+      return value === true ? i18n._(msg`Yes`) : i18n._(msg`No`);
     }
 
     case FieldMetadataType.DATE:
@@ -120,7 +123,7 @@ export const formatDimensionValue = ({
           return String(value);
         }
 
-        return relationLabelByRecordId.get(String(value)) ?? t`Unknown`;
+        return relationLabelByRecordId.get(String(value)) ?? i18n._(msg`Unknown`);
       }
 
       if (isDefined(dateGranularity)) {
@@ -150,7 +153,7 @@ export const formatDimensionValue = ({
         subFieldName === 'currencyCode'
       ) {
         if (!isNonEmptyString(value)) {
-          return t`Not Set`;
+          return i18n._(msg`Not Set`);
         }
 
         return String(value);

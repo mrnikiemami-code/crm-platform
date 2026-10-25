@@ -15334,7 +15334,7 @@ msgstr "ضبط نشده"
 #: src/pages/settings/applications/tabs/SettingsApplicationTimelineActivityTypeSettingsTab.tsx
 #: src/pages/settings/layout/SettingsLayoutViewDetail.tsx
 msgid "Not set"
-msgstr "تنظیم نشده"
+msgstr "تعیین‌نشده"
 
 #. js-lingui-id: 51G4/+
 #: src/modules/activities/calendar/components/CalendarEventNotSharedContent.tsx

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { CoreCommonApiModule } from 'src/engine/api/common/core-common-api.module';
+import { I18nModule } from 'src/engine/core-modules/i18n/i18n.module';
 import { WorkspaceManyOrAllFlatEntityMapsCacheModule } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.module';
 import { PageLayoutWidgetModule } from 'src/engine/metadata-modules/page-layout-widget/page-layout-widget.module';
 import { BarChartDataResolver } from 'src/modules/dashboard/chart-data/resolvers/bar-chart-data.resolver';
@@ -15,6 +16,7 @@ import { PieChartDataService } from 'src/modules/dashboard/chart-data/services/p
 @Module({
   imports: [
     CoreCommonApiModule,
+    I18nModule,
     PageLayoutWidgetModule,
     WorkspaceManyOrAllFlatEntityMapsCacheModule,
   ],

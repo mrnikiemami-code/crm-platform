@@ -30,6 +30,7 @@ export const AxisLabel = ({
       fill={theme.font.color.primary}
       fontSize={fontSize}
       fontWeight={theme.font.weight.medium}
+      style={{ unicodeBidi: 'plaintext' }}
     >
       {label}
     </text>

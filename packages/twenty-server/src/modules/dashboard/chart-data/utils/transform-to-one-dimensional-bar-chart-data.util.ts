@@ -17,7 +17,8 @@ import { RelationLabelResolution } from 'src/modules/dashboard/chart-data/types/
 import { applyCumulativeToOneDimensionalBarData } from 'src/modules/dashboard/chart-data/utils/apply-cumulative-to-one-dimensional-bar-data.util';
 import { applyGapFilling } from 'src/modules/dashboard/chart-data/utils/apply-gap-filling.util';
 import { buildFormattedToRawLookupDto } from 'src/modules/dashboard/chart-data/utils/build-formatted-to-raw-lookup-dto.util';
-import { getAggregateOperationLabel } from 'src/modules/dashboard/chart-data/utils/get-aggregate-operation-label.util';
+import { buildChartAggregateAxisLabel } from 'src/modules/dashboard/chart-data/utils/build-chart-aggregate-axis-label.util';
+import { getLocalizedChartFieldLabel } from 'src/modules/dashboard/chart-data/utils/get-localized-chart-field-label.util';
 import { getSelectOptions } from 'src/modules/dashboard/chart-data/utils/get-select-options.util';
 import { processOneDimensionalResults } from 'src/modules/dashboard/chart-data/utils/process-one-dimensional-results.util';
 import { sortChartDataIfNeeded } from 'src/modules/dashboard/chart-data/utils/sort-chart-data-if-needed.util';
@@ -114,12 +115,15 @@ export const transformToOneDimensionalBarChartData = ({
   const series = [
     {
       key: aggregateValueKey,
-      label: aggregateField.label,
+      label: getLocalizedChartFieldLabel(aggregateField),
     },
   ];
 
-  const categoryLabel = primaryAxisGroupByField.label;
-  const valueLabel = `${getAggregateOperationLabel(configuration.aggregateOperation)} of ${aggregateField.label}`;
+  const categoryLabel = getLocalizedChartFieldLabel(primaryAxisGroupByField);
+  const valueLabel = buildChartAggregateAxisLabel({
+    aggregateOperation: configuration.aggregateOperation,
+    aggregateField,
+  });
 
   const xAxisLabel = isHorizontal ? valueLabel : categoryLabel;
   const yAxisLabel = isHorizontal ? categoryLabel : valueLabel;

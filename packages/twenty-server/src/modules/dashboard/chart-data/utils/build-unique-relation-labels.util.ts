@@ -1,8 +1,9 @@
-import { t } from '@lingui/core/macro';
+import { msg } from '@lingui/core/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import { isDefined } from 'twenty-shared/utils';
 
 import { type RelationLabelResolution } from 'src/modules/dashboard/chart-data/types/relation-label-resolution.type';
+import { getChartI18n } from 'src/modules/dashboard/chart-data/utils/chart-i18n.storage';
 import { claimUniqueSuffixedLabel } from 'src/modules/dashboard/chart-data/utils/claim-unique-suffixed-label.util';
 
 export const buildUniqueRelationLabels = ({
@@ -12,9 +13,12 @@ export const buildUniqueRelationLabels = ({
   rawLabelByRecordId: ReadonlyMap<string, string>;
   allRecordIds: string[];
 }): RelationLabelResolution => {
+  const i18n = getChartI18n();
   const sortedRecordIds = [...new Set(allRecordIds)].sort();
-  const takenLabels = new Set<string>([t`Not Set`, t`Unknown`]);
-  const labelByRecordId = new Map<string, string>();
+  const takenLabels = new Set<string>([
+    i18n._(msg`Not Set`),
+    i18n._(msg`Unknown`),
+  ]);  const labelByRecordId = new Map<string, string>();
   const unresolvedRecordIds = new Set<string>();
   const recordIdsByRawLabel = new Map<string, string[]>();
 
