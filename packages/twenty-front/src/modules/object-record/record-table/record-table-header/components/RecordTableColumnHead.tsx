@@ -12,10 +12,13 @@ import { ThemeContext, themeCssVariables } from 'twenty-ui/theme-constants';
 const StyledTitle = styled.div`
   align-items: center;
   display: flex;
+  flex: 1;
   flex-direction: row;
   font-weight: ${themeCssVariables.font.weight.medium};
   gap: ${themeCssVariables.spacing[1]};
   height: ${themeCssVariables.spacing[8]};
+  min-width: 0;
+  overflow: hidden;
   padding-left: ${themeCssVariables.spacing[2]};
   padding-right: ${themeCssVariables.spacing[2]};
 `;

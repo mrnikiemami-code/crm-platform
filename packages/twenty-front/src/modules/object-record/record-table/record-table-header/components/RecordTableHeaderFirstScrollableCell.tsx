@@ -99,7 +99,10 @@ export const RecordTableHeaderFirstScrollableCell = ({
       {isRecordTableColumnResizable && (
         <RecordTableHeaderResizeHandler recordFieldIndex={1} position="left" />
       )}
-      <DragDropItemSortableHandle disabled={isRecordTableColumnHeadersReadOnly}>
+      <DragDropItemSortableHandle
+        fill
+        disabled={isRecordTableColumnHeadersReadOnly}
+      >
         {isRecordTableColumnHeadersReadOnly ? (
           <RecordTableColumnHead recordField={firstScrollableRecordField} />
         ) : (

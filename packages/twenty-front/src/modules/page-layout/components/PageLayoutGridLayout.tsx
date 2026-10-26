@@ -21,14 +21,17 @@ import { pageLayoutCurrentLayoutsComponentState } from '@/page-layout/states/pag
 import { pageLayoutDraggedAreaComponentState } from '@/page-layout/states/pageLayoutDraggedAreaComponentState';
 import { pageLayoutDraggingWidgetIdComponentState } from '@/page-layout/states/pageLayoutDraggingWidgetIdComponentState';
 import { pageLayoutResizingWidgetIdComponentState } from '@/page-layout/states/pageLayoutResizingWidgetIdComponentState';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { addPendingPlaceholderToLayouts } from '@/page-layout/utils/addPendingPlaceholderToLayouts';
 import { filterPendingPlaceholderFromLayouts } from '@/page-layout/utils/filterPendingPlaceholderFromLayouts';
+import { mirrorResponsiveLayoutsForRtl } from '@/page-layout/utils/mirrorResponsiveLayoutsForRtl';
 import { prepareGridLayoutItemsWithPlaceholders } from '@/page-layout/utils/prepareGridLayoutItemsWithPlaceholders';
 import { WidgetPlaceholder } from '@/page-layout/widgets/components/WidgetPlaceholder';
 import { WidgetRenderer } from '@/page-layout/widgets/components/WidgetRenderer';
 import { TabListComponentInstanceContext } from '@/ui/layout/tab-list/states/contexts/TabListComponentInstanceContext';
 import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
+import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useSetAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useSetAtomComponentState';
 import { css } from '@linaria/core';
 import { styled } from '@linaria/react';
@@ -40,6 +43,11 @@ import {
   useContainerWidth,
   verticalCompactor,
 } from 'react-grid-layout';
+import {
+  getLocaleTextDirection,
+  SOURCE_LOCALE,
+  type TextDirection,
+} from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
@@ -57,7 +65,7 @@ const disabledTransitionsClass = css`
   }
 `;
 
-const StyledGridContainer = styled.div`
+const StyledGridContainer = styled.div<{ $contentDirection: TextDirection }>`
   box-sizing: border-box;
   flex: 1;
   min-height: 100%;
@@ -68,12 +76,13 @@ const StyledGridContainer = styled.div`
 
   // react-grid-layout writes physical left + LTR translate; under direction:rtl
   // that pins every item to the inline-end edge then shifts further off-canvas.
+  // Keep the grid LTR for positioning; mirror layout coords separately for RTL.
   .react-grid-layout {
     direction: ltr;
   }
 
   .react-grid-item {
-    direction: rtl;
+    direction: ${({ $contentDirection }) => $contentDirection};
   }
 
   .react-grid-placeholder {
@@ -184,6 +193,14 @@ export const PageLayoutGridLayout = ({ tabId }: PageLayoutGridLayoutProps) => {
     pageLayoutDraggingWidgetIdComponentState,
   );
 
+  const currentWorkspaceMember = useAtomStateValue(
+    currentWorkspaceMemberState,
+  );
+  const contentDirection = getLocaleTextDirection(
+    currentWorkspaceMember?.locale ?? SOURCE_LOCALE,
+  );
+  const isRtlLayout = contentDirection === 'rtl';
+
   const activeTab = usePageLayoutTabWithVisibleWidgetsOrThrow(tabId);
 
   const activeTabWidgets = activeTab.widgets;
@@ -201,9 +218,14 @@ export const PageLayoutGridLayout = ({ tabId }: PageLayoutGridLayoutProps) => {
       return;
     }
 
+    const layoutsWithoutPlaceholder =
+      filterPendingPlaceholderFromLayouts(allLayouts);
+
     handleLayoutChange(
       currentLayout,
-      filterPendingPlaceholderFromLayouts(allLayouts),
+      isRtlLayout
+        ? mirrorResponsiveLayoutsForRtl(layoutsWithoutPlaceholder)
+        : layoutsWithoutPlaceholder,
     );
   };
 
@@ -211,9 +233,13 @@ export const PageLayoutGridLayout = ({ tabId }: PageLayoutGridLayoutProps) => {
     ? EMPTY_LAYOUT
     : (pageLayoutCurrentLayouts[tabId] ?? EMPTY_LAYOUT);
 
-  const layouts = hasPendingPlaceholder
+  const layoutsWithPlaceholder = hasPendingPlaceholder
     ? addPendingPlaceholderToLayouts(baseLayouts, pageLayoutDraggedArea)
     : baseLayouts;
+
+  const layouts = isRtlLayout
+    ? mirrorResponsiveLayoutsForRtl(layoutsWithPlaceholder)
+    : layoutsWithPlaceholder;
 
   const gridLayoutItems = useMemo(
     () =>
@@ -229,6 +255,7 @@ export const PageLayoutGridLayout = ({ tabId }: PageLayoutGridLayoutProps) => {
   return (
     <StyledGridContainer
       ref={gridContainerRef}
+      $contentDirection={contentDirection}
       className={
         shouldDisableTransitions ? disabledTransitionsClass : undefined
       }

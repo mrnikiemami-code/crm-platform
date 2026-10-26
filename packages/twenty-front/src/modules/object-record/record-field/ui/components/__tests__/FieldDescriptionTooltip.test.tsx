@@ -28,4 +28,23 @@ describe('FieldDescriptionTooltip', () => {
       'Legal company name',
     );
   });
+
+  it.each([
+    ['Company'],
+    ['شناسه اینستاگرام'],
+  ])(
+    'renders %s inside a width-bounded flex parent (header truncation contract)',
+    (label) => {
+      const { container } = render(
+        <div data-testid="header-slot" style={{ display: 'flex', width: 48 }}>
+          <FieldDescriptionTooltip label={label} />
+        </div>,
+      );
+
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-testid="header-slot"]'),
+      ).toHaveStyle({ width: '48px' });
+    },
+  );
 });

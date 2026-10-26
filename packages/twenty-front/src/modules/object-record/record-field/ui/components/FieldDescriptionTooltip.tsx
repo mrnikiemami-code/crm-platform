@@ -8,9 +8,12 @@ import { isDefined } from 'twenty-shared/utils';
 
 const StyledLabel = styled.span`
   display: block;
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  // Keep Arabic/Persian shaping intact while truncating at the line box edge.
+  unicode-bidi: plaintext;
   white-space: nowrap;
 `;
 

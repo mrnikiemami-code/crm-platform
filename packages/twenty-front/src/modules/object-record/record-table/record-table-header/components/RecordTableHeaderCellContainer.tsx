@@ -22,11 +22,15 @@ const StyledHeaderCell = styled.div<{
   height: ${RECORD_TABLE_ROW_HEIGHT}px;
 
   max-height: ${RECORD_TABLE_ROW_HEIGHT}px;
+  // Flex default min-width:auto blocks shrinking; without this, FA labels
+  // overflow the fixed column and clip mid-glyph instead of ellipsizing.
+  min-width: 0;
+  overflow: hidden;
   padding: 0;
 
   position: relative;
 
-  text-align: left;
+  text-align: start;
 
   @media (hover: hover) {
     &:hover {
