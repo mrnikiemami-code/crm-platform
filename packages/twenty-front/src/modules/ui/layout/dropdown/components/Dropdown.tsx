@@ -46,6 +46,9 @@ const StyledClickableComponent = styled.div<{
   width?: Width;
 }>`
   height: fit-content;
+  // Allow shrink inside flex/table columns when width is a percentage.
+  min-width: 0;
+  overflow: hidden;
   width: ${({ width }) => width ?? 'auto'};
 `;
 

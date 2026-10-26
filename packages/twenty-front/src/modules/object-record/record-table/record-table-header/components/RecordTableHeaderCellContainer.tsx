@@ -19,6 +19,8 @@ const StyledHeaderCell = styled.div<{
 
   cursor: ${({ isResizing, isReadOnly }) =>
     isReadOnly ? 'default' : isResizing ? 'col-resize' : 'pointer'};
+  // Keep the header label flex chain inside the fixed column width.
+  display: flex;
   height: ${RECORD_TABLE_ROW_HEIGHT}px;
 
   max-height: ${RECORD_TABLE_ROW_HEIGHT}px;

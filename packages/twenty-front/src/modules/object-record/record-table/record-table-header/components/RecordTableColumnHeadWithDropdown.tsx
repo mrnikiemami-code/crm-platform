@@ -32,6 +32,9 @@ export const RecordTableColumnHeadWithDropdown = ({
       onOpen={handleDropdownOpen}
       onClose={handleDropdownClose}
       dropdownId={recordField.fieldMetadataItemId + '-header'}
+      // Constrain to the fixed column width so FA/EN labels ellipsize instead
+      // of growing (width:auto) and getting mid-glyph clipped by the cell.
+      clickableComponentWidth="100%"
       clickableComponent={<RecordTableColumnHead recordField={recordField} />}
       dropdownComponents={
         <RecordTableColumnHeadDropdownMenu

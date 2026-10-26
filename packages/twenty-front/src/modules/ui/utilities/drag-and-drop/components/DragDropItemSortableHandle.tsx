@@ -13,6 +13,7 @@ const StyledSortableHandle = styled.div<{
   height: 100%;
   min-width: 0;
   outline: none;
+  overflow: ${({ $fill }) => ($fill ? 'hidden' : 'visible')};
   width: ${({ $fill }) => ($fill ? '100%' : 'auto')};
   &:focus-visible {
     outline: 2px solid ${themeCssVariables.color.blue};
