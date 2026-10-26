@@ -37,4 +37,8 @@ describe('truncateTickLabel', () => {
   it('should handle maxLength of 4 correctly', () => {
     expect(truncateTickLabel('Hello', 4)).toBe('H...');
   });
+
+  it('should truncate Persian labels by grapheme count', () => {
+    expect(truncateTickLabel('پیگیری واریزی', 8)).toBe('پیگیر...');
+  });
 });

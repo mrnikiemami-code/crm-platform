@@ -9,6 +9,7 @@ import { buildChartDrilldownQueryParams } from '@/page-layout/widgets/graph/util
 import { generateChartAggregateFilterKey } from '@/page-layout/widgets/graph/utils/generateChartAggregateFilterKey';
 import { getChartValueFormatOptions } from '@/page-layout/widgets/graph/utils/getChartValueFormatOptions';
 import { isFilteredViewRedirectionSupported } from '@/page-layout/widgets/graph/utils/isFilteredViewRedirectionSupported';
+import { sanitizeChartAxisLabel } from '@/page-layout/widgets/graph/utils/sanitizeChartAxisLabel';
 import { useCurrentWidget } from '@/page-layout/widgets/hooks/useCurrentWidget';
 import { useUserFirstDayOfTheWeek } from '@/ui/input/components/internal/date/hooks/useUserFirstDayOfTheWeek';
 import { useUserTimezone } from '@/ui/input/components/internal/date/hooks/useUserTimezone';
@@ -79,8 +80,12 @@ export const GraphWidgetBarChartRenderer = () => {
     axisNameDisplay === AxisNameDisplay.Y ||
     axisNameDisplay === AxisNameDisplay.BOTH;
 
-  const xAxisLabelToDisplay = showXLabel ? xAxisLabel : undefined;
-  const yAxisLabelToDisplay = showYLabel ? yAxisLabel : undefined;
+  const xAxisLabelToDisplay = showXLabel
+    ? sanitizeChartAxisLabel(xAxisLabel)
+    : undefined;
+  const yAxisLabelToDisplay = showYLabel
+    ? sanitizeChartAxisLabel(yAxisLabel)
+    : undefined;
 
   const chartFilterKey = generateChartAggregateFilterKey(
     configuration.rangeMin,

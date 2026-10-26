@@ -29,6 +29,7 @@ export const BottomAxisTicks = ({
 
         return (
           <g key={`bottom-tick-${index}`} transform={`translate(${x}, 0)`}>
+            <title>{String(value)}</title>
             <text
               x={0}
               y={tickPadding + tickFontSize}
@@ -40,6 +41,7 @@ export const BottomAxisTicks = ({
               }
               fill={theme.font.color.secondary}
               fontSize={tickFontSize}
+              style={{ unicodeBidi: 'plaintext' }}
             >
               {label}
             </text>

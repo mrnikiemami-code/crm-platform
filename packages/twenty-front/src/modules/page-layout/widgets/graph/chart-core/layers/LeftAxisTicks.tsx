@@ -25,6 +25,7 @@ export const LeftAxisTicks = ({
 
         return (
           <g key={`left-tick-${index}`} transform={`translate(0, ${y})`}>
+            <title>{String(value)}</title>
             <text
               x={-tickPadding}
               y={0}
@@ -32,6 +33,7 @@ export const LeftAxisTicks = ({
               dominantBaseline="middle"
               fill={theme.font.color.secondary}
               fontSize={tickFontSize}
+              style={{ unicodeBidi: 'plaintext' }}
             >
               {label}
             </text>

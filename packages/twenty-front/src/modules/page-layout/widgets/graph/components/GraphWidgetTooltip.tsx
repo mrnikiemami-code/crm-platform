@@ -72,10 +72,10 @@ const StyledTooltipHeader = styled.div`
   font-size: ${themeCssVariables.font.size.xs};
   font-weight: ${themeCssVariables.font.weight.medium};
   line-height: 140%;
-  overflow: hidden;
+  overflow-wrap: anywhere;
   text-align: start;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  unicode-bidi: plaintext;
+  white-space: normal;
 `;
 
 const StyledTooltipRowRightContent = styled.div`
@@ -122,6 +122,7 @@ const StyledTooltipValue = styled.span<{ isHighlighted?: boolean }>`
     isHighlighted
       ? themeCssVariables.font.weight.semiBold
       : themeCssVariables.font.weight.medium};
+  unicode-bidi: isolate;
   white-space: nowrap;
 `;
 

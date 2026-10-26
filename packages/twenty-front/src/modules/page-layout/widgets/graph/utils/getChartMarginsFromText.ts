@@ -2,6 +2,7 @@ import { COMMON_CHART_CONSTANTS } from '@/page-layout/widgets/graph/constants/Co
 import { TEXT_MARGIN_EXTRAS } from '@/page-layout/widgets/graph/constants/TextMarginExtras';
 import { TEXT_MARGIN_LIMITS } from '@/page-layout/widgets/graph/constants/TextMarginLimits';
 import { type ChartMargins } from '@/page-layout/widgets/graph/types/ChartMargins';
+import { estimateChartLabelCharacterWidthRatio } from '@/page-layout/widgets/graph/utils/estimateChartLabelCharacterWidthRatio';
 import { estimateLineHeight } from '@/page-layout/widgets/graph/utils/estimateLineHeight';
 import { estimateRotatedHeight } from '@/page-layout/widgets/graph/utils/estimateRotatedHeight';
 import { getMaxLabelLength } from '@/page-layout/widgets/graph/utils/getMaxLabelLength';
@@ -10,12 +11,11 @@ import { isNumber } from '@sniptt/guards';
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const estimateLabelWidth = (maxLength: number, fontSize: number) =>
-  Math.ceil(
-    maxLength *
-      fontSize *
-      COMMON_CHART_CONSTANTS.HORIZONTAL_LABEL_CHARACTER_WIDTH_RATIO,
-  );
+const estimateLabelWidth = (
+  maxLength: number,
+  fontSize: number,
+  characterWidthRatio: number,
+) => Math.ceil(maxLength * fontSize * characterWidthRatio);
 
 export const getChartMarginsFromText = ({
   tickFontSize,
@@ -43,6 +43,10 @@ export const getChartMarginsFromText = ({
   const bottomMaxLabelLength = getMaxLabelLength(bottomTickLabels);
   const leftMaxLabelLength = getMaxLabelLength(leftTickLabels);
   const rightMaxLabelLength = getMaxLabelLength(rightTickLabels);
+  const leftCharacterWidthRatio =
+    estimateChartLabelCharacterWidthRatio(leftTickLabels);
+  const rightCharacterWidthRatio =
+    estimateChartLabelCharacterWidthRatio(rightTickLabels);
 
   const tickPaddingExtra = xAxisLabel ? TEXT_MARGIN_EXTRAS.tickPaddingExtra : 0;
   const bottomTickHeight =
@@ -78,7 +82,11 @@ export const getChartMarginsFromText = ({
 
   const leftTickWidth =
     leftMaxLabelLength > 0
-      ? estimateLabelWidth(leftMaxLabelLength, tickFontSize)
+      ? estimateLabelWidth(
+          leftMaxLabelLength,
+          tickFontSize,
+          leftCharacterWidthRatio,
+        )
       : 0;
   const leftTicksBlock =
     leftTickWidth > 0
@@ -97,7 +105,11 @@ export const getChartMarginsFromText = ({
 
   const rightTickWidth =
     rightMaxLabelLength > 0
-      ? estimateLabelWidth(rightMaxLabelLength, tickFontSize)
+      ? estimateLabelWidth(
+          rightMaxLabelLength,
+          tickFontSize,
+          rightCharacterWidthRatio,
+        )
       : 0;
   const rightTicksBlock =
     rightTickWidth > 0
