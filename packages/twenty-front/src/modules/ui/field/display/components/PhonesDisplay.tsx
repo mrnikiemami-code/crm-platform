@@ -5,6 +5,7 @@ import { type FieldPhonesValue } from '@/object-record/record-field/ui/types/Fie
 import { ExpandableList } from '@/ui/layout/expandable-list/components/ExpandableList';
 import { useFormatDigitsForLocale } from '@/localization/hooks/useFormatDigitsForLocale';
 
+import { PhoneNumberText } from '@/ui/field/display/components/PhoneNumberText';
 import { styled } from '@linaria/react';
 import { parsePhoneNumber } from 'libphonenumber-js';
 import { isDefined } from 'twenty-shared/utils';
@@ -59,17 +60,20 @@ export const PhonesDisplay = ({
         const { parsedPhone, invalidPhone } =
           parsePhoneNumberOrReturnInvalidValue(callingCode + number);
         const URI = parsedPhone?.getURI();
+        const label = formatDigitsForLocale(
+          parsedPhone ? parsedPhone.formatInternational() : invalidPhone,
+        );
+
         return (
-          <RoundedLink
-            key={index}
-            href={URI || ''}
-            label={formatDigitsForLocale(
-              parsedPhone ? parsedPhone.formatInternational() : invalidPhone,
-            )}
-            onClick={(event) =>
-              onPhoneNumberClick?.(callingCode + number, event)
-            }
-          />
+          <PhoneNumberText key={index}>
+            <RoundedLink
+              href={URI || ''}
+              label={label}
+              onClick={(event) =>
+                onPhoneNumberClick?.(callingCode + number, event)
+              }
+            />
+          </PhoneNumberText>
         );
       })}
     </ExpandableList>
@@ -79,17 +83,20 @@ export const PhonesDisplay = ({
         const { parsedPhone, invalidPhone } =
           parsePhoneNumberOrReturnInvalidValue(callingCode + number);
         const URI = parsedPhone?.getURI();
+        const label = formatDigitsForLocale(
+          parsedPhone ? parsedPhone.formatInternational() : invalidPhone,
+        );
+
         return (
-          <RoundedLink
-            key={index}
-            href={URI || ''}
-            label={formatDigitsForLocale(
-              parsedPhone ? parsedPhone.formatInternational() : invalidPhone,
-            )}
-            onClick={(event) =>
-              onPhoneNumberClick?.(callingCode + number, event)
-            }
-          />
+          <PhoneNumberText key={index}>
+            <RoundedLink
+              href={URI || ''}
+              label={label}
+              onClick={(event) =>
+                onPhoneNumberClick?.(callingCode + number, event)
+              }
+            />
+          </PhoneNumberText>
         );
       })}
     </StyledContainer>

@@ -3,6 +3,8 @@ import { type MouseEvent } from 'react';
 import { isDefined } from 'twenty-shared/utils';
 import { ContactLink } from 'twenty-ui/primitives/navigation';
 
+import { PhoneNumberText } from '@/ui/field/display/components/PhoneNumberText';
+
 interface PhoneDisplayProps {
   value: PhoneDisplayValueProps;
 }
@@ -14,7 +16,13 @@ type PhoneDisplayValueProps = {
 export const PhoneDisplay = ({
   value: { number, callingCode },
 }: PhoneDisplayProps) => {
-  if (!isDefined(number)) return <ContactLink href="#">{number}</ContactLink>;
+  if (!isDefined(number)) {
+    return (
+      <ContactLink href="#">
+        <PhoneNumberText>{number}</PhoneNumberText>
+      </ContactLink>
+    );
+  }
 
   const callingCodeSanitized = callingCode?.replace('+', '');
 
@@ -25,11 +33,25 @@ export const PhoneDisplay = ({
       defaultCallingCode: callingCodeSanitized || '1',
     });
   } catch (error) {
-    if (!(error instanceof Error))
-      return <ContactLink href="#">{number}</ContactLink>;
-    if (error.message === 'NOT_A_NUMBER')
-      return <ContactLink href="#">{`+${callingCodeSanitized}`}</ContactLink>;
-    return <ContactLink href="#">{number}</ContactLink>;
+    if (!(error instanceof Error)) {
+      return (
+        <ContactLink href="#">
+          <PhoneNumberText>{number}</PhoneNumberText>
+        </ContactLink>
+      );
+    }
+    if (error.message === 'NOT_A_NUMBER') {
+      return (
+        <ContactLink href="#">
+          <PhoneNumberText>{`+${callingCodeSanitized}`}</PhoneNumberText>
+        </ContactLink>
+      );
+    }
+    return (
+      <ContactLink href="#">
+        <PhoneNumberText>{number}</PhoneNumberText>
+      </ContactLink>
+    );
   }
 
   const URI = parsedPhoneNumber.getURI();
@@ -41,7 +63,7 @@ export const PhoneDisplay = ({
         event.stopPropagation();
       }}
     >
-      {formatedPhoneNumber || number}
+      <PhoneNumberText>{formatedPhoneNumber || number}</PhoneNumberText>
     </ContactLink>
   );
 };
