@@ -218,13 +218,13 @@ export const GraphWidgetPieChart = ({
             }}
             arcLinkLabelsDiagonalLength={10}
             arcLinkLabelsStraightLength={10}
-            arcLinkLabelsTextColor={themeCssVariables.font.color.light}
-            arcLinkLabelsColor={themeCssVariables.font.color.extraLight}
+            arcLinkLabelsTextColor={themeCssVariables.font.color.secondary}
+            arcLinkLabelsColor={themeCssVariables.font.color.tertiary}
             theme={{
               labels: {
                 text: {
-                  fontSize: themeCssVariables.font.size.sm,
-                  fontWeight: themeCssVariables.font.weight.medium,
+                  fontSize: themeCssVariables.font.size.md,
+                  fontWeight: themeCssVariables.font.weight.semiBold,
                 },
               },
             }}

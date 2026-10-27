@@ -85,11 +85,13 @@ const StyledLegendLabel = styled.div<{
   fixedWidth?: boolean;
   isHidden?: boolean;
 }>`
-  color: ${themeCssVariables.font.color.secondary};
+  color: ${themeCssVariables.font.color.primary};
+  font-weight: ${themeCssVariables.font.weight.medium};
   opacity: ${({ isHidden }) =>
     isHidden ? LEGEND_HIGHLIGHT_DIMMED_OPACITY : 1};
   overflow: hidden;
   text-decoration: ${({ isHidden }) => (isHidden ? 'line-through' : 'none')};
+  unicode-bidi: plaintext;
   width: ${({ fixedWidth }) =>
     fixedWidth ? `${LEGEND_LABEL_MAX_WIDTH}px` : 'auto'};
 

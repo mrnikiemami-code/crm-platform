@@ -7,6 +7,7 @@ type GraphWidgetChartContainerProps = {
 
 const StyledGraphWidgetChartContainer = styled.div<GraphWidgetChartContainerProps>`
   flex: 1;
+  overflow: visible;
   position: relative;
   width: 100%;
 

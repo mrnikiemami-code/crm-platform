@@ -76,17 +76,14 @@ const resolveMarginInputs = ({
           ),
         );
 
+  // Horizontal category margins must size from full labels; truncating first
+  // under-reserves left space and clips Persian outcome/agent ticks.
   const leftTickLabels =
     layout === BarChartLayout.VERTICAL
       ? tickResult.tickValues.map((value) =>
           formatGraphValue(value, formatOptions),
         )
-      : tickConfiguration.categoryTickValues.map((value) =>
-          truncateTickLabel(
-            String(value),
-            tickConfiguration.maxLeftAxisTickLabelLength,
-          ),
-        );
+      : tickConfiguration.categoryTickValues.map((value) => String(value));
 
   return { bottomTickLabels, leftTickLabels };
 };

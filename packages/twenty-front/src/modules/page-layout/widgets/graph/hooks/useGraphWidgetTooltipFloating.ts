@@ -30,16 +30,17 @@ export const useGraphWidgetTooltipFloating = (
     elements: {
       reference: virtualElement,
     },
-    placement: 'left',
+    // Prefer top/right so horizontal-bar tips stay clear of category labels.
+    placement: 'top',
     strategy: 'fixed',
     middleware: [
       offset(tooltipOffsetFromAnchorInPx),
       flip({
-        fallbackPlacements: ['right', 'top', 'bottom'],
+        fallbackPlacements: ['right', 'bottom', 'left'],
         boundary: boundaryElement ?? rootBoundary,
       }),
       shift({
-        boundary: boundaryElement ?? rootBoundary,
+        boundary: rootBoundary ?? boundaryElement ?? undefined,
         padding: GRAPH_TOOLTIP_BOUNDARY_PADDING_PX,
       }),
     ],

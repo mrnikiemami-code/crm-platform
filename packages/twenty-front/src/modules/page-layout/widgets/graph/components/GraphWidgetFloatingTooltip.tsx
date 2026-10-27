@@ -68,8 +68,14 @@ export const GraphWidgetFloatingTooltip = ({
     return null;
   }
 
+  // Portal to app root so overflow:hidden widget frames cannot clip the tip.
+  const portalRoot =
+    typeof document === 'undefined'
+      ? null
+      : (document.querySelector('#root') as HTMLElement | null) ?? document.body;
+
   return (
-    <FloatingPortal root={boundary}>
+    <FloatingPortal root={portalRoot}>
       <animated.div
         ref={refs.setFloating}
         style={{
