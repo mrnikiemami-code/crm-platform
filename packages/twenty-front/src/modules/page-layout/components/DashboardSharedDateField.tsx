@@ -1,13 +1,18 @@
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { formatDashboardSharedDateDisplay } from '@/page-layout/utils/formatDashboardSharedDateDisplay';
 import { isValidCanonicalIsoPlainDate } from '@/page-layout/utils/parseDashboardSharedDateInput';
-import { DatePicker } from '@/ui/input/components/internal/date/components/DatePicker';
+import {
+  DatePicker,
+  MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID,
+  MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID,
+} from '@/ui/input/components/internal/date/components/DatePicker';
 import { SelectControl } from '@/ui/input/components/SelectControl';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { useCloseDropdown } from '@/ui/layout/dropdown/hooks/useCloseDropdown';
 import { styled } from '@linaria/react';
 import { isDefined, isNonEmptyString } from 'twenty-shared/utils';
+import { IconCalendarEvent } from 'twenty-ui/icon';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 const StyledLabel = styled.span`
@@ -21,6 +26,15 @@ const StyledLabel = styled.span`
 const StyledRoot = styled.div`
   min-width: 168px;
   width: 100%;
+`;
+
+const StyledActiveDot = styled.span`
+  background: ${themeCssVariables.color.blue};
+  border-radius: 50%;
+  display: inline-block;
+  height: 6px;
+  margin-inline-start: ${themeCssVariables.spacing[1]};
+  width: 6px;
 `;
 
 type DashboardSharedDateFieldProps = {
@@ -47,6 +61,8 @@ export const DashboardSharedDateField = ({
     dateFormat,
   });
 
+  const hasValue = isNonEmptyString(value) && isValidCanonicalIsoPlainDate(value);
+
   const commitIsoDate = (nextValue: string | null) => {
     if (!isDefined(nextValue) || nextValue === '') {
       onCommit(null);
@@ -54,8 +70,6 @@ export const DashboardSharedDateField = ({
       return;
     }
 
-    // DatePicker header typing already normalizes Persian/Arabic digits and
-    // converts Jalali values via existing locale utils; reject non-ISO.
     if (!isValidCanonicalIsoPlainDate(nextValue)) {
       return;
     }
@@ -65,22 +79,26 @@ export const DashboardSharedDateField = ({
 
   return (
     <StyledRoot>
-      <StyledLabel>{label}</StyledLabel>
+      <StyledLabel>
+        {label}
+        {hasValue && <StyledActiveDot aria-hidden />}
+      </StyledLabel>
       <Dropdown
         dropdownId={dropdownId}
         dropdownPlacement="bottom-start"
         clickableComponentWidth="100%"
+        excludedClickOutsideIds={[
+          MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID,
+          MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID,
+        ]}
         clickableComponent={
           <SelectControl
             selectedOption={{
               value: value ?? '',
-              label: isNonEmptyString(displayValue)
-                ? displayValue
-                : placeholder,
+              label: hasValue ? displayValue : placeholder,
+              Icon: IconCalendarEvent,
             }}
-            textAccent={
-              isNonEmptyString(displayValue) ? 'default' : 'placeholder'
-            }
+            textAccent={hasValue ? 'default' : 'placeholder'}
             selectSizeVariant="small"
           />
         }
@@ -88,8 +106,8 @@ export const DashboardSharedDateField = ({
           <DropdownContent widthInPixels={300}>
             <DatePicker
               instanceId={`${dropdownId}-picker`}
-              plainDateString={value}
-              clearable
+              plainDateString={hasValue ? value : null}
+              clearable={hasValue}
               onChange={commitIsoDate}
               onClose={(nextValue) => {
                 commitIsoDate(nextValue);

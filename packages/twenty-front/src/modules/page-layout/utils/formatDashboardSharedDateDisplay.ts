@@ -1,5 +1,6 @@
 import { DateFormat } from '@/localization/constants/DateFormat';
 import { type CalendarSystem } from '@/localization/types/CalendarSystem';
+import { formatDigitsAsPersian } from '@/localization/utils/jalali/formatDigitsAsPersian';
 import { formatJalaliDateInputString } from '@/localization/utils/jalali/formatJalaliDateInputString';
 import { Temporal } from 'temporal-polyfill';
 import { isNonEmptyString } from 'twenty-shared/utils';
@@ -11,6 +12,7 @@ export const formatDashboardSharedDateDisplay = ({
 }: {
   isoPlainDate: string | null;
   calendar: CalendarSystem;
+  // EN uses workspace Gregorian preference; FA always year/month/day.
   dateFormat: DateFormat;
 }): string => {
   if (!isNonEmptyString(isoPlainDate)) {
@@ -19,10 +21,12 @@ export const formatDashboardSharedDateDisplay = ({
 
   try {
     if (calendar === 'persian') {
-      return formatJalaliDateInputString({
+      const asciiJalali = formatJalaliDateInputString({
         isoPlainDate,
-        dateFormat,
+        dateFormat: DateFormat.YEAR_FIRST,
       });
+
+      return formatDigitsAsPersian(asciiJalali);
     }
 
     const plainDate = Temporal.PlainDate.from(isoPlainDate);

@@ -76,15 +76,15 @@ describe('parseDashboardSharedDateInput', () => {
     expect(isValidCanonicalIsoPlainDate('not-a-date')).toBe(false);
   });
 
-  it('round-trips Jalali display for a picked ISO date', () => {
+  it('round-trips Jalali YEAR_FIRST Persian digits for a picked ISO date', () => {
     const iso = '2026-09-23';
     const display = formatDashboardSharedDateDisplay({
       isoPlainDate: iso,
       calendar: 'persian',
-      dateFormat: DateFormat.YEAR_FIRST,
+      dateFormat: DateFormat.MONTH_FIRST,
     });
 
-    expect(display).toBe('1405/07/01');
+    expect(display).toBe('۱۴۰۵/۰۷/۰۱');
     expect(
       parseDashboardSharedDateInput({
         value: display,
@@ -93,4 +93,16 @@ describe('parseDashboardSharedDateInput', () => {
       }),
     ).toBe(iso);
   });
+
+  it('formats Farvardin 1 as ۱۴۰۵/۰۱/۰۱', () => {
+    // 1405-01-01 Jalali = 2026-03-21 Gregorian
+    expect(
+      formatDashboardSharedDateDisplay({
+        isoPlainDate: '2026-03-21',
+        calendar: 'persian',
+        dateFormat: DateFormat.DAY_FIRST,
+      }),
+    ).toBe('۱۴۰۵/۰۱/۰۱');
+  });
 });
+
