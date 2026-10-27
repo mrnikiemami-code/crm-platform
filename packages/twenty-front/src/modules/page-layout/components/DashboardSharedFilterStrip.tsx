@@ -1,4 +1,4 @@
-import { FormDateFieldInput } from '@/object-record/record-field/ui/form-types/components/FormDateFieldInput';
+import { DashboardSharedDateField } from '@/page-layout/components/DashboardSharedDateField';
 import { useDateTimeFormat } from '@/localization/hooks/useDateTimeFormat';
 import { useDashboardSharedFilter } from '@/page-layout/hooks/useDashboardSharedFilter';
 import {
@@ -10,7 +10,6 @@ import { Select } from '@/ui/input/components/Select';
 import { useLingui } from '@lingui/react';
 import { msg, t } from '@lingui/core/macro';
 import { styled } from '@linaria/react';
-import { useState } from 'react';
 import { getLocaleTextDirection, SOURCE_LOCALE } from 'twenty-shared/translations';
 import { isDefined } from 'twenty-shared/utils';
 import { Button } from 'twenty-ui/primitives/input';
@@ -26,6 +25,7 @@ const StyledStrip = styled.div`
   gap: ${themeCssVariables.spacing[3]};
   padding: ${themeCssVariables.spacing[2]} ${themeCssVariables.spacing[3]};
   width: 100%;
+  z-index: 2;
 `;
 
 const StyledControl = styled.div`
@@ -46,6 +46,17 @@ const StyledHint = styled.div`
 const StyledError = styled.div`
   color: ${themeCssVariables.color.red};
   font-size: ${themeCssVariables.font.size.sm};
+`;
+
+const StyledEmptyDateBanner = styled.div`
+  background: ${themeCssVariables.background.transparent.light};
+  border: 1px solid ${themeCssVariables.border.color.medium};
+  border-radius: ${themeCssVariables.border.radius.sm};
+  color: ${themeCssVariables.font.color.secondary};
+  flex: 1 1 100%;
+  font-size: ${themeCssVariables.font.size.sm};
+  line-height: 1.4;
+  padding: ${themeCssVariables.spacing[2]} ${themeCssVariables.spacing[3]};
 `;
 
 export const DashboardSharedFilterStrip = () => {
@@ -77,17 +88,12 @@ export const DashboardSharedFilterStrip = () => {
     },
   ];
 
-  const [dateInputEpoch, setDateInputEpoch] = useState(0);
-
   const hasActiveFilter =
     sharedFilter.source !== DASHBOARD_SHARED_SOURCE_FILTER.ALL ||
     isDefined(sharedFilter.dateFrom) ||
     isDefined(sharedFilter.dateTo);
 
-  const handleClear = () => {
-    clearSharedFilter();
-    setDateInputEpoch((epoch) => epoch + 1);
-  };
+  const showUndatedEmptyBanner = dateBounds.status === 'ok';
 
   return (
     <StyledStrip dir={direction} data-testid="dashboard-shared-filter-strip">
@@ -106,29 +112,31 @@ export const DashboardSharedFilterStrip = () => {
       </StyledControl>
 
       <StyledControl>
-        <FormDateFieldInput
-          key={`from-${dateInputEpoch}`}
+        <DashboardSharedDateField
+          dropdownId="dashboard-shared-date-from"
           label={isPersianUi ? 'از تاریخ' : t`From`}
-          defaultValue={sharedFilter.dateFrom ?? undefined}
-          onChange={(value) =>
-            updateSharedFilter({ ...sharedFilter, dateFrom: value })
+          placeholder={isPersianUi ? 'اختیاری' : t`Optional`}
+          value={sharedFilter.dateFrom}
+          onCommit={(dateFrom) =>
+            updateSharedFilter({ ...sharedFilter, dateFrom })
           }
         />
       </StyledControl>
 
       <StyledControl>
-        <FormDateFieldInput
-          key={`to-${dateInputEpoch}`}
+        <DashboardSharedDateField
+          dropdownId="dashboard-shared-date-to"
           label={isPersianUi ? 'تا تاریخ' : t`To`}
-          defaultValue={sharedFilter.dateTo ?? undefined}
-          onChange={(value) =>
-            updateSharedFilter({ ...sharedFilter, dateTo: value })
+          placeholder={isPersianUi ? 'اختیاری' : t`Optional`}
+          value={sharedFilter.dateTo}
+          onCommit={(dateTo) =>
+            updateSharedFilter({ ...sharedFilter, dateTo })
           }
         />
       </StyledControl>
 
       <Button
-        onClick={handleClear}
+        onClick={clearSharedFilter}
         variant="secondary"
         size="small"
         disabled={!hasActiveFilter}
@@ -138,7 +146,7 @@ export const DashboardSharedFilterStrip = () => {
 
       <StyledHint>
         {isPersianUi
-          ? 'پیش‌فرض: همه منابع و همه تاریخ‌ها (شامل بدون‌تاریخ). تاریخ فقط روی زمان‌های واقعی کسب‌وکار اعمال می‌شود؛ createdAt واردات استفاده نمی‌شود. واریزی‌ها برای منبع بدون اتصال یک‌گامی هستند.'
+          ? 'پیش‌فرض: همه منابع و همه تاریخ‌ها (شامل بدون‌تاریخ). تاریخ فقط روی زمان‌های واقعی کسب‌وکار؛ createdAt واردات استفاده نمی‌شود. واریزی‌ها برای منبع بدون اتصال یک‌گامی هستند.'
           : t`Default: all sources and all-time (includes undated). Date range uses business timestamps only — never import createdAt. Payments are unscoped for source (no one-hop lead join).`}
         {dateBounds.status === 'invalid' && (
           <StyledError>
@@ -152,6 +160,14 @@ export const DashboardSharedFilterStrip = () => {
           </StyledError>
         )}
       </StyledHint>
+
+      {showUndatedEmptyBanner && (
+        <StyledEmptyDateBanner data-testid="dashboard-shared-date-empty-banner">
+          {isPersianUi
+            ? 'در بازه انتخاب‌شده داده دارای تاریخ فعالیت ثبت نشده است. رکوردهای بدون تاریخ فعالیت از نتیجه فیلتر شده حذف می‌شوند؛ با پاک کردن تاریخ، همه رکوردها دوباره نمایش داده می‌شوند.'
+            : t`No activity-dated records in the selected range. Undated rows are excluded while a date filter is active; clear dates to restore all-time totals.`}
+        </StyledEmptyDateBanner>
+      )}
     </StyledStrip>
   );
 };
