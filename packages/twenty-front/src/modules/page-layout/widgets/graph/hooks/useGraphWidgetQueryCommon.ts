@@ -1,8 +1,13 @@
 import { useObjectMetadataItemById } from '@/object-metadata/hooks/useObjectMetadataItemById';
 import { flattenedFieldMetadataItemsSelector } from '@/object-metadata/states/flattenedFieldMetadataItemsSelector';
 import { useFilterValueDependencies } from '@/object-record/record-filter/hooks/useFilterValueDependencies';
+import { useCurrentPageLayoutOrThrow } from '@/page-layout/hooks/useCurrentPageLayoutOrThrow';
+import { dashboardSharedFilterComponentState } from '@/page-layout/states/dashboardSharedFilterComponentState';
+import { buildDashboardSharedRecordFilters } from '@/page-layout/utils/buildDashboardSharedRecordFilters';
 import { dropChartRecordFiltersWithDeletedFields } from '@/side-panel/pages/page-layout/utils/dropChartRecordFiltersWithDeletedFields';
+import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
+import { useContext } from 'react';
 import {
   computeRecordGqlOperationFilter,
   isDefined,
@@ -12,7 +17,9 @@ import {
   type BarChartConfiguration,
   type LineChartConfiguration,
   type PieChartConfiguration,
+  PageLayoutType,
 } from '~/generated-metadata/graphql';
+import { UserContext } from '@/users/contexts/UserContext';
 
 export const useGraphWidgetQueryCommon = ({
   objectMetadataItemId,
@@ -57,10 +64,36 @@ export const useGraphWidgetQueryCommon = ({
       validFieldMetadataIds: objectFieldMetadataIds,
     });
 
+  const { currentPageLayout } = useCurrentPageLayoutOrThrow();
+  const sharedFilter = useAtomComponentStateValue(
+    dashboardSharedFilterComponentState,
+  );
+  const { timeZone } = useContext(UserContext);
+
+  const sharedFilterResult =
+    currentPageLayout.type === PageLayoutType.DASHBOARD
+      ? buildDashboardSharedRecordFilters({
+          sharedFilter,
+          objectNameSingular: objectMetadataItem.nameSingular,
+          objectFields: objectMetadataItem.fields.filter(
+            (field) => field.isActive,
+          ),
+          allFields: flattenedFieldMetadataItems.filter(
+            (field) => field.isActive,
+          ),
+          timeZone,
+        })
+      : null;
+
+  const mergedRecordFilters = [
+    ...(sanitizedRecordFilters ?? []),
+    ...(sharedFilterResult?.recordFilters ?? []),
+  ];
+
   const gqlOperationFilter = computeRecordGqlOperationFilter({
     fieldMetadataItems: flattenedFieldMetadataItems,
     filterValueDependencies,
-    recordFilters: sanitizedRecordFilters ?? [],
+    recordFilters: mergedRecordFilters,
     recordFilterGroups: configuration.filter?.recordFilterGroups ?? [],
   });
 
@@ -68,5 +101,6 @@ export const useGraphWidgetQueryCommon = ({
     objectMetadataItem,
     gqlOperationFilter,
     aggregateField,
+    sharedFilterMeta: sharedFilterResult,
   };
 };

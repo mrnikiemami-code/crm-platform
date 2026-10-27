@@ -1,3 +1,4 @@
+import { DashboardSharedFilterStrip } from '@/page-layout/components/DashboardSharedFilterStrip';
 import { PageLayoutGridLayout } from '@/page-layout/components/PageLayoutGridLayout';
 import { PageLayoutVerticalList } from '@/page-layout/components/PageLayoutVerticalList';
 import { usePageLayoutContentContext } from '@/page-layout/contexts/PageLayoutContentContext';
@@ -14,6 +15,13 @@ import {
   PageLayoutTabLayoutMode,
   PageLayoutType,
 } from '~/generated-metadata/graphql';
+
+const StyledDashboardContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  width: 100%;
+`;
 
 const StyledEmptyStandalonePageContainer = styled.div`
   display: grid;
@@ -47,11 +55,23 @@ export const PageLayoutContent = () => {
     );
   }
 
+  const isDashboardLayout =
+    currentPageLayout.type === PageLayoutType.DASHBOARD;
+
   if (isGridLayout) {
+    if (isDashboardLayout) {
+      return (
+        <StyledDashboardContent>
+          <DashboardSharedFilterStrip />
+          <PageLayoutGridLayout tabId={tabId} />
+        </StyledDashboardContent>
+      );
+    }
+
     return <PageLayoutGridLayout tabId={tabId} />;
   }
 
-  return (
+  const verticalList = (
     <PageLayoutVerticalList
       isInEditMode={isPageLayoutInEditMode && isRecordPageLayout}
       widgets={activeTab.widgets}
@@ -77,4 +97,15 @@ export const PageLayoutContent = () => {
       }
     />
   );
+
+  if (isDashboardLayout) {
+    return (
+      <StyledDashboardContent>
+        <DashboardSharedFilterStrip />
+        {verticalList}
+      </StyledDashboardContent>
+    );
+  }
+
+  return verticalList;
 };
