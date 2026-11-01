@@ -234,18 +234,14 @@ export const DashboardSharedFilterStrip = () => {
               رکوردهای دارای تاریخ فعالیت واقعی. منبع: همه / اینستاگرام / پیام
               صوتی؛ سرنخ دوتایی در هر دو. واریزی‌ها برای منبع بدون اتصال
               یک‌گامی. رتبه تماس ≠ برنده فروش. مرحله فعلی ≠ قیف تاریخی.{' '}
-              <strong>قیف فروش:</strong> مرحلهٔ فعلیِ هر سرنخ است، نه تاریخچه.
-              مخرج هر مرحله = سرنخ‌های یکتای همان دامنه (همه: ۱۶۰). مرحله
-              ۲ = سرنخ‌های دارای حداقل یک پیگیری واقعی (۱۲۷ = ۱۲۲ + ۵)؛ مرحله
-              ۳ = سرنخ‌های دارای ثبت‌نام تأییدشده (۵). ۱۷۵ ردیف تماس ≠ ۱۷۵
-              سرنخ. درصد مرحله‌ای نمایش داده نمی‌شود چون نمودار بومی نسبت
-              مرحله‌به‌مرحله را محاسبه نمی‌کند؛ اعداد دقیق‌اند.{' '}
+              <strong>قیف فروش:</strong> مرحلهٔ فعلیِ هر سرنخ است، نه تاریخچه؛
+              مرحله‌ها تجمعی‌اند و هر سرنخ یک‌بار شمرده می‌شود.{' '}
               <a href="/objects/eventLeads?viewId=143e2990-1b0e-4562-a7e7-558db58af293">
                 سرنخ‌های بدون اقدام
               </a>
             </>
           ) : (
-            t`No date filter = all records (including undated). With a range, only rows with real activity timestamps. Source: all / Instagram / voice; dual-tagged leads count in each. Payments are unscoped for source. Call ranking ≠ sales winner. Sales funnel shows each lead's current stage (snapshot, not history): denominator is unique scoped leads; 127 contacted = 122 + 5 registered. 175 interaction rows ≠ 175 leads. Stage percentages are not shown because the native bar cannot compute stage-to-stage ratios.`
+            t`No date filter = all records (including undated). With a range, only rows with real activity timestamps. Source: all / Instagram / voice; dual-tagged leads count in each. Payments are unscoped for source. Call ranking ≠ sales winner. Sales funnel shows each lead's current stage with cumulative, unique counts.`
           )}
         </StyledNoteBody>
       )}
