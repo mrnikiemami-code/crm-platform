@@ -30,7 +30,9 @@ export const GraphDataLabel = ({
       textAnchor={styles.textAnchor}
       dominantBaseline={styles.dominantBaseline}
       style={{
-        fill: theme.font.color.light,
+        // Values sit on white chart space or on pale bars; font.color.light
+        // made them nearly invisible, so keep a readable secondary tone.
+        fill: theme.font.color.secondary,
         fontSize: 11,
         fontWeight: theme.font.weight.medium,
         transform: styles.transformOffset,
