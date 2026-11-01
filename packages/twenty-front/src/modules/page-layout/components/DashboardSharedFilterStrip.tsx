@@ -191,8 +191,8 @@ export const DashboardSharedFilterStrip = () => {
 
       <Button
         onClick={clearSharedFilter}
-        variant="secondary"
-        size="small"
+        variant="outline"
+        size="sm"
         disabled={!hasActiveFilter}
       >
         {isPersianUi ? 'پاک کردن فیلتر' : t`Clear filters`}

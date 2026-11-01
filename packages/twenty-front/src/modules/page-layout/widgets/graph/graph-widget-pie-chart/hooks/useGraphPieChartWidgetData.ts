@@ -5,6 +5,7 @@ import { type GraphColorMode } from '@/page-layout/widgets/graph/types/GraphColo
 import { type RawDimensionValue } from '@/page-layout/widgets/graph/types/RawDimensionValue';
 import { determineChartItemColor } from '@/page-layout/widgets/graph/utils/determineChartItemColor';
 import { determineGraphColorMode } from '@/page-layout/widgets/graph/utils/determineGraphColorMode';
+import { useDashboardSharedChartConfiguration } from '@/page-layout/widgets/graph/hooks/useDashboardSharedChartConfiguration';
 import { extractPieChartDataConfiguration } from '@/page-layout/widgets/graph/utils/extractPieChartDataConfiguration';
 import { parseGraphColor } from '@/page-layout/widgets/graph/utils/parseGraphColor';
 import { useQuery } from '@apollo/client/react';
@@ -44,9 +45,14 @@ export const useGraphPieChartWidgetData = ({
     objectId: objectMetadataItemId,
   });
 
+  const sharedConfiguration = useDashboardSharedChartConfiguration({
+    objectMetadataItemId,
+    configuration,
+  });
+
   const dataConfiguration = useMemo(
-    () => extractPieChartDataConfiguration(configuration),
-    [configuration],
+    () => extractPieChartDataConfiguration(sharedConfiguration),
+    [sharedConfiguration],
   );
 
   const {

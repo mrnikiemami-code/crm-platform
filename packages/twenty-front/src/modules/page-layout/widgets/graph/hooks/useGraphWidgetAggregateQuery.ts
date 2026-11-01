@@ -12,7 +12,7 @@ import { useGraphWidgetQueryCommon } from '@/page-layout/widgets/graph/hooks/use
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { UserContext } from '@/users/contexts/UserContext';
 import { t } from '@lingui/core/macro';
-import { useContext } from 'react';
+import { useContext, useMemo } from 'react';
 import { FIELD_FOR_TOTAL_COUNT_AGGREGATE_OPERATION } from 'twenty-shared/constants';
 import { findById, isDefined } from 'twenty-shared/utils';
 import { type AggregateChartConfiguration } from '~/generated-metadata/graphql';
@@ -165,11 +165,20 @@ export const useGraphWidgetAggregateQuery = ({
     aggregateOperation,
   });
 
+  // Empty result must read as 0, never as a dash next to a unit suffix.
+  const isCountOrSumOperation =
+    extendedAggregateOperation === AggregateOperations.COUNT ||
+    extendedAggregateOperation === AggregateOperations.SUM;
+
   const aggregateDisplayValue =
     transformAggregateRawValueIntoAggregateDisplayValue({
       aggregateFieldMetadataItem: aggregateFieldMetadataItem,
       aggregateOperation: extendedAggregateOperation,
-      aggregateRawValue: aggregateRawValue,
+      aggregateRawValue: isDefined(aggregateRawValue)
+        ? aggregateRawValue
+        : isCountOrSumOperation
+          ? 0
+          : aggregateRawValue,
       dateFormat,
       localeCatalog: dateLocale.localeCatalog,
       timeFormat,
