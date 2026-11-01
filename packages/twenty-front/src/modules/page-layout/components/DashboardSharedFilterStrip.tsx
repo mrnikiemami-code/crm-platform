@@ -6,13 +6,14 @@ import {
   type DashboardSharedSourceFilter,
 } from '@/page-layout/types/DashboardSharedFilter';
 import { resolveDashboardSharedDateBounds } from '@/page-layout/utils/resolveDashboardSharedDateBounds';
+import { formatDashboardSharedDateDisplay } from '@/page-layout/utils/formatDashboardSharedDateDisplay';
 import { Select } from '@/ui/input/components/Select';
 import { useLingui } from '@lingui/react';
 import { msg, t } from '@lingui/core/macro';
 import { styled } from '@linaria/react';
 import { useState } from 'react';
 import { getLocaleTextDirection, SOURCE_LOCALE } from 'twenty-shared/translations';
-import { isDefined } from 'twenty-shared/utils';
+import { isDefined, isNonEmptyString } from 'twenty-shared/utils';
 import { IconChevronDown, IconChevronUp } from 'twenty-ui/icon';
 import { Button } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
@@ -41,17 +42,17 @@ const StyledStatus = styled.div<{ $active: boolean }>`
   align-items: center;
   background: ${({ $active }) =>
     $active
-      ? themeCssVariables.color.blue10
+      ? themeCssVariables.background.transparent.blue
       : themeCssVariables.background.transparent.light};
   border: 1px solid
     ${({ $active }) =>
       $active
-        ? themeCssVariables.color.blue
+        ? themeCssVariables.border.color.blue
         : themeCssVariables.border.color.medium};
   border-radius: ${themeCssVariables.border.radius.sm};
   color: ${({ $active }) =>
     $active
-      ? themeCssVariables.color.blue
+      ? themeCssVariables.font.color.primary
       : themeCssVariables.font.color.tertiary};
   font-size: ${themeCssVariables.font.size.xs};
   font-weight: ${themeCssVariables.font.weight.medium};
@@ -106,7 +107,7 @@ export const DashboardSharedFilterStrip = () => {
   const { i18n } = useLingui();
   const { sharedFilter, updateSharedFilter, clearSharedFilter } =
     useDashboardSharedFilter();
-  const { timeZone } = useDateTimeFormat();
+  const { timeZone, calendar, dateFormat } = useDateTimeFormat();
   const direction = getLocaleTextDirection(i18n.locale);
   const isPersianUi = i18n.locale !== SOURCE_LOCALE;
   const [isNoteOpen, setIsNoteOpen] = useState(false);
@@ -137,6 +138,17 @@ export const DashboardSharedFilterStrip = () => {
   const hasActiveFilter =
     sharedFilter.source !== DASHBOARD_SHARED_SOURCE_FILTER.ALL || hasDateFilter;
 
+  const rangeLabel = [sharedFilter.dateFrom, sharedFilter.dateTo]
+    .map((isoDate) =>
+      formatDashboardSharedDateDisplay({
+        isoPlainDate: isoDate,
+        calendar,
+        dateFormat,
+      }),
+    )
+    .filter((label) => isNonEmptyString(label))
+    .join(isPersianUi ? ' تا ' : ' → ');
+
   const dateStatusLabel = !hasDateFilter
     ? isPersianUi
       ? 'تاریخ: همه (شامل بدون‌تاریخ)'
@@ -146,8 +158,8 @@ export const DashboardSharedFilterStrip = () => {
         ? 'تاریخ: نامعتبر — اعمال نشده'
         : t`Date: invalid — not applied`
       : isPersianUi
-        ? 'تاریخ: فیلتر فعال'
-        : t`Date: filter active`;
+        ? `فیلتر تاریخ فعال: ${rangeLabel}`
+        : t`Date filter active: ${rangeLabel}`;
 
   return (
     <StyledStrip dir={direction} data-testid="dashboard-shared-filter-strip">
