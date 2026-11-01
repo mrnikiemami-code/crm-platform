@@ -245,10 +245,10 @@ export const DashboardSharedFilterStrip = () => {
       )}
 
       {dateBounds.status === 'ok' && (
-        <StyledEmptyDateBanner data-testid="dashboard-shared-date-empty-banner">
+        <StyledEmptyDateBanner data-testid="dashboard-shared-date-scope-banner">
           {isPersianUi
-            ? 'در بازه انتخاب‌شده داده دارای تاریخ فعالیت ثبت نشده است. بدون‌تاریخ‌ها از نتیجه حذف می‌شوند؛ با پاک کردن تاریخ، همه رکوردها برمی‌گردند.'
-            : t`No activity-dated records in the selected range. Undated rows are excluded while a date filter is active; clear dates to restore all-time totals.`}
+            ? 'در بازه انتخابی فقط رکوردهای دارای تاریخ فعالیت واقعی شمرده می‌شوند. ثبت‌نام و واریزی تاریخ مستقل ندارند، پس در بازه صفر نمایش داده می‌شوند؛ با پاک کردن تاریخ، همه اعداد همه‌زمانی برمی‌گردند.'
+            : t`Only rows with a real activity timestamp are counted in the selected range. Registrations and payments have no independent date, so they read 0 while a range is active; clear dates to restore all-time totals.`}
         </StyledEmptyDateBanner>
       )}
     </StyledStrip>
