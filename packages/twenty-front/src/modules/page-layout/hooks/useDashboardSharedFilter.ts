@@ -5,6 +5,10 @@ import {
   type DashboardSharedFilter,
   type DashboardSharedSourceFilter,
 } from '@/page-layout/types/DashboardSharedFilter';
+import {
+  buildDashboardSharedSearchParams,
+  resolveDashboardSharedFilterCommit,
+} from '@/page-layout/utils/dashboardSharedFilterParams';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useSetAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useSetAtomComponentState';
 import { useCallback, useLayoutEffect, useRef } from 'react';
@@ -37,36 +41,6 @@ export const parseDashboardSharedFilterFromSearchParams = (
   };
 };
 
-const writeSharedFilterToSearchParams = ({
-  sharedFilter,
-  searchParams,
-}: {
-  sharedFilter: DashboardSharedFilter;
-  searchParams: URLSearchParams;
-}): URLSearchParams => {
-  const next = new URLSearchParams(searchParams);
-
-  if (sharedFilter.source === DASHBOARD_SHARED_SOURCE_FILTER.ALL) {
-    next.delete(SOURCE_PARAM);
-  } else {
-    next.set(SOURCE_PARAM, sharedFilter.source);
-  }
-
-  if (isNonEmptyString(sharedFilter.dateFrom)) {
-    next.set(FROM_PARAM, sharedFilter.dateFrom);
-  } else {
-    next.delete(FROM_PARAM);
-  }
-
-  if (isNonEmptyString(sharedFilter.dateTo)) {
-    next.set(TO_PARAM, sharedFilter.dateTo);
-  } else {
-    next.delete(TO_PARAM);
-  }
-
-  return next;
-};
-
 export const useDashboardSharedFilter = () => {
   const sharedFilter = useAtomComponentStateValue(
     dashboardSharedFilterComponentState,
@@ -86,15 +60,30 @@ export const useDashboardSharedFilter = () => {
     setSharedFilter(parseDashboardSharedFilterFromSearchParams(searchParams));
   }, [searchParams, setSharedFilter]);
 
+  // A date picker emits onChange and onClose for a single day click; both paths
+  // land here, so an unchanged filter must not write state or the URL at all.
   const updateSharedFilter = useCallback(
     (next: DashboardSharedFilter) => {
-      setSharedFilter(next);
+      const commit = resolveDashboardSharedFilterCommit({
+        current: sharedFilter,
+        next,
+      });
+
+      if (commit === null) {
+        return;
+      }
+
+      setSharedFilter(commit);
       setSearchParams(
-        writeSharedFilterToSearchParams({ sharedFilter: next, searchParams }),
+        (currentSearchParams) =>
+          buildDashboardSharedSearchParams({
+            sharedFilter: commit,
+            baseSearchParams: currentSearchParams,
+          }),
         { replace: true },
       );
     },
-    [searchParams, setSearchParams, setSharedFilter],
+    [setSearchParams, setSharedFilter, sharedFilter],
   );
 
   const clearSharedFilter = useCallback(() => {

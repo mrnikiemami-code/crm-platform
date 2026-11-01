@@ -7,7 +7,7 @@ import { buildDashboardSharedRecordFilters } from '@/page-layout/utils/buildDash
 import { dropChartRecordFiltersWithDeletedFields } from '@/side-panel/pages/page-layout/utils/dropChartRecordFiltersWithDeletedFields';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
-import { useContext } from 'react';
+import { useContext, useMemo } from 'react';
 import {
   computeRecordGqlOperationFilter,
   isDefined,
@@ -52,17 +52,22 @@ export const useGraphWidgetQueryCommon = ({
     flattenedFieldMetadataItemsSelector,
   );
 
-  const objectFieldMetadataIds = new Set(
-    objectMetadataItem.fields
-      .filter((field) => field.isActive)
-      .map((field) => field.id),
-  );
+  // Chart filters come from widget config; rebuilt only when that config or
+  // object metadata changes so widget query identity stays stable.
+  const sanitizedRecordFilters = useMemo(() => {
+    const validFieldMetadataIds = new Set(
+      objectMetadataItem.fields
+        .filter((field) => field.isActive)
+        .map((field) => field.id),
+    );
 
-  const { recordFilters: sanitizedRecordFilters } =
-    dropChartRecordFiltersWithDeletedFields({
-      chartFilters: configuration.filter ?? {},
-      validFieldMetadataIds: objectFieldMetadataIds,
-    });
+    return (
+      dropChartRecordFiltersWithDeletedFields({
+        chartFilters: configuration.filter ?? {},
+        validFieldMetadataIds,
+      }).recordFilters ?? []
+    );
+  }, [configuration.filter, objectMetadataItem]);
 
   const { currentPageLayout } = useCurrentPageLayoutOrThrow();
   const sharedFilter = useAtomComponentStateValue(
@@ -70,37 +75,51 @@ export const useGraphWidgetQueryCommon = ({
   );
   const { timeZone } = useContext(UserContext);
 
-  const sharedFilterResult =
-    currentPageLayout.type === PageLayoutType.DASHBOARD
-      ? buildDashboardSharedRecordFilters({
-          sharedFilter,
-          objectNameSingular: objectMetadataItem.nameSingular,
-          objectFields: objectMetadataItem.fields.filter(
-            (field) => field.isActive,
-          ),
-          allFields: flattenedFieldMetadataItems.filter(
-            (field) => field.isActive,
-          ),
-          timeZone,
-        })
-      : null;
+  // Filter identity must be stable across unrelated re-renders (dropdown open /
+  // close, strip renders); otherwise every widget re-observes its Apollo query.
+  const { gqlOperationFilter, sharedFilterMeta } = useMemo(() => {
+    const sharedFilterResult =
+      currentPageLayout.type === PageLayoutType.DASHBOARD
+        ? buildDashboardSharedRecordFilters({
+            sharedFilter,
+            objectNameSingular: objectMetadataItem.nameSingular,
+            objectFields: objectMetadataItem.fields.filter(
+              (field) => field.isActive,
+            ),
+            allFields: flattenedFieldMetadataItems.filter(
+              (field) => field.isActive,
+            ),
+            timeZone,
+          })
+        : null;
 
-  const mergedRecordFilters = [
-    ...(sanitizedRecordFilters ?? []),
-    ...(sharedFilterResult?.recordFilters ?? []),
-  ];
-
-  const gqlOperationFilter = computeRecordGqlOperationFilter({
-    fieldMetadataItems: flattenedFieldMetadataItems,
+    return {
+      sharedFilterMeta: sharedFilterResult,
+      gqlOperationFilter: computeRecordGqlOperationFilter({
+        fieldMetadataItems: flattenedFieldMetadataItems,
+        filterValueDependencies,
+        recordFilters: [
+          ...(sanitizedRecordFilters ?? []),
+          ...(sharedFilterResult?.recordFilters ?? []),
+        ],
+        recordFilterGroups: configuration.filter?.recordFilterGroups ?? [],
+      }),
+    };
+  }, [
+    configuration.filter,
+    currentPageLayout.type,
     filterValueDependencies,
-    recordFilters: mergedRecordFilters,
-    recordFilterGroups: configuration.filter?.recordFilterGroups ?? [],
-  });
+    flattenedFieldMetadataItems,
+    objectMetadataItem,
+    sanitizedRecordFilters,
+    sharedFilter,
+    timeZone,
+  ]);
 
   return {
     objectMetadataItem,
     gqlOperationFilter,
     aggregateField,
-    sharedFilterMeta: sharedFilterResult,
+    sharedFilterMeta,
   };
 };

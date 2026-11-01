@@ -53,11 +53,25 @@ export const useGraphWidgetAggregateQuery = ({
       aggregateField.type,
     );
 
+  // Stable identity: a new object here regenerates the aggregate gql document
+  // on every render and makes each widget re-observe its Apollo query.
+  const recordGqlFieldsAggregate = useMemo(
+    () => ({
+      [aggregateField.name]: [extendedAggregateOperation],
+    }),
+    [aggregateField.name, extendedAggregateOperation],
+  );
+
+  const ratioCountAggregate = useMemo(
+    () => ({
+      [FIELD_FOR_TOTAL_COUNT_AGGREGATE_OPERATION]: [AggregateOperations.COUNT],
+    }),
+    [],
+  );
+
   const { data, loading, error } = useAggregateRecords({
     objectNameSingular: objectMetadataItem.nameSingular,
-    recordGqlFieldsAggregate: {
-      [aggregateField.name]: [extendedAggregateOperation],
-    },
+    recordGqlFieldsAggregate,
     filter: gqlOperationFilter,
     skip: isRatioQuery,
   });
@@ -68,9 +82,7 @@ export const useGraphWidgetAggregateQuery = ({
     error: ratioNumeratorError,
   } = useAggregateRecords({
     objectNameSingular: objectMetadataItem.nameSingular,
-    recordGqlFieldsAggregate: {
-      [FIELD_FOR_TOTAL_COUNT_AGGREGATE_OPERATION]: [AggregateOperations.COUNT],
-    },
+    recordGqlFieldsAggregate: ratioCountAggregate,
     filter: ratioNumeratorFilter,
     skip: !isRatioQuery,
   });
@@ -81,9 +93,7 @@ export const useGraphWidgetAggregateQuery = ({
     error: ratioDenominatorError,
   } = useAggregateRecords({
     objectNameSingular: objectMetadataItem.nameSingular,
-    recordGqlFieldsAggregate: {
-      [FIELD_FOR_TOTAL_COUNT_AGGREGATE_OPERATION]: [AggregateOperations.COUNT],
-    },
+    recordGqlFieldsAggregate: ratioCountAggregate,
     filter: gqlOperationFilter,
     skip: !isRatioQuery,
   });
