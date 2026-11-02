@@ -1203,9 +1203,10 @@ msgstr "عمل"
 #. js-lingui-id: bwRvnp
 #: src/modules/side-panel/components/SidePanelWorkflowStepInfo.tsx
 #: src/modules/side-panel/components/SidePanelWorkflowStepInfo.tsx
+#: src/modules/workflow/workflow-diagram/workflow-nodes/hooks/useWorkflowNodeLabel.ts
 #: src/modules/workflow/workflow-steps/workflow-actions/utils/getActionHeaderTypeOrThrow.ts
 msgid "Action"
-msgstr "عمل"
+msgstr "اقدام"
 
 #. js-lingui-id: j6ogTf
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldOnClickActionForm.tsx
@@ -1275,6 +1276,7 @@ msgstr "در حال فعال‌سازی..."
 #: src/modules/settings/admin-panel/signing-keys/components/SettingsAdminSigningKeysTable.tsx
 #: src/modules/settings/billing/components/SettingsBillingSubscriptionInfo.tsx
 #: src/modules/settings/domains/components/SettingsWorkspaceDomainCard.tsx
+#: src/modules/workflow/workflow-diagram/utils/getWorkflowVersionStatusTagProps.ts
 #: src/pages/settings/applications/tabs/SettingsApplicationTimelineActivityTypeSettingsTab.tsx
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
@@ -1406,6 +1408,12 @@ msgstr "افزودن لینک ویدئوکنفرانس"
 #: src/pages/settings/accounts/SettingsAccountsConfigurationStepEmail.tsx
 msgid "Add account"
 msgstr "افزودن حساب"
+
+#. js-lingui-id: 27lqO4
+#: src/modules/workflow/workflow-diagram/constants/EmptyActionNodeNameMessage.ts
+#: src/modules/workflow/workflow-diagram/workflow-nodes/components/WorkflowDiagramStepNodeReadonly.tsx
+msgid "Add an Action"
+msgstr "افزودن اقدام"
 
 #. js-lingui-id: dGjQL8
 #: src/modules/ai/components/AiChatApiKeyNotConfiguredMessage.tsx
@@ -2091,6 +2099,11 @@ msgstr "هوش مصنوعی"
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
 msgid "AI & Automations"
 msgstr "AI و خودکارسازی"
+
+#. js-lingui-id: MnmJG1
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "AI Agent"
+msgstr "عامل هوش مصنوعی"
 
 #. js-lingui-id: e8xNdF
 #: src/modules/workflow/workflow-steps/workflow-actions/ai-agent-action/components/WorkflowEditActionAiAgent.tsx
@@ -3026,6 +3039,7 @@ msgstr "فایل‌های آرشیو قابل پیش‌نمایش نیستند. 
 #: src/modules/object-core/workflows/versions/constants/CoreWorkflowVersionStatusTagProps.ts
 #: src/modules/settings/accounts/components/SettingsAccountsConnectedAccountsRowRightContainer.tsx
 #: src/modules/settings/admin-panel/chats/components/SettingsAdminChatsTableRow.tsx
+#: src/modules/workflow/workflow-diagram/utils/getWorkflowVersionStatusTagProps.ts
 msgid "Archived"
 msgstr "بایگانی‌شده"
 
@@ -4658,6 +4672,11 @@ msgstr "ثبت مالکیت روی این سرور پیکربندی نشده. ا
 msgid "Classification"
 msgstr ""
 
+#. js-lingui-id: xAuL3N
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Classify"
+msgstr "دسته‌بندی"
+
 #. js-lingui-id: fcgvCA
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
 msgid "Claude"
@@ -4859,6 +4878,11 @@ msgstr "کد"
 #: src/modules/workflow/workflow-steps/workflow-actions/code-action/components/WorkflowEditActionCode.tsx
 msgid "Code"
 msgstr "کد"
+
+#. js-lingui-id: qP3uE6
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Code - Logic Function"
+msgstr "کد — تابع منطقی"
 
 #. js-lingui-id: 80c4+P
 #: src/modules/ai/components/MarkdownCodeBlock.tsx
@@ -6092,6 +6116,7 @@ msgstr "ایجاد رویداد تقویم"
 
 #. js-lingui-id: fbe2ik
 #: src/modules/settings/roles/role-permissions/permission-flags/hooks/useActionRolePermissionFlagConfig.ts
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
 msgid "Create Calendar Event"
 msgstr "ایجاد رویداد تقویم"
 
@@ -6125,6 +6150,11 @@ msgstr "ایجاد نمای جدید"
 msgid "Create note"
 msgstr "ایجاد یادداشت"
 
+#. js-lingui-id: 61qV4l
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Create or Update Record"
+msgstr "ایجاد یا ویرایش رکورد"
+
 #. js-lingui-id: gSyzEV
 #: src/pages/onboarding/CreateProfile.tsx
 msgid "Create profile"
@@ -6139,6 +6169,11 @@ msgstr "ایجاد پروفایل"
 #: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
 #: src/modules/object-record/record-calendar/components/RecordCalendarAddNew.tsx
 msgid "Create record"
+msgstr "ایجاد رکورد"
+
+#. js-lingui-id: 4JOSed
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Create Record"
 msgstr "ایجاد رکورد"
 
 #. js-lingui-id: fRYkDa
@@ -7006,11 +7041,12 @@ msgstr "غیرفعال‌سازی این فیلد"
 #: src/modules/settings/data-model/object-details/components/SettingsObjectFieldItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectItemTableRow.tsx
 #: src/modules/settings/data-model/object-details/components/SettingsObjectRelationItemTableRow.tsx
+#: src/modules/workflow/workflow-diagram/utils/getWorkflowVersionStatusTagProps.ts
 #: src/pages/settings/ai/components/SettingsAgentSkillsTab.tsx
 #: src/pages/settings/data-model/SettingsObjectTable.tsx
 #: src/pages/settings/profile/SettingsProfile.tsx
 msgid "Deactivated"
-msgstr "غیرفعال"
+msgstr "غیرفعال‌شده"
 
 #. js-lingui-id: DsAFe3
 #: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
@@ -7132,6 +7168,11 @@ msgstr "تعیین کنید این ابزار چه کاری انجام می‌د
 #: src/modules/settings/accounts/components/SettingsAccountsMessageChannelDetails.tsx
 msgid "Define what will be visible to other users in your workspace"
 msgstr "تعیین کنید چه چیزهایی برای دیگر کاربران فضای کاری قابل مشاهده باشد"
+
+#. js-lingui-id: YeWQto
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Delay"
+msgstr "تأخیر"
 
 #. js-lingui-id: EcAkBs
 #: src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx
@@ -7319,6 +7360,11 @@ msgstr "حذف گره"
 #: src/pages/settings/admin-panel/SettingsAdminApplicationRegistrationDangerZone.tsx
 msgid "Delete or transfer this app registration"
 msgstr "حذف یا انتقال ثبت این برنامه"
+
+#. js-lingui-id: LUsa0/
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Delete Record"
+msgstr "حذف رکورد"
 
 #. js-lingui-id: mcXHCJ
 #: src/modules/settings/roles/role-permissions/objects-permissions/components/SettingsRolePermissionsObjectsSection.tsx
@@ -7895,6 +7941,7 @@ msgstr "دانلود نمونه"
 #: src/modules/activities/emails/components/EmailThreadPreview.tsx
 #: src/modules/object-core/workflows/constants/CoreWorkflowStatusFilterOptions.ts
 #: src/modules/object-core/workflows/versions/constants/CoreWorkflowVersionStatusTagProps.ts
+#: src/modules/workflow/workflow-diagram/utils/getWorkflowVersionStatusTagProps.ts
 msgid "Draft"
 msgstr "پیش‌نویس"
 
@@ -7911,6 +7958,11 @@ msgstr "پیش‌نویس ایمیل به این شرکت درباره "
 #. js-lingui-id: DbAw4C
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowRunStepLogsEmailDetail.tsx
 msgid "Draft email"
+msgstr "پیش‌نویس ایمیل"
+
+#. js-lingui-id: 43Mh2+
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Draft Email"
 msgstr "پیش‌نویس ایمیل"
 
 #. js-lingui-id: fdUFex
@@ -10134,6 +10186,7 @@ msgstr "پس از ارسال موفق، به‌صورت خودکار پر می�
 #: src/modules/side-panel/pages/page-layout/constants/settings/ChartConfigurationSettingLabels.ts
 #: src/modules/views/components/ViewBarFilterButton.tsx
 #: src/modules/views/components/ViewBarFilterDropdownFieldSelectMenu.tsx
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
 #: src/modules/workflow/workflow-steps/workflow-actions/find-records-action/components/WorkflowEditActionFindRecords.tsx
 msgid "Filter"
 msgstr "فیلتر"
@@ -10365,6 +10418,11 @@ msgstr "برای {objectLabel}"
 #: src/modules/auth/sign-in-up/components/SignInUpWorkspaceScopeForm.tsx
 msgid "Forgot your password?"
 msgstr "رمز عبور را فراموش کرده‌اید؟"
+
+#. js-lingui-id: QRAWTO
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Form"
+msgstr "فرم"
 
 #. js-lingui-id: L/tgbO
 #: src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/BodyInput.tsx
@@ -11317,6 +11375,7 @@ msgstr "درخواست HTTP"
 
 #. js-lingui-id: DvpBQM
 #: src/modules/settings/roles/role-permissions/permission-flags/hooks/useActionRolePermissionFlagConfig.ts
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
 msgid "HTTP Request"
 msgstr "درخواست HTTP"
 
@@ -11440,6 +11499,11 @@ msgstr "اگر این secret را بچرخانید، هر یکپارچه‌سا�
 #: src/pages/settings/developers/api-keys/SettingsDevelopersApiKeyDetail.tsx
 msgid "If you’ve lost this key, you can regenerate it, but be aware that any script using this key will need to be updated. Please type\"{confirmationValue}\" to confirm."
 msgstr "اگر این کلید را گم کرده‌اید، می‌توانید دوباره تولید کنید، اما هر اسکریپتی که از آن استفاده می‌کند باید به‌روز شود. برای تأیید «{confirmationValue}» را تایپ کنید."
+
+#. js-lingui-id: tMlNoP
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "If/else"
+msgstr "شرط (اگر/وگرنه)"
 
 #. js-lingui-id: KDMdBi
 #: src/modules/side-panel/pages/page-layout/components/SidePanelPageLayoutDashboardWidgetTypeSelect.tsx
@@ -12232,6 +12296,11 @@ msgstr "مورد"
 #: src/modules/workflow/workflow-steps/workflow-actions/iterator-action/components/WorkflowEditActionIterator.tsx
 msgid "Items to iterate over"
 msgstr "موارد برای تکرار"
+
+#. js-lingui-id: E08FMd
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Iterator"
+msgstr "تکرار روی موارد"
 
 #. js-lingui-id: J6OYmT
 #: src/modules/settings/data-model/fields/forms/select/components/SettingsDataModelFieldSelectFormOptionRow.tsx
@@ -16742,6 +16811,11 @@ msgstr ""
 msgid "Pick one or more fields. The order you select them in becomes the column order in the index — important for composite queries. For composite fields like Address, pick the specific sub-column to index."
 msgstr "یک یا چند فیلد انتخاب کنید. ترتیب انتخاب، ترتیب ستون‌ها در ایندکس می‌شود — برای پرس‌وجوهای ترکیبی مهم است. برای فیلدهای ترکیبی مثل آدرس، زیرستون مشخص را برای ایندکس انتخاب کنید."
 
+#. js-lingui-id: dq4oep
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Pick Record"
+msgstr "انتخاب رکورد"
+
 #. js-lingui-id: X1kz7Q
 #: src/pages/settings/data-model/new-index/SettingsObjectNewIndex.tsx
 msgid "Pick the index type. BTREE covers most queries; GIN is for full-text and JSONB."
@@ -19027,6 +19101,11 @@ msgstr "جستجوی عملیات"
 msgid "Search options"
 msgstr "جستجوی گزینه‌ها"
 
+#. js-lingui-id: TyG5kS
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Search Records"
+msgstr "جست‌وجوی رکوردها"
+
 #. js-lingui-id: rRklUH
 #: src/modules/navigation-menu-item/edit/components/NavigationMenuItemAddDropdownContent.tsx
 msgid "Search records..."
@@ -19577,6 +19656,7 @@ msgstr "ارسال ایمیل"
 #. js-lingui-id: i/TzEU
 #: src/modules/activities/emails/components/EmptyInboxPlaceholder.tsx
 #: src/modules/settings/roles/role-permissions/permission-flags/hooks/useActionRolePermissionFlagConfig.ts
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
 msgid "Send Email"
 msgstr "ارسال ایمیل"
 
@@ -22556,6 +22636,7 @@ msgstr "طرح آزمایشی"
 #: src/modules/side-panel/components/SidePanelWorkflowStepInfo.tsx
 #: src/modules/workflow/workflow-diagram/workflow-nodes/components/WorkflowDiagramEmptyTriggerEditable.tsx
 #: src/modules/workflow/workflow-diagram/workflow-nodes/components/WorkflowDiagramEmptyTriggerReadonly.tsx
+#: src/modules/workflow/workflow-diagram/workflow-nodes/hooks/useWorkflowNodeLabel.ts
 msgid "Trigger"
 msgstr "محرک"
 
@@ -23271,6 +23352,11 @@ msgstr "به‌روزرسانی روش پرداخت"
 #: src/modules/information-banner/components/billing/InformationBannerNoMoreCredits.tsx
 msgid "Update plan"
 msgstr "به‌روزرسانی طرح"
+
+#. js-lingui-id: SL88ZR
+#: src/modules/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages.ts
+msgid "Update Record"
+msgstr "ویرایش رکورد"
 
 #. js-lingui-id: 0KAL3W
 #: src/modules/object-record/record-update-multiple/components/UpdateMultipleRecordsContainer.tsx

@@ -3,7 +3,7 @@ import { useSidePanelWorkflowNavigation } from '@/side-panel/pages/workflow/hook
 import { sidePanelNavigationStackState } from '@/side-panel/states/sidePanelNavigationStackState';
 import { useAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentState';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
-import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
+import { useLocalizedWorkflowStepName } from '@/workflow/workflow-steps/workflow-actions/hooks/useLocalizedWorkflowStepName';import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { workflowVisualizerWorkflowIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowIdComponentState';
 import { useResetWorkflowInsertStepIds } from '@/workflow/workflow-diagram/hooks/useResetWorkflowInsertStepIds';
 import { workflowSelectedNodeComponentState } from '@/workflow/workflow-diagram/states/workflowSelectedNodeComponentState';
@@ -26,6 +26,7 @@ export const WorkflowDiagramStepNodeEditable = ({
   const { getIcon } = useIcons();
   const { deleteStep } = useDeleteStep();
   const { duplicateStep } = useDuplicateStep();
+  const localizedStepName = useLocalizedWorkflowStepName(data.name);
 
   const workflowVisualizerWorkflowId = useAtomComponentStateValue(
     workflowVisualizerWorkflowIdComponentState,
@@ -58,13 +59,12 @@ export const WorkflowDiagramStepNodeEditable = ({
     }
 
     resetWorkflowInsertStepIds();
-
     setWorkflowSelectedNode(id);
 
     if (isDefined(workflowVisualizerWorkflowId)) {
       openWorkflowEditStepInSidePanel({
         workflowId: workflowVisualizerWorkflowId,
-        title: data.name,
+        title: localizedStepName,
         icon: getIcon(getWorkflowNodeIconKey(data)),
         stepId: id,
       });

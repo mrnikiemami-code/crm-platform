@@ -1,5 +1,7 @@
 import { type WorkflowActionType } from '@/workflow/types/Workflow';
+import { ACTION_LABEL_MESSAGE_BY_DEFAULT_LABEL } from '@/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages';
 import { getActionIconColorOrThrow } from '@/workflow/workflow-steps/workflow-actions/utils/getActionIconColorOrThrow';
+import { useLingui } from '@lingui/react';
 import { useIcons } from 'twenty-ui/icon';
 import { MenuItem } from 'twenty-ui/primitives/navigation';
 
@@ -17,11 +19,14 @@ export const WorkflowActionMenuItems = ({
   onClick: (actionType: WorkflowActionType) => void;
 }) => {
   const { getIcon } = useIcons();
+  const { i18n } = useLingui();
 
   return (
     <>
       {actions.map((action) => {
         const Icon = getIcon(action.icon);
+        const messageDescriptor =
+          ACTION_LABEL_MESSAGE_BY_DEFAULT_LABEL[action.defaultLabel];
 
         return (
           <MenuItem
@@ -30,7 +35,11 @@ export const WorkflowActionMenuItems = ({
             LeftIcon={() => (
               <Icon color={getActionIconColorOrThrow(action.type)} size={16} />
             )}
-            text={action.defaultLabel}
+            text={
+              messageDescriptor
+                ? i18n._(messageDescriptor)
+                : action.defaultLabel
+            }
             onClick={() => onClick(action.type)}
           />
         );

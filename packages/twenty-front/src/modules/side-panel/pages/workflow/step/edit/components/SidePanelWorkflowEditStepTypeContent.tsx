@@ -15,6 +15,8 @@ import { useCloseRightClickMenu } from '@/workflow/workflow-diagram/hooks/useClo
 import { workflowSelectedNodeComponentState } from '@/workflow/workflow-diagram/states/workflowSelectedNodeComponentState';
 import { useUpdateStep } from '@/workflow/workflow-steps/hooks/useUpdateStep';
 import { getActionIcon } from '@/workflow/workflow-steps/workflow-actions/utils/getActionIcon';
+import { getLocalizedWorkflowStepName } from '@/workflow/workflow-steps/workflow-actions/utils/getLocalizedWorkflowStepName';
+import { useLingui } from '@lingui/react';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { isDefined } from 'twenty-shared/utils';
 import { useIcons } from 'twenty-ui/icon';
@@ -28,6 +30,7 @@ export const SidePanelWorkflowEditStepTypeContent = () => {
     workflowVisualizerWorkflowIdComponentState,
   );
   const flow = useFlowOrThrow();
+  const { i18n } = useLingui();
 
   const { updateStep } = useUpdateStep();
 
@@ -70,7 +73,7 @@ export const SidePanelWorkflowEditStepTypeContent = () => {
 
     openWorkflowEditStepInSidePanel({
       workflowId: workflowVisualizerWorkflowId,
-      title: updatedStep.name,
+      title: getLocalizedWorkflowStepName(updatedStep.name, i18n),
       icon: getIcon(getActionIcon(updatedStep.type as WorkflowActionType)),
       stepId: updatedStep.id,
     });

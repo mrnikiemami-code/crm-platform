@@ -3,7 +3,8 @@ import { useSidePanelWorkflowNavigation } from '@/side-panel/pages/workflow/hook
 import { sidePanelNavigationStackState } from '@/side-panel/states/sidePanelNavigationStackState';
 import { useAtomComponentState } from '@/ui/utilities/state/jotai/hooks/useAtomComponentState';
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
-import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
+import { useLocalizedWorkflowStepName } from '@/workflow/workflow-steps/workflow-actions/hooks/useLocalizedWorkflowStepName';
+import { t } from '@lingui/core/macro';import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
 import { workflowVisualizerWorkflowIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowIdComponentState';
 import { workflowVisualizerWorkflowVersionIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowVersionIdComponentState';
 import { WORKFLOW_DIAGRAM_STEP_NODE_BASE_CLICK_OUTSIDE_ID } from '@/workflow/workflow-diagram/constants/WorkflowDiagramStepNodeClickOutsideId';
@@ -58,6 +59,15 @@ export const WorkflowDiagramStepNodeReadonly = ({
     sidePanelNavigationStackState,
   );
 
+  const localizedStepName = useLocalizedWorkflowStepName(data.name);
+
+  // The empty action placeholder name is a persisted technical constant;
+  // only its rendered text is localized.
+  const nodeTitle =
+    data.nodeType === 'action' && data.actionType === 'EMPTY'
+      ? t`Add an Action`
+      : localizedStepName;
+
   const handleClick = () => {
     if (
       !isDefined(workflowVisualizerWorkflowId) ||
@@ -75,7 +85,7 @@ export const WorkflowDiagramStepNodeReadonly = ({
     openWorkflowViewStepInSidePanel({
       workflowId: workflowVisualizerWorkflowId,
       workflowVersionId: workflowVisualizerWorkflowVersionId,
-      title: data.name,
+      title: localizedStepName,
       icon: getIcon(getWorkflowNodeIconKey(data)),
       stepId: id,
     });
@@ -112,7 +122,7 @@ export const WorkflowDiagramStepNodeReadonly = ({
             highlight={nodeTitleHighlighted}
             selected={selected}
           >
-            {data.name}
+            {nodeTitle}
           </WorkflowNodeTitle>
         </WorkflowNodeRightPart>
       </WorkflowNodeContainer>

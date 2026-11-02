@@ -1,6 +1,8 @@
 import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomComponentStateValue';
 import { WorkflowDiagramCreateStepElement } from '@/workflow/workflow-diagram/components/WorkflowDiagramCreateStepElement';
 import { EMPTY_NODE_ID } from '@/workflow/workflow-diagram/constants/EmptyNodeId';
+import { EMPTY_ACTION_NODE_NAME_MESSAGE } from '@/workflow/workflow-diagram/constants/EmptyActionNodeNameMessage';
+import { useLocalizedWorkflowStepName } from '@/workflow/workflow-steps/workflow-actions/hooks/useLocalizedWorkflowStepName';
 import { WORKFLOW_DIAGRAM_STEP_NODE_BASE_CLICK_OUTSIDE_ID } from '@/workflow/workflow-diagram/constants/WorkflowDiagramStepNodeClickOutsideId';
 import { type WorkflowDiagramStepNodeData } from '@/workflow/workflow-diagram/types/WorkflowDiagram';
 import { WorkflowDiagramEdgeLabel } from '@/workflow/workflow-diagram/workflow-edges/components/WorkflowDiagramEdgeLabel';
@@ -78,6 +80,7 @@ export const WorkflowDiagramStepNodeEditableContent = ({
   const isNodeConnectable = isConnectable({ nodeId: id });
 
   const nodeLabel = useWorkflowNodeLabel(data);
+  const localizedStepName = useLocalizedWorkflowStepName(data.name);
 
   const handleAddStepButtonContainerClick = (
     event: React.MouseEvent<HTMLDivElement>,
@@ -89,6 +92,13 @@ export const WorkflowDiagramStepNodeEditableContent = ({
     nodeType: data.nodeType,
     actionType: data.nodeType === 'action' ? data.actionType : undefined,
   });
+
+  // The empty action placeholder name is persisted as a technical constant;
+  // only its rendered text is localized.
+  const nodeTitle =
+    data.nodeType === 'action' && data.actionType === 'EMPTY'
+      ? i18n._(EMPTY_ACTION_NODE_NAME_MESSAGE)
+      : localizedStepName;
 
   const isCreatingEmptyNodeFromThisNode =
     isDefined(workflowInsertStepIds.position) &&
@@ -126,7 +136,7 @@ export const WorkflowDiagramStepNodeEditableContent = ({
             highlight={nodeTitleHighlighted}
             selected={selected}
           >
-            {data.name}
+            {nodeTitle}
           </WorkflowNodeTitle>
         </WorkflowNodeRightPart>
 
