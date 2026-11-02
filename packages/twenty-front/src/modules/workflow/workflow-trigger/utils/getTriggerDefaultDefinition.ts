@@ -11,10 +11,13 @@ import { assertUnreachable } from 'twenty-shared/utils';
 export const getTriggerDefaultDefinition = ({
   defaultLabel,
   type,
+  name,
   activeNonSystemObjectMetadataItems,
 }: {
   defaultLabel: string;
   type: WorkflowTriggerType;
+  // Persisted display name; defaults to the untranslated label.
+  name?: string;
   activeNonSystemObjectMetadataItems: EnrichedObjectMetadataItem[];
 }): WorkflowTrigger => {
   if (activeNonSystemObjectMetadataItems.length === 0) {
@@ -24,7 +27,7 @@ export const getTriggerDefaultDefinition = ({
   }
 
   const baseTriggerDefinition = {
-    name: defaultLabel,
+    name: name ?? defaultLabel,
     position: { x: 0, y: 0 },
   };
 

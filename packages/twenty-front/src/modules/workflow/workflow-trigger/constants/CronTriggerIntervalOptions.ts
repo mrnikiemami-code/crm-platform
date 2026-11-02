@@ -1,3 +1,5 @@
+import { msg } from '@lingui/core/macro';
+import { type MessageDescriptor } from '@lingui/core';
 import {
   IconClockPlay,
   type IconComponent,
@@ -5,30 +7,31 @@ import {
   IconTimeDuration60,
   IconBrandDaysCounter,
 } from 'twenty-ui/icon';
+
 export type CronTriggerInterval = 'DAYS' | 'HOURS' | 'MINUTES' | 'CUSTOM';
 
 export const CRON_TRIGGER_INTERVAL_OPTIONS: Array<{
-  label: string;
+  labelMessage: MessageDescriptor;
   value: CronTriggerInterval;
   Icon: IconComponent;
 }> = [
   {
-    label: 'Days',
+    labelMessage: msg`Days`,
     value: 'DAYS',
     Icon: IconBrandDaysCounter,
   },
   {
-    label: 'Hours',
+    labelMessage: msg`Hours`,
     value: 'HOURS',
     Icon: IconHours24,
   },
   {
-    label: 'Minutes',
+    labelMessage: msg`Minutes`,
     value: 'MINUTES',
     Icon: IconTimeDuration60,
   },
   {
-    label: 'Cron (Custom)',
+    labelMessage: msg`Cron (custom)`,
     value: 'CUSTOM',
     Icon: IconClockPlay,
   },

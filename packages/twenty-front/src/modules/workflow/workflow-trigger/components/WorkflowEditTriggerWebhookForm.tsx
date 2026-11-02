@@ -9,8 +9,7 @@ import { type WorkflowWebhookTrigger } from '@/workflow/types/Workflow';
 import { parseAndValidateVariableFriendlyStringifiedJson } from '@/workflow/utils/parseAndValidateVariableFriendlyStringifiedJson';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
 import { WorkflowStepFooter } from '@/workflow/workflow-steps/components/WorkflowStepFooter';
-import { WEBHOOK_TRIGGER_AUTHENTICATION_OPTIONS } from '@/workflow/workflow-trigger/constants/WebhookTriggerAuthenticationOptions';
-import { WEBHOOK_TRIGGER_HTTP_METHOD_OPTIONS } from '@/workflow/workflow-trigger/constants/WebhookTriggerHttpMethodOptions';
+import { useTranslatedTriggerOptions } from '@/workflow/workflow-trigger/hooks/useTranslatedTriggerOptions';
 import { getWebhookTriggerDefaultSettings } from '@/workflow/workflow-trigger/utils/getWebhookTriggerDefaultSettings';
 import { isNonEmptyString } from '@sniptt/guards';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
@@ -51,6 +50,8 @@ export const WorkflowEditTriggerWebhookForm = ({
   triggerOptions,
 }: WorkflowEditTriggerWebhookFormProps) => {
   const { theme } = useContext(ThemeContext);
+  const { webhookHttpMethodOptions, webhookAuthenticationOptions } =
+    useTranslatedTriggerOptions();
   const { copyToClipboard } = useCopyToClipboard();
   const [errorMessages, setErrorMessages] = useState<FormErrorMessages>({});
   const [errorMessagesVisible, setErrorMessagesVisible] = useState(false);
@@ -96,7 +97,7 @@ export const WorkflowEditTriggerWebhookForm = ({
           fullWidth
           disabled={triggerOptions.readonly}
           value={trigger.settings.httpMethod}
-          options={WEBHOOK_TRIGGER_HTTP_METHOD_OPTIONS}
+          options={webhookHttpMethodOptions}
           onChange={(newTriggerType) => {
             if (triggerOptions.readonly === true) {
               return;
@@ -175,7 +176,7 @@ export const WorkflowEditTriggerWebhookForm = ({
           fullWidth
           disabled
           value={trigger.settings.authentication}
-          options={WEBHOOK_TRIGGER_AUTHENTICATION_OPTIONS}
+          options={webhookAuthenticationOptions}
           onChange={(newAuthenticationType) => {
             if (triggerOptions.readonly === true) {
               return;

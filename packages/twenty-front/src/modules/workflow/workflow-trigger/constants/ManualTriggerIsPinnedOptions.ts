@@ -1,17 +1,19 @@
+import { msg } from '@lingui/core/macro';
+import { type MessageDescriptor } from '@lingui/core';
 import { type IconComponent, IconPinned, IconPinnedOff } from 'twenty-ui/icon';
 
 export const MANUAL_TRIGGER_IS_PINNED_OPTIONS: Array<{
-  label: string;
+  labelMessage: MessageDescriptor;
   value: boolean;
   Icon: IconComponent;
 }> = [
   {
-    label: 'Not Pinned',
+    labelMessage: msg`Not pinned`,
     value: false,
     Icon: IconPinnedOff,
   },
   {
-    label: 'Pinned',
+    labelMessage: msg`Pinned`,
     value: true,
     Icon: IconPinned,
   },

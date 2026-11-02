@@ -7,8 +7,7 @@ import { GenericDropdownContentWidth } from '@/ui/layout/dropdown/constants/Gene
 import { type WorkflowManualTrigger } from '@/workflow/types/Workflow';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
 import { WorkflowStepFooter } from '@/workflow/workflow-steps/components/WorkflowStepFooter';
-import { MANUAL_TRIGGER_AVAILABILITY_TYPE_OPTIONS } from '@/workflow/workflow-trigger/constants/ManualTriggerAvailabilityTypeOptions';
-import { MANUAL_TRIGGER_IS_PINNED_OPTIONS } from '@/workflow/workflow-trigger/constants/ManualTriggerIsPinnedOptions';
+import { useTranslatedTriggerOptions } from '@/workflow/workflow-trigger/hooks/useTranslatedTriggerOptions';
 import { getManualTriggerDefaultSettings } from '@/workflow/workflow-trigger/utils/getManualTriggerDefaultSettings';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
@@ -55,6 +54,8 @@ export const WorkflowEditTriggerManual = ({
   triggerOptions,
 }: WorkflowEditTriggerManualProps) => {
   const { t } = useLingui();
+  const { availabilityTypeOptions, isPinnedOptions } =
+    useTranslatedTriggerOptions();
 
   const { getIcon } = useIcons();
   const { getSelectIconPropsFromObjectMetadataItem } =
@@ -93,7 +94,7 @@ export const WorkflowEditTriggerManual = ({
           fullWidth
           disabled={triggerOptions.readonly}
           value={availability?.type}
-          options={MANUAL_TRIGGER_AVAILABILITY_TYPE_OPTIONS}
+          options={availabilityTypeOptions}
           onChange={(availabilityType) => {
             if (triggerOptions.readonly === true) {
               return;
@@ -199,7 +200,7 @@ export const WorkflowEditTriggerManual = ({
           description={t`Display a button in the top navbar to trigger this workflow`}
           fullWidth
           value={trigger.settings.isPinned}
-          options={MANUAL_TRIGGER_IS_PINNED_OPTIONS}
+          options={isPinnedOptions}
           disabled={triggerOptions.readonly}
           onChange={(updatedValue) => {
             if (triggerOptions.readonly === true) {

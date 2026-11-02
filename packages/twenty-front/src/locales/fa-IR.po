@@ -214,6 +214,12 @@ msgstr "{0, plural, one {صندلی} other {صندلی}}"
 msgid "{0, plural, one {You do not have permission to access the {fieldsList} field} other {You do not have permission to access the {fieldsList} fields}}"
 msgstr "{0, plural, one {مجوز دسترسی به فیلد {fieldsList} را ندارید} other {مجوز دسترسی به فیلدهای {fieldsList} را ندارید}}"
 
+#. js-lingui-id: nTAejl
+#. placeholder {0}: article.title
+#: src/pages/help/HelpArticlePage.tsx
+msgid "{0} — راهنمای برنامه"
+msgstr ""
+
 #. js-lingui-id: 6lE3tD
 #. placeholder {0}: formatNumber(counts.hardSuppressed)
 #: src/modules/activities/emails/utils/buildExcludedRecipientReasons.ts
@@ -353,6 +359,18 @@ msgstr "{0} بدون آدرس ایمیل"
 #: src/modules/object-record/record-field/ui/form-types/components/FormWorkspaceMemberFilterValueInput.tsx
 msgid "{0} workspace members"
 msgstr "{0} عضو فضای کاری"
+
+#. js-lingui-id: jx983a
+#. placeholder {0}: HELP_ARTICLES.length
+#: src/pages/help/HelpIndexPage.tsx
+msgid "{0} موضوع"
+msgstr ""
+
+#. js-lingui-id: 0q8NOE
+#. placeholder {0}: results.length
+#: src/pages/help/HelpIndexPage.tsx
+msgid "{0} نتیجه برای «{query}»"
+msgstr ""
 
 #. js-lingui-id: kofqAN
 #. placeholder {0}: selectedResolvedTier.label
@@ -1009,6 +1027,11 @@ msgstr "برای کلید API باید نقشی انتخاب شود"
 msgid "A summary is not available for this call recording yet."
 msgstr "خلاصه‌ای برای این ضبط تماس هنوز در دسترس نیست."
 
+#. js-lingui-id: hcJ1RE
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "A valid provider message ID is required."
+msgstr "یک شناسهٔ پیام معتبر از سرویس‌دهنده الزامی است."
+
 #. js-lingui-id: 2eb0vH
 #: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
 msgid "A valid recipient mobile number is required."
@@ -1101,6 +1124,11 @@ msgstr "پذیرش درخواست به‌معنای تحویل به گوشی ن�
 #: src/pages/settings/legal/SettingsLegalDpa.tsx
 msgid "Accepted and signed DPAs for this workspace, with their template version and date."
 msgstr "DPAهای پذیرفته و امضاشده برای این فضای کاری، با نسخه قالب و تاریخ."
+
+#. js-lingui-id: ljtk7+
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Accepted by the operator; not yet on the phone."
+msgstr "به مخابرات رسیده است؛ هنوز به گوشی نرسیده."
 
 #. js-lingui-id: pNW+Rt
 #: src/pages/settings/admin-panel/SettingsAdminNewAiProvider.tsx
@@ -2368,6 +2396,11 @@ msgstr "همه دلایل"
 msgid "All roles"
 msgstr "همه نقش‌ها"
 
+#. js-lingui-id: lbgh2Q
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "All sources"
+msgstr ""
+
 #. js-lingui-id: p+lpde
 #: src/modules/activities/tasks/components/TaskGroupsContent.tsx
 msgid "All tasks addressed. Maintain the momentum."
@@ -2719,6 +2752,7 @@ msgstr "نشانی API"
 #. js-lingui-id: iq3W+B
 #: src/modules/settings/billing/constants/UsageLimitSpenderGroups.ts
 #: src/modules/settings/billing/constants/UsageLimitSpenderTypeLabels.ts
+#: src/modules/workflow/workflow-trigger/constants/WebhookTriggerAuthenticationOptions.ts
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "API key"
@@ -3126,6 +3160,11 @@ msgstr "هر چیزی بپرسید، @ برای رکورد یا / برای مه�
 msgid "Asking questions..."
 msgstr "در حال پرسیدن سؤال..."
 
+#. js-lingui-id: u7tKoz
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Asks the provider whether a message reached the phone. This only reads the status; it does not send anything."
+msgstr "از سرویس‌دهنده می‌پرسد که آیا پیام به گوشی رسیده است. این کار فقط وضعیت را می‌خواند و چیزی ارسال نمی‌کند."
+
 #. js-lingui-id: OBqG7p
 #: src/modules/settings/roles/role-assignment/components/SettingsRoleAssignmentConfirmationModal.tsx
 msgid "Assign {roleTargetName}?"
@@ -3170,6 +3209,11 @@ msgstr "قابل اختصاص به اعضای فضای کاری"
 #: src/modules/settings/roles/role-assignment/components/SettingsRoleAssignmentTable.tsx
 msgid "Assigned {roleTargetDisplayName}"
 msgstr "{roleTargetDisplayName} اختصاص یافت"
+
+#. js-lingui-id: /U7RED
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Assigned by the provider only when the message is actually accepted. It is read-only and filled in automatically after a successful send."
+msgstr "این شناسه فقط زمانی توسط سرویس‌دهنده صادر می‌شود که پیام واقعاً پذیرفته شود. این فیلد فقط‌خواندنی است و پس از ارسال موفق به‌صورت خودکار پر می‌شود."
 
 #. js-lingui-id: lxQ+5m
 #: src/modules/settings/roles/components/SettingsRolesTableHeader.tsx
@@ -3803,6 +3847,11 @@ msgstr "مدل‌های داخلی این ارائه‌دهنده. برای فع
 msgid "Built-in providers activated by API key. Click to manage models."
 msgstr "ارائه‌دهندگان داخلی با کلید API فعال می‌شوند. برای مدیریت مدل‌ها کلیک کنید."
 
+#. js-lingui-id: r1LXoG
+#: src/modules/workflow/workflow-trigger/constants/ManualTriggerAvailabilityTypeOptions.ts
+msgid "Bulk"
+msgstr "گروهی"
+
 #. js-lingui-id: 1QEPf7
 #: src/modules/settings/data-model/fields/forms/select/components/SettingsDataModelFieldSelectForm.tsx
 msgid "Bulk edit"
@@ -4378,6 +4427,16 @@ msgstr "ChatGPT"
 msgid "Chats"
 msgstr "گفتگوها"
 
+#. js-lingui-id: 5NIIuY
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Check delivery status"
+msgstr "استعلام وضعیت تحویل"
+
+#. js-lingui-id: 4K6nXW
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Check if the SMS was received"
+msgstr "استعلام دریافت پیامک"
+
 #. js-lingui-id: oa2dNe
 #: src/modules/ai/components/suggested-prompts/contextual-suggested-prompts.ts
 msgid "Check recent runs"
@@ -4623,6 +4682,7 @@ msgstr "پاک کردن فیلتر"
 
 #. js-lingui-id: u8JHrO
 #: src/modules/ai/components/AiChatThreadFilterDropdownRootMenu.tsx
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
 #: src/modules/settings/billing/components/SettingsBillingLimitsFilterDropdown.tsx
 #: src/modules/settings/unsubscribers/components/filter-dropdown/SettingsUnsubscribersFilterMenuContent.tsx
 msgid "Clear filters"
@@ -4972,6 +5032,7 @@ msgid "Comment"
 msgstr "نظر"
 
 #. js-lingui-id: hZotg6
+#: src/modules/applications/utils/getApplicationDisplayName.ts
 #: src/modules/settings/accounts/components/SettingsAccountsNewEmailGroupChannel.tsx
 #: src/modules/settings/hooks/useSettingsNavigationItems.tsx
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationGroupChannelDetail.tsx
@@ -5770,6 +5831,11 @@ msgstr "Stripe باز نشد. با پشتیبانی تماس بگیرید."
 msgid "Could not open the API playground"
 msgstr "محیط آزمایش API باز نشد"
 
+#. js-lingui-id: cp+Vbd
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Could not parse the selected dates."
+msgstr ""
+
 #. js-lingui-id: w1HkE9
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
 msgid "Could not refresh validity token - reverted the instance type change."
@@ -6318,6 +6384,11 @@ msgstr "قرمز آلبالویی"
 msgid "Cron"
 msgstr "Cron"
 
+#. js-lingui-id: aPCFbt
+#: src/modules/workflow/workflow-trigger/constants/CronTriggerIntervalOptions.ts
+msgid "Cron (custom)"
+msgstr "کرون (سفارشی)"
+
 #. js-lingui-id: rV1+uS
 #: src/modules/settings/logic-functions/components/triggers/SettingsLogicFunctionCronTriggerSection.tsx
 msgid "Cron triggers pass no payload — the handler is called with an empty object."
@@ -6807,6 +6878,11 @@ msgstr "تاریخ و زمان"
 msgid "Date field"
 msgstr "فیلد تاریخ"
 
+#. js-lingui-id: qZ3ZfS
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Date filter active: {rangeLabel}"
+msgstr ""
+
 #. js-lingui-id: Lhd0oQ
 #: src/modules/settings/experience/components/DateTimeSettingsDateFormatSelect.tsx
 msgid "Date format"
@@ -6834,6 +6910,16 @@ msgstr "دقت تاریخ X"
 msgid "Date Granularity Y"
 msgstr "دقت تاریخ Y"
 
+#. js-lingui-id: P4fSU0
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Date: all-time (includes undated)"
+msgstr ""
+
+#. js-lingui-id: adCxaT
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Date: invalid — not applied"
+msgstr ""
+
 #. js-lingui-id: H7OUPr
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownCalendarViewContent.tsx
 #: src/modules/object-record/object-options-dropdown/components/ObjectOptionsDropdownCustomView.tsx
@@ -6860,6 +6946,7 @@ msgstr "روز"
 
 #. js-lingui-id: HuVZMK
 #: src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx
+#: src/modules/workflow/workflow-trigger/constants/CronTriggerIntervalOptions.ts
 msgid "Days"
 msgstr "روز"
 
@@ -7376,10 +7463,20 @@ msgstr "در حال حذف {objectLabel}"
 msgid "Deleting this method will remove it permanently from your account."
 msgstr "حذف این روش آن را برای همیشه از حساب شما برمی‌دارد."
 
+#. js-lingui-id: 9Hxcwy
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Delivered to the phone."
+msgstr "به گوشی تحویل داده شد."
+
 #. js-lingui-id: si+vZD
 #: src/modules/side-panel/pages/send-campaign/components/SendCampaignForm.tsx
 msgid "Delivery"
 msgstr "تحویل"
+
+#. js-lingui-id: FgmqwP
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Delivery failed."
+msgstr "تحویل ناموفق بود."
 
 #. js-lingui-id: Ssdrw4
 #: src/modules/settings/ai/components/SettingsAiModelsTable.tsx
@@ -8389,6 +8486,8 @@ msgstr "کد همایش"
 #: src/modules/activities/timeline-activities/rows/main-object/components/EventRelationFieldDiffValues.tsx
 #: src/modules/object-record/record-board/record-board-column/utils/getAggregateOperationShortLabel.ts
 #: src/modules/object-record/record-inline-cell/components/RecordInlineCellDisplayMode.tsx
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
 msgid "Empty"
 msgstr "خالی"
 
@@ -10020,6 +10119,11 @@ msgstr "فایل‌ها"
 msgid "Fill with sample input from"
 msgstr "پر کردن با ورودی نمونه از"
 
+#. js-lingui-id: KtCZeu
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Filled automatically after a successful send"
+msgstr "پس از ارسال موفق، به‌صورت خودکار پر می‌شود"
+
 #. js-lingui-id: o7J4JM
 #: src/modules/object-core/workflows/components/CoreWorkflowsFilterBar.tsx
 #: src/modules/object-core/workflows/hooks/useOpenCoreWorkflowFiltersSidePanel.ts
@@ -10343,6 +10447,7 @@ msgstr "فرانسوی"
 #: src/modules/activities/emails/components/CampaignDetailsFields.tsx
 #: src/modules/activities/emails/components/CampaignSentEnvelope.tsx
 #: src/modules/activities/emails/components/EmailComposerFields.tsx
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
 #: src/modules/side-panel/pages/send-campaign/components/SendCampaignForm.tsx
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionEmailBase.tsx
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowRunStepLogsEmailDetail.tsx
@@ -10359,6 +10464,11 @@ msgstr ""
 #: src/modules/workflow/workflow-trigger/utils/cron-to-human/descriptors/getDayOfWeekDescription.ts
 msgid "from {startDay} to {endDay}"
 msgstr "از {startDay} تا {endDay}"
+
+#. js-lingui-id: D/TQeh
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "From must be on or before To."
+msgstr ""
 
 #. js-lingui-id: zaEHSY
 #: src/modules/metadata-error-handler/hooks/useMetadataErrorHandler.ts
@@ -10539,6 +10649,11 @@ msgstr "بسته به حساب، لینک Google Meet یا Microsoft Teams تو�
 msgid "German"
 msgstr "آلمانی"
 
+#. js-lingui-id: HMx8FD
+#: src/modules/workflow/workflow-trigger/constants/WebhookTriggerHttpMethodOptions.ts
+msgid "GET"
+msgstr "GET"
+
 #. js-lingui-id: gRFvyL
 #: src/modules/onboarding/constants/OnboardingInstallableApps.ts
 msgid "Get last contact date with relations"
@@ -10586,6 +10701,11 @@ msgstr "GIN (جستجوی متن کامل و JSONB)"
 #: src/pages/settings/applications/utils/getClaimErrorContent.ts
 msgid "GitHub authorization failed or was denied. Please connect your GitHub account again."
 msgstr "مجوز GitHub ناموفق بود یا رد شد. دوباره حساب GitHub خود را متصل کنید."
+
+#. js-lingui-id: 2GT3Hf
+#: src/modules/workflow/workflow-trigger/constants/ManualTriggerAvailabilityTypeOptions.ts
+msgid "Global"
+msgstr "همگانی"
 
 #. js-lingui-id: lwDz5R
 #: src/modules/settings/data-model/object-details/components/tabs/SettingsObjectSearchSection.tsx
@@ -10810,6 +10930,11 @@ msgstr "در حال گروه‌بندی {objectLabel}"
 #: src/modules/activities/calendar/components/CalendarEventComposerFields.tsx
 msgid "Guests"
 msgstr "مهمان‌ها"
+
+#. js-lingui-id: KkOthv
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Guide"
+msgstr ""
 
 #. js-lingui-id: eKiSkN
 #: src/modules/advanced-text-editor/extensions/slash-command/DefaultSlashCommands.ts
@@ -11037,6 +11162,57 @@ msgstr "خط جداکننده افقی"
 
 #. js-lingui-id: WOXdI6
 #: src/pages/settings/applications/utils/getCustomApplicationDescription.ts
+#~ msgid ""
+#~ "Host your workspace's customizations and overrides.\n"
+#~ "\n"
+#~ "#### What it includes\n"
+#~ "Every extension you create on top of the standard app is grouped under Custom. It keeps your schema changes, interface changes, and workspace-specific logic in one place.\n"
+#~ "\n"
+#~ "- Custom objects and fields for your own data model\n"
+#~ "- Views, navigation items, and record layouts that shape how your team works\n"
+#~ "- Logic functions, front components, and agents that automate or extend the workspace\n"
+#~ "\n"
+#~ "#### Why it exists\n"
+#~ "Use this app for workspace-specific customization that should stay local to this workspace.\n"
+#~ "\n"
+#~ "If you are shaping one workspace for one business, keep it here. If you are building a reusable business app with its own data model, UI, and automation that should be versioned, shared, or installed across workspaces, create a dedicated app instead.\n"
+#~ "\n"
+#~ "#### Build your own app\n"
+#~ "\n"
+#~ "Scaffold a new app in one command:\n"
+#~ "\n"
+#~ "```bash\n"
+#~ "npx create-twenty-app@latest my-twenty-app\n"
+#~ "```\n"
+#~ "\n"
+#~ "See the [Getting Started guide](/help) for the full walkthrough, and [Building Apps](/help) for the `defineApplication` / `defineEntity` APIs."
+#~ msgstr ""
+#~ "سفارشی‌سازی‌ها و بازنویسی‌های فضای کاری شما را میزبانی می‌کند.\n"
+#~ "\n"
+#~ "#### شامل چه چیزهایی است\n"
+#~ "هر افزونه‌ای که روی برنامه استاندارد می‌سازید در Custom گروه‌بندی می‌شود. تغییرات schema، رابط و منطق مخصوص فضای کاری را در یک جا نگه می‌دارد.\n"
+#~ "\n"
+#~ "- موجودیت‌ها و فیلدهای سفارشی برای مدل داده خودتان\n"
+#~ "- نماها، آیتم‌های ناوبری و چیدمان رکورد که نحوه کار تیم را شکل می‌دهند\n"
+#~ "- توابع منطق، کامپوننت‌های front و عامل‌ها که فضای کاری را خودکار یا گسترش می‌دهند\n"
+#~ "\n"
+#~ "#### چرا وجود دارد\n"
+#~ "از این برنامه برای سفارشی‌سازی مخصوص فضای کاری که باید محلی بماند استفاده کنید.\n"
+#~ "\n"
+#~ "اگر یک فضای کاری را برای یک کسب‌وکار می‌سازید، اینجا نگه دارید. اگر برنامه کسب‌وکار قابل استفاده مجدد با مدل داده، UI و خودکارسازی خود می‌سازید که باید نسخه‌بندی، اشتراک یا نصب در فضاهای کاری شود، برنامه اختصاصی بسازید.\n"
+#~ "\n"
+#~ "#### برنامه خود را بسازید\n"
+#~ "\n"
+#~ "برنامه جدید را در یک دستور بسازید:\n"
+#~ "\n"
+#~ "```bash\n"
+#~ "npx create-twenty-app@latest my-twenty-app\n"
+#~ "```\n"
+#~ "\n"
+#~ "برای راهنمای کامل [Getting Started guide](/help) و برای APIهای `defineApplication` / `defineEntity` [Building Apps](/help) را ببینید."
+
+#. js-lingui-id: rRmxif
+#: src/pages/settings/applications/utils/getCustomApplicationDescription.ts
 msgid ""
 "Host your workspace's customizations and overrides.\n"
 "\n"
@@ -11060,34 +11236,12 @@ msgid ""
 "npx create-twenty-app@latest my-twenty-app\n"
 "```\n"
 "\n"
-"See the [Getting Started guide](/help) for the full walkthrough, and [Building Apps](/help) for the `defineApplication` / `defineEntity` APIs."
+"See the in-app Help for the guides that ship with this installation. The `defineApplication` / `defineEntity` APIs are part of the app SDK."
 msgstr ""
-"سفارشی‌سازی‌ها و بازنویسی‌های فضای کاری شما را میزبانی می‌کند.\n"
-"\n"
-"#### شامل چه چیزهایی است\n"
-"هر افزونه‌ای که روی برنامه استاندارد می‌سازید در Custom گروه‌بندی می‌شود. تغییرات schema، رابط و منطق مخصوص فضای کاری را در یک جا نگه می‌دارد.\n"
-"\n"
-"- موجودیت‌ها و فیلدهای سفارشی برای مدل داده خودتان\n"
-"- نماها، آیتم‌های ناوبری و چیدمان رکورد که نحوه کار تیم را شکل می‌دهند\n"
-"- توابع منطق، کامپوننت‌های front و عامل‌ها که فضای کاری را خودکار یا گسترش می‌دهند\n"
-"\n"
-"#### چرا وجود دارد\n"
-"از این برنامه برای سفارشی‌سازی مخصوص فضای کاری که باید محلی بماند استفاده کنید.\n"
-"\n"
-"اگر یک فضای کاری را برای یک کسب‌وکار می‌سازید، اینجا نگه دارید. اگر برنامه کسب‌وکار قابل استفاده مجدد با مدل داده، UI و خودکارسازی خود می‌سازید که باید نسخه‌بندی، اشتراک یا نصب در فضاهای کاری شود، برنامه اختصاصی بسازید.\n"
-"\n"
-"#### برنامه خود را بسازید\n"
-"\n"
-"برنامه جدید را در یک دستور بسازید:\n"
-"\n"
-"```bash\n"
-"npx create-twenty-app@latest my-twenty-app\n"
-"```\n"
-"\n"
-"برای راهنمای کامل [Getting Started guide](/help) و برای APIهای `defineApplication` / `defineEntity` [Building Apps](/help) را ببینید."
 
 #. js-lingui-id: yY8wAv
 #: src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx
+#: src/modules/workflow/workflow-trigger/constants/CronTriggerIntervalOptions.ts
 msgid "Hours"
 msgstr "ساعت"
 
@@ -11635,6 +11789,11 @@ msgstr "جزئیات صورتحساب را وارد کنید تا {trialDuration
 #: src/pages/onboarding/UpgradeFreeTrial.tsx
 msgid "Insert your billing details to get a free trial and more AI credits"
 msgstr "جزئیات صورتحساب را وارد کنید تا دوره آزمایشی رایگان و اعتبار هوش مصنوعی بیشتر بگیرید"
+
+#. js-lingui-id: CTWsuc
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Instagram"
+msgstr ""
 
 #. js-lingui-id: TKQ7K+
 #: src/modules/settings/applications/components/SettingsApplicationActionButton.tsx
@@ -12511,6 +12670,7 @@ msgstr "راه‌اندازی"
 
 #. js-lingui-id: 9BjbLR
 #: src/modules/side-panel/components/SidePanelWorkflowStepInfo.tsx
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
 msgid "Launch manually"
 msgstr "راه‌اندازی دستی"
 
@@ -13595,6 +13755,7 @@ msgstr "مقدار دقیقه نمی‌تواند از ۶۰ بیشتر باشد.
 
 #. js-lingui-id: agRWc1
 #: src/modules/workflow/workflow-steps/workflow-actions/delay-actions/components/WorkflowEditActionDelay.tsx
+#: src/modules/workflow/workflow-trigger/constants/CronTriggerIntervalOptions.ts
 msgid "Minutes"
 msgstr "دقیقه"
 
@@ -14655,6 +14816,11 @@ msgstr "داده‌ای یافت نشد"
 msgid "No Date field"
 msgstr "فیلد تاریخ نیست"
 
+#. js-lingui-id: GI0D+2
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "No date filter = all records (including undated). With a range, only rows with real activity timestamps. Source: all / Instagram / voice; dual-tagged leads count in each. Payments are unscoped for source. Call ranking ≠ sales winner. Sales funnel shows each lead's current stage with cumulative, unique counts."
+msgstr ""
+
 #. js-lingui-id: lAfu/q
 #: src/modules/side-panel/pages/page-layout/components/RegularTabSettingsContent.tsx
 #: src/modules/side-panel/pages/page-layout/components/SingleWidgetTabSettingsContent.tsx
@@ -15238,6 +15404,7 @@ msgstr "تنظیمات گره"
 #: src/modules/side-panel/pages/page-layout/utils/getChartAxisNameDisplayOptions.ts
 #: src/modules/side-panel/pages/page-layout/utils/getDateGranularityLabel.ts
 #: src/modules/workflow/workflow-steps/workflow-actions/http-request-action/components/BodyInput.tsx
+#: src/modules/workflow/workflow-trigger/constants/WebhookTriggerAuthenticationOptions.ts
 #: src/pages/settings/admin-panel/SettingsAdminInstanceStatus.tsx
 #: src/pages/settings/admin-panel/SettingsAdminNewAiProvider.tsx
 msgid "None"
@@ -15281,6 +15448,11 @@ msgstr "در نمای پیش‌فرض در دسترس نیست"
 msgid "Not configured"
 msgstr "پیکربندی نشده"
 
+#. js-lingui-id: o+X7by
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Not delivered to the phone."
+msgstr "به گوشی تحویل داده نشد."
+
 #. js-lingui-id: 4wUkDk
 #: src/modules/object-record/record-board/record-board-column/utils/getAggregateOperationShortLabel.ts
 msgid "Not empty"
@@ -15310,6 +15482,11 @@ msgstr "هنوز در این سطح تلاش اندازه‌گیری نشده؛ 
 #: src/pages/settings/ai/components/SettingsAiModelTiersPreview.tsx
 msgid "Not measured at this effort yet. Showing the base model's reading."
 msgstr "هنوز در این سطح تلاش اندازه‌گیری نشده. خوانش مدل پایه نمایش داده می‌شود."
+
+#. js-lingui-id: CE0WuH
+#: src/modules/workflow/workflow-trigger/constants/ManualTriggerIsPinnedOptions.ts
+msgid "Not pinned"
+msgstr "سنجاق‌نشده"
 
 #. js-lingui-id: iXlml9
 #: src/modules/activities/calendar/components/CalendarEventCallRecorderAvatar.tsx
@@ -15622,6 +15799,11 @@ msgstr "حذف مقادیر صفر"
 msgid "on {0}"
 msgstr "در {0}"
 
+#. js-lingui-id: 2AKHUG
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
+msgid "On a schedule"
+msgstr "زمان‌بندی‌شده"
+
 #. js-lingui-id: gzokj+
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationInstallStats.tsx
 msgid "On suspended workspaces"
@@ -15767,6 +15949,11 @@ msgstr "فقط در {firstDay} و {secondDay}"
 #: src/modules/workflow/workflow-trigger/utils/cron-to-human/descriptors/getDayOfWeekDescription.ts
 msgid "only on {remainingDays} and {0}"
 msgstr "فقط در {remainingDays} و {0}"
+
+#. js-lingui-id: yXFTO8
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Only rows with a real activity timestamp are counted in the selected range. Registrations and payments have no independent date, so they read 0 while a range is active; clear dates to restore all-time totals."
+msgstr ""
 
 #. js-lingui-id: 6q7by9
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
@@ -16596,6 +16783,7 @@ msgstr "صورتی"
 #. js-lingui-id: kNiQp6
 #: src/modules/command-menu-item/display/components/SidePanelCommandMenuItemDisplayPage.tsx
 #: src/modules/command-menu-item/edit/components/SidePanelCommandMenuItemEditPage.tsx
+#: src/modules/workflow/workflow-trigger/constants/ManualTriggerIsPinnedOptions.ts
 #: src/pages/settings/applications/tabs/SettingsApplicationCommandMenuItemSettingsTab.tsx
 msgid "Pinned"
 msgstr "سنجاق‌شده"
@@ -16752,6 +16940,11 @@ msgstr "موقعیت صعودی"
 #: src/modules/side-panel/pages/page-layout/utils/getSortLabelSuffixForFieldType.ts
 msgid "position descending"
 msgstr "موقعیت نزولی"
+
+#. js-lingui-id: BH7upP
+#: src/modules/workflow/workflow-trigger/constants/WebhookTriggerHttpMethodOptions.ts
+msgid "POST"
+msgstr "POST"
 
 #. js-lingui-id: ofTr89
 #: src/modules/object-record/record-field/ui/form-types/components/FormAddressFieldInput.tsx
@@ -17034,8 +17227,13 @@ msgstr "ارائه‌دهنده «{0}» حذف شد"
 
 #. js-lingui-id: 47RicK
 #: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
 msgid "Provider code:"
 msgstr "کد سرویس‌دهنده:"
+
+#. js-lingui-id: XuvdFg
+#~ msgid "Provider message ID"
+#~ msgstr "شناسه پیام سرویس‌دهنده"
 
 #. js-lingui-id: nsUCgl
 #: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
@@ -17119,6 +17317,11 @@ msgstr "عملکرد صف"
 #: src/pages/settings/admin-panel/SettingsAdminQueueDetail.tsx
 msgid "Queue: {queueName}"
 msgstr "صف: {queueName}"
+
+#. js-lingui-id: RcQwwk
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Queued for sending."
+msgstr "در صف ارسال قرار گرفت."
 
 #. js-lingui-id: WmhhWd
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
@@ -17407,6 +17610,26 @@ msgstr "شناسه‌ی رکورد"
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm.tsx
 msgid "Record image"
 msgstr "تصویر رکورد"
+
+#. js-lingui-id: wNysMp
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
+msgid "Record is created"
+msgstr "رکورد ایجاد شد"
+
+#. js-lingui-id: /zKa2x
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
+msgid "Record is created or updated"
+msgstr "رکورد ایجاد یا ویرایش شد"
+
+#. js-lingui-id: pTBjmd
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
+msgid "Record is deleted"
+msgstr "رکورد حذف شد"
+
+#. js-lingui-id: rdLUKj
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
+msgid "Record is updated"
+msgstr "رکورد ویرایش شد"
 
 #. js-lingui-id: K6/7kH
 #: src/modules/settings/data-model/objects/forms/components/SettingsDataModelObjectIdentifiersForm.tsx
@@ -19482,6 +19705,11 @@ msgstr "ارسال‌شده و دریافت‌شده"
 msgid "Sent email"
 msgstr "ایمیل ارسال شد"
 
+#. js-lingui-id: MipOJy
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Sent."
+msgstr "ارسال شد."
+
 #. js-lingui-id: b/sg59
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
 msgid "separator"
@@ -19862,6 +20090,11 @@ msgstr "کلید امضا لغو شد"
 msgid "Signing Keys"
 msgstr "کلیدهای امضا"
 
+#. js-lingui-id: S8G1qk
+#: src/modules/workflow/workflow-trigger/constants/ManualTriggerAvailabilityTypeOptions.ts
+msgid "Single"
+msgstr "تکی"
+
 #. js-lingui-id: BZdVGR
 #: src/modules/settings/data-model/fields/forms/select/components/SettingsDataModelFieldSelectForm.tsx
 msgid "Single edit"
@@ -20145,6 +20378,7 @@ msgstr "مرتب‌سازی‌ها"
 
 #. js-lingui-id: wdxz7K
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
 #: src/modules/settings/admin-panel/apps/components/SettingsAdminApps.tsx
 #: src/modules/settings/admin-panel/apps/components/SettingsAdminApps.tsx
 #: src/modules/settings/admin-panel/config-variables/components/ConfigVariableOptionsDropdownContent.tsx
@@ -20678,9 +20912,7 @@ msgstr "یکشنبه"
 
 #. js-lingui-id: XYLcNv
 #: src/modules/settings/billing/constants/SettingsBillingPlanComparisonRows.ts
-#: src/modules/settings/hooks/useSettingsNavigationItems.tsx
 #: src/modules/settings/security/components/SettingsSecuritySettings.tsx
-#: src/modules/ui/navigation/navigation-drawer/components/MultiWorkspaceDropdown/internal/MultiWorkspaceDropdownDefaultComponents.tsx
 msgid "Support"
 msgstr "پشتیبانی"
 
@@ -21055,6 +21287,71 @@ msgstr "منطقه AWS برای Bedrock"
 
 #. js-lingui-id: HP7per
 #: src/pages/settings/applications/utils/getStandardApplicationDescription.ts
+#~ msgid ""
+#~ "The base data model every Twenty workspace runs on.\n"
+#~ "\n"
+#~ "#### What \"foundation\" means\n"
+#~ "\n"
+#~ "Every Twenty workspace starts with this set of objects. They define the shape of your CRM, including relationships, activity, and reporting. Everything else, including marketplace apps, AI agents, and custom objects, plugs into them.\n"
+#~ "\n"
+#~ "#### Included objects\n"
+#~ "- **People & Companies**: contact and account records\n"
+#~ "- **Opportunities**: your sales pipeline\n"
+#~ "- **Notes & Tasks**: activity and follow-ups\n"
+#~ "- **Workflows & Dashboards**: automation and reporting\n"
+#~ "\n"
+#~ "Remove this app and the rest of Twenty has nothing to hang off.\n"
+#~ "\n"
+#~ "#### Build your own app\n"
+#~ "\n"
+#~ "Extend Twenty with your own objects, fields, logic functions, or AI skills. Scaffold a new app in one command:\n"
+#~ "\n"
+#~ "```bash\n"
+#~ "npx create-twenty-app@latest my-twenty-app\n"
+#~ "```\n"
+#~ "\n"
+#~ "Then inside the folder:\n"
+#~ "\n"
+#~ "```bash\n"
+#~ "cd my-twenty-app\n"
+#~ "yarn twenty dev\n"
+#~ "```\n"
+#~ "\n"
+#~ "See the [Getting Started guide](/help) for the full walkthrough, and [Building Apps](/help) for the `defineApplication` / `defineEntity` APIs."
+#~ msgstr ""
+#~ "مدل داده پایه‌ای که هر فضای کاری Twenty روی آن اجرا می‌شود.\n"
+#~ "\n"
+#~ "#### «foundation» یعنی چه\n"
+#~ "\n"
+#~ "هر فضای کاری Twenty با این مجموعه موجودیت‌ها شروع می‌شود. آن‌ها شکل CRM شما، از جمله روابط، فعالیت و گزارش‌دهی را تعریف می‌کنند. هر چیز دیگری، از جمله برنامه‌های marketplace، عامل‌های AI و موجودیت‌های سفارشی، به آن‌ها متصل می‌شود.\n"
+#~ "\n"
+#~ "#### موجودیت‌های شامل‌شده\n"
+#~ "- **People & Companies**: رکوردهای مخاطب و حساب\n"
+#~ "- **Opportunities**: قیف فروش شما\n"
+#~ "- **Notes & Tasks**: فعالیت و پیگیری‌ها\n"
+#~ "- **Workflows & Dashboards**: خودکارسازی و گزارش‌دهی\n"
+#~ "\n"
+#~ "با حذف این برنامه، بقیه Twenty جایی برای اتصال ندارد.\n"
+#~ "\n"
+#~ "#### برنامه خود را بسازید\n"
+#~ "\n"
+#~ "Twenty را با موجودیت‌ها، فیلدها، توابع منطقی یا مهارت‌های AI خود گسترش دهید. یک برنامه جدید را با یک دستور بسازید:\n"
+#~ "\n"
+#~ "```bash\n"
+#~ "npx create-twenty-app@latest my-twenty-app\n"
+#~ "```\n"
+#~ "\n"
+#~ "سپس داخل پوشه:\n"
+#~ "\n"
+#~ "```bash\n"
+#~ "cd my-twenty-app\n"
+#~ "yarn twenty dev\n"
+#~ "```\n"
+#~ "\n"
+#~ "برای راهنمای کامل [Getting Started guide](/help) و برای APIهای `defineApplication` / `defineEntity`، [Building Apps](/help) را ببینید."
+
+#. js-lingui-id: 5HHbit
+#: src/pages/settings/applications/utils/getStandardApplicationDescription.ts
 msgid ""
 "The base data model every Twenty workspace runs on.\n"
 "\n"
@@ -21085,38 +21382,8 @@ msgid ""
 "yarn twenty dev\n"
 "```\n"
 "\n"
-"See the [Getting Started guide](/help) for the full walkthrough, and [Building Apps](/help) for the `defineApplication` / `defineEntity` APIs."
+"See the in-app Help for the guides that ship with this installation. The `defineApplication` / `defineEntity` APIs are part of the app SDK."
 msgstr ""
-"مدل داده پایه‌ای که هر فضای کاری Twenty روی آن اجرا می‌شود.\n"
-"\n"
-"#### «foundation» یعنی چه\n"
-"\n"
-"هر فضای کاری Twenty با این مجموعه موجودیت‌ها شروع می‌شود. آن‌ها شکل CRM شما، از جمله روابط، فعالیت و گزارش‌دهی را تعریف می‌کنند. هر چیز دیگری، از جمله برنامه‌های marketplace، عامل‌های AI و موجودیت‌های سفارشی، به آن‌ها متصل می‌شود.\n"
-"\n"
-"#### موجودیت‌های شامل‌شده\n"
-"- **People & Companies**: رکوردهای مخاطب و حساب\n"
-"- **Opportunities**: قیف فروش شما\n"
-"- **Notes & Tasks**: فعالیت و پیگیری‌ها\n"
-"- **Workflows & Dashboards**: خودکارسازی و گزارش‌دهی\n"
-"\n"
-"با حذف این برنامه، بقیه Twenty جایی برای اتصال ندارد.\n"
-"\n"
-"#### برنامه خود را بسازید\n"
-"\n"
-"Twenty را با موجودیت‌ها، فیلدها، توابع منطقی یا مهارت‌های AI خود گسترش دهید. یک برنامه جدید را با یک دستور بسازید:\n"
-"\n"
-"```bash\n"
-"npx create-twenty-app@latest my-twenty-app\n"
-"```\n"
-"\n"
-"سپس داخل پوشه:\n"
-"\n"
-"```bash\n"
-"cd my-twenty-app\n"
-"yarn twenty dev\n"
-"```\n"
-"\n"
-"برای راهنمای کامل [Getting Started guide](/help) و برای APIهای `defineApplication` / `defineEntity`، [Building Apps](/help) را ببینید."
 
 #. js-lingui-id: VsxjzF
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
@@ -21152,6 +21419,11 @@ msgstr "کشور پیش‌فرض برای آدرس‌های جدید"
 #: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "The default provider may have been saved, but it could not be re-read. Reload to see the saved value."
 msgstr "ممکن است سرویس‌دهندهٔ پیش‌فرض ذخیره شده باشد، اما بازخوانی ناموفق بود. برای دیدن مقدار ذخیره‌شده، صفحه را دوباره بارگذاری کنید."
+
+#. js-lingui-id: TUX/Rk
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "The delivery status could not be checked. Try again shortly."
+msgstr "استعلام وضعیت تحویل ممکن نشد. کمی بعد دوباره تلاش کنید."
 
 #. js-lingui-id: 2OUtmv
 #: src/pages/settings/data-model/SettingsObjectFieldEdit.tsx
@@ -21197,6 +21469,10 @@ msgstr "توافق‌نامه کامل با فیلدهای resolved برای ا�
 #: src/modules/workflow/workflow-trigger/components/WorkflowEditTriggerManual.tsx
 msgid "The icon your workflow trigger will display in the command menu"
 msgstr "آیکونی که trigger گردش‌کار شما در منوی دستور نمایش می‌دهد"
+
+#. js-lingui-id: N41/hV
+#~ msgid "The ID returned when the message was sent. It is filled in automatically after a successful test send."
+#~ msgstr "شناسه‌ای که هنگام ارسال پیام برگردانده می‌شود. پس از ارسال آزمایشی موفق، به‌صورت خودکار پر می‌شود."
 
 #. js-lingui-id: wzML+0
 #: src/modules/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm.tsx
@@ -21266,6 +21542,11 @@ msgstr "نامی که گیرندگان در صندوق ورودی کنار آد�
 msgid "The name recipients see next to your address. It is set when the channel is created."
 msgstr "نامی که گیرندگان کنار آدرس شما می‌بینند. هنگام ایجاد کانال تنظیم می‌شود."
 
+#. js-lingui-id: +ykmVO
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "The operator did not report a final status."
+msgstr "اپراتور وضعیت نهایی را اعلام نکرده است."
+
 #. js-lingui-id: L97sPr
 #: src/pages/not-found/NotFound.tsx
 msgid "The page you're seeking is either gone or never was. Let's get you back on track"
@@ -21290,6 +21571,11 @@ msgstr "ضبط بارگذاری نشد."
 #: src/modules/object-record/record-field/ui/hooks/useCreateJunctionRecordWithNestedTarget.ts
 msgid "The relation configuration could not be resolved."
 msgstr "پیکربندی رابطه قابل تشخیص نبود."
+
+#. js-lingui-id: 4JAlE9
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "The saved SMS provider value is invalid. Select a provider to continue; sending is blocked until a valid provider is selected."
+msgstr "مقدار ذخیره‌شدهٔ سرویس‌دهندهٔ پیامک نامعتبر است. برای ادامه یک سرویس‌دهنده انتخاب کنید؛ تا انتخاب یک سرویس‌دهندهٔ معتبر، ارسال مسدود است."
 
 #. js-lingui-id: wxyrqd
 #: src/modules/workflow/workflow-steps/workflow-actions/pick-record-action/components/WorkflowEditActionPickRecord.tsx
@@ -21979,6 +22265,7 @@ msgstr "عنوان"
 #: src/modules/activities/emails/components/CampaignSentEnvelope.tsx
 #: src/modules/activities/emails/components/EmailComposerFields.tsx
 #: src/modules/activities/emails/components/EmailComposerFields.tsx
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowEditActionEmailBase.tsx
 #: src/modules/workflow/workflow-steps/workflow-actions/components/WorkflowRunStepLogsEmailDetail.tsx
 msgid "To"
@@ -22157,6 +22444,11 @@ msgstr "زمان کل"
 #: src/pages/settings/ai/components/SettingsAiUsageTab.tsx
 msgid "Track AI consumption across your workspace."
 msgstr "مصرف هوش مصنوعی در فضای کاری خود را پیگیری کنید."
+
+#. js-lingui-id: BznjkF
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Tracking message ID"
+msgstr "شناسه پیگیری پیام"
 
 #. js-lingui-id: DDziIo
 #: src/modules/page-layout/widgets/call-recording-transcript/components/CallRecordingTranscriptEntryList.tsx
@@ -22701,6 +22993,11 @@ msgstr "فرستنده نامشخص"
 #: src/modules/page-layout/widgets/call-recording-transcript/utils/buildCallRecordingTranscriptPlainText.ts
 msgid "Unknown speaker"
 msgstr "گوینده نامشخص"
+
+#. js-lingui-id: wVM3lS
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "Unknown status."
+msgstr "وضعیت نامشخص."
 
 #. js-lingui-id: rg5AzZ
 #: src/modules/settings/unsubscribers/components/SettingsUnsubscribersList.tsx
@@ -23883,6 +24180,11 @@ msgstr "مصورسازی"
 msgid "Visualize data model"
 msgstr "مصورسازی مدل داده"
 
+#. js-lingui-id: RhqJba
+#: src/modules/page-layout/components/DashboardSharedFilterStrip.tsx
+msgid "Voice message"
+msgstr ""
+
 #. js-lingui-id: Ii6BOL
 #: src/modules/ai/components/AiModelTierInformationButton.tsx
 msgid "Vs Balanced mode"
@@ -24085,6 +24387,7 @@ msgstr "وب‌هوک"
 
 #. js-lingui-id: TRDppN
 #: src/modules/settings/developers/components/WebhookEntitySelect.tsx
+#: src/modules/workflow/workflow-trigger/constants/TriggerLabelMessages.ts
 msgid "Webhook"
 msgstr "وب‌هوک"
 
@@ -24777,6 +25080,11 @@ msgstr "مجوز دسترسی به موجودیت {objectName} را ندارید
 msgid "You do not have permission to access workflows."
 msgstr ""
 
+#. js-lingui-id: SIKjpM
+#: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
+msgid "You do not have permission to check a message status."
+msgstr "شما اجازهٔ استعلام وضعیت پیام را ندارید."
+
 #. js-lingui-id: xvzKQH
 #: src/pages/settings/communications/SettingsSmsTestSendPanel.tsx
 msgid "You do not have permission to send a test SMS."
@@ -25027,68 +25335,65 @@ msgstr ""
 msgid "Zoom out"
 msgstr ""
 
-msgid "کاوه‌نگار"
-msgstr "کاوه‌نگار"
+#. js-lingui-id: Z4IJtX
+#: src/pages/help/HelpArticlePage.tsx
+msgid "این موضوع در راهنما پیدا نشد"
+msgstr ""
 
+#. js-lingui-id: lJnxdI
+#: src/pages/help/HelpArticlePage.tsx
+#: src/pages/help/HelpArticlePage.tsx
+#: src/pages/help/HelpIndexPage.tsx
+msgid "بازگشت به فهرست راهنما"
+msgstr ""
+
+#. js-lingui-id: 557kIa
+#: src/pages/help/HelpIndexPage.tsx
+msgid "جست‌وجو در راهنما"
+msgstr ""
+
+#. js-lingui-id: FF8Hog
+#: src/pages/help/HelpIndexPage.tsx
+msgid "جست‌وجو در راهنما…"
+msgstr ""
+
+#. js-lingui-id: 5Y216l
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
 msgid "رازپیامک"
 msgstr "رازپیامک"
 
-msgid "The saved SMS provider value is invalid. Select a provider to continue; sending is blocked until a valid provider is selected."
-msgstr "مقدار ذخیره‌شدهٔ سرویس‌دهندهٔ پیامک نامعتبر است. برای ادامه یک سرویس‌دهنده انتخاب کنید؛ تا انتخاب یک سرویس‌دهندهٔ معتبر، ارسال مسدود است."
+#. js-lingui-id: NwD68r
+#: src/pages/help/HelpIndexPage.tsx
+#: src/pages/help/HelpIndexPage.tsx
+msgid "راهنمای برنامه"
+msgstr ""
 
-msgid "Check delivery status"
-msgstr "استعلام وضعیت تحویل"
+#. js-lingui-id: sP+Vqi
+#: src/pages/help/HelpIndexPage.tsx
+msgid "راهنمای کار با الگوهای پیامک. این راهنما بخشی از همین برنامه است و بدون اینترنت هم کار می‌کند."
+msgstr ""
 
-msgid "Asks the provider whether a message reached the phone. This only reads the status; it does not send anything."
-msgstr "از سرویس‌دهنده می‌پرسد که آیا پیام به گوشی رسیده است. این کار فقط وضعیت را می‌خواند و چیزی ارسال نمی‌کند."
+#. js-lingui-id: 3x5xFF
+#: src/pages/settings/communications/SettingsWorkspaceCommunicationsSmsTab.tsx
+msgid "کاوه‌نگار"
+msgstr "کاوه‌نگار"
 
-msgid "Check if the SMS was received"
-msgstr "استعلام دریافت پیامک"
+#. js-lingui-id: sgcGto
+#: src/pages/help/HelpArticlePage.tsx
+msgid "موضوع پیدا نشد"
+msgstr ""
 
-msgid "The ID returned when the message was sent. It is filled in automatically after a successful test send."
-msgstr "شناسه‌ای که هنگام ارسال پیام برگردانده می‌شود. پس از ارسال آزمایشی موفق، به‌صورت خودکار پر می‌شود."
+#. js-lingui-id: 1wCZ8T
+#: src/pages/help/HelpIndexPage.tsx
+msgid "موضوعی با این عبارت پیدا نشد. عبارت دیگری را امتحان کنید یا فهرست کامل موضوع‌ها را ببینید."
+msgstr ""
 
-msgid "Delivered to the phone."
-msgstr "به گوشی تحویل داده شد."
+#. js-lingui-id: 7uCQdX
+#: src/pages/help/HelpArticlePage.tsx
+msgid "نشانی‌ای که باز کردید با هیچ‌کدام از موضوع‌های راهنما هم‌خوان نیست. از فهرست موضوع‌ها یکی را انتخاب کنید."
+msgstr ""
 
-msgid "Accepted by the operator; not yet on the phone."
-msgstr "به مخابرات رسیده است؛ هنوز به گوشی نرسیده."
-
-msgid "Sent."
-msgstr "ارسال شد."
-
-msgid "Queued for sending."
-msgstr "در صف ارسال قرار گرفت."
-
-msgid "Not delivered to the phone."
-msgstr "به گوشی تحویل داده نشد."
-
-msgid "Delivery failed."
-msgstr "تحویل ناموفق بود."
-
-msgid "The operator did not report a final status."
-msgstr "اپراتور وضعیت نهایی را اعلام نکرده است."
-
-msgid "Unknown status."
-msgstr "وضعیت نامشخص."
-
-msgid "You do not have permission to check a message status."
-msgstr "شما اجازهٔ استعلام وضعیت پیام را ندارید."
-
-msgid "A valid provider message ID is required."
-msgstr "یک شناسهٔ پیام معتبر از سرویس‌دهنده الزامی است."
-
-msgid "The delivery status could not be checked. Try again shortly."
-msgstr "استعلام وضعیت تحویل ممکن نشد. کمی بعد دوباره تلاش کنید."
-
-msgid "Tracking message ID"
-msgstr "شناسه پیگیری پیام"
-
-msgid "Filled automatically after a successful send"
-msgstr "پس از ارسال موفق، به‌صورت خودکار پر می‌شود"
-
-msgid "Assigned by the provider only when the message is actually accepted. It is read-only and filled in automatically after a successful send."
-msgstr "این شناسه فقط زمانی توسط سرویس‌دهنده صادر می‌شود که پیام واقعاً پذیرفته شود. این فیلد فقط‌خواندنی است و پس از ارسال موفق به‌صورت خودکار پر می‌شود."
-
-msgid "Provider message ID"
-msgstr "شناسه پیام سرویس‌دهنده"
+#. js-lingui-id: a6d9m8
+#: src/modules/side-panel/pages/record-creation-form/components/SidePanelRecordCreationFormPage.tsx
+msgid "ویرایشگر الگو در دسترس نیست. برنامهٔ ارتباطات را به‌روز کنید."
+msgstr ""

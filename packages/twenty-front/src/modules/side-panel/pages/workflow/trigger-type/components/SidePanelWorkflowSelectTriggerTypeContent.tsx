@@ -12,9 +12,11 @@ import { SidePanelStepListContainer } from '@/workflow/workflow-steps/components
 import { SidePanelWorkflowSelectStepTitle } from '@/workflow/workflow-steps/components/SidePanelWorkflowSelectStepTitle';
 import { DATABASE_TRIGGER_TYPES } from '@/workflow/workflow-trigger/constants/DatabaseTriggerTypes';
 import { OTHER_TRIGGER_TYPES } from '@/workflow/workflow-trigger/constants/OtherTriggerTypes';
+import { TRIGGER_LABEL_MESSAGE_BY_DEFAULT_LABEL } from '@/workflow/workflow-trigger/constants/TriggerLabelMessages';
 import { useUpdateWorkflowVersionTrigger } from '@/workflow/workflow-trigger/hooks/useUpdateWorkflowVersionTrigger';
 import { getTriggerDefaultDefinition } from '@/workflow/workflow-trigger/utils/getTriggerDefaultDefinition';
 import { t } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react';
 import { isDefined } from 'twenty-shared/utils';
 import { TRIGGER_STEP_ID } from 'twenty-shared/workflow';
 import { useIcons } from 'twenty-ui/icon';
@@ -25,6 +27,7 @@ import { ThemeContext } from 'twenty-ui/theme-constants';
 export const SidePanelWorkflowSelectTriggerTypeContent = () => {
   const { theme } = useContext(ThemeContext);
   const { getIcon } = useIcons();
+  const { i18n } = useLingui();
   const workflowId = useSidePanelWorkflowIdOrThrow();
   const { updateTrigger } = useUpdateWorkflowVersionTrigger();
 
@@ -47,9 +50,14 @@ export const SidePanelWorkflowSelectTriggerTypeContent = () => {
     icon: string;
   }) => {
     return async () => {
+      const localizedLabel = i18n._(
+        TRIGGER_LABEL_MESSAGE_BY_DEFAULT_LABEL[defaultLabel] ?? defaultLabel,
+      );
+
       let updatedTrigger: WorkflowTrigger | null = getTriggerDefaultDefinition({
         defaultLabel,
         type,
+        name: localizedLabel,
         activeNonSystemObjectMetadataItems,
       });
 
@@ -67,12 +75,15 @@ export const SidePanelWorkflowSelectTriggerTypeContent = () => {
 
       openWorkflowEditStepInSidePanel({
         workflowId,
-        title: defaultLabel,
+        title: localizedLabel,
         icon: getIcon(icon),
         stepId: TRIGGER_STEP_ID,
       });
     };
   };
+
+  const getLocalizedLabel = (defaultLabel: string): string =>
+    i18n._(TRIGGER_LABEL_MESSAGE_BY_DEFAULT_LABEL[defaultLabel] ?? defaultLabel);
 
   return (
     <SidePanelStepListContainer>
@@ -81,12 +92,14 @@ export const SidePanelWorkflowSelectTriggerTypeContent = () => {
       </SidePanelWorkflowSelectStepTitle>
       {DATABASE_TRIGGER_TYPES.map((action) => {
         const Icon = getIcon(action.icon);
+        const label = getLocalizedLabel(action.defaultLabel);
+
         return (
           <MenuItem
             withIconContainer={true}
             key={action.defaultLabel}
             LeftIcon={() => <Icon color={theme.color.blue} size={16} />}
-            text={action.defaultLabel}
+            text={label}
             onClick={handleTriggerTypeClick(action)}
           />
         );
@@ -97,12 +110,14 @@ export const SidePanelWorkflowSelectTriggerTypeContent = () => {
       </SidePanelWorkflowSelectStepTitle>
       {OTHER_TRIGGER_TYPES.map((action) => {
         const Icon = getIcon(action.icon);
+        const label = getLocalizedLabel(action.defaultLabel);
+
         return (
           <MenuItem
             withIconContainer={true}
             key={action.defaultLabel}
             LeftIcon={() => <Icon color={theme.color.purple} size={16} />}
-            text={action.defaultLabel}
+            text={label}
             onClick={handleTriggerTypeClick(action)}
           />
         );

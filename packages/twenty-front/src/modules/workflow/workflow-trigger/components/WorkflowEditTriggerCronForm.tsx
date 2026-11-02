@@ -5,8 +5,8 @@ import { type WorkflowCronTrigger } from '@/workflow/types/Workflow';
 import { WorkflowStepBody } from '@/workflow/workflow-steps/components/WorkflowStepBody';
 import { WorkflowStepFooter } from '@/workflow/workflow-steps/components/WorkflowStepFooter';
 import { CronExpressionHelperLazy } from '@/workflow/workflow-trigger/components/CronExpressionHelperLazy';
+import { useTranslatedTriggerOptions } from '@/workflow/workflow-trigger/hooks/useTranslatedTriggerOptions';
 import {
-  CRON_TRIGGER_INTERVAL_OPTIONS,
   type CronTriggerInterval,
 } from '@/workflow/workflow-trigger/constants/CronTriggerIntervalOptions';
 import { getCronTriggerDefaultSettings } from '@/workflow/workflow-trigger/utils/getCronTriggerDefaultSettings';
@@ -49,6 +49,7 @@ export const WorkflowEditTriggerCronForm = ({
   const [errorMessages, setErrorMessages] = useState<FormErrorMessages>({});
   const [errorMessagesVisible, setErrorMessagesVisible] = useState(false);
   const dateLocale = useAtomStateValue(dateLocaleState);
+  const { cronIntervalOptions } = useTranslatedTriggerOptions();
 
   const customDescription = getTriggerScheduleDescription(
     trigger,
@@ -66,7 +67,7 @@ export const WorkflowEditTriggerCronForm = ({
           label={t`Trigger interval`}
           hint={t`Cron will be triggered at UTC time`}
           defaultValue={trigger.settings.type}
-          options={CRON_TRIGGER_INTERVAL_OPTIONS}
+          options={cronIntervalOptions}
           readonly={triggerOptions.readonly}
           onChange={(newTriggerType) => {
             if (triggerOptions.readonly === true) {

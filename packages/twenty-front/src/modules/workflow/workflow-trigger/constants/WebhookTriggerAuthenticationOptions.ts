@@ -1,18 +1,21 @@
+import { msg } from '@lingui/core/macro';
+import { type MessageDescriptor } from '@lingui/core';
 import { type IconComponent, IconKey, IconLockOpen } from 'twenty-ui/icon';
+
 export type AuthenticationMethods = 'API_KEY' | null;
 
 export const WEBHOOK_TRIGGER_AUTHENTICATION_OPTIONS: Array<{
-  label: string;
+  labelMessage: MessageDescriptor;
   value: AuthenticationMethods;
   Icon: IconComponent;
 }> = [
   {
-    label: 'None',
+    labelMessage: msg`None`,
     value: null,
     Icon: IconLockOpen,
   },
   {
-    label: 'API key',
+    labelMessage: msg`API key`,
     value: 'API_KEY',
     Icon: IconKey,
   },
