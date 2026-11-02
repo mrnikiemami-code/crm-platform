@@ -1,4 +1,4 @@
-import { AppChip } from '@/applications/components/AppChip';
+﻿import { AppChip } from '@/applications/components/AppChip';
 import { useLogicFunctionThirdPartyApplicationInformation } from '@/logic-functions/hooks/useLogicFunctionThirdPartyApplicationInformation';
 import { useUpdateSidePanelPageInfo } from '@/side-panel/hooks/useUpdateSidePanelPageInfo';
 import { useSidePanelWorkflowIdOrThrow } from '@/side-panel/pages/workflow/hooks/useSidePanelWorkflowIdOrThrow';
@@ -15,6 +15,7 @@ import { getStepDefinitionOrThrow } from '@/workflow/utils/getStepDefinitionOrTh
 import { getWorkflowVisualizerComponentInstanceId } from '@/workflow/utils/getWorkflowVisualizerComponentInstanceId';
 import { useUpdateAgentLabel } from '@/workflow/workflow-steps/hooks/useUpdateAgentLabel';
 import { useUpdateWorkflowVersionStep } from '@/workflow/workflow-steps/hooks/useUpdateWorkflowVersionStep';
+import { useLocalizedWorkflowStepName } from '@/workflow/workflow-steps/workflow-actions/hooks/useLocalizedWorkflowStepName';
 import { useUpdateWorkflowVersionTrigger } from '@/workflow/workflow-trigger/hooks/useUpdateWorkflowVersionTrigger';
 import { useWorkflowVersionContent } from '@/workflow/workflow-version/hooks/useWorkflowVersionContent';
 import { getActionIcon } from '@/workflow/workflow-steps/workflow-actions/utils/getActionIcon';
@@ -111,8 +112,11 @@ export const SidePanelWorkflowStepInfo = ({
 
   const [editedTitle, setEditedTitle] = useState<string | null>(null);
 
-  const title =
-    editedTitle ?? (isDefined(stepName) && stepName !== '' ? stepName : '');
+  // The stored name is the technical action label unless the manager renamed
+  // the step, so only that technical default is translated for display.
+  const localizedStepName = useLocalizedWorkflowStepName(stepName);
+
+  const title = editedTitle ?? localizedStepName;
 
   const handleTitleChange = (newTitle: string) => {
     setEditedTitle(newTitle);
@@ -149,8 +153,16 @@ export const SidePanelWorkflowStepInfo = ({
       return;
     }
 
+    // Only a real rename is persisted, so the localized label of a step the
+    // manager did not rename never overwrites the stored technical name.
+    if (!isDefined(editedTitle)) {
+      return;
+    }
+
+    const nextTitle = editedTitle;
+
     updateSidePanelPageInfo({
-      pageTitle: title,
+      pageTitle: nextTitle,
       pageIcon: Icon,
     });
 
@@ -159,14 +171,14 @@ export const SidePanelWorkflowStepInfo = ({
     if (isTrigger) {
       await updateTrigger({
         ...stepDefinition.definition,
-        name: title,
+        name: nextTitle,
       } as typeof stepDefinition.definition);
     } else {
       await updateWorkflowVersionStep({
         workflowVersionId: targetWorkflowVersionId,
         step: {
           ...stepDefinition.definition,
-          name: title,
+          name: nextTitle,
         },
       });
 

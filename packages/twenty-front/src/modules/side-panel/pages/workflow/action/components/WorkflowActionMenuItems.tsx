@@ -2,6 +2,7 @@ import { type WorkflowActionType } from '@/workflow/types/Workflow';
 import { ACTION_LABEL_MESSAGE_BY_DEFAULT_LABEL } from '@/workflow/workflow-steps/workflow-actions/constants/ActionLabelMessages';
 import { getActionIconColorOrThrow } from '@/workflow/workflow-steps/workflow-actions/utils/getActionIconColorOrThrow';
 import { useLingui } from '@lingui/react';
+import { isDefined } from 'twenty-shared/utils';
 import { useIcons } from 'twenty-ui/icon';
 import { MenuItem } from 'twenty-ui/primitives/navigation';
 
@@ -36,7 +37,7 @@ export const WorkflowActionMenuItems = ({
               <Icon color={getActionIconColorOrThrow(action.type)} size={16} />
             )}
             text={
-              messageDescriptor
+              isDefined(messageDescriptor)
                 ? i18n._(messageDescriptor)
                 : action.defaultLabel
             }

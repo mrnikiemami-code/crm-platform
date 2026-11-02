@@ -22,11 +22,9 @@ import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomStat
 import { isDefined } from 'twenty-shared/utils';
 import { useIcons } from 'twenty-ui/icon';
 import { getLocalizedWorkflowStepName } from '@/workflow/workflow-steps/workflow-actions/utils/getLocalizedWorkflowStepName';
-import { useLingui } from '@lingui/react';
 
 export const SidePanelWorkflowCreateStepContent = () => {
   const { getIcon } = useIcons();
-  const { i18n } = useLingui();
   const workflowVisualizerWorkflowId = useAtomComponentStateValue(
     workflowVisualizerWorkflowIdComponentState,
   );
@@ -59,7 +57,8 @@ export const SidePanelWorkflowCreateStepContent = () => {
     await updateStep(updatedStep);
   };
 
-  const handleCreateStep = async (selection: WorkflowActionSelection) => {    if (!isDefined(workflowVisualizerWorkflowId)) {
+  const handleCreateStep = async (selection: WorkflowActionSelection) => {
+    if (!isDefined(workflowVisualizerWorkflowId)) {
       throw new Error(
         'Workflow ID must be configured for the edge when creating a step',
       );
@@ -109,7 +108,7 @@ export const SidePanelWorkflowCreateStepContent = () => {
 
     openWorkflowEditStepInSidePanel({
       workflowId: workflowVisualizerWorkflowId,
-      title: getLocalizedWorkflowStepName(createdStep.name, i18n),
+      title: getLocalizedWorkflowStepName(createdStep.name),
       icon: getIcon(getActionIcon(createdStep.type as WorkflowActionType)),
       stepId: createdStep.id,
     });
