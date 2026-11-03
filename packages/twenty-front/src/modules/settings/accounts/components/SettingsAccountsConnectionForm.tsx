@@ -8,6 +8,7 @@ import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
 
 import { SettingsAccountsPasswordController } from '@/settings/accounts/components/SettingsAccountsPasswordController';
 import { type ConnectionFormData } from '@/settings/accounts/hooks/useImapSmtpCaldavConnectionForm';
+import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
 import { type AccountType } from 'twenty-shared/constants';
 import { Section } from 'twenty-ui/components';
 import { MOBILE_VIEWPORT, themeCssVariables } from 'twenty-ui/theme-constants';
@@ -84,6 +85,12 @@ export const SettingsAccountsConnectionForm = ({
     !isProtocolPasswordBeingEdited[protocol];
 
   const getDescription = () => {
+    if (!IS_CALENDAR_FEATURE_ENABLED) {
+      return isEditing
+        ? t`Update your account's configuration. Configure IMAP and SMTP as needed.`
+        : t`You can set up any combination of IMAP (receiving emails) and SMTP (sending emails).`;
+    }
+
     if (isEditing) {
       return t`Update your account's configuration. Configure any combination of IMAP, SMTP, and CalDAV as needed.`;
     }
@@ -320,59 +327,61 @@ export const SettingsAccountsConnectionForm = ({
           </StyledFieldRow>
         </StyledConnectionSection>
 
-        <StyledConnectionSection>
-          <StyledSectionHeader>
-            <StyledSectionTitle>{t`CalDAV Configuration`}</StyledSectionTitle>
-            <StyledSectionDescription>
-              {t`Configure CalDAV settings to sync your calendar events.`}{' '}
-              {t`Leave blank if you don't need calendar sync.`}
-            </StyledSectionDescription>
-          </StyledSectionHeader>
+        {IS_CALENDAR_FEATURE_ENABLED && (
+          <StyledConnectionSection>
+            <StyledSectionHeader>
+              <StyledSectionTitle>{t`CalDAV Configuration`}</StyledSectionTitle>
+              <StyledSectionDescription>
+                {t`Configure CalDAV settings to sync your calendar events.`}{' '}
+                {t`Leave blank if you don't need calendar sync.`}
+              </StyledSectionDescription>
+            </StyledSectionHeader>
 
-          <Controller
-            name="CALDAV.host"
-            control={control}
-            render={({ field, fieldState }) => (
-              <SettingsTextInput
-                instanceId="caldav-host-connection-form"
-                label={t`CalDAV Server`}
-                placeholder={t`caldav.example.com`}
-                value={field.value || ''}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
+            <Controller
+              name="CALDAV.host"
+              control={control}
+              render={({ field, fieldState }) => (
+                <SettingsTextInput
+                  instanceId="caldav-host-connection-form"
+                  label={t`CalDAV Server`}
+                  placeholder={t`caldav.example.com`}
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
 
-          <Controller
-            name="CALDAV.username"
-            control={control}
-            render={({ field, fieldState }) => (
-              <SettingsTextInput
-                instanceId="caldav-username-connection-form"
-                label={t`CalDAV Username`}
-                placeholder={t`john.doe`}
-                required={false}
-                value={field.value || ''}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
+            <Controller
+              name="CALDAV.username"
+              control={control}
+              render={({ field, fieldState }) => (
+                <SettingsTextInput
+                  instanceId="caldav-username-connection-form"
+                  label={t`CalDAV Username`}
+                  placeholder={t`john.doe`}
+                  required={false}
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
 
-          <SettingsAccountsPasswordController
-            protocol="CALDAV"
-            label={t`CalDAV Password`}
-            control={control}
-            disabled={isPasswordInputDisabled('CALDAV')}
-            onUnlock={() =>
-              setIsProtocolPasswordBeingEdited((prev) => ({
-                ...prev,
-                CALDAV: true,
-              }))
-            }
-          />
-        </StyledConnectionSection>
+            <SettingsAccountsPasswordController
+              protocol="CALDAV"
+              label={t`CalDAV Password`}
+              control={control}
+              disabled={isPasswordInputDisabled('CALDAV')}
+              onUnlock={() =>
+                setIsProtocolPasswordBeingEdited((prev) => ({
+                  ...prev,
+                  CALDAV: true,
+                }))
+              }
+            />
+          </StyledConnectionSection>
+        )}
       </StyledFormContainer>
     </Section.Root>
   );

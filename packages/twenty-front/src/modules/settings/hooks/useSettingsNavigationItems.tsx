@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/hooks/useAuth';
 import { currentUserState } from '@/auth/states/currentUserState';
 import { billingState } from '@/client-config/states/billingState';
 import { usePermissionFlagMap } from '@/settings/roles/hooks/usePermissionFlagMap';
+import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
 import {
   type NavigationDrawerItemIndentationLevel,
   type NavigationDrawerItemModifier,
@@ -94,7 +95,9 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
               label: t`Calendars`,
               path: SettingsPath.AccountsCalendars,
               Icon: IconCalendarEvent,
-              isHidden: !permissionMap[PermissionFlagType.CONNECTED_ACCOUNTS],
+              isHidden:
+                !IS_CALENDAR_FEATURE_ENABLED ||
+                !permissionMap[PermissionFlagType.CONNECTED_ACCOUNTS],
               indentationLevel: 2,
             },
           ],

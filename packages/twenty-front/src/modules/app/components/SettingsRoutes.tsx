@@ -15,6 +15,7 @@ import {
   type WorkspaceRouteObject,
 } from '@/app/routing/types/WorkspaceRouteObject';
 import { SettingsProtectedRouteWrapper } from '@/settings/components/SettingsProtectedRouteWrapper';
+import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
 import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
 import { SettingPublicDomain } from '@/settings/domains/components/SettingPublicDomain';
 import { SettingsPath } from 'twenty-shared/types';
@@ -749,7 +750,13 @@ const createSettingsRouteElements = ({
       />
       <Route
         path={SettingsPath.AccountsCalendars}
-        element={<SettingsAccountsCalendars />}
+        element={
+          IS_CALENDAR_FEATURE_ENABLED ? (
+            <SettingsAccountsCalendars />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.Accounts)} replace />
+          )
+        }
       />
       <Route path={SettingsPath.NewAccount} element={<SettingsNewAccount />} />
       <Route

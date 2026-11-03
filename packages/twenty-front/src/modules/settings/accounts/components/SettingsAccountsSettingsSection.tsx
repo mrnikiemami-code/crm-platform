@@ -2,6 +2,7 @@ import { styled } from '@linaria/react';
 import { useContext } from 'react';
 
 import { SettingsCard } from '@/settings/components/SettingsCard';
+import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
 import { useLingui } from '@lingui/react/macro';
 import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
@@ -36,7 +37,11 @@ export const SettingsAccountsSettingsSection = () => {
     <Section.Root>
       <Section.Header
         title={t`Settings`}
-        description={t`Configure your emails and calendar settings.`}
+        description={
+          IS_CALENDAR_FEATURE_ENABLED
+            ? t`Configure your emails and calendar settings.`
+            : t`Configure your email settings.`
+        }
       />
       <StyledCardsContainer>
         <StyledCardLinkSlot>
@@ -53,20 +58,24 @@ export const SettingsAccountsSettingsSection = () => {
             />
           </UndecoratedLink>
         </StyledCardLinkSlot>
-        <StyledCardLinkSlot>
-          <UndecoratedLink to={getSettingsPath(SettingsPath.AccountsCalendars)}>
-            <SettingsCard
-              Icon={
-                <IconCalendarEvent
-                  size={theme.icon.size.lg}
-                  stroke={theme.icon.stroke.sm}
-                />
-              }
-              title={t`Calendar`}
-              description={t`Configure and customize your calendar preferences.`}
-            />
-          </UndecoratedLink>
-        </StyledCardLinkSlot>
+        {IS_CALENDAR_FEATURE_ENABLED && (
+          <StyledCardLinkSlot>
+            <UndecoratedLink
+              to={getSettingsPath(SettingsPath.AccountsCalendars)}
+            >
+              <SettingsCard
+                Icon={
+                  <IconCalendarEvent
+                    size={theme.icon.size.lg}
+                    stroke={theme.icon.stroke.sm}
+                  />
+                }
+                title={t`Calendar`}
+                description={t`Configure and customize your calendar preferences.`}
+              />
+            </UndecoratedLink>
+          </StyledCardLinkSlot>
+        )}
       </StyledCardsContainer>
     </Section.Root>
   );

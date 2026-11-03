@@ -9,6 +9,7 @@ import {
 } from 'twenty-shared/types';
 
 import { useTriggerProviderReconnect } from '@/settings/accounts/hooks/useTriggerProviderReconnect';
+import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownContent } from '@/ui/layout/dropdown/components/DropdownContent';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
@@ -112,13 +113,15 @@ export const SettingsAccountsRowDropdownMenu = ({
                   closeDropdown(dropdownId);
                 }}
               >{t`Emails settings`}</ListItem>
-              <ListItem
-                startIcon={<IconCalendarEvent />}
-                onClick={() => {
-                  navigate(SettingsPath.AccountsCalendars);
-                  closeDropdown(dropdownId);
-                }}
-              >{t`Calendar settings`}</ListItem>
+              {IS_CALENDAR_FEATURE_ENABLED && (
+                <ListItem
+                  startIcon={<IconCalendarEvent />}
+                  onClick={() => {
+                    navigate(SettingsPath.AccountsCalendars);
+                    closeDropdown(dropdownId);
+                  }}
+                >{t`Calendar settings`}</ListItem>
+              )}
               {account.authFailedAt && (
                 <ListItem
                   startIcon={<IconRefresh />}

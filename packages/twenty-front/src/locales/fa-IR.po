@@ -25483,3 +25483,12 @@ msgstr ""
 #: src/modules/side-panel/pages/record-creation-form/components/SidePanelRecordCreationFormPage.tsx
 msgid "ویرایشگر الگو در دسترس نیست. برنامهٔ ارتباطات را به‌روز کنید."
 msgstr ""
+
+msgid "Configure your email settings."
+msgstr "تنظیمات ایمیل خود را پیکربندی کنید."
+
+msgid "Update your account's configuration. Configure IMAP and SMTP as needed."
+msgstr "پیکربندی حساب خود را به‌روزرسانی کنید. در صورت نیاز IMAP و SMTP را تنظیم کنید."
+
+msgid "You can set up any combination of IMAP (receiving emails) and SMTP (sending emails)."
+msgstr "می‌توانید هر ترکیبی از IMAP (دریافت ایمیل) و SMTP (ارسال ایمیل) را تنظیم کنید."

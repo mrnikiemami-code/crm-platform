@@ -7,6 +7,7 @@ import { type MessageChannel } from '@/accounts/types/MessageChannel';
 import { getToastOptionsFromError } from '@/error-handler/utils/getToastOptionsFromError';
 import { GET_MY_CALENDAR_CHANNELS } from '@/settings/accounts/graphql/queries/getMyCalendarChannels';
 import { GET_MY_MESSAGE_CHANNELS } from '@/settings/accounts/graphql/queries/getMyMessageChannels';
+import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
@@ -95,7 +96,9 @@ export const SettingsAccountsConfiguration = () => {
         />
         <SettingsAccountsConfigurationStepEmail
           messageChannel={messageChannel}
-          hasNextStep={isDefined(calendarChannel)}
+          hasNextStep={
+            IS_CALENDAR_FEATURE_ENABLED && isDefined(calendarChannel)
+          }
           isSubmitting={isSubmitting}
           onNext={handleNext}
           onAddAccount={handleAddAccount}
@@ -104,7 +107,7 @@ export const SettingsAccountsConfiguration = () => {
     );
   }
 
-  if (!isDefined(calendarChannel)) {
+  if (!IS_CALENDAR_FEATURE_ENABLED || !isDefined(calendarChannel)) {
     return null;
   }
 
