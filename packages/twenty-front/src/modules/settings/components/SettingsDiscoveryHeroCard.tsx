@@ -1,5 +1,6 @@
 import { type SettingsCustomizeVideoModalTab } from '@/settings/types/SettingsCustomizeVideoModalTab';
 import { SettingsCustomizeVideoModal } from '@/settings/components/SettingsCustomizeVideoModal';
+import { IS_SETTINGS_DEMO_VIDEO_ENABLED } from '@/settings/constants/IsSettingsDemoVideoEnabled';
 import { HeroPlayButton } from '@/ui/layout/hero/components/HeroPlayButton';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { styled } from '@linaria/react';
@@ -63,7 +64,7 @@ export const SettingsDiscoveryHeroCard = ({
   const { t } = useLingui();
   const { colorScheme } = useContext(ThemeContext);
   const { openDialog } = useDialog();
-  const shouldDisplayVideo = tabs.length > 0;
+  const shouldDisplayVideo = IS_SETTINGS_DEMO_VIDEO_ENABLED && tabs.length > 0;
 
   const modalInstanceId = `${instanceIdPrefix}-modal`;
   const tabsInstanceId = `${instanceIdPrefix}-tabs`;

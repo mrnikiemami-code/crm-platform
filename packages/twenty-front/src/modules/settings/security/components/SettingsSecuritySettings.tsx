@@ -3,6 +3,7 @@ import { authProvidersState } from '@/client-config/states/authProvidersState';
 import { isClickHouseConfiguredState } from '@/client-config/states/isClickHouseConfiguredState';
 import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
 import { SettingsEnterpriseFeatureGateCard } from '@/settings/components/SettingsEnterpriseFeatureGateCard';
+import { IS_AUDIT_LOGS_ENABLED } from '@/settings/constants/IsAuditLogsEnabled';
 import { SettingsOptionCardContentButton } from '@/settings/components/SettingsOptions/SettingsOptionCardContentButton';
 import { SettingsOptionCardContentCounter } from '@/settings/components/SettingsOptions/SettingsOptionCardContentCounter';
 import { SettingsRoleDefaultRole } from '@/settings/roles/components/SettingsRolesDefaultRole';
@@ -197,41 +198,43 @@ export const SettingsSecuritySettings = () => {
             <ImpersonationSwitch />
           </Section.Root>
         )}
-        <Section.Root>
-          <Section.Header
-            title={t`Audit Logs`}
-            description={t`Configure how long audit logs are retained`}
-            adornment={<OrganizationAdornment />}
-          />
-          {hasEnterpriseAccess ? (
-            <Card rounded>
-              {isEventLogsEnabled ? (
-                <SettingsOptionCardContentCounter
-                  Icon={IconClockHour8}
-                  title={t`Log retention`}
-                  description={t`Number of days to retain audit logs (30-1095 days)`}
-                  value={currentWorkspace?.eventLogRetentionDays ?? 90}
-                  onChange={handleEventLogRetentionDaysChange}
-                  minValue={30}
-                  maxValue={1095}
-                  showButtons={false}
-                />
-              ) : (
-                <SettingsOptionCardContentButton
-                  Icon={IconHistory}
-                  title={t`Audit Logs`}
-                  description={t`ClickHouse is required for audit logs. Contact your administrator.`}
-                />
-              )}
-            </Card>
-          ) : (
-            <SettingsEnterpriseFeatureGateCard
-              title={t`Organization feature`}
-              description={t`Upgrade to Organization to access audit logs.`}
-              buttonTitle={t`Activate`}
+        {IS_AUDIT_LOGS_ENABLED && (
+          <Section.Root>
+            <Section.Header
+              title={t`Audit Logs`}
+              description={t`Configure how long audit logs are retained`}
+              adornment={<OrganizationAdornment />}
             />
-          )}
-        </Section.Root>
+            {hasEnterpriseAccess ? (
+              <Card rounded>
+                {isEventLogsEnabled ? (
+                  <SettingsOptionCardContentCounter
+                    Icon={IconClockHour8}
+                    title={t`Log retention`}
+                    description={t`Number of days to retain audit logs (30-1095 days)`}
+                    value={currentWorkspace?.eventLogRetentionDays ?? 90}
+                    onChange={handleEventLogRetentionDaysChange}
+                    minValue={30}
+                    maxValue={1095}
+                    showButtons={false}
+                  />
+                ) : (
+                  <SettingsOptionCardContentButton
+                    Icon={IconHistory}
+                    title={t`Audit Logs`}
+                    description={t`ClickHouse is required for audit logs. Contact your administrator.`}
+                  />
+                )}
+              </Card>
+            ) : (
+              <SettingsEnterpriseFeatureGateCard
+                title={t`Organization feature`}
+                description={t`Upgrade to Organization to access audit logs.`}
+                buttonTitle={t`Activate`}
+              />
+            )}
+          </Section.Root>
+        )}
         <Section.Root>
           <Section.Header
             title={t`Other`}

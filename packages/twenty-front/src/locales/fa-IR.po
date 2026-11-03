@@ -7046,7 +7046,7 @@ msgstr "غیرفعال‌سازی این فیلد"
 #: src/pages/settings/data-model/SettingsObjectTable.tsx
 #: src/pages/settings/profile/SettingsProfile.tsx
 msgid "Deactivated"
-msgstr "غیرفعال‌شده"
+msgstr "غیرفعال"
 
 #. js-lingui-id: DsAFe3
 #: src/modules/settings/data-model/fields/forms/components/text/constants/TextDataModelSelectOptions.ts
