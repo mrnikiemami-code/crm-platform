@@ -1,6 +1,7 @@
 import { type SettingsCustomizeVideoModalTab } from '@/settings/types/SettingsCustomizeVideoModalTab';
 import { SettingsCustomizeVideoModal } from '@/settings/components/SettingsCustomizeVideoModal';
 import { IS_SETTINGS_DEMO_VIDEO_ENABLED } from '@/settings/constants/IsSettingsDemoVideoEnabled';
+import { IS_SETTINGS_HERO_COVER_ENABLED } from '@/settings/constants/IsSettingsHeroCoverEnabled';
 import { HeroPlayButton } from '@/ui/layout/hero/components/HeroPlayButton';
 import { useDialog } from '@/ui/layout/dialog/hooks/useDialog';
 import { styled } from '@linaria/react';
@@ -64,30 +65,41 @@ export const SettingsDiscoveryHeroCard = ({
   const { t } = useLingui();
   const { colorScheme } = useContext(ThemeContext);
   const { openDialog } = useDialog();
-  const shouldDisplayVideo = IS_SETTINGS_DEMO_VIDEO_ENABLED && tabs.length > 0;
+  const shouldDisplayVideo =
+    IS_SETTINGS_HERO_COVER_ENABLED &&
+    IS_SETTINGS_DEMO_VIDEO_ENABLED &&
+    tabs.length > 0;
 
   const modalInstanceId = `${instanceIdPrefix}-modal`;
   const tabsInstanceId = `${instanceIdPrefix}-tabs`;
 
   const src = colorScheme === 'light' ? lightSrc : darkSrc;
 
+  const hasFooter = footer !== undefined && footer !== null;
+
+  // With the cover hidden and no page-specific footer there is nothing left to
+  // show, so the block collapses instead of leaving an empty card.
+  if (!IS_SETTINGS_HERO_COVER_ENABLED && !hasFooter) {
+    return null;
+  }
+
   return (
     <>
       <Card rounded>
-        <StyledCoverContainer coverHeight={coverHeight}>
-          <StyledImage src={src} alt="" aria-hidden />
-          {shouldDisplayVideo && (
-            <StyledOverlay>
-              <HeroPlayButton
-                onClick={() => openDialog(modalInstanceId)}
-                ariaLabel={playButtonAriaLabel ?? t`Watch demo`}
-              />
-            </StyledOverlay>
-          )}
-        </StyledCoverContainer>
-        {footer !== undefined && footer !== null && (
-          <StyledFooter>{footer}</StyledFooter>
+        {IS_SETTINGS_HERO_COVER_ENABLED && (
+          <StyledCoverContainer coverHeight={coverHeight}>
+            <StyledImage src={src} alt="" aria-hidden />
+            {shouldDisplayVideo && (
+              <StyledOverlay>
+                <HeroPlayButton
+                  onClick={() => openDialog(modalInstanceId)}
+                  ariaLabel={playButtonAriaLabel ?? t`Watch demo`}
+                />
+              </StyledOverlay>
+            )}
+          </StyledCoverContainer>
         )}
+        {hasFooter && <StyledFooter>{footer}</StyledFooter>}
       </Card>
       {shouldDisplayVideo && (
         <SettingsCustomizeVideoModal
