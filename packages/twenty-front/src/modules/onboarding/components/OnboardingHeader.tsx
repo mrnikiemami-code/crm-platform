@@ -57,14 +57,6 @@ const StyledRightSide = styled(StyledSide)`
   padding-left: ${themeCssVariables.spacing[1]};
 `;
 
-const StyledLogo = styled.div`
-  background-image: url('/images/integrations/twenty-logo.svg');
-  background-size: cover;
-  height: ${themeCssVariables.spacing[6]};
-  opacity: 0.4;
-  width: ${themeCssVariables.spacing[6]};
-`;
-
 const StyledFreeCredits = styled.div`
   align-items: center;
   color: ${themeCssVariables.font.color.tertiary};
@@ -141,9 +133,7 @@ export const OnboardingHeader = ({
           </LightIconButton>
         )}
       </StyledLeftSide>
-      <StyledCenter>
-        <StyledLogo />
-      </StyledCenter>
+      <StyledCenter />
       <StyledRightSide>
         {isDefined(freeCredits) && (
           <StyledFreeCredits>

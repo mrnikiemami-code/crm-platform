@@ -16,6 +16,8 @@ import {
 } from '@/app/routing/types/WorkspaceRouteObject';
 import { SettingsProtectedRouteWrapper } from '@/settings/components/SettingsProtectedRouteWrapper';
 import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
+import { IS_APPLICATIONS_SETTINGS_ENABLED } from '@/settings/constants/IsApplicationsSettingsEnabled';
+import { IS_TWENTY_PROMO_ENABLED } from '@/settings/constants/IsTwentyPromoEnabled';
 import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
 import { SettingPublicDomain } from '@/settings/domains/components/SettingPublicDomain';
 import { SettingsPath } from 'twenty-shared/types';
@@ -1068,40 +1070,95 @@ const createSettingsRouteElements = ({
     >
       <Route
         path={SettingsPath.Applications}
-        element={<SettingsApplications />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplications />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationDetail}
-        element={<SettingsApplicationDetails />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplicationDetails />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationConnectionDetail}
-        element={<SettingsApplicationConnectionDetail />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplicationConnectionDetail />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.AvailableApplicationDetail}
-        element={<SettingsAvailableApplicationDetails />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsAvailableApplicationDetails />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationRegistrationDetail}
-        element={<SettingsApplicationRegistrationDetails />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplicationRegistrationDetails />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationLogicFunctionDetail}
-        element={<SettingsLogicFunctionDetail />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsLogicFunctionDetail />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationFrontComponentDetail}
-        element={<SettingsApplicationFrontComponentDetail />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplicationFrontComponentDetail />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationCommandMenuItemDetail}
-        element={<SettingsApplicationCommandMenuItemDetail />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplicationCommandMenuItemDetail />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
       <Route
         path={SettingsPath.ApplicationTimelineActivityTypeDetail}
-        element={<SettingsApplicationTimelineActivityTypeDetail />}
+        element={
+          IS_APPLICATIONS_SETTINGS_ENABLED ? (
+            <SettingsApplicationTimelineActivityTypeDetail />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
       />
+      {/* Layout item detail routes are also reached from Settings > Layout. */}
       <Route
         path={SettingsPath.ApplicationViewDetail}
         element={<SettingsLayoutViewDetail />}
@@ -1213,7 +1270,16 @@ const createSettingsRouteElements = ({
         />
       }
     >
-      <Route path={SettingsPath.Community} element={<SettingsCommunity />} />
+      <Route
+        path={SettingsPath.Community}
+        element={
+          IS_TWENTY_PROMO_ENABLED ? (
+            <SettingsCommunity />
+          ) : (
+            <Navigate to={getSettingsPath(SettingsPath.General)} replace />
+          )
+        }
+      />
     </Route>
   </>
 );

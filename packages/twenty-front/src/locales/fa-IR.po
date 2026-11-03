@@ -3911,8 +3911,8 @@ msgstr "از {author}"
 
 #. js-lingui-id: 8Pfllj
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
-msgstr "با استفاده از Twenty، با موارد زیر موافقت می‌کنید:"
+msgid "By continuing, you agree to the"
+msgstr "با ادامه، با موارد زیر موافقت می‌کنید:"
 
 #. js-lingui-id: Yx41df
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx

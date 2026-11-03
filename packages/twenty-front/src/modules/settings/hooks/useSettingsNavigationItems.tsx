@@ -5,6 +5,8 @@ import { currentUserState } from '@/auth/states/currentUserState';
 import { billingState } from '@/client-config/states/billingState';
 import { usePermissionFlagMap } from '@/settings/roles/hooks/usePermissionFlagMap';
 import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
+import { IS_APPLICATIONS_SETTINGS_ENABLED } from '@/settings/constants/IsApplicationsSettingsEnabled';
+import { IS_TWENTY_PROMO_ENABLED } from '@/settings/constants/IsTwentyPromoEnabled';
 import {
   type NavigationDrawerItemIndentationLevel,
   type NavigationDrawerItemModifier,
@@ -155,7 +157,9 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
           label: t`Apps`,
           path: SettingsPath.Applications,
           Icon: IconApps,
-          isHidden: !permissionMap[PermissionFlagType.APPLICATIONS],
+          isHidden:
+            !IS_APPLICATIONS_SETTINGS_ENABLED ||
+            !permissionMap[PermissionFlagType.APPLICATIONS],
         },
         {
           label: t`AI`,
@@ -184,7 +188,9 @@ const useSettingsNavigationItems = (): SettingsNavigationSection[] => {
           label: t`Community`,
           path: SettingsPath.Community,
           Icon: IconUsers,
-          isHidden: !permissionMap[PermissionFlagType.WORKSPACE],
+          isHidden:
+            !IS_TWENTY_PROMO_ENABLED ||
+            !permissionMap[PermissionFlagType.WORKSPACE],
         },
         {
           label: t`Documentation`,
