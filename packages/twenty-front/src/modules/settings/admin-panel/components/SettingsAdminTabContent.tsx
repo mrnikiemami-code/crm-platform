@@ -3,6 +3,7 @@ import { SettingsAdminApps } from '@/settings/admin-panel/apps/components/Settin
 import { SettingsAdminGeneral } from '@/settings/admin-panel/components/SettingsAdminGeneral';
 import { SettingsAdminConfigVariables } from '@/settings/admin-panel/config-variables/components/SettingsAdminConfigVariables';
 import { SETTINGS_ADMIN_TABS } from '@/settings/admin-panel/constants/SettingsAdminTabs';
+import { IS_ORGANIZATION_TAB_ENABLED } from '@/settings/admin-panel/constants/IsOrganizationTabEnabled';
 import { SettingsAdminHealthStatus } from '@/settings/admin-panel/health-status/components/SettingsAdminHealthStatus';
 import { SettingsSectionSkeletonLoader } from '@/settings/components/SettingsSectionSkeletonLoader';
 import { lazy, Suspense } from 'react';
@@ -29,6 +30,10 @@ export const SettingsAdminTabContent = ({
     case SETTINGS_ADMIN_TABS.HEALTH_STATUS:
       return <SettingsAdminHealthStatus />;
     case SETTINGS_ADMIN_TABS.ORGANIZATION:
+      if (!IS_ORGANIZATION_TAB_ENABLED) {
+        return null;
+      }
+
       return (
         <Suspense fallback={<SettingsSectionSkeletonLoader />}>
           <SettingsEnterprise isAdminPanelTab />

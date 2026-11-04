@@ -1,6 +1,7 @@
 import { currentUserState } from '@/auth/states/currentUserState';
 import { billingState } from '@/client-config/states/billingState';
 import { SETTINGS_ADMIN_TABS } from '@/settings/admin-panel/constants/SettingsAdminTabs';
+import { IS_ORGANIZATION_TAB_ENABLED } from '@/settings/admin-panel/constants/IsOrganizationTabEnabled';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { t } from '@lingui/core/macro';
 import {
@@ -51,7 +52,7 @@ export const useSettingsAdminTabs = () => {
       Icon: IconHeart,
       disabled: !canAccessFullAdminPanel,
     },
-    ...(!isBillingEnabled
+    ...(!isBillingEnabled && IS_ORGANIZATION_TAB_ENABLED
       ? [
           {
             id: SETTINGS_ADMIN_TABS.ORGANIZATION,

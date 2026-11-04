@@ -16,6 +16,7 @@ import {
 } from '@/app/routing/types/WorkspaceRouteObject';
 import { SettingsProtectedRouteWrapper } from '@/settings/components/SettingsProtectedRouteWrapper';
 import { IS_CALENDAR_FEATURE_ENABLED } from '@/settings/constants/IsCalendarFeatureEnabled';
+import { IS_ORGANIZATION_TAB_ENABLED } from '@/settings/admin-panel/constants/IsOrganizationTabEnabled';
 import { IS_APPLICATIONS_SETTINGS_ENABLED } from '@/settings/constants/IsApplicationsSettingsEnabled';
 import { IS_TWENTY_PROMO_ENABLED } from '@/settings/constants/IsTwentyPromoEnabled';
 import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
@@ -1198,7 +1199,11 @@ const createSettingsRouteElements = ({
           path={SettingsPath.Enterprise}
           element={
             <Navigate
-              to={getSettingsPath(SettingsPath.AdminPanelOrganization)}
+              to={getSettingsPath(
+                IS_ORGANIZATION_TAB_ENABLED
+                  ? SettingsPath.AdminPanelOrganization
+                  : SettingsPath.AdminPanel,
+              )}
               replace
             />
           }
