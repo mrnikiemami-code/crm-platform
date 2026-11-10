@@ -1,5 +1,9 @@
 import { defineCommandMenuItem } from 'twenty-sdk/define';
-import { numberOfSelectedRecords, objectMetadataItem } from 'twenty-sdk/define';
+import {
+  numberOfSelectedRecords,
+  objectMetadataItem,
+  objectPermissions,
+} from 'twenty-sdk/define';
 
 import {
   REGISTER_FROM_LEAD_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER,
@@ -18,6 +22,11 @@ import {
 // The condition is written as a real expression (not a string literal) because
 // the build plugin only rewrites unquoted expressions; a quoted one would ship
 // verbatim and never evaluate.
+//
+// `objectPermissions.canUpdateObjectRecords` is the OPERATOR's permission on the
+// object they are looking at. It only hides a button the server would reject —
+// the actual authorization is the intersection of the operator's role and this
+// app's role, computed server-side. UI visibility is never the gate.
 export default defineCommandMenuItem({
   universalIdentifier: REGISTER_FROM_LEAD_COMMAND_MENU_ITEM_UNIVERSAL_IDENTIFIER,
   label: 'ثبت‌نام',
@@ -26,7 +35,8 @@ export default defineCommandMenuItem({
   availabilityType: 'RECORD_SELECTION',
   conditionalAvailabilityExpression:
     objectMetadataItem.nameSingular === 'eventLead' &&
-    numberOfSelectedRecords === 1,
+    numberOfSelectedRecords === 1 &&
+    objectPermissions.canUpdateObjectRecords,
   frontComponentUniversalIdentifier:
     REGISTRATION_FORM_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
 });

@@ -1,3 +1,4 @@
+import { type OperatorSnapshot } from 'src/domain/operator';
 import { type LeadSnapshot } from 'src/domain/registration-target';
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -10,6 +11,17 @@ const asId = (value: unknown): string | null =>
 
 const asName = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+/** `name { firstName lastName }` of any workspace member, as one label. */
+const readMemberName = (value: unknown): string | null => {
+  const name = asRecord(asRecord(value)?.name);
+
+  const parts = [asName(name?.firstName), asName(name?.lastName)].filter(
+    (part): part is string => part !== null,
+  );
+
+  return parts.length > 0 ? parts.join(' ') : null;
+};
 
 /** Reads the lead a `eventLead(filter: { id: { eq } })` response returned. */
 export const readLeadFromLeadResponse = (data: unknown): LeadSnapshot | null => {
@@ -25,10 +37,11 @@ export const readLeadFromLeadResponse = (data: unknown): LeadSnapshot | null => 
     personId: asId(asRecord(lead.person)?.id),
     eventId: asId(asRecord(lead.academyEvent)?.id),
     name: asName(lead.name),
+    performedByName: null,
   };
 };
 
-/** Reads the lead a sales interaction belongs to. */
+/** Reads the lead a sales interaction belongs to, plus who performed the call. */
 export const readLeadFromInteractionResponse = (
   data: unknown,
 ): LeadSnapshot | null => {
@@ -39,12 +52,19 @@ export const readLeadFromInteractionResponse = (
     return null;
   }
 
+  const performedByName = readMemberName(interaction.performedBy);
   const lead = asRecord(interaction.eventLead);
 
   if (lead === null) {
     // The interaction exists but points at no lead: a real data state, and one
     // the caller must report instead of treating as "no lead found".
-    return { id: null, personId: null, eventId: null, name: null };
+    return {
+      id: null,
+      personId: null,
+      eventId: null,
+      name: null,
+      performedByName,
+    };
   }
 
   return {
@@ -52,6 +72,7 @@ export const readLeadFromInteractionResponse = (
     personId: asId(asRecord(lead.person)?.id),
     eventId: asId(asRecord(lead.academyEvent)?.id),
     name: asName(lead.name),
+    performedByName,
   };
 };
 
@@ -86,6 +107,31 @@ export const readExistingRegistration = (
   }
 
   return null;
+};
+
+/**
+ * Reads the signed-in operator from a `currentUser` response.
+ *
+ * Returns `null` when the response carries no user at all — which is what an
+ * application-only request produces — so the caller refuses to write.
+ */
+export const readOperatorFromCurrentUser = (
+  data: unknown,
+): OperatorSnapshot | null => {
+  const envelope = asRecord(data);
+  const user = asRecord(envelope?.currentUser);
+
+  if (user === null) {
+    return null;
+  }
+
+  const member = asRecord(user.workspaceMember);
+
+  return {
+    workspaceMemberId: asId(member?.id),
+    userWorkspaceId: asId(member?.userWorkspaceId),
+    displayName: readMemberName(member),
+  };
 };
 
 export const readCreatedRecordId = (

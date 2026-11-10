@@ -11,6 +11,12 @@ export type LeadSnapshot = {
    * never composed from guesses.
    */
   name: string | null;
+  /**
+   * Who performed the call, when the source record carries it and the platform
+   * resolved it to a workspace member. This is the authoritative seller for an
+   * interaction-based registration; `null` for a lead record.
+   */
+  performedByName: string | null;
 };
 
 export type RegistrationTargetProblem =
@@ -26,6 +32,12 @@ export type RegistrationTarget =
       personId: string;
       eventId: string;
       leadName: string | null;
+      /**
+       * Seller resolved from the source record itself (an interaction's
+       * `performedBy`). `null` means the caller must fall back to the operator
+       * identity — never to a name typed in the browser.
+       */
+      performedByName: string | null;
     }
   | { kind: 'UNRESOLVED'; reason: RegistrationTargetProblem };
 
@@ -60,5 +72,6 @@ export const resolveRegistrationTarget = (
     personId: lead.personId,
     eventId: lead.eventId,
     leadName: lead.name,
+    performedByName: lead.performedByName,
   };
 };

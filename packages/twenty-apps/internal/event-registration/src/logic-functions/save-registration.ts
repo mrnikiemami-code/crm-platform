@@ -24,8 +24,10 @@ const readAmount = (value: unknown): number | null => {
 };
 
 // WRITE PATH. One request performs the registration and, when money was
-// received, its payment. Duplicate prevention and partial-failure reporting are
-// server-side; the body only carries what the user actually chose.
+// received, its payment. The operator identity comes from the FUNCTION RUNTIME
+// (`event.userWorkspaceId`, derived from the validated token), never from the
+// body; if it is absent the save refuses, so the app can never write as itself
+// on a person's behalf.
 const handler = async (event: RoutePayload<unknown>) => {
   const body = event.body;
   const fields =
@@ -48,6 +50,7 @@ const handler = async (event: RoutePayload<unknown>) => {
       registrationStatus,
       agreedAmountToman: readAmount(fields.agreedAmountToman),
       paidAmountToman: readAmount(fields.paidAmountToman),
+      operatorUserWorkspaceId: readString(event.userWorkspaceId) || null,
     },
     { execute: executeRecordGraphql },
   );

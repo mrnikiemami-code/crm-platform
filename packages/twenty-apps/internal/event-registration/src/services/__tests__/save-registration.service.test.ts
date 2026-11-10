@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { saveRegistration } from 'src/services/save-registration.service';
 
+const OPERATOR = {
+  currentUser: {
+    workspaceMember: {
+      id: 'member-1',
+      name: { firstName: 'امیر', lastName: 'نصرتی' },
+      userWorkspaceId: 'uw-1',
+    },
+  },
+};
+
 const LEAD_RESPONSE = {
   eventLead: {
     id: 'lead-1',
@@ -20,6 +30,10 @@ const INTERACTION_RESPONSE = {
       person: { id: 'person-1' },
       academyEvent: { id: 'event-1' },
     },
+    performedBy: {
+      id: 'member-2',
+      name: { firstName: 'ساغر', lastName: '' },
+    },
   },
 };
 
@@ -31,7 +45,10 @@ const REQUEST = {
   registrationStatus: 'PYSHTHBTNM',
   agreedAmountToman: 3900000,
   paidAmountToman: 0,
+  operatorUserWorkspaceId: 'uw-1',
 };
+
+const FIXED_NOW = new Date('2026-11-10T12:30:00.000Z');
 
 /**
  * A scripted record API: each call consumes the next queued answer, so a test
@@ -64,168 +81,54 @@ const createExecute = (
   return Object.assign(execute, { queries });
 };
 
+const deps = (execute: (query: string) => Promise<Record<string, unknown>>) => ({
+  execute,
+  now: () => FIXED_NOW,
+});
+
 describe('saveRegistration', () => {
   it('registers a lead without creating a payment row', async () => {
     const execute = createExecute([
+      OPERATOR,
       LEAD_RESPONSE,
       NO_REGISTRATION,
       { createEventRegistration: { id: 'registration-1' } },
     ]);
 
-    const outcome = await saveRegistration(REQUEST, { execute });
+    const outcome = await saveRegistration(REQUEST, deps(execute));
 
     expect(outcome).toEqual({
       kind: 'CREATED',
       registrationId: 'registration-1',
       paymentId: null,
     });
-    // Three calls only: no payment mutation went out.
-    expect(execute.queries).toHaveLength(3);
-    expect(execute.queries.some((query) => query.includes('createRegistrationPayment'))).toBe(
-      false,
-    );
-  });
-
-  it('registers a lead and records the payment when money was received', async () => {
-    const execute = createExecute([
-      LEAD_RESPONSE,
-      NO_REGISTRATION,
-      { createEventRegistration: { id: 'registration-1' } },
-      { createRegistrationPayment: { id: 'payment-1' } },
-    ]);
-
-    const outcome = await saveRegistration(
-      { ...REQUEST, paidAmountToman: 1500000 },
-      { execute },
-    );
-
-    expect(outcome).toEqual({
-      kind: 'CREATED',
-      registrationId: 'registration-1',
-      paymentId: 'payment-1',
-    });
-    expect(execute.queries[3]).toContain('1500000');
-    expect(execute.queries[3]).toContain('registration-1');
-  });
-
-  it('resolves the lead through the interaction, never from client fields', async () => {
-    const execute = createExecute([
-      INTERACTION_RESPONSE,
-      NO_REGISTRATION,
-      { createEventRegistration: { id: 'registration-1' } },
-    ]);
-
-    const outcome = await saveRegistration(
-      {
-        ...REQUEST,
-        sourceObjectNameSingular: 'salesInteraction',
-        sourceRecordId: 'interaction-1',
-      },
-      { execute },
-    );
-
-    expect(outcome.kind).toBe('CREATED');
-    expect(execute.queries[0]).toContain('salesInteraction');
-    // The registration is written against the LEAD the interaction points at.
-    expect(execute.queries[2]).toContain('lead-1');
-    expect(execute.queries[2]).toContain('person-1');
-    expect(execute.queries[2]).toContain('event-1');
-  });
-
-  it('writes nothing when a registration already exists', async () => {
-    const execute = createExecute([
-      LEAD_RESPONSE,
-      { eventRegistrations: { edges: [{ node: { id: 'registration-9' } }] } },
-    ]);
-
-    const outcome = await saveRegistration(
-      { ...REQUEST, paidAmountToman: 5000000 },
-      { execute },
-    );
-
-    expect(outcome).toEqual({
-      kind: 'ALREADY_REGISTERED',
-      registrationId: 'registration-9',
-    });
-    expect(execute.queries).toHaveLength(2);
-  });
-
-  it('stops instead of guessing when the duplicate check fails', async () => {
-    const execute = createExecute([
-      LEAD_RESPONSE,
-      new Error('permission denied'),
-    ]);
-
-    const outcome = await saveRegistration(REQUEST, { execute });
-
-    expect(outcome.kind).toBe('FAILED');
-    expect(execute.queries).toHaveLength(2);
-  });
-
-  it('reports a stored registration whose payment failed, and does not retry', async () => {
-    const execute = createExecute([
-      LEAD_RESPONSE,
-      NO_REGISTRATION,
-      { createEventRegistration: { id: 'registration-1' } },
-      new Error('payment write failed'),
-    ]);
-
-    const outcome = await saveRegistration(
-      { ...REQUEST, paidAmountToman: 1500000 },
-      { execute },
-    );
-
-    expect(outcome).toEqual({
-      kind: 'REGISTERED_BUT_PAYMENT_FAILED',
-      registrationId: 'registration-1',
-      message: 'The registration is saved but the payment is not recorded.',
-    });
     expect(execute.queries).toHaveLength(4);
+    expect(
+      execute.queries.some((query) =>
+        query.includes('createRegistrationPayment'),
+      ),
+    ).toBe(false);
   });
 
-  it('reports a failed registration write as FAILED, not as success', async () => {
+  it('attributes the seller to the signed-in operator and stamps the server time', async () => {
     const execute = createExecute([
+      OPERATOR,
       LEAD_RESPONSE,
       NO_REGISTRATION,
-      new Error('insert rejected'),
+      { createEventRegistration: { id: 'registration-1' } },
     ]);
 
-    expect((await saveRegistration(REQUEST, { execute })).kind).toBe('FAILED');
+    await saveRegistration(REQUEST, deps(execute));
+
+    const create = execute.queries[3];
+
+    expect(create).toContain('soldByRaw: "امیر نصرتی"');
+    expect(create).toContain('registeredAt: "2026-11-10T12:30:00.000Z"');
   });
 
-  it('rejects a lead with no person before writing anything', async () => {
+  it('prefers the interaction performer over the operator for attribution', async () => {
     const execute = createExecute([
-      {
-        eventLead: {
-          id: 'lead-1',
-          name: 'x',
-          person: null,
-          academyEvent: { id: 'event-1' },
-        },
-      },
-    ]);
-
-    expect(await saveRegistration(REQUEST, { execute })).toEqual({
-      kind: 'REJECTED',
-      reason: 'NO_PERSON_ON_LEAD',
-    });
-    expect(execute.queries).toHaveLength(1);
-  });
-
-  it('rejects an unsupported source object without touching the API', async () => {
-    const execute = vi.fn();
-
-    expect(
-      await saveRegistration(
-        { ...REQUEST, sourceObjectNameSingular: 'person' },
-        { execute },
-      ),
-    ).toEqual({ kind: 'REJECTED', reason: 'SOURCE_NOT_FOUND' });
-    expect(execute).not.toHaveBeenCalled();
-  });
-
-  it('never writes to the sales interaction, so its history is untouched', async () => {
-    const execute = createExecute([
+      OPERATOR,
       INTERACTION_RESPONSE,
       NO_REGISTRATION,
       { createEventRegistration: { id: 'registration-1' } },
@@ -237,21 +140,255 @@ describe('saveRegistration', () => {
         sourceObjectNameSingular: 'salesInteraction',
         sourceRecordId: 'interaction-1',
       },
-      { execute },
+      deps(execute),
     );
 
-    const writes = execute.queries.filter((query) => query.startsWith('mutation'));
+    expect(execute.queries[3]).toContain('soldByRaw: "ساغر"');
+  });
 
-    expect(writes.every((query) => query.includes('createEventRegistration'))).toBe(
-      true,
+  it('registers a lead and records the payment with the same seller', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+      { createRegistrationPayment: { id: 'payment-1' } },
+    ]);
+
+    const outcome = await saveRegistration(
+      { ...REQUEST, paidAmountToman: 1500000 },
+      deps(execute),
     );
-    expect(writes.some((query) => query.includes('updateSalesInteraction'))).toBe(
-      false,
+
+    expect(outcome).toEqual({
+      kind: 'CREATED',
+      registrationId: 'registration-1',
+      paymentId: 'payment-1',
+    });
+    expect(execute.queries[4]).toContain('1500000');
+    expect(execute.queries[4]).toContain('registration-1');
+    expect(execute.queries[4]).toContain('soldByRaw: "امیر نصرتی"');
+  });
+
+  it('resolves the lead through the interaction, never from client fields', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      INTERACTION_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+    ]);
+
+    const outcome = await saveRegistration(
+      {
+        ...REQUEST,
+        sourceObjectNameSingular: 'salesInteraction',
+        sourceRecordId: 'interaction-1',
+      },
+      deps(execute),
     );
+
+    expect(outcome.kind).toBe('CREATED');
+    expect(execute.queries[1]).toContain('salesInteraction');
+    expect(execute.queries[3]).toContain('lead-1');
+    expect(execute.queries[3]).toContain('person-1');
+    expect(execute.queries[3]).toContain('event-1');
+  });
+
+  it('writes nothing when a registration already exists', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      { eventRegistrations: { edges: [{ node: { id: 'registration-9' } }] } },
+    ]);
+
+    const outcome = await saveRegistration(
+      { ...REQUEST, paidAmountToman: 5000000 },
+      deps(execute),
+    );
+
+    expect(outcome).toEqual({
+      kind: 'ALREADY_REGISTERED',
+      registrationId: 'registration-9',
+    });
+    expect(execute.queries).toHaveLength(3);
+  });
+
+  describe('operator gate', () => {
+    it('refuses before reading any business data when the runtime has no operator id', async () => {
+      const execute = createExecute([]);
+
+      const outcome = await saveRegistration(
+        { ...REQUEST, operatorUserWorkspaceId: null },
+        deps(execute),
+      );
+
+      expect(outcome).toEqual({
+        kind: 'REJECTED',
+        reason: 'OPERATOR_CONTEXT_MISSING',
+      });
+      expect(execute.queries).toHaveLength(0);
+    });
+
+    it('refuses when the request cannot produce a user (application-only context)', async () => {
+      // `currentUser` is guarded by UserAuthGuard, so an application-only call
+      // fails at the API layer; the app must treat that as "no operator".
+      const execute = createExecute([new Error('FORBIDDEN')]);
+
+      const outcome = await saveRegistration(REQUEST, deps(execute));
+
+      expect(outcome).toEqual({
+        kind: 'REJECTED',
+        reason: 'OPERATOR_CONTEXT_MISSING',
+      });
+      expect(
+        execute.queries.some((query) => query.startsWith('mutation')),
+      ).toBe(false);
+    });
+
+    it('refuses when the response carries no workspace member', async () => {
+      const execute = createExecute([
+        { currentUser: { workspaceMember: null } },
+      ]);
+
+      expect(await saveRegistration(REQUEST, deps(execute))).toEqual({
+        kind: 'REJECTED',
+        reason: 'OPERATOR_CONTEXT_MISSING',
+      });
+    });
+
+    it('refuses when the session user does not match the runtime operator', async () => {
+      const execute = createExecute([
+        {
+          currentUser: {
+            workspaceMember: {
+              id: 'member-1',
+              name: { firstName: 'کسی', lastName: 'دیگر' },
+              userWorkspaceId: 'uw-OTHER',
+            },
+          },
+        },
+      ]);
+
+      const outcome = await saveRegistration(REQUEST, deps(execute));
+
+      expect(outcome).toEqual({
+        kind: 'REJECTED',
+        reason: 'OPERATOR_MISMATCH',
+      });
+      expect(execute.queries).toHaveLength(1);
+    });
+  });
+
+  it('stops instead of guessing when the duplicate check fails', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      new Error('permission denied'),
+    ]);
+
+    const outcome = await saveRegistration(REQUEST, deps(execute));
+
+    expect(outcome.kind).toBe('FAILED');
+    expect(execute.queries).toHaveLength(3);
+  });
+
+  it('reports a stored registration whose payment failed, and does not retry', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+      new Error('payment write failed'),
+    ]);
+
+    const outcome = await saveRegistration(
+      { ...REQUEST, paidAmountToman: 1500000 },
+      deps(execute),
+    );
+
+    expect(outcome).toEqual({
+      kind: 'REGISTERED_BUT_PAYMENT_FAILED',
+      registrationId: 'registration-1',
+      message: 'The registration is saved but the payment is not recorded.',
+    });
+    expect(execute.queries).toHaveLength(5);
+  });
+
+  it('reports a failed registration write as FAILED, not as success', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      NO_REGISTRATION,
+      new Error('insert rejected'),
+    ]);
+
+    expect((await saveRegistration(REQUEST, deps(execute))).kind).toBe('FAILED');
+  });
+
+  it('rejects a lead with no person before writing anything', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      {
+        eventLead: {
+          id: 'lead-1',
+          name: 'x',
+          person: null,
+          academyEvent: { id: 'event-1' },
+        },
+      },
+    ]);
+
+    expect(await saveRegistration(REQUEST, deps(execute))).toEqual({
+      kind: 'REJECTED',
+      reason: 'NO_PERSON_ON_LEAD',
+    });
+    expect(execute.queries).toHaveLength(2);
+  });
+
+  it('rejects an unsupported source object without reading business data', async () => {
+    const execute = createExecute([OPERATOR]);
+
+    expect(
+      await saveRegistration(
+        { ...REQUEST, sourceObjectNameSingular: 'person' },
+        deps(execute),
+      ),
+    ).toEqual({ kind: 'REJECTED', reason: 'SOURCE_NOT_FOUND' });
+    expect(execute.queries).toHaveLength(1);
+  });
+
+  it('never writes to the sales interaction, so its history is untouched', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      INTERACTION_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+    ]);
+
+    await saveRegistration(
+      {
+        ...REQUEST,
+        sourceObjectNameSingular: 'salesInteraction',
+        sourceRecordId: 'interaction-1',
+      },
+      deps(execute),
+    );
+
+    const writes = execute.queries.filter((query) =>
+      query.startsWith('mutation'),
+    );
+
+    expect(
+      writes.every((query) => query.includes('createEventRegistration')),
+    ).toBe(true);
+    expect(
+      writes.some((query) => query.includes('updateSalesInteraction')),
+    ).toBe(false);
   });
 
   it('escapes the amount and identifiers it writes', async () => {
     const execute = createExecute([
+      OPERATOR,
       {
         eventLead: {
           id: 'lead-1',
@@ -264,8 +401,45 @@ describe('saveRegistration', () => {
       { createEventRegistration: { id: 'registration-1' } },
     ]);
 
-    await saveRegistration(REQUEST, { execute });
+    await saveRegistration(REQUEST, deps(execute));
 
-    expect(execute.queries[2]).toContain('\\"quote\\"');
+    expect(execute.queries[3]).toContain('\\"quote\\"');
+  });
+
+  it('leaves soldByRaw unset rather than inventing a seller', async () => {
+    const execute = createExecute([
+      {
+        currentUser: {
+          workspaceMember: {
+            id: 'member-1',
+            name: { firstName: null, lastName: null },
+            userWorkspaceId: 'uw-1',
+          },
+        },
+      },
+      LEAD_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+    ]);
+
+    await saveRegistration(REQUEST, deps(execute));
+
+    expect(execute.queries[3]).toContain('soldByRaw: null');
+  });
+
+  it('uses the injected clock, so the timestamp is the server’s', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+    ]);
+
+    const now = vi.fn(() => FIXED_NOW);
+
+    await saveRegistration(REQUEST, { execute, now });
+
+    expect(now).toHaveBeenCalledTimes(1);
+    expect(execute.queries[3]).toContain(FIXED_NOW.toISOString());
   });
 });

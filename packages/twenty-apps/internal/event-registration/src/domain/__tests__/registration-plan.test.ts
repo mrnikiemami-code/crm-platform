@@ -9,6 +9,7 @@ const TARGET: Extract<RegistrationTarget, { kind: 'RESOLVED' }> = {
   personId: 'person-1',
   eventId: 'event-1',
   leadName: 'مهران صالحپور',
+  performedByName: null,
 };
 
 const REQUEST = {
@@ -17,9 +18,14 @@ const REQUEST = {
   paidAmountToman: 0,
 };
 
+const CONTEXT = {
+  registeredAtIso: '2026-11-10T12:30:00.000Z',
+  sellerName: 'امیر نصرتی',
+};
+
 describe('decideRegistrationPlan', () => {
   it('creates the registration and NO payment when nothing was received', () => {
-    const plan = decideRegistrationPlan(TARGET, REQUEST, null);
+    const plan = decideRegistrationPlan(TARGET, REQUEST, null, CONTEXT);
 
     expect(plan.kind).toBe('CREATE');
 
@@ -34,15 +40,18 @@ describe('decideRegistrationPlan', () => {
       registrationStatus: 'PYSHTHBTNM',
       finalAmountToman: 3900000,
       name: 'مهران صالحپور',
+      soldByRaw: 'امیر نصرتی',
+      registeredAt: '2026-11-10T12:30:00.000Z',
     });
     expect(plan.payment).toBeNull();
   });
 
-  it('creates the payment when money was received', () => {
+  it('creates the payment when money was received, with the same seller', () => {
     const plan = decideRegistrationPlan(
       TARGET,
       { ...REQUEST, paidAmountToman: 1500000 },
       null,
+      CONTEXT,
     );
 
     expect(plan.kind).toBe('CREATE');
@@ -51,11 +60,49 @@ describe('decideRegistrationPlan', () => {
       return;
     }
 
-    expect(plan.payment).toEqual({ amountToman: 1500000 });
+    expect(plan.payment).toEqual({
+      amountToman: 1500000,
+      soldByRaw: 'امیر نصرتی',
+    });
+  });
+
+  it('attributes to the interaction performer when the source carries one', () => {
+    const plan = decideRegistrationPlan(
+      { ...TARGET, performedByName: 'ساغر' },
+      { ...REQUEST, paidAmountToman: 1500000 },
+      null,
+      CONTEXT,
+    );
+
+    expect(plan.kind).toBe('CREATE');
+
+    if (plan.kind !== 'CREATE') {
+      return;
+    }
+
+    expect(plan.registration.soldByRaw).toBe('ساغر');
+    expect(plan.payment?.soldByRaw).toBe('ساغر');
+  });
+
+  it('leaves the seller unset when no authoritative name exists', () => {
+    const plan = decideRegistrationPlan(TARGET, REQUEST, null, {
+      registeredAtIso: CONTEXT.registeredAtIso,
+      sellerName: null,
+    });
+
+    expect(plan.kind).toBe('CREATE');
+
+    if (plan.kind !== 'CREATE') {
+      return;
+    }
+
+    expect(plan.registration.soldByRaw).toBeNull();
   });
 
   it('reports an existing registration instead of creating a duplicate', () => {
-    expect(decideRegistrationPlan(TARGET, REQUEST, 'registration-9')).toEqual({
+    expect(
+      decideRegistrationPlan(TARGET, REQUEST, 'registration-9', CONTEXT),
+    ).toEqual({
       kind: 'ALREADY_REGISTERED',
       registrationId: 'registration-9',
     });
@@ -66,6 +113,7 @@ describe('decideRegistrationPlan', () => {
       TARGET,
       { ...REQUEST, paidAmountToman: 5000000 },
       'registration-9',
+      CONTEXT,
     );
 
     expect(plan.kind).toBe('ALREADY_REGISTERED');
@@ -77,6 +125,7 @@ describe('decideRegistrationPlan', () => {
         TARGET,
         { ...REQUEST, registrationStatus: status },
         null,
+        CONTEXT,
       );
 
       expect(plan.kind).toBe('CREATE');
@@ -89,6 +138,7 @@ describe('decideRegistrationPlan', () => {
         TARGET,
         { ...REQUEST, registrationStatus: 'LGWSHDH' },
         null,
+        CONTEXT,
       ),
     ).toEqual({ kind: 'INVALID', reason: 'STATUS_NOT_OFFERED' });
   });
@@ -99,6 +149,7 @@ describe('decideRegistrationPlan', () => {
         TARGET,
         { ...REQUEST, agreedAmountToman: Number.NaN },
         null,
+        CONTEXT,
       ),
     ).toEqual({ kind: 'INVALID', reason: 'AMOUNT_NOT_A_NUMBER' });
   });
@@ -109,6 +160,7 @@ describe('decideRegistrationPlan', () => {
         TARGET,
         { ...REQUEST, paidAmountToman: -1 },
         null,
+        CONTEXT,
       ),
     ).toEqual({ kind: 'INVALID', reason: 'AMOUNT_NEGATIVE' });
   });
@@ -118,6 +170,7 @@ describe('decideRegistrationPlan', () => {
       TARGET,
       { ...REQUEST, agreedAmountToman: null },
       null,
+      CONTEXT,
     );
 
     expect(plan.kind).toBe('CREATE');

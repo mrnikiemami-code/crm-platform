@@ -46,6 +46,10 @@ const PROBLEM_MESSAGES: Record<string, string> = {
   STATUS_NOT_OFFERED: 'وضعیت انتخاب‌شده مجاز نیست.',
   AMOUNT_NOT_A_NUMBER: 'مبلغ وارد‌شده عدد معتبر نیست.',
   AMOUNT_NEGATIVE: 'مبلغ نمی‌تواند منفی باشد.',
+  OPERATOR_CONTEXT_MISSING:
+    'هویت کاربر تأیید نشد، بنابراین ثبت‌نام انجام نشد. دوباره وارد شوید.',
+  OPERATOR_MISMATCH:
+    'هویت کاربر با این درخواست هم‌خوان نیست، بنابراین ثبت‌نام انجام نشد.',
 };
 
 const readString = (value: unknown): string =>

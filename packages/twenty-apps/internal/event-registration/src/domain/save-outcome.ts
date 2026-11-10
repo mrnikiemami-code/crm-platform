@@ -1,5 +1,12 @@
-import { type RegistrationTargetProblem } from 'src/domain/registration-target';
+import { type OperatorProblem } from 'src/domain/operator';
 import { type RegistrationPlanProblem } from 'src/domain/registration-plan';
+import { type RegistrationTargetProblem } from 'src/domain/registration-target';
+
+/** Everything a write may be refused for, each with its own remedy. */
+export type SaveRejectionReason =
+  | RegistrationTargetProblem
+  | RegistrationPlanProblem
+  | OperatorProblem;
 
 // The truthful result of one save attempt. `kind` is what the form must show:
 // nothing here upgrades a partial write into a full success, and a created
@@ -18,10 +25,7 @@ export type SaveRegistrationOutcome =
       message: string;
     }
   /** Nothing was written and the reason is a data problem the user can fix. */
-  | {
-      kind: 'REJECTED';
-      reason: RegistrationTargetProblem | RegistrationPlanProblem;
-    }
+  | { kind: 'REJECTED'; reason: SaveRejectionReason }
   /** Nothing is known to have been written; safe to try again. */
   | { kind: 'FAILED'; message: string };
 
@@ -33,7 +37,6 @@ export type SaveRegistrationResult = {
 export const toSaveResult = (
   outcome: SaveRegistrationOutcome,
 ): SaveRegistrationResult => ({
-  success:
-    outcome.kind === 'CREATED' || outcome.kind === 'ALREADY_REGISTERED',
+  success: outcome.kind === 'CREATED' || outcome.kind === 'ALREADY_REGISTERED',
   outcome,
 });

@@ -38,9 +38,10 @@ describe.skipIf(manifest === null)('built command availability', () => {
     (command) => command.conditionalAvailabilityExpression ?? '',
   );
 
-  const contextFor = (nameSingular: string, selected: number) => ({
+  const contextFor = (nameSingular: string, selected: number, canUpdate = true) => ({
     objectMetadataItem: { nameSingular },
     numberOfSelectedRecords: selected,
+    objectPermissions: { canUpdateObjectRecords: canUpdate },
   });
 
   it('ships exactly one lead entry point and one interaction entry point', () => {
@@ -51,9 +52,23 @@ describe.skipIf(manifest === null)('built command availability', () => {
     for (const expression of expressions) {
       expect(expression).toContain('objectMetadataItem.nameSingular ==');
       expect(expression).toContain('numberOfSelectedRecords == 1');
+      expect(expression).toContain('objectPermissions.canUpdateObjectRecords');
       // A quoted-literal mistake ships with the surrounding quotes intact.
       expect(expression.startsWith('\'')).toBe(false);
     }
+  });
+
+  it('hides itself when the operator may not update the record', () => {
+    const leadExpression = expressions.find((value) =>
+      value.includes('eventLead'),
+    );
+
+    expect(
+      evaluateConditionalAvailabilityExpression(
+        leadExpression,
+        contextFor('eventLead', 1, false),
+      ),
+    ).toBe(false);
   });
 
   it('shows on a single lead and on a single interaction', () => {

@@ -22,6 +22,21 @@ export type RegistrationPlanProblem =
   | 'AMOUNT_NOT_A_NUMBER'
   | 'AMOUNT_NEGATIVE';
 
+/**
+ * Facts the caller must supply from the SERVER, never from the request body:
+ * when the registration happened, and who it is attributed to.
+ */
+export type RegistrationPlanContext = {
+  /** ISO timestamp taken on the server. */
+  registeredAtIso: string;
+  /**
+   * The seller the platform can vouch for. `null` is allowed but is NOT a
+   * silent zero: the field is simply left unset, which the dashboard already
+   * treats as "unattributed".
+   */
+  sellerName: string | null;
+};
+
 export type RegistrationPlan =
   | { kind: 'ALREADY_REGISTERED'; registrationId: string }
   | { kind: 'INVALID'; reason: RegistrationPlanProblem }
@@ -34,8 +49,10 @@ export type RegistrationPlan =
         registrationStatus: OfferedRegistrationStatus;
         finalAmountToman: number | null;
         name: string | null;
+        soldByRaw: string | null;
+        registeredAt: string;
       };
-      payment: { amountToman: number } | null;
+      payment: { amountToman: number; soldByRaw: string | null } | null;
     };
 
 const isOfferedStatus = (value: string): value is OfferedRegistrationStatus =>
@@ -69,9 +86,13 @@ export const decideRegistrationPlan = (
   target: Extract<RegistrationTarget, { kind: 'RESOLVED' }>,
   request: RegistrationRequest,
   existingRegistrationId: string | null,
+  context: RegistrationPlanContext,
 ): RegistrationPlan => {
   if (existingRegistrationId !== null && existingRegistrationId.length > 0) {
-    return { kind: 'ALREADY_REGISTERED', registrationId: existingRegistrationId };
+    return {
+      kind: 'ALREADY_REGISTERED',
+      registrationId: existingRegistrationId,
+    };
   }
 
   if (!isOfferedStatus(request.registrationStatus)) {
@@ -90,6 +111,10 @@ export const decideRegistrationPlan = (
     return { kind: 'INVALID', reason: 'AMOUNT_NEGATIVE' };
   }
 
+  // The interaction's own performer wins over the operator: it is who actually
+  // made the call. Both come from platform records, never from the client.
+  const sellerName = target.performedByName ?? context.sellerName;
+
   return {
     kind: 'CREATE',
     registration: {
@@ -99,9 +124,14 @@ export const decideRegistrationPlan = (
       registrationStatus: request.registrationStatus,
       finalAmountToman: agreed,
       name: target.leadName,
+      soldByRaw: sellerName,
+      registeredAt: context.registeredAtIso,
     },
     // A zero or absent paid amount means the payment object is left alone: no
     // placeholder row is created for money that was not received.
-    payment: paid !== null && paid > 0 ? { amountToman: paid } : null,
+    payment:
+      paid !== null && paid > 0
+        ? { amountToman: paid, soldByRaw: sellerName }
+        : null,
   };
 };
