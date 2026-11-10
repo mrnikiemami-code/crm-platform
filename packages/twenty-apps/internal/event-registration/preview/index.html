@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>پیش‌نمایش فرم ثبت‌نام</title>
+  </head>
+  <body style="margin: 0; background: #fafafa">
+    <script>
+      // Harness-only diagnostics: the preview must explain its own failures
+      // instead of rendering a page whose buttons silently do nothing.
+      window.__previewErrors = [];
+      window.addEventListener('error', function (event) {
+        window.__previewErrors.push('error: ' + String(event.message));
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        window.__previewErrors.push('rejection: ' + String(event.reason));
+      });
+      document.addEventListener('click', function () {
+        window.__previewClicks = (window.__previewClicks || 0) + 1;
+      });
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>

@@ -1,8 +1,6 @@
 import {
   readCreatedRecordId,
   readExistingRegistration,
-  readLeadFromInteractionResponse,
-  readLeadFromLeadResponse,
   readOperatorFromCurrentUser,
 } from 'src/data/source-snapshot';
 import {
@@ -10,16 +8,13 @@ import {
   buildCreateRegistrationMutation,
   buildCurrentOperatorQuery,
   buildExistingRegistrationQuery,
-  buildLeadQuery,
 } from 'src/data/registration-queries';
-import {
-  LEAD_RELATION_BY_SOURCE_OBJECT,
-  isSupportedSourceObject,
-} from 'src/data/object-names';
 import { resolveOperator } from 'src/domain/operator';
 import { type SaveRegistrationOutcome } from 'src/domain/save-outcome';
 import { decideRegistrationPlan } from 'src/domain/registration-plan';
+import { type RegistrationTargetProblem } from 'src/domain/registration-target';
 import { resolveRegistrationTarget } from 'src/domain/registration-target';
+import { lookupLead } from 'src/services/lead-lookup';
 
 export type SaveRegistrationRequest = {
   sourceObjectNameSingular: string;
@@ -44,6 +39,11 @@ export type SaveRegistrationDependencies = {
 
 const REGISTRATION_MODEL_MISSING =
   'The registration could not be saved. Nothing was written.';
+
+const LOOKUP_PROBLEMS: Record<string, RegistrationTargetProblem> = {
+  SOURCE_MISSING: 'SOURCE_NOT_FOUND',
+  NO_LEAD: 'NO_LEAD_FOR_INTERACTION',
+};
 
 /**
  * Performs the save. Order is deliberate:
@@ -88,37 +88,26 @@ export const saveRegistration = async (
     readOperatorFromCurrentUser(operatorData),
     request.operatorUserWorkspaceId,
   );
+
   if (operator.kind === 'UNRESOLVED') {
     return { kind: 'REJECTED', reason: operator.reason };
   }
 
-  if (!isSupportedSourceObject(request.sourceObjectNameSingular)) {
-    return { kind: 'REJECTED', reason: 'SOURCE_NOT_FOUND' };
-  }
+  const lookup = await lookupLead(
+    request.sourceObjectNameSingular,
+    request.sourceRecordId,
+    { execute: dependencies.execute },
+  );
 
-  const leadRelation =
-    LEAD_RELATION_BY_SOURCE_OBJECT[request.sourceObjectNameSingular];
-
-  let leadData: Record<string, unknown>;
-
-  try {
-    leadData = await dependencies.execute(
-      buildLeadQuery(
-        request.sourceObjectNameSingular,
-        leadRelation,
-        request.sourceRecordId,
-      ),
-    );
-  } catch {
+  if (lookup.kind === 'UNREADABLE') {
     return { kind: 'FAILED', message: 'The record could not be read.' };
   }
 
-  const snapshot =
-    leadRelation === null
-      ? readLeadFromLeadResponse(leadData)
-      : readLeadFromInteractionResponse(leadData);
+  if (lookup.kind !== 'FOUND') {
+    return { kind: 'REJECTED', reason: LOOKUP_PROBLEMS[lookup.kind] };
+  }
 
-  const target = resolveRegistrationTarget(snapshot);
+  const target = resolveRegistrationTarget(lookup.snapshot);
 
   if (target.kind === 'UNRESOLVED') {
     return { kind: 'REJECTED', reason: target.reason };

@@ -17,6 +17,9 @@ export type LeadSnapshot = {
    * interaction-based registration; `null` for a lead record.
    */
   performedByName: string | null;
+  /** Labels for the form, read from the same records as the ids. */
+  personName: string | null;
+  eventName: string | null;
 };
 
 export type RegistrationTargetProblem =

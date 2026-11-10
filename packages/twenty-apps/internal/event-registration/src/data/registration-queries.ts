@@ -3,20 +3,22 @@ import { type GraphqlValue, toGraphqlLiteral } from 'src/data/graphql-literal';
 // Every query names the objects and fields of the workspace's existing data
 // model. None of these strings define anything: they only read and write the
 // records the dashboard already reads.
+//
+// RELATION READS ARE ONE LEVEL DEEP, ON PURPOSE. Reading a relation's relation
+// in a single query (`salesInteraction { eventLead { person { id } } }`) returns
+// `null` from this server even when the row has a value, while the SAME lead
+// read directly returns it. The interaction path therefore reads the lead's id
+// first and then reads the lead itself — two supported requests rather than one
+// silently-empty nested one. This was observed against real data, not assumed.
 export const buildLeadQuery = (
-  sourceObjectNameSingular: string,
-  leadRelation: string | null,
-  sourceRecordId: string,
-): string => {
-  if (leadRelation === null) {
-    return `query RegistrationLead { eventLead(filter: { id: { eq: ${toGraphqlLiteral(sourceRecordId)} } }) { id name person { id } academyEvent { id } } }`;
-  }
+  leadId: string,
+): string =>
+  `query RegistrationLead { eventLead(filter: { id: { eq: ${toGraphqlLiteral(leadId)} } }) { id name person { id name { firstName lastName } } academyEvent { id name } } }`;
 
-  // The interaction also exposes WHO made the call, which is the authoritative
-  // seller when the registration is opened from an interaction rather than a
-  // lead. It is read here so attribution never needs a browser-supplied name.
-  return `query RegistrationInteraction { ${sourceObjectNameSingular}(filter: { id: { eq: ${toGraphqlLiteral(sourceRecordId)} } }) { id ${leadRelation} { id name person { id } academyEvent { id } } performedBy { id name { firstName lastName } } } }`;
-};
+export const buildInteractionHeadQuery = (
+  interactionId: string,
+): string =>
+  `query RegistrationInteractionHead { salesInteraction(filter: { id: { eq: ${toGraphqlLiteral(interactionId)} } }) { id eventLead { id name } performedBy { id name { firstName lastName } } } }`;
 
 export const buildExistingRegistrationQuery = (leadId: string): string =>
   `query ExistingRegistration { eventRegistrations(filter: { eventLeadId: { eq: ${toGraphqlLiteral(leadId)} } }) { edges { node { id registrationStatus } } } }`;

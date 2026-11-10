@@ -7,6 +7,10 @@ import {
 } from 'twenty-sdk/front-component';
 
 import {
+  formatAmountForDisplay,
+  parseAmountToNumber,
+} from 'src/components/money-amount';
+import {
   PREPARE_ROUTE,
   SAVE_ROUTE,
   callAppRoute,
@@ -17,9 +21,11 @@ import {
 // itself asks the server which lead the selected record resolves to, so the same
 // code path serves both and neither object name is hardcoded here.
 //
-// The sandbox ships no UI kit, so the markup below is plain elements with inline
-// styles. Nothing is rendered until the server has answered, which is what keeps
-// the "already registered" case from ever showing a create button.
+// Layout targets the side panel (400–450px) and stays usable narrower: every
+// block is full width with `minWidth: 0`, so long Persian names wrap instead of
+// forcing a horizontal scrollbar. Nothing here decides what a registration
+// means — the plan and service layers do — and the preview-only source switch
+// lives in the harness, not in this file.
 
 type PrepareState =
   | { kind: 'LOADING' }
@@ -28,14 +34,26 @@ type PrepareState =
       leadId: string;
       leadName: string | null;
       personId: string;
+      personName: string | null;
       eventId: string;
+      eventName: string | null;
+      performedByName: string | null;
     }
   | { kind: 'ALREADY_REGISTERED'; registrationId: string }
   | { kind: 'UNAVAILABLE'; message: string };
 
+// API values are fixed; only the labels are Persian.
 const STATUS_OPTIONS = [
-  { value: 'PYSHTHBTNM', label: 'پیش‌ثبت‌نام' },
-  { value: 'THBTNM_QTAAY', label: 'ثبت‌نام قطعی' },
+  {
+    value: 'PYSHTHBTNM',
+    label: 'پیش‌ثبت‌نام',
+    hint: 'ثبت‌نام در مرحله اولیه',
+  },
+  {
+    value: 'THBTNM_QTAAY',
+    label: 'ثبت‌نام قطعی',
+    hint: 'ثبت‌نام نهایی‌شده',
+  },
 ] as const;
 
 const PROBLEM_MESSAGES: Record<string, string> = {
@@ -55,6 +73,61 @@ const PROBLEM_MESSAGES: Record<string, string> = {
 const readString = (value: unknown): string =>
   typeof value === 'string' ? value : '';
 
+const SummaryRow = ({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) => (
+  <div style={styles.summaryRow}>
+    <span style={styles.summaryLabel}>{label}</span>
+    <span style={emphasis ? styles.summaryValueStrong : styles.summaryValue}>
+      {value}
+    </span>
+  </div>
+);
+
+const AmountField = ({
+  id,
+  label,
+  hint,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  value: string;
+  disabled: boolean;
+  onChange: (next: string) => void;
+}) => (
+  <div style={styles.field}>
+    <label style={styles.label} htmlFor={id}>
+      {label}
+    </label>
+    <input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      // Digits are neutral; keeping the field LTR while aligning to the start
+      // is what stops the grouped value from reordering around the separator.
+      dir="ltr"
+      style={
+        disabled ? { ...styles.amountInput, ...styles.inputDisabled } : styles.amountInput
+      }
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+    />
+    {hint !== undefined && <p style={styles.hint}>{hint}</p>}
+  </div>
+);
+
 export const RegistrationForm = () => {
   const selectedRecordIds = useSelectedRecordIds();
   const objectNameSingular = useObjectNameSingular();
@@ -63,15 +136,17 @@ export const RegistrationForm = () => {
   const [registrationStatus, setRegistrationStatus] = useState<string>(
     STATUS_OPTIONS[0].value,
   );
-  const [agreedAmount, setAgreedAmount] = useState<string>('');
-  const [paidAmount, setPaidAmount] = useState<string>('0');
+  // The state holds what the user SEES (grouped); the payload is parsed from it.
+  const [agreedAmountText, setAgreedAmountText] = useState<string>('');
+  const [paidAmountText, setPaidAmountText] = useState<string>('0');
   const [submitting, setSubmitting] = useState(false);
 
   // A synchronous guard: two clicks cannot both reach the server, and no second
   // registration is attempted while the first is still open.
   const inFlight = useRef(false);
 
-  const sourceRecordId = selectedRecordIds.length === 1 ? selectedRecordIds[0] : null;
+  const sourceRecordId =
+    selectedRecordIds.length === 1 ? selectedRecordIds[0] : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +204,10 @@ export const RegistrationForm = () => {
           leadId: readString(response.data.leadId),
           leadName: readString(response.data.leadName) || null,
           personId: readString(response.data.personId),
+          personName: readString(response.data.personName) || null,
           eventId: readString(response.data.eventId),
+          eventName: readString(response.data.eventName) || null,
+          performedByName: readString(response.data.performedByName) || null,
         });
       } catch {
         if (!cancelled) {
@@ -165,10 +243,9 @@ export const RegistrationForm = () => {
         sourceObjectNameSingular: objectNameSingular,
         sourceRecordId,
         registrationStatus,
-        agreedAmountToman:
-          agreedAmount.trim().length === 0 ? null : Number(agreedAmount),
-        paidAmountToman:
-          paidAmount.trim().length === 0 ? null : Number(paidAmount),
+        // The contract is unchanged: a plain integer, or null when not given.
+        agreedAmountToman: parseAmountToNumber(agreedAmountText),
+        paidAmountToman: parseAmountToNumber(paidAmountText),
       });
 
       const outcome = response.data.outcome as
@@ -247,101 +324,136 @@ export const RegistrationForm = () => {
       setSubmitting(false);
     }
   }, [
-    agreedAmount,
+    agreedAmountText,
     objectNameSingular,
-    paidAmount,
+    paidAmountText,
     prepare.kind,
     registrationStatus,
     sourceRecordId,
   ]);
 
   if (prepare.kind === 'LOADING') {
-    return <p style={styles.muted}>در حال خواندن اطلاعات…</p>;
+    return (
+      <div dir="rtl" lang="fa" style={styles.shell}>
+        <div style={styles.stateCard}>
+          <span style={styles.stateTitle}>در حال خواندن اطلاعات…</span>
+          <span style={styles.stateBody}>
+            اطلاعات مشتری و همایش از رکورد انتخاب‌شده خوانده می‌شود.
+          </span>
+        </div>
+      </div>
+    );
   }
 
   if (prepare.kind === 'UNAVAILABLE') {
-    return <p style={styles.error}>{prepare.message}</p>;
+    return (
+      <div dir="rtl" lang="fa" style={styles.shell}>
+        <div style={{ ...styles.stateCard, ...styles.stateCardError }}>
+          <span style={styles.stateTitle}>امکان ثبت‌نام نیست</span>
+          <span style={styles.stateBody}>{prepare.message}</span>
+        </div>
+      </div>
+    );
   }
 
   if (prepare.kind === 'ALREADY_REGISTERED') {
     return (
-      <div style={styles.panel}>
-        <p style={styles.title}>قبلاً ثبت‌نام شده است</p>
-        <p style={styles.muted}>
-          برای این سرنخ یک ثبت‌نام موجود است و ثبت‌نام تکراری ساخته نمی‌شود.
-        </p>
+      <div dir="rtl" lang="fa" style={styles.shell}>
+        <div style={{ ...styles.stateCard, ...styles.stateCardInfo }}>
+          <span style={styles.stateTitle}>قبلاً ثبت‌نام شده است</span>
+          <span style={styles.stateBody}>
+            برای این سرنخ یک ثبت‌نام موجود است؛ ثبت‌نام تکراری ساخته نمی‌شود.
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={styles.panel}>
-      <p style={styles.title}>ثبت‌نام همایش</p>
+    <div dir="rtl" lang="fa" style={styles.shell}>
+      <header style={styles.header}>
+        <h2 style={styles.heading}>ثبت‌نام همایش</h2>
+        <p style={styles.subheading}>
+          اطلاعات مشتری به‌صورت خودکار از رکورد انتخاب‌شده پر شده است.
+        </p>
+      </header>
 
-      <dl style={styles.facts}>
-        <dt style={styles.term}>شخص</dt>
-        <dd style={styles.value}>{prepare.leadName ?? '—'}</dd>
-        <dt style={styles.term}>سرنخ</dt>
-        <dd style={styles.value}>{prepare.leadId}</dd>
-        <dt style={styles.term}>همایش</dt>
-        <dd style={styles.value}>{prepare.eventId}</dd>
-      </dl>
+      <section style={styles.summaryCard} aria-label="خلاصه مشتری">
+        <SummaryRow
+          label="مشتری"
+          value={prepare.personName ?? prepare.personId}
+          emphasis
+        />
+        <SummaryRow label="همایش" value={prepare.eventName ?? prepare.eventId} />
+        {prepare.performedByName !== null && (
+          <SummaryRow label="کارشناس تماس" value={prepare.performedByName} />
+        )}
+      </section>
 
-      <label style={styles.label} htmlFor="registration-status">
-        وضعیت
-      </label>
-      <select
-        id="registration-status"
-        value={registrationStatus}
-        onChange={(event) => setRegistrationStatus(event.target.value)}
-        disabled={submitting}
-        style={styles.input}
-      >
-        {STATUS_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div style={styles.field}>
+        <span style={styles.label} id="registration-status-label">
+          وضعیت ثبت‌نام
+        </span>
+        <div
+          role="radiogroup"
+          aria-labelledby="registration-status-label"
+          style={styles.segmented}
+        >
+          {STATUS_OPTIONS.map((option) => {
+            const isActive = registrationStatus === option.value;
 
-      <label style={styles.label} htmlFor="registration-agreed">
-        مبلغ توافق‌شده (تومان)
-      </label>
-      <input
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                disabled={submitting}
+                onClick={() => setRegistrationStatus(option.value)}
+                style={isActive ? styles.segmentActive : styles.segment}
+              >
+                <span style={isActive ? styles.segmentLabelActive : styles.segmentLabel}>
+                  {option.label}
+                </span>
+                <span style={isActive ? styles.segmentHintActive : styles.segmentHint}>
+                  {option.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <AmountField
         id="registration-agreed"
-        type="number"
-        inputMode="numeric"
-        min={0}
-        value={agreedAmount}
-        onChange={(event) => setAgreedAmount(event.target.value)}
+        label="مبلغ توافق‌شده (تومان)"
+        value={agreedAmountText}
         disabled={submitting}
-        style={styles.input}
+        onChange={(next) => setAgreedAmountText(formatAmountForDisplay(next))}
       />
 
-      <label style={styles.label} htmlFor="registration-paid">
-        مبلغ پرداخت‌شده (تومان)
-      </label>
-      <input
+      <AmountField
         id="registration-paid"
-        type="number"
-        inputMode="numeric"
-        min={0}
-        value={paidAmount}
-        onChange={(event) => setPaidAmount(event.target.value)}
+        label="مبلغ پرداخت‌شده (تومان)"
+        hint="اگر پرداختی دریافت نشده، مبلغ را صفر بگذارید تا رکورد پرداخت ساخته نشود."
+        value={paidAmountText}
         disabled={submitting}
-        style={styles.input}
+        onChange={(next) => setPaidAmountText(formatAmountForDisplay(next))}
       />
-      <p style={styles.hint}>
-        اگر پرداختی دریافت نشده، مبلغ را صفر بگذارید تا رکورد پرداخت ساخته نشود.
-      </p>
 
+      {/*
+        `data-registration-save` is the handle the PREVIEW harness uses to disable
+        this control. It is an attribute, not a behaviour: the real form keeps
+        its normal enabled state and its normal submit path.
+      */}
       <button
         type="button"
+        data-registration-save="true"
         onClick={() => {
           void handleSubmit();
         }}
         disabled={submitting}
-        style={submitting ? styles.buttonDisabled : styles.button}
+        style={submitting ? styles.submitDisabled : styles.submit}
       >
         {submitting ? 'در حال ذخیره…' : 'ذخیره ثبت‌نام'}
       </button>
@@ -349,45 +461,145 @@ export const RegistrationForm = () => {
   );
 };
 
-// Amounts arrive as strings from the inputs and are converted at the call site;
-// a malformed value becomes NaN there so the server rejects it instead of
-// treating the money as zero.
-
 const styles: Record<string, CSSProperties> = {
-  panel: { display: 'flex', flexDirection: 'column', gap: 8, padding: 16 },
-  title: { fontSize: 14, fontWeight: 600, margin: 0 },
-  muted: { color: '#666', fontSize: 13, margin: 0, padding: 16 },
-  error: { color: '#b3261e', fontSize: 13, margin: 0, padding: 16 },
-  facts: {
-    display: 'grid',
-    gridTemplateColumns: 'auto 1fr',
-    gap: 4,
-    margin: 0,
-    fontSize: 12,
+  shell: {
+    boxSizing: 'border-box',
+    color: '#1f2937',
+    direction: 'rtl',
+    display: 'flex',
+    flexDirection: 'column',
+    fontFamily: 'inherit',
+    gap: 16,
+    maxWidth: 460,
+    padding: 16,
+    width: '100%',
   },
-  term: { color: '#666', margin: 0 },
-  value: { margin: 0, fontFamily: 'monospace', direction: 'ltr' },
-  label: { fontSize: 12, color: '#444', marginTop: 8 },
-  input: { padding: 6, fontSize: 13, borderRadius: 4, border: '1px solid #ccc' },
-  hint: { fontSize: 11, color: '#888', margin: 0 },
-  button: {
-    marginTop: 12,
-    padding: '8px 12px',
+  header: { display: 'flex', flexDirection: 'column', gap: 4 },
+  heading: { fontSize: 15, fontWeight: 700, margin: 0 },
+  subheading: {
+    color: '#6b7280',
+    fontSize: 11.5,
+    lineHeight: 1.7,
+    margin: 0,
+  },
+  summaryCard: {
+    background: '#f7f7f8',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: 12,
+  },
+  summaryRow: {
+    display: 'grid',
+    gap: 6,
+    gridTemplateColumns: '72px minmax(0, 1fr)',
+    alignItems: 'start',
+  },
+  summaryLabel: { color: '#6b7280', fontSize: 11.5, lineHeight: 1.7 },
+  summaryValue: {
     fontSize: 13,
-    borderRadius: 4,
+    lineHeight: 1.6,
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+  },
+  summaryValueStrong: {
+    fontSize: 13,
+    fontWeight: 600,
+    lineHeight: 1.6,
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+  },
+  field: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
+  label: { color: '#374151', fontSize: 11.5, fontWeight: 600 },
+  segmented: {
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  segment: {
+    background: '#fff',
     border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    gap: 2,
+    minWidth: 0,
+    padding: '9px 8px',
+    textAlign: 'center',
+  },
+  segmentActive: {
     background: '#31363f',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    gap: 2,
+    minWidth: 0,
+    padding: '9px 8px',
+    textAlign: 'center',
+  },
+  segmentLabel: { color: '#1f2937', fontSize: 12.5, fontWeight: 600 },
+  segmentLabelActive: { color: '#fff', fontSize: 12.5, fontWeight: 600 },
+  segmentHint: { color: '#9ca3af', fontSize: 10.5 },
+  segmentHintActive: { color: '#d1d5db', fontSize: 10.5 },
+  amountInput: {
+    background: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    boxSizing: 'border-box',
+    fontSize: 14,
+    fontVariantNumeric: 'tabular-nums',
+    padding: '10px 12px',
+    textAlign: 'right',
+    width: '100%',
+  },
+  inputDisabled: { background: '#f3f4f6', color: '#9ca3af' },
+  hint: {
+    color: '#6b7280',
+    fontSize: 10.5,
+    lineHeight: 1.7,
+    margin: 0,
+  },
+  submit: {
+    background: '#31363f',
+    border: 'none',
+    borderRadius: 8,
     color: '#fff',
     cursor: 'pointer',
+    fontSize: 13.5,
+    fontWeight: 600,
+    marginTop: 4,
+    padding: '12px 16px',
+    width: '100%',
   },
-  buttonDisabled: {
-    marginTop: 12,
-    padding: '8px 12px',
-    fontSize: 13,
-    borderRadius: 4,
+  submitDisabled: {
+    background: '#9ca3af',
     border: 'none',
-    background: '#aaa',
+    borderRadius: 8,
     color: '#fff',
     cursor: 'default',
+    fontSize: 13.5,
+    fontWeight: 600,
+    marginTop: 4,
+    padding: '12px 16px',
+    width: '100%',
   },
+  stateCard: {
+    background: '#f7f7f8',
+    border: '1px solid #e5e7eb',
+    borderRadius: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 4,
+    padding: 12,
+  },
+  stateCardError: { background: '#fef2f2', borderColor: '#fecaca' },
+  stateCardInfo: { background: '#eff6ff', borderColor: '#bfdbfe' },
+  stateTitle: { fontSize: 13, fontWeight: 600 },
+  stateBody: { color: '#4b5563', fontSize: 11.5, lineHeight: 1.8 },
 };

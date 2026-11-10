@@ -8,6 +8,8 @@ const BASE = {
   eventId: 'event-1',
   name: 'سجاد قلعه',
   performedByName: null,
+  personName: 'سجاد قلعه',
+  eventName: 'همایش آذر ماه',
 };
 
 describe('resolveRegistrationTarget', () => {

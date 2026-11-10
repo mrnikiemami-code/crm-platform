@@ -2,20 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
   readExistingRegistration,
-  readLeadFromInteractionResponse,
+  readInteractionHead,
   readLeadFromLeadResponse,
   readOperatorFromCurrentUser,
 } from 'src/data/source-snapshot';
 
 describe('readLeadFromLeadResponse', () => {
-  it('reads the person and event relations', () => {
+  it('reads the person, event and their labels', () => {
     expect(
       readLeadFromLeadResponse({
         eventLead: {
           id: 'lead-1',
           name: 'سجاد قلعه',
-          person: { id: 'person-1' },
-          academyEvent: { id: 'event-1' },
+          person: { id: 'person-1', name: { firstName: 'سجاد', lastName: 'قلعه' } },
+          academyEvent: { id: 'event-1', name: 'همایش آذر ماه' },
         },
       }),
     ).toEqual({
@@ -24,6 +24,8 @@ describe('readLeadFromLeadResponse', () => {
       eventId: 'event-1',
       name: 'سجاد قلعه',
       performedByName: null,
+      personName: 'سجاد قلعه',
+      eventName: 'همایش آذر ماه',
     });
   });
 
@@ -33,18 +35,12 @@ describe('readLeadFromLeadResponse', () => {
   });
 });
 
-describe('readLeadFromInteractionResponse', () => {
-  it('reads the lead the interaction belongs to, and its performer', () => {
-    expect(
-      readLeadFromInteractionResponse({
+describe('readInteractionHead', () => {
+  it('reads the performer from the first level, and nothing nested', () => {    expect(
+      readInteractionHead({
         salesInteraction: {
           id: 'interaction-1',
-          eventLead: {
-            id: 'lead-1',
-            name: 'x',
-            person: { id: 'person-1' },
-            academyEvent: { id: 'event-1' },
-          },
+          eventLead: { id: 'lead-1', name: 'علیرضا عزیزی' },
           performedBy: {
             id: 'member-2',
             name: { firstName: 'ساغر', lastName: null },
@@ -52,54 +48,43 @@ describe('readLeadFromInteractionResponse', () => {
         },
       }),
     ).toEqual({
-      id: 'lead-1',
-      personId: 'person-1',
-      eventId: 'event-1',
-      name: 'x',
+      leadId: 'lead-1',
+      leadName: 'علیرضا عزیزی',
       performedByName: 'ساغر',
     });
   });
 
   it('joins a two-part performer name', () => {
-    const snapshot = readLeadFromInteractionResponse({
+    const head = readInteractionHead({
       salesInteraction: {
-        eventLead: { id: 'lead-1', person: { id: 'p' }, academyEvent: { id: 'e' } },
-        performedBy: {
-          name: { firstName: 'امیر', lastName: 'نصرتی' },
-        },
+        eventLead: { id: 'lead-1' },
+        performedBy: { name: { firstName: 'امیر', lastName: 'نصرتی' } },
       },
     });
 
-    expect(snapshot?.performedByName).toBe('امیر نصرتی');
+    expect(head?.performedByName).toBe('امیر نصرتی');
   });
 
   it('reports no performer rather than an empty string', () => {
-    const snapshot = readLeadFromInteractionResponse({
+    const head = readInteractionHead({
       salesInteraction: {
-        eventLead: { id: 'lead-1', person: { id: 'p' }, academyEvent: { id: 'e' } },
+        eventLead: { id: 'lead-1' },
         performedBy: null,
       },
     });
 
-    expect(snapshot?.performedByName).toBeNull();
+    expect(head?.performedByName).toBeNull();
   });
 
-  it('distinguishes an interaction with no lead from a missing interaction', () => {
+  it('reports an interaction with no lead instead of a lead with no person', () => {
+    // These are different data states with different remedies.
     expect(
-      readLeadFromInteractionResponse({
+      readInteractionHead({
         salesInteraction: { id: 'interaction-1', eventLead: null },
       }),
-    ).toEqual({
-      id: null,
-      personId: null,
-      eventId: null,
-      name: null,
-      performedByName: null,
-    });
+    ).toEqual({ leadId: null, leadName: null, performedByName: null });
 
-    expect(
-      readLeadFromInteractionResponse({ salesInteraction: null }),
-    ).toBeNull();
+    expect(readInteractionHead({ salesInteraction: null })).toBeNull();
   });
 });
 

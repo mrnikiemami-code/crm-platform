@@ -16,24 +16,17 @@ const LEAD_RESPONSE = {
   eventLead: {
     id: 'lead-1',
     name: 'مهران صالحپور',
-    person: { id: 'person-1' },
-    academyEvent: { id: 'event-1' },
+    person: { id: 'person-1', name: { firstName: 'مهران', lastName: 'صالحپور' } },
+    academyEvent: { id: 'event-1', name: 'همایش آذر ماه' },
   },
 };
 
-const INTERACTION_RESPONSE = {
+// First level only: this is everything the interaction query may read.
+const INTERACTION_HEAD = {
   salesInteraction: {
     id: 'interaction-1',
-    eventLead: {
-      id: 'lead-1',
-      name: 'مهران صالحپور',
-      person: { id: 'person-1' },
-      academyEvent: { id: 'event-1' },
-    },
-    performedBy: {
-      id: 'member-2',
-      name: { firstName: 'ساغر', lastName: '' },
-    },
+    eventLead: { id: 'lead-1', name: 'مهران صالحپور' },
+    performedBy: { id: 'member-2', name: { firstName: 'ساغر', lastName: '' } },
   },
 };
 
@@ -48,12 +41,14 @@ const REQUEST = {
   operatorUserWorkspaceId: 'uw-1',
 };
 
+const INTERACTION_REQUEST = {
+  ...REQUEST,
+  sourceObjectNameSingular: 'salesInteraction',
+  sourceRecordId: 'interaction-1',
+};
+
 const FIXED_NOW = new Date('2026-11-10T12:30:00.000Z');
 
-/**
- * A scripted record API: each call consumes the next queued answer, so a test
- * states the exact sequence of reads and writes it expects.
- */
 const createExecute = (
   answers: Array<Record<string, unknown> | Error>,
 ): ((query: string) => Promise<Record<string, unknown>>) & {
@@ -126,24 +121,39 @@ describe('saveRegistration', () => {
     expect(create).toContain('registeredAt: "2026-11-10T12:30:00.000Z"');
   });
 
-  it('prefers the interaction performer over the operator for attribution', async () => {
+  it('reads an interaction in two steps and uses its performer as seller', async () => {
     const execute = createExecute([
       OPERATOR,
-      INTERACTION_RESPONSE,
+      INTERACTION_HEAD,
+      LEAD_RESPONSE,
       NO_REGISTRATION,
       { createEventRegistration: { id: 'registration-1' } },
     ]);
 
-    await saveRegistration(
-      {
-        ...REQUEST,
-        sourceObjectNameSingular: 'salesInteraction',
-        sourceRecordId: 'interaction-1',
-      },
-      deps(execute),
-    );
+    const outcome = await saveRegistration(INTERACTION_REQUEST, deps(execute));
 
-    expect(execute.queries[3]).toContain('soldByRaw: "ساغر"');
+    expect(outcome.kind).toBe('CREATED');
+    // The interaction query reads ONLY the first level, never a nested person.
+    expect(execute.queries[1]).toContain('salesInteraction');
+    expect(execute.queries[1]).not.toContain('person');
+    // The lead is then read directly, which is the shape the server supports.
+    expect(execute.queries[2]).toContain('eventLead');
+    expect(execute.queries[4]).toContain('soldByRaw: "ساغر"');
+    expect(execute.queries[4]).toContain('person-1');
+    expect(execute.queries[4]).toContain('event-1');
+  });
+
+  it('reports an interaction that points at no lead by name', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      { salesInteraction: { id: 'interaction-1', eventLead: null } },
+    ]);
+
+    expect(await saveRegistration(INTERACTION_REQUEST, deps(execute))).toEqual({
+      kind: 'REJECTED',
+      reason: 'NO_LEAD_FOR_INTERACTION',
+    });
+    expect(execute.queries).toHaveLength(2);
   });
 
   it('registers a lead and records the payment with the same seller', async () => {
@@ -170,30 +180,6 @@ describe('saveRegistration', () => {
     expect(execute.queries[4]).toContain('soldByRaw: "امیر نصرتی"');
   });
 
-  it('resolves the lead through the interaction, never from client fields', async () => {
-    const execute = createExecute([
-      OPERATOR,
-      INTERACTION_RESPONSE,
-      NO_REGISTRATION,
-      { createEventRegistration: { id: 'registration-1' } },
-    ]);
-
-    const outcome = await saveRegistration(
-      {
-        ...REQUEST,
-        sourceObjectNameSingular: 'salesInteraction',
-        sourceRecordId: 'interaction-1',
-      },
-      deps(execute),
-    );
-
-    expect(outcome.kind).toBe('CREATED');
-    expect(execute.queries[1]).toContain('salesInteraction');
-    expect(execute.queries[3]).toContain('lead-1');
-    expect(execute.queries[3]).toContain('person-1');
-    expect(execute.queries[3]).toContain('event-1');
-  });
-
   it('writes nothing when a registration already exists', async () => {
     const execute = createExecute([
       OPERATOR,
@@ -214,7 +200,7 @@ describe('saveRegistration', () => {
   });
 
   describe('operator gate', () => {
-    it('refuses before reading any business data when the runtime has no operator id', async () => {
+    it('refuses before any request when the runtime has no operator id', async () => {
       const execute = createExecute([]);
 
       const outcome = await saveRegistration(
@@ -230,8 +216,6 @@ describe('saveRegistration', () => {
     });
 
     it('refuses when the request cannot produce a user (application-only context)', async () => {
-      // `currentUser` is guarded by UserAuthGuard, so an application-only call
-      // fails at the API layer; the app must treat that as "no operator".
       const execute = createExecute([new Error('FORBIDDEN')]);
 
       const outcome = await saveRegistration(REQUEST, deps(execute));
@@ -360,19 +344,13 @@ describe('saveRegistration', () => {
   it('never writes to the sales interaction, so its history is untouched', async () => {
     const execute = createExecute([
       OPERATOR,
-      INTERACTION_RESPONSE,
+      INTERACTION_HEAD,
+      LEAD_RESPONSE,
       NO_REGISTRATION,
       { createEventRegistration: { id: 'registration-1' } },
     ]);
 
-    await saveRegistration(
-      {
-        ...REQUEST,
-        sourceObjectNameSingular: 'salesInteraction',
-        sourceRecordId: 'interaction-1',
-      },
-      deps(execute),
-    );
+    await saveRegistration(INTERACTION_REQUEST, deps(execute));
 
     const writes = execute.queries.filter((query) =>
       query.startsWith('mutation'),

@@ -12,7 +12,7 @@ const asId = (value: unknown): string | null =>
 const asName = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 
-/** `name { firstName lastName }` of any workspace member, as one label. */
+/** `name { firstName lastName }` of any record, as one label. */
 const readMemberName = (value: unknown): string | null => {
   const name = asRecord(asRecord(value)?.name);
 
@@ -22,6 +22,8 @@ const readMemberName = (value: unknown): string | null => {
 
   return parts.length > 0 ? parts.join(' ') : null;
 };
+
+export { readMemberName };
 
 /** Reads the lead a `eventLead(filter: { id: { eq } })` response returned. */
 export const readLeadFromLeadResponse = (data: unknown): LeadSnapshot | null => {
@@ -38,13 +40,24 @@ export const readLeadFromLeadResponse = (data: unknown): LeadSnapshot | null => 
     eventId: asId(asRecord(lead.academyEvent)?.id),
     name: asName(lead.name),
     performedByName: null,
+    personName: readMemberName(lead.person),
+    eventName: asName(asRecord(lead.academyEvent)?.name),
   };
 };
 
-/** Reads the lead a sales interaction belongs to, plus who performed the call. */
-export const readLeadFromInteractionResponse = (
-  data: unknown,
-): LeadSnapshot | null => {
+export type InteractionHead = {
+  leadId: string | null;
+  leadName: string | null;
+  /** Who performed the call, as a workspace member label. */
+  performedByName: string | null;
+};
+
+/**
+ * Reads only the first level of an interaction: the lead it points at and who
+ * made the call. The lead's own relations are read in a second request, because
+ * a nested `eventLead { person { … } }` comes back null on this server.
+ */
+export const readInteractionHead = (data: unknown): InteractionHead | null => {
   const envelope = asRecord(data);
   const interaction = asRecord(envelope?.salesInteraction);
 
@@ -52,30 +65,14 @@ export const readLeadFromInteractionResponse = (
     return null;
   }
 
-  const performedByName = readMemberName(interaction.performedBy);
   const lead = asRecord(interaction.eventLead);
 
-  if (lead === null) {
-    // The interaction exists but points at no lead: a real data state, and one
-    // the caller must report instead of treating as "no lead found".
-    return {
-      id: null,
-      personId: null,
-      eventId: null,
-      name: null,
-      performedByName,
-    };
-  }
-
   return {
-    id: asId(lead.id),
-    personId: asId(asRecord(lead.person)?.id),
-    eventId: asId(asRecord(lead.academyEvent)?.id),
-    name: asName(lead.name),
-    performedByName,
+    leadId: asId(lead?.id),
+    leadName: asName(lead?.name),
+    performedByName: readMemberName(interaction.performedBy),
   };
 };
-
 export type ExistingRegistration = {
   id: string;
   registrationStatus: string | null;
