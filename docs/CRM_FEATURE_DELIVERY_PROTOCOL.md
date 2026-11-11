@@ -9,6 +9,23 @@ This protocol governs CRM feature work in this repository. Read it before planni
 - A successful build, passing unit tests, or an INSTALLED app is **not** feature acceptance. Report success only when the intended UI flow works against the intended Dev environment. If manual interaction is essential and cannot be reproduced, report `MANUAL_UI_CHECK_REQUIRED`, not PASS.
 - Keep the user out of routine technical decisions. Explain material trade-offs succinctly and request approval only at real decision boundaries.
 
+## Architect's evidence-first responsibility
+
+The architect (including an AI assistant preparing tasks) owns technical diagnosis and the recommended solution **before** issuing an implementation task. Do not delegate open-ended root-cause analysis to the implementer and call it an implementation plan.
+
+For each nontrivial defect or architectural decision:
+
+1. **Read the actual code:** inspect the relevant entry point, call chain, configuration declaration, dependency injection, authorization boundary, and error mapping in the repository. Confirm branch/commit and distinguish committed code from local uncommitted or deployed artifacts.
+2. **Correlate runtime evidence:** trace the observed request/error through those exact code paths. Separate observed facts, inferred causes, and unverified hypotheses; do not present an inference as proof.
+3. **Assess blast radius:** find shared consumers of proposed configuration, service, SDK, schema or package changes. Check environment isolation, secrets, permission scope, backward compatibility and rollback.
+4. **Choose the smallest supported solution:** first inspect built-in extension points and scoped configuration; prefer app/workspace-specific fixes when appropriate. Do not hardcode local addresses, change global public URLs, or alter shared runtime architecture to mask a local issue.
+5. **Verify feasibility before prescribing:** ensure the proposed mechanism is actually permitted (including reserved environment-variable names, precedence, scope, and runtime reachability). A source-level override order is evidence of precedence, **not** proof that the platform accepts that override.
+6. **Issue a decisive task:** specify the exact target, file/function or supported configuration surface, expected behavior, bounded checks, prohibited changes, and PASS/STOP criteria. Implementation agents may resolve routine surprises but must not choose an unapproved architectural alternative.
+
+If code or runtime evidence is inaccessible, attempt the available repository/connector access first. State the precise missing evidence and request only that evidence; never invent a definitive fix or send speculative implementation tasks. A read-only evidence request is not a substitute for the architect doing the analysis when the source is accessible.
+
+**Architect's final gate:** before approving a task, answer: What exactly failed? Which code proves it? Why is the selected solution safe for other modules? How will success be verified? What is the rollback? If any answer is unknown, label it and do not claim the solution is verified.
+
 ## Before coding
 
 - Confirm repository, branch, working tree, target environment, running services, workspace links, package manager and versions, and relevant SDK/runtime capabilities.
