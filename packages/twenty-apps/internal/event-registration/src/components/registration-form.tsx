@@ -2,8 +2,7 @@ import { type CSSProperties, useCallback, useEffect, useRef, useState } from 're
 import {
   closeSidePanel,
   enqueueSnackbar,
-  useObjectNameSingular,
-  useSelectedRecordIds,
+  useFrontComponentExecutionContext,
 } from 'twenty-sdk/front-component';
 
 import {
@@ -128,9 +127,30 @@ const AmountField = ({
   </div>
 );
 
+// WHY THE SELECTORS ARE NULL-SAFE: the SDK hooks `useSelectedRecordIds` and
+// `useObjectNameSingular` run their selector INSIDE `useState`'s lazy
+// initializer and dereference the execution context directly. When the side
+// panel mounts the component before the host has attached that context, the
+// dereference throws from inside `useState`, and React's recovery surfaces it as
+// `Cannot read properties of null (reading 'useState')` — a dispatcher error
+// that says nothing about the real cause. Selecting through the exported hook
+// with an explicit fallback keeps the first render valid and turns a missing
+// context into the ordinary "select one record" message below.
+const selectSelectedRecordIds = (
+  context: { selectedRecordIds?: string[] } | null | undefined,
+): string[] => context?.selectedRecordIds ?? [];
+
+const selectObjectNameSingular = (
+  context: { objectNameSingular?: string | null } | null | undefined,
+): string | null => context?.objectNameSingular ?? null;
+
 export const RegistrationForm = () => {
-  const selectedRecordIds = useSelectedRecordIds();
-  const objectNameSingular = useObjectNameSingular();
+  const selectedRecordIds = useFrontComponentExecutionContext(
+    selectSelectedRecordIds,
+  );
+  const objectNameSingular = useFrontComponentExecutionContext(
+    selectObjectNameSingular,
+  );
 
   const [prepare, setPrepare] = useState<PrepareState>({ kind: 'LOADING' });
   const [registrationStatus, setRegistrationStatus] = useState<string>(
