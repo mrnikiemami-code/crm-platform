@@ -1,7 +1,4 @@
-import {
-  formatAmountForDisplay,
-  toPersianDigits,
-} from 'src/components/money-amount';
+import { formatTomanForDisplay } from 'src/components/money-amount';
 
 // Record titles for the two objects this app writes.
 //
@@ -32,7 +29,7 @@ const clean = (value: string | null): string | null => {
 
 /** `۳٬۰۰۰٬۰۰۰` — the amount as a Persian title shows it. */
 const formatToman = (amountToman: number): string =>
-  toPersianDigits(formatAmountForDisplay(String(Math.trunc(amountToman))));
+  formatTomanForDisplay(amountToman);
 
 /**
  * "ثبت‌نام {person} در {event}"

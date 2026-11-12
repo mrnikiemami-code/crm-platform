@@ -184,4 +184,77 @@ describe('decideRegistrationPlan', () => {
 
     expect(plan.registration.finalAmountToman).toBeNull();
   });
+
+  it('stores 125,000 exactly as agreed and paid', () => {
+    const plan = decideRegistrationPlan(
+      TARGET,
+      {
+        registrationStatus: 'THBTNM_QTAAY',
+        agreedAmountToman: 125000,
+        paidAmountToman: 125000,
+      },
+      null,
+      CONTEXT,
+    );
+
+    expect(plan.kind).toBe('CREATE');
+
+    if (plan.kind !== 'CREATE') {
+      return;
+    }
+
+    expect(plan.registration.finalAmountToman).toBe(125000);
+    expect(plan.registration.name).toBe(
+      'ثبت‌نام مهران صالحپور در همایش آذر ماه',
+    );
+    expect(plan.payment).toEqual({
+      amountToman: 125000,
+      name: 'پرداخت ۱۲۵٬۰۰۰ تومان — مهران صالحپور — همایش آذر ماه',
+      soldByRaw: 'امیر نصرتی',
+    });
+  });
+
+  it('records 125,000 agreed with NO payment when nothing was received', () => {
+    const plan = decideRegistrationPlan(
+      TARGET,
+      {
+        registrationStatus: 'THBTNM_QTAAY',
+        agreedAmountToman: 125000,
+        paidAmountToman: 0,
+      },
+      null,
+      CONTEXT,
+    );
+
+    expect(plan.kind).toBe('CREATE');
+
+    if (plan.kind !== 'CREATE') {
+      return;
+    }
+
+    expect(plan.registration.finalAmountToman).toBe(125000);
+    expect(plan.payment).toBeNull();
+  });
+
+  it('does not turn a payment of 125,000 into 12,500,000', () => {
+    const plan = decideRegistrationPlan(
+      TARGET,
+      {
+        registrationStatus: 'THBTNM_QTAAY',
+        agreedAmountToman: 125000,
+        paidAmountToman: 125000,
+      },
+      null,
+      CONTEXT,
+    );
+
+    expect(plan.kind).toBe('CREATE');
+
+    if (plan.kind !== 'CREATE') {
+      return;
+    }
+
+    expect(plan.payment?.amountToman).toBe(125000);
+    expect(plan.payment?.amountToman).not.toBe(12500000);
+  });
 });

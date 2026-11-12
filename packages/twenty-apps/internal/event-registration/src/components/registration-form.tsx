@@ -7,7 +7,9 @@ import {
 
 import {
   formatAmountForDisplay,
-  parseAmountToNumber,
+  formatTomanForDisplay,
+  parseAmountInput,
+  type AmountProblem,
 } from 'src/components/money-amount';
 import {
   PREPARE_ROUTE,
@@ -69,6 +71,16 @@ const PROBLEM_MESSAGES: Record<string, string> = {
     'هویت کاربر با این درخواست هم‌خوان نیست، بنابراین ثبت‌نام انجام نشد.',
 };
 
+// Why the entry is refused, said next to the field. Nothing is corrected for
+// the user: an unreadable amount is reported, never rewritten into a different
+// number.
+const AMOUNT_PROBLEM_MESSAGES: Record<AmountProblem, string> = {
+  NOT_DIGITS: 'فقط رقم مجاز است؛ حروف، فاصله یا علامت را حذف کنید.',
+  DECIMAL_NOT_ALLOWED:
+    'ممیز مجاز نیست. مبلغ را به تومان کامل وارد کنید (مثلاً ۱۲۵۰۰۰).',
+  TOO_LARGE: 'این مبلغ بیش از حد بزرگ است.',
+};
+
 const readString = (value: unknown): string =>
   typeof value === 'string' ? value : '';
 
@@ -95,6 +107,7 @@ const AmountField = ({
   hint,
   value,
   disabled,
+  problem,
   onChange,
 }: {
   id: string;
@@ -102,6 +115,7 @@ const AmountField = ({
   hint?: string;
   value: string;
   disabled: boolean;
+  problem: AmountProblem | null;
   onChange: (next: string) => void;
 }) => (
   <div style={styles.field}>
@@ -117,13 +131,23 @@ const AmountField = ({
       // is what stops the grouped value from reordering around the separator.
       dir="ltr"
       style={
-        disabled ? { ...styles.amountInput, ...styles.inputDisabled } : styles.amountInput
+        problem !== null
+          ? { ...styles.amountInput, ...styles.inputInvalid }
+          : disabled
+            ? { ...styles.amountInput, ...styles.inputDisabled }
+            : styles.amountInput
       }
       value={value}
       disabled={disabled}
+      aria-invalid={problem !== null}
       onChange={(event) => onChange(event.target.value)}
     />
-    {hint !== undefined && <p style={styles.hint}>{hint}</p>}
+    {problem !== null && (
+      <p role="alert" style={styles.problem}>
+        {AMOUNT_PROBLEM_MESSAGES[problem]}
+      </p>
+    )}
+    {problem === null && hint !== undefined && <p style={styles.hint}>{hint}</p>}
   </div>
 );
 
@@ -159,6 +183,21 @@ export const RegistrationForm = () => {
   // The state holds what the user SEES (grouped); the payload is parsed from it.
   const [agreedAmountText, setAgreedAmountText] = useState<string>('');
   const [paidAmountText, setPaidAmountText] = useState<string>('0');
+  const [agreedProblem, setAgreedProblem] = useState<AmountProblem | null>(null);
+  const [paidProblem, setPaidProblem] = useState<AmountProblem | null>(null);
+  // The exact numbers the user is asked to confirm. The request is built from
+  // THIS snapshot, so what was confirmed is what gets written.
+  const [review, setReview] = useState<{
+    agreed: number | null;
+    paid: number | null;
+    status: string;
+    sellerName: string | null;
+  } | null>(null);
+  // A registration whose payment failed is its own durable state: the id stays
+  // on screen instead of living in a snackbar that disappears.
+  const [partial, setPartial] = useState<{ registrationId: string } | null>(
+    null,
+  );
   const [submitting, setSubmitting] = useState(false);
 
   // A synchronous guard: two clicks cannot both reach the server, and no second
@@ -246,8 +285,48 @@ export const RegistrationForm = () => {
     };
   }, [objectNameSingular, sourceRecordId]);
 
-  const handleSubmit = useCallback(async () => {
-    if (prepare.kind !== 'READY' || sourceRecordId === null) {
+  // Step 1 of the save: read both fields, refuse anything unreadable, and show
+  // the exact numbers. Nothing is sent yet.
+  const handleReview = useCallback(() => {
+    if (prepare.kind !== 'READY') {
+      return;
+    }
+
+    const agreed = parseAmountInput(agreedAmountText);
+    const paid = parseAmountInput(paidAmountText);
+
+    const nextAgreedProblem =
+      agreed.kind === 'INVALID' ? agreed.reason : null;
+    const nextPaidProblem = paid.kind === 'INVALID' ? paid.reason : null;
+
+    setAgreedProblem(nextAgreedProblem);
+    setPaidProblem(nextPaidProblem);
+
+    if (nextAgreedProblem !== null || nextPaidProblem !== null) {
+      enqueueSnackbar({
+        message: 'مبلغ وارد‌شده خوانده نشد. مقدار را اصلاح کنید.',
+        variant: 'error',
+      });
+
+      return;
+    }
+
+    setReview({
+      agreed: agreed.kind === 'AMOUNT' ? agreed.value : null,
+      paid: paid.kind === 'AMOUNT' ? paid.value : null,
+      status: registrationStatus,
+      sellerName: prepare.performedByName,
+    });
+  }, [agreedAmountText, paidAmountText, prepare, registrationStatus]);
+
+  // Step 2: the request is built from the CONFIRMED snapshot, so the written
+  // numbers are the ones the user just read — not a re-parse of the text.
+  const handleConfirm = useCallback(async () => {
+    if (
+      review === null ||
+      prepare.kind !== 'READY' ||
+      sourceRecordId === null
+    ) {
       return;
     }
 
@@ -262,10 +341,9 @@ export const RegistrationForm = () => {
       const response = await callAppRoute(SAVE_ROUTE, {
         sourceObjectNameSingular: objectNameSingular,
         sourceRecordId,
-        registrationStatus,
-        // The contract is unchanged: a plain integer, or null when not given.
-        agreedAmountToman: parseAmountToNumber(agreedAmountText),
-        paidAmountToman: parseAmountToNumber(paidAmountText),
+        registrationStatus: review.status,
+        agreedAmountToman: review.agreed,
+        paidAmountToman: review.paid,
       });
 
       const outcome = response.data.outcome as
@@ -303,17 +381,18 @@ export const RegistrationForm = () => {
       }
 
       if (kind === 'REGISTERED_BUT_PAYMENT_FAILED') {
-        // Truthful partial result: the registration IS saved. The form says so
-        // and does not invite a retry that would duplicate it.
+        // Truthful partial result: the registration IS saved. The id stays on
+        // screen so the missing payment can be traced and added by hand, and
+        // the form never invites a retry that would duplicate the registration.
+        const registrationId = readString(outcome?.registrationId);
+
         enqueueSnackbar({
           message:
-            'ثبت‌نام ذخیره شد، ولی پرداخت ثبت نشد. پرداخت را جداگانه وارد کنید.',
+            'ثبت‌نام ذخیره شد، ولی پرداخت ثبت نشد. برای پیگیری، شناسه ثبت‌نام در فرم مانده است.',
           variant: 'warning',
         });
-        setPrepare({
-          kind: 'ALREADY_REGISTERED',
-          registrationId: readString(outcome?.registrationId),
-        });
+        setPartial({ registrationId });
+        setReview(null);
 
         return;
       }
@@ -325,6 +404,7 @@ export const RegistrationForm = () => {
             'اطلاعات کامل نیست.',
           variant: 'error',
         });
+        setReview(null);
 
         return;
       }
@@ -334,23 +414,45 @@ export const RegistrationForm = () => {
           readString(outcome?.message) || 'ذخیره نشد. دوباره تلاش کنید.',
         variant: 'error',
       });
+      setReview(null);
     } catch {
       enqueueSnackbar({
         message: 'ارتباط با سرور قطع شد. وضعیت ذخیره نامشخص است.',
         variant: 'error',
       });
+      setReview(null);
     } finally {
       inFlight.current = false;
       setSubmitting(false);
     }
   }, [
-    agreedAmountText,
     objectNameSingular,
-    paidAmountText,
     prepare.kind,
-    registrationStatus,
+    review,
     sourceRecordId,
   ]);
+
+  // Editing any value invalidates the confirmation, so a confirmed amount can
+  // never drift away from what is on screen.
+  const changeAmount = useCallback(
+    (
+      next: string,
+      setText: (value: string) => void,
+      setProblem: (value: AmountProblem | null) => void,
+    ) => {
+      const parsed = parseAmountInput(next);
+
+      // The field keeps EXACTLY what the user typed — nothing is dropped — and
+      // an unreadable entry is reported. Dropping the character instead would
+      // change the number, which is what the incident was.
+      setProblem(parsed.kind === 'INVALID' ? parsed.reason : null);
+      setText(
+        parsed.kind === 'INVALID' ? next : formatAmountForDisplay(next),
+      );
+      setReview(null);
+    },
+    [],
+  );
 
   if (prepare.kind === 'LOADING') {
     return (
@@ -383,6 +485,27 @@ export const RegistrationForm = () => {
           <span style={styles.stateTitle}>قبلاً ثبت‌نام شده است</span>
           <span style={styles.stateBody}>
             برای این سرنخ یک ثبت‌نام موجود است؛ ثبت‌نام تکراری ساخته نمی‌شود.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // A saved registration whose payment failed stays visible until the operator
+  // closes the panel: the id is what makes it traceable afterwards.
+  if (partial !== null) {
+    return (
+      <div dir="rtl" lang="fa" style={styles.shell}>
+        <div style={{ ...styles.stateCard, ...styles.stateCardWarning }}>
+          <span style={styles.stateTitle}>ثبت‌نام ذخیره شد، پرداخت نه</span>
+          <span style={styles.stateBody}>
+            ثبت‌نام در سیستم ثبت شده است؛ رکورد پرداخت ساخته نشد. برای پیگیری،
+            شناسهٔ ثبت‌نام را نگه دارید و پرداخت را از فهرست «پرداخت‌های
+            ثبت‌نام» ثبت کنید.
+          </span>
+          <SummaryRow label="شناسهٔ ثبت‌نام" value={partial.registrationId} />
+          <span style={styles.stateBody}>
+            ثبت دوبارهٔ این فرم، ثبت‌نام تکراری می‌سازد؛ انجام نشود.
           </span>
         </div>
       </div>
@@ -429,7 +552,10 @@ export const RegistrationForm = () => {
                 role="radio"
                 aria-checked={isActive}
                 disabled={submitting}
-                onClick={() => setRegistrationStatus(option.value)}
+                onClick={() => {
+                  setRegistrationStatus(option.value);
+                  setReview(null);
+                }}
                 style={isActive ? styles.segmentActive : styles.segment}
               >
                 <span style={isActive ? styles.segmentLabelActive : styles.segmentLabel}>
@@ -449,7 +575,8 @@ export const RegistrationForm = () => {
         label="مبلغ توافق‌شده (تومان)"
         value={agreedAmountText}
         disabled={submitting}
-        onChange={(next) => setAgreedAmountText(formatAmountForDisplay(next))}
+        problem={agreedProblem}
+        onChange={(next) => changeAmount(next, setAgreedAmountText, setAgreedProblem)}
       />
 
       <AmountField
@@ -458,25 +585,79 @@ export const RegistrationForm = () => {
         hint="اگر پرداختی دریافت نشده، مبلغ را صفر بگذارید تا رکورد پرداخت ساخته نشود."
         value={paidAmountText}
         disabled={submitting}
-        onChange={(next) => setPaidAmountText(formatAmountForDisplay(next))}
+        problem={paidProblem}
+        onChange={(next) => changeAmount(next, setPaidAmountText, setPaidProblem)}
       />
 
-      {/*
-        `data-registration-save` is the handle the PREVIEW harness uses to disable
-        this control. It is an attribute, not a behaviour: the real form keeps
-        its normal enabled state and its normal submit path.
-      */}
-      <button
-        type="button"
-        data-registration-save="true"
-        onClick={() => {
-          void handleSubmit();
-        }}
-        disabled={submitting}
-        style={submitting ? styles.submitDisabled : styles.submit}
-      >
-        {submitting ? 'در حال ذخیره…' : 'ذخیره ثبت‌نام'}
-      </button>
+      {review === null ? (
+        /*
+          `data-registration-save` is the handle the PREVIEW harness uses to
+          disable this control. It is an attribute, not a behaviour: the real
+          form keeps its normal enabled state and its normal submit path.
+        */
+        <button
+          type="button"
+          data-registration-save="true"
+          onClick={handleReview}
+          disabled={submitting}
+          style={submitting ? styles.submitDisabled : styles.submit}
+        >
+          ذخیره ثبت‌نام
+        </button>
+      ) : (
+        <section style={styles.reviewCard} aria-label="تأیید مبلغ">
+          <span style={styles.reviewTitle}>تأیید مبلغ پیش از ذخیره</span>
+          <SummaryRow
+            label="مبلغ توافق‌شده"
+            value={
+              review.agreed === null
+                ? 'ثبت نشده'
+                : `${formatTomanForDisplay(review.agreed)} تومان`
+            }
+            emphasis
+          />
+          <SummaryRow
+            label="مبلغ پرداخت‌شده"
+            value={
+              review.paid === null || review.paid === 0
+                ? 'بدون پرداخت (رکورد پرداخت ساخته نمی‌شود)'
+                : `${formatTomanForDisplay(review.paid)} تومان`
+            }
+            emphasis
+          />
+          <SummaryRow
+            label="وضعیت ثبت‌نام"
+            value={
+              STATUS_OPTIONS.find((option) => option.value === review.status)
+                ?.label ?? review.status
+            }
+          />
+          {review.sellerName !== null && (
+            <SummaryRow label="کارشناس فروش" value={review.sellerName} />
+          )}
+          <div style={styles.reviewActions}>
+            <button
+              type="button"
+              data-registration-save="true"
+              onClick={() => {
+                void handleConfirm();
+              }}
+              disabled={submitting}
+              style={submitting ? styles.submitDisabled : styles.submitCompact}
+            >
+              {submitting ? 'در حال ذخیره…' : 'تأیید و ذخیره'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setReview(null)}
+              disabled={submitting}
+              style={styles.secondary}
+            >
+              اصلاح مبلغ
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 };
@@ -579,6 +760,46 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
   },
   inputDisabled: { background: '#f3f4f6', color: '#9ca3af' },
+  inputInvalid: { borderColor: '#dc2626' },
+  problem: {
+    color: '#b91c1c',
+    fontSize: 10.5,
+    lineHeight: 1.7,
+    margin: 0,
+  },
+  reviewCard: {
+    background: '#f7f7f8',
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: 12,
+  },
+  reviewTitle: { fontSize: 12.5, fontWeight: 700 },
+  reviewActions: { display: 'flex', gap: 8, marginTop: 2, minWidth: 0 },
+  submitCompact: {
+    background: '#31363f',
+    border: 'none',
+    borderRadius: 8,
+    color: '#fff',
+    cursor: 'pointer',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '11px 12px',
+  },
+  secondary: {
+    background: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    color: '#374151',
+    cursor: 'pointer',
+    flex: '0 0 auto',
+    fontSize: 12.5,
+    fontWeight: 600,
+    padding: '11px 12px',
+  },
   hint: {
     color: '#6b7280',
     fontSize: 10.5,
@@ -620,6 +841,7 @@ const styles: Record<string, CSSProperties> = {
   },
   stateCardError: { background: '#fef2f2', borderColor: '#fecaca' },
   stateCardInfo: { background: '#eff6ff', borderColor: '#bfdbfe' },
+  stateCardWarning: { background: '#fffbeb', borderColor: '#fcd34d' },
   stateTitle: { fontSize: 13, fontWeight: 600 },
   stateBody: { color: '#4b5563', fontSize: 11.5, lineHeight: 1.8 },
 };
