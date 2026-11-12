@@ -40,8 +40,3 @@ export const EVENT_REGISTRATION_OBJECT_UNIVERSAL_IDENTIFIER =
   '2fb53fae-1866-4c38-a37a-0aa8d4797c57';
 export const REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER =
   '020a3694-c0fc-4dfb-b108-efad91ced90d';
-
-// Workspace variable overrides the platform-injected API base URL for this app's
-// functions only (see application.config.ts).
-export const RECORD_API_BASE_URL_VARIABLE_UNIVERSAL_IDENTIFIER =
-  'c5a10f83-2d64-4b97-a8e1-6f30d9b47e2a';

@@ -33,7 +33,9 @@ import {
 //                             (`is-object-operation-permitted.util.ts` maps
 //                             `insert` to `canUpdateObjectRecords`); read is the
 //                             duplicate check.
-//   registrationPayment    + update — create only, when money was received.
+//   registrationPayment read + update — create only, when money was received.
+//                             Read is needed too: field-level write permission
+//                             is derived from the readable fields.
 //
 // Deletes stay off everywhere: this feature never removes a record, and a wrong
 // click must stay recoverable in the workspace's own UI.
@@ -69,7 +71,13 @@ export default defineApplicationRole({
       canUpdateObjectRecords: true,
     },
     {
-      objectUniversalIdentifier: REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER,
+      objectUniversalIdentifier:
+        REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER,
+      // Read is required as well as update: the platform authorizes setting a
+      // field against the role's field-level permissions, which it derives from
+      // the readable fields. Without read, creating a payment is refused with
+      // "does not have permission" even though update is granted.
+      canReadObjectRecords: true,
       canUpdateObjectRecords: true,
     },
   ],

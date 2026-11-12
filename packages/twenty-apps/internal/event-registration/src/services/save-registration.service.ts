@@ -23,9 +23,9 @@ export type SaveRegistrationRequest = {
   agreedAmountToman: number | null;
   paidAmountToman: number | null;
   /**
-   * The operator id the FUNCTION RUNTIME derived from the validated token. It is
-   * never read from the request body; passing it here only mirrors what the
-   * runtime already knows.
+   * The operator id the FUNCTION RUNTIME derived from the validated token, when
+   * it supplies one. It never comes from the request body; when present it must
+   * agree with what the platform reports for the session.
    */
   operatorUserWorkspaceId: string | null;
 };
@@ -33,6 +33,11 @@ export type SaveRegistrationRequest = {
 export type SaveRegistrationDependencies = {
   /** Injected so the whole write path is unit-testable without a workspace. */
   execute: (query: string) => Promise<Record<string, unknown>>;
+  /**
+   * Runs the identity probe with the CALLER's own token when the route forwards
+   * it. Falls back to `execute` when the caller's token is not available.
+   */
+  executeOperator?: (query: string) => Promise<Record<string, unknown>>;
   /** Server clock, injected so the recorded timestamp is testable. */
   now?: () => Date;
 };
@@ -64,21 +69,14 @@ export const saveRegistration = async (
   dependencies: SaveRegistrationDependencies,
 ): Promise<SaveRegistrationOutcome> => {
   // ---------- 0. operator gate ----------
-  // An application-only request must not get as far as a single read: refuse
-  // here, before the network, when the runtime itself has no operator id.
-  if (
-    typeof request.operatorUserWorkspaceId !== 'string' ||
-    request.operatorUserWorkspaceId.length === 0
-  ) {
-    return { kind: 'REJECTED', reason: 'OPERATOR_CONTEXT_MISSING' };
-  }
-
-  // Called next, before any read of business data: `currentUser` is guarded by
-  // `UserAuthGuard`, so this also proves the session carries a real person.
+  // No business read happens before the acting person is established. The
+  // first call is `currentUser`, guarded by `UserAuthGuard`, so an
+  // application-only request fails here and nothing is written.
+  const executeOperator = dependencies.executeOperator ?? dependencies.execute;
   let operatorData: Record<string, unknown>;
 
   try {
-    operatorData = await dependencies.execute(buildCurrentOperatorQuery());
+    operatorData = await executeOperator(buildCurrentOperatorQuery());
   } catch {
     // No readable user context means we cannot prove who is acting.
     return { kind: 'REJECTED', reason: 'OPERATOR_CONTEXT_MISSING' };

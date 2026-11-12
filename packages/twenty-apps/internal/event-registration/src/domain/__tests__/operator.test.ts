@@ -17,11 +17,13 @@ describe('resolveOperator', () => {
     });
   });
 
-  it('refuses when the runtime has no operator id at all', () => {
-    // This is the application-only state: nothing proves who is acting.
+  it('resolves from the verified session when the runtime supplies no id', () => {
+    // A plain route trigger carries no operator id; the platform's
+    // `currentUser` answer is the identity, so this is a normal sign-in.
     expect(resolveOperator(OPERATOR, null)).toEqual({
-      kind: 'UNRESOLVED',
-      reason: 'OPERATOR_CONTEXT_MISSING',
+      kind: 'RESOLVED',
+      workspaceMemberId: 'member-1',
+      displayName: 'امیر نصرتی',
     });
   });
 
@@ -39,15 +41,17 @@ describe('resolveOperator', () => {
   });
 
   it('refuses when the two identities disagree', () => {
-    expect(resolveOperator({ ...OPERATOR, userWorkspaceId: 'uw-OTHER' }, 'uw-1')).toEqual(
-      { kind: 'UNRESOLVED', reason: 'OPERATOR_MISMATCH' },
-    );
+    expect(
+      resolveOperator({ ...OPERATOR, userWorkspaceId: 'uw-OTHER' }, 'uw-1'),
+    ).toEqual({ kind: 'UNRESOLVED', reason: 'OPERATOR_MISMATCH' });
   });
 
-  it('refuses an empty runtime id instead of treating it as a match', () => {
-    expect(resolveOperator({ ...OPERATOR, userWorkspaceId: '' }, 'uw-1')).toEqual({
+  it('refuses when the platform reports an empty operator id', () => {
+    expect(
+      resolveOperator({ ...OPERATOR, userWorkspaceId: '' }, 'uw-1'),
+    ).toEqual({
       kind: 'UNRESOLVED',
-      reason: 'OPERATOR_MISMATCH',
+      reason: 'OPERATOR_CONTEXT_MISSING',
     });
   });
 });

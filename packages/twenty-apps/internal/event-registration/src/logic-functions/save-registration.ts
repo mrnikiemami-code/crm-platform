@@ -1,12 +1,36 @@
 import { defineLogicFunction, type RoutePayload } from 'twenty-sdk/define';
 
 import { SAVE_REGISTRATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
-import { executeRecordGraphql } from 'src/data/record-api';
+import {
+  executeMetadataGraphql,
+  executeRecordGraphql,
+} from 'src/data/record-api';
 import { toSaveResult } from 'src/domain/save-outcome';
 import { saveRegistration } from 'src/services/save-registration.service';
 
 const readString = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
+
+/**
+ * The caller's own bearer token, forwarded by the route. The identity probe
+ * needs the session that actually made the request; the app's own token cannot
+ * answer "who is this person" because it belongs to no person.
+ */
+const readCallerToken = (headers: unknown): string | null => {
+  if (headers === null || typeof headers !== 'object') {
+    return null;
+  }
+
+  const authorization = (headers as Record<string, unknown>).authorization;
+
+  if (typeof authorization !== 'string') {
+    return null;
+  }
+
+  const token = authorization.replace(/^Bearer\s+/i, '').trim();
+
+  return token.length > 0 ? token : null;
+};
 
 /**
  * Reads a money amount. An absent value stays `null` ("not given"); a value that
@@ -24,9 +48,9 @@ const readAmount = (value: unknown): number | null => {
 };
 
 // WRITE PATH. One request performs the registration and, when money was
-// received, its payment. The operator identity comes from the FUNCTION RUNTIME
-// (`event.userWorkspaceId`, derived from the validated token), never from the
-// body; if it is absent the save refuses, so the app can never write as itself
+// received, its payment. The acting person is established from the platform's
+// `currentUser` answer for the validated token, never from the body; a request
+// that carries no user session is refused, so the app can never write as itself
 // on a person's behalf.
 const handler = async (event: RoutePayload<unknown>) => {
   const body = event.body;
@@ -43,6 +67,8 @@ const handler = async (event: RoutePayload<unknown>) => {
     return toSaveResult({ kind: 'REJECTED', reason: 'SOURCE_NOT_FOUND' });
   }
 
+  const callerToken = readCallerToken(event.headers);
+
   const outcome = await saveRegistration(
     {
       sourceObjectNameSingular,
@@ -52,7 +78,13 @@ const handler = async (event: RoutePayload<unknown>) => {
       paidAmountToman: readAmount(fields.paidAmountToman),
       operatorUserWorkspaceId: readString(event.userWorkspaceId) || null,
     },
-    { execute: executeRecordGraphql },
+    {
+      execute: executeRecordGraphql,
+      executeOperator:
+        callerToken === null
+          ? undefined
+          : (query: string) => executeMetadataGraphql(query, callerToken),
+    },
   );
 
   return toSaveResult(outcome);
@@ -69,5 +101,8 @@ export default defineLogicFunction({
     path: '/event-registration/save',
     httpMethod: 'POST',
     isAuthRequired: true,
+    // The identity probe runs with the caller's session, so the route must hand
+    // it over. Nothing else is forwarded.
+    forwardedRequestHeaders: ['authorization'],
   },
 });

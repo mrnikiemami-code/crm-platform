@@ -8,7 +8,12 @@
 
 export class RecordApiError extends Error {
   constructor(
-    readonly code: 'AUTH_REQUIRED' | 'FORBIDDEN' | 'QUERY_ERROR' | 'TRANSPORT_ERROR' | 'INVALID_RESPONSE',
+    readonly code:
+      | 'AUTH_REQUIRED'
+      | 'FORBIDDEN'
+      | 'QUERY_ERROR'
+      | 'TRANSPORT_ERROR'
+      | 'INVALID_RESPONSE',
     message: string,
   ) {
     super(message);
@@ -25,24 +30,29 @@ export type RecordGraphqlPayload = {
   data: Record<string, unknown>;
 };
 
-export const executeRecordGraphql = async (
-  query: string,
-): Promise<Record<string, unknown>> => {
+const runGraphql = async ({
+  endpoint,
+  query,
+  accessToken,
+}: {
+  endpoint: string;
+  query: string;
+  accessToken: string;
+}): Promise<Record<string, unknown>> => {
   const baseUrl = process.env.TWENTY_API_URL;
-  const token = process.env.TWENTY_APP_ACCESS_TOKEN;
 
-  if (!baseUrl || !token) {
+  if (!baseUrl) {
     throw new RecordApiError('AUTH_REQUIRED', 'Record API credentials missing');
   }
 
   let response: Response;
 
   try {
-    response = await fetch(`${baseUrl.replace(/\/$/, '')}/graphql`, {
+    response = await fetch(`${baseUrl.replace(/\/$/, '')}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ query }),
       signal: AbortSignal.timeout(20_000),
@@ -103,3 +113,30 @@ export const executeRecordGraphql = async (
 
   return data;
 };
+
+/**
+ * Record access with the app's own token. Every business read and write goes
+ * through here.
+ */
+export const executeRecordGraphql = async (
+  query: string,
+): Promise<Record<string, unknown>> => {
+  const token = process.env.TWENTY_APP_ACCESS_TOKEN;
+
+  if (!token) {
+    throw new RecordApiError('AUTH_REQUIRED', 'Record API credentials missing');
+  }
+
+  return runGraphql({ endpoint: '/graphql', query, accessToken: token });
+};
+
+/**
+ * Metadata-schema access, where `currentUser` lives. Used only to ask the
+ * platform who is acting, always with the caller's own token so the answer
+ * describes that exact session.
+ */
+export const executeMetadataGraphql = async (
+  query: string,
+  accessToken: string,
+): Promise<Record<string, unknown>> =>
+  runGraphql({ endpoint: '/metadata', query, accessToken });

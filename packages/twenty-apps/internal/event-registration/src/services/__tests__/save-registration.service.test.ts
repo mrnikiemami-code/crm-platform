@@ -16,7 +16,10 @@ const LEAD_RESPONSE = {
   eventLead: {
     id: 'lead-1',
     name: 'مهران صالحپور',
-    person: { id: 'person-1', name: { firstName: 'مهران', lastName: 'صالحپور' } },
+    person: {
+      id: 'person-1',
+      name: { firstName: 'مهران', lastName: 'صالحپور' },
+    },
     academyEvent: { id: 'event-1', name: 'همایش آذر ماه' },
   },
 };
@@ -76,7 +79,9 @@ const createExecute = (
   return Object.assign(execute, { queries });
 };
 
-const deps = (execute: (query: string) => Promise<Record<string, unknown>>) => ({
+const deps = (
+  execute: (query: string) => Promise<Record<string, unknown>>,
+) => ({
   execute,
   now: () => FIXED_NOW,
 });
@@ -200,8 +205,8 @@ describe('saveRegistration', () => {
   });
 
   describe('operator gate', () => {
-    it('refuses before any request when the runtime has no operator id', async () => {
-      const execute = createExecute([]);
+    it('refuses when the platform reports no signed-in member', async () => {
+      const execute = createExecute([{ currentUser: null }]);
 
       const outcome = await saveRegistration(
         { ...REQUEST, operatorUserWorkspaceId: null },
@@ -212,7 +217,29 @@ describe('saveRegistration', () => {
         kind: 'REJECTED',
         reason: 'OPERATOR_CONTEXT_MISSING',
       });
-      expect(execute.queries).toHaveLength(0);
+      // Only the identity probe ran; no business record was touched.
+      expect(execute.queries).toHaveLength(1);
+    });
+
+    it('treats a missing runtime id as normal and resolves from the session', async () => {
+      const execute = createExecute([
+        OPERATOR,
+        LEAD_RESPONSE,
+        { eventRegistrations: { edges: [] } },
+        { createEventRegistration: { id: 'registration-1' } },
+        { createRegistrationPayment: { id: 'payment-1' } },
+      ]);
+
+      const outcome = await saveRegistration(
+        { ...REQUEST, operatorUserWorkspaceId: null, paidAmountToman: 5000000 },
+        deps(execute),
+      );
+
+      expect(outcome).toEqual({
+        kind: 'CREATED',
+        registrationId: 'registration-1',
+        paymentId: 'payment-1',
+      });
     });
 
     it('refuses when the request cannot produce a user (application-only context)', async () => {
@@ -306,7 +333,9 @@ describe('saveRegistration', () => {
       new Error('insert rejected'),
     ]);
 
-    expect((await saveRegistration(REQUEST, deps(execute))).kind).toBe('FAILED');
+    expect((await saveRegistration(REQUEST, deps(execute))).kind).toBe(
+      'FAILED',
+    );
   });
 
   it('rejects a lead with no person before writing anything', async () => {
