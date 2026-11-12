@@ -36,6 +36,12 @@ export type RegistrationTarget =
       eventId: string;
       leadName: string | null;
       /**
+       * Labels read from the same server records as the ids above. They feed the
+       * record titles, so a title can never be assembled from client input.
+       */
+      personName: string | null;
+      eventName: string | null;
+      /**
        * Seller resolved from the source record itself (an interaction's
        * `performedBy`). `null` means the caller must fall back to the operator
        * identity — never to a name typed in the browser.
@@ -75,6 +81,8 @@ export const resolveRegistrationTarget = (
     personId: lead.personId,
     eventId: lead.eventId,
     leadName: lead.name,
+    personName: lead.personName,
+    eventName: lead.eventName,
     performedByName: lead.performedByName,
   };
 };

@@ -22,6 +22,13 @@ export const toAsciiDigits = (input: string): string =>
     return String(ARABIC_DIGITS.indexOf(digit));
   });
 
+/**
+ * ASCII digits become Persian ones. Used for stored text — a record title is a
+ * Persian document, unlike an entry field where the user's own digits are kept.
+ */
+export const toPersianDigits = (input: string): string =>
+  input.replace(/\d/g, (digit) => PERSIAN_DIGITS[Number(digit)]);
+
 export const extractDigits = (input: string): string =>
   toAsciiDigits(input).replace(/[^\d]/g, '');
 

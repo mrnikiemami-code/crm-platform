@@ -20,6 +20,8 @@ describe('resolveRegistrationTarget', () => {
       personId: 'person-1',
       eventId: 'event-1',
       leadName: 'سجاد قلعه',
+      personName: 'سجاد قلعه',
+      eventName: 'همایش آذر ماه',
       performedByName: null,
     });
   });
@@ -33,7 +35,23 @@ describe('resolveRegistrationTarget', () => {
       personId: 'person-1',
       eventId: 'event-1',
       leadName: 'سجاد قلعه',
+      personName: 'سجاد قلعه',
+      eventName: 'همایش آذر ماه',
       performedByName: 'ساغر',
+    });
+  });
+
+  it('carries the labels the titles are built from', () => {
+    const target = resolveRegistrationTarget({
+      ...BASE,
+      name: 'سرنخ بدون شخص',
+      personName: 'سجاد قلعه',
+      eventName: 'همایش آذر ماه',
+    });
+
+    expect(target).toMatchObject({
+      personName: 'سجاد قلعه',
+      eventName: 'همایش آذر ماه',
     });
   });
 

@@ -188,6 +188,7 @@ export const saveRegistration = async (
       await dependencies.execute(
         buildCreatePaymentMutation({
           amountToman: plan.payment.amountToman,
+          name: plan.payment.name,
           eventRegistrationId: registrationId,
           soldByRaw: plan.payment.soldByRaw,
         }),

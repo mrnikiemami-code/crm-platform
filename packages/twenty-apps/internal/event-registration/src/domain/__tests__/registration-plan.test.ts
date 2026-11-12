@@ -9,6 +9,8 @@ const TARGET: Extract<RegistrationTarget, { kind: 'RESOLVED' }> = {
   personId: 'person-1',
   eventId: 'event-1',
   leadName: 'مهران صالحپور',
+  personName: 'مهران صالحپور',
+  eventName: 'همایش آذر ماه',
   performedByName: null,
 };
 
@@ -39,7 +41,7 @@ describe('decideRegistrationPlan', () => {
       academyEventId: 'event-1',
       registrationStatus: 'PYSHTHBTNM',
       finalAmountToman: 3900000,
-      name: 'مهران صالحپور',
+      name: 'ثبت‌نام مهران صالحپور در همایش آذر ماه',
       soldByRaw: 'امیر نصرتی',
       registeredAt: '2026-11-10T12:30:00.000Z',
     });
@@ -62,6 +64,7 @@ describe('decideRegistrationPlan', () => {
 
     expect(plan.payment).toEqual({
       amountToman: 1500000,
+      name: 'پرداخت ۱٬۵۰۰٬۰۰۰ تومان — مهران صالحپور — همایش آذر ماه',
       soldByRaw: 'امیر نصرتی',
     });
   });

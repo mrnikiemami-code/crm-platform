@@ -183,6 +183,24 @@ describe('saveRegistration', () => {
     expect(execute.queries[4]).toContain('1500000');
     expect(execute.queries[4]).toContain('registration-1');
     expect(execute.queries[4]).toContain('soldByRaw: "امیر نصرتی"');
+    expect(execute.queries[4]).toContain(
+      'name: "پرداخت ۱٬۵۰۰٬۰۰۰ تومان — مهران صالحپور — همایش آذر ماه"',
+    );
+  });
+
+  it('stores a readable Persian title on the registration itself', async () => {
+    const execute = createExecute([
+      OPERATOR,
+      LEAD_RESPONSE,
+      NO_REGISTRATION,
+      { createEventRegistration: { id: 'registration-1' } },
+    ]);
+
+    await saveRegistration(REQUEST, deps(execute));
+
+    expect(execute.queries[3]).toContain(
+      'name: "ثبت‌نام مهران صالحپور در همایش آذر ماه"',
+    );
   });
 
   it('writes nothing when a registration already exists', async () => {

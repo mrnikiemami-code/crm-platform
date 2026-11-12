@@ -1,4 +1,8 @@
 import { type RegistrationTarget } from 'src/domain/registration-target';
+import {
+  buildPaymentTitle,
+  buildRegistrationTitle,
+} from 'src/domain/record-title';
 
 // Only the two states the form offers. The remaining values of the object's
 // status field belong to other flows (partial payment, refund) and are not
@@ -52,7 +56,7 @@ export type RegistrationPlan =
         soldByRaw: string | null;
         registeredAt: string;
       };
-      payment: { amountToman: number; soldByRaw: string | null } | null;
+      payment: { amountToman: number; name: string; soldByRaw: string | null } | null;
     };
 
 const isOfferedStatus = (value: string): value is OfferedRegistrationStatus =>
@@ -115,6 +119,12 @@ export const decideRegistrationPlan = (
   // made the call. Both come from platform records, never from the client.
   const sellerName = target.performedByName ?? context.sellerName;
 
+  const titleFacts = {
+    personName: target.personName,
+    eventName: target.eventName,
+    leadName: target.leadName,
+  };
+
   return {
     kind: 'CREATE',
     registration: {
@@ -123,7 +133,9 @@ export const decideRegistrationPlan = (
       academyEventId: target.eventId,
       registrationStatus: request.registrationStatus,
       finalAmountToman: agreed,
-      name: target.leadName,
+      // The label identifier is a real stored field, so the record is readable
+      // in every list and search — not only inside this form.
+      name: buildRegistrationTitle(titleFacts),
       soldByRaw: sellerName,
       registeredAt: context.registeredAtIso,
     },
@@ -131,7 +143,11 @@ export const decideRegistrationPlan = (
     // placeholder row is created for money that was not received.
     payment:
       paid !== null && paid > 0
-        ? { amountToman: paid, soldByRaw: sellerName }
+        ? {
+            amountToman: paid,
+            name: buildPaymentTitle({ amountToman: paid, ...titleFacts }),
+            soldByRaw: sellerName,
+          }
         : null,
   };
 };
