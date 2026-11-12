@@ -395,7 +395,17 @@ export class LogicFunctionExecutorService {
         : null,
     ]);
 
-    const baseUrl = cleanServerUrl(this.twentyConfigService.get('SERVER_URL'));
+    // SERVER_URL is what the browser is told to use; a function runs inside the
+    // server process, so in a container or behind a proxy the two addresses
+    // differ. LOGIC_FUNCTION_API_URL is the explicit knob for that gap and
+    // defaults to SERVER_URL, so every deployment that does not set it keeps
+    // the previous behavior.
+    const serverUrl = cleanServerUrl(
+      this.twentyConfigService.get('SERVER_URL'),
+    );
+    const functionApiUrl =
+      cleanServerUrl(this.twentyConfigService.get('LOGIC_FUNCTION_API_URL')) ??
+      serverUrl;
     const functionsBaseUrl = await this.buildFunctionsBaseUrl({
       workspaceId,
       flatApplication,
@@ -411,8 +421,13 @@ export class LogicFunctionExecutorService {
         applicationVariableMaps,
       });
 
+    // App variables are spread FIRST and the platform values last: a function
+    // contract such as the API URL or the app token is owned by the platform and
+    // must not be shadowed by a similarly named application variable.
     return {
-      [DEFAULT_API_URL_NAME]: baseUrl ?? '',
+      ...serverVariables,
+      ...workspaceVariables,
+      [DEFAULT_API_URL_NAME]: functionApiUrl ?? '',
       // Falls back to the application when nobody triggered the run, so a cron
       // schedule or an install hook keeps working without asking for anything.
       [DEFAULT_APP_ACCESS_TOKEN_NAME]: (
@@ -422,8 +437,6 @@ export class LogicFunctionExecutorService {
       [DEFAULT_API_KEY_NAME]: applicationAccessToken.token,
       [DEFAULT_FUNCTIONS_URL_NAME]: functionsBaseUrl ?? '',
       APPLICATION_ID: flatApplication.id,
-      ...serverVariables,
-      ...workspaceVariables,
     };
   }
 

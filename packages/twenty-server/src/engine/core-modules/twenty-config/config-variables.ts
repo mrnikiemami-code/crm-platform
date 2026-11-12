@@ -724,6 +724,16 @@ export class ConfigVariables {
 
   @ConfigVariablesMetadata({
     group: ConfigVariablesGroup.LOGIC_FUNCTION_CONFIG,
+    description:
+      'Base URL logic functions use for their own API calls. Defaults to SERVER_URL; set it when the server is reachable internally at a different address than its public URL (container port mapping, reverse proxy).',
+    type: ConfigVariableType.STRING,
+  })
+  @IsUrl({ require_tld: false, require_protocol: true })
+  @IsOptional()
+  LOGIC_FUNCTION_API_URL: string;
+
+  @ConfigVariablesMetadata({
+    group: ConfigVariablesGroup.LOGIC_FUNCTION_CONFIG,
     description: 'Throttle limit for logic function execution',
     type: ConfigVariableType.NUMBER,
   })
