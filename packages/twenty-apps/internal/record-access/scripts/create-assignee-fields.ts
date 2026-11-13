@@ -2,19 +2,27 @@
  * Creates the three `assignee` fields this app's policy depends on.
  *
  * WHY A SCRIPT AND NOT A FIELD MANIFEST: person is a standard object, while
- * eventLead, eventRegistration and registrationPayment belong to the workspace's
- * custom application. An app cannot declare fields on objects it does not own, so
- * these are created once per workspace through the platform's own data-model API
- * — the same mutation the data-model settings use.
+ * eventRegistration and registrationPayment belong to the workspace's custom
+ * application. An app cannot declare fields on objects it does not own, so these
+ * are created once per workspace through the platform's own data-model API — the
+ * same mutation the data-model settings use.
  *
  * Idempotent: a field that already exists is left alone, so a second run only
- * reports what it found. Prints the universal identifiers to record in
- * src/constants/universal-identifiers.ts.
+ * reports what it found. It prints the universal identifiers to record in
+ * src/constants/universal-identifiers.ts (and the role needs them, so bump the
+ * app version and reinstall afterwards).
  *
  * Usage:
  *   TWENTY_API_URL=http://localhost:3002 TWENTY_API_KEY=<admin key> \
  *     npx tsx packages/twenty-apps/internal/record-access/scripts/create-assignee-fields.ts
  */
+
+import {
+  EVENT_REGISTRATION_OBJECT_UNIVERSAL_IDENTIFIER,
+  PERSON_OBJECT_UNIVERSAL_IDENTIFIER,
+  REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER,
+  WORKSPACE_MEMBER_OBJECT_UNIVERSAL_IDENTIFIER,
+} from '../src/constants/universal-identifiers';
 
 const API_URL = process.env.TWENTY_API_URL;
 const API_KEY = process.env.TWENTY_API_KEY;
@@ -36,17 +44,17 @@ type ObjectNode = {
 
 const TARGETS = [
   {
-    objectNameSingular: 'person',
+    objectUniversalIdentifier: PERSON_OBJECT_UNIVERSAL_IDENTIFIER,
     reverseLabel: 'اشخاص تخصیص‌یافته',
     reverseIcon: 'IconUsers',
   },
   {
-    objectNameSingular: 'eventRegistration',
+    objectUniversalIdentifier: EVENT_REGISTRATION_OBJECT_UNIVERSAL_IDENTIFIER,
     reverseLabel: 'ثبت‌نام‌های تخصیص‌یافته',
     reverseIcon: 'IconClipboardList',
   },
   {
-    objectNameSingular: 'registrationPayment',
+    objectUniversalIdentifier: REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER,
     reverseLabel: 'پرداخت‌های تخصیص‌یافته',
     reverseIcon: 'IconCreditCard',
   },
@@ -80,22 +88,26 @@ const request = async <TData>(
   return payload.data;
 };
 
-const findObject = async (nameSingular: string): Promise<ObjectNode> => {
+const findObject = async (
+  objectUniversalIdentifier: string,
+): Promise<ObjectNode> => {
   const data = await request<{
     objects: { edges: { node: ObjectNode }[] };
   }>(
-    `query FindObject($nameSingular: String!) {
-      objects(filter: { nameSingular: { eq: $nameSingular } }) {
+    `query FindObject($universalIdentifier: UUID!) {
+      objects(filter: { universalIdentifier: { eq: $universalIdentifier } }) {
         edges { node { id nameSingular } }
       }
     }`,
-    { nameSingular },
+    { universalIdentifier: objectUniversalIdentifier },
   );
 
   const node = data.objects.edges[0]?.node;
 
   if (node === undefined) {
-    throw new Error(`Object "${nameSingular}" not found in this workspace`);
+    throw new Error(
+      `Object ${objectUniversalIdentifier} not found in this workspace`,
+    );
   }
 
   return node;
@@ -154,28 +166,34 @@ const createField = async ({
   return data.createOneField;
 };
 
-const workspaceMember = await findObject('workspaceMember');
-
-for (const target of TARGETS) {
-  const object = await findObject(target.objectNameSingular);
-  const fields = await listFields(object.id);
-  const existing = fields.find((field) => field.name === 'assignee');
-
-  if (existing !== undefined) {
-    console.log(
-      `${target.objectNameSingular}: exists -> ${existing.universalIdentifier}`,
-    );
-    continue;
-  }
-
-  const created = await createField({
-    objectMetadataId: object.id,
-    targetObjectMetadataId: workspaceMember.id,
-    reverseLabel: target.reverseLabel,
-    reverseIcon: target.reverseIcon,
-  });
-
-  console.log(
-    `${target.objectNameSingular}: created -> ${created.universalIdentifier}`,
+const main = async (): Promise<void> => {
+  const workspaceMember = await findObject(
+    WORKSPACE_MEMBER_OBJECT_UNIVERSAL_IDENTIFIER,
   );
-}
+
+  for (const target of TARGETS) {
+    const object = await findObject(target.objectUniversalIdentifier);
+    const fields = await listFields(object.id);
+    const existing = fields.find((field) => field.name === 'assignee');
+
+    if (existing !== undefined) {
+      console.log(
+        `${object.nameSingular}: exists -> ${existing.universalIdentifier}`,
+      );
+      continue;
+    }
+
+    const created = await createField({
+      objectMetadataId: object.id,
+      targetObjectMetadataId: workspaceMember.id,
+      reverseLabel: target.reverseLabel,
+      reverseIcon: target.reverseIcon,
+    });
+
+    console.log(
+      `${object.nameSingular}: created -> ${created.universalIdentifier}`,
+    );
+  }
+};
+
+void main();

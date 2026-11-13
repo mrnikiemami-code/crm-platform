@@ -19,6 +19,8 @@ export const EVENT_REGISTRATION_OBJECT_UNIVERSAL_IDENTIFIER =
   '2fb53fae-1866-4c38-a37a-0aa8d4797c57';
 export const REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER =
   '020a3694-c0fc-4dfb-b108-efad91ced90d';
+export const WORKSPACE_MEMBER_OBJECT_UNIVERSAL_IDENTIFIER =
+  '20202020-3319-4234-a34c-82d5c0e881a6';
 
 // --- standard fields referenced by the policy -------------------------------
 // `workspaceMember.id`: the "Me (User ID)" value the record-level settings use.
@@ -31,11 +33,11 @@ export const EVENT_LEAD_ASSIGNED_TO_FIELD_UNIVERSAL_IDENTIFIER =
 
 // --- the assignee fields, as created in this workspace ----------------------
 export const PERSON_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER =
-  '2b2f56f8-cc15-4ee8-804c-b80bc1b6f0a5';
+  '0e6b1519-ccbf-457f-813e-c9f7ab099e4d';
 export const EVENT_REGISTRATION_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER =
-  '704ece13-777b-48aa-8010-98984342d3a4';
+  '764a5e26-2d5d-4c0a-ae05-ea024d5ff9d8';
 export const REGISTRATION_PAYMENT_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER =
-  'a015306d-1549-4c0a-b0d3-294eca09ca2a';
+  '7bb15378-ff15-4148-921e-d9c7581a6c2a';
 
 // --- the role that carries the policy ---------------------------------------
 export const ASSIGNED_RECORDS_ROLE_UNIVERSAL_IDENTIFIER =
