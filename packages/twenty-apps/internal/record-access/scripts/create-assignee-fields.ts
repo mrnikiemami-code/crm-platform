@@ -21,6 +21,7 @@ import {
   EVENT_REGISTRATION_OBJECT_UNIVERSAL_IDENTIFIER,
   PERSON_OBJECT_UNIVERSAL_IDENTIFIER,
   REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER,
+  SALES_INTERACTION_OBJECT_UNIVERSAL_IDENTIFIER,
   WORKSPACE_MEMBER_OBJECT_UNIVERSAL_IDENTIFIER,
 } from '../src/constants/universal-identifiers';
 
@@ -34,6 +35,7 @@ if (!API_URL || !API_KEY) {
 
 type FieldNode = {
   name: string;
+  type: string;
   universalIdentifier: string;
 };
 
@@ -57,6 +59,11 @@ const TARGETS = [
     objectUniversalIdentifier: REGISTRATION_PAYMENT_OBJECT_UNIVERSAL_IDENTIFIER,
     reverseLabel: 'پرداخت‌های تخصیص‌یافته',
     reverseIcon: 'IconCreditCard',
+  },
+  {
+    objectUniversalIdentifier: SALES_INTERACTION_OBJECT_UNIVERSAL_IDENTIFIER,
+    reverseLabel: 'پیگیری‌های تخصیص‌یافته',
+    reverseIcon: 'IconPhone',
   },
 ] as const;
 
@@ -117,9 +124,12 @@ const listFields = async (objectMetadataId: string): Promise<FieldNode[]> => {
   const data = await request<{
     fields: { edges: { node: FieldNode }[] };
   }>(
+    // The connection pages at 10 by default, so an existing field falls outside
+    // the first page and a re-run would try to create it again. `paging` is the
+    // argument name this schema uses (`first` is rejected).
     `query FieldsOfObject($objectMetadataId: UUID!) {
-      fields(filter: { objectMetadataId: { eq: $objectMetadataId } }) {
-        edges { node { name universalIdentifier } }
+      fields(paging: { first: 200 }, filter: { objectMetadataId: { eq: $objectMetadataId } }) {
+        edges { node { name universalIdentifier type } }
       }
     }`,
     { objectMetadataId },
@@ -177,6 +187,15 @@ const main = async (): Promise<void> => {
     const existing = fields.find((field) => field.name === 'assignee');
 
     if (existing !== undefined) {
+      // An existing field with the right NAME but the wrong shape would make the
+      // role reference something that is not a relation, and the restriction
+      // would silently never match. Refuse instead of trusting the name.
+      if (existing.type !== 'RELATION') {
+        throw new Error(
+          `${object.nameSingular}.assignee exists but is ${existing.type}, not RELATION`,
+        );
+      }
+
       console.log(
         `${object.nameSingular}: exists -> ${existing.universalIdentifier}`,
       );
