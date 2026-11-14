@@ -62,10 +62,12 @@ export const EVENT_REGISTRATION_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER =
   '764a5e26-2d5d-4c0a-ae05-ea024d5ff9d8';
 export const REGISTRATION_PAYMENT_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER =
   '7bb15378-ff15-4148-921e-d9c7581a6c2a';
-// Created in the isolated proof run; a fresh workspace gets its own id from
-// scripts/create-assignee-fields.ts.
+// Created by scripts/create-assignee-fields.ts. The identifier is
+// workspace-specific: run the script on the target workspace and put the value
+// it prints here before installing. Installing without it fails loudly
+// (FIELD_METADATA_NOT_FOUND) rather than silently dropping the rule.
 export const SALES_INTERACTION_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER =
-  '971a5d85-0863-4cee-a2a0-350503dfa037';
+  '48ce5077-be6b-4b09-9420-df4bc590a19f';
 
 // --- the role that carries the policy ---------------------------------------
 export const ASSIGNED_RECORDS_ROLE_UNIVERSAL_IDENTIFIER =
