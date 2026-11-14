@@ -225,8 +225,12 @@ const createField = async ({
 
 const main = async (): Promise<void> => {
   // Verification only: report what exists and what is missing without creating
-  // anything. Useful on a workspace that must not be modified yet.
+  // anything, and exit non-zero when the workspace is not ready. Without the
+  // flag a missing field is created, and a field of the wrong shape stops the run
+  // before anything is written.
   const checkOnly = process.argv.includes('--check');
+  const missing: string[] = [];
+  const invalid: string[] = [];
 
   const workspaceMember = await findObject(
     WORKSPACE_MEMBER_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -241,13 +245,18 @@ const main = async (): Promise<void> => {
       const problems = findAssigneeFieldProblems(existing);
 
       if (problems.length > 0) {
-        throw new Error(
-          problems
-            .map((problem) =>
-              describeAssigneeFieldProblem(object.nameSingular, problem),
-            )
-            .join('; '),
+        const details = problems.map((problem) =>
+          describeAssigneeFieldProblem(object.nameSingular, problem),
         );
+
+        invalid.push(...details);
+
+        if (checkOnly) {
+          console.error(`${object.nameSingular}: INVALID SHAPE -> ${details.join('; ')}`);
+          continue;
+        }
+
+        throw new Error(details.join('; '));
       }
 
       console.log(
@@ -257,7 +266,8 @@ const main = async (): Promise<void> => {
     }
 
     if (checkOnly) {
-      console.log(`${object.nameSingular}: MISSING (--check made no change)`);
+      missing.push(object.nameSingular);
+      console.error(`${object.nameSingular}: MISSING`);
       continue;
     }
 
@@ -284,6 +294,30 @@ const main = async (): Promise<void> => {
       `${object.nameSingular}: created -> ${created.universalIdentifier}`,
     );
   }
+
+  if (!checkOnly) {
+    return;
+  }
+
+  if (missing.length === 0 && invalid.length === 0) {
+    console.log(
+      `--check passed: all ${TARGETS.length} assignee fields exist with the expected shape. Nothing was written.`,
+    );
+
+    return;
+  }
+
+  console.error(
+    `--check failed: ${missing.length} missing (${missing.join(', ') || 'none'}), ` +
+      `${invalid.length} invalid. Nothing was written. Run without --check to create the missing fields.`,
+  );
+  process.exitCode = 1;
 };
 
-void main();
+void main().catch((error: unknown) => {
+  // A clear one-line failure instead of a stack trace; the operation stopped.
+  console.error(
+    `Error: ${error instanceof Error ? error.message : String(error)}`,
+  );
+  process.exitCode = 1;
+});

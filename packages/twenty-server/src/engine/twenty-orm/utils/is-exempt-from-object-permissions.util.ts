@@ -2,7 +2,6 @@ import { STANDARD_OBJECTS } from 'twenty-shared/metadata';
 import { type ObjectsPermissions } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
-import { isWorkflowRelatedObject } from 'src/engine/metadata-modules/ai/ai-agent/utils/is-workflow-related-object.util';
 import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
 
 // Historically every system object bypassed object-level permissions. That is
@@ -16,10 +15,19 @@ import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object
 // explicit `false` is enforced, so an object with a missing entry or `true`
 // behaves exactly as before.
 //
-// Workflow objects keep the bypass on purpose: their access is already gated by
-// the WORKFLOWS settings permission inside the cache, and enforcing it here would
-// change behaviour for roles that never opted into workflow access. That is out
-// of scope for this fix.
+// `workflowAutomatedTrigger` is the remaining workflow object that keeps a
+// blanket bypass. The trigger engine reads it while evaluating automated
+// triggers, and that path does not pass `shouldBypassPermissionChecks`, so
+// enforcing the object permission here would stop triggers for every role that
+// lacks WORKFLOWS. That is a real, separate decision; it is out of scope for the
+// leak that was proven, and it is recorded rather than silently widened.
+//
+// `workflow` needs no entry: it is not a system object, so it already goes
+// through the permission check.
+const WORKFLOW_OBJECTS_KEEPING_THE_BYPASS: string[] = [
+  STANDARD_OBJECTS.workflowAutomatedTrigger.universalIdentifier,
+];
+
 type OperationPermissionKey = keyof Pick<
   ObjectsPermissions[string],
   | 'canReadObjectRecords'
@@ -53,7 +61,11 @@ export const isExemptFromObjectPermissions = (
     return false;
   }
 
-  if (isWorkflowRelatedObject(objectMetadata)) {
+  if (
+    WORKFLOW_OBJECTS_KEEPING_THE_BYPASS.includes(
+      objectMetadata.universalIdentifier,
+    )
+  ) {
     return true;
   }
 

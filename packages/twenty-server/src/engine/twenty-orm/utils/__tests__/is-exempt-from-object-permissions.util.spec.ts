@@ -107,15 +107,17 @@ describe('isExemptFromObjectPermissions', () => {
     ).toBe(true);
   });
 
-  it('keeps the bypass for workflow objects so their gate stays where it is', () => {
-    // Workflow access is decided by the WORKFLOWS settings permission inside the
-    // cache; enforcing it here would change behaviour for roles that never opted
-    // into workflow access.
+  it('keeps the bypass for workflowAutomatedTrigger, whose read path has none', () => {
+    // The trigger engine reads this object while evaluating automated triggers and
+    // does not pass `shouldBypassPermissionChecks`, so enforcing the permission
+    // here would stop triggers for every role without WORKFLOWS. Recorded and left
+    // for a separate, verified change.
     expect(
       isExemptFromObjectPermissions(
         buildObject({
           isSystem: true,
-          universalIdentifier: STANDARD_OBJECTS.workflow.universalIdentifier,
+          universalIdentifier:
+            STANDARD_OBJECTS.workflowAutomatedTrigger.universalIdentifier,
         }),
         buildPermissions({ canReadObjectRecords: false }),
         'select',
@@ -123,21 +125,89 @@ describe('isExemptFromObjectPermissions', () => {
     ).toBe(true);
   });
 
-  it('documents the residual gap: the ORM permits a denied workflow object', () => {
-    // This is the behaviour that kept workflow objects out of scope, written down
-    // as an assertion so it cannot change silently. A role that lacks the
-    // WORKFLOWS permission still passes the object-level check at the ORM layer;
-    // the user-facing API is gated elsewhere (workflow resolvers), so this is a
-    // server-side-only exposure, not a user-facing one.
-    expect(
-      isObjectOperationPermitted({
-        objectMetadata: buildObject({
-          isSystem: true,
-          universalIdentifier: STANDARD_OBJECTS.workflow.universalIdentifier,
+  it('enforces an explicit deny on workflowVersion and workflowRun', () => {
+    // Proven leak: a member without WORKFLOWS could list every version, including
+    // its name, status and creation time.
+    for (const universalIdentifier of [
+      STANDARD_OBJECTS.workflowVersion.universalIdentifier,
+      STANDARD_OBJECTS.workflowRun.universalIdentifier,
+    ]) {
+      const objectMetadata = buildObject({ isSystem: true, universalIdentifier });
+      const denied = buildPermissions({ canReadObjectRecords: false });
+
+      expect(isExemptFromObjectPermissions(objectMetadata, denied, 'select')).toBe(
+        false,
+      );
+      expect(
+        isObjectOperationPermitted({
+          objectMetadata,
+          operationType: 'select',
+          objectsPermissions: denied,
         }),
-        operationType: 'select',
-        objectsPermissions: buildPermissions({ canReadObjectRecords: false }),
-      }),
+      ).toBe(false);
+    }
+  });
+
+  it('leaves workflowVersion readable when the role was granted it', () => {
+    // A role WITH the WORKFLOWS permission gets `true` from the cache; the fix
+    // must not take that away.
+    const objectMetadata = buildObject({
+      isSystem: true,
+      universalIdentifier: STANDARD_OBJECTS.workflowVersion.universalIdentifier,
+    });
+
+    expect(
+      isExemptFromObjectPermissions(
+        objectMetadata,
+        buildPermissions({ canReadObjectRecords: true }),
+        'select',
+      ),
     ).toBe(true);
+  });
+
+  it('leaves workflowVersion writable for a role that only has write', () => {
+    // Read denial must not become a blanket denial: a role that may update but not
+    // read still passes the update check.
+    const objectMetadata = buildObject({
+      isSystem: true,
+      universalIdentifier: STANDARD_OBJECTS.workflowVersion.universalIdentifier,
+    });
+    const readDeniedWriteAllowed = buildPermissions({
+      canReadObjectRecords: false,
+      canUpdateObjectRecords: true,
+    });
+
+    expect(
+      isExemptFromObjectPermissions(
+        objectMetadata,
+        readDeniedWriteAllowed,
+        'update',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not change the workflow object itself', () => {
+    // `workflow` is not a system object, so it always went through the check. Its
+    // outcome must be identical before and after this change.
+    const objectMetadata = buildObject({
+      isSystem: false,
+      universalIdentifier: STANDARD_OBJECTS.workflow.universalIdentifier,
+    });
+
+    expect(
+      isExemptFromObjectPermissions(
+        objectMetadata,
+        buildPermissions({ canReadObjectRecords: false }),
+        'select',
+      ),
+    ).toBe(false);
+
+    expect(
+      isExemptFromObjectPermissions(
+        objectMetadata,
+        buildPermissions({ canReadObjectRecords: true }),
+        'select',
+      ),
+    ).toBe(false);
   });
 });

@@ -114,4 +114,42 @@ describe('list_workflow_runs tool', () => {
       take: 5,
     });
   });
+
+  it('should surface a permission denial instead of returning rows', async () => {
+    // The tool reads workflowRun through the ORM with the CALLER's
+    // rolePermissionConfig, so the object-level permission decided for that role
+    // is the one that applies. A denied read must come back as an error, never as
+    // an empty-but-successful list.
+    const permissionDenied = Object.assign(
+      new Error('Entity performing the request does not have permission'),
+      { code: 'PERMISSION_DENIED' },
+    );
+    const deps = {
+      workspaceOrmManager: {
+        executeInWorkspaceContext: jest
+          .fn()
+          .mockImplementation(async (fn) => fn()),
+        getRepository: jest.fn().mockReturnValue({
+          find: jest.fn().mockRejectedValue(permissionDenied),
+        }),
+      },
+    };
+
+    const tool = createListWorkflowRunsTool(
+      deps as unknown as Pick<WorkflowToolDependencies, 'workspaceOrmManager'>,
+      buildContext(),
+    );
+
+    const result = await tool.execute({});
+
+    if (result.success) {
+      throw new Error('a denied read must not come back as a successful list');
+    }
+
+    if (!('error' in result)) {
+      throw new Error('the denial must carry an error message');
+    }
+
+    expect(result.error).toContain('does not have permission');
+  });
 });

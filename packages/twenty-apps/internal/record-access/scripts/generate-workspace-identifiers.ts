@@ -184,6 +184,8 @@ const main = async (): Promise<void> => {
   }
 
   const lines: string[] = [];
+  const missing: string[] = [];
+  const invalid: string[] = [];
 
   for (const name of REQUIRED_OBJECTS) {
     lines.push(
@@ -195,26 +197,27 @@ const main = async (): Promise<void> => {
     const object = byName.get(objectName);
 
     if (object === undefined) {
-      throw new Error(`Object ${objectName} not found. Nothing was written.`);
+      missing.push(`${objectName} (object)`);
+      continue;
     }
 
     const fields = await listAllFields(object.id);
     const assignee = fields.find((field) => field.name === 'assignee');
 
     if (assignee === undefined) {
-      throw new Error(
-        `${objectName}.assignee does not exist yet. Run create-assignee-fields.ts first. Nothing was written.`,
-      );
+      missing.push(`${objectName}.assignee`);
+      continue;
     }
 
     const problems = findAssigneeFieldProblems(assignee);
 
     if (problems.length > 0) {
-      throw new Error(
-        problems
-          .map((problem) => describeAssigneeFieldProblem(objectName, problem))
-          .join('; '),
+      invalid.push(
+        ...problems.map((problem) =>
+          describeAssigneeFieldProblem(objectName, problem),
+        ),
       );
+      continue;
     }
 
     const constantName = `${objectName
@@ -224,15 +227,38 @@ const main = async (): Promise<void> => {
     lines.push(`export const ${constantName} = '${assignee.universalIdentifier}';`);
   }
 
+  if (missing.length > 0 || invalid.length > 0) {
+    // Same contract as create-assignee-fields.ts --check: a clear report and a
+    // non-zero exit, never a half-generated file.
+    for (const entry of missing) {
+      console.error(`MISSING: ${entry}`);
+    }
+
+    for (const entry of invalid) {
+      console.error(`INVALID SHAPE: ${entry}`);
+    }
+
+    console.error(
+      `Refusing to generate: ${missing.length} missing, ${invalid.length} invalid. ` +
+        `Run create-assignee-fields.ts first. Nothing was written.`,
+    );
+    process.exitCode = 1;
+
+    return;
+  }
+
   // eventLead keeps its own assignment field; it is not one of ours to create.
   const eventLead = byName.get('eventLead')!;
   const eventLeadFields = await listAllFields(eventLead.id);
   const assignedTo = eventLeadFields.find((field) => field.name === 'assignedTo');
 
   if (assignedTo === undefined) {
-    throw new Error(
-      'eventLead.assignedTo does not exist, so leads cannot be scoped. Nothing was written.',
+    console.error(
+      'MISSING: eventLead.assignedTo — leads cannot be scoped. Nothing was written.',
     );
+    process.exitCode = 1;
+
+    return;
   }
 
   lines.push(
@@ -270,15 +296,18 @@ ${BLOCK_END}`;
   if (CHECK_ONLY) {
     const matches = updated === current;
 
-    console.log(
-      matches
-        ? `--check: the generated block matches the workspace (${lines.length} identifiers).`
-        : `--check: the generated block is stale. Run without --check to rewrite it.`,
-    );
+    if (matches) {
+      console.log(
+        `--check passed: the generated block matches the workspace (${lines.length} identifiers). Nothing was written.`,
+      );
 
-    if (!matches) {
-      process.exitCode = 2;
+      return;
     }
+
+    console.error(
+      '--check failed: the generated block is stale. Run without --check to rewrite it. Nothing was written.',
+    );
+    process.exitCode = 1;
 
     return;
   }
@@ -294,4 +323,10 @@ ${BLOCK_END}`;
   );
 };
 
-void main();
+void main().catch((error: unknown) => {
+  // A clear one-line failure instead of a stack trace; nothing was written.
+  console.error(
+    `Error: ${error instanceof Error ? error.message : String(error)}`,
+  );
+  process.exitCode = 1;
+});
