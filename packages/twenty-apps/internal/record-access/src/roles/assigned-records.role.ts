@@ -191,4 +191,23 @@ export default defineRole({
         WORKSPACE_MEMBER_ID_FIELD_UNIVERSAL_IDENTIFIER,
     },
   ],
+  // The CUSTOMER's owner column is the one place a restricted role must not
+  // write: that is the allocation itself, and letting a member set it is
+  // self-authorisation.
+  //
+  // The four dependent owner columns are deliberately NOT denied here. Their
+  // owner is not a choice: the database trigger makes it equal to the customer's
+  // owner and refuses any other value (SQLSTATE PGRAC), so a member cannot hand
+  // a record away or take one. Denying the field as well broke every legitimate
+  // create made on somebody's behalf — a delegated call runs with the
+  // intersection of the person's role and the app's, which drops the role's
+  // predicates and therefore its insert exemption, and the write was refused
+  // for its own rule column.
+  fieldPermissions: [
+    {
+      objectUniversalIdentifier: PERSON_OBJECT_UNIVERSAL_IDENTIFIER,
+      fieldUniversalIdentifier: PERSON_ASSIGNEE_FIELD_UNIVERSAL_IDENTIFIER,
+      canUpdateFieldValue: false,
+    },
+  ],
 });

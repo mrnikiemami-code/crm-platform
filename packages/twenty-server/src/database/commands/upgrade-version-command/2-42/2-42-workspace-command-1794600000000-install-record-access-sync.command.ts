@@ -65,6 +65,7 @@ DROP FUNCTION IF EXISTS ${schema}.sy_record_access_owner_of_person(uuid);
 `;
 
 const buildInstallSql = (schema: string): string => `
+CREATE OR REPLACE FUNCTION ${schema}.sy_record_access_owner_of_person(p_person_id uuid)
 RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT p."assigneeId"
     FROM ${schema}.person p
@@ -87,8 +88,19 @@ BEGIN
 
   v_owner := ${schema}.sy_record_access_owner_of_person(p_person_id);
 
+  -- A row's owner IS its customer's owner, with no exception: a customer nobody
+  -- owns has dependents nobody owns. Keeping the caller's value here let a
+  -- restricted member attach a record to an unowned customer and see it, so an
+  -- owner supplied for an unowned customer is refused rather than kept.
   IF v_owner IS NULL THEN
-    p_result := p_row_owner;
+    IF p_row_owner IS NOT NULL THEN
+      RAISE EXCEPTION
+        'RECORD_ACCESS_OWNER_MISMATCH: % cannot carry an owner while its customer has none', p_label
+        USING ERRCODE = 'PGRAC',
+              CONSTRAINT = 'sy_record_access_owner_mismatch';
+    END IF;
+
+    p_result := NULL;
     RETURN;
   END IF;
 

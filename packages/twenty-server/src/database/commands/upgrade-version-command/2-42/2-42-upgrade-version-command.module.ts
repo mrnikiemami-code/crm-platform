@@ -10,6 +10,7 @@ import { MakeWorkflowRunProjectionRelationsNullableCommand } from 'src/database/
 import { PurgeSoftDeletedViewsCommand } from 'src/database/commands/upgrade-version-command/2-42/2-42-workspace-command-1789744500000-purge-soft-deleted-views.command';
 import { PurgeSoftDeletedRowLevelPermissionPredicatesCommand } from 'src/database/commands/upgrade-version-command/2-42/2-42-workspace-command-1789978629000-purge-soft-deleted-row-level-permission-predicates.command';
 import { InstallSalesFunnelSyncCommand } from 'src/database/commands/upgrade-version-command/2-42/2-42-workspace-command-1793510000000-install-sales-funnel-sync.command';
+import { InstallRecordAccessSyncCommand } from 'src/database/commands/upgrade-version-command/2-42/2-42-workspace-command-1794600000000-install-record-access-sync.command';
 import { WorkspaceIteratorModule } from 'src/database/commands/command-runners/workspace-iterator.module';
 import { UnpinCreationCommandsOnRecordSelectionCommand } from 'src/database/commands/upgrade-version-command/2-42/2-42-workspace-command-1789634112046-unpin-creation-commands-on-record-selection.command';
 import { BackfillMissingSystemRelationIndexesCommand } from 'src/database/commands/upgrade-version-command/2-42/2-42-workspace-command-1789663454000-backfill-missing-system-relation-indexes.command';
@@ -49,6 +50,7 @@ import { WorkspaceSchemaMigrationRunnerActionHandlersModule } from 'src/engine/w
     SetMessageTextDisplayedMaxRowsCommand,
     PurgeSoftDeletedRowLevelPermissionPredicatesCommand,
     InstallSalesFunnelSyncCommand,
+    InstallRecordAccessSyncCommand,
   ],
   exports: [RelinkWorkflowVersionsToCoreWorkflowsCommand],
 })
