@@ -14,7 +14,7 @@ export const isObjectOperationPermitted = ({
   operationType: OperationType;
   objectsPermissions: ObjectsPermissions;
 }): boolean => {
-  if (isExemptFromObjectPermissions(objectMetadata)) {
+  if (isExemptFromObjectPermissions(objectMetadata, objectsPermissions, operationType)) {
     return true;
   }
 

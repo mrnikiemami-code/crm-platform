@@ -1,5 +1,6 @@
 import { POSTGRESQL_ERROR_CODES } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-codes.constants';
 import { PostgresException } from 'src/engine/api/graphql/workspace-query-runner/utils/postgres-exception';
+import { RECORD_ACCESS_OWNER_MISMATCH_SQLSTATE } from 'src/engine/twenty-orm/constants/record-access-owner-mismatch.constant';
 import { computeTwentyOrmException } from 'src/engine/twenty-orm/error-handling/compute-twenty-orm-exception.util';
 import {
   TwentyOrmException,
@@ -180,5 +181,66 @@ describe('computeTwentyOrmException', () => {
     const result = computeTwentyOrmException(error);
 
     expect((result as Error & { cause?: Error }).cause).toBe(error);
+  });
+
+  describe('record-access refusal', () => {
+    it('should map the dedicated SQLSTATE to a controlled RLS rejection', () => {
+      const error = Object.assign(
+        new Error(
+          'RECORD_ACCESS_OWNER_MISMATCH: eventLead must belong to the same member as its customer',
+        ),
+        {
+          code: RECORD_ACCESS_OWNER_MISMATCH_SQLSTATE,
+          constraint: 'sy_record_access_owner_mismatch',
+        },
+      );
+
+      const result = computeTwentyOrmException(error) as TwentyOrmException;
+
+      expect(result).toBeInstanceOf(TwentyOrmException);
+      expect(result.code).toBe(TwentyOrmExceptionCode.RLS_VALIDATION_FAILED);
+      // The refusal text must not carry table, column or statement detail.
+      expect(result.message).not.toContain('RECORD_ACCESS_OWNER_MISMATCH');
+      expect(result.message).not.toContain('eventLead');
+      expect(result.userFriendlyMessage).toBeDefined();
+    });
+
+    it('should not treat a generic check violation as a record-access refusal', () => {
+      const error = buildPostgresError(
+        'new row for relation violates check constraint "amount_positive"',
+        POSTGRESQL_ERROR_CODES.CHECK_VIOLATION,
+      );
+
+      const result = computeTwentyOrmException(error);
+
+      // Unchanged behaviour: the generic path, not the RLS rejection.
+      expect(result).toBeInstanceOf(PostgresException);
+      expect(result.message).toBe('Data validation error.');
+      expect((result as TwentyOrmException).code).not.toBe(
+        TwentyOrmExceptionCode.RLS_VALIDATION_FAILED,
+      );
+    });
+
+    it('should match the SQLSTATE, not the message text', () => {
+      // Same wording as the trigger, but a code PostgreSQL would never raise for
+      // our trigger: the mapping must not fire.
+      const error = buildPostgresError(
+        'RECORD_ACCESS_OWNER_MISMATCH: eventLead must belong to the same member as its customer',
+        POSTGRESQL_ERROR_CODES.UNIQUE_VIOLATION,
+      );
+
+      const result = computeTwentyOrmException(error) as TwentyOrmException;
+
+      expect(result.code).toBe(TwentyOrmExceptionCode.DUPLICATE_ENTRY_DETECTED);
+    });
+
+    it('should leave the existing RLS validation mapping untouched', () => {
+      const error = new TwentyOrmException(
+        'Record does not satisfy row-level security constraints of your current role',
+        TwentyOrmExceptionCode.RLS_VALIDATION_FAILED,
+      );
+
+      expect(computeTwentyOrmException(error)).toBe(error);
+    });
   });
 });

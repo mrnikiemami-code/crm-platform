@@ -10,9 +10,11 @@ import {
   INVALID_INPUT_USER_FRIENDLY_MESSAGE,
   QUERY_READ_TIMEOUT_MESSAGE,
   QUERY_READ_TIMEOUT_USER_FRIENDLY_MESSAGE,
+  RECORD_ACCESS_OWNER_MISMATCH_USER_FRIENDLY_MESSAGE,
   TRANSIENT_DATABASE_ERROR_USER_FRIENDLY_MESSAGE,
 } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-messages.constants';
 import { PostgresException } from 'src/engine/api/graphql/workspace-query-runner/utils/postgres-exception';
+import { RECORD_ACCESS_OWNER_MISMATCH_SQLSTATE } from 'src/engine/twenty-orm/constants/record-access-owner-mismatch.constant';
 import {
   TwentyOrmException,
   TwentyOrmExceptionCode,
@@ -110,6 +112,23 @@ export const computeTwentyOrmException = (error: unknown): Error => {
         error.message,
         TwentyOrmExceptionCode.INVALID_INPUT,
         { userFriendlyMessage: INVALID_INPUT_USER_FRIENDLY_MESSAGE },
+      ),
+      error,
+    );
+  }
+
+  // A record-access trigger refused the write. Matched on the dedicated SQLSTATE
+  // only, never on message text, so a real constraint violation keeps its own
+  // (generic) mapping. The client is told the write was refused, without any SQL.
+  if (errorCode === RECORD_ACCESS_OWNER_MISMATCH_SQLSTATE) {
+    return withCause(
+      new TwentyOrmException(
+        'Record does not satisfy row-level security constraints of your current role',
+        TwentyOrmExceptionCode.RLS_VALIDATION_FAILED,
+        {
+          userFriendlyMessage:
+            RECORD_ACCESS_OWNER_MISMATCH_USER_FRIENDLY_MESSAGE,
+        },
       ),
       error,
     );

@@ -90,7 +90,9 @@ export const validateOperationIsPermittedOrThrow = ({
     authContext,
   });
 
-  if (isExemptFromObjectPermissions(objectMetadata)) {
+  if (
+    isExemptFromObjectPermissions(objectMetadata, objectsPermissions, operationType)
+  ) {
     return;
   }
 

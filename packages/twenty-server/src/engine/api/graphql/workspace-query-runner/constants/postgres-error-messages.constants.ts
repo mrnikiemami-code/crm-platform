@@ -26,3 +26,7 @@ export const CONSTRAINT_VIOLATION_USER_FRIENDLY_MESSAGES: Record<
   [POSTGRESQL_ERROR_CODES.FOREIGN_KEY_VIOLATION]: msg`This operation references a record that does not exist or cannot be modified due to existing relationships.`,
   [POSTGRESQL_ERROR_CODES.RESTRICT_VIOLATION]: msg`This record cannot be deleted because it is still referenced by other records.`,
 };
+
+// Shown when a record-access trigger refuses a write because the row would carry
+// a different owner than its customer. No table, column or statement is exposed.
+export const RECORD_ACCESS_OWNER_MISMATCH_USER_FRIENDLY_MESSAGE = msg`You cannot attach this record to a customer assigned to another member.`;

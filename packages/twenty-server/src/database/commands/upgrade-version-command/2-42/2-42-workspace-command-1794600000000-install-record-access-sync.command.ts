@@ -100,7 +100,8 @@ BEGIN
   IF p_row_owner IS DISTINCT FROM v_owner THEN
     RAISE EXCEPTION
       'RECORD_ACCESS_OWNER_MISMATCH: % must belong to the same member as its customer', p_label
-      USING ERRCODE = 'check_violation';
+      USING ERRCODE = 'PGRAC',
+            CONSTRAINT = 'sy_record_access_owner_mismatch';
   END IF;
 
   p_result := p_row_owner;
