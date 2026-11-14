@@ -109,3 +109,47 @@ Bounded security closure:
 ## Recovery keywords
 
 `CRM-RECORD-ACCESS-098` `099` `ADR-100` `101` `102` `Record Access` `Person assignee` `salesInteraction` `timelineActivity 774` `Data validation error 500` `lite context` `2-42-workspace-command-1794600000000`.
+
+## 2026-11-14 update — 103 pushed, 104 local report; current handoff
+
+### Verified remote commits (103)
+
+Cursor reported and subsequently pushed to `origin/crm-platform`:
+- `bee5d81a32` — customer/Person as ownership authority, synchronous projection onto children.
+- `246d9d0d69` — salesInteraction assignee UID pinned to an isolated test workspace, app 0.2.1.
+- `8a8ce1ae67` — dedicated `PGRAC` SQLSTATE mapping to existing `RLS_VALIDATION_FAILED`, and explicit system-object denies respected.
+
+Architect independently fetched the actual remote commit `8a8ce1ae67262593ff6efccb4fc4f9b24201041e` and role/identifier/scripts. Findings:
+- Both call sites of `isExemptFromObjectPermissions` were updated: `isObjectOperationPermitted` and `validateOperationIsPermittedOrThrow`. Previous concern about missed call site resolved for these paths.
+- Exception mapping is based on SQLSTATE, not message text; generic 23514 retains its behavior. No independent runtime test performed by architect; Cursor reports isolated tests.
+- **Workflow bypass is real**: `isExemptFromObjectPermissions` returns true for `isWorkflowRelatedObject` regardless of computed false. The `WORKFLOWS` settings permission in cache is NOT itself an ORM guard. Resolver-level guards are not proof for Logic Functions/app tokens/direct repository calls.
+- System objects without permission-map entries retain historical bypass. A computed explicit false is enforced for non-workflow system objects.
+- `create-assignee-fields.ts` as of 103 checked existing RELATION type but not relation target/direction; fixed in 104 per Cursor report, pending independent review.
+
+### 104 — Workspace Portability & Permission Verification (user-provided Cursor report)
+
+**Commit `e3598c00d1` reported LOCAL ONLY, NOT PUSHED; working tree clean on Cursor machine.** Never assume it is available on `origin/crm-platform` until confirmed. Dev :3001/:3002 and intranet :6080 not changed by 104; no real roles or triggers installed.
+
+Reported findings:
+- Custom object UIDs (`eventLead`, `eventRegistration`, `registrationPayment`, `salesInteraction`, `academyEvent`) and custom field UIDs (`person.assignee`, registration/payment/interaction assignee, `eventLead.assignedTo`) are workspace-specific. Standard object/field identifiers from `STANDARD_OBJECTS` are portable.
+- Identical custom object UIDs between Dev and intranet do NOT establish portability: intranet is a Dev clone. Three copies generated distinct UIDs for the same assignee field.
+- Native role manifest requires literal `fieldUniversalIdentifier`; it does not resolve names at install.
+- New `scripts/generate-workspace-identifiers.ts` reportedly reads and validates 4 custom objects + 4 assignee fields + `eventLead.assignedTo`, rewrites only a marked block in `universal-identifiers.ts` with temporary-file + rename; `--check` exits 2 on mismatch, no mutation.
+- New `src/domain/assignee-field.ts` reportedly checks RELATION, target workspaceMember, MANY_TO_ONE, joinColumnName `assigneeId`, nullable; `create-assignee-fields.ts` reportedly now traverses all pages and supports `--check`.
+- Reported tests: app 18/18, server exemption 6/6, typecheck/lint/manifest build pass. These are Cursor claims, not independently reproduced by architect.
+- Dev check: person, eventRegistration, registrationPayment assignee fields exist; **salesInteraction.assignee MISSING**. Generator intentionally failed without writing. Therefore **DO NOT install app on Dev** yet.
+- Committed identifier block in local 104 still points to `salesInteraction.assignee` from a dead test database (`503a0aaa...`), NOT Dev. Prior 103 remote had `48ce5077-...` from another test workspace. Neither is safe to install on Dev.
+- 104 proves with a unit test that `workflow` with `canReadObjectRecords: false` still returns permitted at ORM level. Five workflow resolvers reportedly have SettingsPermissionGuard; direct ORM/Logic Function/app-token paths may not. **STOP_FOR_ARCHITECT** for workflow authorization change. Do not simply remove bypass without tracing all internal consumers.
+
+### Mandatory next work / architect decision (105 proposed, not yet issued)
+
+1. **Obtain/review actual 104 diff** (push to an isolated review branch only with explicit permission, or paste full diff). Check generator's object/field identity validation, relation metadata correctness, pagination, write atomicity, safe handling of failure and whether it inadvertently changes tracked shared source per workspace. Reproducibility of builds is a concern: generated workspace-specific source must not contaminate shared branch or another workspace's deployment.
+2. **Workflow security audit FIRST, analysis-only**: enumerate ORM entry points and consumers of `workflow`, `workflowVersion`, `workflowRun` (including direct GraphQL, API tokens, Logic Functions, app runtime, background services and internal lite contexts). Determine which callers have independent authorization, which intentionally run as trusted system principals, and where to enforce permission without breaking internal execution. Provide proof with an actual restricted actor, not only helper unit tests. No blanket patch or deployment before architect review.
+3. Review `PGRAC` and Trigger install idempotence, reconciliation/rollback; ensure no leaked data on transfer or unauthorized write.
+4. Plan Dev rollout in safe order only after approval: backup; provision and verify fields (including salesInteraction); generate/check target workspace identifiers; build/install app; dry-run drift; install triggers/reconcile; re-test full role and system-object behavior. **Never activate restricted role between app install and trigger installation** unless safe transaction/maintenance gate is established.
+5. Keep real Dev and intranet unchanged pending security gate. No :6080 restart, no live role changes, no destructive scripts, no screenshots or unbounded tests.
+6. After 104 is independently reviewed and 105 decision made, update this document, then merge docs into `crm-platform` through a reviewed docs-only change. The current recovery document resides on `docs/record-access-architecture-recovery-098-102` and is NOT yet on the main branch.
+
+### Quick restart prompt for a new architect/chat
+
+> Open `docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md` on branch `docs/record-access-architecture-recovery-098-102` in `mrnikiemami-code/crm-platform`. Read the 098–104 history. The 103 commits `bee5d81a32`, `246d9d0d69`, `8a8ce1ae67` are pushed to `crm-platform`; 104 `e3598c00d1` is reported local/unpushed. Security hold: direct ORM Workflow bypass proven; Dev lacks salesInteraction.assignee; generated field UID is environment-specific. Next: independent review of 104 diff and bounded analysis of Workflow entry points, then architect approval before any Dev rollout. Preserve intranet :6080 and real data. Do not assume Cursor PASS is architect acceptance.
