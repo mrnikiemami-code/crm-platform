@@ -193,3 +193,51 @@ This section summarizes the user-provided 111 report; its Dev facts have NOT bee
 
 ### NEW CHAT RESTART PROMPT (LATEST)
 > Open mrnikiemami-code/crm-platform, file docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md on branch docs/record-access-architecture-recovery-098-102. Read the LAST section first. Four commits 104/106/108/109 were pushed at f9d8b91bbb; 110 PASS. 111 preflight only: Dev still old app 0.1.2 and server image, salesInteraction.assignee missing, 0 triggers, 4 predicates, all 194 Persons unassigned, no members on restricted role. NO Dev rollout authorized. Architect must decide owner assignment, separate Dev field/generator gate, separate server image gate. Do not install app/triggers or assign real roles yet. Worker queue end-to-end remains BLOCKED. Intranet :6080 untouched.
+
+---
+
+## LATEST HANDOFF — 2026-11-14 — Task 113 Pilot Readiness (supersedes previous NEXT ACTION)
+
+**Source:** user-provided CRM-RECORD-ACCESS-113 report. Report is analysis-only; findings are Cursor-reported and not independently re-executed. 113 did NOT deploy or change users/data.
+
+### Current Dev state after 112 and 113
+- Repo code pushed at f9d8b91bbb. Recovery document on separate docs branch.
+- Dev workspace glorious-aqua-whale (:3002): 194 Persons (all without owner), 160 eventLeads, 8 eventRegistrations, 7 registrationPayments, 175 salesInteractions.
+- Only one existing real workspace member, Admin. No A/B test users created.
+- Task 112: verified DB backup and independent restore; added missing salesInteraction.assignee metadata (Dev UID 995296b6-48f4-44d4-9b44-7273f96dda97), generated target-specific identifiers, then reverted tracked source to clean state. Generated Dev identifier file saved outside repo at D:\CrmDeployment\migration\dev-identifiers-112.ts. Backup saved at D:\CrmDeployment\migration\pre112-20261114-184729.dump. The backup was made BEFORE field creation; later restore needs to account for that. No app install or triggers.
+- Dev still has old Record Access app 0.1.2, four of five predicates, no owner-sync triggers, and restricted role with canReadAllObjectRecords=true, canUpdateAllObjectRecords=true, zero objectPermission rows and zero members. The intended 0.2.1 app has five predicates and reduced permissions; current pilot would be invalid.
+- Running Dev server image twenty-dev/o95:local does not contain pushed workflow permission fixes 106/108/109. Git push is NOT deployment.
+
+### Task 113: Pilot test design
+- Five proposed Person IDs, with expected owned record totals after assigning to A: 5 Persons, 5 eventLeads, 5 eventRegistrations, 4 registrationPayments, 3 salesInteractions.
+  1. ce737a8a-dbb4-4edf-be39-4d4de250f7aa (1 lead, 1 registration, 1 payment, 1 interaction)
+  2. c8ba568a-06be-4339-b789-da9f6cc05d7f (1/1/1/1)
+  3. 1b73cd60-67f8-4610-b2af-75b39d725c80 (1/1/1/0)
+  4. 986e2464-a974-4339-b7ca-7b042be05a48 (1/1/1/0; includes financial correction from 097)
+  5. 3edc3089-58b7-4c28-a275-6b62f992b5bd (1/1/0/1).
+- Invite-based creation of A/B is proposed through normal app flow, NOT direct DB inserts. On current Dev, EMAIL_DRIVER absent means LOGGER fallback (no SMTP) per 113; verify before use. Do NOT record invitation tokens, passwords, or auth URLs in repository/docs.
+- Person.assignee already UI-editable and visible in list, record details and creation form; field label is «مسئول».
+- Trigger design: Person.assigneeId is sole ownership authority; AFTER UPDATE propagates to four child types; BEFORE INSERT/UPDATE child triggers enforce owner match with PGRAC -> BAD_USER_INPUT. Not yet installed.
+- Security test plan: A sees only 5/5/5/4/3; B cannot read/link/create against A's customers; Admin sees all; transfer one Person A->B atomically propagates and revokes A; verify direct URL/search and Quick Registration. Cleanup must be separately approved, preserve data.
+- UI risks: restricted A might be able to reassign Person.assignee to B and immediately lose access; opened record may remain displayed until refresh. Requires product decision on permission to reassign owner.
+- Quick Registration risk: event-registration save-registration does not populate Person.assigneeId for a new customer. A newly created Person by restricted actor would have NULL owner and disappear from that actor's view. Decision required: assign creator as owner securely on server, or explicitly prohibit new Person creation by restricted role during pilot. Never trust client-supplied owner blindly.
+- Important 113 reported B1/B2/B3: old role is broadly permissive (readAll/updateAll=true, no object permissions), salesInteraction predicate missing, app 0.1.2 rather than 0.2.1. **Pilot cannot begin** until app install/security gates are resolved.
+
+### CRITICAL NEW DEPLOYMENT HAZARD from 113
+- The proposed new Twenty server image deployment uses a compose entrypoint that reportedly runs cache:flush -> upgrade -> cache:flush automatically.
+- **Upgrade command 1794600000000-install-record-access-sync may install ownership triggers/reconcile DURING SERVER BOOT**, BEFORE separately planned field creation, app installation, owner assignment or dry-run. Therefore the previously proposed independent "deploy server image first, install triggers later" sequencing is UNSAFE unless the actual entrypoint, upgrade command preconditions and side effects are verified and controlled. Do NOT deploy the image by ordinary compose up without a verified way to suppress/stage the upgrade, or a reviewed atomic deployment plan. The command may fail if expected fields are absent or reconcile data prematurely.
+- 113 also mentions intranet :6080 existing image crm-intranet/twenty:145b030 and source f9d8b91bbb being 22 commits ahead. **Intranet deployment is NOT authorized and is OUT OF SCOPE**. Do not infer Dev image and intranet image share identical deployment paths.
+- Rollback cannot be called "safe" just because trigger down removes functions: reconciliation writes remain; app version and cache changes persist unless separately restored. Verify actual backup/restore and precise target environment.
+
+### STOP_FOR_ARCHITECT decisions still open (NOT approved)
+1. Whether and when to install Record Access 0.2.1 on Dev and execute trigger command; do NOT run automatically as part of image startup.
+2. Policy for creating a new Person from restricted Quick Registration: server-side owner=authenticated actor (with role/permission checks), or out of pilot scope and explicitly denied. Do not silently leave a new record orphaned.
+3. Whether restricted employees may edit Person.assignee and transfer ownership themselves, or only manager/Admin may reassign.
+4. A/B test account creation and five-Person pilot assignment only after controlled installation, backup and verification.
+5. Separate, controlled new server-image deployment, including explicit upgrade-command/entrypoint behavior and rollback. No restart of main worker, no intranet changes without separate authorization.
+
+### NEXT TASK RECOMMENDATION — 114, ANALYSIS ONLY
+Audit actual entrypoint, automatic upgrade command and install-record-access-sync guard/dry-run/reconcile behavior to produce a safe deployment sequence for Dev. Also trace server-side owner assignment in Quick Registration and precise authorization of Person.assignee edits. STOP_FOR_ARCHITECT before any installation, restart, trigger, role/user/Person mutation. No screenshot, loop, heavy test or push.
+
+### NEW ARCHITECT CHAT RESTART PROMPT (LATEST)
+> Read docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md on docs/record-access-architecture-recovery-098-102, starting from the LAST section LATEST HANDOFF Task 113. The 104/106/108/109 fixes are pushed at f9d8b91bbb but not deployed to Dev. Task 112 backed up/restored and added Dev salesInteraction.assignee, generated Dev-only IDs outside repo. Task 113 was analysis-only and chose five candidate Persons. Dev still runs old app 0.1.2, 4 predicates, 0 owner triggers, broad restricted role, no A/B users, all 194 Persons unassigned, old server image. CRITICAL: ordinary server boot may auto-run upgrade and install triggers/reconcile; DO NOT deploy new image before auditing this. Quick Registration can create an ownerless Person, and restricted users may reassign Person.assignee: both require policy decisions. No Dev installation or intranet :6080 deployment authorized. Next: analysis-only Task 114 to verify upgrade ordering and authorization. STOP_FOR_ARCHITECT.
