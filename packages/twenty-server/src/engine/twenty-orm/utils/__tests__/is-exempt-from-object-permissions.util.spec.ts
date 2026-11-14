@@ -107,11 +107,32 @@ describe('isExemptFromObjectPermissions', () => {
     ).toBe(true);
   });
 
-  it('keeps the bypass for workflowAutomatedTrigger, whose read path has none', () => {
-    // The trigger engine reads this object while evaluating automated triggers and
-    // does not pass `shouldBypassPermissionChecks`, so enforcing the permission
-    // here would stop triggers for every role without WORKFLOWS. Recorded and left
-    // for a separate, verified change.
+  it('enforces an explicit deny on workflowAutomatedTrigger too', () => {
+    // The last exempt workflow object. Its internal reader uses a system auth
+    // context, which bypasses before this function is reached, so enforcing the
+    // computed permission here cannot disturb it.
+    const objectMetadata = buildObject({
+      isSystem: true,
+      universalIdentifier:
+        STANDARD_OBJECTS.workflowAutomatedTrigger.universalIdentifier,
+    });
+    const denied = buildPermissions({ canReadObjectRecords: false });
+
+    expect(isExemptFromObjectPermissions(objectMetadata, denied, 'select')).toBe(
+      false,
+    );
+    expect(
+      isObjectOperationPermitted({
+        objectMetadata,
+        operationType: 'select',
+        objectsPermissions: denied,
+      }),
+    ).toBe(false);
+  });
+
+  it('leaves workflowAutomatedTrigger readable for a role holding WORKFLOWS', () => {
+    // The cache derives this entry from the WORKFLOWS setting permission, so a
+    // permitted role keeps its access.
     expect(
       isExemptFromObjectPermissions(
         buildObject({
@@ -119,7 +140,7 @@ describe('isExemptFromObjectPermissions', () => {
           universalIdentifier:
             STANDARD_OBJECTS.workflowAutomatedTrigger.universalIdentifier,
         }),
-        buildPermissions({ canReadObjectRecords: false }),
+        buildPermissions({ canReadObjectRecords: true }),
         'select',
       ),
     ).toBe(true);

@@ -15,19 +15,17 @@ import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object
 // explicit `false` is enforced, so an object with a missing entry or `true`
 // behaves exactly as before.
 //
-// `workflowAutomatedTrigger` is the remaining workflow object that keeps a
-// blanket bypass. The trigger engine reads it while evaluating automated
-// triggers, and that path does not pass `shouldBypassPermissionChecks`, so
-// enforcing the object permission here would stop triggers for every role that
-// lacks WORKFLOWS. That is a real, separate decision; it is out of scope for the
-// leak that was proven, and it is recorded rather than silently widened.
+// After this, NO system object keeps a blanket bypass: every one of them goes
+// through the computed permission, and only an explicit `false` changes the
+// outcome. That is safe for internal execution because the internal paths do not
+// rely on this exemption at all — they either build a system auth context, which
+// `resolveRolePermissionConfig` turns into `shouldBypassPermissionChecks: true`
+// and the repository returns on before reaching this function, or they already
+// hold the WORKFLOWS setting permission, whose value the cache has already
+// written into the permission entry.
 //
-// `workflow` needs no entry: it is not a system object, so it already goes
-// through the permission check.
-const WORKFLOW_OBJECTS_KEEPING_THE_BYPASS: string[] = [
-  STANDARD_OBJECTS.workflowAutomatedTrigger.universalIdentifier,
-];
-
+// `workflow` needs no special case: it is not a system object, so it always went
+// through the check.
 type OperationPermissionKey = keyof Pick<
   ObjectsPermissions[string],
   | 'canReadObjectRecords'
@@ -59,14 +57,6 @@ export const isExemptFromObjectPermissions = (
     STANDARD_OBJECTS.workspaceMember.universalIdentifier
   ) {
     return false;
-  }
-
-  if (
-    WORKFLOW_OBJECTS_KEEPING_THE_BYPASS.includes(
-      objectMetadata.universalIdentifier,
-    )
-  ) {
-    return true;
   }
 
   const permissionsForObject = objectsPermissions?.[objectMetadata.id];
