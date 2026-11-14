@@ -153,3 +153,43 @@ Reported findings:
 ### Quick restart prompt for a new architect/chat
 
 > Open `docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md` on branch `docs/record-access-architecture-recovery-098-102` in `mrnikiemami-code/crm-platform`. Read the 098–104 history. The 103 commits `bee5d81a32`, `246d9d0d69`, `8a8ce1ae67` are pushed to `crm-platform`; 104 `e3598c00d1` is reported local/unpushed. Security hold: direct ORM Workflow bypass proven; Dev lacks salesInteraction.assignee; generated field UID is environment-specific. Next: independent review of 104 diff and bounded analysis of Workflow entry points, then architect approval before any Dev rollout. Preserve intranet :6080 and real data. Do not assume Cursor PASS is architect acceptance.
+
+---
+
+## CURRENT AUTHORITATIVE HANDOFF — 2026-11-14, tasks 105–111
+
+**This section supersedes earlier historical next-step and restart instructions.** The earlier statement that 104 was unpushed and 105 not issued is obsolete.
+
+### Completed work and actual Git state
+- 105 audit: restricted users could list and count workflowVersions despite no WORKFLOWS permission; system-object ORM exemption swallowed explicit deny.
+- 106 (7d9fa8e4b5): closed workflowVersion/workflowRun bypass. Real-row security checks passed; AI list_workflow_runs denial unit tested. Temporarily kept workflowAutomatedTrigger exception.
+- 107: independently isolated activation/deactivation/manual-run creation passed, full worker queue/DB trigger end-to-end blocked. Discovered real workflowAutomatedTrigger leak on list/count/groupBy/singular. Internal service uses buildSystemAuthContext and explicit shouldBypassPermissionChecks. Workspace-specific manifest generation, upload and install passed on isolated copy; stale IDs fail closed.
+- 108 (79b6a43c17): removed remaining blanket Workflow exemption. ORM 538 tests passed per Cursor. Internal trigger creation/deletion still worked, but four public GraphQL reads of workflowAutomatedTrigger STILL leaked because cache did not gate it and system-object default was true. Reported FAIL, not success.
+- 109 (f9d8b91bbb): added workflowAutomatedTrigger to WORKFLOWS-gated object list in workspace-roles-permissions-cache.service.ts. Real rows: restricted app role and fresh no-flags role DENIED on list/count/groupBy/by-id and workflowVersion/workflowRun; authorized role/Admin allowed. Internal activation, manual-run creation, deactivation, trigger insert/delete passed. Queue-worker and DB-trigger end-to-end remain BLOCKED.
+- 110: four commits pushed in order e3598c00d1 (104), 7d9fa8e4b5 (106), 79b6a43c17 (108), f9d8b91bbb (109). Fast-forward origin/crm-platform from 8a8ce1ae67 to full SHA f9d8b91bbbf2423f1dfb06152db1bd9570a422e8. No force, no deployment, no migration; ten files +1046/-122. GitHub commit 109 independently fetched. Do not rewrite history merely to remove Cursor co-author trailers.
+
+### 111 — Dev READ-ONLY PREFLIGHT, STOP_FOR_ARCHITECT
+This section summarizes the user-provided 111 report; its Dev facts have NOT been independently re-executed by the architect.
+
+- Dev Record Access app 0.1.2 INSTALLED (old), Event Registration 0.1.11 INSTALLED. Running server image twenty-dev/o95:local does NOT contain pushed Workflow security patches. Thus Workflow leak remains on running Dev. Intranet :6080 untouched.
+- Fields: person.assignee, eventLead.assignedTo, eventRegistration.assignee, registrationPayment.assignee exist. salesInteraction.assignee MISSING. Four predicates, no salesInteraction predicate, ZERO ownership sync triggers.
+- Restricted role currently readAll=true and updateAll=true, zero override flags, and ZERO members; no real user is restricted.
+- Records: person 194 total / 194 unassigned; eventLead 160/160 unassigned; eventRegistration 8/8 unassigned; registrationPayment 7/7 unassigned; salesInteraction 175/175 without assignee field. Dependent ownership drift reported zero for existing columns.
+- Committed salesInteraction assignee UID 503a0aaa... is from a test workspace, not Dev. Must create field on Dev, generate Dev-specific identifiers, build, upload correct tarball; app install uses latest uploaded tarball rather than local build.
+- Unsafe gap exists after app install and before owner-sync trigger installation. Do not grant restricted role to anyone during gap. Dry-run and install should be contiguous after reviewed checks.
+- Reconcile derives dependent owner from person.assigneeId. All 194 persons currently NULL. Thus restricted users would see ZERO records without a deliberate initial assignment plan; reconcile writes data. Do NOT infer ownership from soldByRaw, performedBy, or historic actor names.
+- Reported safe proposed sequence, NOT AUTHORIZED: verified backup; approved Person assignment plan or defer real role activation; create-assignee-fields; generate-workspace-identifiers; build and upload tarball; app install; install-record-access-sync --dry-run and review; trigger install/reconcile; synthetic A/B/admin permission and Quick Registration prepare+save checks; only then assign restricted role to real users.
+- Trigger --revert removes triggers/functions but does NOT undo data changes from reconciliation. DB restore is a separate operation; verify backup AND restore viability. New server image, cache invalidation/restart and rollback need separate approval.
+- Legacy custom app Logic Function source directory is empty despite tarball present, causing old workflow activation failure "Source file not found"; unrelated to Record Access.
+- 111 performed NO writes, installs, pushes, restarts or changes to Dev/intranet.
+
+### Next action: architect decisions required (112 not issued)
+1. Decide initial ownership for 194 Persons (reviewable mapping or defer assigning restricted role). Never invent owner from sales history.
+2. Decide whether to authorize a small, separately gated Dev change for backup verification, missing salesInteraction field creation and workspace-ID generation, stopping BEFORE app installation.
+3. Decide separately on updated server image rollout of 106/108/109 and role-permission cache refresh; Git Push does not update running Dev containers.
+4. Only after explicit approval: app install and owner-sync trigger/reconcile with counts, rollback, synthetic security checks, Quick Registration save, ownership transfer, cross-owner write denial; real role assignment last.
+5. Queue-worker and DB-trigger end-to-end remain unverified; use isolated queue/worker or a separately approved maintenance gate.
+6. Keep STOP_FOR_ARCHITECT, no screenshots, no loops, no main worker restart, no changes to intranet :6080.
+
+### NEW CHAT RESTART PROMPT (LATEST)
+> Open mrnikiemami-code/crm-platform, file docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md on branch docs/record-access-architecture-recovery-098-102. Read the LAST section first. Four commits 104/106/108/109 were pushed at f9d8b91bbb; 110 PASS. 111 preflight only: Dev still old app 0.1.2 and server image, salesInteraction.assignee missing, 0 triggers, 4 predicates, all 194 Persons unassigned, no members on restricted role. NO Dev rollout authorized. Architect must decide owner assignment, separate Dev field/generator gate, separate server image gate. Do not install app/triggers or assign real roles yet. Worker queue end-to-end remains BLOCKED. Intranet :6080 untouched.
