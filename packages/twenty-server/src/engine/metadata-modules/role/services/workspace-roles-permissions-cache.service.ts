@@ -26,6 +26,10 @@ const WORKFLOW_STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS = [
   STANDARD_OBJECTS.workflow.universalIdentifier,
   STANDARD_OBJECTS.workflowRun.universalIdentifier,
   STANDARD_OBJECTS.workflowVersion.universalIdentifier,
+  // The trigger rows hold the event an automation listens to, so a role without
+  // WORKFLOWS must not read them either. Missing here, they fell through to the
+  // system-object default of `true` and every role could list them.
+  STANDARD_OBJECTS.workflowAutomatedTrigger.universalIdentifier,
 ] as const;
 const WORKSPACE_MEMBER_OBJECT_UNIVERSAL_IDENTIFIER =
   STANDARD_OBJECTS.workspaceMember.universalIdentifier;
