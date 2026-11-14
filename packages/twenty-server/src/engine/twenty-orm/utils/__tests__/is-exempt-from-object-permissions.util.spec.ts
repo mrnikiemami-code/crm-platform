@@ -2,6 +2,7 @@ import { STANDARD_OBJECTS } from 'twenty-shared/metadata';
 import { type ObjectsPermissions } from 'twenty-shared/types';
 
 import { isExemptFromObjectPermissions } from 'src/engine/twenty-orm/utils/is-exempt-from-object-permissions.util';
+import { isObjectOperationPermitted } from 'src/engine/twenty-orm/utils/is-object-operation-permitted.util';
 
 const OBJECT_ID = 'object-id';
 
@@ -119,6 +120,24 @@ describe('isExemptFromObjectPermissions', () => {
         buildPermissions({ canReadObjectRecords: false }),
         'select',
       ),
+    ).toBe(true);
+  });
+
+  it('documents the residual gap: the ORM permits a denied workflow object', () => {
+    // This is the behaviour that kept workflow objects out of scope, written down
+    // as an assertion so it cannot change silently. A role that lacks the
+    // WORKFLOWS permission still passes the object-level check at the ORM layer;
+    // the user-facing API is gated elsewhere (workflow resolvers), so this is a
+    // server-side-only exposure, not a user-facing one.
+    expect(
+      isObjectOperationPermitted({
+        objectMetadata: buildObject({
+          isSystem: true,
+          universalIdentifier: STANDARD_OBJECTS.workflow.universalIdentifier,
+        }),
+        operationType: 'select',
+        objectsPermissions: buildPermissions({ canReadObjectRecords: false }),
+      }),
     ).toBe(true);
   });
 });
