@@ -241,3 +241,66 @@ Audit actual entrypoint, automatic upgrade command and install-record-access-syn
 
 ### NEW ARCHITECT CHAT RESTART PROMPT (LATEST)
 > Read docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md on docs/record-access-architecture-recovery-098-102, starting from the LAST section LATEST HANDOFF Task 113. The 104/106/108/109 fixes are pushed at f9d8b91bbb but not deployed to Dev. Task 112 backed up/restored and added Dev salesInteraction.assignee, generated Dev-only IDs outside repo. Task 113 was analysis-only and chose five candidate Persons. Dev still runs old app 0.1.2, 4 predicates, 0 owner triggers, broad restricted role, no A/B users, all 194 Persons unassigned, old server image. CRITICAL: ordinary server boot may auto-run upgrade and install triggers/reconcile; DO NOT deploy new image before auditing this. Quick Registration can create an ownerless Person, and restricted users may reassign Person.assignee: both require policy decisions. No Dev installation or intranet :6080 deployment authorized. Next: analysis-only Task 114 to verify upgrade ordering and authorization. STOP_FOR_ARCHITECT.
+
+
+---
+
+## 2026-11-15 — ADR-116: Dynamic CRM multi-collaborator access (architectural decision; NOT implemented)
+
+**Decision status:** Architecture direction ACCEPTED for planning, technical design/proof PENDING. This is NOT an implementation approval or a production security claim.
+
+### Task 115 — user-provided Cursor report (not independently executed)
+- Cursor reports DEV_FUNCTIONAL_ACCEPTANCE PASS and Quick Registration create/save PASS. 194 Persons, 160 eventLeads, 8 registrations, 7 payments, 175 interactions; payment total 19,750,000 unchanged. 5 Persons assigned to pilot A, 189 unassigned, ownership drift zero.
+- Dev Record Access app 0.2.4, image twenty-dev/o115:person-confine, 5 RLS predicates, 5 triggers, 7 functions, 13 object permissions, only 1 field permission on Person.assignee. Dependent ownership columns no longer field-write-denied because ORM insert permission intersection rejected legitimate writes; SQL triggers enforce ownership integrity.
+- Local crm-platform branch contains nine UNPUSHED commits from 2c181acc6d through 96f39f9c36, including a Dev-only identifier. Separate LOCAL UNPUSHED release/record-access-115 branch has portable single commit d5cd91f1ea, 11 files, +919/-2; generated workspace UID block omitted. **This remote GitHub document update does NOT push those local branches or make their code available remotely.**
+- Dev app 0.2.4 was installed with a Dev-only engine compatibility adjustment (>=2.41.0); shared app manifest requires >=2.42.0. Real deployment must complete 2.42 upgrade first; do not silently relax engine requirement. Intranet :6080 untouched.
+- 115 Quick Registration save reportedly created a new registration and payment under restricted A with correct owner, then removed test data. All such results are Cursor-reported, not independently verified in this GitHub session.
+
+### Business requirement
+A Person/customer can have ONE accountable primary owner and MULTIPLE collaborating employees. Collaborators may see the Person and selected related records, log follow-ups, and be assigned individual activities. Activity actor/history is distinct from owner and access grant.
+
+### Domain model
+- Keep Person.assignee (workspaceMember MANY_TO_ONE) as single authoritative primary owner. Keep existing child ownership projections and database triggers. Do NOT turn Person.assignee into an array, duplicate Persons, or rewrite historical performedBy/soldByRaw.
+- Define custom dynamic workspace object personCollaborator (or personAccessGrant) through Twenty metadata / app manifest, NOT a hardcoded business entity in shared server ORM. Minimum relations: person (MANY_TO_ONE), workspaceMember (MANY_TO_ONE); accessLevel (read/followUp/edit, exact permissions subject to policy review), grantedBy, createdAt, revokedAt; workspaceId isolation. Prevent duplicate active grants for same Person/member; handle revocation and owner transfer explicitly.
+- Separately model per-activity assignee (task/interaction responsibility), never confuse it with primary owner or the authorization grant.
+- Scope V1 to Person and the four existing child types; design an extensible policy interface for other dynamic objects later, but do NOT introduce a generic unrestricted cross-object sharing system in V1.
+
+### Actual repository inspection, 2026-11-15 (remote crm-platform at f9d8b91bbb)
+1. packages/twenty-apps/internal/record-access/src/roles/assigned-records.role.ts defines one restricted role with five workspace-member-bound row predicates, one per customer object, and explicit object allow/deny list. Each predicate matches the acting workspace member, not a collaborator set.
+2. packages/twenty-server/src/engine/twenty-orm/utils/build-row-level-permission-record-filter.util.ts compiles each role's predicates independently and ANDs role filters. Thus adding a second role does NOT automatically give a collaborator OR access.
+3. packages/twenty-server/src/engine/twenty-orm/utils/build-row-access-policy.util.ts combines role predicate with record-share gate using SQL AND; object-level deny is checked first. The record-share path is separate and may be entitlement-gated: DO NOT bypass license or assume it can be reused.
+4. packages/twenty-server/src/engine/twenty-orm/utils/compute-permission-intersection.util.ts intersects permissions and constrained fields across roles; 115 reportedly exposed an insert issue related to this. New grants must be tested against multi-role intersections and pre-insert validation.
+5. packages/twenty-server/src/engine/metadata-modules/field-metadata and /flat-object-metadata exist; Twenty custom.workspace-entity.ts and metadata-driven ORM exist. Custom dynamic object provisioning is structurally plausible, but the precise supported SDK/manifest relation definitions, metadata migrations, and lifecycle have NOT yet been inspected/validated.
+6. build-row-level-permission-record-filter.util.ts includes an Enterprise license header. Licensing/entitlement implications of extending that specific path must be checked before choosing the implementation point. Do not assume a license bypass is acceptable.
+
+### Proposed authorization semantics (DESIGN, not code)
+CanReadPerson(actor, person) = AuthorizedAdminOrManager(actor) OR person.assigneeId == actor.workspaceMemberId OR ActiveScopedGrant(actor, person, READ).
+CanWritePerson(actor, person, field) = authorized owner/admin/manager OR active scoped grant with explicit permission for that field; primary owner changes only via authorized admin/manager policy.
+CanReadChild(actor, child) must derive from its related Person's effective permission (not merely child's projected owner), with correct relation chain and no cross-person links.
+Creation/update of a child must reject unauthorized parent links, including nested create, bulk, API, GraphQL, app-token and Logic Function paths. SQL triggers continue enforcing child.owner == Person.owner as an integrity projection; collaborator authorization is independent and must not mutate child.owner to the collaborator.
+Revocation and reassignment must affect read/write access immediately, including direct ID, list/count, search, relation traversal, export, app/Logic Function and caches; no stale grants or count leaks.
+Principle of least privilege: finance visibility separate from follow-up visibility; default deny, field/object policy and workspace isolation. Auth principal is server-derived, not user-supplied.
+
+### Critical technical design risk / choices to resolve before coding
+- Existing 5 role predicates implement owner-only AND conditions; a collaborator cannot see the record until a server-enforced OR-within-person-access policy is integrated. Do NOT add a collaborator role alone or OR roles globally.
+- Two candidate designs to investigate:
+  A. narrowly scoped native row policy extension using correlated EXISTS for active personCollaborator grants, preserving role/object denies and existing record-share entitlement; must support list/count/write and child relations.
+  B. a proven, supported existing Twenty record-sharing mechanism if entitlement permits. Never bypass enterprise license checks.
+- A custom SQL condition must be parameterized, workspace scoped, cache-safe and compatible with ORM query builders, filter/count, field permissions and transaction behavior. Validate performance indexes on (personId, workspaceMemberId, revokedAt) and child relation keys. Prefer a single security policy enforcement point rather than scattered resolver filters.
+- Separate authorization for granting/revoking access: only admin/authorized manager, never grant escalation via client-supplied workspaceMemberId; log audit changes. Collaborators cannot change Person.assignee.
+- Clarify whether collaborators can see registrations/payments and which operations they may perform; default read/follow-up only and finance denied until explicit policy.
+- No automatic full rights for a team. No duplicated owner projections. No app-only or UI-only security.
+
+### Delivery plan / gates
+Phase 0: Preserve 115 release readiness. Review local portable release d5cd91f1ea and engine >=2.42 requirement, push only with explicit approval; never include Dev UID. Do not deploy intranet.
+Phase 1: Source-anchored bounded architecture spike: inspect SDK custom object+relation manifest/provisioning, RLS SQL rendering and query paths, native record-share entitlement, object/field permissions and cache; compare A/B; write an ADR and targeted test matrix, STOP_FOR_ARCHITECT. This is a security design gate, not a repetitive exploratory loop.
+Phase 2: Implement dynamic personCollaborator metadata and controlled grant management (including audit and UI) in isolated Dev with real workspace-specific identifiers; no new permanent shared hardcoded customer table.
+Phase 3: Integrate server-enforced collaborator OR access into the narrow row-security path for Person and four children; keep role AND semantics for independent restrictions, owner triggers, and field denies. Targeted negative tests for data exfiltration and writes.
+Phase 4: A/B/C pilot: A owner, B collaborator, C unassigned; test permissions, financial segregation, create/link, revocation, transfer, search/count, direct URL, Quick Registration and workflow. Backup/rollback, no intranet or real-user rollout until explicit approval.
+Phase 5: Release review, portable commits, deployment separately approved.
+
+### Current handoff / next action
+- 115 is Cursor-reported Dev PASS, portable release branch local/unpushed. Do not claim remote release exists.
+- Multi-collaborator design is recorded here, NOT implemented.
+- Next recommended task is ONE bounded source inspection + ADR to decide the secure Twenty integration seam and supported dynamic entity provisioning, then a single gated implementation plan. User prefers speed, no screenshots, no loops, no unnecessary tasks.
+- STOP_FOR_ARCHITECT. Do not modify Dev or intranet as part of this documentation update.
