@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="en" translate="no" class="light">
+<!-- The product presents Persian until a person chooses otherwise, so the very
+     first paint is already RTL. `dynamicActivate` rewrites both attributes as
+     soon as the real locale is known (a stored or explicitly chosen one wins),
+     so an English user sees lang="en" dir="ltr" once the app boots. Nothing is
+     painted before i18n activates, so this default never flickers. -->
+<html lang="fa-IR" dir="rtl" translate="no" class="light">
   <head>
     <meta charset="UTF-8" />
 
