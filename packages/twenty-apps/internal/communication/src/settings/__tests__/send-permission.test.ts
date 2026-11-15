@@ -91,4 +91,86 @@ describe('checkSendMessagePermission', () => {
 
     expect(result).toEqual({ allowed: false, reason: 'NOT_PERMITTED' });
   });
+
+  describe('caller identity', () => {
+    const withEnv = (
+      values: { access?: string; application?: string },
+      run: () => Promise<unknown>,
+    ) => {
+      const previousAccess = process.env.TWENTY_APP_ACCESS_TOKEN;
+      const previousApplication = process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN;
+
+      if (values.access === undefined) {
+        delete process.env.TWENTY_APP_ACCESS_TOKEN;
+      } else {
+        process.env.TWENTY_APP_ACCESS_TOKEN = values.access;
+      }
+
+      if (values.application === undefined) {
+        delete process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN;
+      } else {
+        process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN = values.application;
+      }
+
+      return run().finally(() => {
+        if (previousAccess === undefined) {
+          delete process.env.TWENTY_APP_ACCESS_TOKEN;
+        } else {
+          process.env.TWENTY_APP_ACCESS_TOKEN = previousAccess;
+        }
+
+        if (previousApplication === undefined) {
+          delete process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN;
+        } else {
+          process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN = previousApplication;
+        }
+      });
+    };
+
+    it('reports CALLER_NOT_A_USER for an API key, not a transient failure', async () => {
+      // Same token in both slots = the app acting alone (an API key, a cron).
+      await withEnv(
+        { access: 'app-token', application: 'app-token' },
+        async () => {
+          const result = await checkSendMessagePermission();
+
+          expect(result).toEqual({
+            allowed: false,
+            reason: 'CALLER_NOT_A_USER',
+          });
+        },
+      );
+    });
+
+    it('still queries when a delegated person token is present', async () => {
+      await withEnv(
+        { access: 'delegated-token', application: 'app-token' },
+        async () => {
+          const result = await checkSendMessagePermission({
+            client: buildClient({
+              currentUser: {
+                id: 'person',
+                currentUserWorkspace: {
+                  permissionFlags: [SEND_MESSAGE_PERMISSION_FLAG],
+                },
+              },
+            }),
+          });
+
+          expect(result).toEqual({ allowed: true });
+        },
+      );
+    });
+
+    it('never reports a person when the application token is missing', async () => {
+      await withEnv({ access: 'delegated-token' }, async () => {
+        const result = await checkSendMessagePermission();
+
+        expect(result).toEqual({
+          allowed: false,
+          reason: 'CALLER_NOT_A_USER',
+        });
+      });
+    });
+  });
 });

@@ -29,7 +29,11 @@ export type PermissionCheck =
   | { allowed: true }
   | {
       allowed: false;
-      reason: 'NO_USER_CONTEXT' | 'NOT_PERMITTED' | 'CHECK_FAILED';
+      reason:
+        | 'NO_USER_CONTEXT'
+        | 'NOT_PERMITTED'
+        | 'CHECK_FAILED'
+        | 'CALLER_NOT_A_USER';
     };
 
 /** Kept for the existing settings callers. */
@@ -37,6 +41,34 @@ export type SettingsPermissionCheck = PermissionCheck;
 
 type PermissionQueryClient = {
   query: (request: unknown) => Promise<unknown>;
+};
+
+/**
+ * Whether the runtime is acting for a PERSON at all.
+ *
+ * The executor injects two tokens: `TWENTY_APP_APPLICATION_ACCESS_TOKEN` is the
+ * app acting as itself, and `TWENTY_APP_ACCESS_TOKEN` is that token UNLESS the
+ * run has a triggering user, in which case it is a delegated token carrying
+ * that user. So the two being equal means nobody is behind the call: an API
+ * key, a cron, a database event — none of which carries an identity this app
+ * could check permissions for.
+ *
+ * This matters for the ANSWER, not only the wording: for such a caller
+ * `currentUser` is not merely empty, it is forbidden, so a query-based check
+ * would report `CHECK_FAILED` — "something went wrong" — when the truth is
+ * "this kind of caller can never be authorized here".
+ */
+export const isActingForAPerson = (): boolean => {
+  const delegatedOrApplication =
+    process.env['TWENTY_APP_ACCESS_TOKEN'];
+  const applicationOnly =
+    process.env['TWENTY_APP_APPLICATION_ACCESS_TOKEN'];
+
+  if (applicationOnly === undefined) {
+    return false;
+  }
+
+  return delegatedOrApplication !== applicationOnly;
 };
 
 /**
@@ -58,6 +90,13 @@ export const checkPermissionFlag = async ({
   flag: string;
   client?: PermissionQueryClient;
 }): Promise<PermissionCheck> => {
+  // A caller with no person behind it cannot be checked — `currentUser` is
+  // forbidden for an API key, so querying would only produce a misleading
+  // "check failed". Answer that fact instead of asking.
+  if (client === undefined && !isActingForAPerson()) {
+    return { allowed: false, reason: 'CALLER_NOT_A_USER' };
+  }
+
   const metadataClient = client ?? new MetadataApiClient();
 
   let result: unknown;

@@ -55,6 +55,35 @@ describe('communication-send-message route authorization', () => {
     expect(sendPersonCommunicationHandler).not.toHaveBeenCalled();
   });
 
+  it('tells an automation caller apart from a missing permission', async () => {
+    checkSendMessagePermission.mockResolvedValue({
+      allowed: false,
+      reason: 'CALLER_NOT_A_USER',
+    });
+
+    const handler = await loadHandler();
+    const result = await handler(event);
+
+    expect(result.success).toBe(false);
+    expect(result.failureCode).toBe('CALLER_NOT_A_USER');
+    expect(result.error).toContain('signed-in user');
+    expect(sendPersonCommunicationHandler).not.toHaveBeenCalled();
+  });
+
+  it('tells a failed permission read apart from a denial', async () => {
+    checkSendMessagePermission.mockResolvedValue({
+      allowed: false,
+      reason: 'CHECK_FAILED',
+    });
+
+    const handler = await loadHandler();
+    const result = await handler(event);
+
+    expect(result.failureCode).toBe('PERMISSION_CHECK_FAILED');
+    expect(result.error).toContain('could not be verified');
+    expect(sendPersonCommunicationHandler).not.toHaveBeenCalled();
+  });
+
   it('refuses an application context with no user, without dispatching', async () => {
     checkSendMessagePermission.mockResolvedValue({
       allowed: false,
@@ -68,17 +97,17 @@ describe('communication-send-message route authorization', () => {
     expect(sendPersonCommunicationHandler).not.toHaveBeenCalled();
   });
 
-  it('does not disclose which reason applied', async () => {
+  it('does not disclose which permission or role was involved', async () => {
     checkSendMessagePermission.mockResolvedValue({
       allowed: false,
-      reason: 'CHECK_FAILED',
+      reason: 'NOT_PERMITTED',
     });
 
     const handler = await loadHandler();
     const result = await handler(event);
 
-    expect(result.error).toBe('You do not have permission to send messages.');
-    expect(JSON.stringify(result)).not.toContain('CHECK_FAILED');
+    expect(JSON.stringify(result)).not.toContain('SEND_EMAIL_TOOL');
+    expect(JSON.stringify(result)).not.toContain('reason');
   });
 
   it('proceeds to the handler when the caller is allowed', async () => {

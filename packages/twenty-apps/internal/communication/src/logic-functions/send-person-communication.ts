@@ -27,8 +27,29 @@ export const handler = async (
   const permission = await checkSendMessagePermission();
 
   if (!permission.allowed) {
-    // One sanitized refusal; the reason (no user context vs. not permitted) is
-    // not disclosed.
+    // Every branch refuses and nothing is dispatched. The CODE is distinct so an
+    // operator can tell the three cases apart — a missing permission, a caller
+    // that can never be authorized (an API key, a cron), and a transient read
+    // failure — while the message stays generic and discloses nothing about
+    // which permission or role was involved.
+    if (permission.reason === 'CALLER_NOT_A_USER') {
+      return {
+        success: false,
+        failureCode: 'CALLER_NOT_A_USER' as const,
+        error:
+          'Sending messages requires a signed-in user. Automation credentials (API keys) are not supported on this route.',
+      };
+    }
+
+    if (permission.reason === 'CHECK_FAILED') {
+      return {
+        success: false,
+        failureCode: 'PERMISSION_CHECK_FAILED' as const,
+        error:
+          'Your permission could not be verified, so nothing was sent. Try again.',
+      };
+    }
+
     return {
       success: false,
       failureCode: 'NOT_PERMITTED' as const,
