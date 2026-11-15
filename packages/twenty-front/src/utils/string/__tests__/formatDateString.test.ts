@@ -324,7 +324,7 @@ describe('formatDateString', () => {
               displayFormat: FieldDateDisplayFormat.RELATIVE,
             },
           }),
-        ).toBe('دیروز');
+        ).toBe('۱ روز پیش');
       });
     });
   });

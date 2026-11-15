@@ -1,5 +1,6 @@
 import { styled } from '@linaria/react';
 import { isNonEmptyString } from '@sniptt/guards';
+import { useState } from 'react';
 import { AppPath } from 'twenty-shared/types';
 import { getImageAbsoluteURI, isDefined } from 'twenty-shared/utils';
 import { Avatar } from 'twenty-ui/primitives/data-display';
@@ -59,6 +60,8 @@ export const Logo = ({
   to = AppPath.SignInUp,
 }: LogoProps) => {
   const { redirectToDefaultDomain } = useRedirectToDefaultDomain();
+  const [hasSecondaryLogoFailed, setHasSecondaryLogoFailed] =
+    useState(false);
   const defaultPrimaryLogoUrl = `${window.location.origin}/images/icons/android/android-launchericon-192-192.png`;
 
   const primaryLogoUrl = getImageAbsoluteURI({
@@ -72,6 +75,13 @@ export const Logo = ({
         baseUrl: REACT_APP_SERVER_BASE_URL,
       })
     : null;
+
+  // A workspace logo URL can outlive the file it points at (a restored database,
+  // a reset storage volume). The browser then paints its broken-image glyph,
+  // which is not something a visitor should ever see on the sign-in page, so a
+  // failed load is treated exactly like "no logo set".
+  const canRenderSecondaryLogo =
+    isDefined(secondaryLogoUrl) && !hasSecondaryLogoFailed;
 
   const isUsingDefaultLogo = !isDefined(primaryLogo);
 
@@ -88,9 +98,12 @@ export const Logo = ({
           style={{ backgroundImage: `url(${primaryLogoUrl})` }}
         />
       )}
-      {isDefined(secondaryLogoUrl) ? (
+      {canRenderSecondaryLogo ? (
         <StyledSecondaryLogoContainer>
-          <StyledSecondaryLogo src={secondaryLogoUrl} />
+          <StyledSecondaryLogo
+            src={secondaryLogoUrl}
+            onError={() => setHasSecondaryLogoFailed(true)}
+          />
         </StyledSecondaryLogoContainer>
       ) : (
         isDefined(placeholder) && (

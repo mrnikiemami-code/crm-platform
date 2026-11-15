@@ -8,8 +8,10 @@ import { authProvidersState } from '@/client-config/states/authProvidersState';
 import { useIsCurrentLocationOnAWorkspace } from '@/domain-manager/hooks/useIsCurrentLocationOnAWorkspace';
 import { useLastAuthenticatedWorkspaceDomain } from '@/domain-manager/hooks/useLastAuthenticatedWorkspaceDomain';
 import { useInitializeFormatPreferences } from '@/localization/hooks/useInitializeFormatPreferences';
+import { getDateFnsLocale } from '@/ui/field/display/utils/getDateFnsLocale';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
+import { dateLocaleState } from '~/localization/states/dateLocaleState';
 import { workspaceAuthBypassProvidersState } from '@/workspace/states/workspaceAuthBypassProvidersState';
 import { useCallback } from 'react';
 import { SOURCE_LOCALE, type APP_LOCALES } from 'twenty-shared/translations';
@@ -36,6 +38,7 @@ export const useLoadCurrentUser = () => {
     currentWorkspaceMembersState,
   );
   const setCurrentWorkspace = useSetAtomState(currentWorkspaceState);
+  const setDateLocale = useSetAtomState(dateLocaleState);
   const { initializeFormatPreferences } = useInitializeFormatPreferences();
   const setWorkspaceAuthBypassProviders = useSetAtomState(
     workspaceAuthBypassProvidersState,
@@ -101,9 +104,24 @@ export const useLoadCurrentUser = () => {
       setCurrentWorkspaceMember(workspaceMember);
 
       initializeFormatPreferences(workspaceMember);
-      dynamicActivate(
-        (workspaceMember.locale as keyof typeof APP_LOCALES) ?? SOURCE_LOCALE,
-      );
+
+      const memberLocale =
+        (workspaceMember.locale as keyof typeof APP_LOCALES) ?? SOURCE_LOCALE;
+
+      dynamicActivate(memberLocale);
+
+      // The language and the date catalog are two halves of one choice. This
+      // path is the one that runs after signing in, so leaving the catalog
+      // behind here is what left Persian screens formatting dates in English.
+      setDateLocale((current) => ({ ...current, locale: memberLocale }));
+
+      getDateFnsLocale(memberLocale).then((localeCatalog) => {
+        setDateLocale((current) => ({
+          ...current,
+          locale: memberLocale,
+          ...(isDefined(localeCatalog) ? { localeCatalog } : {}),
+        }));
+      });
     }
 
     const workspace = isDefined(user.currentWorkspace)

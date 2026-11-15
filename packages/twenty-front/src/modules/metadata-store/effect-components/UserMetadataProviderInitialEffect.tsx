@@ -55,6 +55,14 @@ export const UserMetadataProviderInitialEffect = () => {
     async (newLocale: keyof typeof APP_LOCALES) => {
       const localeValue = store.get(dateLocaleState.atom);
       if (localeValue.locale !== newLocale) {
+        // Store the locale first: the calendar (persian vs gregorian) is derived
+        // from it, so dates are already formatted for the right calendar while
+        // the catalog itself is still loading.
+        store.set(dateLocaleState.atom, {
+          locale: newLocale,
+          localeCatalog: localeValue.localeCatalog,
+        });
+
         getDateFnsLocale(newLocale).then((localeCatalog) => {
           const newValue = {
             locale: newLocale,
@@ -84,7 +92,12 @@ export const UserMetadataProviderInitialEffect = () => {
 
     if (!isLogged) {
       setIsCurrentUserLoaded(true);
-      setIsInitialized(true);
+
+      // Deliberately NOT latching initialized: this effect also mounts on the
+      // signed-out pages, and latching here would make it a no-op for the rest of
+      // the session. The signed-in state then never seeds the date catalog, and
+      // every relative date stays in the catalog's enUS default while the UI is
+      // already Persian and RTL.
       return;
     }
 

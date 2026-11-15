@@ -155,7 +155,11 @@ export const beautifyPastDateRelativeToNow = (
     );
 
     if (diffInSeconds < 30) {
-      return t`now`;
+      // The persian path has its own wording for this range; the "now" shortcut
+      // would answer in the interface locale instead.
+      if (calendar !== 'persian') {
+        return t`now`;
+      }
     }
 
     if (calendar === 'persian') {

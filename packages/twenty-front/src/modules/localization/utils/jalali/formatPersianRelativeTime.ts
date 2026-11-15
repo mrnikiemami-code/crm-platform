@@ -65,7 +65,29 @@ const roundSubDayPartsToDays = ({
 };
 
 const shouldUseNaturalWording = ({ unit, value }: RelativeTimeParts) =>
-  (unit === 'second' && value === 0) || (unit === 'day' && value <= 1);
+  unit === 'day' && value === 0;
+
+// Sub-minute distances have no count worth printing, so both directions get a
+// phrase instead of "۰ ثانیه". The words live here, beside the rest of the
+// Persian wording rules, exactly as date-fns' own fa-IR catalog holds its own
+// strings: this file is Persian-only and no other locale reaches it.
+const PERSIAN_MOMENT_AGO = 'چند لحظه پیش';
+const PERSIAN_MOMENT_AHEAD = 'چند لحظه دیگر';
+
+const formatMoment = (isFuture: boolean): string =>
+  isFuture ? PERSIAN_MOMENT_AHEAD : PERSIAN_MOMENT_AGO;
+
+// `Intl` spells a future distance with "بعد"; the Persian this product writes
+// uses "دیگر". This formatter is Persian-only (name and locale are fixed), so
+// swapping the one trailing word is unambiguous — and because it happens on the
+// Intl output, the count, its digits and the unit word still come from Intl.
+const INTL_FUTURE_SUFFIX = 'بعد';
+const PERSIAN_FUTURE_SUFFIX = 'دیگر';
+
+const toPersianFuture = (value: string): string =>
+  value.endsWith(INTL_FUTURE_SUFFIX)
+    ? `${value.slice(0, -INTL_FUTURE_SUFFIX.length)}${PERSIAN_FUTURE_SUFFIX}`
+    : value;
 
 const createPersianRelativeTimeLocale = (
   isDayLevelComparison: boolean,
@@ -82,12 +104,22 @@ const createPersianRelativeTimeLocale = (
       ? roundSubDayPartsToDays(tokenParts)
       : tokenParts;
     const isFuture = (options?.comparison ?? 0) > 0;
+
+    if (!isDayLevelComparison && parts.unit === 'second' && parts.value === 0) {
+      return formatMoment(isFuture);
+    }
+
     const signedValue =
       isFuture || parts.value === 0 ? parts.value : -parts.value;
 
-    return new Intl.RelativeTimeFormat(PERSIAN_CALENDAR_INTL_LOCALE, {
-      numeric: shouldUseNaturalWording(parts) ? 'auto' : 'always',
-    }).format(signedValue, parts.unit);
+    const formatted = new Intl.RelativeTimeFormat(
+      PERSIAN_CALENDAR_INTL_LOCALE,
+      {
+        numeric: shouldUseNaturalWording(parts) ? 'auto' : 'always',
+      },
+    ).format(signedValue, parts.unit);
+
+    return isFuture ? toPersianFuture(formatted) : formatted;
   },
 });
 

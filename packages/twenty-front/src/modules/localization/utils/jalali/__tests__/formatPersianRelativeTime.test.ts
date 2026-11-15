@@ -21,8 +21,8 @@ const formatDayLevel = (offsetMs: number) =>
 
 describe('formatPersianRelativeTime', () => {
   describe('exact comparisons', () => {
-    it('should say "now" under a minute', () => {
-      expect(formatExact(-20 * 1000)).toBe('اکنون');
+    it('should say a moment ago under a minute', () => {
+      expect(formatExact(-20 * 1000)).toBe('چند لحظه پیش');
     });
 
     it('should format minutes with Persian digits', () => {
@@ -34,7 +34,7 @@ describe('formatPersianRelativeTime', () => {
     });
 
     it('should format future hours', () => {
-      expect(formatExact(3 * HOUR)).toBe('۳ ساعت بعد');
+      expect(formatExact(3 * HOUR)).toBe('۳ ساعت دیگر');
     });
 
     it('should keep the date-fns thresholds (44 min stays in minutes, 45 min becomes 1 hour)', () => {
@@ -48,9 +48,9 @@ describe('formatPersianRelativeTime', () => {
       expect(formatDayLevel(0)).toBe('امروز');
     });
 
-    it('should say yesterday and tomorrow', () => {
-      expect(formatDayLevel(-DAY)).toBe('دیروز');
-      expect(formatDayLevel(DAY)).toBe('فردا');
+    it('should use a count of one day rather than a word', () => {
+      expect(formatDayLevel(-DAY)).toBe('۱ روز پیش');
+      expect(formatDayLevel(DAY)).toBe('۱ روز دیگر');
     });
 
     it('should use numbers from two days on', () => {
@@ -58,14 +58,21 @@ describe('formatPersianRelativeTime', () => {
       expect(formatDayLevel(2 * DAY)).toBe('۲ روز دیگر');
     });
 
-    it('should round a DST-shortened day to yesterday instead of hours', () => {
-      expect(formatDayLevel(-23 * HOUR)).toBe('دیروز');
-      expect(formatDayLevel(-25 * HOUR)).toBe('دیروز');
+    it('should round a DST-shortened day to one day instead of hours', () => {
+      expect(formatDayLevel(-23 * HOUR)).toBe('۱ روز پیش');
+      expect(formatDayLevel(-25 * HOUR)).toBe('۱ روز پیش');
     });
 
     it('should switch to months and years at the date-fns thresholds', () => {
       expect(formatDayLevel(-60 * DAY)).toBe('۲ ماه پیش');
       expect(formatDayLevel(-2 * 365 * DAY)).toBe('۲ سال پیش');
+    });
+
+    it('should render the People creation date as a natural Persian phrase', () => {
+      // The column that reported "days ago 21": a fixed 21-day old record must
+      // read right-to-left as number, unit, then direction.
+      expect(formatDayLevel(-21 * DAY)).toBe('۲۱ روز پیش');
+      expect(formatExact(-2 * HOUR)).toBe('۲ ساعت پیش');
     });
   });
 });

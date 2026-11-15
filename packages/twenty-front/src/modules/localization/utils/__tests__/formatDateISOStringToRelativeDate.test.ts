@@ -417,7 +417,7 @@ describe('formatDateISOStringToRelativeDate', () => {
           isoDate: '2026-09-27',
           isDayMaximumPrecision: true,
         }),
-      ).toBe('دیروز');
+      ).toBe('۱ روز پیش');
     });
 
     it('should return tomorrow for a date-only value on the next day', () => {
@@ -427,7 +427,7 @@ describe('formatDateISOStringToRelativeDate', () => {
           isoDate: '2026-09-29',
           isDayMaximumPrecision: true,
         }),
-      ).toBe('فردا');
+      ).toBe('۱ روز دیگر');
     });
 
     it('should return yesterday for an instant on the previous day in the user timezone', () => {
@@ -438,7 +438,7 @@ describe('formatDateISOStringToRelativeDate', () => {
           isoDate: '2026-09-27T20:00:00Z',
           isDayMaximumPrecision: true,
         }),
-      ).toBe('دیروز');
+      ).toBe('۱ روز پیش');
     });
 
     it('should return exact hours within 24h', () => {

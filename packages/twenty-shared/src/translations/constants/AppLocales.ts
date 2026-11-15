@@ -39,3 +39,9 @@ export const APP_LOCALES = {
 } as const;
 
 export type AppLocale = keyof typeof APP_LOCALES;
+
+// The locale the product presents to anyone who has not chosen one: the welcome
+// page, the auth screens, and every new user or workspace member. Read from the
+// registry rather than written as a literal so it can never name a locale the
+// app does not ship.
+export const DEFAULT_APP_LOCALE: AppLocale = APP_LOCALES['fa-IR'];

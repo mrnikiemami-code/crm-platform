@@ -456,9 +456,9 @@ describe('persian display context', () => {
       ).toBe('۲ روز پیش');
     });
 
-    it('should keep "now" for very recent dates', () => {
+    it('should say a moment ago for very recent dates', () => {
       expect(beautifyPastDateRelativeToNow('2023-12-31T23:59:50Z', faIR)).toBe(
-        'now',
+        'چند لحظه پیش',
       );
     });
   });

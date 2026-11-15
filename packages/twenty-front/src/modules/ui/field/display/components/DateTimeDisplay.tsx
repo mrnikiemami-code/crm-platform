@@ -1,4 +1,5 @@
 import { type FieldDateMetadataSettings } from '@/object-record/record-field/ui/types/FieldMetadata';
+import { getCalendarSystemForLocale } from '@/localization/utils/getCalendarSystemForLocale';
 import { TimeZoneAbbreviation } from '@/ui/input/components/internal/date/components/TimeZoneAbbreviation';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { UserContext } from '@/users/contexts/UserContext';
@@ -34,6 +35,11 @@ export const DateTimeDisplay = ({
     timeFormat,
     dateFieldSettings,
     localeCatalog: dateLocale.localeCatalog,
+    // The chosen locale decides the calendar, not the catalog: a catalog that
+    // has not finished loading must not turn persian dates into gregorian ones.
+    calendar: getCalendarSystemForLocale(
+      dateLocale.locale ?? dateLocale.localeCatalog.code,
+    ),
   });
 
   return (
