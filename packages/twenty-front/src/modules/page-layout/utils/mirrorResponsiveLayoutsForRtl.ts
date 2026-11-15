@@ -3,10 +3,12 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { PAGE_LAYOUT_CONFIG } from '@/page-layout/constants/PageLayoutBreakpoints';
 
+// `Layout` is already the array type (`readonly LayoutItem[]`), so the breakpoint
+// payloads are `Layout`, never `Layout[]`.
 const mirrorLayoutItems = (
-  items: Layout[] | undefined,
+  items: Layout | undefined,
   columnCount: number,
-): Layout[] | undefined => {
+): Layout | undefined => {
   if (!isDefined(items)) {
     return items;
   }
