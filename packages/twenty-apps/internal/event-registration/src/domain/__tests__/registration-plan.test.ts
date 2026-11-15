@@ -168,6 +168,79 @@ describe('decideRegistrationPlan', () => {
     ).toEqual({ kind: 'INVALID', reason: 'AMOUNT_NEGATIVE' });
   });
 
+  it('rejects a decimal agreed amount instead of truncating it', () => {
+    expect(
+      decideRegistrationPlan(
+        TARGET,
+        { ...REQUEST, agreedAmountToman: 125000.5 },
+        null,
+        CONTEXT,
+      ),
+    ).toEqual({ kind: 'INVALID', reason: 'AMOUNT_NOT_INTEGER' });
+  });
+
+  it('rejects a decimal paid amount', () => {
+    expect(
+      decideRegistrationPlan(
+        TARGET,
+        { ...REQUEST, paidAmountToman: 100000.25 },
+        null,
+        CONTEXT,
+      ),
+    ).toEqual({ kind: 'INVALID', reason: 'AMOUNT_NOT_INTEGER' });
+  });
+
+  it('rejects a payment larger than the agreed price', () => {
+    expect(
+      decideRegistrationPlan(
+        TARGET,
+        { agreedAmountToman: 500000, paidAmountToman: 900000, registrationStatus: 'PYSHTHBTNM' },
+        null,
+        CONTEXT,
+      ),
+    ).toEqual({ kind: 'INVALID', reason: 'PAID_EXCEEDS_AGREED' });
+  });
+
+  it('accepts a payment exactly equal to the agreed price', () => {
+    expect(
+      decideRegistrationPlan(
+        TARGET,
+        { agreedAmountToman: 500000, paidAmountToman: 500000, registrationStatus: 'PYSHTHBTNM' },
+        null,
+        CONTEXT,
+      ).kind,
+    ).toBe('CREATE');
+  });
+
+  it('allows a zero payment with a positive agreed amount', () => {
+    const plan = decideRegistrationPlan(
+      TARGET,
+      { ...REQUEST, agreedAmountToman: 500000, paidAmountToman: 0 },
+      null,
+      CONTEXT,
+    );
+
+    expect(plan.kind).toBe('CREATE');
+
+    if (plan.kind !== 'CREATE') {
+      return;
+    }
+
+    // Zero paid means "no money received", so no payment row is proposed.
+    expect(plan.payment).toBeNull();
+  });
+
+  it('does not compare a payment against an absent agreed amount', () => {
+    const plan = decideRegistrationPlan(
+      TARGET,
+      { ...REQUEST, agreedAmountToman: null, paidAmountToman: 500000 },
+      null,
+      CONTEXT,
+    );
+
+    expect(plan.kind).toBe('CREATE');
+  });
+
   it('keeps an absent agreed amount absent rather than defaulting it to zero', () => {
     const plan = decideRegistrationPlan(
       TARGET,

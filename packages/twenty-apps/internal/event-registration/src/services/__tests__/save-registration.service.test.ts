@@ -249,7 +249,7 @@ describe('saveRegistration', () => {
       ]);
 
       const outcome = await saveRegistration(
-        { ...REQUEST, operatorUserWorkspaceId: null, paidAmountToman: 5000000 },
+        { ...REQUEST, operatorUserWorkspaceId: null, paidAmountToman: 1500000 },
         deps(execute),
       );
 

@@ -24,7 +24,9 @@ export type RegistrationRequest = {
 export type RegistrationPlanProblem =
   | 'STATUS_NOT_OFFERED'
   | 'AMOUNT_NOT_A_NUMBER'
-  | 'AMOUNT_NEGATIVE';
+  | 'AMOUNT_NEGATIVE'
+  | 'AMOUNT_NOT_INTEGER'
+  | 'PAID_EXCEEDS_AGREED';
 
 /**
  * Facts the caller must supply from the SERVER, never from the request body:
@@ -63,20 +65,44 @@ const isOfferedStatus = (value: string): value is OfferedRegistrationStatus =>
   (OFFERED_REGISTRATION_STATUSES as ReadonlyArray<string>).includes(value);
 
 /**
- * Reads an amount from the request. `null` and an empty value both mean "not
- * given": nothing is defaulted to zero, because a zero agreed amount is a real
- * statement the user may one day make.
+ * An absent amount (`null` / empty) means "not given", never zero: a zero
+ * agreed amount is a real statement the user may one day make, so nothing is
+ * defaulted.
+ *
+ * `AmountProblem` is what makes an amount unacceptable; the caller asks once and
+ * then reads the number directly once the answer is "acceptable".
  */
-const readAmount = (value: number | null): number | null | 'INVALID' => {
+type AmountProblem = 'NOT_A_NUMBER' | 'NEGATIVE' | 'NOT_INTEGER';
+
+/**
+ * The money in this workspace is toman, and toman has no sub-unit in use here.
+ * A fractional value is not "a slightly different amount": it is a value the
+ * field cannot honestly hold, and rounding it silently would change what the
+ * customer was told. So a decimal is refused rather than truncated.
+ */
+const readAmountProblem = (value: number | null): AmountProblem | null => {
   if (value === null) {
     return null;
   }
 
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return 'INVALID';
+    return 'NOT_A_NUMBER';
   }
 
-  return value < 0 ? 'INVALID' : value;
+  if (value < 0) {
+    return 'NEGATIVE';
+  }
+
+  return Number.isInteger(value) ? null : 'NOT_INTEGER';
+};
+
+const AMOUNT_PROBLEM_TO_PLAN_PROBLEM: Record<
+  AmountProblem,
+  RegistrationPlanProblem
+> = {
+  NOT_A_NUMBER: 'AMOUNT_NOT_A_NUMBER',
+  NEGATIVE: 'AMOUNT_NEGATIVE',
+  NOT_INTEGER: 'AMOUNT_NOT_INTEGER',
 };
 
 /**
@@ -103,16 +129,35 @@ export const decideRegistrationPlan = (
     return { kind: 'INVALID', reason: 'STATUS_NOT_OFFERED' };
   }
 
-  const agreed = readAmount(request.agreedAmountToman);
+  const agreedProblem = readAmountProblem(request.agreedAmountToman);
 
-  if (agreed === 'INVALID') {
-    return { kind: 'INVALID', reason: 'AMOUNT_NOT_A_NUMBER' };
+  if (agreedProblem !== null) {
+    return {
+      kind: 'INVALID',
+      reason: AMOUNT_PROBLEM_TO_PLAN_PROBLEM[agreedProblem],
+    };
   }
 
-  const paid = readAmount(request.paidAmountToman);
+  const paidProblem = readAmountProblem(request.paidAmountToman);
 
-  if (paid === 'INVALID') {
-    return { kind: 'INVALID', reason: 'AMOUNT_NEGATIVE' };
+  if (paidProblem !== null) {
+    return {
+      kind: 'INVALID',
+      reason: AMOUNT_PROBLEM_TO_PLAN_PROBLEM[paidProblem],
+    };
+  }
+
+  const agreed = request.agreedAmountToman;
+  const paid = request.paidAmountToman;
+
+  // Paying more than the agreed price is not a rounding difference, it is a
+  // different commercial agreement. Recording it would make the payment look
+  // like it settled a price the registration never stated, so the write is
+  // refused and the operator is asked to correct one of the two numbers.
+  // A missing agreed amount gives nothing to compare against, so it does not
+  // block; a missing paid amount means no payment row at all.
+  if (agreed !== null && paid !== null && paid > agreed) {
+    return { kind: 'INVALID', reason: 'PAID_EXCEEDS_AGREED' };
   }
 
   // The interaction's own performer wins over the operator: it is who actually

@@ -4,15 +4,38 @@ import { SEND_PERSON_COMMUNICATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 's
 import { sendPersonCommunicationHandler } from 'src/logic-functions/handlers/send-person-communication-handler';
 import { type SendPersonCommunicationRequest } from 'src/logic-functions/types/send-person-communication-input.type';
 import { type CommunicationChannel } from 'src/providers/types/communication-channel.type';
+import { checkSendMessagePermission } from 'src/settings/settings-permission';
 
 type LogicFunctionContext = {
   workspaceMemberId: string | null;
 };
 
-const handler = async (
+/**
+ * Exported for the route-authorization test: the guard has to be verifiable at
+ * the entry point, because that is the surface a direct caller reaches.
+ */
+export const handler = async (
   event: RoutePayload<SendPersonCommunicationRequest>,
   context?: LogicFunctionContext,
 ) => {
+  // Authorization comes FIRST, before the body is even inspected: whether the
+  // caller may message a customer is a different question from whether they can
+  // read that customer, and a member with record access but no send permission
+  // must not be able to dispatch anything. The check is server-side against the
+  // caller's own workspace permissions, so calling this route directly cannot
+  // bypass it.
+  const permission = await checkSendMessagePermission();
+
+  if (!permission.allowed) {
+    // One sanitized refusal; the reason (no user context vs. not permitted) is
+    // not disclosed.
+    return {
+      success: false,
+      failureCode: 'NOT_PERMITTED' as const,
+      error: 'You do not have permission to send messages.',
+    };
+  }
+
   const body = event.body;
 
   if (body === null || typeof body !== 'object') {
