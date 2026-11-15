@@ -396,3 +396,44 @@ Phase 5: Release review, portable commits, deployment separately approved.
 ### Latest recovery prompt
 
 > Read the LAST section of `docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md` on branch `docs/record-access-architecture-recovery-098-102` in `mrnikiemami-code/crm-platform`. Intranet :6080 runs Record Access 0.2.4, Event Registration 0.1.12, Communication 0.1.72 with LOCAL enabled; baseline 215/183/6/6/191, payment total 24,330,000, zero assigned Persons. SDK manifest fix 119-R1 pushed to release at 575c47a848. Task 120 local-only 6011fe7279 adds money validation and send guard. Task 121 local-only 4995e67c48 refines caller classification, intentionally denies API keys with CALLER_NOT_A_USER, keeps SEND_EMAIL_TOOL temporary; Communication candidate 0.1.74, Event Registration 0.1.13. Isolated tests reported PASS, no real sends, no deploy. Architect accepts temporary key denial because no current consumer found; future API-key permission approach A (requiredPermissionFlag in route trigger) is preferred but NOT approved for coding. Next: bounded release readiness/diff verification, then separate push/deploy approval. STOP_FOR_ARCHITECT.
+
+
+---
+
+## RECOVERY CHECKPOINT — 2026-11-16 — CRM 120–123 parked before release
+
+**Purpose:** preserve unfinished work and architecture decisions in GitHub so the team can return without relying on chat history. This is documentation-only on the `docs/record-access-architecture-recovery-098-102` branch; it does not push the local code commits or deploy anything. This checkpoint supersedes older automatic next-step recommendations.
+
+### OPEN / UNRELEASED
+
+| Task | State | Recovery anchor |
+| --- | --- | --- |
+| CRM-120 | Reported isolated tests PASS; **NOT deployed or pushed** | local commit `6011fe727989e3d99c9c1098b4a2d1660a5b339f`; Event Registration 0.1.13 financial validation; initial Communication send gate |
+| CRM-121 | Architect-reviewed security analysis; **NOT deployed or pushed** | local commit `4995e67c486dbab3ad969493526c3164ec5fd53f`; Communication 0.1.74, explicit API-key denial `CALLER_NOT_A_USER`, temporary `SEND_EMAIL_TOOL` policy; ADR `docs/ADR-message-send-permission.md` is LOCAL ONLY |
+| CRM-122 | **NOT STARTED** | release readiness: independently inspect 120/121 diffs and package manifests, tests, deployment/rollback, verify API-key consumer absence and Member send permissions; separately approve push and deployment |
+| CRM-123-R1 | **ARCHITECTURE REVIEW ONLY; NOT IMPLEMENTED** | Cursor report shared by user, no files created; architect independently reviewed key release-branch code; decision below |
+
+Reported production intranet :6080 remains Event Registration **0.1.12** / Communication **0.1.72**, Record Access 0.2.4, 215 Persons / 183 Leads / 6 Registrations / 6 Payments / 191 Interactions, zero assigned Persons, 5 ownership triggers and 5 RLS predicates, healthz 200. These are reported baselines, not rechecked live by this documentation commit. The remote release branch last reported at `575c47a848`; 120/121 local commits are not accessible by merely fetching the remote release branch. Cursor reports local `release/record-access-115` HEAD at `4995e67c48` with clean working tree. Do not assume remote has these commits.
+
+### CRM-123-R1 findings and architect's independent cross-check
+
+Cursor's report: dynamic custom object `personCollaborator` is feasible via `defineObject`/manifest, with MANY_TO_ONE relations to Person and WorkspaceMember. Inverse relation on standard Person may require a controlled per-workspace metadata API step (see `create-assignee-fields.ts` precedent), not just an app manifest. Manifest unique composite index on (personId, workspaceMemberId) can support one row per pair, revocation via `isActive=false` and reactivation of same row; partial unique indexes are not supported in manifest. Preserve grant history appropriately, and validate actual metadata/index implementation before deployment.
+
+Independent source review on remote `release/record-access-115` confirmed:
+- `packages/twenty-server/src/engine/twenty-orm/utils/build-row-level-permission-record-filter.util.ts`: per-role predicates compile independently and combine with AND. Adding a collaborator role cannot widen owner access.
+- `packages/twenty-server/src/engine/twenty-orm/utils/build-row-access-policy.util.ts`: object permission is checked before combining role predicate with record-share gate; conditions combine with AND. Never introduce an OR outside the object-permission boundary.
+- `packages/twenty-server/src/engine/twenty-orm/utils/render-row-level-permission-filter-to-sql.util.ts`: relation traversal in a field predicate explicitly throws; an ordinary OR predicate cannot express active collaborator EXISTS across tables.
+- `packages/twenty-server/src/engine/twenty-orm/utils/validate-rls-predicates-for-records.util.ts`: INSERT/UPDATE payload validation uses in-memory `isRecordMatchingRLSRowLevelPermissionPredicate`, not the SQL renderer. Adding EXISTS only to the SQL renderer would create read/write inconsistency.
+- `packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts`: repository applies policy through query-builder hooks for many operations, but also exposes `executeRaw` and bypass-capable contexts. An assertion that ALL GraphQL/API/Logic Function/internal paths are automatically protected is not proven; targeted audit required.
+- `packages/twenty-server/src/engine/twenty-orm/workspace-orm.manager.ts`: flat object/field metadata, role permissions, predicate maps are cached per workspace. Do not cache dynamic active-grant membership in a way that delays revocation.
+- `packages/twenty-server/src/engine/core-modules/record-share/utils/build-record-share-gate.util.ts`: native record sharing is feature/entitlement dependent and its gate combines with role predicates, not an unrestricted grant override.
+
+Cursor's reported metadata relation paths: eventLead.personId → Person; eventRegistration.personId → Person; registrationPayment.eventRegistrationId → registration → Person; salesInteraction.eventLeadId → lead → Person. These paths are from Cursor's isolated environment inspection, not independently fetched live.
+
+**Architect decision for CRM-123:** accept analysis of current limitations, **do not approve broad core RLS modifications or implementation yet**. First implementation slice when resumed is **A: dynamic `personCollaborator` object only**, on an isolated environment, with strong deny-by-default CREATE/UPDATE/DELETE for restricted employees, manager-controlled grants, unique pair, revoke/reactivate, metadata relation and upgrade/uninstall tests. Slice A must NOT widen any Person or child record visibility. Then explicitly review a narrow, server-side, metadata-aware Person access-policy extension (slice B) with parity across reads, writes, counts, relation traversal and no privilege escalation. Do not assume the proposed four-file change is sufficient. Financial objects remain inaccessible to collaborators absent explicit permission. Person.assignee remains single authoritative owner; five ownership triggers and existing predicates remain unchanged.
+
+**Sequencing / no parallel implementation:** finish **CRM-122** release-readiness for 120/121 and obtain separate push/deploy approval BEFORE starting implementation of CRM-123. CRM-123 architecture is parked at STOP_FOR_ARCHITECT. No push, merge, deployment, database write, worker restart or role change is authorized by this checkpoint.
+
+### Resume prompt
+
+> Read the LAST checkpoint of `docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md` on `docs/record-access-architecture-recovery-098-102`. CRM-120 local-only 6011fe7279, CRM-121 local-only 4995e67c48; Event Registration candidate 0.1.13 and Communication candidate 0.1.74 are not deployed (production 0.1.12/0.1.72). CRM-122 release readiness has not started and is the NEXT OPEN GATE. CRM-123-R1 dynamic collaborator architecture reviewed but not implemented: start with isolated metadata-only slice A after 122 closes, then separately approve safe Person policy slice B. Do not modify core RLS, push, deploy or touch production without explicit authorization. STOP_FOR_ARCHITECT.
