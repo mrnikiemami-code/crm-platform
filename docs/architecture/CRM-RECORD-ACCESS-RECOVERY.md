@@ -304,3 +304,65 @@ Phase 5: Release review, portable commits, deployment separately approved.
 - Multi-collaborator design is recorded here, NOT implemented.
 - Next recommended task is ONE bounded source inspection + ADR to decide the secure Twenty integration seam and supported dynamic entity provisioning, then a single gated implementation plan. User prefers speed, no screenshots, no loops, no unnecessary tasks.
 - STOP_FOR_ARCHITECT. Do not modify Dev or intranet as part of this documentation update.
+
+
+---
+
+## AUTHORITATIVE CURRENT HANDOFF — 2026-11-15 — CRM 115–120 (supersedes historical deployment holds)
+
+**Evidence status:** This update records user-supplied Cursor execution reports for 115–120. Production/Dev runtime and local-only commits have NOT been independently re-executed or fetched in this GitHub documentation update. The historical sections above describe older states; use THIS section for current planning. This docs branch is separate from release and main.
+
+### Where things are now
+
+- **Dev:** localhost:3002 reportedly running `twenty-dev/o117:69b776f62f`, source `69b776f62f8f6fa98fd9c2e361a4f90c1bd3df12`, including Record Access 115, default Persian/RTL, fixed relative Persian dates and five pre-existing RTL typing errors. User explicitly accepted visual results of 117-R1.
+- **Intranet production:** :6080 reportedly deployed task 118, image `crm-intranet/twenty:c4d3efd8`, release SHA `c4d3efd8ddc4578977fe4e27f4c6e695b4ba8b40`, Twenty 2.42 upgrade, Record Access 0.2.4. `index.html` starts with `lang="fa-IR" dir="rtl"`; runtime i18n switches for explicitly selected English. Rehearsal on restored production copy before deployment, tested backup restore. Health 200. Worker restarted as part of compose deployment for version parity; no claim of zero downtime (~90s reported).
+- **Production data baseline (118–120 reports):** Person 215, eventLead 183, eventRegistration 6, registrationPayment 6, salesInteraction 191; 6 payments totaling 24,330,000 (currency not asserted here). Zero assigned Persons in production. Do not infer owner assignment from sales attribution. Ownership triggers 5, predicates 5; ownership drift 0 reported. Restricted role exists but has no assigned production member. User's only real account is Admin according to report.
+- **Production app state after 119:** Event Registration **0.1.12** installed with two pinned one-record command-menu entries (eventLead and salesInteraction), form and prepare/save logic functions. Communication **0.1.72**, Record Access **0.2.4**. `LOGIC_FUNCTION_TYPE=LOCAL` and `LOGIC_FUNCTION_API_URL` configured for server/worker. Prepare and form opening tested on production; **production save deliberately not executed** to avoid creating real financial records. Isolated-copy save, duplicate rejection and authorization tests PASS per Cursor. Do not claim production end-to-end save acceptance.
+- **SDK Windows manifest path repair:** normalized package-relative paths for logic functions, front components and assets; 119-R1 reported 134 manifest tests and portability proof. Commit `575c47a848` **pushed** to `origin/release/record-access-115`; remote branch reportedly at that SHA. This is not the same as production deployment.
+- **Task 120 changes:** local-only commit `6011fe727989e3d99c9c1098b4a2d1660a5b339f`, **NOT pushed and NOT deployed**. Event Registration proposed **0.1.13** and Communication **0.1.73** were installed/tested ONLY on isolated restored production copy. Production remains 0.1.12 / 0.1.72. Working tree clean per Cursor.
+- **Main branch:** `origin/crm-platform` was previously reported at `f9d8b91bbb`; release branch is separate. Never equate documentation update, release push, or local commit with running production.
+
+### 117 / 118 — localization and deployment detail
+
+- Initial anonymous welcome had en/browser fallback, new user/member locale fell back to en, dateLocaleState was not initialized on login after anonymous latch. These were corrected; Persian relative dates now render e.g. «۲۱ روز پیش», «۳ روز دیگر». Existing explicit English selections retained. Broken missing logo asset uses letter avatar fallback, without changing file DB/storage.
+- Five TypeScript errors in `mirrorResponsiveLayoutsForRtl.ts` traced to using `Layout[]` instead of `Layout | undefined` for readonly layout type; reported 1519 page-layout tests passed, front/server/shared typechecks clean.
+- 118 release was made portable: no Dev-specific UID committed; each workspace must provision assignee fields, generate workspace identifiers, build/install app. Required Twenty >=2.42; never relax gate to 2.41. Production rehearsal and backup reported successful. Production rollback requires coordinated image and DB restoration, not only trigger revert.
+- 118 corrected locale HTML shell and invalid localStorage locale handling. No data count or payment total drift reported.
+
+### 119 / 119-R1 — Event Registration and LOCAL execution
+
+- Root cause of absent «ثبت‌نام» command: Event Registration app was not installed in intranet. Installing on Windows exposed `path.relative` backslashes in SDK manifest; path normalization repaired and version bumped to 0.1.12 due cached invalid 0.1.11 tarball.
+- LOCAL execution was disabled by default in production; enabling it activated **15** logic functions: Communication 9, Event Registration 2, Custom 3, Standard 1. It also enabled previously dormant send-message and settings-test-SMS routes, and communication-created event handling. This is a real production capability/security-surface expansion, not merely a UI change.
+- 119-R1 reported authenticated route enforcement, workspace matching, delegated `TWENTY_APP_ACCESS_TOKEN` intersecting user/app roles, and restricted-user denial for foreign leads/interactions and communication reads. Isolated create/save and duplicate tests passed; production save not executed. 119-R1 corrected earlier mistaken claim of role UID change: role row IDs differ per workspace as expected; stable universalIdentifier same; production role newly created, no stale references.
+
+### 120 — financial validation and communication permission gate (ISOLATED ONLY)
+
+- `decideRegistrationPlan` server-side now rejects fractional agreed/paid amounts (`AMOUNT_NOT_INTEGER`), paid > agreed (`PAID_EXCEEDS_AGREED`), negative/non-numeric values; allows paid=0 without payment row, no amount, and paid with absent agreed (no comparison). Duplicate returns `ALREADY_REGISTERED`. Form has Persian messages. Reported tests on isolated production copy showed zero writes after invalid attempts and exactly one registration/payment on repeat. **This behavior is NOT live until 0.1.13 deployment.**
+- Communication `/communication/send` previously authorized a user with read access to Person to dispatch a message. 120 added server-side permission check BEFORE body parse/dispatch using `SEND_EMAIL_TOOL` (existing core permission flag; imperfect semantic match for SMS). Restricted user receives NOT_PERMITTED; Admin passes gate. `/settings-test-sms` already guarded by WORKSPACE flag. No real SMS sent in tests.
+- **Breaking compatibility:** API-key calls to `/communication/send` now fail closed (`currentUser` unavailable, CHECK_FAILED). Workflow send uses a different function and reportedly unaffected. Inventory all external API-key integrations before deployment; do not silently treat this as acceptable. `SEND_EMAIL_TOOL` is not a clean SMS permission: assess dedicated `SEND_MESSAGE_TOOL` or explicit principal policy with server-side enforcement, without bypassing RLS or widening role rights.
+- Reported test totals: Event Registration 135/135, Communication 771/771; one unrelated pre-existing suite `w13-ux-closure` cannot load due missing `locales/fa-IR.json`, reproduced with stash. Both app typechecks clean. No real SMS, no production data change.
+- 120 local commit `6011fe7279` remains unpushed. **No authorization to push/deploy it is implied by this documentation update.**
+
+### Architectural invariants / guardrails
+
+1. Person.assignee remains the ONE accountable owner; four child owner projections stay consistent via five DB triggers. Historical sales/actor fields are not access ownership. Do not assign the 215 production Persons or give restricted roles to real users without explicit approved mapping.
+2. RLS, role object/field rights, and server-side delegated token checks must protect direct routes, GraphQL, apps, Logic Functions, counts and foreign-ID access. Never substitute UI hiding for authorization.
+3. App roles and metadata use workspace-specific generated IDs; portable source/release must exclude generated Dev or intranet UUID blocks. Re-resolve runtime row IDs; stable universalIdentifier is not a runtime row ID.
+4. Money rules are **current requested application policy**, not proof of general accounting policy. In particular paid-without-agreed remains allowed; clarify currency and overpayment business flow before expanding.
+5. Enabling LOCAL changes the executable attack/cost surface for every installed app. Inventory route permissions, sending side effects, event hooks and API-key compatibility on any change.
+6. Keep :3002 Dev and :6080 intranet distinct. No production writes, migration, restart, deployment, push or merge without explicit new authorization; isolate mutation tests on restored copies. No screenshots, no unbounded loops, no unnecessary worker restart.
+7. Preserve tested backups, images and reversible rollout. Cursor PASS is evidence as reported, not independent architect verification.
+
+### Next architect decisions — in priority order
+
+**A. Immediate (before 120 deployment):** Decide API-key send compatibility and whether `SEND_EMAIL_TOOL` is an acceptable temporary SMS guard. Prefer a narrow source-anchored design/proof for dedicated message permission or a principal-specific route policy; preserve fail-closed behavior and avoid breaking authorized integrations. Identify which API-key integrations actually use `/communication/send` (do not assume none). Audit whether Communication's other send surfaces are equally protected.
+
+**B. Release gate:** Review local `6011fe7279` diff and test evidence, compare production 0.1.12/0.1.72 to candidate 0.1.13/0.1.73, ensure backup/rollback, then request explicit permission to push and deploy. No automatic deployment.
+
+**C. Product acceptance:** User visually accepted Dev 117. Intranet 118 health and data parity are reported; production Quick Registration form/prepare PASS, but save intentionally not run. Obtain user acceptance of command visibility/form and a separately approved safe production save smoke test only if required.
+
+**D. Later:** Decide and implement dynamic Person multi-collaborator access from ADR-116 with narrow server-side owner-OR-grant semantics; NOT implemented. Do not expand into a second security engine or hardcode business entities.
+
+### New-chat restart instruction (LATEST)
+
+> Open `docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md` on branch `docs/record-access-architecture-recovery-098-102` in `mrnikiemami-code/crm-platform`; read the LAST section first. Tasks 115–118 deployed Record Access 0.2.4, Persian RTL/default locale and Twenty 2.42 to intranet :6080 (reported). Task 119 installed Event Registration 0.1.12 and enabled LOCAL, making Communication send routes executable. Task 119-R1 pushed SDK Windows manifest fix at release branch `575c47a848`. Task 120 local-only `6011fe7279` (not pushed/deployed) adds integer/overpayment checks and guards Communication send using SEND_EMAIL_TOOL, but breaks API-key send. Production remains Event Registration 0.1.12 / Communication 0.1.72; 215 Persons, 183 Leads, 6 Registrations, 6 Payments, 191 Interactions; total 24,330,000; no Persons assigned. Next: resolve SMS permission semantics/API-key compatibility BEFORE any 120 push/deploy; then review isolated tests and gated release. No production changes, no automatic tasks. Multi-collaborator ADR-116 is only design. STOP_FOR_ARCHITECT.
