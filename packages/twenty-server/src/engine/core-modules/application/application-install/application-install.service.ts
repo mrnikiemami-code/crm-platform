@@ -689,7 +689,12 @@ export class ApplicationInstallService {
   ): Promise<void> {
     const filesToWrite = buildApplicationFileList(manifest);
 
-    for (const { relativePath, fileFolder, isRequired } of filesToWrite) {
+    for (const {
+      relativePath,
+      resourcePath,
+      fileFolder,
+      isRequired,
+    } of filesToWrite) {
       const absolutePath = this.resolveWithinDirOrThrow(
         extractedDir,
         relativePath,
@@ -724,7 +729,7 @@ export class ApplicationInstallService {
         fileFolder,
         applicationUniversalIdentifier,
         workspaceId,
-        resourcePath: relativePath,
+        resourcePath: resourcePath ?? relativePath,
         settings: { isTemporaryFile: false, toDelete: false },
       });
     }

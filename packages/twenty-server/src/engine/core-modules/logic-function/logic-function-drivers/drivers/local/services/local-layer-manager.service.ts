@@ -12,10 +12,15 @@ import {
 } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/constants/local-driver.constant';
 import { getLocalDepsLayerPath } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/utils/get-local-deps-layer-path.util';
 import { getLocalSdkLayerPath } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/utils/get-local-sdk-layer-path.util';
+import { hasPackageJsonRuntimeDependencies } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/utils/has-package-json-runtime-dependencies.util';
 import { pathExists } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/utils/path-exists.util';
 import { type LogicFunctionResourceService } from 'src/engine/core-modules/logic-function/logic-function-resource/logic-function-resource.service';
 import { type SdkClientArchiveService } from 'src/engine/core-modules/sdk-client/sdk-client-archive.service';
 import { type WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
+import {
+  LogicFunctionException,
+  LogicFunctionExceptionCode,
+} from 'src/engine/metadata-modules/logic-function/logic-function.exception';
 
 type LayerAppContext = {
   flatApplication: FlatApplication;
@@ -30,6 +35,21 @@ export class LocalLayerManagerService {
     private readonly workspaceCacheService: WorkspaceCacheService,
   ) {}
 
+  private async isDepsLayerReady(depsLayerPath: string): Promise<boolean> {
+    const depsReadySentinelPath = join(
+      depsLayerPath,
+      LAYER_BUILD_READY_SENTINEL,
+    );
+    const nodeModulesPath = join(depsLayerPath, 'node_modules');
+
+    // The sentinel can outlive a pruned node_modules, and the executor cannot
+    // resolve a runtime import without it, so readiness needs both.
+    return (
+      (await pathExists(depsReadySentinelPath)) &&
+      (await pathExists(nodeModulesPath))
+    );
+  }
+
   async ensureDepsLayer({
     flatApplication,
     applicationUniversalIdentifier,
@@ -40,7 +60,7 @@ export class LocalLayerManagerService {
       LAYER_BUILD_READY_SENTINEL,
     );
 
-    if (await pathExists(depsReadySentinelPath)) {
+    if (await this.isDepsLayerReady(depsLayerPath)) {
       return;
     }
 
@@ -48,18 +68,40 @@ export class LocalLayerManagerService {
 
     await this.cacheLockService.withLock(
       async () => {
-        if (await pathExists(depsReadySentinelPath)) {
+        if (await this.isDepsLayerReady(depsLayerPath)) {
           return;
         }
 
         await fs.rm(depsLayerPath, { recursive: true, force: true });
 
-        await this.logicFunctionResourceService.copyDependenciesInMemory({
-          applicationUniversalIdentifier,
-          workspaceId: flatApplication.workspaceId,
-          inMemoryFolderPath: depsLayerPath,
-        });
-        await copyYarnEngineAndBuildDependencies(depsLayerPath);
+        const { hasYarnLock } =
+          await this.logicFunctionResourceService.copyDependenciesInMemory({
+            applicationUniversalIdentifier,
+            workspaceId: flatApplication.workspaceId,
+            inMemoryFolderPath: depsLayerPath,
+          });
+
+        const hasRuntimeDependencies = await hasPackageJsonRuntimeDependencies(
+          join(depsLayerPath, 'package.json'),
+        );
+
+        if (hasRuntimeDependencies) {
+          // Without the lockfile yarn would resolve versions on the fly, which
+          // is both non-reproducible and a silent registry dependency.
+          if (!hasYarnLock) {
+            throw new LogicFunctionException(
+              `Cannot build the dependency layer for application ${applicationUniversalIdentifier}: package.json declares runtime dependencies but the package ships no yarn.lock`,
+              LogicFunctionExceptionCode.LOGIC_FUNCTION_LAYER_BUILD_FAILED,
+            );
+          }
+
+          await copyYarnEngineAndBuildDependencies(depsLayerPath);
+        } else {
+          await fs.mkdir(join(depsLayerPath, 'node_modules'), {
+            recursive: true,
+          });
+        }
+
         await fs.writeFile(depsReadySentinelPath, '');
       },
       lockKey,

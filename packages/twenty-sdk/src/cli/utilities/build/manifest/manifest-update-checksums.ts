@@ -1,9 +1,14 @@
-import { relative } from 'path';
+import { relative, sep } from 'path';
 import { type Manifest, OUTPUT_DIR } from 'twenty-shared/application';
 import { FileFolder } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 import type { EntityFilePaths } from '@/cli/utilities/build/manifest/manifest-extract-config';
+
+// Must stay in sync with writeRuntimeDependencies and the server's installer:
+// a root-level yarn.lock is dropped by `npm pack`, so the copy that travels in
+// the tarball sits one directory down.
+export const SHIPPED_YARN_LOCK_RELATIVE_PATH = 'dependencies/yarn.lock';
 
 export type ManifestBuildResult = {
   manifest: Manifest | null;
@@ -34,6 +39,9 @@ export const manifestUpdateChecksums = ({
     { fileFolder, checksum },
   ] of builtFileInfos.entries()) {
     const rootBuiltPath = relative(OUTPUT_DIR, builtPath);
+    // `relative` yields platform separators while the manifest stores POSIX
+    // paths, so compare on a normalised form.
+    const normalizedRootBuiltPath = rootBuiltPath.split(sep).join('/');
     if (fileFolder === FileFolder.BuiltLogicFunction) {
       const logicFunctions = result.logicFunctions;
       const fnIndex = logicFunctions.findIndex(
@@ -111,11 +119,13 @@ export const manifestUpdateChecksums = ({
     }
 
     if (fileFolder === FileFolder.Dependencies) {
-      if (rootBuiltPath === 'package.json') {
+      if (normalizedRootBuiltPath === 'package.json') {
         result.application.packageJsonChecksum = checksum;
       }
 
-      if (rootBuiltPath === 'yarn.lock') {
+      // The shipped lockfile lives under dependencies/ because a root-level
+      // lockfile never survives `npm pack`.
+      if (normalizedRootBuiltPath === SHIPPED_YARN_LOCK_RELATIVE_PATH) {
         result.application.yarnLockChecksum = checksum;
       }
     }

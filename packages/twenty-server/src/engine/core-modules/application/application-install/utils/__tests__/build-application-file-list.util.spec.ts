@@ -82,4 +82,37 @@ describe('buildApplicationFileList', () => {
       ]),
     );
   });
+
+  it('requires the shipped lockfile when the manifest declares a checksum', () => {
+    const manifest = {
+      application: { yarnLockChecksum: 'yarn-lock-checksum' },
+    } as Manifest;
+
+    expect(buildApplicationFileList(manifest)).toEqual(
+      expect.arrayContaining([
+        {
+          relativePath: 'dependencies/yarn.lock',
+          resourcePath: 'yarn.lock',
+          fileFolder: FileFolder.Dependencies,
+          isRequired: true,
+        },
+      ]),
+    );
+  });
+
+  it('skips the lockfile entirely when the manifest declares no checksum', () => {
+    const manifest = { application: {} } as Manifest;
+
+    const lockfileEntries = buildApplicationFileList(manifest).filter(
+      (file) => file.fileFolder === FileFolder.Dependencies,
+    );
+
+    expect(lockfileEntries).toEqual([
+      {
+        relativePath: 'package.json',
+        fileFolder: FileFolder.Dependencies,
+        isRequired: true,
+      },
+    ]);
+  });
 });

@@ -13,6 +13,7 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { type CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
+import { EMPTY_YARN_LOCK_CONTENT } from 'src/engine/core-modules/logic-function/constants/empty-yarn-lock-content.constant';
 import { SDK_LAYER_PREFIX_IN_ZIP } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/constants/lambda-driver.constant';
 import { type LambdaAwsClientService } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/services/lambda-aws-client.service';
 import { type LambdaToolFunctionsService } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/lambda/services/lambda-tool-functions.service';
@@ -315,7 +316,9 @@ export class LambdaLayerManagerService {
 
       const [packageJson, yarnLock] = await Promise.all([
         fs.readFile(`${sourceTemporaryDir}/package.json`, 'utf-8'),
-        fs.readFile(`${sourceTemporaryDir}/yarn.lock`, 'utf-8'),
+        fs
+          .readFile(`${sourceTemporaryDir}/yarn.lock`, 'utf-8')
+          .catch(() => EMPTY_YARN_LOCK_CONTENT),
       ]);
 
       return { packageJson, yarnLock };

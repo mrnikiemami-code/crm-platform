@@ -16,17 +16,19 @@ import { LOGIC_FUNCTION_EXTERNAL_MODULES } from '@/cli/utilities/build/common/es
 import { getBaseFrontComponentBuildOptions } from '@/cli/utilities/build/common/front-component-build/utils/get-base-front-component-build-options';
 import { getFrontComponentBuildPlugins } from '@/cli/utilities/build/common/front-component-build/utils/get-front-component-build-plugins';
 import { createStubTwentySdkDefinePlugin } from '@/cli/utilities/build/common/plugins/stub-twenty-sdk-define.plugin';
+import { getExternalPackageNames } from '@/cli/utilities/build/common/get-external-package-names.util';
+import { resolveRuntimeDependencies } from '@/cli/utilities/build/common/resolve-runtime-dependencies.util';
 import { type OnFileBuiltCallback } from '@/cli/utilities/build/common/restartable-watcher-interface';
 import { buildSharedDependenciesBundle } from '@/cli/utilities/build/common/front-component-build/shared-dependencies-build/build-shared-dependencies-bundle';
 import { type SharedDependenciesBuildContext } from '@/cli/utilities/build/common/front-component-build/shared-dependencies-build/types/shared-dependencies-build-context.type';
 import { type EntityFilePaths } from '@/cli/utilities/build/manifest/manifest-extract-config';
+import { SHIPPED_YARN_LOCK_RELATIVE_PATH } from '@/cli/utilities/build/manifest/manifest-update-checksums';
 import { loadFrontComponentTranslationCatalogs } from '@/cli/utilities/translations/load-front-component-translation-catalogs';
 import {
   copy,
   emptyDir,
   ensureDir,
   pathExists,
-  pathExistsSync,
 } from '@/cli/utilities/file/fs-utils';
 import { FRONT_COMPONENT_TRANSLATIONS_KEY } from '@/sdk/front-component/constants/front-component-translations-key';
 
@@ -90,7 +92,7 @@ export const buildApplication = async (
       }
     : undefined;
 
-  await esbuildOneShotBuild({
+  const logicFunctionMetafile = await esbuildOneShotBuild({
     appPath: options.appPath,
     sourcePaths: logicFunctions,
     fileFolder: FileFolder.BuiltLogicFunction,
@@ -161,11 +163,10 @@ export const buildApplication = async (
     collectFileBuilt,
   });
 
-  await copyStaticFiles({
+  await writeRuntimeDependencies({
     appPath: options.appPath,
-    fileFolder: FileFolder.Dependencies,
-    filePaths: ['package.json', 'yarn.lock'].filter((filePath) =>
-      pathExistsSync(join(options.appPath, filePath)),
+    externalPackageNames: getExternalPackageNames(
+      logicFunctionMetafile ?? undefined,
     ),
     collectFileBuilt,
   });
@@ -181,6 +182,82 @@ export const buildApplication = async (
   await copyReadmeToOutput(options.appPath);
 
   return { builtFileInfos };
+};
+
+const writeRuntimeDependencies = async ({
+  appPath,
+  externalPackageNames,
+  collectFileBuilt,
+}: {
+  appPath: string;
+  externalPackageNames: ReadonlySet<string>;
+  collectFileBuilt: OnFileBuiltCallback;
+}) => {
+  const sourcePackageJsonPath = join(appPath, 'package.json');
+
+  const sourcePackageJsonContent = await readFile(
+    sourcePackageJsonPath,
+    'utf-8',
+  );
+  const sourcePackageJson = JSON.parse(sourcePackageJsonContent) as {
+    dependencies?: Record<string, string>;
+  };
+
+  const { dependencies } = resolveRuntimeDependencies({
+    dependencies: sourcePackageJson.dependencies,
+    externalPackageNames,
+  });
+
+  // A runtime dependency the bundle does not contain can only be satisfied by a
+  // registry install, so it must stay declared. Everything else was inlined by
+  // esbuild and would only buy a network round-trip for code we already ship.
+  const runtimePackageJsonContent = `${JSON.stringify(
+    { ...sourcePackageJson, dependencies },
+    null,
+    2,
+  )}\n`;
+
+  const builtPackageJsonPath = join(OUTPUT_DIR, 'package.json');
+
+  await writeFile(
+    join(appPath, builtPackageJsonPath),
+    runtimePackageJsonContent,
+  );
+  collectFileBuilt({
+    fileFolder: FileFolder.Dependencies,
+    builtPath: builtPackageJsonPath,
+    sourcePath: 'package.json',
+    checksum: crypto
+      .createHash('md5')
+      .update(runtimePackageJsonContent)
+      .digest('hex'),
+  });
+
+  const yarnLockPath = join(appPath, 'yarn.lock');
+
+  if (!(await pathExists(yarnLockPath))) {
+    return;
+  }
+
+  const yarnLockContent = await readFile(yarnLockPath);
+  const yarnLockChecksum = crypto
+    .createHash('md5')
+    .update(yarnLockContent)
+    .digest('hex');
+
+  // `npm pack` drops a root-level lockfile unconditionally, and the installer
+  // reads its copy back from the tarball, so the shipped copy lives under
+  // dependencies/ where the packer leaves it alone.
+  const shippedYarnLockPath = join(OUTPUT_DIR, SHIPPED_YARN_LOCK_RELATIVE_PATH);
+
+  await ensureDir(dirname(join(appPath, shippedYarnLockPath)));
+  await writeFile(join(appPath, shippedYarnLockPath), yarnLockContent);
+  collectFileBuilt({
+    fileFolder: FileFolder.Dependencies,
+    builtPath: shippedYarnLockPath,
+    sourcePath: 'yarn.lock',
+    checksum: yarnLockChecksum,
+  });
 };
 
 const writeGeneratedAsset = async ({
