@@ -11,8 +11,9 @@ export type ApplicationFileToStore = {
 };
 
 // A root-level yarn.lock is dropped by `npm pack`, so packages built with the
-// current SDK ship it one directory down. Root is still read first so packages
-// published before that layout keep installing.
+// current SDK ship it one directory down. Packages published before that layout
+// carry no lockfile at all, which is why the entry is only added when the
+// manifest declares a checksum for it.
 export const SHIPPED_YARN_LOCK_RELATIVE_PATH = 'dependencies/yarn.lock';
 
 export const buildApplicationFileList = (
