@@ -437,3 +437,62 @@ Cursor's reported metadata relation paths: eventLead.personId → Person; eventR
 ### Resume prompt
 
 > Read the LAST checkpoint of `docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md` on `docs/record-access-architecture-recovery-098-102`. CRM-120 local-only 6011fe7279, CRM-121 local-only 4995e67c48; Event Registration candidate 0.1.13 and Communication candidate 0.1.74 are not deployed (production 0.1.12/0.1.72). CRM-122 release readiness has not started and is the NEXT OPEN GATE. CRM-123-R1 dynamic collaborator architecture reviewed but not implemented: start with isolated metadata-only slice A after 122 closes, then separately approve safe Person policy slice B. Do not modify core RLS, push, deploy or touch production without explicit authorization. STOP_FOR_ARCHITECT.
+
+
+---
+
+## RECOVERY CHECKPOINT — 2026-11-16 — CRM-122 release, runtime defect and next gate
+
+**Source of operational evidence:** Cursor reports supplied by user for CRM-122, CRM-122-R1/R2/R3 and CRM-COMMUNICATION-RUNTIME-123A. Unless otherwise stated, these are **reported results**, not independently re-executed by the architect. This checkpoint updates the earlier "120/121 unpushed, 122 not started" checkpoint above.
+
+### Current delivery status
+
+- **CRM-120**: PASS; Event Registration **0.1.13** installed on crm-intranet :6080; financial validation passed. Code pushed.
+- **CRM-121**: PASS; Communication **0.1.74** installed on crm-intranet :6080; /communication/send returned expected fail-closed \`CALLER_NOT_A_USER\` after recovery, without sending a message. Code pushed.
+- **CRM-122-R1**: push fast-forward from \`575c47a848cb41b99a446379c0dee514a525061c\` to \`4995e67c486dbab3ad969493526c3164ec5fd53f\` on \`origin/release/record-access-115\`; no force. Verified backup \`D:\CrmDeployment\migration\pre122r1-intranet-20261116-152107.dump\` (1,751,002 bytes; 1,317 TOC entries) was restored in isolated postgres:16 with zero errors and checked against installed apps, data, predicates, triggers.
+- **CRM-122-R2**: controlled deployment installed Event Registration 0.1.13 and Communication 0.1.74. First Communication invocation encountered dependency-layer HTTP 500; do NOT describe the release as fully durable.
+- **CRM-122-R3**: short-term recovery of only \`deps/33f3154e3015f2c34379f3c3407fc931\` using proven compatible warm \`deps/default\` module \`@sniptt/guards@0.2.0\`; sentinel written after compatibility checks. \`/communication/send\` returned \`CALLER_NOT_A_USER\`; \`/event-registration/prepare\` returned valid response. No send, no DB drift, no restart. Temporary API key revoked. **Cache is in container /tmp; restarting/recreating the container may break runtime again. Do not restart until durable fix is deployed.**
+- **CRM-COMMUNICATION-RUNTIME-123A**: local-only source repair, commit \`6384603792\` **NOT pushed and NOT deployed**. Reported unit/build tests PASS, with qualifications below. This is the **next open gate**, not CRM-123 multi-collaborator implementation.
+- **CRM-123 multi-collaborator**: architecture approved for isolated metadata-only slice A, **not implemented**; resume only after runtime fix is durably deployed and verified. The similarly numbered \`123A\` runtime task is distinct from CRM-123 collaborator project.
+
+### Corrected root cause — prior R2 explanation was wrong
+
+The earlier hypothesis that upgrading Communication changed the lock checksum was **refuted by pre-install backup**. Communication 0.1.72 and 0.1.74 both have \`yarnLockChecksum=33f3154e3015f2c34379f3c3407fc931\`, \`yarnLockFileId=NULL\`, \`isSdkLayerStale=true\`. First invocation created a missing dependency layer and attempted network installation; host registry resolved to \`127.153.0.147:443\`, producing \`ECONNREFUSED\`.
+
+Three-layer source root cause reported in 123A:
+1. \`packages/twenty-sdk/src/cli/operations/build.ts:112\` invokes \`npm pack\`; \`npm-packlist/lib/index.js:298\` always ignores root \`/yarn.lock\`. Manifest checksum was computed from a lockfile that did not ship. Packaging \`dependencies/yarn.lock\` survives npm pack.
+2. \`build-application-file-list.util.ts\` installer only mapped dependency \`package.json\`, omitting \`yarn.lock\` even when present; \`application-sync.service.ts:283\` still stored checksum. \`logic-function-resource.service.ts:296-306\` silently generated 84-byte stub when lock missing.
+3. \`local-layer-manager.service.ts\` unconditionally ran \`yarn workspaces focus --all --production\`, reaching blocked registry. But esbuild had inlined \`@sniptt/guards\` into Communication; Event Registration's declaration was unused, so runtime dependencies could be zero.
+
+Checksums: manifest md5 lock \`33f3154e3015f2c34379f3c3407fc931\`; sha512 prefix of real lock \`7d8d64d4…\`, of stub \`98e4c167…\`. The initial R2 explanation **must not be reused**.
+
+### Local source fix 6384603792 — reported implementation and evidence
+
+SDK changes: \`build-application.ts\`, \`esbuild-one-shot-build.ts\`, \`manifest-update-checksums.ts\`, \`get-external-package-names.util.ts\` (+spec), \`resolve-runtime-dependencies.util.ts\` (+spec).
+
+Server changes: \`build-application-file-list.util.ts\` (+spec), \`application-install.service.ts\`, \`local-layer-manager.service.ts\` (+spec), \`lambda-layer-manager.service.ts\`, \`logic-function-resource.service.ts\`, \`has-package-json-runtime-dependencies.util.ts\`, \`empty-yarn-lock-content.constant.ts\`.
+
+Reported behavior:
+- Pack includes \`package/dependencies/yarn.lock\` (121,153 bytes); manifest checksum matches actual shipped lock; installer maps it to stored \`yarn.lock\` and fails if declared checksum lacks file.
+- Packaged \`package.json\` runtime dependencies are \`{}\` after accounting for esbuild-inlined packages; no unnecessary network install for these two apps.
+- Cold dependency layer tested in production image with \`--network none\`, empty Yarn cache: fixed artifact exit 0, old artifact exit 1. Layer wiped and rebuilt from manifest+lock offline; readiness now requires sentinel **and** node_modules; missing package.json errors.
+- Communication build/pack/offline module load PASS; Event Registration equivalent PASS. SDK vitest 399/399, server Jest 10/10, typechecks and touched-dir lint PASS.
+- **Not proven:** literal production or isolated full-stack container restart; real publish/install to isolated server; genuine external dependency packages with no registry/mirror. Existing Windows path-separator spec failures and unrelated translation-sync lint error were reported unchanged.
+- **Production unchanged by 123A**. Live installed artifacts still have declared \`@sniptt/guards\` and no stored lockfile; do not assume a source commit alone repairs them.
+
+### Architect goal, acceptance and deployment gates
+
+**Goal:** Communication and Event Registration must execute after server/container replacement **without relying on ephemeral /tmp cache or a reachable public package registry**, while preserving permission gate, data, app state and current integrations. No fake PASS based on healthz alone.
+
+**Next required work (bounded, approval-gated):**
+1. Independently review local \`6384603792\` diff, packaging/lock checksum mapping and test evidence; confirm no accidental change to unrelated SDK consumers or genuine external dependencies. Current remote release SHA remains \`4995e67c48\` unless separately changed.
+2. Validate complete isolated \`app:publish --private\` + \`app:install\` on a disposable server, preferably with offline cold start and container recreation. The layer-level test is strong but **not** equivalent to a full installation proof.
+3. Present explicit rollback/restore plan, full image provenance, backup freshness, and controlled rollout order: server image with corrected source → rebuild and publish/install Event Registration and Communication artifacts → live non-sending authorization probe → offline/cold-start durability verification. If the deployment changes runtime or requires restart, **seek explicit authorization**; previous no-restart authorization still applies.
+4. Do not push, deploy, restart, reinstall, restore, alter DB, or modify production under this checkpoint. Preserve currently working \`/tmp\` layer until authorized durable rollout. Report STOP_FOR_ARCHITECT with precise evidence and blockers.
+5. Once durable rollout PASS is verified, mark **CRM-122 fully CLOSED** and resume **CRM-123 multi-collaborator slice A** (manager-controlled \`personCollaborator\` custom metadata, no RLS core modification in slice A).
+
+**Separate product requirement (not next task):** On record-field change, choose an existing SMS template, evaluate old vs new value, trigger a workflow after successful save, send through Communication, deduplicate and log outcome. Feasibility is plausible; exact built-in Workflow/Communication integration remains unverified. Do not let this side question interrupt the runtime recovery or collaborator sequencing.
+
+### Resume instruction
+
+> FIRST read the newest CRM-122/123A checkpoint in this file. The installed CRM versions are Event Registration 0.1.13, Communication 0.1.74, Record Access 0.2.4; the first two run only due to temporary /tmp dependency layer recovery. Release source remote 4995e67c48; local runtime fix 6384603792 is not pushed/deployed. Review and test the local fix, prove isolated install/recreate and obtain separate production-image/reinstall/restart approval. Only after durable verification close CRM-122 and resume CRM-123 collaborator metadata slice A. Never repeat the disproven changed-checksum diagnosis.
