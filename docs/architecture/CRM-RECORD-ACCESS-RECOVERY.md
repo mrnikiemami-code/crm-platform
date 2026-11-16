@@ -496,3 +496,30 @@ Reported behavior:
 ### Resume instruction
 
 > FIRST read the newest CRM-122/123A checkpoint in this file. The installed CRM versions are Event Registration 0.1.13, Communication 0.1.74, Record Access 0.2.4; the first two run only due to temporary /tmp dependency layer recovery. Release source remote 4995e67c48; local runtime fix 6384603792 is not pushed/deployed. Review and test the local fix, prove isolated install/recreate and obtain separate production-image/reinstall/restart approval. Only after durable verification close CRM-122 and resume CRM-123 collaborator metadata slice A. Never repeat the disproven changed-checksum diagnosis.
+
+
+---
+
+## ARCHITECT RECOVERY UPDATE — 2026-11-16 — CRM-COMMUNICATION-RUNTIME-123A-R1/R2
+
+**This section supersedes the previous checkpoint's stale remote SHA and "local/unpushed" wording.** Source: user-supplied Cursor R1/R2 reports plus independent GitHub comparison and file reads by architect. Production state is *reported*, not independently inspected.
+
+### Verified remote code state
+
+- Release branch: `release/record-access-115`; reported HEAD `53db32b3b8` equals origin, clean working tree. Independently verified GitHub comparison `4995e67c486dbab3ad969493526c3164ec5fd53f...53db32b3b8`: **ahead 2, behind 0, 16 changed files** in SDK build and server app installation/logic-function layers, with no direct changes to RLS, Person, collaborator metadata or customer tables. This scope check **does not** prove whole-system architectural correctness.
+- Local fix `6384603792` was subsequently pushed as part of the two-commit advance; do not describe it as still unpushed.
+- R1 reported: Communication pack 32 files, Event Registration pack 7 files; `dependencies/yarn.lock` 121153 bytes; checksum md5 `33f3154e3015f2c34379f3c3407fc931`; runtime deps `{}`; offline cold start in production image and fresh container with no network PASS; Communication `CALLER_NOT_A_USER` and Event Registration read-only prepare PASS. SDK 228+399 vitest, server 10/10, typechecks PASS. **Real full-stack isolated app publish/install not run**.
+- R2 reported: new image `crm-intranet/twenty:53db32b3` **NOT built**; no image digest; no production changes; production still uses current image and temporary `/tmp` recovery. `healthz=200` reported. No restart, app reinstall or DB write.
+- Build blocker: Docker VM resolves `registry.npmjs.org` to `127.153.0.107` and returns `ECONNREFUSED`; Windows host reportedly reaches registry. Dockerfile line 71 always invokes `npx nx run twenty-front:lingui:extract`, before line 76 prebuilt-front shortcut; target has `dependsOn: ["^build"]` (architect independently verified in `packages/twenty-front/project.json`). SDK build script `npx rimraf dist && npx vite build` (architect independently verified in `packages/twenty-sdk/package.json`). In Docker `front-deps`, `rimraf` absent; `npx` attempts registry fetch; `server-deps` reportedly has rimraf 5.0.10. Existing focus layers cached; adding deps invalidates cache without offline mirror. Prebuilt front does **not** skip Lingui. No Dockerfile edit or Docker network change authorized so far.
+- Do **not** propose the previously failed host-network mode or prebuild-only shortcut as if verified. No `docker system prune` on this host. No workaround that suppresses translation extraction without preserving correct generated catalogs.
+
+### Architecture preservation / next decision
+
+1. **Prefer repair of Docker VM registry egress** via bounded diagnosis of Docker Desktop DNS/proxy/network, preserving reproducible original Dockerfile and locked dependencies. Obtain authorization before changing host Docker settings; never disrupt running crm-intranet containers. A Dockerfile fix may be evaluated only with explicit source-grounded dependency-stage design and proof of cold reproducible build; not by adding an unpinned binary or skipping Lingui.
+2. Keep code `53db32b3b8` and production `c4d3efd8` separate; production must not be restarted/recreated before new image + app artifacts and rollback plan are ready. Existing app tarballs cannot be reinstalled on new fail-loud installer because their declared checksum has no stored lockfile.
+3. Release order when separately approved: **new server image → rebuild/install Event Registration → rebuild/install Communication**, with non-sending authorization probe, finance regression, persistence/cold-start validation, and rollback proof. Backup `pre122r1-intranet-20261116-152107.dump` reported verified; rollback image `crm-intranet/twenty:c4d3efd8` digest `sha256:ae6a9e54c576f62fff1c1a2b4a380da750dda432ecaca2feac3b5b92529f362a`.
+4. **CRM-122 is NOT fully closed. CRM-123 collaborator implementation is paused** until durable Communication deployment is verified. No additional code work on collaborator authorization yet.
+
+### Recovery discovery warning
+
+This document currently lives on branch `docs/record-access-architecture-recovery-098-102`, **not automatically on the active release branch**. A fresh chat must explicitly fetch this branch/path, or the document must be separately copied into a stable tracked architecture location on the active branch with an approved commit. Do not claim discoverability from release branch until verified. Read the **latest appended checkpoint** rather than the stale opening "Updated 2026-11-14" header.
