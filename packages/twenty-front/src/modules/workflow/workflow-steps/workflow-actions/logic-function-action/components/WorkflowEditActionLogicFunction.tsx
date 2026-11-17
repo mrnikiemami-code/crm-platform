@@ -19,10 +19,17 @@ import { WorkflowEditActionCodeFields } from '@/workflow/workflow-steps/workflow
 import { mergeDefaultFunctionInputAndFunctionInput } from '@/workflow/workflow-steps/workflow-actions/code-action/utils/mergeDefaultFunctionInputAndFunctionInput';
 import { setNestedValue } from '@/workflow/workflow-steps/workflow-actions/code-action/utils/setNestedValue';
 import { WORKFLOW_LOGIC_FUNCTION_ACTION_TAB_LIST_COMPONENT_ID } from '@/workflow/workflow-steps/workflow-actions/logic-function-action/constants/WorkflowLogicFunctionActionTabListComponentId';
+import { TriggerDerivedInputInitEffect } from '@/workflow/workflow-steps/workflow-actions/logic-function-action/components/TriggerDerivedInputInitEffect';
+import {
+  buildTriggerDerivedInputValues,
+  hasTriggerDerivedProperties,
+} from '@/workflow/workflow-steps/workflow-actions/logic-function-action/utils/buildTriggerDerivedInputValues';
+import { useWorkflowWithCurrentVersion } from '@/workflow/hooks/useWorkflowWithCurrentVersion';
+import { workflowVisualizerWorkflowIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowIdComponentState';
 import { WorkflowVariablePicker } from '@/workflow/workflow-variables/components/WorkflowVariablePicker';
 import { styled } from '@linaria/react';
 import { useLingui } from '@lingui/react/macro';
-import { isObject } from '@sniptt/guards';
+import { isNonEmptyString, isObject } from '@sniptt/guards';
 import { useMemo } from 'react';
 import { getOutputSchemaFromValue } from 'twenty-shared/logic-function';
 import { isDefined } from 'twenty-shared/utils';
@@ -79,6 +86,28 @@ export const WorkflowEditActionLogicFunction = ({
   const isThirdPartyApp = useIsThirdPartyApplication(
     logicFunction?.applicationId,
   );
+
+  const workflowVisualizerWorkflowId = useAtomComponentStateValue(
+    workflowVisualizerWorkflowIdComponentState,
+  );
+  const workflow = useWorkflowWithCurrentVersion(workflowVisualizerWorkflowId);
+
+  const workflowActionSettings = logicFunction?.workflowActionTriggerSettings;
+
+  const triggerDerivation = useMemo(
+    () =>
+      buildTriggerDerivedInputValues({
+        inputSchema: workflowActionSettings?.inputSchema,
+        trigger: workflow?.currentVersion?.trigger,
+        workflowId: workflow?.id,
+      }),
+    [workflowActionSettings?.inputSchema, workflow],
+  );
+
+  const showsTriggerGuidance =
+    hasTriggerDerivedProperties(workflowActionSettings?.inputSchema) &&
+    !triggerDerivation.isDerivable &&
+    isNonEmptyString(workflowActionSettings?.triggerRequirementMessage);
 
   const activeTabId = useAtomComponentStateValue(
     activeTabIdComponentState,
@@ -248,6 +277,13 @@ export const WorkflowEditActionLogicFunction = ({
         </>
       ) : (
         <StyledContainer>
+          {showsTriggerGuidance && (
+            <Callout
+              variant={'warning'}
+              title={t`Trigger not configured`}
+              description={workflowActionSettings?.triggerRequirementMessage}
+            />
+          )}
           {hasInputFields ? (
             <WorkflowEditActionCodeFields
               functionInput={functionInput}
@@ -266,11 +302,13 @@ export const WorkflowEditActionLogicFunction = ({
               description={t`You can see the function logic in your application settings.`}
             />
           )}
-          <WorkflowExpectedOutputBodyInput
-            defaultValue={action.settings.expectedOutputSchema}
-            onChange={handleExpectedOutputBodyChange}
-            readonly={actionOptions.readonly}
-          />
+          {workflowActionSettings?.hideExpectedOutput === true ? null : (
+            <WorkflowExpectedOutputBodyInput
+              defaultValue={action.settings.expectedOutputSchema}
+              onChange={handleExpectedOutputBodyChange}
+              readonly={actionOptions.readonly}
+            />
+          )}
         </StyledContainer>
       )}
     </WorkflowStepBody>
@@ -282,6 +320,15 @@ export const WorkflowEditActionLogicFunction = ({
       enabled={!isThirdPartyApp}
     >
       <LogicFunctionTestInputInitEffect logicFunctionId={logicFunctionId} />
+      {actionOptions.readonly !== true &&
+        triggerDerivation.isDerivable &&
+        Object.keys(triggerDerivation.values).length > 0 && (
+          <TriggerDerivedInputInitEffect
+            action={action}
+            values={triggerDerivation.values}
+            onActionUpdate={actionOptions.onActionUpdate}
+          />
+        )}
       {!isThirdPartyApp && (
         <StyledTabListContainer>
           <TabList

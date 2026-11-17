@@ -114,6 +114,7 @@ export type { FunctionInput } from './types/FunctionInput';
 export type {
   RecordSchemaType,
   InputSchemaPropertyType,
+  TriggerDerivedValue,
   InputSchemaProperty,
   InputSchema,
 } from './types/InputSchema';

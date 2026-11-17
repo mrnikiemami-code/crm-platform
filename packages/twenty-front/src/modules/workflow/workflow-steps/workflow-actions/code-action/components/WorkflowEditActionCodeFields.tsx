@@ -50,6 +50,14 @@ export const WorkflowEditActionCodeFields = ({
           inputSchema,
           currentPath,
         );
+
+        // A property the platform supplies is not rendered: the author has
+        // nothing meaningful to type, and showing a raw variable expression
+        // would only invite them to break it.
+        if (schemaProperty?.isHidden === true) {
+          return null;
+        }
+
         const displayLabel = isNonEmptyString(schemaProperty?.label)
           ? schemaProperty.label
           : inputKey;

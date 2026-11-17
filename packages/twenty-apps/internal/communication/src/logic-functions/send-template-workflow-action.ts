@@ -76,14 +76,22 @@ export default defineLogicFunction({
   workflowActionTriggerSettings: {
     label: 'ارسال پیامک از الگو',
     icon: 'IconMessage',
+    // The author only chooses a template. The trigger-supplied values below are
+    // declared (a property absent from the schema never reaches the function)
+    // but hidden, and the builder fills them from the workflow trigger.
+    // Hiding the expected-output box removes the last developer-facing field.
+    hideExpectedOutput: true,
+    triggerRequirementMessage:
+      'این عملیات فقط با محرک «تغییر ستون» (رویداد updated) و انتخاب دقیقاً یک ستون کار می‌کند. ابتدا در بخش محرک گردش کار، رویداد updated و همان ستون را انتخاب کنید.',
     inputSchema: [
       {
         type: 'object',
         properties: {
           // Declared as a RECORD of the template object, not as free text. The
-          // builder then renders the platform's own record picker scoped to SMS
-          // templates, showing each template's TITLE and storing its id — so an
-          // operator selects a Persian template name and never types a UUID.
+          // builder then renders the platform's own record picker scoped to
+          // messageTemplate rows, showing each template's TITLE and storing its
+          // id — so an operator selects a Persian template name and never types
+          // a UUID.
           templateId: {
             type: 'record',
             objectUniversalIdentifier:
@@ -93,22 +101,32 @@ export default defineLogicFunction({
           sourceObjectNameSingular: {
             type: 'string',
             label: 'نام موجودیت رکورد',
+            isHidden: true,
+            derivedFromTrigger: 'objectName',
           },
           sourceRecordId: {
             type: 'string',
             label: 'شناسه رکورد',
+            isHidden: true,
+            derivedFromTrigger: 'recordId',
           },
           fieldName: {
             type: 'string',
             label: 'ستون تغییرکرده',
+            isHidden: true,
+            derivedFromTrigger: 'watchedField',
           },
           beforeValue: {
             type: 'unknown',
             label: 'مقدار قبل از تغییر',
+            isHidden: true,
+            derivedFromTrigger: 'beforeValue',
           },
           afterValue: {
             type: 'unknown',
             label: 'مقدار بعد از تغییر',
+            isHidden: true,
+            derivedFromTrigger: 'afterValue',
           },
           // The write identity. Mapping it is what allows A→B→A to send twice
           // while a replay of one event still sends once; without it the step
@@ -116,10 +134,14 @@ export default defineLogicFunction({
           eventId: {
             type: 'string',
             label: 'شناسه رویداد',
+            isHidden: true,
+            derivedFromTrigger: 'eventId',
           },
           workflowId: {
             type: 'string',
             label: 'شناسه گردش کار',
+            isHidden: true,
+            derivedFromTrigger: 'workflowId',
           },
         },
       },
