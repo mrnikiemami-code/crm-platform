@@ -1,10 +1,9 @@
 import { defineLogicFunction } from 'twenty-sdk/define';
-import { CoreApiClient } from 'twenty-client-sdk/core';
 
 import { TITLE_ON_UPDATE_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import { RecordGraphqlError } from 'src/data/record-graphql';
 import {
   readEventRecordId,
-  readTitleRecordFields,
   updatesWatchedField,
 } from 'src/domain/title-event-payload';
 import { syncSalesInteractionTitle } from 'src/services/title-sync';
@@ -13,36 +12,54 @@ import { syncSalesInteractionTitle } from 'src/services/title-sync';
 // follow-up.
 //
 // `callAttempt` is watched because the title names the attempt. `name` is watched
-// because clearing or editing it decides ownership: an edit turns the title into a
-// hand-written one, and the app must then stop following it.
+// because a change to it decides OWNERSHIP: if the new text is not what this app
+// would have produced, a person typed it and ownership is released.
 //
-// The app's own write also updates `name`, so this function can re-enter. That is
-// handled by the domain rule that returns TITLE_UNCHANGED when the stored title
-// already matches, so the second pass writes nothing and the chain stops.
+// Whether `name` was part of THIS event is the discriminator, and it is read from
+// the event's own `updatedFields` rather than inferred from the text. That is what
+// lets the app's own write be recognised as its own (the resulting title equals
+// the computed one, so nothing happens) while a genuine edit releases ownership.
+//
+// The app's write also updates `name`, so this function can re-enter; the
+// "already correct" rule makes the second pass a no-op and the chain stops.
 const WATCHED_FIELDS = ['callAttempt', 'name'] as const;
 
 const handler = async (payload: unknown) => {
   if (!updatesWatchedField(payload, WATCHED_FIELDS)) {
-    return { applied: false, because: 'FIELD_NOT_WATCHED' };
+    return { action: 'NO_WRITE', because: 'FIELD_NOT_WATCHED' };
   }
 
   const recordId = readEventRecordId(payload);
-  const fields = readTitleRecordFields(payload, 'after');
 
-  if (recordId === null || fields === null) {
-    return { applied: false, because: 'NO_RECORD_IN_PAYLOAD' };
+  if (recordId === null) {
+    console.error('[sales-followup-title-on-update] NO_RECORD_IN_PAYLOAD');
+
+    return { action: 'NO_WRITE', because: 'NO_RECORD_IN_PAYLOAD' };
   }
 
-  const client = new CoreApiClient();
+  try {
+    return await syncSalesInteractionTitle({
+      recordId,
+      titleEditedInThisEvent: updatesWatchedField(payload, ['name']),
+    });
+  } catch (error) {
+    console.error(
+      `[sales-followup-title-on-update] failed: ${
+        error instanceof RecordGraphqlError
+          ? error.message
+          : 'UNEXPECTED_FAILURE'
+      }`,
+    );
 
-  return syncSalesInteractionTitle({ client, recordId, fields });
+    throw error;
+  }
 };
 
 export default defineLogicFunction({
   universalIdentifier: TITLE_ON_UPDATE_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER,
   name: 'sales-followup-title-on-update',
   description:
-    'Keeps an AUTOMATIC sales follow-up title in step with the call attempt, and never touches a hand-written one.',
+    'Keeps an AUTOMATIC sales follow-up title in step with the call attempt, and releases ownership the moment a person edits the title.',
   timeoutSeconds: 30,
   handler,
   databaseEventTriggerSettings: {

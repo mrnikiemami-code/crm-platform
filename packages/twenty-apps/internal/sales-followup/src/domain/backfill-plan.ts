@@ -1,5 +1,7 @@
+import { isNonEmptyString } from '@sniptt/guards';
+
 import {
-  buildSalesInteractionTitle,
+  decideSalesInteractionTitle,
   type SalesInteractionTitleState,
 } from 'src/domain/sales-interaction-title';
 
@@ -42,6 +44,9 @@ export type BackfillPlanSummary = {
  * A record whose computed title already equals the stored one is `PRESERVE` with
  * `TITLE_UNCHANGED`, so running the backfill twice is a no-op the second time —
  * the property that makes it safe to re-run after a partial failure.
+ *
+ * The backfill never treats a title as edited (`titleEditedInThisEvent` is false):
+ * it is not reacting to an event, and any non-empty title is out of scope by rule.
  */
 export const planTitleBackfill = (
   records: readonly BackfillRecord[],
@@ -57,49 +62,70 @@ export const planTitleBackfill = (
       titleIsAuto: record.titleIsAuto,
     };
 
-    const computed = buildSalesInteractionTitle(state);
-    const hasTitle =
-      typeof record.title === 'string' && record.title.trim().length > 0;
+    const decision = decideSalesInteractionTitle({
+      state,
+      titleEditedInThisEvent: false,
+    });
 
-    if (computed === null) {
-      items.push({
-        id: record.id,
-        action: 'PRESERVE',
-        title: record.title,
-        because: 'TITLE_UNBUILDABLE',
-      });
-      continue;
-    }
-
-    if (!hasTitle) {
+    if (decision.kind === 'WRITE_TITLE' && decision.because === 'TITLE_EMPTY') {
       items.push({
         id: record.id,
         action: 'FILL',
-        title: computed,
+        title: decision.title,
         because: 'TITLE_EMPTY',
       });
       continue;
     }
 
+    if (decision.kind === 'NO_WRITE') {
+      if (decision.because === 'TITLE_UNBUILDABLE') {
+        items.push({
+          id: record.id,
+          action: 'PRESERVE',
+          title: record.title,
+          because: 'TITLE_UNBUILDABLE',
+        });
+        continue;
+      }
+
+      if (decision.because === 'TITLE_ALREADY_CORRECT') {
+        items.push({
+          id: record.id,
+          action: 'PRESERVE',
+          title: record.title,
+          because: 'TITLE_UNCHANGED',
+        });
+        continue;
+      }
+    }
+
+    // Everything else keeps the title as it is: a manual title, a legacy row with
+    // no recorded ownership, or an automatic title whose facts changed. The last
+    // one is out of scope for a backfill — the live trigger handles it.
     items.push({
       id: record.id,
       action: 'PRESERVE',
       title: record.title,
-      because:
-        computed === record.title?.trim() ? 'TITLE_UNCHANGED' : 'TITLE_MANUAL',
+      because: 'TITLE_MANUAL',
     });
   }
 
+  const countWhere = (predicate: (item: BackfillPlanItem) => boolean): number =>
+    items.filter(predicate).length;
+
   return {
     items,
-    fill: items.filter((item) => item.action === 'FILL').length,
-    preserve: items.filter((item) => item.action === 'PRESERVE').length,
-    preserveManual: items.filter(
+    fill: countWhere((item) => item.action === 'FILL'),
+    preserve: countWhere((item) => item.action === 'PRESERVE'),
+    preserveManual: countWhere(
       (item) => item.action === 'PRESERVE' && item.because === 'TITLE_MANUAL',
-    ).length,
-    preserveUnbuildable: items.filter(
+    ),
+    preserveUnbuildable: countWhere(
       (item) =>
         item.action === 'PRESERVE' && item.because === 'TITLE_UNBUILDABLE',
-    ).length,
+    ),
   };
 };
+
+export const isNonEmptyTitle = (value: string | null): boolean =>
+  isNonEmptyString(value) && value.trim().length > 0;

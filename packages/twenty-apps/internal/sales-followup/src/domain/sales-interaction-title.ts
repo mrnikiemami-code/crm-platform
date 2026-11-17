@@ -83,85 +83,95 @@ export type SalesInteractionTitleState = {
   customerLastName: string | null;
   /** The value stored in the interaction's `name` field. */
   title: string | null;
-  /** The stored ownership flag; `null` for a row that predates the field. */
+  /** The stored ownership flag; `null` when it was never recorded. */
   titleIsAuto: boolean | null;
 };
 
 export type SalesInteractionTitleDecision =
-  | { apply: true; title: string; titleIsAuto: true; because: 'TITLE_EMPTY' }
   | {
-      apply: true;
+      kind: 'WRITE_TITLE';
       title: string;
       titleIsAuto: true;
-      because: 'TITLE_WAS_AUTO';
+      because: 'TITLE_EMPTY' | 'FACTS_CHANGED';
     }
+  /** The title was edited by a person: only ownership changes, the text never. */
+  | { kind: 'RELEASE_OWNERSHIP'; titleIsAuto: false; because: 'TITLE_MANUAL_EDIT' }
   | {
-      apply: false;
+      kind: 'NO_WRITE';
       because:
         | 'TITLE_UNBUILDABLE'
+        | 'TITLE_ALREADY_CORRECT'
         | 'TITLE_MANUAL'
-        | 'TITLE_UNCHANGED'
         | 'OWNERSHIP_ABSENT';
-      title: string | null;
     };
 
 /**
- * Whether to (re)write the title, and why.
+ * Whether to write the title, release ownership, or do nothing — and why.
  *
- * The ownership flag is the ONLY thing that decides whether an existing title may
- * be replaced; the text is never inspected for a resemblance to the generated
- * wording. Two guards keep the app from destroying text it did not write:
+ * `titleEditedInThisEvent` is what makes the manual-edit contract work, and it is
+ * the reason the caller must pass the event's `updatedFields` rather than guess
+ * from the text. The order of the checks is the contract:
  *
- *  - an EMPTY title is always safe to fill (nobody loses text), and filling it
- *    claims ownership so later edits can follow;
- *  - a non-empty title is replaced only when ownership is explicitly `true`.
- *
- * `OWNERSHIP_ABSENT` reports a non-empty title on a row whose flag is `null` —
- * a legacy row. Rewriting it is exactly the destructive case, so it is reported
- * (the backfill decides, once, under review) rather than acted on.
- *
- * `TITLE_UNCHANGED` is returned when the computed title already equals the stored
- * one, so a no-op never issues a write and cannot re-trigger its own event.
+ *  1. `TITLE_ALREADY_CORRECT` — the stored title equals what this app would
+ *     generate. This is what the app's OWN write looks like on the way back, so
+ *     it stops the re-entry loop and is never mistaken for a manual edit.
+ *  2. `TITLE_MANUAL_EDIT` — the title changed in THIS event and does not match
+ *     what the app would generate, so a person typed it. Ownership is released
+ *     (`titleIsAuto=false`) so no later attempt or rename can overwrite it.
+ *     The text is left exactly as typed.
+ *  3. `FACTS_CHANGED` — the attempt or the customer changed but the title did
+ *     not, and ownership is still ours, so the title follows.
+ *  4. Otherwise the title is left alone: manual, legacy (`null` ownership, which
+ *     is only ever resolved by the reviewed backfill), or unbuildable.
  */
 export const decideSalesInteractionTitle = ({
   state,
+  titleEditedInThisEvent,
 }: {
   state: SalesInteractionTitleState;
+  /** True when `name` is among the fields this event changed. */
+  titleEditedInThisEvent: boolean;
 }): SalesInteractionTitleDecision => {
-  const nextTitle = buildSalesInteractionTitle(state);
+  const expectedTitle = buildSalesInteractionTitle(state);
   const currentTitle = clean(state.title);
 
-  if (nextTitle === null) {
-    return { apply: false, because: 'TITLE_UNBUILDABLE', title: currentTitle };
+  if (expectedTitle === null) {
+    return { kind: 'NO_WRITE', because: 'TITLE_UNBUILDABLE' };
   }
 
   if (currentTitle === null) {
     return {
-      apply: true,
-      title: nextTitle,
+      kind: 'WRITE_TITLE',
+      title: expectedTitle,
       titleIsAuto: true,
       because: 'TITLE_EMPTY',
     };
   }
 
-  if (currentTitle === nextTitle) {
-    // Already correct. Re-asserting ownership here is deliberate: it heals a row
-    // whose flag was lost, without changing the text.
-    return { apply: false, because: 'TITLE_UNCHANGED', title: currentTitle };
+  if (currentTitle === expectedTitle) {
+    return { kind: 'NO_WRITE', because: 'TITLE_ALREADY_CORRECT' };
+  }
+
+  if (titleEditedInThisEvent) {
+    return {
+      kind: 'RELEASE_OWNERSHIP',
+      titleIsAuto: false,
+      because: 'TITLE_MANUAL_EDIT',
+    };
   }
 
   if (!isTitleOwnedByApp(state.titleIsAuto)) {
     return {
-      apply: false,
-      because: state.titleIsAuto === null ? 'OWNERSHIP_ABSENT' : 'TITLE_MANUAL',
-      title: currentTitle,
+      kind: 'NO_WRITE',
+      because:
+        state.titleIsAuto === null ? 'OWNERSHIP_ABSENT' : 'TITLE_MANUAL',
     };
   }
 
   return {
-    apply: true,
-    title: nextTitle,
+    kind: 'WRITE_TITLE',
+    title: expectedTitle,
     titleIsAuto: true,
-    because: 'TITLE_WAS_AUTO',
+    because: 'FACTS_CHANGED',
   };
 };

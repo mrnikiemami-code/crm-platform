@@ -1,182 +1,239 @@
-import { type CoreApiClient } from 'twenty-client-sdk/core';
-
-import { decideSalesInteractionTitle } from 'src/domain/sales-interaction-title';
 import {
-  readCustomerName,
-  readEventRecordId,
-  readRelationIds,
-  readTitleRecordFields,
-  type TitleRecordFields,
-} from 'src/domain/title-event-payload';
+  executeRecordGraphql,
+  readConnectionNodes,
+  RecordGraphqlError,
+} from 'src/data/record-graphql';
+import {
+  decideSalesInteractionTitle,
+  type SalesInteractionTitleDecision,
+  type SalesInteractionTitleState,
+} from 'src/domain/sales-interaction-title';
 
-// Reading and writing through the app's own scoped client. No raw SQL, no core
-// repository, no cross-app import: this is the documented way an app touches its
-// workspace's records.
-type QueryClient = Pick<CoreApiClient, 'query'>;
-type MutationClient = Pick<CoreApiClient, 'mutation'>;
+// Bringing one follow-up's title in line with its facts, exactly once.
+//
+// Every read goes through the workspace record API with this app's own token, and
+// a rejected read or write is THROWN rather than folded into "nothing to do": a
+// silent failure here is what made an earlier version report a completed job
+// while writing nothing at all.
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const asText = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+const asBoolean = (value: unknown): boolean | null =>
+  typeof value === 'boolean' ? value : null;
 
 /**
- * The customer's name for one interaction.
+ * A person's name.
  *
- * Walked in steps (interaction → eventLead → person) rather than as one nested
- * read, because a two-level nested read on this server returns null even for rows
- * that have values — which would silently turn every customer into «مشتری بدون
- * نام». Each step is a separate, complete read.
- *
- * A missing link yields "no name" rather than an error: a follow-up whose lead or
- * person was removed still deserves a readable title.
+ * `name` is a COMPOSITE field on this workspace: `nameFirstName` exists in the
+ * database but NOT in GraphQL, where it reads back as a null column. Asking for
+ * the flat names returns nulls, which is why a customer silently became
+ * «مشتری بدون نام».
  */
-const findCustomerName = async ({
-  client,
-  eventLeadId,
-}: {
-  client: QueryClient;
-  eventLeadId: string | null;
-}): Promise<{ firstName: string | null; lastName: string | null }> => {
-  if (eventLeadId === null) {
-    return { firstName: null, lastName: null };
-  }
+const readPersonName = async (
+  personId: string,
+): Promise<{ firstName: string | null; lastName: string | null }> => {
+  const data = await executeRecordGraphql({
+    phase: 'READ_PERSON',
+    query: `query PersonName($id: UUID!) {
+      person(filter: { id: { eq: $id } }) { id name { firstName lastName } }
+    }`,
+    variables: { id: personId },
+  });
 
-  let personId: string | null = null;
+  const person = asRecord(data['person']);
+  const composite = asRecord(person?.['name']);
 
-  try {
-    const leadResult = await client.query({
-      eventLead: {
-        __args: { filter: { id: { eq: eventLeadId } } },
-        personId: true,
-      },
-    });
-
-    const lead = leadResult.eventLead as
-      | { personId?: unknown }
-      | null
-      | undefined;
-
-    personId =
-      typeof lead?.personId === 'string' && lead.personId.length > 0
-        ? lead.personId
-        : null;
-  } catch {
-    return { firstName: null, lastName: null };
-  }
-
-  if (personId === null) {
-    return { firstName: null, lastName: null };
-  }
-
-  try {
-    const personResult = await client.query({
-      person: {
-        __args: { filter: { id: { eq: personId } } },
-        nameFirstName: true,
-        nameLastName: true,
-      },
-    });
-
-    return readCustomerName(
-      (personResult.person as Record<string, unknown> | null) ?? null,
-    );
-  } catch {
-    return { firstName: null, lastName: null };
-  }
+  return {
+    firstName: asText(composite?.['firstName']),
+    lastName: asText(composite?.['lastName']),
+  };
 };
 
-export type SyncTitleResult =
-  | { applied: true; title: string; because: string }
-  | { applied: false; because: string; title: string | null };
+const readPersonIdForLead = async (
+  eventLeadId: string,
+): Promise<string | null> => {
+  const data = await executeRecordGraphql({
+    phase: 'READ_LEAD',
+    query: `query LeadPerson($id: UUID!) {
+      eventLead(filter: { id: { eq: $id } }) { id personId }
+    }`,
+    variables: { id: eventLeadId },
+  });
+
+  return asText(asRecord(data['eventLead'])?.['personId']);
+};
+
+const readInteraction = async (
+  recordId: string,
+): Promise<{
+  name: string | null;
+  callAttempt: string | null;
+  titleIsAuto: boolean | null;
+  eventLeadId: string | null;
+}> => {
+  const data = await executeRecordGraphql({
+    phase: 'READ_INTERACTION',
+    query: `query Interaction($id: UUID!) {
+      salesInteraction(filter: { id: { eq: $id } }) {
+        id name callAttempt titleIsAuto eventLeadId
+      }
+    }`,
+    variables: { id: recordId },
+  });
+
+  const interaction = asRecord(data['salesInteraction']);
+
+  if (interaction === null) {
+    throw new RecordGraphqlError('READ_INTERACTION', 'NO_DATA');
+  }
+
+  return {
+    name: asText(interaction['name']),
+    callAttempt: asText(interaction['callAttempt']),
+    titleIsAuto: asBoolean(interaction['titleIsAuto']),
+    eventLeadId: asText(interaction['eventLeadId']),
+  };
+};
+
+/** Title and ownership are written together, never separately. */
+const writeTitle = async ({
+  recordId,
+  title,
+  titleIsAuto,
+}: {
+  recordId: string;
+  title?: string;
+  titleIsAuto: boolean;
+}): Promise<void> => {
+  await executeRecordGraphql({
+    phase: 'WRITE_TITLE',
+    query: `mutation SetTitle($id: UUID!, $data: SalesInteractionUpdateInput!) {
+      updateSalesInteraction(id: $id, data: $data) { id }
+    }`,
+    variables: {
+      id: recordId,
+      // `name` is omitted when only ownership changes: a manual title must never
+      // be rewritten by the act of releasing it.
+      data: title === undefined ? { titleIsAuto } : { name: title, titleIsAuto },
+    },
+  });
+};
+
+export type SyncTitleResult = {
+  action: SalesInteractionTitleDecision['kind'];
+  because: string;
+  title?: string;
+};
 
 /**
- * Brings one interaction's title in line with its attempt and customer, exactly
- * once.
+ * Resolves and applies the decision for one interaction.
  *
- * The decision itself lives in the domain module and is pure; this only supplies
- * the facts it cannot get itself (the customer's current name) and performs the
- * write it asks for. Ownership is never inferred from the text here — the stored
- * `titleIsAuto` flag decides, and that is the whole reason the flag exists.
+ * Facts are ALWAYS re-read from the database rather than taken from the event
+ * payload: the payload shows the record as it was mid-write, and a customer name
+ * obtained from a nested read of that snapshot is unreliable on this server.
  */
 export const syncSalesInteractionTitle = async ({
-  client,
   recordId,
-  fields,
-  customerNameOverride,
+  titleEditedInThisEvent,
+  customerName,
 }: {
-  client: QueryClient & MutationClient;
   recordId: string;
-  /** The interaction as the event reported it. */
-  fields: TitleRecordFields;
-  /**
-   * The customer's name, when the caller already knows it. A bulk rename reads it
-   * ONCE for the whole person instead of re-reading it per follow-up.
-   */
-  customerNameOverride?: { firstName: string | null; lastName: string | null };
+  /** True when this event's `updatedFields` contains `name`. */
+  titleEditedInThisEvent: boolean;
+  /** Supplied by a bulk caller that already read the customer once. */
+  customerName?: { firstName: string | null; lastName: string | null };
 }): Promise<SyncTitleResult> => {
-  // The relation id is not part of the snapshot the caller parsed, so it is read
-  // once from the record itself. A read failure is a refusal: without the lead we
-  // cannot know the customer, and writing «مشتری بدون نام» over a real name would
-  // be a downgrade.
-  let eventLeadId: string | null = null;
+  const interaction = await readInteraction(recordId);
 
-  try {
-    const result = await client.query({
-      salesInteraction: {
-        __args: { filter: { id: { eq: recordId } } },
-        id: true,
-        eventLeadId: true,
-      },
-    });
+  const personId =
+    interaction.eventLeadId === null
+      ? null
+      : await readPersonIdForLead(interaction.eventLeadId);
 
-    const record = result.salesInteraction as
-      | { eventLeadId?: unknown }
-      | null
-      | undefined;
+  const name =
+    customerName ??
+    (personId === null
+      ? { firstName: null, lastName: null }
+      : await readPersonName(personId));
 
-    eventLeadId =
-      typeof record?.eventLeadId === 'string' && record.eventLeadId.length > 0
-        ? record.eventLeadId
-        : null;
-  } catch {
-    return { applied: false, because: 'READ_FAILED', title: fields.title };
-  }
-
-  const customer =
-    customerNameOverride ?? (await findCustomerName({ client, eventLeadId }));
+  const state: SalesInteractionTitleState = {
+    callAttempt: interaction.callAttempt,
+    customerFirstName: name.firstName,
+    customerLastName: name.lastName,
+    title: interaction.name,
+    titleIsAuto: interaction.titleIsAuto,
+  };
 
   const decision = decideSalesInteractionTitle({
-    state: {
-      callAttempt: fields.callAttempt,
-      customerFirstName: customer.firstName,
-      customerLastName: customer.lastName,
-      title: fields.title,
-      titleIsAuto: fields.titleIsAuto,
-    },
+    state,
+    titleEditedInThisEvent,
   });
 
-  if (!decision.apply) {
-    return {
-      applied: false,
-      because: decision.because,
+  if (decision.kind === 'WRITE_TITLE') {
+    await writeTitle({
+      recordId,
       title: decision.title,
-    };
+      titleIsAuto: decision.titleIsAuto,
+    });
+
+    return { action: decision.kind, because: decision.because, title: decision.title };
   }
 
-  // Title and ownership are written TOGETHER: a title whose flag did not land
-  // would be frozen as "manual" on the next event and never follow the attempt
-  // again, so the two must not be separable.
-  await client.mutation({
-    updateSalesInteraction: {
-      __args: {
-        id: recordId,
-        data: { name: decision.title, titleIsAuto: true },
-      },
-      id: true,
-    },
-  });
+  if (decision.kind === 'RELEASE_OWNERSHIP') {
+    await writeTitle({ recordId, titleIsAuto: decision.titleIsAuto });
 
-  return { applied: true, title: decision.title, because: decision.because };
+    return { action: decision.kind, because: decision.because };
+  }
+
+  return { action: decision.kind, because: decision.because };
 };
 
-/** Relation ids of the record, for a caller that needs to pre-check them. */
-export const readEventLeadId = (payload: unknown): string | null =>
-  readRelationIds(payload, 'after').eventLeadId;
+/**
+ * Interactions whose customer is this person.
+ *
+ * Two steps because the app token's schema cannot traverse
+ * `salesInteraction.eventLead.personId` in a filter reliably: leads are listed by
+ * `personId` first, then interactions by those lead ids.
+ */
+export const findInteractionIdsForPerson = async (
+  personId: string,
+  limit: number,
+): Promise<string[]> => {
+  const leadsData = await executeRecordGraphql({
+    phase: 'LIST_LEADS',
+    query: `query LeadsOfPerson($personId: UUID!, $first: Int!) {
+      eventLeads(first: $first, filter: { personId: { eq: $personId } }) {
+        edges { node { id } }
+      }
+    }`,
+    variables: { personId, first: limit },
+  });
 
-export { readEventRecordId, readTitleRecordFields };
+  const leadIds = readConnectionNodes(leadsData['eventLeads'])
+    .map((node) => asText(node['id']))
+    .filter((id): id is string => id !== null);
+
+  if (leadIds.length === 0) {
+    return [];
+  }
+
+  const interactionsData = await executeRecordGraphql({
+    phase: 'LIST_INTERACTIONS',
+    query: `query InteractionsOfLeads($leadIds: [UUID!], $first: Int!) {
+      salesInteractions(first: $first, filter: { eventLeadId: { in: $leadIds } }) {
+        edges { node { id } }
+      }
+    }`,
+    variables: { leadIds, first: limit },
+  });
+
+  return readConnectionNodes(interactionsData['salesInteractions'])
+    .map((node) => asText(node['id']))
+    .filter((id): id is string => id !== null);
+};

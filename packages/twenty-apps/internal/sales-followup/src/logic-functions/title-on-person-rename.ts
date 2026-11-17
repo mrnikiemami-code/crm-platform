@@ -1,12 +1,12 @@
 import { defineLogicFunction } from 'twenty-sdk/define';
-import { CoreApiClient } from 'twenty-client-sdk/core';
 
 import { PERSON_TITLE_SYNC_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import { RecordGraphqlError } from 'src/data/record-graphql';
+import { readEventRecordId } from 'src/domain/title-event-payload';
 import {
-  readCustomerName,
-  readEventRecordId,
-} from 'src/domain/title-event-payload';
-import { syncSalesInteractionTitle } from 'src/services/title-sync';
+  findInteractionIdsForPerson,
+  syncSalesInteractionTitle,
+} from 'src/services/title-sync';
 
 // Keeps titles in step when the CUSTOMER's name changes.
 //
@@ -14,123 +14,72 @@ import { syncSalesInteractionTitle } from 'src/services/title-sync';
 // `person`, which no `salesInteraction` trigger can observe. Watching the two name
 // fields keeps the cost proportional to renames.
 //
-// Safety over completeness: this only ever updates interactions whose ownership
-// flag is already automatic, and a read it cannot complete is reported, not
-// guessed. If the workspace has many follow-ups per person the run is bounded by
-// `RUN_LIMIT`, and the remainder is reported rather than silently skipped.
+// `titleEditedInThisEvent` is false here on purpose: this event is about the
+// PERSON, so a title that differs from the computed one was not edited by the
+// person who renamed the customer — it is either an automatic title that needs to
+// follow, or a manual one that must stay.
 const WATCHED_FIELDS = ['nameFirstName', 'nameLastName'] as const;
+
+// Bounded so one rename cannot fan out without limit; the remainder is reported
+// rather than silently skipped.
 const RUN_LIMIT = 200;
 
 const handler = async (payload: unknown) => {
   const personId = readEventRecordId(payload);
 
   if (personId === null) {
-    return { applied: false, because: 'NO_RECORD_IN_PAYLOAD' };
+    console.error('[sales-followup-title-on-person-rename] NO_RECORD_IN_PAYLOAD');
+
+    return { action: 'NO_WRITE', because: 'NO_RECORD_IN_PAYLOAD' };
   }
-
-  const client = new CoreApiClient();
-
-  let interactions: Array<{
-    id: string;
-    name: string | null;
-    callAttempt: string | null;
-    titleIsAuto: boolean | null;
-  }>;
 
   try {
-    const result = await client.query({
-      salesInteractions: {
-        __args: {
-          first: RUN_LIMIT,
-          filter: { eventLead: { personId: { eq: personId } } },
-        },
-        edges: {
-          node: {
-            id: true,
-            name: true,
-            callAttempt: true,
-            titleIsAuto: true,
-          },
-        },
-      },
-    });
+    const interactionIds = await findInteractionIdsForPerson(
+      personId,
+      RUN_LIMIT,
+    );
 
-    const edges = (result.salesInteractions as { edges?: unknown } | null)
-      ?.edges;
-
-    if (!Array.isArray(edges)) {
-      return { applied: false, because: 'UNREADABLE_INTERACTIONS' };
+    if (interactionIds.length === 0) {
+      return { action: 'NO_WRITE', because: 'NO_INTERACTIONS' };
     }
 
-    interactions = edges
-      .map((edge) => (edge as { node?: Record<string, unknown> } | null)?.node)
-      .filter(
-        (node): node is Record<string, unknown> =>
-          node !== null && node !== undefined && typeof node['id'] === 'string',
-      )
-      .map((node) => ({
-        id: node['id'] as string,
-        name: typeof node['name'] === 'string' ? node['name'] : null,
-        callAttempt:
-          typeof node['callAttempt'] === 'string' ? node['callAttempt'] : null,
-        titleIsAuto:
-          typeof node['titleIsAuto'] === 'boolean'
-            ? (node['titleIsAuto'] as boolean)
-            : null,
-      }));
-  } catch {
-    // Refusing is the safe outcome: an unreadable list must not become "no
-    // follow-ups to update" and must not trigger a broad rewrite.
-    return { applied: false, because: 'UNREADABLE_INTERACTIONS' };
-  }
+    let written = 0;
+    let released = 0;
+    let untouched = 0;
 
-  if (interactions.length === 0) {
-    return { applied: false, because: 'NO_INTERACTIONS' };
-  }
+    for (const recordId of interactionIds) {
+      const result = await syncSalesInteractionTitle({
+        recordId,
+        titleEditedInThisEvent: false,
+      });
 
-  const personResult = await client.query({
-    person: {
-      __args: { filter: { id: { eq: personId } } },
-      nameFirstName: true,
-      nameLastName: true,
-    },
-  });
-
-  const customer = readCustomerName(
-    (personResult.person as Record<string, unknown> | null) ?? null,
-  );
-
-  let updated = 0;
-  let skipped = 0;
-
-  for (const interaction of interactions) {
-    // Ownership is decided by the sync itself from the stored flag; the name is
-    // supplied here because it lives on the person, not on the interaction.
-    const result = await syncSalesInteractionTitle({
-      client,
-      recordId: interaction.id,
-      fields: {
-        title: interaction.name,
-        callAttempt: interaction.callAttempt,
-        titleIsAuto: interaction.titleIsAuto,
-      },
-      // The customer name is read once for the whole run rather than per record.
-      customerNameOverride: customer,
-    });
-
-    if (result.applied) {
-      updated += 1;
-    } else {
-      skipped += 1;
+      if (result.action === 'WRITE_TITLE') {
+        written += 1;
+      } else if (result.action === 'RELEASE_OWNERSHIP') {
+        released += 1;
+      } else {
+        untouched += 1;
+      }
     }
-  }
 
-  return {
-    applied: updated > 0,
-    updated,
-    skipped,
-    truncated: interactions.length === RUN_LIMIT,
-  };
+    return {
+      action: written > 0 ? 'WRITE_TITLE' : 'NO_WRITE',
+      written,
+      released,
+      untouched,
+      truncated: interactionIds.length === RUN_LIMIT,
+    };
+  } catch (error) {
+    console.error(
+      `[sales-followup-title-on-person-rename] failed: ${
+        error instanceof RecordGraphqlError
+          ? error.message
+          : 'UNEXPECTED_FAILURE'
+      }`,
+    );
+
+    throw error;
+  }
 };
 
 export default defineLogicFunction({

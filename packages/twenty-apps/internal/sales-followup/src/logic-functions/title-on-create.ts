@@ -1,31 +1,44 @@
 import { defineLogicFunction } from 'twenty-sdk/define';
-import { CoreApiClient } from 'twenty-client-sdk/core';
 
 import { TITLE_ON_CREATE_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
-import {
-  readEventRecordId,
-  readTitleRecordFields,
-} from 'src/domain/title-event-payload';
+import { RecordGraphqlError } from 'src/data/record-graphql';
+import { readEventRecordId } from 'src/domain/title-event-payload';
 import { syncSalesInteractionTitle } from 'src/services/title-sync';
 
 // Fills the title of a follow-up the moment it is created.
 //
-// Only an EMPTY title is filled here — that is the domain rule, not a check in
-// this file — so a record created with a title already typed keeps it and is
-// recorded as hand-written.
+// Only an EMPTY title is filled — that is the domain rule, not a check here — so a
+// record created with a title already typed keeps it and stays hand-written.
+//
+// A failure is LOGGED and RETHROWN. The platform's job runner reports a
+// non-retryable function error by returning quietly, so the function's own log is
+// the only place a rejected read or write becomes visible; swallowing it here (as
+// an earlier version did) turned a broken app into a silent no-op.
 const handler = async (payload: unknown) => {
   const recordId = readEventRecordId(payload);
-  const fields = readTitleRecordFields(payload, 'after');
 
-  if (recordId === null || fields === null) {
-    // A payload without a record is refused rather than acted on: guessing which
-    // record to rename would be worse than doing nothing.
-    return { applied: false, because: 'NO_RECORD_IN_PAYLOAD' };
+  if (recordId === null) {
+    console.error('[sales-followup-title-on-create] NO_RECORD_IN_PAYLOAD');
+
+    return { action: 'NO_WRITE', because: 'NO_RECORD_IN_PAYLOAD' };
   }
 
-  const client = new CoreApiClient();
+  try {
+    return await syncSalesInteractionTitle({
+      recordId,
+      titleEditedInThisEvent: false,
+    });
+  } catch (error) {
+    console.error(
+      `[sales-followup-title-on-create] failed: ${
+        error instanceof RecordGraphqlError
+          ? error.message
+          : 'UNEXPECTED_FAILURE'
+      }`,
+    );
 
-  return syncSalesInteractionTitle({ client, recordId, fields });
+    throw error;
+  }
 };
 
 export default defineLogicFunction({

@@ -78,8 +78,10 @@ describe('buildSalesInteractionTitle', () => {
 
 describe('decideSalesInteractionTitle', () => {
   it('creates an automatic title on a new follow-up', () => {
-    expect(decideSalesInteractionTitle({ state: state() })).toEqual({
-      apply: true,
+    expect(
+      decideSalesInteractionTitle({ state: state(), titleEditedInThisEvent: false }),
+    ).toEqual({
+      kind: 'WRITE_TITLE',
       title: 'تماس اول با سارا رضایی',
       titleIsAuto: true,
       because: 'TITLE_EMPTY',
@@ -87,15 +89,12 @@ describe('decideSalesInteractionTitle', () => {
   });
 
   it('fills an empty title and claims ownership', () => {
-    const decision = decideSalesInteractionTitle({
-      state: state({ title: '', titleIsAuto: false }),
-    });
-
-    expect(decision).toMatchObject({
-      apply: true,
-      because: 'TITLE_EMPTY',
-      titleIsAuto: true,
-    });
+    expect(
+      decideSalesInteractionTitle({
+        state: state({ title: '', titleIsAuto: false }),
+        titleEditedInThisEvent: false,
+      }),
+    ).toMatchObject({ kind: 'WRITE_TITLE', because: 'TITLE_EMPTY' });
   });
 
   it('updates the title when the attempt changes on an automatic title', () => {
@@ -106,12 +105,13 @@ describe('decideSalesInteractionTitle', () => {
           title: 'تماس اول با سارا رضایی',
           titleIsAuto: true,
         }),
+        titleEditedInThisEvent: false,
       }),
     ).toEqual({
-      apply: true,
+      kind: 'WRITE_TITLE',
       title: 'تماس دوم با سارا رضایی',
       titleIsAuto: true,
-      because: 'TITLE_WAS_AUTO',
+      because: 'FACTS_CHANGED',
     });
   });
 
@@ -123,11 +123,42 @@ describe('decideSalesInteractionTitle', () => {
           title: 'تماس اول با سارا رضایی',
           titleIsAuto: true,
         }),
+        titleEditedInThisEvent: false,
       }),
-    ).toMatchObject({ apply: true, title: 'تماس اول با کریم رضایی' });
+    ).toMatchObject({ kind: 'WRITE_TITLE', title: 'تماس اول با کریم رضایی' });
   });
 
-  it('never overwrites a hand-written title', () => {
+  it('recognises its OWN write as already correct and does nothing', () => {
+    // This is the loop-breaker: the app's write comes back as an update whose
+    // title equals the computed one, and must never be read as a manual edit.
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          title: 'تماس اول با سارا رضایی',
+          titleIsAuto: true,
+        }),
+        titleEditedInThisEvent: true,
+      }),
+    ).toEqual({ kind: 'NO_WRITE', because: 'TITLE_ALREADY_CORRECT' });
+  });
+
+  it('releases ownership when a person edits the title', () => {
+    // The contract: a title that changed in this event and does not match what the
+    // app would produce was typed by a person. Ownership is dropped, the text is
+    // left exactly as typed.
+    expect(
+      decideSalesInteractionTitle({
+        state: state({ title: 'پیکیری', titleIsAuto: true }),
+        titleEditedInThisEvent: true,
+      }),
+    ).toEqual({
+      kind: 'RELEASE_OWNERSHIP',
+      titleIsAuto: false,
+      because: 'TITLE_MANUAL_EDIT',
+    });
+  });
+
+  it('never overwrites an already-manual title', () => {
     expect(
       decideSalesInteractionTitle({
         state: state({
@@ -135,37 +166,27 @@ describe('decideSalesInteractionTitle', () => {
           title: 'پیکیری',
           titleIsAuto: false,
         }),
+        titleEditedInThisEvent: false,
       }),
-    ).toEqual({
-      apply: false,
-      because: 'TITLE_MANUAL',
-      title: 'پیکیری',
-    });
+    ).toEqual({ kind: 'NO_WRITE', because: 'TITLE_MANUAL' });
   });
 
   it('does not touch a legacy title whose ownership was never recorded', () => {
-    // The flag is null on every row that predates the field. Treating that as
-    // "ours" would destroy text a person typed, so it is reported instead.
     expect(
       decideSalesInteractionTitle({
         state: state({ title: 'پیکیری', titleIsAuto: null }),
+        titleEditedInThisEvent: false,
       }),
-    ).toEqual({
-      apply: false,
-      because: 'OWNERSHIP_ABSENT',
-      title: 'پیکیری',
-    });
+    ).toEqual({ kind: 'NO_WRITE', because: 'OWNERSHIP_ABSENT' });
   });
 
   it('does not write when the computed title already matches', () => {
     expect(
       decideSalesInteractionTitle({
-        state: state({
-          title: 'تماس اول با سارا رضایی',
-          titleIsAuto: true,
-        }),
+        state: state({ title: 'تماس اول با سارا رضایی', titleIsAuto: true }),
+        titleEditedInThisEvent: false,
       }),
-    ).toMatchObject({ apply: false, because: 'TITLE_UNCHANGED' });
+    ).toEqual({ kind: 'NO_WRITE', because: 'TITLE_ALREADY_CORRECT' });
   });
 
   it('is idempotent: a repeated event issues no second write', () => {
@@ -175,11 +196,12 @@ describe('decideSalesInteractionTitle', () => {
         title: 'تماس اول با سارا رضایی',
         titleIsAuto: true,
       }),
+      titleEditedInThisEvent: false,
     });
 
-    expect(first.apply).toBe(true);
+    expect(first.kind).toBe('WRITE_TITLE');
 
-    const applied = first.apply ? first.title : null;
+    const applied = first.kind === 'WRITE_TITLE' ? first.title : null;
 
     expect(
       decideSalesInteractionTitle({
@@ -188,8 +210,9 @@ describe('decideSalesInteractionTitle', () => {
           title: applied,
           titleIsAuto: true,
         }),
+        titleEditedInThisEvent: true,
       }),
-    ).toMatchObject({ apply: false, because: 'TITLE_UNCHANGED' });
+    ).toEqual({ kind: 'NO_WRITE', because: 'TITLE_ALREADY_CORRECT' });
   });
 
   it('falls back to the unnamed label when the name is cleared', () => {
@@ -201,20 +224,20 @@ describe('decideSalesInteractionTitle', () => {
           title: 'تماس اول با سارا رضایی',
           titleIsAuto: true,
         }),
+        titleEditedInThisEvent: false,
       }),
     ).toMatchObject({
-      apply: true,
+      kind: 'WRITE_TITLE',
       title: `تماس اول با ${UNNAMED_CUSTOMER}`,
     });
   });
 
   it('reports an unbuildable title instead of writing a partial one', () => {
     expect(
-      decideSalesInteractionTitle({ state: state({ callAttempt: 'CALL_9' }) }),
-    ).toEqual({
-      apply: false,
-      because: 'TITLE_UNBUILDABLE',
-      title: null,
-    });
+      decideSalesInteractionTitle({
+        state: state({ callAttempt: 'CALL_9' }),
+        titleEditedInThisEvent: false,
+      }),
+    ).toEqual({ kind: 'NO_WRITE', because: 'TITLE_UNBUILDABLE' });
   });
 });
