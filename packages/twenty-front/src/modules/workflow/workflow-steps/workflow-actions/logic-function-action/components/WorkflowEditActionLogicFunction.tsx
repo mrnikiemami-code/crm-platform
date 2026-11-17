@@ -20,11 +20,12 @@ import { mergeDefaultFunctionInputAndFunctionInput } from '@/workflow/workflow-s
 import { setNestedValue } from '@/workflow/workflow-steps/workflow-actions/code-action/utils/setNestedValue';
 import { WORKFLOW_LOGIC_FUNCTION_ACTION_TAB_LIST_COMPONENT_ID } from '@/workflow/workflow-steps/workflow-actions/logic-function-action/constants/WorkflowLogicFunctionActionTabListComponentId';
 import { TriggerDerivedInputInitEffect } from '@/workflow/workflow-steps/workflow-actions/logic-function-action/components/TriggerDerivedInputInitEffect';
+import { TriggerGuidanceCallout } from '@/workflow/workflow-steps/workflow-actions/logic-function-action/components/TriggerGuidanceCallout';
 import {
   buildTriggerDerivedInputValues,
   hasTriggerDerivedProperties,
 } from '@/workflow/workflow-steps/workflow-actions/logic-function-action/utils/buildTriggerDerivedInputValues';
-import { useWorkflowWithCurrentVersion } from '@/workflow/hooks/useWorkflowWithCurrentVersion';
+import { flowComponentState } from '@/workflow/states/flowComponentState';
 import { workflowVisualizerWorkflowIdComponentState } from '@/workflow/states/workflowVisualizerWorkflowIdComponentState';
 import { WorkflowVariablePicker } from '@/workflow/workflow-variables/components/WorkflowVariablePicker';
 import { styled } from '@linaria/react';
@@ -90,24 +91,53 @@ export const WorkflowEditActionLogicFunction = ({
   const workflowVisualizerWorkflowId = useAtomComponentStateValue(
     workflowVisualizerWorkflowIdComponentState,
   );
-  const workflow = useWorkflowWithCurrentVersion(workflowVisualizerWorkflowId);
+
+  // The flow — including its trigger — is already in memory: the diagram effect
+  // loads it once and the side panel reads the same atom. Fetching the workflow
+  // record again here would add a request per action-node mount for data that is
+  // already on screen.
+  const flow = useAtomComponentStateValue(flowComponentState);
 
   const workflowActionSettings = logicFunction?.workflowActionTriggerSettings;
+
+  // Keyed on the two VALUES the derivation reads, not on the flow object and not
+  // on a serialisation of the whole trigger: the trigger's `outputSchema`
+  // carries every field of the object, so stringifying it on each render would
+  // cost more than the derivation it guards. While these two are unchanged the
+  // cached result is still correct, because they are the only inputs read.
+  const triggerType = flow?.trigger?.type;
+  const databaseEventSettings =
+    flow?.trigger?.type === 'DATABASE_EVENT'
+      ? (flow.trigger.settings as {
+          eventName?: string;
+          fields?: string[] | null;
+        })
+      : undefined;
+  const triggerEventName = databaseEventSettings?.eventName;
+  const triggerFieldsSignature = (databaseEventSettings?.fields ?? []).join(
+    '\u0001',
+  );
 
   const triggerDerivation = useMemo(
     () =>
       buildTriggerDerivedInputValues({
         inputSchema: workflowActionSettings?.inputSchema,
-        trigger: workflow?.currentVersion?.trigger,
-        workflowId: workflow?.id,
+        trigger: flow?.trigger,
+        workflowId: workflowVisualizerWorkflowId,
       }),
-    [workflowActionSettings?.inputSchema, workflow],
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [
+      workflowActionSettings?.inputSchema,
+      triggerType,
+      triggerEventName,
+      triggerFieldsSignature,
+      workflowVisualizerWorkflowId,
+    ],
   );
 
   const showsTriggerGuidance =
     hasTriggerDerivedProperties(workflowActionSettings?.inputSchema) &&
-    !triggerDerivation.isDerivable &&
-    isNonEmptyString(workflowActionSettings?.triggerRequirementMessage);
+    !triggerDerivation.isDerivable;
 
   const activeTabId = useAtomComponentStateValue(
     activeTabIdComponentState,
@@ -278,9 +308,8 @@ export const WorkflowEditActionLogicFunction = ({
       ) : (
         <StyledContainer>
           {showsTriggerGuidance && (
-            <Callout
-              variant={'warning'}
-              title={t`Trigger not configured`}
+            <TriggerGuidanceCallout
+              readonly={actionOptions.readonly === true}
               description={workflowActionSettings?.triggerRequirementMessage}
             />
           )}

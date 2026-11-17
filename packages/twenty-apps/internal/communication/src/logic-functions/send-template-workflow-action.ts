@@ -82,7 +82,7 @@ export default defineLogicFunction({
     // Hiding the expected-output box removes the last developer-facing field.
     hideExpectedOutput: true,
     triggerRequirementMessage:
-      'این عملیات فقط با محرک «تغییر ستون» (رویداد updated) و انتخاب دقیقاً یک ستون کار می‌کند. ابتدا در بخش محرک گردش کار، رویداد updated و همان ستون را انتخاب کنید.',
+      'برای ارسال پیامک هنگام تغییر اطلاعات، رویداد «ویرایش رکورد» و ستون موردنظر را انتخاب کنید.',
     inputSchema: [
       {
         type: 'object',
