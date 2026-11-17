@@ -665,6 +665,12 @@ export const WorkflowDiagramCanvasBase = ({
         onPaneContextMenu={onPaneContextMenu}
         nodesConnectable={nodesConnectable}
         paneClickDistance={10} // Fix small unwanted user dragging does not select node
+        // The same tolerance for NODES. Without it React Flow's default is 0, so
+        // any pointer movement at all between press and release starts a node
+        // drag and the browser never fires `click` — which is why selecting a
+        // node took several attempts. Nodes are click-to-select before they are
+        // drag targets, so they need at least the pane's tolerance.
+        nodeClickDistance={10}
         preventScrolling={!allowPageScroll}
         connectionLineComponent={WorkflowDiagramConnection}
         connectionRadius={0}
