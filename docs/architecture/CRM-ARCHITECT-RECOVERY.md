@@ -100,3 +100,15 @@ Record field changed → selected saved SMS template → Workflow/Communication 
 - Replaced `Trigger not configured` with **«محرک نیاز به تنظیم دارد»**, concise Persian instructions **«برای ارسال پیامک هنگام تغییر اطلاعات، رویداد «ویرایش رکورد» و ستون موردنظر را انتخاب کنید.»**, and Design System warning Callout with actionable **«تنظیم محرک»** selecting trigger; action hidden in read-only mode. R5 reports five tests on this component.
 - Reported tests: **748 frontend Jest PASS**, app typecheck zero errors. **No authenticated browser render/React Profiler proof** and no real end-to-end SMS. User visual/latency acceptance is still required; do not claim that click lag is fixed or that production is ready.
 - Next: user checks Dev UI click responsiveness and warning appearance. If lag remains, obtain authorized authenticated Dev profiling evidence in a narrowly scoped task; no screenshot loops. CRM-123 still deferred. STOP_FOR_ARCHITECT.
+
+
+## CRM-126 — R6 workflow node click hit-testing checkpoint (2026-11-17)
+
+**Status: REPORTED DEV INTERACTIVE PASS / USER ACCEPTANCE PENDING / STOP_FOR_ARCHITECT.** Cursor report supplied by user; local feature commit not pushed or independently audited.
+
+- Task `CRM-WORKFLOW-CLICK-126-R6`; local commit `e5157b5009402e142dd10134c6f4f072cc2d8ae2` on `feat/crm-126-workflow-template-sms`; one file, +6 lines; tree clean, no push.
+- Root cause identified in `@xyflow/react`: `nodeClickDistance` default 0, while existing canvas `paneClickDistance={10}`. Small mouse motion between press/release may suppress node click by beginning drag. Minimal change in `WorkflowDiagramCanvasBase.tsx`: `nodeClickDistance={10}`, matching pane tolerance. No intended changes to drag, connectors, persistence.
+- Reported DOM hit-test `elementFromPoint`: 14/15 grid points hit node surface, 1/15 bottom connection handle intentionally intercepts; no widespread overlay or pointer-events blocker.
+- **Authenticated interactive Dev test reported PASS:** five positions (icon, center, title, upper-right, inner-bottom) on both Action and Trigger opened correct panel; switching Action→Trigger updated editor states correctly; warning button «تنظیم محرک» selected Trigger. Direct A/B synthetic 2–4px pointer-jitter behavior **not demonstrated** due tooling limitations; code/library documentation supports hypothesis.
+- Reported 748 frontend Jest PASS, typecheck zero errors, Vite HMR live on `:3001`, Dev Communication 0.1.77 installed; `:6080` healthz 200 and unchanged, no Docker build, restart, SMS or push.
+- Architect disposition: **R6 implementation/test evidence accepted provisionally; final UX acceptance requires user clicking in Dev.** Do not claim production-ready or end-to-end SMS tested. Next separate open task from user: DEV mock workflow SMS end-to-end plus read-only diagnosis of missing SalesInteraction titles on intranet (CRM-127), not yet reported complete.
