@@ -78,6 +78,18 @@ export const COMMUNICATIONS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
 export const SEND_COMMUNICATION_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER =
   'e55f7b79-cf61-45b4-a1c4-259fa7089b28';
 
+// Workflow-triggered template SMS (CRM-126)
+// A distinct function from the disabled generic action above: this one selects a
+// SAVED template and resolves the recipient from the record, so it is the only
+// workflow entry point allowed to send.
+export const SEND_TEMPLATE_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER =
+  '9a4e17c2-6b38-4d05-8f27-3c1d5e8a7b94';
+
+// Workspace-level authorization switch for UNATTENDED workflow sending. Only a
+// caller with the platform APPLICATIONS settings permission can write it.
+export const WORKFLOW_SMS_SENDING_VARIABLE_UNIVERSAL_IDENTIFIER =
+  'b7f2d940-1c58-4e93-a6bd-05e7c4f19a28';
+
 // Workspace application variables (W9-R2)
 // Provider credentials, sender identities and default-provider selection are
 // workspace-owned: they are declared as native `applicationVariables`, which the

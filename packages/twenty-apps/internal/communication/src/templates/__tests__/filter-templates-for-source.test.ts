@@ -54,6 +54,7 @@ const template = (
   channel: 'SMS',
   targetObject: 'PERSON',
   sourceObjectUid,
+  recipientRelationUid: '',
   updatedAt: '',
 });
 

@@ -57,6 +57,7 @@ describe('findMessageTemplates (native workspace path)', () => {
         // Empty is a REAL value: a legacy, source-less row. The caller decides
         // what that means; the stored-source resolver is the one place that does.
         sourceObjectUid: '',
+        recipientRelationUid: '',
         updatedAt: '',
       },
       {
@@ -66,6 +67,7 @@ describe('findMessageTemplates (native workspace path)', () => {
         channel: 'SMS',
         targetObject: 'PERSON',
         sourceObjectUid: '',
+        recipientRelationUid: '',
         updatedAt: '',
       },
     ]);
@@ -99,6 +101,7 @@ describe('findMessageTemplates (native workspace path)', () => {
       'channel',
       'targetObject',
       'sourceObjectUid',
+      'recipientRelationUid',
       'updatedAt',
     ]);
   });

@@ -9,6 +9,7 @@ import {
   RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_USERNAME_VARIABLE_UNIVERSAL_IDENTIFIER,
+  WORKFLOW_SMS_SENDING_VARIABLE_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
 export default defineApplication({
@@ -53,8 +54,7 @@ export default defineApplication({
     // value yet; an existing valid workspace selection is never overwritten by
     // a manifest default during upgrade.
     COMMUNICATION_PROVIDER: {
-      universalIdentifier:
-        COMMUNICATION_PROVIDER_VARIABLE_UNIVERSAL_IDENTIFIER,
+      universalIdentifier: COMMUNICATION_PROVIDER_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
         'Provider id used by default for outbound communication. One of: kavenegar, razpayamak.',
       isSecret: false,
@@ -93,6 +93,21 @@ export default defineApplication({
       description:
         'RazPayamak primary sender number used as the REST `from` field.',
       isSecret: false,
+    },
+    // Unattended (workflow-triggered) sending authority.
+    //
+    // Default `disabled` on purpose: a workspace that never opted in must not be
+    // able to send automatically. The value is per workspace, is writable only
+    // through the platform's APPLICATIONS settings permission, and grants no
+    // record-reading power — the function still reads the recipient and the
+    // template through the app's own scoped role. Setting it back to `disabled`
+    // revokes the capability immediately.
+    WORKFLOW_SMS_SENDING: {
+      universalIdentifier: WORKFLOW_SMS_SENDING_VARIABLE_UNIVERSAL_IDENTIFIER,
+      description:
+        'Set to "enabled" to allow workflow-triggered SMS. Any other value disables it. Writable only by an administrator.',
+      isSecret: false,
+      value: 'disabled',
     },
   },
 });

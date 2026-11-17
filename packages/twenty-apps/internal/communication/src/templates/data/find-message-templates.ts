@@ -21,6 +21,15 @@ export type MessageTemplateRecord = {
    * context or refuse ones that can.
    */
   sourceObjectUid: string;
+  /**
+   * Stable metadata `universalIdentifier` of the relation that reaches the
+   * recipient from a non-Person source, or `''` for a Person source.
+   *
+   * Without it a server-side send cannot pick WHICH relation to follow when a
+   * source object has several paths to a Person, and guessing would be exactly
+   * the "pick a recipient for the user" failure the source model prevents.
+   */
+  recipientRelationUid: string;
   updatedAt: string;
 };
 
@@ -31,6 +40,7 @@ type RawMessageTemplateNode = {
   channel?: string | null;
   targetObject?: string | null;
   sourceObjectUid?: string | null;
+  recipientRelationUid?: string | null;
   updatedAt?: string | null;
 };
 
@@ -59,6 +69,7 @@ export const findMessageTemplates = async ({
           channel: true,
           targetObject: true,
           sourceObjectUid: true,
+          recipientRelationUid: true,
           updatedAt: true,
         },
       },
@@ -87,6 +98,10 @@ export const findMessageTemplates = async ({
       // means, and `resolveStoredTemplateSource` is the one place that does.
       sourceObjectUid:
         typeof node.sourceObjectUid === 'string' ? node.sourceObjectUid : '',
+      recipientRelationUid:
+        typeof node.recipientRelationUid === 'string'
+          ? node.recipientRelationUid
+          : '',
       updatedAt: typeof node.updatedAt === 'string' ? node.updatedAt : '',
     }));
 };

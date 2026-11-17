@@ -32,6 +32,9 @@ const EXPECTED_VARIABLES: Record<string, { isSecret: boolean }> = {
   RAZPAYAMAK_USERNAME: { isSecret: false },
   RAZPAYAMAK_API_KEY: { isSecret: true },
   RAZPAYAMAK_SENDER: { isSecret: false },
+  // CRM-126: workspace-level authorization switch for unattended sending. Not a
+  // credential, so it is non-secret, and it defaults to `disabled`.
+  WORKFLOW_SMS_SENDING: { isSecret: false },
 };
 
 describe('workspace application variable declaration (W9-R2)', () => {
