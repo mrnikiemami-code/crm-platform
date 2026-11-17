@@ -1,6 +1,6 @@
 import { formatTomanForDisplay } from 'src/components/money-amount';
 
-// Record titles for the two objects this app writes.
+// Record titles for the objects whose titles this app produces.
 //
 // Both are Persian and read right-to-left, so the wording leads with the
 // subject (ثبت‌نام / پرداخت) and appends the person and the event. A title is
@@ -17,7 +17,9 @@ const REGISTRATION_WORD = `ثبت${ZWNJ}نام`;
 const EVENT_FALLBACK = 'همایش';
 const TOMAN_WORD = 'تومان';
 
-const clean = (value: string | null): string | null => {
+// Exported so a caller that builds a title from a DIFFERENT object reuses this
+// normalisation instead of re-implementing it and drifting from it.
+export const clean = (value: string | null): string | null => {
   if (typeof value !== 'string') {
     return null;
   }
