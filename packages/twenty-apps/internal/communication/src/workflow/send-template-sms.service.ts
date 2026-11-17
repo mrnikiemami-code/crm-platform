@@ -35,10 +35,16 @@ export type WorkflowTemplateSmsRequest = {
   beforeValue?: unknown;
   afterValue?: unknown;
   /**
+   * Stable identity of the write, supplied from the trigger. This is what lets
+   * a replay of one event be suppressed while a genuinely new change — even one
+   * returning the column to a previous value — still sends.
+   */
+  eventId?: string;
+  /**
    * Identifies the workflow so two different workflows watching the same record
    * and column do not suppress each other.
    */
-  workflowId: string;
+  workflowId?: string;
 };
 
 export type WorkflowTemplateSmsOutcome =
@@ -203,12 +209,11 @@ export const sendTemplateSmsFromWorkflow = async (
   if (
     !isNonEmptyString(request.templateId) ||
     !isNonEmptyString(request.sourceObjectNameSingular) ||
-    !isNonEmptyString(request.sourceRecordId) ||
-    !isNonEmptyString(request.workflowId)
+    !isNonEmptyString(request.sourceRecordId)
   ) {
     return refuse(
       'INVALID_INPUT',
-      '`templateId`, `sourceObjectNameSingular`, `sourceRecordId` and `workflowId` are required.',
+      '`templateId`, `sourceObjectNameSingular` and `sourceRecordId` are required.',
     );
   }
 
@@ -356,7 +361,8 @@ export const sendTemplateSmsFromWorkflow = async (
   }
 
   const communicationId = buildWorkflowSendDedupId({
-    workflowId: request.workflowId,
+    eventId: request.eventId ?? '',
+    workflowId: request.workflowId ?? '',
     sourceObjectName: request.sourceObjectNameSingular,
     sourceRecordId: request.sourceRecordId,
     fieldName: request.fieldName ?? '',

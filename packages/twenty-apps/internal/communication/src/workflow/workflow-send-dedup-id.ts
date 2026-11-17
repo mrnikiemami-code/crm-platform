@@ -1,17 +1,22 @@
 import { createHash } from 'node:crypto';
 
-// Identity of ONE real change to ONE record, for ONE template.
+// Identity of ONE real change, for ONE template.
 //
-// The workflow may be re-run for the same event: a step retry, a manual replay,
-// or a duplicate queue delivery. The key is therefore derived from the
-// OBSERVABLE CHANGE, not from the run id — a run id differs on every replay and
-// would defeat the purpose.
+// Two things must hold at once, and they pull in opposite directions:
+//  - a replay of the SAME event (queue retry, duplicate delivery, manual
+//    workflow replay) must not send a second message;
+//  - a genuinely NEW change must send, even when it returns a column to a value
+//    it already had (A→B→A).
 //
-// A→B→A produces two keys (A→B and B→A) rather than one, because the before and
-// after values are both part of the identity. That is deliberate: a distinct
-// real change is a distinct event.
+// A key built only from values cannot do both: A→B and a later A→B are
+// indistinguishable. So the identity of the WRITE (`eventId`, stamped once when
+// the event is created) is the primary input. Values stay in the key as a
+// defensive fallback for payloads that predate `eventId`.
 export type WorkflowSendEvent = {
-  workflowId: string;
+  /** Stable identity of the write. Empty only for legacy payloads. */
+  eventId?: string;
+  /** Empty when the caller could not supply it; see the note on collisions. */
+  workflowId?: string;
   /** The object whose record changed. */
   sourceObjectName: string;
   sourceRecordId: string;
@@ -53,19 +58,30 @@ export const buildWorkflowSendEventPart = (value: unknown): string =>
  * uniqueness is the arbiter: two concurrent attempts cannot both create the
  * row, so no advisory lock and no extra column are needed. UUID shape keeps it
  * accepted by a `uuid` typed primary key.
+ *
+ * `workflowId` participates when supplied, so two workflows watching the same
+ * column with the same template stay independent. When it cannot be supplied,
+ * the same event + template reaching two workflows produces one message rather
+ * than two — a deliberate bias toward not double-charging a customer.
  */
 export const buildWorkflowSendDedupId = (event: WorkflowSendEvent): string => {
+  const hasEventId = (event.eventId ?? '').length > 0;
+
   // JSON.stringify of the array, not a delimiter join: a value that itself
   // contains the delimiter would otherwise let two different changes produce
   // the same key, which would silently suppress a legitimate send.
   const payload = JSON.stringify([
-    'workflow-sms-v1',
-    event.workflowId,
+    // Bumping the prefix would orphan every id already written, so it only
+    // changes if the identity semantics themselves change.
+    'workflow-sms-v2',
+    // The write identity is the discriminator; the rest only narrows it.
+    hasEventId
+      ? event.eventId
+      : ['no-event-id', stableValue(event.before), stableValue(event.after)],
+    event.workflowId ?? '',
     event.sourceObjectName,
     event.sourceRecordId,
     event.fieldName,
-    stableValue(event.before),
-    stableValue(event.after),
     event.templateId,
   ]);
 

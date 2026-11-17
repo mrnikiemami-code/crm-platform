@@ -157,7 +157,21 @@ const generateRecordEventWithPrefix = (
       objectMetadataId: objectMetadataItem.id,
       fieldIdName: `${prefix}.id`,
     },
-    fields: generatePrefixedRecordFields(objectMetadataItem, prefix),
+    fields: {
+      ...generatePrefixedRecordFields(objectMetadataItem, prefix),
+      // The identity of the write itself, not of the record. Exposed so a step
+      // can key its own de-duplication on "this exact event" instead of on the
+      // field values, which repeat when a field changes back to a previous
+      // value.
+      eventId: {
+        isLeaf: true,
+        type: FieldMetadataType.UUID,
+        label: 'شناسه رویداد',
+        value: generateFakeValue(FieldMetadataType.UUID, 'FieldMetadataType'),
+        fieldMetadataId: '',
+        isCompositeSubField: false,
+      },
+    },
     _outputSchemaType: 'RECORD',
   };
 };

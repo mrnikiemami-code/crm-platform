@@ -160,6 +160,7 @@ const BASE_REQUEST = {
   fieldName: 'stage',
   beforeValue: 'NEW',
   afterValue: 'WON',
+  eventId: 'event-1',
   workflowId: 'wf-1',
 };
 
@@ -287,11 +288,42 @@ describe('sendTemplateSmsFromWorkflow', () => {
 
     await sendTemplateSmsFromWorkflow(BASE_REQUEST, { client });
     await sendTemplateSmsFromWorkflow(
-      { ...BASE_REQUEST, beforeValue: 'WON', afterValue: 'LOST' },
+      {
+        ...BASE_REQUEST,
+        beforeValue: 'WON',
+        afterValue: 'LOST',
+        eventId: 'event-2',
+      },
       { client },
     );
 
     expect(PROVIDER.send).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends again when the same column returns to a previous value', async () => {
+    // A→B→A: three real changes. The value-based key could not tell the third
+    // from the first; the event identity can.
+    primeHappyPath();
+    const { client } = buildClient({ rows });
+
+    const first = await sendTemplateSmsFromWorkflow(
+      { ...BASE_REQUEST, beforeValue: 'NEW', afterValue: 'WON', eventId: 'e1' },
+      { client },
+    );
+    const second = await sendTemplateSmsFromWorkflow(
+      { ...BASE_REQUEST, beforeValue: 'WON', afterValue: 'NEW', eventId: 'e2' },
+      { client },
+    );
+    const third = await sendTemplateSmsFromWorkflow(
+      { ...BASE_REQUEST, beforeValue: 'NEW', afterValue: 'WON', eventId: 'e3' },
+      { client },
+    );
+
+    expect(first.outcome).toBe('SENT');
+    expect(second.outcome).toBe('SENT');
+    expect(third.outcome).toBe('SENT');
+    expect(PROVIDER.send).toHaveBeenCalledTimes(3);
+    expect(rows.size).toBe(3);
   });
 
   it('sends only once when two attempts run concurrently', async () => {

@@ -1,6 +1,9 @@
 import { defineLogicFunction } from 'twenty-sdk/define';
 
-import { SEND_TEMPLATE_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import {
+  MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
+  SEND_TEMPLATE_WORKFLOW_ACTION_UNIVERSAL_IDENTIFIER,
+} from 'src/constants/universal-identifiers';
 import { sendTemplateSmsFromWorkflow } from 'src/workflow/send-template-sms.service';
 
 // Workflow step: send a SAVED SMS template to the Person a changed record
@@ -13,10 +16,10 @@ import { sendTemplateSmsFromWorkflow } from 'src/workflow/send-template-sms.serv
 //    RETURNED value to StepStatus.SUCCESS and a THROWN error to StepStatus.FAILED
 //    (`logic-function.workflow-action.ts`). A returned `{ success: false }` would
 //    therefore be presented as a successful step, so every non-send THROWS.
-//    Automatic replay is still safe because the send is deduplicated by a
-//    deterministic record id, and step retry defaults to zero.
-//  - `workflowId` and `fieldName` are supplied by the trigger variables, not
-//    typed by the author, so they stay accurate if the workflow is renamed.
+//  - `eventId` is the identity of the WRITE, not of the record. It is what makes
+//    "the same event replayed" and "the same field changed back" different
+//    things, so a repeat of one real change sends once while a genuinely new
+//    change still sends.
 type SendTemplateWorkflowPayload = {
   templateId?: unknown;
   sourceObjectNameSingular?: unknown;
@@ -24,6 +27,7 @@ type SendTemplateWorkflowPayload = {
   fieldName?: unknown;
   beforeValue?: unknown;
   afterValue?: unknown;
+  eventId?: unknown;
   workflowId?: unknown;
 };
 
@@ -40,6 +44,7 @@ const handler = async (payload: SendTemplateWorkflowPayload) => {
     fieldName: asString(request.fieldName),
     beforeValue: request.beforeValue,
     afterValue: request.afterValue,
+    eventId: asString(request.eventId),
     workflowId: asString(request.workflowId),
   });
 
@@ -67,44 +72,54 @@ export default defineLogicFunction({
     'Send a saved SMS template to the Person a changed record resolves to. Sends at most once per real field change.',
   timeoutSeconds: 30,
   handler,
-  // Exposed to the visual workflow builder as "Send SMS from template".
+  // Exposed to the visual workflow builder as "ارسال پیامک از الگو".
   workflowActionTriggerSettings: {
-    label: 'Send SMS from template',
+    label: 'ارسال پیامک از الگو',
     icon: 'IconMessage',
     inputSchema: [
       {
         type: 'object',
         properties: {
+          // Declared as a RECORD of the template object, not as free text. The
+          // builder then renders the platform's own record picker scoped to SMS
+          // templates, showing each template's TITLE and storing its id — so an
+          // operator selects a Persian template name and never types a UUID.
           templateId: {
-            type: 'string',
-            label: 'SMS template',
-            // Filled from the source-scoped template list by the builder, or by
-            // the operator pasting a template id. A removed or foreign template
-            // is rejected at send time.
+            type: 'record',
+            objectUniversalIdentifier:
+              MESSAGE_TEMPLATE_OBJECT_UNIVERSAL_IDENTIFIER,
+            label: 'الگوی پیامک',
           },
           sourceObjectNameSingular: {
             type: 'string',
-            label: 'Record object (nameSingular)',
+            label: 'نام موجودیت رکورد',
           },
           sourceRecordId: {
             type: 'string',
-            label: 'Record id',
+            label: 'شناسه رکورد',
           },
           fieldName: {
             type: 'string',
-            label: 'Watched field (name)',
+            label: 'ستون تغییرکرده',
           },
           beforeValue: {
             type: 'unknown',
-            label: 'Value before the change',
+            label: 'مقدار قبل از تغییر',
           },
           afterValue: {
             type: 'unknown',
-            label: 'Value after the change',
+            label: 'مقدار بعد از تغییر',
+          },
+          // The write identity. Mapping it is what allows A→B→A to send twice
+          // while a replay of one event still sends once; without it the step
+          // falls back to a value-based key that can suppress that repeat.
+          eventId: {
+            type: 'string',
+            label: 'شناسه رویداد',
           },
           workflowId: {
             type: 'string',
-            label: 'Workflow id',
+            label: 'شناسه گردش کار',
           },
         },
       },

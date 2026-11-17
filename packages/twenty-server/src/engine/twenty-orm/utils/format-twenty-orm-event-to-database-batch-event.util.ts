@@ -12,6 +12,7 @@ import {
   isDefined,
   isNonEmptyArray,
 } from 'twenty-shared/utils';
+import { randomUUID } from 'node:crypto';
 
 import type { ObjectLiteral } from 'typeorm';
 
@@ -280,6 +281,14 @@ export const formatTwentyOrmEventToDatabaseBatchEvent = <
 
   if (!events.length) {
     return;
+  }
+
+  // One identity per observed write, generated once here so every downstream
+  // consumer that replays the event sees the same value. A value-based key
+  // could not tell "the same event again" from "the same field changed back",
+  // so A→B→A would be silently suppressed.
+  for (const event of events) {
+    event.eventId = randomUUID();
   }
 
   return {

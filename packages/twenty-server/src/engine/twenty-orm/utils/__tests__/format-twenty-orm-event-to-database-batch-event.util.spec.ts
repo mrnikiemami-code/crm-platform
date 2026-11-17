@@ -334,4 +334,101 @@ describe('formatTwentyOrmEventToDatabaseBatchEvent', () => {
       );
     });
   });
+
+  describe('eventId', () => {
+    const buildUpdateEvents = () =>
+      formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.UPDATED,
+        objectMetadataItem: flatObjectMetadata,
+        flatFieldMetadataMaps,
+        workspaceId: mockWorkspaceId,
+        authContext: mockAuthContext,
+        recordsAfter: [{ id: 'record-1', name: 'B' }],
+        recordsBefore: [{ id: 'record-1', name: 'A' }],
+      });
+
+    it('stamps an identity on every event', () => {
+      const events = buildUpdateEvents()!.events as ObjectRecordUpdateEvent[];
+
+      expect(events).toHaveLength(1);
+      expect(typeof events[0].eventId).toBe('string');
+      expect((events[0].eventId ?? '').length).toBeGreaterThan(0);
+    });
+
+    it('gives each event of one batch its own identity', () => {
+      const events = formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.UPDATED,
+        objectMetadataItem: flatObjectMetadata,
+        flatFieldMetadataMaps,
+        workspaceId: mockWorkspaceId,
+        authContext: mockAuthContext,
+        recordsAfter: [
+          { id: 'record-1', name: 'B' },
+          { id: 'record-2', name: 'D' },
+        ],
+        recordsBefore: [
+          { id: 'record-1', name: 'A' },
+          { id: 'record-2', name: 'C' },
+        ],
+      })!.events as ObjectRecordUpdateEvent[];
+
+      expect(events).toHaveLength(2);
+      expect(events[0].eventId).not.toBe(events[1].eventId);
+    });
+
+    it('gives two separate writes of the same values different identities', () => {
+      // The regression the identity exists for: A→B and a later A→B carry the
+      // same values, and only the write identity can tell them apart.
+      const first = buildUpdateEvents()!.events as ObjectRecordUpdateEvent[];
+      const second = buildUpdateEvents()!.events as ObjectRecordUpdateEvent[];
+
+      expect(first[0].eventId).toBeDefined();
+      expect(first[0].eventId).not.toBe(second[0].eventId);
+    });
+
+    it('keeps the identity of a payload that is replayed', () => {
+      // A retry re-reads the SAME serialised payload, so the value is untouched.
+      const generated = buildUpdateEvents()!
+        .events as ObjectRecordUpdateEvent[];
+      const replayed = JSON.parse(
+        JSON.stringify(generated),
+      ) as ObjectRecordUpdateEvent[];
+
+      expect(replayed[0].eventId).toBe(generated[0].eventId);
+    });
+
+    it('stamps created, destroyed and upserted events too', () => {
+      const created = formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.CREATED,
+        objectMetadataItem: flatObjectMetadata,
+        flatFieldMetadataMaps,
+        workspaceId: mockWorkspaceId,
+        authContext: mockAuthContext,
+        recordsAfter: [{ id: 'record-1', name: 'A' }],
+      })!.events;
+
+      const destroyed = formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.DESTROYED,
+        objectMetadataItem: flatObjectMetadata,
+        flatFieldMetadataMaps,
+        workspaceId: mockWorkspaceId,
+        authContext: mockAuthContext,
+        recordsBefore: [{ id: 'record-1', name: 'A' }],
+      })!.events;
+
+      const upserted = formatTwentyOrmEventToDatabaseBatchEvent({
+        action: DatabaseEventAction.UPSERTED,
+        objectMetadataItem: flatObjectMetadata,
+        flatFieldMetadataMaps,
+        workspaceId: mockWorkspaceId,
+        authContext: mockAuthContext,
+        recordsAfter: [{ id: 'record-1', name: 'A' }],
+      })!.events;
+
+      for (const event of [...created, ...destroyed, ...upserted]) {
+        expect(typeof event.eventId).toBe('string');
+        expect((event.eventId ?? '').length).toBeGreaterThan(0);
+      }
+    });
+  });
 });

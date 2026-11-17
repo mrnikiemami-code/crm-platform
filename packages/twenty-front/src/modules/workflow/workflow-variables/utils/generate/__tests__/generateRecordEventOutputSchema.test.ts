@@ -38,7 +38,18 @@ describe('generateRecordEventOutputSchema', () => {
           objectMetadataId: 'company-id',
           fieldIdName: 'properties.after.id',
         },
-        fields: {},
+        fields: {
+          // The write identity is offered alongside the record fields, so a step
+          // can key its own de-duplication on the event rather than on values.
+          eventId: {
+            isLeaf: true,
+            type: FieldMetadataType.UUID,
+            label: 'شناسه رویداد',
+            value: expect.any(String),
+            fieldMetadataId: '',
+            isCompositeSubField: false,
+          },
+        },
         _outputSchemaType: 'RECORD',
       });
     });
@@ -173,7 +184,9 @@ describe('generateRecordEventOutputSchema', () => {
         DatabaseEventAction.CREATED,
       );
 
-      expect(Object.keys(result.fields)).toHaveLength(0);
+      // Only the write identity is offered: the inactive field contributes no
+      // path, and `eventId` is not a field of the object.
+      expect(Object.keys(result.fields)).toEqual(['eventId']);
     });
 
     it('should exclude searchVector system field', () => {
