@@ -15,6 +15,7 @@ const state = (
   customerFirstName: 'سارا',
   customerLastName: 'رضایی',
   title: null,
+  titleIsAuto: null,
   ...overrides,
 });
 
@@ -30,6 +31,7 @@ describe('composeCustomerName', () => {
 
   it('treats blank and whitespace-only parts as absent', () => {
     expect(composeCustomerName('   ', '')).toBeNull();
+    expect(composeCustomerName(null, null)).toBeNull();
   });
 });
 
@@ -68,8 +70,6 @@ describe('buildSalesInteractionTitle', () => {
   });
 
   it('refuses to build a title for an ordinal it does not know', () => {
-    // A sixth option added in metadata must fail visibly rather than write
-    // «تماس  با …» with an empty ordinal.
     expect(
       buildSalesInteractionTitle(state({ callAttempt: 'CALL_6' })),
     ).toBeNull();
@@ -77,140 +77,141 @@ describe('buildSalesInteractionTitle', () => {
 });
 
 describe('decideSalesInteractionTitle', () => {
-  it('creates a title on a new follow-up', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: null,
-      next: state({ title: null }),
-    });
-
-    expect(decision).toEqual({
+  it('creates an automatic title on a new follow-up', () => {
+    expect(decideSalesInteractionTitle({ state: state() })).toEqual({
       apply: true,
       title: 'تماس اول با سارا رضایی',
+      titleIsAuto: true,
       because: 'TITLE_EMPTY',
     });
   });
 
-  it('fills an empty title on an existing follow-up', () => {
+  it('fills an empty title and claims ownership', () => {
     const decision = decideSalesInteractionTitle({
-      previous: state({ title: '' }),
-      next: state({ title: '' }),
+      state: state({ title: '', titleIsAuto: false }),
     });
 
-    expect(decision).toMatchObject({ apply: true, because: 'TITLE_EMPTY' });
+    expect(decision).toMatchObject({
+      apply: true,
+      because: 'TITLE_EMPTY',
+      titleIsAuto: true,
+    });
   });
 
-  it('updates the title when the attempt changes', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: state({ title: 'تماس اول با سارا رضایی' }),
-      next: state({ callAttempt: 'CALL_2', title: 'تماس اول با سارا رضایی' }),
-    });
-
-    expect(decision).toEqual({
+  it('updates the title when the attempt changes on an automatic title', () => {
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          callAttempt: 'CALL_2',
+          title: 'تماس اول با سارا رضایی',
+          titleIsAuto: true,
+        }),
+      }),
+    ).toEqual({
       apply: true,
       title: 'تماس دوم با سارا رضایی',
+      titleIsAuto: true,
       because: 'TITLE_WAS_AUTO',
     });
   });
 
   it('updates the title when the customer name changes', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: state({ title: 'تماس اول با سارا رضایی' }),
-      next: state({
-        customerFirstName: 'کریم',
-        title: 'تماس اول با سارا رضایی',
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          customerFirstName: 'کریم',
+          title: 'تماس اول با سارا رضایی',
+          titleIsAuto: true,
+        }),
       }),
-    });
-
-    expect(decision).toEqual({
-      apply: true,
-      title: 'تماس اول با کریم رضایی',
-      because: 'TITLE_WAS_AUTO',
-    });
+    ).toMatchObject({ apply: true, title: 'تماس اول با کریم رضایی' });
   });
 
   it('never overwrites a hand-written title', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: state({ title: 'پیکیری' }),
-      next: state({ callAttempt: 'CALL_3', title: 'پیکیری' }),
-    });
-
-    expect(decision).toEqual({
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          callAttempt: 'CALL_3',
+          title: 'پیکیری',
+          titleIsAuto: false,
+        }),
+      }),
+    ).toEqual({
       apply: false,
       because: 'TITLE_MANUAL',
       title: 'پیکیری',
     });
   });
 
-  it('keeps a hand-written title even when the recorded facts are missing', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: state({ callAttempt: null, title: 'پیکیری' }),
-      next: state({ callAttempt: null, title: 'پیکیری' }),
+  it('does not touch a legacy title whose ownership was never recorded', () => {
+    // The flag is null on every row that predates the field. Treating that as
+    // "ours" would destroy text a person typed, so it is reported instead.
+    expect(
+      decideSalesInteractionTitle({
+        state: state({ title: 'پیکیری', titleIsAuto: null }),
+      }),
+    ).toEqual({
+      apply: false,
+      because: 'OWNERSHIP_ABSENT',
+      title: 'پیکیری',
     });
-
-    expect(decision).toMatchObject({ apply: false });
   });
 
   it('does not write when the computed title already matches', () => {
-    // This is what stops a write from re-triggering its own update event.
-    const decision = decideSalesInteractionTitle({
-      previous: state({ title: 'تماس اول با سارا رضایی' }),
-      next: state({ title: 'تماس اول با سارا رضایی' }),
-    });
-
-    expect(decision).toMatchObject({
-      apply: false,
-      because: 'TITLE_UNCHANGED',
-    });
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          title: 'تماس اول با سارا رضایی',
+          titleIsAuto: true,
+        }),
+      }),
+    ).toMatchObject({ apply: false, because: 'TITLE_UNCHANGED' });
   });
 
-  it('is idempotent: applying twice issues no second write', () => {
+  it('is idempotent: a repeated event issues no second write', () => {
     const first = decideSalesInteractionTitle({
-      previous: state({ title: 'تماس اول با سارا رضایی' }),
-      next: state({ callAttempt: 'CALL_2', title: 'تماس اول با سارا رضایی' }),
+      state: state({
+        callAttempt: 'CALL_2',
+        title: 'تماس اول با سارا رضایی',
+        titleIsAuto: true,
+      }),
     });
 
     expect(first.apply).toBe(true);
 
-    const appliedTitle = first.apply ? first.title : null;
+    const applied = first.apply ? first.title : null;
 
-    const second = decideSalesInteractionTitle({
-      previous: state({
-        callAttempt: 'CALL_2',
-        title: 'تماس اول با سارا رضایی',
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          callAttempt: 'CALL_2',
+          title: applied,
+          titleIsAuto: true,
+        }),
       }),
-      next: state({ callAttempt: 'CALL_2', title: appliedTitle }),
-    });
-
-    expect(second).toMatchObject({
-      apply: false,
-      because: 'TITLE_UNCHANGED',
-    });
+    ).toMatchObject({ apply: false, because: 'TITLE_UNCHANGED' });
   });
 
-  it('renames a title to the unnamed fallback when the name is cleared', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: state({ title: 'تماس اول با سارا رضایی' }),
-      next: state({
-        customerFirstName: null,
-        customerLastName: null,
-        title: 'تماس اول با سارا رضایی',
+  it('falls back to the unnamed label when the name is cleared', () => {
+    expect(
+      decideSalesInteractionTitle({
+        state: state({
+          customerFirstName: null,
+          customerLastName: null,
+          title: 'تماس اول با سارا رضایی',
+          titleIsAuto: true,
+        }),
       }),
-    });
-
-    expect(decision).toEqual({
+    ).toMatchObject({
       apply: true,
       title: `تماس اول با ${UNNAMED_CUSTOMER}`,
-      because: 'TITLE_WAS_AUTO',
     });
   });
 
   it('reports an unbuildable title instead of writing a partial one', () => {
-    const decision = decideSalesInteractionTitle({
-      previous: null,
-      next: state({ callAttempt: 'CALL_9' }),
-    });
-
-    expect(decision).toEqual({
+    expect(
+      decideSalesInteractionTitle({ state: state({ callAttempt: 'CALL_9' }) }),
+    ).toEqual({
       apply: false,
       because: 'TITLE_UNBUILDABLE',
       title: null,

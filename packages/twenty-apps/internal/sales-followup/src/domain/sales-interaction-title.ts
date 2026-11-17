@@ -1,4 +1,6 @@
-import { clean } from 'src/domain/record-title';
+import { isNonEmptyString } from '@sniptt/guards';
+
+import { isTitleOwnedByApp } from 'src/domain/title-ownership';
 
 // Titles for sales follow-ups ("پیگیری فروش").
 //
@@ -21,6 +23,16 @@ const CALL_ATTEMPT_ORDINALS: Record<string, string> = {
 };
 
 export const UNNAMED_CUSTOMER = 'مشتری بدون نام';
+
+// A trimmed value, or null when absent. Trim BEFORE the guard: a value of only
+// spaces is non-empty as a string but carries no text. Kept local rather than
+// imported from another app, because each app is packaged and installed on its
+// own.
+const clean = (value: string | null): string | null => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+
+  return isNonEmptyString(trimmed) ? trimmed : null;
+};
 
 export type SalesInteractionTitleFacts = {
   callAttempt: string | null;
@@ -71,63 +83,85 @@ export type SalesInteractionTitleState = {
   customerLastName: string | null;
   /** The value stored in the interaction's `name` field. */
   title: string | null;
+  /** The stored ownership flag; `null` for a row that predates the field. */
+  titleIsAuto: boolean | null;
 };
 
 export type SalesInteractionTitleDecision =
-  | { apply: true; title: string; because: 'TITLE_EMPTY' | 'TITLE_WAS_AUTO' }
+  | { apply: true; title: string; titleIsAuto: true; because: 'TITLE_EMPTY' }
+  | {
+      apply: true;
+      title: string;
+      titleIsAuto: true;
+      because: 'TITLE_WAS_AUTO';
+    }
   | {
       apply: false;
-      because: 'TITLE_UNBUILDABLE' | 'TITLE_MANUAL' | 'TITLE_UNCHANGED';
+      because:
+        | 'TITLE_UNBUILDABLE'
+        | 'TITLE_MANUAL'
+        | 'TITLE_UNCHANGED'
+        | 'OWNERSHIP_ABSENT';
       title: string | null;
     };
 
 /**
  * Whether to (re)write the title, and why.
  *
- * Automatic and hand-written titles are told apart WITHOUT a stored flag, by
- * recomputing what the title would have been from the PREVIOUS state, which the
- * database update event carries in `properties.before`. If the stored title
- * still equals that, the system wrote it and may replace it; if it differs, a
- * person typed it and it is never touched.
+ * The ownership flag is the ONLY thing that decides whether an existing title may
+ * be replaced; the text is never inspected for a resemblance to the generated
+ * wording. Two guards keep the app from destroying text it did not write:
  *
- * This is exact comparison against a deterministically derived value, not a
- * pattern guess: a hand-written title that does not match the canonical wording
- * is always detected. The one boundary it cannot see is a person typing the
- * canonical wording verbatim, which is indistinguishable from an automatic
- * title without persisting a flag — see the report.
+ *  - an EMPTY title is always safe to fill (nobody loses text), and filling it
+ *    claims ownership so later edits can follow;
+ *  - a non-empty title is replaced only when ownership is explicitly `true`.
  *
- * `TITLE_UNCHANGED` is returned when the computed title already equals the
- * stored one, so a no-op never issues a write and cannot re-trigger the event.
+ * `OWNERSHIP_ABSENT` reports a non-empty title on a row whose flag is `null` —
+ * a legacy row. Rewriting it is exactly the destructive case, so it is reported
+ * (the backfill decides, once, under review) rather than acted on.
+ *
+ * `TITLE_UNCHANGED` is returned when the computed title already equals the stored
+ * one, so a no-op never issues a write and cannot re-trigger its own event.
  */
 export const decideSalesInteractionTitle = ({
-  previous,
-  next,
+  state,
 }: {
-  /** The record as it was; `null` on creation. */
-  previous: SalesInteractionTitleState | null;
-  next: SalesInteractionTitleState;
+  state: SalesInteractionTitleState;
 }): SalesInteractionTitleDecision => {
-  const nextTitle = buildSalesInteractionTitle(next);
-  const currentTitle = clean(next.title);
+  const nextTitle = buildSalesInteractionTitle(state);
+  const currentTitle = clean(state.title);
 
   if (nextTitle === null) {
     return { apply: false, because: 'TITLE_UNBUILDABLE', title: currentTitle };
   }
 
   if (currentTitle === null) {
-    return { apply: true, title: nextTitle, because: 'TITLE_EMPTY' };
+    return {
+      apply: true,
+      title: nextTitle,
+      titleIsAuto: true,
+      because: 'TITLE_EMPTY',
+    };
   }
 
   if (currentTitle === nextTitle) {
+    // Already correct. Re-asserting ownership here is deliberate: it heals a row
+    // whose flag was lost, without changing the text.
     return { apply: false, because: 'TITLE_UNCHANGED', title: currentTitle };
   }
 
-  const previousTitle =
-    previous === null ? null : buildSalesInteractionTitle(previous);
-
-  if (previousTitle !== null && currentTitle === previousTitle) {
-    return { apply: true, title: nextTitle, because: 'TITLE_WAS_AUTO' };
+  if (!isTitleOwnedByApp(state.titleIsAuto)) {
+    return {
+      apply: false,
+      because: state.titleIsAuto === null ? 'OWNERSHIP_ABSENT' : 'TITLE_MANUAL',
+      title: currentTitle,
+    };
   }
 
-  return { apply: false, because: 'TITLE_MANUAL', title: currentTitle };
+  return {
+    apply: true,
+    title: nextTitle,
+    titleIsAuto: true,
+    because: 'TITLE_WAS_AUTO',
+  };
 };
