@@ -24,6 +24,8 @@ import { RecordShareException } from 'src/engine/core-modules/record-share/recor
 import { recordShareGraphqlApiExceptionHandler } from 'src/engine/core-modules/record-share/utils/record-share-graphql-api-exception-handler.util';
 import { TwentyOrmException } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 import { twentyOrmGraphqlApiExceptionHandler } from 'src/engine/twenty-orm/utils/twenty-orm-graphql-api-exception-handler.util';
+import { QuotationQueryValidationException } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
+import { quotationQueryValidationGraphqlApiExceptionHandler } from 'src/modules/quotation/utils/quotation-query-validation-graphql-api-exception-handler.util';
 import { WorkflowQueryValidationException } from 'src/modules/workflow/common/exceptions/workflow-query-validation.exception';
 import { workflowQueryValidationGraphqlApiExceptionHandler } from 'src/modules/workflow/common/utils/workflow-query-validation-graphql-api-exception-handler.util';
 
@@ -61,6 +63,8 @@ export const workspaceQueryRunnerGraphqlApiExceptionHandler = (
       return graphqlDirectExecutionToGraphqlApiExceptionHandler(error);
     case error instanceof WorkflowQueryValidationException:
       return workflowQueryValidationGraphqlApiExceptionHandler(error);
+    case error instanceof QuotationQueryValidationException:
+      return quotationQueryValidationGraphqlApiExceptionHandler(error);
     default:
       throw error;
   }

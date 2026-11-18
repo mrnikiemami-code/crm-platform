@@ -10,6 +10,7 @@ import { CalendarQueryHookModule } from 'src/modules/calendar/common/query-hooks
 import { DashboardQueryHookModule } from 'src/modules/dashboard/query-hooks/dashboard-query-hook.module';
 import { MessagingQueryHookModule } from 'src/modules/messaging/common/query-hooks/messaging-query-hook.module';
 import { NoteQueryHookModule } from 'src/modules/note/query-hooks/note-query-hook.module';
+import { QuotationQueryHookModule } from 'src/modules/quotation/query-hooks/quotation-query-hook.module';
 import { RecordAccessQueryHookModule } from 'src/modules/record-access/query-hooks/record-access-query-hook.module';
 import { TaskQueryHookModule } from 'src/modules/task/query-hooks/task-query-hook.module';
 import { TimelineQueryHookModule } from 'src/modules/timeline/query-hooks/timeline-query-hook.module';
@@ -23,6 +24,7 @@ import { WorkspaceMemberQueryHookModule } from 'src/modules/workspace-member/que
     BlocklistQueryHookModule,
     WorkspaceMemberQueryHookModule,
     NoteQueryHookModule,
+    QuotationQueryHookModule,
     RecordAccessQueryHookModule,
     TaskQueryHookModule,
     TimelineQueryHookModule,
