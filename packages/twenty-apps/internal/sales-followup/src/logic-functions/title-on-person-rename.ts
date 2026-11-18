@@ -11,14 +11,19 @@ import {
 // Keeps titles in step when the CUSTOMER's name changes.
 //
 // A separate entry point is unavoidable: renaming a Person is an update to
-// `person`, which no `salesInteraction` trigger can observe. Watching the two name
-// fields keeps the cost proportional to renames.
+// `person`, which no `salesInteraction` trigger can observe.
+//
+// The watched field is `name`, not `nameFirstName`/`nameLastName`: the workspace
+// declares one COMPOSITE field for a person's name, and the platform reports the
+// change as `name`. Watching the flat columns matched nothing, so a rename never
+// fired — verified against the event payload on Dev, which carried
+// `updatedFields: ["name", "updatedBy"]`.
 //
 // `titleEditedInThisEvent` is false here on purpose: this event is about the
 // PERSON, so a title that differs from the computed one was not edited by the
 // person who renamed the customer — it is either an automatic title that needs to
 // follow, or a manual one that must stay.
-const WATCHED_FIELDS = ['nameFirstName', 'nameLastName'] as const;
+const WATCHED_FIELDS = ['name'] as const;
 
 // Bounded so one rename cannot fan out without limit; the remainder is reported
 // rather than silently skipped.
