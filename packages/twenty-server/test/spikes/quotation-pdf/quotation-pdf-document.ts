@@ -10,6 +10,7 @@ import {
   View,
 } from '@react-pdf/renderer';
 
+import { applyPersianPdfTextLayerFixes } from './fontkit-zwnj-preservation';
 import { resolvePersianFont } from './persian-font';
 
 // Proves the EXISTING server PDF stack (@react-pdf/renderer, already a
@@ -26,6 +27,10 @@ export const SPIKE_FONT_FAMILY = 'QuotationSpikePersian';
 let fontsRegistered = false;
 
 export const registerQuotationSpikeFont = (): void => {
+  // Must run before any layout: fontkit otherwise maps ZWNJ → SPACE in ToUnicode,
+  // and pdfkit otherwise emits multi-code-point ligatures that RTL extractors scramble.
+  applyPersianPdfTextLayerFixes();
+
   if (fontsRegistered) {
     return;
   }
@@ -57,24 +62,28 @@ const styles = StyleSheet.create({
   heading: { fontSize: 16, marginBottom: 6, textAlign: 'right' },
   meta: { fontSize: 9, color: '#555555', marginBottom: 12, textAlign: 'right' },
   tableHeader: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     borderBottomWidth: 1,
     borderBottomColor: '#d0d0d0',
     paddingBottom: 4,
     marginBottom: 4,
   },
-  tableRow: { flexDirection: 'row', paddingVertical: 2 },
-  cellDescription: { flexGrow: 1, textAlign: 'right' },
-  cellQuantity: { width: 60, textAlign: 'center' },
-  cellPrice: { width: 110, textAlign: 'left' },
+  tableRow: {
+    flexDirection: 'row-reverse',
+    paddingVertical: 2,
+  },
+  cellDescription: { width: '55%', textAlign: 'right', paddingHorizontal: 4 },
+  cellQuantity: { width: '15%', textAlign: 'center', paddingHorizontal: 4 },
+  cellPrice: { width: '30%', textAlign: 'left', paddingHorizontal: 4 },
   totalRow: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     marginTop: 8,
     paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: '#d0d0d0',
-    justifyContent: 'space-between',
   },
+  totalLabel: { width: '55%', textAlign: 'right', paddingHorizontal: 4 },
+  totalValue: { width: '45%', textAlign: 'left', paddingHorizontal: 4 },
   footer: {
     position: 'absolute',
     bottom: 20,
@@ -85,13 +94,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-
-// Every visual line of this document is ONE text element. That is a deliberate constraint, not a
-// layout shortcut: a line drawn as several elements (a table row of three cells) is emitted as
-// several content runs, and a `/ActualText` remedy can then only attach the line's text to one of
-// them, which duplicates or loses the others. Joining the cells keeps one run per line so the
-// remedy is exact — and an extractor sees a row as one line, which is how a reader reads it anyway.
-const lineOf = (...parts: string[]): string => parts.join('  ');
 
 export type QuotationPdfSpikeLine = {
   description: string;
@@ -113,6 +115,17 @@ export type QuotationPdfSpikeInput = {
 // also defaults text alignment to the right.
 const RTL_TEXT_STYLE = { direction: 'rtl' as const, textAlign: 'right' as const };
 
+const tableCell = (
+  style: object,
+  text: string,
+  key?: string,
+): ReactElement =>
+  createElement(
+    View,
+    { style, key },
+    createElement(Text, { style: RTL_TEXT_STYLE }, text),
+  );
+
 export const buildQuotationPdfSpikeDocument = (
   input: QuotationPdfSpikeInput,
 ): ReactElement<DocumentProps> => {
@@ -132,29 +145,34 @@ export const buildQuotationPdfSpikeDocument = (
       createElement(
         Text,
         { style: [styles.meta, RTL_TEXT_STYLE] },
-        lineOf('شماره', input.number, '—', input.customerName),
+        `شماره ${input.number} — ${input.customerName}`,
       ),
       createElement(
         Text,
         { style: [styles.meta, RTL_TEXT_STYLE] },
-        lineOf('کد کالا', input.sku),
+        `کد کالا ${input.sku}`,
       ),
       createElement(
-        Text,
-        { style: [styles.tableRow, RTL_TEXT_STYLE] },
-        lineOf('شرح کالا یا خدمت', 'تعداد', 'مبلغ'),
+        View,
+        { style: styles.tableHeader },
+        tableCell(styles.cellDescription, 'شرح کالا یا خدمت'),
+        tableCell(styles.cellQuantity, 'تعداد'),
+        tableCell(styles.cellPrice, 'مبلغ'),
       ),
       ...input.lines.map((line, index) =>
         createElement(
-          Text,
-          { key: index, style: [styles.tableRow, RTL_TEXT_STYLE] },
-          lineOf(line.description, line.quantity, line.unitPrice),
+          View,
+          { key: `line-${index}`, style: styles.tableRow },
+          tableCell(styles.cellDescription, line.description),
+          tableCell(styles.cellQuantity, line.quantity),
+          tableCell(styles.cellPrice, line.unitPrice),
         ),
       ),
       createElement(
-        Text,
-        { style: [styles.totalRow, RTL_TEXT_STYLE] },
-        lineOf('جمع کل', input.total),
+        View,
+        { style: styles.totalRow },
+        tableCell(styles.totalLabel, 'جمع کل'),
+        tableCell(styles.totalValue, input.total),
       ),
       createElement(
         Text,
@@ -164,4 +182,3 @@ export const buildQuotationPdfSpikeDocument = (
     ),
   ) as ReactElement<DocumentProps>;
 };
-

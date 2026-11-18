@@ -65,24 +65,45 @@ export const SPIKE_SAMPLE_INPUT: QuotationPdfSpikeInput = {
   total: '۴۷٬۴۰۰٬۰۰۰',
 };
 
-// The logical string of every VISUAL line, in the order the document draws them. This is the
-// single source of truth the `/ActualText` remedy attaches to the page, and it exists because a
-// glyph cannot carry a character the font never encoded: the half-space has to come from here.
-//
-// A table row is one visual line even though it is drawn as several cells, so its cells are joined
-// the way a reader reads them. The remedy asserts the count against what the page actually drew, so
-// this function drifting from the document fails loudly instead of attaching the wrong text.
+// Logical strings the document must be able to recover. Table cells are independent runs
+// (real columns), so extractors may return them as separate items — callers join as needed.
+export const quotationSourceStrings = (
+  input: QuotationPdfSpikeInput,
+): string[] => [
+  input.title,
+  input.number,
+  input.customerName,
+  input.sku,
+  'شرح کالا یا خدمت',
+  'تعداد',
+  'مبلغ',
+  ...input.lines.flatMap((line) => [
+    line.description,
+    line.quantity,
+    line.unitPrice,
+  ]),
+  'جمع کل',
+  input.total,
+  'این پیش\u200cفاکتور سند مالی نیست',
+];
+
+// Kept for the S1-R2 ActualText proof, which still joins cells into visual lines.
 export const quotationSourceLines = (
   input: QuotationPdfSpikeInput,
 ): string[] => [
   input.title,
-  ['شماره', input.number, '—', input.customerName].join('  '),
-  ['کد کالا', input.sku].join('  '),
-  ['شرح کالا یا خدمت', 'تعداد', 'مبلغ'].join('  '),
-  ...input.lines.map((line) =>
-    [line.description, line.quantity, line.unitPrice].join('  '),
-  ),
-  ['جمع کل', input.total].join('  '),
-  'این پیش‌فاکتور سند مالی نیست',
+  `شماره ${input.number} — ${input.customerName}`,
+  `کد کالا ${input.sku}`,
+  'شرح کالا یا خدمت',
+  'تعداد',
+  'مبلغ',
+  ...input.lines.flatMap((line) => [
+    line.description,
+    line.quantity,
+    line.unitPrice,
+  ]),
+  'جمع کل',
+  input.total,
+  'این پیش\u200cفاکتور سند مالی نیست',
 ];
 

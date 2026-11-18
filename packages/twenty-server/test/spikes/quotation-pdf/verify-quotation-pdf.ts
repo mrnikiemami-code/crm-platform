@@ -130,9 +130,8 @@ const main = async (): Promise<void> => {
     `${usedCodes.length} draws in the sample document, 0 .notdef`,
   );
 
-  // 3. Nothing silently stripped: every character of the source text is either
-  //    drawn, or is a zero-width joiner the writer drops by design (reported
-  //    below as a limitation rather than asserted away).
+  // 3. Nothing silently stripped: every character of the source text is drawn,
+  //    including ZWNJ (preserved at generation time via fontkit patch).
   const sourceText = [
     SPIKE_SAMPLE_INPUT.title,
     SPIKE_SAMPLE_INPUT.number,
@@ -147,9 +146,7 @@ const main = async (): Promise<void> => {
   ].join('');
 
   const ZERO_WIDTH_NON_JOINER = 0x200c;
-  const expectedCodePoints = codePointsOf(sourceText).filter(
-    (codePoint) => codePoint !== ZERO_WIDTH_NON_JOINER,
-  );
+  const expectedCodePoints = codePointsOf(sourceText);
   // A multi-code-point glyph (lam-alef) contributes several characters, so the drawn
   // set is collected through every mapped character, not only the first one.
   const drawnCodePoints = collectDrawnCodePoints(probe.runs, probe.codeToUnicode);
@@ -220,34 +217,40 @@ const main = async (): Promise<void> => {
     `${usedCodes.length}/${usedCodes.length} draws mapped, 0 missing, 0 empty`,
   );
 
-  // 4b. Ligature ordering, measured. Arabic lam-alef is ONE glyph for TWO characters, so
-  //     a consumer that treats a glyph as one character reconstructs کالا as کاال. The
-  //     characters are all present; the ORDER is what a naive extractor breaks. Stated
-  //     as a measurement so the S1-R1 remedy is aimed at the real cause.
+  // 4b. Lam-alef is still ONE drawn glyph (3 draws for کالا), but ToUnicode maps it to a
+  //     single presentation-form code point (U+FEFB) so RTL extractors do not scramble
+  //     کالا into کاال. NFKC restores the canonical spelling.
   const ligatureWord = 'کالا';
   const ligaturePdf = await renderPersianProbeText(ligatureWord);
   const ligatureProbe = probePdf(ligaturePdf);
   const ligatureCodes = ligatureProbe.runs.flatMap((run) => run.codes);
-  const multiCodePointGlyphs = ligatureCodes.filter(
-    (code) => [...(ligatureProbe.codeToUnicode.get(code) ?? '')].length > 1,
-  );
+  const mapped = ligatureCodes
+    .map((code) => ligatureProbe.codeToUnicode.get(code) ?? '')
+    .join('');
+  const presentationForm = mapped.includes('\ufefb');
 
   assert.equal([...ligatureWord].length, 4);
   assert.equal(
     ligatureCodes.length,
     3,
-    'lam-alef must collapse to a single glyph, which is the measured cause',
+    'lam-alef must still be one drawn glyph (3 draws for 4 letters)',
   );
-  assert.equal(multiCodePointGlyphs.length, 1, 'one ligature glyph expected');
+  assert.equal(presentationForm, true, 'lam-alef ToUnicode should be U+FEFB');
+  const logicalFromVisual = [...mapped].reverse().join('').normalize('NFKC');
+
+  assert.equal(
+    logicalFromVisual,
+    ligatureWord,
+    `visual ToUnicode reverse+NFKC should read ${ligatureWord}, got ${logicalFromVisual} (raw ${mapped})`,
+  );
   record(
     'ligature order',
-    `'${ligatureWord}' = ${ligatureCodes.length} glyphs for ${[...ligatureWord].length} characters; one glyph carries 2 code points`,
+    `'${ligatureWord}' = ${ligatureCodes.length} glyphs; ToUnicode uses U+FEFB; reverse+NFKC → ${ligatureWord}`,
   );
 
-  // 4c. ZWNJ. Persian needs the zero-width non-joiner to spell پیش‌فاکتور. pdfkit takes
-  //     the code points from the FONT's mapping for whatever glyph the shaper chose, so
-  //     whether ZWNJ survives depends on the face: this records what the current face
-  //     does instead of assuming either outcome.
+  // 4c. ZWNJ must survive in ToUnicode. fontkit's hideDefaultIgnorables used to replace
+  //     it with the SPACE glyph; the generation-time patch keeps the face's zero-width
+  //     ZWNJ glyph so extractors recover the half-space.
   const zwnjSource = 'پیش\u200cفاکتور';
   const zwnjPdf = await renderPersianProbeText(zwnjSource);
   const zwnjProbe = probePdf(zwnjPdf);
@@ -257,14 +260,9 @@ const main = async (): Promise<void> => {
     zwnjDrawn.filter((codePoint) => codePoint === 0x20).length >
     codePointsOf(zwnjSource).filter((codePoint) => codePoint === 0x20).length;
 
-  record(
-    'zwnj',
-    zwnjPreserved
-      ? 'preserved in the text layer'
-      : zwnjBecameSpace
-        ? 'converted to a space by this face — copy/search loses the half-space'
-        : 'absent from the text layer',
-  );
+  assert.equal(zwnjPreserved, true, 'ZWNJ missing from ToUnicode text layer');
+  assert.equal(zwnjBecameSpace, false, 'ZWNJ was converted to a space glyph');
+  record('zwnj', 'preserved in the text layer (generation-time fontkit patch)');
 
   // 5. RTL layout, stated where it cannot be ambiguous: on a one-word document the
   //    page must show the logical word reversed, character for character.
@@ -329,13 +327,9 @@ const main = async (): Promise<void> => {
   console.log('\nAll assertions passed.\n');
   console.log(
     'Measured limits (not failures):\n' +
-      '  - ligature ordering: Arabic lam-alef is one glyph for two characters, so a\n' +
-      '    consumer that treats one glyph as one character reconstructs کالا as کاال.\n' +
-      '    The characters are all present; only the ORDER is fragile.\n' +
-      '  - ZWNJ does not survive, and this is NOT a property of the face: Tahoma and\n' +
-      '    Vazirmatn both map the half-space and a real space to the SAME glyph code,\n' +
-      '    so no glyph-level trick can express it. `/ActualText` is the standard fix;\n' +
-      '    see prove-actual-text.ts.\n',
+      '  - lam-alef ToUnicode uses U+FEFB (presentation form); NFKC restores کالا.\n' +
+      '  - ZWNJ is in ToUnicode (fontkit patch); MuPDF keeps it; pdf.js strips it.\n' +
+      '  - see prove-generation-zwnj.ts and fontkit-zwnj-preservation.ts.\n',
   );
 };
 

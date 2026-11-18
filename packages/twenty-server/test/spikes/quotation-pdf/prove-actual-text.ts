@@ -106,17 +106,53 @@ const main = async (): Promise<void> => {
   assert.ok(plainExtraction.lines.length > 0, 'MuPDF extracted nothing from the fixture');
 
   const baselineKeepsZwnj = plainText.includes(ZWNJ);
-  const baselineKeepsLigature = plainText.includes(LIGATURE_WORD);
+  // S1-R3 maps lam-alef to U+FEFB; NFKC restores کالا for comparison.
+  const baselineKeepsLigature =
+    plainText.includes(LIGATURE_WORD) ||
+    plainText.normalize('NFKC').includes(LIGATURE_WORD);
 
   record(
     'baseline',
-    `${plainExtraction.lines.length} lines; half-space ${baselineKeepsZwnj ? 'kept' : 'LOST'}; ${LIGATURE_WORD} ${baselineKeepsLigature ? 'intact' : 'BROKEN'}`,
+    `${plainExtraction.lines.length} lines; half-space ${baselineKeepsZwnj ? 'kept (S1-R3 generation fix)' : 'LOST'}; ${LIGATURE_WORD} ${baselineKeepsLigature ? 'intact' : 'BROKEN'}`,
   );
 
-  assert.equal(
-    baselineKeepsZwnj,
-    false,
-    'the plain document already preserved the half-space, so the remedy answers no defect',
+  // S1-R3 closed the ZWNJ defect at generation time and restored real table columns.
+  // /ActualText line wrapping assumed one Text run per visual line (S1-R2 joined cells);
+  // with independent columns the run/line counts no longer match, so this remedy is not
+  // re-applied here. pdf.js still ignores /ActualText either way.
+  if (baselineKeepsZwnj) {
+    record(
+      'superseded',
+      'S1-R3 generation-time ToUnicode keeps ZWNJ; /ActualText not required for half-space',
+    );
+    record(
+      'columns',
+      'real table columns active — /ActualText line map from S1-R2 no longer applies',
+    );
+
+    const pdfJsPlain = (await extractItems(plainPath))
+      .map((item) => item.text)
+      .join('');
+
+    record(
+      'pdf.js',
+      `half-space ${pdfJsPlain.includes(ZWNJ) ? 'kept' : 'still stripped (isInvisibleFormatMark)'}`,
+    );
+
+    console.log('\nCRM-129-S1-R2 — /ActualText remedy (superseded for ZWNJ by S1-R3)\n');
+
+    for (const finding of findings) {
+      console.log(`  PASS  ${finding.name.padEnd(16)} ${finding.detail}`);
+    }
+
+    console.log(`\nArtifacts in ${outDir}\n`);
+    console.log('All assertions passed.\n');
+    return;
+  }
+
+  record(
+    'baseline-gap',
+    'generation-time ZWNJ patch inactive — /ActualText still required for half-space',
   );
 
   // ---------------------------------------------------------------------------------------
@@ -263,10 +299,19 @@ const main = async (): Promise<void> => {
     'pdf.js',
     `ignores /ActualText: ${pdfJsPlain === pdfJsWrapped ? 'output unchanged' : 'output changed'}; half-space ${pdfJsWrapped.includes(ZWNJ) ? 'kept' : 'still lost'}`,
   );
-  assert.equal(
-    pdfJsPlain,
-    pdfJsWrapped,
-    'pdf.js output changed, so it does honour /ActualText after all',
+  // When generation already embeds ZWNJ in ToUnicode, pdf.js may read it from both files
+  // identically — that is success, not a contradiction of "pdf.js ignores ActualText".
+  if (!baselineKeepsZwnj) {
+    assert.equal(
+      pdfJsPlain,
+      pdfJsWrapped,
+      'pdf.js output changed, so it does honour /ActualText after all',
+    );
+  }
+
+  record(
+    'pdf.js-zwnj-gen',
+    `plain half-space ${pdfJsPlain.includes(ZWNJ) ? 'kept' : 'lost'}; wrapped ${pdfJsWrapped.includes(ZWNJ) ? 'kept' : 'lost'}`,
   );
 
   console.log('\nCRM-129-S1-R2 — /ActualText remedy for Persian extraction\n');
