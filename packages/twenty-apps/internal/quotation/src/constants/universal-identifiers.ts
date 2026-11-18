@@ -73,6 +73,7 @@ export const QUOTATION_LINE_FIELDS = {
   name: '74a6f93d-84f6-5ebe-8b2d-51f65dc6a9a7',
   quotation: '9c6b0729-04e9-5001-a3c3-32b8aec1976f',
   item: 'd13bf4dd-1a9f-527e-940e-5a923a1235ae',
+  kind: '6e4c1a8f-2b90-5d41-9c7e-0a1f3b5d7e9c',
   description: '993ce0c8-f0a6-5408-bdc9-aa81917fc722',
   unit: '3f7ec605-292f-5383-bad8-2f793d40d2c3',
   quantityMilli: '22d64c2f-2a4b-5d7b-9983-be2ef599b2e3',
@@ -188,4 +189,36 @@ export const SELECT_OPTION_IDS = {
   operationStateFailedFinal: '72437aae-5972-5f40-990b-ab02956cab60',
   operationStateManualExport: '3ace57df-83e8-5d7e-8e0f-db9db5b82e7d',
   operationStateCancelled: 'c02d9586-da59-504b-9341-686632494a55',
+  quotationLineKindProduct: 'a91b2c3d-4e5f-5601-8790-1a2b3c4d5e6f',
+  quotationLineKindService: 'b02c3d4e-5f60-5712-9801-2b3c4d5e6f70',
 } as const;
+
+// S2 UI / runtime entry points. Stable once installed.
+export const QUOTATION_APP_ROLE_UNIVERSAL_IDENTIFIER =
+  'c1d2e3f4-a5b6-5789-9012-3456789abcde';
+
+export const CATALOG_ITEMS_VIEW_UNIVERSAL_IDENTIFIER =
+  'd2e3f4a5-b6c7-5890-a123-456789bcdef0';
+export const QUOTATIONS_VIEW_UNIVERSAL_IDENTIFIER =
+  'e3f4a5b6-c7d8-5901-b234-56789cdef012';
+
+export const QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'f4a5b6c7-d8e9-5012-c345-6789def01234';
+export const CATALOG_ITEM_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'a5b6c7d8-e9f0-5123-d456-789ef0123456';
+
+export const CREATE_QUOTATION_FROM_PERSON_COMMAND_UNIVERSAL_IDENTIFIER =
+  'b6c7d8e9-f0a1-5234-e567-89f012345678';
+export const CREATE_QUOTATION_FROM_COMPANY_COMMAND_UNIVERSAL_IDENTIFIER =
+  'c7d8e9f0-a1b2-5345-f678-90123456789a';
+export const EDIT_CATALOG_ITEM_COMMAND_UNIVERSAL_IDENTIFIER =
+  'd8e9f0a1-b2c3-5456-0789-0123456789ab';
+export const NEW_CATALOG_ITEM_COMMAND_UNIVERSAL_IDENTIFIER =
+  'e9f0a1b2-c3d4-5567-1890-123456789abc';
+
+export const PREPARE_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'f0a1b2c3-d4e5-5678-2901-23456789abcd';
+export const SAVE_DRAFT_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'a1b2c3d4-e5f6-5789-3012-3456789abcde';
+export const SAVE_CATALOG_ITEM_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'b2c3d4e5-f607-5890-4123-456789bcdef0';

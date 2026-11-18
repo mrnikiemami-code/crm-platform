@@ -1,0 +1,114 @@
+import {
+  buildCatalogItemUpsertPlan,
+  type CatalogItemUpsertInput,
+  type CatalogItemUpsertPlan,
+} from 'src/domain/catalog/catalog-upsert';
+import {
+  buildDraftQuotationPlan,
+  type DraftQuotationInput,
+  type DraftQuotationPlan,
+} from 'src/domain/quotation/draft-quotation';
+import { accepted, refused, type Result } from 'src/domain/shared/result';
+
+// Persistence is prepared here as GraphQL mutation documents. Execution requires an
+// installed app and a live token; S2 ships the code but does not install or call Asan.
+
+export type SaveDraftOutcome =
+  | { kind: 'VALIDATED'; plan: DraftQuotationPlan }
+  | { kind: 'SAVED'; quotationId: string; plan: DraftQuotationPlan }
+  | { kind: 'REJECTED'; code: string; message: string };
+
+export type SaveCatalogOutcome =
+  | { kind: 'VALIDATED'; plan: CatalogItemUpsertPlan }
+  | { kind: 'SAVED'; itemId: string; plan: CatalogItemUpsertPlan }
+  | { kind: 'REJECTED'; code: string; message: string };
+
+export const validateDraftQuotation = (
+  input: DraftQuotationInput,
+): SaveDraftOutcome => {
+  const plan = buildDraftQuotationPlan(input);
+
+  if (!plan.ok) {
+    return {
+      kind: 'REJECTED',
+      code: plan.refusal.code,
+      message: plan.refusal.detail,
+    };
+  }
+
+  return { kind: 'VALIDATED', plan: plan.value };
+};
+
+export const validateCatalogItemUpsert = (
+  input: CatalogItemUpsertInput,
+): SaveCatalogOutcome => {
+  const plan = buildCatalogItemUpsertPlan(input);
+
+  if (!plan.ok) {
+    return {
+      kind: 'REJECTED',
+      code: plan.refusal.code,
+      message: plan.refusal.detail,
+    };
+  }
+
+  return { kind: 'VALIDATED', plan: plan.value };
+};
+
+// Builds the createQuotation + createQuotationLine mutation bodies. Callers that
+// have a live GraphQL client execute them; unit tests assert the shape only.
+export const buildDraftQuotationWritePayload = (
+  plan: DraftQuotationPlan,
+): Result<{
+  quotation: Record<string, unknown>;
+  lines: Record<string, unknown>[];
+}> => {
+  if (plan.lines.length === 0) {
+    return refused('DOCUMENT_HAS_NO_LINES', 'حداقل یک ردیف لازم است');
+  }
+
+  return accepted({
+    quotation: {
+      name: plan.name,
+      status: plan.status,
+      customerType: plan.customerType,
+      personId: plan.personId,
+      companyId: plan.companyId,
+      currencyCode: plan.currencyCode,
+      taxPolicy: plan.taxPolicy,
+      paymentTerms: plan.paymentTerms,
+      totalExact: plan.totalExact,
+      version: plan.version,
+    },
+    lines: plan.lines.map((line) => ({
+      name: line.name,
+      kind: line.kind,
+      description: line.description,
+      unit: line.unit,
+      quantityExact: line.quantityExact,
+      unitPriceExact: line.unitPriceExact,
+      discountExact: line.discountExact,
+      taxExact: line.taxExact,
+      totalExact: line.totalExact,
+      sortOrder: line.sortOrder,
+      itemId: line.catalogItemId,
+    })),
+  });
+};
+
+export const buildCatalogItemWritePayload = (
+  plan: CatalogItemUpsertPlan,
+): Result<{
+  item: Record<string, unknown>;
+  defaultUnitPriceExact: string | null;
+}> =>
+  accepted({
+    item: {
+      name: plan.item.name,
+      kind: plan.item.kind,
+      sku: plan.item.sku,
+      unit: plan.item.unit,
+      isActive: plan.item.isActive,
+    },
+    defaultUnitPriceExact: plan.defaultUnitPriceExact,
+  });

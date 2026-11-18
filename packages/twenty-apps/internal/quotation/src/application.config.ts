@@ -20,9 +20,9 @@ import { APPLICATION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identi
 // missing credential is reported at send time with a stable code instead.
 export default defineApplication({
   universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER,
-  displayName: 'Quotation',
+  displayName: 'پیش‌فاکتور',
   description:
-    'Pro-forma quotations for products and services, with a vendor-neutral bridge to accounting systems. The CRM issues quotations; the accounting system owns posted invoices.',
+    'مدیریت کالا، خدمات و پیش‌فاکتور. اتصال حسابداری جدا و قابلیت‌محور است (آسان اول، سپیدار دوم). محدودیت کپی نیم‌فاصله در مرورگر برای PDF همچنان ثبت است و مانع این اپ نیست.',
   serverVariables: {},
   applicationVariables: {
     // The default accounting connection used when a caller does not name one.
