@@ -61,3 +61,22 @@ S6 INTRANET RELEASE: separate architect/user approval, migration dry-run, backup
 
 ## Non-goals in first slices
 - Full accounting ledger, inventory accounting, payroll, tax filing, instant support for every accounting vendor, CRM-128 intranet rollout, CRM-126 SMS, bulk backfill.
+
+## Approved scope extension — bidirectional product/service catalog sync (2026-11-18)
+User explicitly requires BOTH directions: import products from accounting into CRM, and create products in CRM then publish them back to accounting. Include updates as a capability-dependent flow; support products and services, with distinct handling for inventory-bearing items.
+
+### Domain and mapping
+- CatalogItem is CRM-facing product/service record; external item identity is scoped by workspace + accountingConnection + externalItemId. Keep internal ID stable; never equate SKU/name with unique identity.
+- AccountingItemLink: internalItemId, connectionId, externalItemId, externalCode, remoteVersion/etag or updatedAt, lastSyncedAt, syncDirection, syncStatus; uniqueness and soft-delete policies.
+- Field-level ownership/mapping: name, SKU, unit, item type, descriptions, prices, currency, taxes, category, active status, inventory quantity; source of truth configured per field/connection. Stock/warehouse and accounting valuation remain authoritative in accounting/inventory system unless explicitly agreed otherwise.
+- Distinguish creating a new item, linking an existing external item, updating, and deactivating; no blind SKU/name matching or destructive deletes.
+- Price-list and tax mapping may be separate from item sync; do not assume single price or tax schema. Preserve quotation line snapshots regardless of catalog sync.
+- Bidirectional synchronization must have echo suppression (origin/correlation), version checks, conflict queue/manual resolution, idempotency keys, rate limits, retry/backoff, reconciliation, audit and no silent overwrite.
+- A vendor may support list/read but not create/update. Expose adapter capabilities: listItems, getItem, createItem, updateItem, listPrices, readStock, webhooks/polling, externalIdempotency. If write unsupported, show explicit pending/manual export state rather than falsely claiming successful push.
+- On first connection, use preview/dry-run with counts of proposed new/linked/conflicted items; explicit approval for bulk imports. Never auto-import or push during connector setup.
+
+### S0 additional source audit
+Find exact existing Product/service/catalog/price/stock entities, product UI and permissions, item creation APIs, existing sync jobs, external ID mapping, uniqueness and conflict policies. Report whether products can be created and updated locally and which extension point can emit a reliable outbox event. Do not implement in S0.
+
+### Delivery order adjustment
+After S1 domain contracts, deliver CRM catalog CRUD and quotation capability (S2), then accounting connector item read/import preview and mapping, then CRM-created item outbound create/update through a mock adapter and one verified real adapter. Gate every write behind approved connector capabilities and source-of-truth policy; no implicit production sync.
