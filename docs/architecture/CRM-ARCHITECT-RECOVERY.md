@@ -235,3 +235,14 @@ User explicitly approved correcting the Dev worker-reachable LOGIC_FUNCTION_API_
 **Status: PLAN RECORDED / S0 SOURCE AUDIT TASK READY / NO IMPLEMENTATION APPROVED; STOP_FOR_ARCHITECT.** User requires CRM quotations for both products and services and vendor-neutral accounting connectivity. Architecture and bounded delivery gates are recorded in [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md), created at commit `9ed2a8451230cba789b349c8c33bed3653aee624`.
 
 Directly inspected this recovery file and root package.json on the remote release branch. GitHub code search returned no matches for quotation/product/invoice/catalog/price, which does not establish absence; guessed standard-object paths were not found, and local unpushed source cannot be inspected via remote GitHub. **Next task CRM-129-S0 is read-only local source inventory and reuse mapping only**, with exact paths and divergence evidence, followed by STOP_FOR_ARCHITECT. No schema, app installation, implementation, intranet :6080 changes, push, worker restart, migration, or backfill authorized.
+
+## CRM-129 — CURRENT RECOVERY POINTER (2026-11-18, supersedes stale S0-next wording above)
+
+**Canonical current plan:** [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md), updated at GitHub commit `4c2d04c12b7611542ea288139e3e661b70a8c285`. The earlier section saying “S0 task ready” is historical and no longer current.
+
+- S0 source audit completed per Cursor report; BRANCH-ALIGN completed with local merge `8e702032660e4a8462b94e3b7297d4259f9c46dd`, no conflicts/Push; local CRM-126/127/128 commits preserved.
+- S1 contract/feasibility reported completed in **local-only** commit `910f497fc84a889eec91cf6f716ed32bc873cfdd`, 48 new files, 114 Vitest passes, 11 PDF checks, no schema/install/intranet deployment/Push. This is **report evidence, not remotely verified source or independently rerun tests**.
+- S1 conditional PASS only; unresolved precision, Persian PDF extraction/ZWNJ, storage-backed numbering proof, Asan fixture compatibility, 6-decimal quantities and financial policy.
+- **Vendor priority: Asan first, Sepidar second**, both behind a vendor-neutral accounting interface. User supplied `D:\HaniReference\LinqToAsan-API-Guide.pdf`; do not assert guide is in Git. Asan documented product creation and price-only edit; full product-field update unsupported by evidence.
+- **NEXT = CRM-129-S1-R1**, narrow contract corrections and Asan mapping fixtures. Local worker must fetch and safely align newer remote docs (including Asan and this status) without rewriting local S1 commit. Compute fresh divergence; no Push.
+- **STOP_FOR_ARCHITECT** after R1. S2 not authorized. No database writes, app install, live accounting writes, :6080 changes, service restart, deployment or automatic branch push.
