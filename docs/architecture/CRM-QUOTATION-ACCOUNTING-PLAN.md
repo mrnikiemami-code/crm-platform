@@ -166,3 +166,27 @@ User priority: implement vendor-neutral accounting interface FIRST, Asan adapter
 
 ### Later gated sequence
 S2 app-owned catalog CRUD + mixed product/service quotation domain, only after S1-R1 review; S3 adapter core + Asan read-only import preview and reconciliation; S4 approval-gated Asan outbound create/price/customer/pro-forma writes; S5 Sepidar adapter when its official API guide and environment are available. No production actions implicitly authorized.
+
+## CRM-129 S1-R2 / S1-R3 checkpoint — 2026-11-19 (user-supplied Cursor reports; not independently source-verified)
+
+**Integrity notice:** GitHub remote `release/record-access-115` contains the architecture documents but the local-only quotation implementation and `docs/architecture/CRM-129-S1-R3-PROOF.md` are NOT on that remote branch at this checkpoint. Attempt to fetch R3 report and quotation code from remote returned NOT_FOUND; compare remote branch to `d544cc83dd` also returned NOT_FOUND. Local bridge project listing failed. Do not claim local code review, successful remote source audit of R3, remote backup, or push.
+
+### Reported local timeline and evidence
+- S1 local `910f497fc84a889eec91cf6f716ed32bc873cfdd`: 114 tests; initial contracts and PDF feasibility.
+- S1-R1 local `02ef6d7fc7307db712165a2ed2892532551bde93`: 169 tests; single exact text money source, 6-decimal quantity, explicit IRR/toman conversion, Asan capability fixtures; remote documentation merged locally at `9d91019515` per Cursor report.
+- S1-R2 local `2d024c81845980d1fdcc3b490eddd0d31617ac9e`: 171 tests, 9 PDF checks, 5 isolated PostgreSQL checks per Cursor report; licensed Vazirmatn and OFL, incremental `/ActualText`, serialisation 40001 retry path. Browser copy/search remained defective; 3/8 MuPDF lines had duplicated trailing text.
+- S1-R3 local **short SHA** `d544cc83dd` (full SHA not provided): **PARTIAL**, report path `docs/architecture/CRM-129-S1-R3-PROOF.md` (local only). Reported root cause: fontkit `hideDefaultIgnorables` replaces U+200C ZWNJ with SPACE after shaping; generation-time `fontkit-zwnj-preservation.ts` keeps ZWNJ in ToUnicode, lam-alef maps to U+FEFB with NFKC yielding correct `کالا`; real table columns restored (21 runs). MuPDF extraction keeps ZWNJ and ligatures/digits/columns, but pdf.js strips ZWNJ via `isInvisibleFormatMark`; 171 quotation tests reportedly pass. No engine switch. This is **not full PDF/browser acceptance**.
+- All three reports claim no live Asan calls, no app DB writes, no intranet :6080 modification, no deploy, no push or worker restart; these claims are report-based, not independently verified.
+
+### Architecture integrity / decision
+- **Core domain boundaries remain unchanged:** CRM owns quotations and revision/approval/PDF; accounting owns posted invoices/ledger; Asan first and Sepidar second behind a vendor-neutral capability-aware adapter; products and services supported; no full product update promise for Asan (price-only endpoint documented); no automatic ambiguous POST retry; no production changes without separate approval.
+- **Accept S1-R3 as PARTIAL and do not hold all subsequent development hostage to browser PDF ZWNJ.** Current PDF output may be used as a development proof, NOT advertised as fully browser-copy-safe. Keep regression tests and document user-visible limitation; prefer correctly rendered PDF, correct financial values and proper table layout. Any later browser text-extraction fix must be separately scoped and justified; do not switch PDF engine automatically.
+- Numbering proof was on isolated PostgreSQL container, not final deployed app schema. Must revalidate sequence uniqueness, transactional CAS and error 40001 handling on actual proposed persistence path before production.
+- Tax/discount legal policy, Asan money unit/auth/network connectivity, secure customer link, runtime field permissions, actual app installation and end-to-end usability remain open gates.
+
+### Immediate next step / continuity requirements
+1. Cursor must report full local HEAD, `git status`, branch, `git log --oneline -8`, `git merge-base` and ahead/behind after `git fetch` (without pushing). Verify that S1 through R3 source files and their proof reports exist locally; run the 171 tests, typecheck and lint, plus PDF extraction proof. Compare manifest and accounting interface to this document; report any drift, with exact file paths.
+2. Check that newer GitHub recovery-document commits are incorporated locally safely, preserving all CRM-126/127/128 and quotation commits; no hard reset, rebase or force push. Avoid recursive diagnostics.
+3. Present short architecture-integrity report with `PRESERVED / DRIFT / UNKNOWN` for quotation/catalog, adapter independence, Asan limitations, exact money, numbering, PDF, permissions, no production changes.
+4. After architect review, authorize bounded S2 implementation of real catalog + quotation CRUD and UX for nontechnical business users. Keep PDF browser-copy limitation tracked separately; do not claim production readiness.
+5. Keep this plan and `CRM-ARCHITECT-RECOVERY.md` as restart pointers. If user explicitly authorizes pushing code later, review exact diff, conflicts, CI and target branch first. **No push, install, deploy, schema writes, live accounting writes or worker restart authorized now.**
