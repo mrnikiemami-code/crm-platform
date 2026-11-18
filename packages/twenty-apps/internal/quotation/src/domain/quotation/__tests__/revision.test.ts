@@ -13,7 +13,7 @@ import {
 
 const snapshot = (): QuotationRevisionSnapshot => {
   const amounts = computeLineAmounts({
-    quantityMilli: 1_000n,
+    quantityScaled: 1_000_000n,
     unitPriceMicros: 4_400_000_000n,
     discount: { kind: 'NONE' },
     taxRateBasisPoints: 900n,
@@ -36,7 +36,7 @@ const snapshot = (): QuotationRevisionSnapshot => {
         lineId: 'line-1',
         description: 'خدمت مشاوره',
         unit: 'ساعت',
-        quantityMilli: 1_000n,
+        quantityScaled: 1_000_000n,
         unitPriceMicros: 4_400_000_000n,
         amounts: amounts.value,
       }),

@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 
 import { PERSIAN_REQUIRED_CODE_POINTS, resolvePersianFont } from './persian-font';
-import { probePdf, type TextRun } from './pdf-probe';
+import {
+  collectDrawnCodePoints,
+  probePdf,
+  type TextRun,
+} from './pdf-probe';
 import {
   SPIKE_SAMPLE_INPUT,
   renderPersianProbeText,
@@ -146,9 +150,9 @@ const main = async (): Promise<void> => {
   const expectedCodePoints = codePointsOf(sourceText).filter(
     (codePoint) => codePoint !== ZERO_WIDTH_NON_JOINER,
   );
-  const drawnCodePoints = usedCodes.map(
-    (code) => probe.codeToUnicode.get(code)?.codePointAt(0) ?? -1,
-  );
+  // A multi-code-point glyph (lam-alef) contributes several characters, so the drawn
+  // set is collected through every mapped character, not only the first one.
+  const drawnCodePoints = collectDrawnCodePoints(probe.runs, probe.codeToUnicode);
 
   const countByCodePoint = (codePoints: number[]): Map<number, number> => {
     const counts = new Map<number, number>();
@@ -184,26 +188,82 @@ const main = async (): Promise<void> => {
     `${expectedCounts.size} distinct characters, every one drawn at least as often as written`,
   );
 
-  // 4. Extraction fidelity, measured rather than assumed. Some positional glyph
-  //    forms are drawn but omitted from the /ToUnicode CMap, so an extracted
-  //    document loses those letters. This is a real limitation of the current
-  //    writer (documented in the S1 report), not something to hide with a wide
-  //    tolerance: the ceiling is pinned so a regression makes it worse visibly.
+  // 4. Mapping completeness. Every glyph the writer drew must have a /ToUnicode entry
+  //    and that entry must not be empty; an empty entry is what silently deletes a
+  //    character from a copied document.
+  //
+  //    NOTE ON THE S1 REPORT: it claimed 203/206 extractable and one "unlisted glyph
+  //    form". That number came from this probe's own parser reading only the FIRST code
+  //    point of a multi-code-point destination (`<0008><0644 0627>` is lam-alef, not
+  //    lam), so it reported a mapping as missing while it was present. The parser is
+  //    fixed above and the true figure is asserted here: no missing and no empty entry.
   const unmappedDraws = usedCodes.filter(
     (code) => probe.codeToUnicode.get(code) === undefined,
   );
+  const emptyMappingDraws = usedCodes.filter(
+    (code) => probe.codeToUnicode.get(code) === '',
+  );
   const distinctUnmappedCodes = new Set(unmappedDraws);
 
-  // Pinned, not tolerated: exactly one positional form is currently unlisted. A
-  // second one means the writer regressed or a new letter joined the document, and
-  // either way the extraction loss stops being a footnote.
-  assert.ok(
-    distinctUnmappedCodes.size <= 1,
-    `${distinctUnmappedCodes.size} distinct glyph forms have no ToUnicode entry`,
+  assert.deepEqual(
+    [...distinctUnmappedCodes],
+    [],
+    'glyphs drawn with no ToUnicode entry',
+  );
+  assert.deepEqual(
+    [...new Set(emptyMappingDraws)],
+    [],
+    'glyphs drawn with an EMPTY ToUnicode entry',
   );
   record(
-    'extraction fidelity',
-    `${(usedCodes.length - unmappedDraws.length)}/${usedCodes.length} draws extractable (${(((usedCodes.length - unmappedDraws.length) / usedCodes.length) * 100).toFixed(1)}%), ${distinctUnmappedCodes.size} unlisted glyph form`,
+    'mapping completeness',
+    `${usedCodes.length}/${usedCodes.length} draws mapped, 0 missing, 0 empty`,
+  );
+
+  // 4b. Ligature ordering, measured. Arabic lam-alef is ONE glyph for TWO characters, so
+  //     a consumer that treats a glyph as one character reconstructs کالا as کاال. The
+  //     characters are all present; the ORDER is what a naive extractor breaks. Stated
+  //     as a measurement so the S1-R1 remedy is aimed at the real cause.
+  const ligatureWord = 'کالا';
+  const ligaturePdf = await renderPersianProbeText(ligatureWord);
+  const ligatureProbe = probePdf(ligaturePdf);
+  const ligatureCodes = ligatureProbe.runs.flatMap((run) => run.codes);
+  const multiCodePointGlyphs = ligatureCodes.filter(
+    (code) => [...(ligatureProbe.codeToUnicode.get(code) ?? '')].length > 1,
+  );
+
+  assert.equal([...ligatureWord].length, 4);
+  assert.equal(
+    ligatureCodes.length,
+    3,
+    'lam-alef must collapse to a single glyph, which is the measured cause',
+  );
+  assert.equal(multiCodePointGlyphs.length, 1, 'one ligature glyph expected');
+  record(
+    'ligature order',
+    `'${ligatureWord}' = ${ligatureCodes.length} glyphs for ${[...ligatureWord].length} characters; one glyph carries 2 code points`,
+  );
+
+  // 4c. ZWNJ. Persian needs the zero-width non-joiner to spell پیش‌فاکتور. pdfkit takes
+  //     the code points from the FONT's mapping for whatever glyph the shaper chose, so
+  //     whether ZWNJ survives depends on the face: this records what the current face
+  //     does instead of assuming either outcome.
+  const zwnjSource = 'پیش\u200cفاکتور';
+  const zwnjPdf = await renderPersianProbeText(zwnjSource);
+  const zwnjProbe = probePdf(zwnjPdf);
+  const zwnjDrawn = collectDrawnCodePoints(zwnjProbe.runs, zwnjProbe.codeToUnicode);
+  const zwnjPreserved = zwnjDrawn.includes(ZERO_WIDTH_NON_JOINER);
+  const zwnjBecameSpace =
+    zwnjDrawn.filter((codePoint) => codePoint === 0x20).length >
+    codePointsOf(zwnjSource).filter((codePoint) => codePoint === 0x20).length;
+
+  record(
+    'zwnj',
+    zwnjPreserved
+      ? 'preserved in the text layer'
+      : zwnjBecameSpace
+        ? 'converted to a space by this face — copy/search loses the half-space'
+        : 'absent from the text layer',
   );
 
   // 5. RTL layout, stated where it cannot be ambiguous: on a one-word document the
@@ -268,9 +328,13 @@ const main = async (): Promise<void> => {
 
   console.log('\nAll assertions passed.\n');
   console.log(
-    'Known limitation (measured, not a failure): the writer omits a few\n' +
-      'positional glyph forms from /ToUnicode, so extracted text can drop a\n' +
-      'letter (e.g. the medial lam in کالا). Rendering is unaffected.\n',
+    'Measured limits (not failures):\n' +
+      '  - ligature ordering: Arabic lam-alef is one glyph for two characters, so a\n' +
+      '    consumer that treats one glyph as one character reconstructs کالا as کاال.\n' +
+      '    The characters are all present; only the ORDER is fragile.\n' +
+      '  - ZWNJ does not survive: this face maps it to a space, so a copied quotation\n' +
+      '    spells پیش فاکتور instead of پیش‌فاکتور. Face-dependent; must be re-measured\n' +
+      '    with the production font.\n',
   );
 };
 

@@ -27,7 +27,7 @@ export type LineDiscount =
   | { kind: 'AMOUNT'; micros: bigint };
 
 export type QuotationLineInput = {
-  quantityMilli: bigint;
+  quantityScaled: bigint;
   unitPriceMicros: bigint;
   discount: LineDiscount;
   taxRateBasisPoints: bigint;
@@ -44,7 +44,7 @@ export type QuotationLineAmounts = {
 export const computeLineAmounts = (
   input: QuotationLineInput,
 ): Result<QuotationLineAmounts> => {
-  if (input.quantityMilli <= 0n) {
+  if (input.quantityScaled <= 0n) {
     return refused(
       'QUANTITY_NOT_POSITIVE',
       'a quotation line must have a positive quantity',
@@ -63,7 +63,7 @@ export const computeLineAmounts = (
   }
 
   const grossMicros = divideRoundHalfUp(
-    input.quantityMilli * input.unitPriceMicros,
+    input.quantityScaled * input.unitPriceMicros,
     QUANTITY_SCALE,
   );
 

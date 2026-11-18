@@ -202,23 +202,13 @@ export default defineObject({
       isNullable: true,
     },
     {
-      universalIdentifier: QUOTATION_FIELDS.total,
-      type: FieldType.CURRENCY,
-      name: 'total',
-      label: 'Total',
-      description:
-        'Grand total for display and aggregation. Exact only within 2^53-1 micros; the exact decimal column is authoritative.',
-      icon: 'IconCurrencyIranianRial',
-      isNullable: true,
-    },
-    {
       universalIdentifier: QUOTATION_FIELDS.totalExact,
       type: FieldType.TEXT,
       name: 'totalExact',
       label: 'Total (exact)',
       description:
-        'Authoritative grand total as an exact decimal with six fraction digits, written by the same code that writes the number.',
-      icon: 'IconFileText',
+        'The grand total as an exact decimal with six fraction digits in IRR. The single authoritative copy: there is no numeric twin, because a numeric field would go through the GraphQL BigFloat scalar and change large values.',
+      icon: 'IconCurrencyIranianRial',
       isNullable: true,
     },
     {

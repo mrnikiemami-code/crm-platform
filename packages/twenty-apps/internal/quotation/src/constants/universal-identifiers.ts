@@ -46,7 +46,6 @@ export const PRICE_LIST_FIELDS = {
 export const PRICE_FIELDS = {
   item: '61bafa6b-8e95-5738-a7ca-4831a71f8d38',
   priceList: '10288e27-e44a-53e1-9c19-1390ec6234aa',
-  unitPriceMicros: '91ace610-c1a9-595b-a34d-12bab29cf771',
   unitPriceExact: '2f0d1e01-38f4-5c70-aee5-c971c648508d',
   validFrom: '78c48b86-927b-57e8-b6bb-850e4df92cdf',
   validTo: '135ca101-e5db-535b-81e6-f5be7f8d1262',
@@ -65,7 +64,6 @@ export const QUOTATION_FIELDS = {
   paymentTerms: 'cf04f6e1-8c8a-5097-9e1e-8139bfdfcb96',
   expiresAt: 'c32e9743-fd46-58ce-a4fa-9833a1e871ad',
   totalExact: '30552386-2860-5833-9731-0082e6e1ed16',
-  total: '58191430-c669-5ab0-bd14-1c9012eb17b4',
   version: '20b59a68-8057-5acd-bdb4-f3fdc163d246',
   sentAt: '94934cd7-6b14-5553-ae4a-027bc45c1ae6',
   decidedAt: 'ff678603-1400-543b-b864-a640d3de18ef',

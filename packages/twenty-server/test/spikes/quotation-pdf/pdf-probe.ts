@@ -84,20 +84,14 @@ export const readPdfObjects = (buffer: Buffer): PdfObject[] => {
   return objects;
 };
 
-const hexToUnicode = (hex: string): string => {
-  const normalized = hex.trim();
-  let result = '';
-
-  for (let index = 0; index + 4 <= normalized.length; index += 4) {
-    result += String.fromCharCode(parseInt(normalized.slice(index, index + 4), 16));
-  }
-
-  return result;
-};
-
-// Parses `beginbfchar` pairs only. react-pdf emits one bfchar block per subset
-// font and no bfrange; a bfrange appearing means the writer changed and this
-// probe needs the same change.
+// Parses `beginbfchar` pairs. react-pdf emits one bfchar block per subset font and no
+// bfrange; a bfrange appearing means the writer changed and this probe needs the same
+// change.
+//
+// A destination may hold SEVERAL code points: Arabic lam-alef is one glyph for two
+// characters, and the writer emits `<0008><0644 0627>`. Reading only the first group
+// silently drops a character and makes the probe report a mapping as missing when it is
+// present — which is exactly the false negative this function used to produce.
 export const parseToUnicodeCMaps = (
   objects: PdfObject[],
 ): Map<number, string> => {
@@ -118,12 +112,22 @@ export const parseToUnicodeCMaps = (
       cmap.indexOf('beginbfchar') + 'beginbfchar'.length,
       cmap.indexOf('endbfchar'),
     );
-    const pair = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g;
+    const pair = /<([0-9a-fA-F]+)>\s*<((?:[0-9a-fA-F]+\s*)*)>/g;
 
     let match: RegExpExecArray | null;
 
     while ((match = pair.exec(block)) !== null) {
-      codeToUnicode.set(parseInt(match[1], 16), hexToUnicode(match[2]));
+      const digits = match[2].replace(/\s+/g, '');
+      let text = '';
+
+      for (let index = 0; index + 4 <= digits.length; index += 4) {
+        text += String.fromCharCode(parseInt(digits.slice(index, index + 4), 16));
+      }
+
+      // An empty destination is a real defect in the writer (a glyph with no code
+      // point), so it is recorded as the empty string rather than skipped: the caller
+      // must be able to tell "mapped to nothing" from "not mapped at all".
+      codeToUnicode.set(parseInt(match[1], 16), text);
     }
   }
 
@@ -218,17 +222,23 @@ export const probePdf = (buffer: Buffer): PdfProbeResult => {
   };
 };
 
-// Rebuilds the reading order a person sees. react-pdf writes each RTL run in
-// VISUAL order (leftmost glyph first), so each run is reversed to recover its
-// logical order, and runs are visited from the rightmost to the leftmost because
-// that is the order an RTL reader consumes them. Runs are fully RTL here: the
-// probe is only used on an all-Persian document, and a mixed-direction line would
-// need the per-glyph bidi levels the writer does not expose.
+// Rebuilds the reading order a person sees. react-pdf writes each RTL run in VISUAL
+// order (leftmost glyph first), so the GLYPH sequence is reversed to recover logical
+// order, and runs are visited from the rightmost to the leftmost because that is the
+// order an RTL reader consumes them.
+//
+// Reversal happens per GLYPH, never per code point. Arabic lam-alef is one glyph for
+// two characters; reversing its two code points as well would spell «ال» instead of
+// «لا», which is the mirror-image mistake this comment exists to prevent.
+//
+// Runs are fully RTL here: the probe is only used on an all-Persian document, and a
+// mixed-direction line would need the per-glyph bidi levels the writer does not expose.
+// This is therefore a probe helper, not a general PDF text extractor.
 export const readLogicalTextRightToLeft = (
   runs: TextRun[],
   codeToUnicode: Map<number, string>,
 ): string => {
-  const decodeReversed = (codes: number[]): string =>
+  const decodeGlyphReversed = (codes: number[]): string =>
     [...codes]
       .reverse()
       .map((code) => codeToUnicode.get(code) ?? '')
@@ -236,6 +246,19 @@ export const readLogicalTextRightToLeft = (
 
   return [...runs]
     .sort((left, right) => right.x - left.x)
-    .map((run) => decodeReversed(run.codes))
+    .map((run) => decodeGlyphReversed(run.codes))
     .join('');
 };
+
+// Total character multiset of everything painted, independent of order. This is the
+// order-insensitive companion to the reading-order helper: it proves "no character was
+// lost", which is exactly what a multi-code-point glyph makes ambiguous if you only look
+// at a reconstructed sentence.
+export const collectDrawnCodePoints = (
+  runs: TextRun[],
+  codeToUnicode: Map<number, string>,
+): number[] =>
+  runs
+    .flatMap((run) => run.codes)
+    .flatMap((code) => [...(codeToUnicode.get(code) ?? '')])
+    .map((character) => character.codePointAt(0) ?? 0);

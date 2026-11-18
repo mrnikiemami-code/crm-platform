@@ -15,16 +15,11 @@ import {
 
 // The price of one item in one price list for one period.
 //
-// TWO AMOUNT COLUMNS, AND THAT IS DELIBERATE:
-//  - `unitPriceMicros` is a NUMBER so the platform can sort and aggregate it, and so
-//    it renders as an amount. It crosses the API as a JS number, which is exact only
-//    up to 2^53-1 micros.
-//  - `unitPriceExact` is the authoritative value as an exact decimal STRING, written
-//    by the same code that writes the number.
-// A price list entry beyond 2^53-1 micros (about 9 billion rial) cannot be held
-// exactly by the number column, so the string is the record and the number is the
-// view. This duplication is the cost of using a platform whose numeric boundary is a
-// double; it is flagged in the S1 report as a decision to confirm.
+// ONE AMOUNT COLUMN, AND IT IS TEXT. The exact decimal is the amount; there is no second
+// copy in a numeric column. A numeric column would go through Twenty's GraphQL `BigFloat`
+// scalar, which parses with `parseFloat`, so a price above 2^53-1 micros (about 9 billion
+// rial) comes back as a different number — silently. Sorting still works: the stored form is
+// fixed-width (see `formatMicrosSortable`), so text ordering equals numeric ordering.
 export default defineObject({
   universalIdentifier: PRICE_OBJECT_UNIVERSAL_IDENTIFIER,
   nameSingular: 'price',
@@ -36,26 +31,15 @@ export default defineObject({
   labelIdentifierFieldMetadataUniversalIdentifier: PRICE_FIELDS.unitPriceExact,
   fields: [
     {
-      universalIdentifier: PRICE_FIELDS.unitPriceMicros,
-      type: FieldType.NUMERIC,
-      name: 'unitPriceMicros',
-      label: 'Unit price (micros)',
-      description:
-        'Unit price in micros of the price list currency. Exact only within 2^53-1; the exact decimal column is authoritative.',
-      icon: 'IconCurrencyIranianRial',
-      isNullable: false,
-      defaultValue: '0',
-    },
-    {
       universalIdentifier: PRICE_FIELDS.unitPriceExact,
       type: FieldType.TEXT,
       name: 'unitPriceExact',
       label: 'Unit price (exact)',
       description:
-        'The authoritative unit price as an exact decimal with six fraction digits, written alongside the number.',
-      icon: 'IconFileText',
+        'The amount, as an exact decimal with six fraction digits in the price list currency. The single authoritative copy.',
+      icon: 'IconCurrencyIranianRial',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: '0.000000',
     },
     {
       universalIdentifier: PRICE_FIELDS.validFrom,

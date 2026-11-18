@@ -64,14 +64,14 @@ export default defineObject({
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.quantityMilli,
-      type: FieldType.NUMERIC,
-      name: 'quantityMilli',
-      label: 'Quantity (milli)',
+      type: FieldType.TEXT,
+      name: 'quantityExact',
+      label: 'Quantity (exact)',
       description:
-        'Quantity in thousandths, so 1.5 is 1500. An integer cannot drift the way a decimal can.',
+        'Quantity as an exact decimal with six fraction digits, so 1.5 is 1.500000. Text rather than a number: a quantity must not drift, and a NUMERIC column would go through the GraphQL BigFloat scalar.',
       icon: 'IconHash',
       isNullable: false,
-      defaultValue: '0',
+      defaultValue: '0.000000',
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.unitPriceExact,
@@ -81,7 +81,7 @@ export default defineObject({
       description: 'Unit price in micros as an exact decimal, frozen when the line was added.',
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: '0.000000',
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.discountExact,
@@ -91,7 +91,7 @@ export default defineObject({
       description: 'Discount amount in micros as an exact decimal.',
       icon: 'IconPercentage',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: '0.000000',
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.taxExact,
@@ -101,7 +101,7 @@ export default defineObject({
       description: 'Tax amount in micros as an exact decimal, computed on the discounted amount.',
       icon: 'IconPercentage',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: '0.000000',
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.totalExact,
@@ -111,7 +111,7 @@ export default defineObject({
       description: 'Net plus tax in micros as an exact decimal.',
       icon: 'IconFileText',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: '0.000000',
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.sortOrder,

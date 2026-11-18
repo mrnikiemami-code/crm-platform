@@ -18,7 +18,7 @@ export type QuotationRevisionLine = {
   lineId: string;
   description: string;
   unit: string;
-  quantityMilli: string;
+  quantityScaled: string;
   unitPriceMicros: string;
   discountMicros: string;
   taxMicros: string;
@@ -76,21 +76,21 @@ export const buildQuotationRevisionLine = ({
   lineId,
   description,
   unit,
-  quantityMilli,
+  quantityScaled,
   unitPriceMicros,
   amounts,
 }: {
   lineId: string;
   description: string;
   unit: string;
-  quantityMilli: bigint;
+  quantityScaled: bigint;
   unitPriceMicros: bigint;
   amounts: QuotationLineAmounts;
 }): QuotationRevisionLine => ({
   lineId,
   description,
   unit,
-  quantityMilli: quantityMilli.toString(),
+  quantityScaled: quantityScaled.toString(),
   unitPriceMicros: unitPriceMicros.toString(),
   discountMicros: amounts.discountMicros.toString(),
   taxMicros: amounts.taxMicros.toString(),

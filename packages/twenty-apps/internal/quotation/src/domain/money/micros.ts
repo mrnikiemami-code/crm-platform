@@ -1,45 +1,38 @@
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
-// All money in this app is an integer number of micros, held in a bigint.
+// ONE authoritative monetary representation: an integer number of micros held in a
+// bigint, and NOTHING else. Every object stores it as the exact decimal string produced
+// by `formatMicrosExact`, and every other form (a JS number for display, rial integers
+// for an accounting wire format) is derived on demand and never stored.
 //
-// WHY BIGINT AND NOT number: Twenty's CURRENCY field stores `amountMicros`, and a
-// 1,000,000,000,000 rial quotation is 1e18 micros — far past Number.MAX_SAFE_INTEGER
-// (9.007e15). A JS number cannot hold that exactly, so arithmetic on it silently
-// changes the total. bigint has no such ceiling.
+// WHY THERE IS NO NUMERIC OR CURRENCY COLUMN: Twenty's GraphQL layer serialises a
+// numeric field with `parseFloat` on read and `Number()` on write
+// (big-float.scalar.ts, transform-numeric-field.util.ts). A value above 2^53-1 micros
+// therefore comes back from the server as a DIFFERENT integer — silently, with no error.
+// Storing a second, lossy copy alongside the exact one would be two independent amounts
+// that can disagree, which is precisely what the architect rejected. The fix is to have
+// only the lossless one.
 //
-// WHY THE BOUNDARY LIMIT IS A SEPARATE CONCEPT: the value does not stay in bigint.
-// It crosses Twenty's GraphQL layer, where the `BigFloat` scalar serialises with
-// parseFloat and the currency transformer calls Number(). Anything above
-// 2^53-1 therefore comes back from the server as a DIFFERENT number than it was
-// written as. The domain can compute it; the platform cannot store it. That gap is
-// what `fitsApiBoundary` makes explicit instead of discovering later on a real
-// invoice.
+// The cost is that the platform cannot sort or aggregate money natively. That is
+// recovered with `formatMicrosSortable`, a fixed-width form that orders lexicographically
+// exactly as the numbers order, so a text index still sorts correctly.
 export const MICROS_PER_UNIT = 1_000_000n;
 
-// 2^53 - 1: the largest integer a JS number represents exactly, and therefore the
-// largest amountMicros that survives a round trip through the API.
-export const API_SAFE_MICROS_LIMIT = BigInt(Number.MAX_SAFE_INTEGER);
+// The largest integer a JS number represents exactly. Not a storage limit any more — a
+// storage limit would mean rejecting the data — but the boundary beyond which a DISPLAY
+// projection through `Number` stops being exact, so `toDisplayNumber` refuses there
+// instead of returning a wrong figure.
+export const EXACT_NUMBER_LIMIT = BigInt(Number.MAX_SAFE_INTEGER);
 
-export const isApiSafeMicros = (micros: bigint): boolean => {
+export const isExactlyRepresentableAsNumber = (micros: bigint): boolean => {
   const magnitude = micros < 0n ? -micros : micros;
 
-  return magnitude <= API_SAFE_MICROS_LIMIT;
+  return magnitude <= EXACT_NUMBER_LIMIT;
 };
 
-export const checkApiSafeMicros = (
-  micros: bigint,
-  label: string,
-): Result<bigint> =>
-  isApiSafeMicros(micros)
-    ? accepted(micros)
-    : refused(
-        'AMOUNT_EXCEEDS_API_RANGE',
-        `${label} is beyond the range Twenty can persist exactly (2^53-1 micros); raise the unit or store the exact decimal in a text field instead`,
-      );
-
-// The exact decimal form is how an amount is written to a TEXT field when it is
-// too large for amountMicros, and how a snapshot records it. Always six decimals,
-// never rounded: a value that does not fit loses nothing on the way out.
+// Exact decimal text, always six fraction digits. This is THE stored form of an amount
+// and also the form a snapshot records, so a value that cannot be shown in a UI number
+// verbatim is still recorded verbatim.
 export const formatMicrosExact = (micros: bigint): string => {
   const negative = micros < 0n;
   const magnitude = negative ? -micros : micros;
@@ -49,12 +42,30 @@ export const formatMicrosExact = (micros: bigint): string => {
   return `${negative ? '-' : ''}${units}.${fraction}`;
 };
 
+// Fixed-width, zero-padded, so text ordering equals numeric ordering even for negative
+// values. Width: 20 digits of units covers ~1e14 rial in micros with room to spare, and
+// the offset makes the sign part of the ordering instead of the alphabet.
+const SORTABLE_UNIT_DIGITS = 20;
+const SORTABLE_SIGN_OFFSET = 10n ** BigInt(SORTABLE_UNIT_DIGITS + 6);
+
+export const formatMicrosSortable = (micros: bigint): string => {
+  const shifted = micros + SORTABLE_SIGN_OFFSET;
+
+  if (shifted < 0n) {
+    throw new Error(
+      'formatMicrosSortable: amount magnitude exceeds the sortable window',
+    );
+  }
+
+  return shifted.toString().padStart(SORTABLE_UNIT_DIGITS + 7, '0');
+};
+
 const DECIMAL_AMOUNT = /^(-)?(\d+)(?:\.(\d{1,6}))?$/;
 
-// Reads an exact decimal into micros. A seventh decimal digit is REFUSED rather
-// than rounded: rounding at parse time is how a stored total ends up different
-// from the one that was agreed, and there is no rounding rule at this layer that
-// the caller could have chosen deliberately.
+// Reads an exact decimal into micros. A seventh decimal digit is REFUSED rather than
+// rounded: rounding at parse time is how a stored total ends up different from the one
+// that was agreed, and there is no rounding rule at this layer that the caller could have
+// chosen deliberately.
 export const parseMicrosExact = (text: string): Result<bigint> => {
   const trimmed = text.trim();
   const match = DECIMAL_AMOUNT.exec(trimmed);
@@ -71,4 +82,29 @@ export const parseMicrosExact = (text: string): Result<bigint> => {
     BigInt(match[2]) * MICROS_PER_UNIT + BigInt(fraction === '' ? '0' : fraction);
 
   return accepted(match[1] === '-' ? -magnitude : magnitude);
+};
+
+// The ONLY conversion into a JS number, and it refuses when the value would change.
+// Used to fill a chart or a sort key that genuinely needs a number; never used to write a
+// stored amount.
+export const toExactNumberOrRefuse = (
+  micros: bigint,
+): Result<number> => {
+  if (!isExactlyRepresentableAsNumber(micros)) {
+    return refused(
+      'AMOUNT_NOT_EXACTLY_REPRESENTABLE',
+      'this amount cannot be shown as a JS number without changing it; display the exact decimal instead',
+    );
+  }
+
+  return accepted(Number(micros));
+};
+
+// A stored amount must be a canonical string: re-formatting what was parsed has to give
+// the same text, otherwise two records can hold the same value in two spellings and a
+// unique index or a hash would treat them as different.
+export const isCanonicalMicrosText = (text: string): boolean => {
+  const parsed = parseMicrosExact(text);
+
+  return parsed.ok && formatMicrosExact(parsed.value) === text;
 };

@@ -120,6 +120,63 @@ describe('object manifests', () => {
     // record, an export or a backup.
     expect(secretLookingFieldNames).toEqual([]);
   });
+
+  it('keeps money in exactly ONE lossless column per amount', () => {
+    // Architect decision D3: a single authoritative exact representation, no second editable
+    // copy. A NUMERIC, NUMBER or CURRENCY money column would be the second copy — and the
+    // lossy one, because Twenty's GraphQL BigFloat scalar parses with parseFloat.
+    const moneyFieldNames = /(price|amount|total|discount|tax)/i;
+    const doubleStoredAmounts: string[] = [];
+
+    for (const { name, manifest } of allManifests) {
+      for (const field of manifest.config.fields ?? []) {
+        const type = (field as { type?: string }).type;
+
+        if (
+          moneyFieldNames.test(field.name) &&
+          (type === 'NUMERIC' || type === 'NUMBER' || type === 'CURRENCY')
+        ) {
+          doubleStoredAmounts.push(`${name}.${field.name} (${type})`);
+        }
+      }
+    }
+
+    expect(doubleStoredAmounts).toEqual([]);
+  });
+
+  it('stores every exact amount and quantity as canonical six-decimal text', () => {
+    const violations: string[] = [];
+
+    for (const { name, manifest } of allManifests) {
+      for (const field of manifest.config.fields ?? []) {
+        if (!/Exact$/.test(field.name)) {
+          continue;
+        }
+
+        const type = (field as { type?: string }).type;
+        const defaultValue = (field as { defaultValue?: unknown }).defaultValue;
+
+        if (type !== 'TEXT') {
+          violations.push(`${name}.${field.name} is ${type}, expected TEXT`);
+          continue;
+        }
+
+        // Canonical means six decimals, so a fresh row cannot hold "0" while the domain
+        // expects "0.000000".
+        if (
+          typeof defaultValue === 'string' &&
+          defaultValue !== '' &&
+          !/^-?\d+\.\d{6}$/.test(defaultValue)
+        ) {
+          violations.push(
+            `${name}.${field.name} default "${defaultValue}" is not six-decimal`,
+          );
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
 });
 
 describe('application config', () => {

@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  checkTotalsFitApiBoundary,
   computeDocumentTotals,
+  formatTotalsExact,
+  readTotalsExact,
 } from 'src/domain/money/document-totals';
 import {
   computeLineAmounts,
   type LineDiscount,
   type QuotationLineAmounts,
 } from 'src/domain/money/line';
-import { API_SAFE_MICROS_LIMIT } from 'src/domain/money/micros';
+import { EXACT_NUMBER_LIMIT } from 'src/domain/money/micros';
 
 const unwrap = <TValue>(
   result: { ok: true; value: TValue } | { ok: false; refusal: { code: string } },
@@ -22,14 +23,14 @@ const unwrap = <TValue>(
 };
 
 const amountsFor = (input: {
-  quantityMilli: bigint;
+  quantityScaled: bigint;
   unitPriceMicros: bigint;
   discount?: LineDiscount;
   taxRateBasisPoints?: bigint;
 }): QuotationLineAmounts =>
   unwrap(
     computeLineAmounts({
-      quantityMilli: input.quantityMilli,
+      quantityScaled: input.quantityScaled,
       unitPriceMicros: input.unitPriceMicros,
       discount: input.discount ?? { kind: 'NONE' },
       taxRateBasisPoints: input.taxRateBasisPoints ?? 0n,
@@ -40,7 +41,7 @@ describe('line amounts', () => {
   it('multiplies a decimal quantity by a unit price exactly', () => {
     // 12 units at 2,450,000 rial = 29,400,000 rial.
     const amounts = amountsFor({
-      quantityMilli: 12_000n,
+      quantityScaled: 12_000_000n,
       unitPriceMicros: 2_450_000_000_000n,
     });
 
@@ -52,7 +53,7 @@ describe('line amounts', () => {
   it('handles a fractional quantity without drifting', () => {
     // 2.5 hours at 1,000,000 rial = 2,500,000 rial, not 2,500,000.000001.
     const amounts = amountsFor({
-      quantityMilli: 2_500n,
+      quantityScaled: 2_500_000n,
       unitPriceMicros: 1_000_000_000_000n,
     });
 
@@ -62,7 +63,7 @@ describe('line amounts', () => {
   it('taxes the discounted amount, not the gross', () => {
     // 10,000,000 gross, 10% discount -> 9,000,000 net, 9% VAT -> 810,000 tax.
     const amounts = amountsFor({
-      quantityMilli: 1_000n,
+      quantityScaled: 1_000_000n,
       unitPriceMicros: 10_000_000_000_000n,
       discount: { kind: 'RATE', basisPoints: 1_000n },
       taxRateBasisPoints: 900n,
@@ -77,7 +78,7 @@ describe('line amounts', () => {
 
   it('treats a stated discount amount as authoritative', () => {
     const amounts = amountsFor({
-      quantityMilli: 1_000n,
+      quantityScaled: 1_000_000n,
       unitPriceMicros: 5_000_000_000_000n,
       discount: { kind: 'AMOUNT', micros: 1_234_567n },
       taxRateBasisPoints: 900n,
@@ -91,7 +92,7 @@ describe('line amounts', () => {
 
   it('keeps total equal to net plus tax by construction', () => {
     const amounts = amountsFor({
-      quantityMilli: 3_333n,
+      quantityScaled: 3_333_000n,
       unitPriceMicros: 777_777_777n,
       discount: { kind: 'RATE', basisPoints: 333n },
       taxRateBasisPoints: 900n,
@@ -104,13 +105,13 @@ describe('line amounts', () => {
 
 describe('line refusals', () => {
   const refusalOf = (input: {
-    quantityMilli: bigint;
+    quantityScaled: bigint;
     unitPriceMicros: bigint;
     discount?: LineDiscount;
     taxRateBasisPoints?: bigint;
   }): string => {
     const result = computeLineAmounts({
-      quantityMilli: input.quantityMilli,
+      quantityScaled: input.quantityScaled,
       unitPriceMicros: input.unitPriceMicros,
       discount: input.discount ?? { kind: 'NONE' },
       taxRateBasisPoints: input.taxRateBasisPoints ?? 0n,
@@ -121,20 +122,20 @@ describe('line refusals', () => {
 
   it('refuses a non-positive quantity', () => {
     expect(
-      refusalOf({ quantityMilli: 0n, unitPriceMicros: 1_000_000n }),
+      refusalOf({ quantityScaled: 0n, unitPriceMicros: 1_000_000n }),
     ).toBe('QUANTITY_NOT_POSITIVE');
   });
 
   it('refuses a negative unit price', () => {
     expect(
-      refusalOf({ quantityMilli: 1_000n, unitPriceMicros: -1n }),
+      refusalOf({ quantityScaled: 1_000_000n, unitPriceMicros: -1n }),
     ).toBe('UNIT_PRICE_NEGATIVE');
   });
 
   it('refuses a discount larger than the line instead of clamping it', () => {
     expect(
       refusalOf({
-        quantityMilli: 1_000n,
+        quantityScaled: 1_000_000n,
         unitPriceMicros: 1_000_000n,
         discount: { kind: 'AMOUNT', micros: 2_000_000n },
       }),
@@ -144,7 +145,7 @@ describe('line refusals', () => {
   it('refuses an out-of-range tax rate', () => {
     expect(
       refusalOf({
-        quantityMilli: 1_000n,
+        quantityScaled: 1_000_000n,
         unitPriceMicros: 1_000_000n,
         taxRateBasisPoints: 10_001n,
       }),
@@ -156,17 +157,17 @@ describe('document totals', () => {
   it('sums the rounded lines exactly, with no second rounding pass', () => {
     const lines = [
       amountsFor({
-        quantityMilli: 1_000n,
+        quantityScaled: 1_000_000n,
         unitPriceMicros: 1_000_001n,
         taxRateBasisPoints: 900n,
       }),
       amountsFor({
-        quantityMilli: 1_000n,
+        quantityScaled: 1_000_000n,
         unitPriceMicros: 1_000_003n,
         taxRateBasisPoints: 900n,
       }),
       amountsFor({
-        quantityMilli: 1_000n,
+        quantityScaled: 1_000_000n,
         unitPriceMicros: 1_000_007n,
         taxRateBasisPoints: 900n,
       }),
@@ -201,7 +202,7 @@ describe('document totals', () => {
         const gross = 1n + next(9_000_000n);
 
         return amountsFor({
-          quantityMilli: 1n + next(5_000n),
+          quantityScaled: 1n + next(5_000_000n),
           unitPriceMicros: gross,
           discount:
             next(2n) === 0n
@@ -229,18 +230,23 @@ describe('document totals', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('flags a total the currency field could not hold exactly', () => {
+  it('keeps a total larger than a JS number exactly, through storage text', () => {
+    // The reason the amount is stored as text: this total cannot survive a JSON number, and
+    // the contract must not reject it either — it is a legitimate amount the workspace agreed.
     const hugeLine = amountsFor({
-      quantityMilli: 1_000_000n,
-      unitPriceMicros: API_SAFE_MICROS_LIMIT,
+      quantityScaled: 1_000_000_000n,
+      unitPriceMicros: EXACT_NUMBER_LIMIT,
     });
     const totals = unwrap(computeDocumentTotals([hugeLine]));
 
-    const check = checkTotalsFitApiBoundary(totals);
-
-    expect(check.ok).toBe(false);
-    expect(check.ok ? 'NO_REFUSAL' : check.refusal.code).toBe(
-      'AMOUNT_EXCEEDS_API_RANGE',
+    expect(BigInt(Number(totals.totalMicros.toString()))).not.toBe(
+      totals.totalMicros,
     );
+
+    const text = formatTotalsExact(totals);
+    const restored = unwrap(readTotalsExact(text));
+
+    expect(restored.totalMicros).toBe(totals.totalMicros);
+    expect(restored.netMicros).toBe(totals.netMicros);
   });
 });
