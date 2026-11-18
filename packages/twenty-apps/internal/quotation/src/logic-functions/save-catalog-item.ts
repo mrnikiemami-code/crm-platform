@@ -1,8 +1,10 @@
 import { defineLogicFunction, type RoutePayload } from 'twenty-sdk/define';
 
 import { SAVE_CATALOG_ITEM_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
+import { persistCatalogItem } from 'src/services/quotation-persist.service';
 import {
   buildCatalogItemWritePayload,
   validateCatalogItemUpsert,
@@ -18,8 +20,7 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 
 const handler = async (event: RoutePayload<unknown>) => {
   const body = asRecord(event.body);
-
-  const outcome = validateCatalogItemUpsert({
+  const input = {
     id: readString(body.id) || null,
     kind: (readString(body.kind) === 'SERVICE' ? 'SERVICE' : 'PRODUCT') as CatalogItemKind,
     name: readString(body.name),
@@ -29,42 +30,55 @@ const handler = async (event: RoutePayload<unknown>) => {
     isActive: body.isActive !== false,
     defaultUnitPriceText: readString(body.defaultUnitPriceText) || null,
     moneyUnit: (readString(body.moneyUnit) === 'IRR' ? 'IRR' : 'TOMAN') as MoneyUnit,
-  });
+  };
 
-  if (outcome.kind === 'REJECTED') {
+  if (!process.env.TWENTY_API_URL || !process.env.TWENTY_APP_ACCESS_TOKEN) {
+    const outcome = validateCatalogItemUpsert(input);
+
+    if (outcome.kind === 'REJECTED') {
+      return {
+        success: false,
+        code: outcome.code,
+        message: outcome.message,
+      };
+    }
+
+    const payload = buildCatalogItemWritePayload(outcome.plan);
+
     return {
-      success: false,
-      code: outcome.code,
-      message: outcome.message,
+      success: true,
+      persisted: false,
+      reason: 'APP_NOT_INSTALLED',
+      message:
+        'کالا/خدمت معتبر است؛ برای نوشتن در پایگاه، اپ باید روی فضای کاری نصب شود.',
+      writePayload: payload.ok ? payload.value : null,
     };
   }
 
-  const payload = buildCatalogItemWritePayload(outcome.plan);
+  const saved = await persistCatalogItem(input, {
+    execute: executeRecordGraphql,
+  });
 
-  if (!payload.ok) {
+  if (saved.kind === 'REJECTED') {
     return {
       success: false,
-      code: payload.refusal.code,
-      message: payload.refusal.detail,
+      code: saved.code,
+      message: saved.message,
     };
   }
 
   return {
     success: true,
-    persisted: false,
-    reason: process.env.TWENTY_API_URL
-      ? 'PERSISTENCE_NOT_WIRED'
-      : 'APP_NOT_INSTALLED',
-    message:
-      'کالا/خدمت معتبر است؛ نوشتن در پایگاه پس از نصب اپ و تأیید معمار انجام می‌شود.',
-    writePayload: payload.value,
+    persisted: true,
+    itemId: saved.itemId,
+    message: 'کالا/خدمت ذخیره شد',
   };
 };
 
 export default defineLogicFunction({
   universalIdentifier: SAVE_CATALOG_ITEM_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER,
   name: 'save-catalog-item',
-  description: 'اعتبارسنجی و آماده‌سازی ذخیره کالا یا خدمت',
+  description: 'اعتبارسنجی و ذخیره کالا یا خدمت',
   timeoutSeconds: 30,
   handler,
   httpRouteTriggerSettings: {

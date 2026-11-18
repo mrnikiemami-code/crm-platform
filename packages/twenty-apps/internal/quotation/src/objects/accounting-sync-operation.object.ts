@@ -46,7 +46,7 @@ export default defineObject({
       description: 'For example CATALOG_ITEM_UPDATE item-1 rev 2.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: ACCOUNTING_SYNC_OPERATION_FIELDS.kind,
@@ -159,7 +159,7 @@ export default defineObject({
         'The CRM record this operation writes about. Text rather than a relation because the target may be an item or a revision.',
       icon: 'IconHash',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: ACCOUNTING_SYNC_OPERATION_FIELDS.internalRevision,

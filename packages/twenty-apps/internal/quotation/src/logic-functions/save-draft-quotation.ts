@@ -1,8 +1,10 @@
 import { defineLogicFunction, type RoutePayload } from 'twenty-sdk/define';
 
 import { SAVE_DRAFT_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
+import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
+import { persistDraftQuotation } from 'src/services/quotation-persist.service';
 import {
   buildDraftQuotationWritePayload,
   validateDraftQuotation,
@@ -16,25 +18,24 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
-// Validates a draft and returns the write payload. Live GraphQL persistence is
-// intentionally gated: without TWENTY_API_URL / install this route still proves
-// the domain contract for the front component.
 const handler = async (event: RoutePayload<unknown>) => {
   const body = asRecord(event.body);
   const linesRaw = Array.isArray(body.lines) ? body.lines : [];
 
-  const outcome = validateDraftQuotation({
+  const input = {
     quotationId: readString(body.quotationId) || null,
     status: (readString(body.status) || 'DRAFT') as 'DRAFT',
     customerType:
-      readString(body.customerType) === 'PERSON' ? 'PERSON' : 'COMPANY',
+      readString(body.customerType) === 'PERSON' ? ('PERSON' as const) : ('COMPANY' as const),
     personId: readString(body.personId) || null,
     companyId: readString(body.companyId) || null,
     name: readString(body.name),
     paymentTerms: readString(body.paymentTerms) || null,
     taxPolicy: readString(body.taxPolicy) || null,
     displayMoneyUnit:
-      readString(body.displayMoneyUnit) === 'IRR' ? 'IRR' : 'TOMAN',
+      readString(body.displayMoneyUnit) === 'IRR'
+        ? ('IRR' as const)
+        : ('TOMAN' as const),
     lines: linesRaw.map((line, index) => {
       const row = asRecord(line);
       const moneyUnit = (readString(row.moneyUnit) || 'TOMAN') as MoneyUnit;
@@ -57,27 +58,21 @@ const handler = async (event: RoutePayload<unknown>) => {
         taxRatePercentText: readString(row.taxRatePercentText) || '0',
       };
     }),
-  });
+  };
 
-  if (outcome.kind === 'REJECTED') {
-    return {
-      success: false,
-      code: outcome.code,
-      message: outcome.message,
-    };
-  }
+  if (!process.env.TWENTY_API_URL || !process.env.TWENTY_APP_ACCESS_TOKEN) {
+    const outcome = validateDraftQuotation(input);
 
-  const payload = buildDraftQuotationWritePayload(outcome.plan);
+    if (outcome.kind === 'REJECTED') {
+      return {
+        success: false,
+        code: outcome.code,
+        message: outcome.message,
+      };
+    }
 
-  if (!payload.ok) {
-    return {
-      success: false,
-      code: payload.refusal.code,
-      message: payload.refusal.detail,
-    };
-  }
+    const payload = buildDraftQuotationWritePayload(outcome.plan);
 
-  if (!process.env.TWENTY_API_URL) {
     return {
       success: true,
       persisted: false,
@@ -89,31 +84,39 @@ const handler = async (event: RoutePayload<unknown>) => {
         displayTotal: outcome.plan.displayTotal,
         lineCount: outcome.plan.lines.length,
       },
-      writePayload: payload.value,
+      writePayload: payload.ok ? payload.value : null,
     };
   }
 
-  // Persistence after install is a follow-up wiring task; do not invent GraphQL
-  // field names that the workspace has not synced yet.
+  const saved = await persistDraftQuotation(input, {
+    execute: executeRecordGraphql,
+  });
+
+  if (saved.kind === 'REJECTED') {
+    return {
+      success: false,
+      code: saved.code,
+      message: saved.message,
+    };
+  }
+
   return {
     success: true,
-    persisted: false,
-    reason: 'PERSISTENCE_NOT_WIRED',
-    message:
-      'قرارداد ذخیره آماده است؛ اتصال GraphQL پس از نصب و تأیید معمار کامل می‌شود.',
+    persisted: true,
+    quotationId: saved.quotationId,
     plan: {
-      totalExact: outcome.plan.totalExact,
-      displayTotal: outcome.plan.displayTotal,
-      lineCount: outcome.plan.lines.length,
+      totalExact: saved.plan.totalExact,
+      displayTotal: saved.plan.displayTotal,
+      lineCount: saved.plan.lines.length,
     },
-    writePayload: payload.value,
+    message: 'پیش‌نویس پیش‌فاکتور ذخیره شد',
   };
 };
 
 export default defineLogicFunction({
   universalIdentifier: SAVE_DRAFT_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER,
   name: 'save-draft-quotation',
-  description: 'اعتبارسنجی و آماده‌سازی ذخیره پیش‌نویس پیش‌فاکتور',
+  description: 'اعتبارسنجی و ذخیره پیش‌نویس پیش‌فاکتور',
   timeoutSeconds: 30,
   handler,
   httpRouteTriggerSettings: {

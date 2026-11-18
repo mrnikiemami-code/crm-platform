@@ -5,6 +5,10 @@ import {
   useFrontComponentExecutionContext,
 } from 'twenty-sdk/front-component';
 
+import {
+  SAVE_DRAFT_ROUTE,
+  callAppRoute,
+} from 'src/components/quotation-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
 import {
@@ -14,7 +18,6 @@ import {
 
 // Side-panel draft editor. Totals are computed locally with the same domain function
 // the server will use on save, so the operator never sees a total that later changes.
-// Persistence still needs an installed app + route; until then Save validates only.
 
 type LineDraft = {
   clientLineId: string;
@@ -120,18 +123,57 @@ export const QuotationDraftForm = () => {
     );
   };
 
-  const onSave = () => {
+  const onSave = async () => {
     if (!plan.ok) {
       setError(plan.refusal.detail || PROBLEM_FALLBACK);
       return;
     }
 
     setError(null);
-    enqueueSnackbar({
-      message:
-        'پیش‌نویس از نظر محاسبات معتبر است. برای ذخیره در پایگاه، نصب اپ روی Dev لازم است.',
-      variant: 'info',
-    });
+
+    try {
+      const response = await callAppRoute(SAVE_DRAFT_ROUTE, {
+        status: 'DRAFT',
+        customerType,
+        personId: customerType === 'PERSON' ? sourceRecordId || null : null,
+        companyId: customerType === 'COMPANY' ? sourceRecordId || null : null,
+        name,
+        paymentTerms,
+        taxPolicy: 'IR_VAT_9',
+        displayMoneyUnit: moneyUnit,
+        lines: lines.map((line) => ({
+          clientLineId: line.clientLineId,
+          kind: line.kind,
+          name: line.name,
+          unit: line.unit,
+          quantityText: line.quantityText,
+          unitPriceText: line.unitPriceText,
+          moneyUnit,
+          discountPercentText: line.discountPercentText,
+          taxRatePercentText: line.taxRatePercentText,
+        })),
+      });
+
+      if (!response.ok || response.data.success === false) {
+        setError(
+          typeof response.data.message === 'string'
+            ? response.data.message
+            : PROBLEM_FALLBACK,
+        );
+        return;
+      }
+
+      enqueueSnackbar({
+        message:
+          typeof response.data.message === 'string'
+            ? response.data.message
+            : 'پیش‌نویس ذخیره شد',
+        variant: 'success',
+      });
+      closeSidePanel();
+    } catch {
+      setError('ارتباط با سرور برقرار نشد');
+    }
   };
 
   return (

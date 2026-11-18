@@ -43,7 +43,7 @@ export default defineObject({
       description: 'For example QT-1403-000123 v2.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_REVISION_FIELDS.version,
@@ -102,7 +102,7 @@ export default defineObject({
         'sha256 of the canonical snapshot. Any attempt to change a stored revision is detectable against this value.',
       icon: 'IconFingerprint',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_REVISION_FIELDS.totalExact,
@@ -112,7 +112,7 @@ export default defineObject({
       description: 'Grand total at issue time, as an exact decimal.',
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_REVISION_FIELDS.issuedAt,

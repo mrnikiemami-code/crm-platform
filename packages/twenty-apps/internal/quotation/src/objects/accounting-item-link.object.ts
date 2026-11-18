@@ -42,7 +42,7 @@ export default defineObject({
       description: 'Human-readable label, for example KT6 @ holoo.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: ACCOUNTING_ITEM_LINK_FIELDS.externalItemId,

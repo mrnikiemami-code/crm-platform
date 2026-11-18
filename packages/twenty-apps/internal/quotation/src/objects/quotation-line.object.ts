@@ -43,7 +43,7 @@ export default defineObject({
       description: 'عنوان کوتاه ردیف، معمولاً نام کالا یا خدمت.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.kind,
@@ -99,7 +99,7 @@ export default defineObject({
         'مقدار با شش رقم اعشار دقیق. متن است تا از دست رفتن دقت GraphQL رخ ندهد.',
       icon: 'IconHash',
       isNullable: false,
-      defaultValue: '0.000000',
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.unitPriceExact,
@@ -109,7 +109,7 @@ export default defineObject({
       description: 'قیمت واحد به ریال دقیق، ثابت‌شده در لحظهٔ افزودن.',
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
-      defaultValue: '0.000000',
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.discountExact,
@@ -119,7 +119,7 @@ export default defineObject({
       description: 'مبلغ تخفیف به ریال دقیق.',
       icon: 'IconPercentage',
       isNullable: false,
-      defaultValue: '0.000000',
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.taxExact,
@@ -129,7 +129,7 @@ export default defineObject({
       description: 'مالیات روی مبلغ پس از تخفیف.',
       icon: 'IconPercentage',
       isNullable: false,
-      defaultValue: '0.000000',
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.totalExact,
@@ -139,7 +139,7 @@ export default defineObject({
       description: 'خالص به‌علاوه مالیات.',
       icon: 'IconFileText',
       isNullable: false,
-      defaultValue: '0.000000',
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.sortOrder,

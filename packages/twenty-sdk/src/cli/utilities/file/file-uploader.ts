@@ -10,6 +10,10 @@ import {
 } from 'twenty-shared/application';
 import { type FileFolder } from 'twenty-shared/types';
 
+// Server resource paths are POSIX-only; Windows `path.relative` uses `\`.
+const toServerRelativePath = (builtPath: string): string =>
+  relative(OUTPUT_DIR, builtPath).split(path.sep).join('/');
+
 export type FileToUpload = {
   builtPath: string;
   fileFolder: FileFolder;
@@ -73,7 +77,7 @@ export class FileUploader {
   ): Promise<FileUploadFailure[]> {
     const builtPathByRelativePath = new Map<string, string>(
       batch.map(({ builtPath }) => [
-        relative(OUTPUT_DIR, builtPath),
+        toServerRelativePath(builtPath),
         builtPath,
       ]),
     );
@@ -81,7 +85,7 @@ export class FileUploader {
     const uploadRequests: ApplicationFileUploadRequest[] = batch.map(
       ({ builtPath, fileFolder }) => ({
         fileFolder,
-        filePath: relative(OUTPUT_DIR, builtPath),
+        filePath: toServerRelativePath(builtPath),
         size: fs.statSync(path.join(this.appPath, builtPath)).size,
       }),
     );
@@ -174,7 +178,7 @@ export class FileUploader {
     await this.runWithConcurrency(batch, async ({ builtPath, fileFolder }) => {
       const result = await this.apiService.uploadFile({
         filePath: path.join(this.appPath, builtPath),
-        builtHandlerPath: relative(OUTPUT_DIR, builtPath),
+        builtHandlerPath: toServerRelativePath(builtPath),
         fileFolder,
         applicationUniversalIdentifier: this.applicationUniversalIdentifier,
       });

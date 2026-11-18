@@ -36,7 +36,7 @@ export default defineObject({
       description: 'Human-readable label, for example QUOTATION 1403.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_SEQUENCE_FIELDS.scopeKey,
@@ -47,7 +47,6 @@ export default defineObject({
         'Document type and fiscal year, for example QUOTATION:1403. Unique: this is the row the allocator contends on.',
       icon: 'IconKey',
       isNullable: false,
-      defaultValue: '',
       isUnique: true,
     },
     {

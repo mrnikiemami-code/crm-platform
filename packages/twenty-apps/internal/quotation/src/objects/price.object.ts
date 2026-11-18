@@ -39,7 +39,7 @@ export default defineObject({
         'The amount, as an exact decimal with six fraction digits in the price list currency. The single authoritative copy.',
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
-      defaultValue: '0.000000',
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: PRICE_FIELDS.validFrom,

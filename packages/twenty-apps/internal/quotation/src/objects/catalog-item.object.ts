@@ -45,7 +45,7 @@ export default defineObject({
       description: 'عنوانی که روی پیش‌فاکتور دیده می‌شود.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: CATALOG_ITEM_FIELDS.kind,
@@ -92,7 +92,7 @@ export default defineObject({
       description: 'واحد اندازه‌گیری کنار مقدار، مثلاً عدد یا ساعت.',
       icon: 'IconRuler',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: CATALOG_ITEM_FIELDS.description,

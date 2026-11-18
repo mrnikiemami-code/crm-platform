@@ -46,7 +46,7 @@ export default defineObject({
       description: 'نام کوتاه برای فهرست و جست‌وجو.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_FIELDS.quotationNumber,

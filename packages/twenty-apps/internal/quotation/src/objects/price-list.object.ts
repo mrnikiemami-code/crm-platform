@@ -34,7 +34,7 @@ export default defineObject({
       description: 'For example نرخ فروش ۱۴۰۳.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: PRICE_LIST_FIELDS.currencyCode,
@@ -45,7 +45,7 @@ export default defineObject({
         'ISO 4217 code of every price in this list, for example IRR. Deliberately text: the workspace uses a small, stable set and a 154-option select would be a maintenance trap.',
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: PRICE_LIST_FIELDS.isDefault,

@@ -43,7 +43,7 @@ export default defineObject({
       description: 'For example سامانه حسابداری فروشگاه مرکزی.',
       icon: 'IconAbc',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.adapterId,
@@ -54,7 +54,7 @@ export default defineObject({
         'Stable machine id of the adapter implementation, for example mock or holoo. Never a display name.',
       icon: 'IconPlugConnected',
       isNullable: false,
-      defaultValue: '',
+      defaultValue: "''",
     },
     {
       universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.adapterVersion,

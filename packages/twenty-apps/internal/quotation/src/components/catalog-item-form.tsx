@@ -4,6 +4,10 @@ import {
   enqueueSnackbar,
 } from 'twenty-sdk/front-component';
 
+import {
+  SAVE_CATALOG_ROUTE,
+  callAppRoute,
+} from 'src/components/quotation-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
 import { buildCatalogItemUpsertPlan } from 'src/domain/catalog/catalog-upsert';
@@ -34,18 +38,45 @@ export const CatalogItemForm = () => {
     [kind, name, sku, unit, isActive, priceText, moneyUnit],
   );
 
-  const onSave = () => {
+  const onSave = async () => {
     if (!plan.ok) {
       setError(plan.refusal.detail);
       return;
     }
 
     setError(null);
-    enqueueSnackbar({
-      message:
-        'کالا/خدمت از نظر قرارداد معتبر است. ذخیره در پایگاه پس از نصب اپ روی Dev انجام می‌شود.',
-      variant: 'info',
-    });
+
+    try {
+      const response = await callAppRoute(SAVE_CATALOG_ROUTE, {
+        kind,
+        name,
+        sku: sku.trim() === '' ? null : sku,
+        unit,
+        isActive,
+        defaultUnitPriceText: priceText.trim() === '' ? null : priceText,
+        moneyUnit,
+      });
+
+      if (!response.ok || response.data.success === false) {
+        setError(
+          typeof response.data.message === 'string'
+            ? response.data.message
+            : 'ذخیره کالا/خدمت انجام نشد',
+        );
+        return;
+      }
+
+      enqueueSnackbar({
+        message:
+          typeof response.data.message === 'string'
+            ? response.data.message
+            : 'کالا/خدمت ذخیره شد',
+        variant: 'success',
+      });
+      closeSidePanel();
+    } catch {
+      setError('ارتباط با سرور برقرار نشد');
+    }
   };
 
   return (

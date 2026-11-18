@@ -162,11 +162,19 @@ describe('object manifests', () => {
         }
 
         // Canonical means six decimals, so a fresh row cannot hold "0" while the domain
-        // expects "0.000000".
-        if (
+        // expects "0.000000". SDK TEXT defaults are quoted as '0.000000' for the platform.
+        const unquoted =
           typeof defaultValue === 'string' &&
-          defaultValue !== '' &&
-          !/^-?\d+\.\d{6}$/.test(defaultValue)
+          defaultValue.length >= 2 &&
+          defaultValue.startsWith("'") &&
+          defaultValue.endsWith("'")
+            ? defaultValue.slice(1, -1)
+            : defaultValue;
+
+        if (
+          typeof unquoted === 'string' &&
+          unquoted !== '' &&
+          !/^-?\d+\.\d{6}$/.test(unquoted)
         ) {
           violations.push(
             `${name}.${field.name} default "${defaultValue}" is not six-decimal`,
