@@ -1,6 +1,6 @@
 {
   "name": "sales-followup",
-  "version": "0.1.2",
+  "version": "0.1.6",
   "license": "MIT",
   "engines": {
     "node": "^24.5.0",
