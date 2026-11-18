@@ -109,3 +109,60 @@ S0 audit findings (report-based):
 4. PDF spike must not force production Chromium or new dependency without a separate architect decision. No font binaries committed unless licensing reviewed.
 5. Do not treat workflow FORM as sufficient proof of full multi-level approval; begin with app-owned explicit single-step approval contract, extensible later.
 6. Explicit STOP_FOR_ARCHITECT before any database object creation. CRM-126 SMS, CRM-128 intranet title rollout and all unrelated services out of scope.
+
+## First real accounting adapter: Asan (LinqToAsan), then Sepidar — 2026-11-18
+User priority: implement vendor-neutral accounting interface FIRST, Asan adapter as first concrete integration, Sepidar adapter next. Reference supplied by user: `D:\HaniReference\LinqToAsan-API-Guide.pdf` (32 pages; user also uploaded identical-named PDF to conversation). This local Windows path is a worker input, not an assertion that GitHub contains the PDF. Do not commit the proprietary/reference PDF unless explicitly approved.
+
+### Verified API contract from provided guide (not tested against live server)
+- Base URL `http://ServicIP:Port/api/`; POST JSON; guide does not establish authentication, HTTPS, remote access, webhooks or idempotency semantics. Discover actual environment safely before any connection. Treat HTTP as insecure over untrusted networks; use approved TLS tunnel/reverse proxy/VPN where appropriate. Do not expose service publicly.
+- Catalog inbound: GET `ProductsNew/AllProducts`; `ProductsNew/OneProduct?ProductCode=`; `ProductPriceNew/GetAllPrice`; `ProductStatisticsNew/AmarKala`; optional `Stores/GetStores`.
+- Catalog outbound create: POST `Products4/AddProduct` with ProductInput, caller-assigned code; POST `Products2/AddParentProduct` under a parent code. Price update: POST `Products3/EditProduct` modifies only SellPrice and two SalesPrice entries; omitting SalesPrice zeroes price 2 and 3. **No general product name/description update endpoint is documented.** Mark updateItemFields unsupported except price fields, and never silently claim full bidirectional field updates.
+- Customer inbound: GET `CustomersNew/AllCustomers`; outbound create POST `Customers/postCustomer` with PersonCode=0 auto-code; update POST `Customers2/postCustomer` keyed by PersonCode. Map CRM Person/Company to Asan customer with explicit approved rules.
+- Pro forma: POST `PishFactors/RegisterPishFactor` (also `PishFactorsNew/RegisterPishFactor` documented), FactorViewModel; customer and products must exist in Asan first. For Asan, FactorDetails.Price is **total line amount**, not unit price; FactorNumber=0 auto-number (alternate endpoint also treats 1 as auto). Response int number; 0 means failed. Handle special discount/tax/duty item codes 999123/999141/999140 only when configured and pre-existing in Asan, Count=0. Avoid OriginalPrice path due -369 validation behavior.
+- Sales invoice is separate: POST `Factors/RegisterFactor`; never confuse draft pro forma with posted sales invoice. Inbound pro forma reads `PishFactorsNew/LastPishFactors?Count=` and `PishFactorsNew/LastCustomerPishFactors`; document does not prove read-by-id or stable idempotency support.
+- Date: FactorDate 0=server today or 8-digit Jalali; some sales invoice endpoint accepts Gregorian 8 digits, not automatically assumed for pro forma. UserID and StorageID need configured mapping.
+- Item IDs/ProductCode numeric (some API types decimal), and money integer values in guide; explicit Asan money unit (rial/toman) MUST be confirmed in real installation before mapping from Twenty amountMicros; never assume.
+- Guide lists 47 methods, 17 data models; no confirmed full update product endpoint or auth specification. Capabilities declared per adapter, not global.
+- Safeguards: read-only connection discovery and fixture-based contract tests first; catalog import preview, external code link, user-approved write; no automatic retry of ambiguous POST create/register without reconciliation (remote idempotency not proven); stable operation journal, response code handling, conflict states; field ownership. Asan may run on private LAN, requiring separately approved secure connector/agent; do not assume CRM host can reach it.
+- Adapter interface should cover customer read/upsert, catalog list/read/create, price-only update, price list, inventory read, pro forma register/query, and optional sales invoice register; Sepidar must be implemented behind same capability-aware interface without assuming Asan-specific special codes or data shapes.
+- Work order: S1 pure contracts and fixtures + Asan mapping feasibility; S2 catalog/quotation domain; S3 adapter core and Asan read-only integration; S4 explicit approval-gated Asan write flows; S5 Sepidar adapter after obtaining Sepidar API docs and environment. This overrides earlier generic first-adapter selection but DOES NOT authorize live calls or production writes.
+
+## CRM-129 current execution ledger — 2026-11-18 (architect recovery update)
+
+### Evidence classification
+- **GitHub verified:** This architecture document, the prior source-evidence reconciliation, and the Asan-first adapter decision are present on remote `release/record-access-115` (last Asan update commit `96153850e9407c1f13363acae6383e8d20531c6b` before this update).
+- **Cursor report only; NOT independently inspected on GitHub:** local branch `feat/crm-126-workflow-template-sms`, branch-alignment merge `8e702032660e4a8462b94e3b7297d4259f9c46dd`, S1 implementation commit `910f497fc84a889eec91cf6f716ed32bc873cfdd`, 48 added files / 5851 lines / 114 passing Vitest tests / 11 PDF assertions, local clean tree and no Push. Do not misrepresent these commits as remotely present or tests as independently rerun.
+- **Local divergence:** branch-align report states 13 ahead/0 behind at merge time. S1 report states 14 ahead/0 behind *before* later Asan documentation commit `96153850e940`. Current exact ahead/behind MUST be recomputed by Cursor after fetch; do not reuse stale figures.
+- **Source artifacts:** user-provided `Pasted markdown(20261118-142724).md` contains CRM-129-S1 report; `D:\HaniReference\LinqToAsan-API-Guide.pdf` contains Asan guide. Neither file is asserted committed to repository.
+
+### Completed stages (report-based)
+- S0 read-only inventory: standard objects and app manifests, currency/GraphQL boundary, Persian PDF paths, workflow/app constraints; no schema changes.
+- BRANCH-ALIGN: local merge 8e702032660e with remote e5bad72a76, preserving 12 local CRM-126/127/128 commits; only docs added; no Push or deployment.
+- S1 contracts/spikes: local commit 910f497fc84a, `packages/twenty-apps/internal/quotation/` (42 files) and `packages/twenty-server/test/spikes/quotation-pdf/` (PDF proof files); reported 114/114 unit tests, typechecks clean, 11/11 PDF assertions; no DB objects, app installation, :6080 changes or Push.
+- S1 contract includes catalog/product/service, price list, quotation and revision, accounting connection/item link/sync operation, status machine, numbering, money micros and PDF. All manifests proposed and NOT installed.
+- PDF limitations reported: 203/206 extractable glyphs (98.5%), missing Unicode mappings, ZWNJ lost. Visual correctness was inferred from glyph geometry, not independently user-accepted.
+- GraphQL BigFloat and numeric transformation reportedly pass money through JavaScript Number: exactness limit 2^53-1 micros; S1 guard rejects larger values. This is a blocker for unrestricted monetary values, not an acceptable final workaround.
+- S1 tests used Tahoma installed locally for spike; do not commit/share font. Production font decision: open-licensed Vazirmatn with license check, subject to technical verification.
+
+### Architect decisions / gates after S1
+- **S1 overall: conditional PASS for isolated contracts and feasibility, NOT permission to begin S2.**
+- D1: use license-compliant Vazirmatn (OFL) after verifying actual license/packaging.
+- D2: searchable/copyable Persian PDF and preservation of ZWNJ required; 98.5% extraction is insufficient. Must correct and test.
+- D3: single authoritative exact monetary representation; no two independent editable amount copies. Resolve GraphQL Number precision without silent loss. A derived display cache is not source of truth.
+- D4: IRR canonical storage; toman input/display only with explicit unit and 10:1 conversion, no ambiguous currency labels. Confirm Asan installation's actual money unit separately.
+- D5: tax/discount order implemented in S1 is provisional; requires finance/legal approval before live invoices. Tests must encode approved policy, not assume it.
+- D6: quantity contract up to six decimal places (revisit original S1 milli-based code).
+- D7: first implementation single-step approval, architecture extensible to multilevel and amount thresholds.
+- D8: customer approval via expiring scoped secure token with revocation and audit; not public anonymous PDF URLs.
+- D9: app-owned quotationSequence acceptable only after real storage atomicity/uniqueness proof; in-memory CAS tests are insufficient.
+- All above are **architect design directives**; user acceptance and production readiness are NOT claimed.
+
+### Next task — CRM-129-S1-R1 (NOT YET EXECUTED)
+1. Fetch remote and safely incorporate Asan docs commit `96153850e940` and subsequent recovery commits into local branch without resetting/rebasing away local S1 code; check exact merge base/overlap first; no Push.
+2. Read current architecture, local S1 source/tests and Asan PDF. Align adapter capability contract to actual Asan endpoints: item list/read/create, **price-only** update, customer prerequisite/upsert, inventory/price reads, pro forma registration.
+3. Add fixture-based Asan mapping tests: `FactorDetails.Price` is full line amount, not unit price; `FactorNumber=0` auto; response 0 failure, -369 OriginalPrice hazard; special codes 999123/999140/999141 Count=0 only if preconfigured; Jalali date handling; numeric product IDs and customer IDs; explicit money-unit configuration.
+4. Fix or design proof-backed remedies for GraphQL micros exactness, 6-decimal quantities, Unicode PDF extraction/ZWNJ, and storage-backed atomic numbering. Do not claim an unresolved proof is PASS.
+5. Preserve existing CRM-126/127/128; no DB writes, app install, live Asan calls, intranet :6080 changes, Push, worker restart or deployment. Report exact local SHA/tests, unresolved gates, then STOP_FOR_ARCHITECT.
+
+### Later gated sequence
+S2 app-owned catalog CRUD + mixed product/service quotation domain, only after S1-R1 review; S3 adapter core + Asan read-only import preview and reconciliation; S4 approval-gated Asan outbound create/price/customer/pro-forma writes; S5 Sepidar adapter when its official API guide and environment are available. No production actions implicitly authorized.
