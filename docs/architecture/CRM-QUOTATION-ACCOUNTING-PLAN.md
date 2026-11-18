@@ -80,3 +80,32 @@ Find exact existing Product/service/catalog/price/stock entities, product UI and
 
 ### Delivery order adjustment
 After S1 domain contracts, deliver CRM catalog CRUD and quotation capability (S2), then accounting connector item read/import preview and mapping, then CRM-created item outbound create/update through a mock adapter and one verified real adapter. Gate every write behind approved connector capabilities and source-of-truth policy; no implicit production sync.
+
+## CRM-129-S0 evidence reconciliation and architect decisions (2026-11-18)
+Source: user-supplied Cursor read-only audit report CRM-129-S0, HEAD 8462cbaaa7711d566b062fbc45b8494f4b2dce34, local branch feat/crm-126-workflow-template-sms, clean working tree, reported 12 local commits ahead/17 remote docs commits behind at the time. This local state is report-based, NOT independently fetched from GitHub. No checkout/merge/push is authorized.
+
+Independently fetched on remote release branch:
+- twenty-shared/src/types/composite-types/currency.composite-type.ts: CurrencyMetadata.amountMicros:number and currencyCode:string; explicitly **micro (1e-6)**, not minor units. Decimal arithmetic and overflow-safe conversions must be specified around existing storage.
+- twenty-server/.../create-standard-flat-object-metadata.util.ts: STANDARD_FLAT_OBJECT_METADATA_BUILDERS_BY_OBJECT_NAME confirms standard-object metadata registry; complete absence of quote/catalog entities is based on Cursor's exhaustive inventory, not this partial direct read.
+- twenty-apps/examples/document-generator/src/logic-functions/utils/generate-document-pdf.ts: pdf-lib StandardFonts and toWinAnsi regex strip non-Latin characters; DO NOT reuse for Persian quotations.
+- twenty-sdk/src/sdk/define/connection-providers/define-connection-provider.ts: SUPPORTED_TYPES=['oauth']; API-key/file/agent connectors must not rely on ConnectionProvider.
+- twenty-apps/internal/communication/src/objects/communication.object.ts: app-owned object manifests, stable select values, Persian labels, and warning that app sync cannot change existing field TYPE; plan schema carefully.
+- Communication dedup-id file on remote release branch was not found at reported path; its existence in local unpushed branch remains report-only.
+
+S0 audit findings (report-based):
+- 36 standard and 19 app-defined objects searched, no product/service/catalog/pricelist/quotation/invoice/line object in those enumerations; BUT dynamically created workspace objects can exist outside manifests, so Dev workspace metadata inspection is needed before deployment and avoid claiming global absence.
+- Existing Person/Company/Opportunity, FA RTL UI, app roles/RLS, six trigger kinds, REST/GraphQL, encrypted application variables, document file upload.
+- Existing Opportunity stage has NEW/SCREENING/MEETING/PROPOSAL/CUSTOMER, not WON/LOST; quotation conversion is own state.
+- IRR supported, IRT not in existing currency code list; no implicit currency conversion. Decide UI Toman vs stored IRR explicitly.
+- No atomic quotation numbering, immutable revision enforcement, persistent accounting operation outbox/dead letter, or public expiring quotation share as confirmed by audit.
+- @react-pdf/renderer + embedded fonts exists for Latin DPA; Persian shaping/bidi not verified. Need actual visual AND extracted text checks. Byte-search for Persian characters alone is not a sufficient PDF proof because embedded fonts use glyph encoding.
+- Source contains Applications UI code, but prior operational cleanup hid/disabled Applications settings in intranet. **Distinguish repository presence from enabled production UI**; module must not depend on settings Applications menu.
+- User-approved bidirectional item sync remains first-class: accounting -> CRM import with preview/linking; CRM -> accounting create/update, external ID mapping, per-field ownership, no echo loops, no blind SKU matching, capability-dependent operations.
+
+### Architect decisions for next slice
+1. Separate quotation domain from accounting-bridge integration boundary. Keep existing Person/Company/Opportunity and currency display; no direct modifications to core until proven necessary.
+2. Implement quotation and catalog as source-controlled app-owned manifests, not ad hoc UI-created objects. Accounting-bridge connector remains independent, with adapter capabilities and persistent operation ledger.
+3. S1 is **contract + isolated feasibility proof only**, no DB schema/install/deploy: (a) Persian PDF proof with embedded Unicode font and bidi/shaping visual+text extraction; (b) money micros arithmetic and explicit round policy with test fixtures, leaving tax rates/legally binding rules configurable pending signoff; (c) product/service catalog, external item mapping, ownership/conflict/idempotency contracts; (d) quotation state transitions, immutable snapshots and atomic numbering strategy; (e) manifest schema design for later review.
+4. PDF spike must not force production Chromium or new dependency without a separate architect decision. No font binaries committed unless licensing reviewed.
+5. Do not treat workflow FORM as sufficient proof of full multi-level approval; begin with app-owned explicit single-step approval contract, extensible later.
+6. Explicit STOP_FOR_ARCHITECT before any database object creation. CRM-126 SMS, CRM-128 intranet title rollout and all unrelated services out of scope.
