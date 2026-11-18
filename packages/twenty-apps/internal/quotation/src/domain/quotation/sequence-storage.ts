@@ -95,9 +95,29 @@ export const createSequenceStorage = (): SequenceStorage & {
   return storage;
 };
 
+// PostgreSQL reports a lost race in TWO different ways, and a caller that handles only the first
+// duplicates a number in the second:
+//
+//   READ COMMITTED   -> the UPDATE simply matches no row: affected = 0.
+//   REPEATABLE READ  -> the UPDATE raises a serialisation failure, SQLSTATE 40001.
+//
+// The second form was MEASURED against a real Postgres (see the S1-R2 report): the same two-writer
+// race that returns 0 under READ COMMITTED throws 40001 under REPEATABLE READ. Both mean "somebody
+// else moved the value first", so both must lead to a re-read rather than a failure.
+export const POSTGRES_SERIALIZATION_FAILURE = '40001';
+
+export const isLostRaceError = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  (error as { code?: unknown }).code === POSTGRES_SERIALIZATION_FAILURE;
+
 export type AllocationOutcome = {
   sequence: number;
   attempts: number;
+  // How many of the attempts ended in a serialisation failure rather than a zero row count. Reported
+  // because the two paths are not interchangeable: a deployment on REPEATABLE READ exercises only this
+  // one, so a spike that never sees it has not tested that deployment.
+  serializationFailures: number;
 };
 
 export const allocateAgainstStorage = ({
@@ -109,33 +129,53 @@ export const allocateAgainstStorage = ({
   scopeKey: string;
   maxAttempts?: number;
 }): Result<AllocationOutcome> => {
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const current = storage.selectLastIssued(scopeKey);
+  let serializationFailures = 0;
 
-    if (current === null) {
-      // First allocation for this scope. The INSERT is the mutex: `ON CONFLICT DO NOTHING`
-      // means only one writer creates the row, and the loser falls through to a retry and
-      // then updates.
-      if (storage.insertIfAbsent(scopeKey, 1)) {
-        return accepted({ sequence: 1, attempts: attempt });
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let current: number | null;
+
+    try {
+      current = storage.selectLastIssued(scopeKey);
+
+      if (current === null) {
+        // First allocation for this scope. The INSERT is the mutex: `ON CONFLICT DO NOTHING` means
+        // only one writer creates the row, and the loser falls through to a retry and then updates.
+        if (storage.insertIfAbsent(scopeKey, 1)) {
+          return accepted({
+            sequence: 1,
+            attempts: attempt,
+            serializationFailures,
+          });
+        }
+
+        continue;
       }
 
-      continue;
+      const next = current + 1;
+      const affected = storage.updateWhereLastIssued(scopeKey, current, next);
+
+      if (affected === 1) {
+        return accepted({
+          sequence: next,
+          attempts: attempt,
+          serializationFailures,
+        });
+      }
+
+      // A zero row count is a lost race, not an error: another issuer moved the value between this
+      // run's read and write, so the run reads again and picks the new value up.
+    } catch (error) {
+      if (!isLostRaceError(error)) {
+        throw error;
+      }
+
+      // Under REPEATABLE READ the engine refuses instead of returning zero. Same meaning, same remedy.
+      serializationFailures += 1;
     }
-
-    const next = current + 1;
-    const affected = storage.updateWhereLastIssued(scopeKey, current, next);
-
-    if (affected === 1) {
-      return accepted({ sequence: next, attempts: attempt });
-    }
-
-    // A zero row count is a lost race, not an error: another issuer moved the value between
-    // this run's SELECT and UPDATE, so the run reads again and picks the new value up.
   }
 
   return refused(
     'SEQUENCE_CONTENDED',
-    `could not allocate a number after ${maxAttempts} attempts`,
+    `could not allocate a number after ${maxAttempts} attempts (${serializationFailures} serialisation failures)`,
   );
 };

@@ -332,9 +332,10 @@ const main = async (): Promise<void> => {
       '  - ligature ordering: Arabic lam-alef is one glyph for two characters, so a\n' +
       '    consumer that treats one glyph as one character reconstructs کالا as کاال.\n' +
       '    The characters are all present; only the ORDER is fragile.\n' +
-      '  - ZWNJ does not survive: this face maps it to a space, so a copied quotation\n' +
-      '    spells پیش فاکتور instead of پیش‌فاکتور. Face-dependent; must be re-measured\n' +
-      '    with the production font.\n',
+      '  - ZWNJ does not survive, and this is NOT a property of the face: Tahoma and\n' +
+      '    Vazirmatn both map the half-space and a real space to the SAME glyph code,\n' +
+      '    so no glyph-level trick can express it. `/ActualText` is the standard fix;\n' +
+      '    see prove-actual-text.ts.\n',
   );
 };
 

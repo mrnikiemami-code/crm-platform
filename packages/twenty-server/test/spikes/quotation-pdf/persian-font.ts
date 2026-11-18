@@ -1,21 +1,29 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-// The Persian PDF spike needs a font whose glyphs cover Arabic script. No font
-// binary is committed: the architect requires a licensing review before a font
-// asset enters the repository, so the spike reads a font that is already
-// installed on the machine running it and refuses loudly when none is found.
+// The Persian PDF spike needs a font whose glyphs cover Arabic script.
 //
-// This is deliberately NOT a production font strategy. S2 must pick and vendor a
-// redistributable face (Vazirmatn is OFL-1.1) with the licence file beside it.
+// THE PRODUCTION FACE IS VAZIRMATN, vendored beside this file with its licence (`fonts/OFL.txt`,
+// SIL Open Font License 1.1, Copyright 2015 The Vazirmatn Project Authors). OFL permits embedding
+// and redistribution provided the licence travels with the font and no Reserved Font Name is
+// declared — the copyright line carries none. The `.ttf` is committed so the proof is reproducible
+// in CI instead of depending on whatever face a machine happens to have.
 export type ResolvedFont = {
   path: string;
   bytes: Buffer;
 };
 
-// Ordered by preference: Tahoma and Segoe UI both carry the Arabic block and the
-// Persian-specific letters (پ چ ژ گ ک ی). DejaVu Sans is the fallback on Linux
-// CI images, Arial the fallback on macOS.
-const CANDIDATE_FONT_PATHS = [
+// Resolved from the working directory rather than `import.meta.url` because this file is typechecked
+// under twenty-server's CommonJS config, where `import.meta` is not allowed. Every command in the
+// S1-R2 report is run from the repository root, and the error below says so when it is not.
+const SPIKE_DIRECTORY = 'packages/twenty-server/test/spikes/quotation-pdf';
+
+const VENDORED_FONT_PATH = join(process.cwd(), SPIKE_DIRECTORY, 'fonts', 'Vazirmatn-Regular.ttf');
+
+// Fallbacks exist only so the spike still runs on a machine where the vendored file was stripped
+// (for example a shallow export). A fallback producing a different rendering is exactly why the
+// resolved path is REPORTED by the verifier rather than assumed.
+const FALLBACK_FONT_PATHS = [
   'C:/Windows/Fonts/tahoma.ttf',
   'C:/Windows/Fonts/segoeui.ttf',
   '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
@@ -48,7 +56,13 @@ export const resolvePersianFont = (): ResolvedFont => {
     return { path: fromEnvironment, bytes: readFileSync(fromEnvironment) };
   }
 
-  for (const candidatePath of CANDIDATE_FONT_PATHS) {
+  attemptedPaths.push(VENDORED_FONT_PATH);
+
+  if (existsSync(VENDORED_FONT_PATH)) {
+    return { path: VENDORED_FONT_PATH, bytes: readFileSync(VENDORED_FONT_PATH) };
+  }
+
+  for (const candidatePath of FALLBACK_FONT_PATHS) {
     attemptedPaths.push(candidatePath);
 
     if (existsSync(candidatePath)) {

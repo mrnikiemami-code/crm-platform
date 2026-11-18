@@ -93,7 +93,14 @@ destination held a space it could fail to match at all — which is exactly how 
 was reported as absent. The parser now reads every group in the destination and records an empty
 destination as `''` so "mapped to nothing" stays distinguishable from "not mapped".
 
-**3.4 ZWNJ is replaced by a space, by the face, not by the writer.**
+**3.4 ZWNJ is replaced by a space, by the WRITER, not by the face.**
+
+> **Correction (CRM-129-S1-R2).** This section first said the loss was face-dependent and had to be
+> "re-measured with the production font". Vazirmatn was measured and behaves identically to Tahoma:
+> both map the half-space and a real space to the **same glyph code** (`U+0020`). Remapping that code
+> would turn every real space into a half-space, so the substitution cannot be fixed in the glyph
+> layer at all — `/ActualText` is the only standard mechanism left, and it is now implemented and
+> measured in [CRM-129-S1-R2-PROOF.md](./CRM-129-S1-R2-PROOF.md).
 
 ```
 layout("پیش‌فاکتور")  chars=10  glyphs=10  emptyMappings=0  codepointsSpelledOut="پیش فاکتور"
@@ -101,7 +108,7 @@ layout("پیش‌فاکتور")  chars=10  glyphs=10  emptyMappings=0  codepoint
 
 Ten glyphs for ten characters: nothing is dropped. But the code point recovered for the ZWNJ
 glyph is `U+0020`, because the font's cmap maps that glyph to a space. So a copied quotation
-reads `پیش فاکتور`. **This is face-dependent** and must be re-measured with the production font.
+reads `پیش فاکتور`.
 
 ## 4. What the remedy must actually fix
 

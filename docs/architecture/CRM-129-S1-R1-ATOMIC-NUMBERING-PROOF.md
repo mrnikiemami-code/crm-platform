@@ -1,7 +1,13 @@
-# CRM-129-S1-R1 — Storage-backed atomic quotation numbering: proof design
+﻿# CRM-129-S1-R1 — Storage-backed atomic quotation numbering: proof design
 
 Date: 2026-11-18
-Status: **PROTOCOL MODELLED AND TESTED / REAL-DATABASE PROOF DESIGNED, NOT RUN**
+Status: **PROVEN AGAINST A REAL POSTGRES — see [CRM-129-S1-R2-PROOF.md](./CRM-129-S1-R2-PROOF.md)**
+
+> **Superseded in part (CRM-129-S1-R2).** The experiments in §4 were run against a throwaway
+> postgres:16-alpine container. Results: insert race 1-of-2, lost compare-and-set reports
+> owCount = 0 under READ COMMITTED, 20 concurrent allocators produced 20 distinct numbers, and
+> REPEATABLE READ raised SQLSTATE 40001 instead of returning 0 — which the protocol now handles.
+> D-A below is therefore answered; D-B and D-C remain open.
 Scope: no database was written, no app installed, no service restarted. This document and the
 model in `src/domain/quotation/sequence-storage.ts` are what can be executed without a database.
 

@@ -22,10 +22,12 @@ export type PdfObject = {
 };
 
 export type TextRun = {
-  // Horizontal position of the run's origin, including inherited `cm` offsets.
+  // Position of the run's origin, including inherited `cm` offsets. y is what groups runs into
+  // visual lines.
   x: number;
+  y: number;
   codes: number[];
-};
+  };
 
 export type PdfProbeResult = {
   objects: PdfObject[];
@@ -138,25 +140,27 @@ const TRANSLATE_OPERATOR = /^\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+
 const SHOW_TEXT_OPERATOR = /\[(.*?)\]\s*TJ|<([0-9a-fA-F\s]+)>\s*Tj/g;
 const HEX_STRING = /<([0-9a-fA-F\s]+)>/g;
 
-// Walks the content stream, keeping a stack of accumulated x translations so each
-// show-text run can be attributed to a position on the page. Only horizontal
-// translation is tracked: the document under test uses `cm` for positioning and
-// nothing that would rotate or shear the text matrix.
+// Walks the content stream, keeping a stack of accumulated x/y translations so each show-text run
+// can be attributed to a position on the page. Both axes are tracked: y is what groups runs into
+// visual lines, and a remedy that rewrites text has to know which line it is on.
 export const extractTextRuns = (content: string): TextRun[] => {
   const runs: TextRun[] = [];
-  const translationStack: number[] = [];
+  const translationStack: { x: number; y: number }[] = [];
   let currentX = 0;
+  let currentY = 0;
 
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim();
 
     if (line === 'q') {
-      translationStack.push(currentX);
+      translationStack.push({ x: currentX, y: currentY });
       continue;
     }
 
     if (line === 'Q') {
-      currentX = translationStack.pop() ?? 0;
+      const restored = translationStack.pop() ?? { x: 0, y: 0 };
+      currentX = restored.x;
+      currentY = restored.y;
       continue;
     }
 
@@ -168,6 +172,7 @@ export const extractTextRuns = (content: string): TextRun[] => {
 
     if (translate !== null) {
       currentX += Number(translate[5]);
+      currentY += Number(translate[6]);
       continue;
     }
 
@@ -189,7 +194,7 @@ export const extractTextRuns = (content: string): TextRun[] => {
       }
 
       if (codes.length > 0) {
-        runs.push({ x: currentX, codes });
+        runs.push({ x: currentX, y: currentY, codes });
       }
 
       HEX_STRING.lastIndex = 0;

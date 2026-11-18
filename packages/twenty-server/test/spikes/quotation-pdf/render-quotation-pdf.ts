@@ -65,3 +65,24 @@ export const SPIKE_SAMPLE_INPUT: QuotationPdfSpikeInput = {
   total: '۴۷٬۴۰۰٬۰۰۰',
 };
 
+// The logical string of every VISUAL line, in the order the document draws them. This is the
+// single source of truth the `/ActualText` remedy attaches to the page, and it exists because a
+// glyph cannot carry a character the font never encoded: the half-space has to come from here.
+//
+// A table row is one visual line even though it is drawn as several cells, so its cells are joined
+// the way a reader reads them. The remedy asserts the count against what the page actually drew, so
+// this function drifting from the document fails loudly instead of attaching the wrong text.
+export const quotationSourceLines = (
+  input: QuotationPdfSpikeInput,
+): string[] => [
+  input.title,
+  ['شماره', input.number, '—', input.customerName].join('  '),
+  ['کد کالا', input.sku].join('  '),
+  ['شرح کالا یا خدمت', 'تعداد', 'مبلغ'].join('  '),
+  ...input.lines.map((line) =>
+    [line.description, line.quantity, line.unitPrice].join('  '),
+  ),
+  ['جمع کل', input.total].join('  '),
+  'این پیش‌فاکتور سند مالی نیست',
+];
+

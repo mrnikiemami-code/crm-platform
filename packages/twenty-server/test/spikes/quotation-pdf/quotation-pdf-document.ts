@@ -86,6 +86,13 @@ const styles = StyleSheet.create({
   },
 });
 
+// Every visual line of this document is ONE text element. That is a deliberate constraint, not a
+// layout shortcut: a line drawn as several elements (a table row of three cells) is emitted as
+// several content runs, and a `/ActualText` remedy can then only attach the line's text to one of
+// them, which duplicates or loses the others. Joining the cells keeps one run per line so the
+// remedy is exact — and an extractor sees a row as one line, which is how a reader reads it anyway.
+const lineOf = (...parts: string[]): string => parts.join('  ');
+
 export type QuotationPdfSpikeLine = {
   description: string;
   quantity: string;
@@ -111,53 +118,6 @@ export const buildQuotationPdfSpikeDocument = (
 ): ReactElement<DocumentProps> => {
   registerQuotationSpikeFont();
 
-  const header = createElement(
-    View,
-    { style: styles.tableHeader },
-    createElement(Text, { style: [styles.cellDescription, RTL_TEXT_STYLE] }, 'شرح کالا یا خدمت'),
-    createElement(Text, { style: [styles.cellQuantity, RTL_TEXT_STYLE] }, 'تعداد'),
-    createElement(Text, { style: [styles.cellPrice, RTL_TEXT_STYLE] }, 'مبلغ'),
-  );
-
-  const rows = input.lines.map((line, index) =>
-    createElement(
-      View,
-      { key: index, style: styles.tableRow, wrap: false },
-      createElement(Text, { style: [styles.cellDescription, RTL_TEXT_STYLE] }, line.description),
-      createElement(Text, { style: [styles.cellQuantity, RTL_TEXT_STYLE] }, line.quantity),
-      createElement(Text, { style: [styles.cellPrice, RTL_TEXT_STYLE] }, line.unitPrice),
-    ),
-  );
-
-  const page = createElement(
-    Page,
-    { size: 'A4', style: styles.page, wrap: true },
-    createElement(Text, { style: [styles.heading, RTL_TEXT_STYLE] }, input.title),
-    createElement(
-      Text,
-      { style: [styles.meta, RTL_TEXT_STYLE] },
-      `شماره ${input.number} — ${input.customerName}`,
-    ),
-    createElement(
-      Text,
-      { style: [styles.meta, RTL_TEXT_STYLE] },
-      `کد کالا ${input.sku}`,
-    ),
-    header,
-    ...rows,
-    createElement(
-      View,
-      { style: styles.totalRow },
-      createElement(Text, { style: RTL_TEXT_STYLE }, 'جمع کل'),
-      createElement(Text, { style: RTL_TEXT_STYLE }, input.total),
-    ),
-    createElement(
-      Text,
-      { style: styles.footer, fixed: true },
-      'این پیش‌فاکتور سند مالی نیست',
-    ),
-  );
-
   return createElement(
     Document,
     {
@@ -165,7 +125,43 @@ export const buildQuotationPdfSpikeDocument = (
       author: 'quotation-spike',
       subject: input.number,
     },
-    page,
+    createElement(
+      Page,
+      { size: 'A4', style: styles.page, wrap: true },
+      createElement(Text, { style: [styles.heading, RTL_TEXT_STYLE] }, input.title),
+      createElement(
+        Text,
+        { style: [styles.meta, RTL_TEXT_STYLE] },
+        lineOf('شماره', input.number, '—', input.customerName),
+      ),
+      createElement(
+        Text,
+        { style: [styles.meta, RTL_TEXT_STYLE] },
+        lineOf('کد کالا', input.sku),
+      ),
+      createElement(
+        Text,
+        { style: [styles.tableRow, RTL_TEXT_STYLE] },
+        lineOf('شرح کالا یا خدمت', 'تعداد', 'مبلغ'),
+      ),
+      ...input.lines.map((line, index) =>
+        createElement(
+          Text,
+          { key: index, style: [styles.tableRow, RTL_TEXT_STYLE] },
+          lineOf(line.description, line.quantity, line.unitPrice),
+        ),
+      ),
+      createElement(
+        Text,
+        { style: [styles.totalRow, RTL_TEXT_STYLE] },
+        lineOf('جمع کل', input.total),
+      ),
+      createElement(
+        Text,
+        { style: styles.footer, fixed: true },
+        'این پیش‌فاکتور سند مالی نیست',
+      ),
+    ),
   ) as ReactElement<DocumentProps>;
 };
 

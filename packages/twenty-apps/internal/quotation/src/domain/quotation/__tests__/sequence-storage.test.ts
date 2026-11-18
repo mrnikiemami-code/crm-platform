@@ -25,7 +25,7 @@ describe('storage-backed allocation', () => {
       allocateAgainstStorage({ storage, scopeKey: SCOPE }),
     );
 
-    expect(outcome).toEqual({ sequence: 1, attempts: 1 });
+    expect(outcome).toEqual({ sequence: 1, attempts: 1, serializationFailures: 0 });
     expect(storage.rows.get(SCOPE)).toBe(1);
   });
 
@@ -163,5 +163,53 @@ describe('storage-backed allocation', () => {
 
     expect(storage.rows.get('QUOTATION:1403')).toBe(1);
     expect(storage.rows.get('QUOTATION:1404')).toBe(1);
+  });
+
+  it('treats a serialisation failure as a lost race and re-reads', () => {
+    // MEASURED against a real Postgres: under REPEATABLE READ the losing writer does not get a zero
+    // row count, it gets SQLSTATE 40001. A protocol that only handled the zero would fail here.
+    const storage = createSequenceStorage();
+
+    storage.rows.set(SCOPE, 7);
+
+    let thrown = false;
+    const repeatableRead: SequenceStorage = {
+      ...storage,
+      updateWhereLastIssued: (scopeKey, expected, next) => {
+        if (!thrown) {
+          thrown = true;
+          // Simulate the other transaction committing first.
+          storage.rows.set(scopeKey, expected + 1);
+
+          const error = new Error('could not serialize access due to concurrent update');
+          (error as { code?: string }).code = '40001';
+          throw error;
+        }
+
+        return storage.updateWhereLastIssued(scopeKey, expected, next);
+      },
+    };
+
+    const outcome = unwrap(
+      allocateAgainstStorage({ storage: repeatableRead, scopeKey: SCOPE }),
+    );
+
+    expect(outcome.sequence).toBe(9);
+    expect(outcome.attempts).toBe(2);
+    expect(outcome.serializationFailures).toBe(1);
+  });
+
+  it('does not swallow an error that is not a lost race', () => {
+    const storage = createSequenceStorage();
+    const broken: SequenceStorage = {
+      ...storage,
+      selectLastIssued: () => {
+        throw new Error('connection reset');
+      },
+    };
+
+    expect(() =>
+      allocateAgainstStorage({ storage: broken, scopeKey: SCOPE }),
+    ).toThrow('connection reset');
   });
 });
