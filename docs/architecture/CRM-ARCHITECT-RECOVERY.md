@@ -174,3 +174,15 @@ Record field changed → selected saved SMS template → Workflow/Communication 
 ## CRM-128-R5 — limited Dev worker authorization (2026-11-18)
 
 User explicitly approved correcting the Dev worker-reachable LOGIC_FUNCTION_API_URL and restarting **only the isolated Dev worker**, after proving separation from intranet :6080. Verify connectivity before restart; test real Trigger→Worker→API→Database using disposable records; return three sales-followup triggers to disabled and clean test data. No intranet changes, backfill, Docker build, other service restarts, push/merge or SMS. **Approval is scope-limited, not evidence R5 has executed or passed.** STOP_FOR_ARCHITECT.
+
+
+## CRM-128-R5 — Dev worker transport fixed; app-token E2E still blocked (2026-11-18)
+
+**Status: PARTIAL PASS / E2E BLOCKED / STOP_FOR_ARCHITECT.** Based on user-provided Cursor report, not independently audited. No code commit (HEAD `3048837aed`, clean tree); Dev-only compose config changed.
+
+- Isolation checked: Dev worker network `twenty_default`, DB `db/default`, Redis `redis`; intranet on separate `crm-intranet-net`; intranet service names NXDOMAIN from worker. No :6080 access or restarts.
+- Dev compose worker-only settings: `LOGIC_FUNCTION_TYPE=LOCAL`, `LOGIC_FUNCTION_API_URL=http://twenty-server-1:3000`; backup `docker-compose.yml.bak-128r5`. Worker-to-server /healthz and /graphql both HTTP 200 before recreation. Only Dev `twenty-worker-1` recreated with `docker compose up -d --no-deps --force-recreate worker`; server, DB, Redis, intranet untouched.
+- Triggered LogicFunctionTriggerJob processed/completed (630ms) and LOCAL executor instantiated, but salesInteraction title still blank. Runner `logic-function-job-runner.service.ts` reportedly swallows nonretryable error without exposing child function logs, returnvalue or failedReason. **Actual app-token function outcome unknown; do not infer success from completed job.**
+- Same handler inside same worker with same API URL and **admin token** wrote expected title, so transport and handler work with elevated identity. This does NOT prove app-token permissions cause; hypotheses include field-level read denial or mutation RLS. **Do not use admin token as production workaround** or broaden app privileges blindly.
+- Dev isolated test records cleaned; baseline 175 real interactions, 0 auto, 175 manual, 0 empty, triggers disabled (`bound=false`). Intranet read-only, no backfill, build, SMS, push, or other restarts.
+- Architect next step: bounded diagnosis using the **same application identity as the triggered execution**, with safe/redacted outcome visibility. Prefer existing authorized execution/logging path; if absent, consider temporary Dev-only diagnostic HTTP route with exact payload, least privilege, and mandatory removal, or a delegated-user event only to compare identities (not substitute for app-token test). Avoid core modifications or broad changes unless necessity demonstrated. No intranet authorization.
