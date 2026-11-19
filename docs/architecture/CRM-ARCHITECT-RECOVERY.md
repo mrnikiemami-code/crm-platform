@@ -11,7 +11,7 @@
 **Read first:** [CRM-129-S2-R10-PROOF.md](./CRM-129-S2-R10-PROOF.md).
 
 - **Branch / base:** `feat/crm-129-quotation` from S2-R9 checkpoint `ae65e83c29`.
-- **GitHub SHA:** `5c831b52f72aab37f17be6bcc590706a7af13280`.
+- **GitHub SHA (feature):** `5c831b52f72aab37f17be6bcc590706a7af13280`; **branch HEAD:** `2639e633991446fd5bf175c2e4e33bfc10249dbf`.
 - **Delivery:** primary «افزودن ردیف», alternating line cards, sticky financial summary; people-facing Persian money display (trim zeros / grouping); payable **floor toward −∞ to whole IRR** with independent `roundingExact`; app **0.1.6** on `dev-crm129`.
 - **Full page:** **DEFERRED** — FC lacks host customer picker without Core changes; side panel remains create UX; shared draft/save/totals retained.
 - **Dev evidence:** Vitest 217; server quotation Jest 13; `S2_R10_FLOOR_DISPLAY_PASS`; R8-R1 / R9 / R6 regressions PASS; authenticated browser summary shows `۱۰۰٬۰۰۳ تومان` / `۱۰۹٬۰۰۳٫۲ تومان` without six zeros.

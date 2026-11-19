@@ -2,7 +2,8 @@
 
 **Base:** `ae65e83c29` (S2-R9 UAT decision checkpoint)  
 **Branch:** `feat/crm-129-quotation`  
-**GitHub SHA:** `5c831b52f72aab37f17be6bcc590706a7af13280`  
+**GitHub SHA (feature):** `5c831b52f72aab37f17be6bcc590706a7af13280`  
+**Branch HEAD:** `2639e633991446fd5bf175c2e4e33bfc10249dbf`  
 **Result:** **PASS**
 
 ## 1. Source review (before change)
