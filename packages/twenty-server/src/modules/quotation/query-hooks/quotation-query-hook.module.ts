@@ -38,5 +38,6 @@ import { QuotationPermissionService } from 'src/modules/quotation/services/quota
     QuotationLineDeleteManyPreQueryHook,
     QuotationLineDestroyOnePreQueryHook,
   ],
+  exports: [QuotationPermissionService, QuotationImmutabilityService],
 })
 export class QuotationQueryHookModule {}

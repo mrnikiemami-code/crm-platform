@@ -22,6 +22,10 @@ export const hostApiMocks = {
   storageSet: fn().mockResolvedValue(undefined),
   storageDelete: fn().mockResolvedValue(undefined),
   storageClear: fn().mockResolvedValue(undefined),
+  callQuotationRoute: fn().mockResolvedValue({
+    success: false,
+    errorCode: 'UNEXPECTED',
+  }),
   callCommunicationRoute: fn().mockResolvedValue({
     success: false,
     errorCode: 'UNEXPECTED',

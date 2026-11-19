@@ -43,4 +43,19 @@ describe('S2 Persian UX surfaces', () => {
     expect(catalogItemsView.config.name).toContain('کالا');
     expect(quotationsView.config.name).toContain('پیش‌فاکتور');
   });
+
+  it('ships quotation record page with fields + lifecycle panel', async () => {
+    const pageLayout = await import(
+      'src/page-layouts/quotation-record.page-layout'
+    );
+    const lifecycle = await import(
+      'src/components/quotation-lifecycle-panel.front-component'
+    );
+
+    expect(pageLayout.default.errors).toEqual([]);
+    expect(pageLayout.default.config.type).toBe('RECORD_PAGE');
+    expect(pageLayout.default.config.tabs?.length).toBe(2);
+    expect(lifecycle.default.errors).toEqual([]);
+    expect(lifecycle.default.config.name).toBe('quotation-lifecycle-panel');
+  });
 });

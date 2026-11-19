@@ -120,6 +120,10 @@ export const StorageRoundTrip: Story = {
         success: false,
         errorCode: 'UNEXPECTED',
       }),
+      callQuotationRoute: async () => ({
+        success: false,
+        errorCode: 'UNEXPECTED',
+      }),
     },
   },
 };

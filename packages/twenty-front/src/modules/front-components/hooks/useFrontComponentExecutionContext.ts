@@ -27,6 +27,7 @@ import {
 import { useOpenAskAiPageWithPreprompt } from '@/ai/hooks/useOpenAskAiPageWithPreprompt';
 import { currentUserState } from '@/auth/states/currentUserState';
 import { isAllowedCommunicationAction } from '@/front-components/utils/communicationRouteAllowList';
+import { isAllowedQuotationAction } from '@/front-components/utils/quotationRouteAllowList';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import { useCommandMenuConfirmationModal } from '@/command-menu-item/confirmation-modal/hooks/useCommandMenuConfirmationModal';
 import { useUnmountCommand } from '@/command-menu-item/engine-command/hooks/useUnmountEngineCommand';
@@ -632,6 +633,33 @@ export const useFrontComponentExecutionContext = ({
       }
     };
 
+  // Same session-cookie bridge as Communication: front components only hold the
+  // application token, so privileged quotation lifecycle/PDF must run as the user.
+  const callQuotationRoute: FrontComponentHostCommunicationApi['callQuotationRoute'] =
+    async ({ action, payload }) => {
+      if (!isAllowedQuotationAction(action)) {
+        return { success: false, errorCode: 'INVALID_INPUT' };
+      }
+
+      const response = await fetch(
+        `${REACT_APP_SERVER_BASE_URL}/rest/quotation/actions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ ...(payload ?? {}), action }),
+        },
+      );
+
+      const text = await response.text();
+
+      try {
+        return text.length > 0 ? JSON.parse(text) : {};
+      } catch {
+        return { success: false, errorCode: 'UNEXPECTED' };
+      }
+    };
+
   const frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi =
     {
       navigate,
@@ -648,6 +676,7 @@ export const useFrontComponentExecutionContext = ({
       storageDelete,
       storageClear,
       callCommunicationRoute,
+      callQuotationRoute,
     };
 
   return {

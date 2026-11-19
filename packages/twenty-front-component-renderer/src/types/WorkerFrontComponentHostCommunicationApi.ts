@@ -40,4 +40,8 @@ export type WorkerFrontComponentHostCommunicationApi = {
     action: string;
     payload?: Record<string, unknown>;
   }) => Promise<unknown>;
+  callQuotationRoute?: (request: {
+    action: string;
+    payload?: Record<string, unknown>;
+  }) => Promise<unknown>;
 };

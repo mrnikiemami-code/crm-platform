@@ -37,6 +37,15 @@ export type CallCommunicationRouteFunction = (request: {
   payload?: Record<string, unknown>;
 }) => Promise<unknown>;
 
+/**
+ * Calls the Quotation UI route AS THE SIGNED-IN USER (lifecycle + Persian PDF).
+ * Same narrow bridge as Communication: action allow-list, session cookie on host.
+ */
+export type CallQuotationRouteFunction = (request: {
+  action: string;
+  payload?: Record<string, unknown>;
+}) => Promise<unknown>;
+
 export type FrontComponentHostCommunicationApi = {
   navigate: NavigateFunction;
   requestAccessTokenRefresh: RequestAccessTokenRefreshFunction;
@@ -52,4 +61,5 @@ export type FrontComponentHostCommunicationApi = {
   storageDelete: StorageDeleteFunction;
   storageClear: StorageClearFunction;
   callCommunicationRoute: CallCommunicationRouteFunction;
+  callQuotationRoute: CallQuotationRouteFunction;
 };
