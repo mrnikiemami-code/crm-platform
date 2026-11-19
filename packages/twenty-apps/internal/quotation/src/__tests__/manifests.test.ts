@@ -7,6 +7,7 @@ import catalogItem from 'src/objects/catalog-item.object';
 import price from 'src/objects/price.object';
 import priceList from 'src/objects/price-list.object';
 import quotation from 'src/objects/quotation.object';
+import quotationCustomerLink from 'src/objects/quotation-customer-link.object';
 import quotationLine from 'src/objects/quotation-line.object';
 import quotationRevision from 'src/objects/quotation-revision.object';
 import quotationSequence from 'src/objects/quotation-sequence.object';
@@ -28,6 +29,7 @@ const allManifests: { name: string; manifest: Manifest }[] = [
   { name: 'priceList', manifest: priceList as Manifest },
   { name: 'price', manifest: price as Manifest },
   { name: 'quotation', manifest: quotation as Manifest },
+  { name: 'quotationCustomerLink', manifest: quotationCustomerLink as Manifest },
   { name: 'quotationLine', manifest: quotationLine as Manifest },
   { name: 'quotationRevision', manifest: quotationRevision as Manifest },
   { name: 'quotationSequence', manifest: quotationSequence as Manifest },
@@ -110,7 +112,11 @@ describe('object manifests', () => {
 
     for (const { name, manifest } of allManifests) {
       for (const field of manifest.config.fields ?? []) {
-        if (/token|secret|password|apikey|api_key/i.test(field.name)) {
+        // tokenHash is a sha256 of a one-time customer token, not a credential.
+        if (
+          field.name !== 'tokenHash' &&
+          /token|secret|password|apikey|api_key/i.test(field.name)
+        ) {
           secretLookingFieldNames.push(`${name}.${field.name}`);
         }
       }

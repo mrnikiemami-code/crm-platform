@@ -199,3 +199,115 @@ export const buildPricesForItemsOnListQuery = ({
     }
   }`;
 };
+
+export const buildQuotationForCustomerLinkQuery = (quotationId: string): string =>
+  `query QuotationForCustomerLink {
+    quotations(filter: { id: { eq: ${toGraphqlLiteral(quotationId)} } }, first: 1) {
+      edges {
+        node {
+          id
+          status
+          quotationNumber
+          name
+        }
+      }
+    }
+  }`;
+
+export const buildCreateQuotationCustomerLinkMutation = (data: {
+  name: string;
+  tokenHash: string;
+  expiresAt: string;
+  issuedAt: string;
+  quotationId: string;
+}): string =>
+  `mutation CreateQuotationCustomerLink {
+    createQuotationCustomerLink(data: ${toGraphqlLiteral({
+      name: data.name,
+      tokenHash: data.tokenHash,
+      expiresAt: data.expiresAt,
+      issuedAt: data.issuedAt,
+      quotationId: data.quotationId,
+    })}) { id expiresAt }
+  }`;
+
+export const buildRevokeQuotationCustomerLinkMutation = ({
+  linkId,
+  revokedAt,
+}: {
+  linkId: string;
+  revokedAt: string;
+}): string =>
+  `mutation RevokeQuotationCustomerLink {
+    updateQuotationCustomerLink(
+      id: ${toGraphqlLiteral(linkId)}
+      data: ${toGraphqlLiteral({ revokedAt })}
+    ) { id revokedAt }
+  }`;
+
+export const buildQuotationCustomerLinkByHashQuery = (
+  tokenHash: string,
+): string =>
+  `query QuotationCustomerLinkByHash {
+    quotationCustomerLinks(
+      filter: { tokenHash: { eq: ${toGraphqlLiteral(tokenHash)} } }
+      first: 1
+    ) {
+      edges {
+        node {
+          id
+          tokenHash
+          expiresAt
+          revokedAt
+          quotationId
+          quotation { id }
+        }
+      }
+    }
+  }`;
+
+export const buildQuotationCustomerViewQuery = (
+  quotationId: string,
+): string =>
+  `query QuotationCustomerView {
+    quotation(filter: { id: { eq: ${toGraphqlLiteral(quotationId)} } }) {
+      id
+      name
+      quotationNumber
+      status
+      paymentTerms
+      currencyCode
+      grossExact
+      lineDiscountExact
+      documentDiscountExact
+      taxExact
+      roundingExact
+      totalExact
+      person {
+        name { firstName lastName }
+        nameFirstName
+        nameLastName
+      }
+      company {
+        name
+      }
+    }
+    quotationLines(
+      filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }
+      orderBy: [{ sortOrder: AscNullsLast }]
+      first: 200
+    ) {
+      edges {
+        node {
+          id
+          name
+          kind
+          unit
+          quantityExact
+          unitPriceExact
+          totalExact
+          sortOrder
+        }
+      }
+    }
+  }`;

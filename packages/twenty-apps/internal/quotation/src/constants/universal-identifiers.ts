@@ -21,6 +21,8 @@ export const QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER =
   'b0fe2590-f5b5-58a0-b7dc-0493ee35917d';
 export const QUOTATION_SEQUENCE_OBJECT_UNIVERSAL_IDENTIFIER =
   'e859ac57-43dc-54ab-a1d2-03fc8ed34a10';
+export const QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER =
+  'e106e576-13f6-59f3-9620-d842dc269f20';
 export const ACCOUNTING_CONNECTION_OBJECT_UNIVERSAL_IDENTIFIER =
   'dab886b2-ef12-53e7-93ca-505db4ea16fe';
 export const ACCOUNTING_ITEM_LINK_OBJECT_UNIVERSAL_IDENTIFIER =
@@ -116,6 +118,15 @@ export const QUOTATION_SEQUENCE_FIELDS = {
   width: '676e31bc-28db-5612-b9a2-ae0c7b7df5bb',
 } as const;
 
+export const QUOTATION_CUSTOMER_LINK_FIELDS = {
+  name: '53b22ea2-1795-5620-b164-56d808f31f8c',
+  tokenHash: '1c16db88-0015-5441-8ee5-599154e7d563',
+  expiresAt: '5bba7509-f259-5f07-8e8a-a8857027e956',
+  revokedAt: '41260cfb-e1c6-5a92-8b89-7e87619a700f',
+  issuedAt: 'ac17f8b9-f039-5da7-a603-8f3ceddc331f',
+  quotation: '27592826-4e33-572b-9509-69b78e190395',
+} as const;
+
 export const ACCOUNTING_CONNECTION_FIELDS = {
   name: 'c6868a67-5ff5-5485-8cfc-acd3f83296e6',
   adapterId: '299ce88f-9a97-5712-a14c-b4c4dc994f19',
@@ -158,6 +169,7 @@ export const RELATION_FIELDS = {
   opportunityQuotations: 'c2e9805b-d303-57d3-9edb-eaf336e105b6',
   quotationLines: 'f409170f-11d6-5ca1-9d3d-adfc1c21454b',
   quotationRevisions: '8f10d5a0-ca85-57c8-ab6a-f531935cfc30',
+  quotationCustomerLinks: '92ea0130-9db1-5e46-a855-6386468dc811',
   catalogItemQuotationLines: '56b6c96d-e4fa-58f2-ab0e-30172b48e577',
   catalogItemPrices: '2d808b0d-7715-508f-ab08-21776e9fe45b',
   catalogItemAccountingLinks: '8e1f288e-279f-5b57-8c83-5e6e3afebcd3',
@@ -237,6 +249,12 @@ export const SAVE_CATALOG_ITEM_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   'b2c3d4e5-f607-5890-a123-456789bcdef0';
 export const SEARCH_CATALOG_ITEMS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '2550d0b0-a3f2-5371-88ef-b0a1f5cc0fa5';
+export const CREATE_CUSTOMER_LINK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '802ddc48-2a18-5381-891b-512061cee0dd';
+export const REVOKE_CUSTOMER_LINK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'a70fdff0-8f75-5356-940d-3acf28d037ad';
+export const VIEW_CUSTOMER_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '6fd15134-15e6-5885-b861-18a5ab2c22e3';
 
 export const QUOTATION_LIFECYCLE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
   'c3d4e5f6-a7b8-5901-8234-56789cdef012';

@@ -5,6 +5,7 @@ import {
   PRICE_LIST_OBJECT_UNIVERSAL_IDENTIFIER,
   PRICE_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_APP_ROLE_UNIVERSAL_IDENTIFIER,
+  QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_LINE_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -68,6 +69,14 @@ export default defineApplicationRole({
       objectUniversalIdentifier: QUOTATION_SEQUENCE_OBJECT_UNIVERSAL_IDENTIFIER,
       canReadObjectRecords: true,
       canUpdateObjectRecords: true,
+    },
+    {
+      objectUniversalIdentifier:
+        QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
     },
   ],
 });

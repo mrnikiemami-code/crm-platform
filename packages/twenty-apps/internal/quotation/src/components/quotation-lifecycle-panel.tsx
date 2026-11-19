@@ -10,6 +10,12 @@ import {
   useSelectedRecordIds,
 } from 'twenty-sdk/front-component';
 
+import {
+  callAppRoute,
+  CREATE_CUSTOMER_LINK_ROUTE,
+  REVOKE_CUSTOMER_LINK_ROUTE,
+} from 'src/components/quotation-api';
+
 type QuotationRouteBridge = (request: {
   action: string;
   payload?: Record<string, unknown>;
@@ -39,6 +45,13 @@ type PanelState =
   | { kind: 'LOADING' }
   | { kind: 'ERROR'; message: string }
   | { kind: 'READY'; lifecycle: LifecycleSnapshot };
+
+const CUSTOMER_LINK_STATUSES = new Set([
+  'READY_TO_SEND',
+  'SENT',
+  'CUSTOMER_ACCEPTED',
+  'CUSTOMER_REJECTED',
+]);
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'پیش‌نویس',
@@ -139,6 +152,11 @@ export const QuotationLifecyclePanel = () => {
   const [state, setState] = useState<PanelState>({ kind: 'LOADING' });
   const busyRef = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [customerLink, setCustomerLink] = useState<{
+    linkId: string;
+    viewUrl: string;
+    expiresAt: string;
+  } | null>(null);
 
   const loadLifecycle = useCallback(async () => {
     if (quotationId === null) {
@@ -199,6 +217,109 @@ export const QuotationLifecyclePanel = () => {
   useEffect(() => {
     void loadLifecycle();
   }, [loadLifecycle]);
+
+  const issueCustomerLink = async () => {
+    if (busyRef.current || quotationId === null) {
+      return;
+    }
+
+    busyRef.current = true;
+    setBusy(true);
+
+    try {
+      const response = await callAppRoute(CREATE_CUSTOMER_LINK_ROUTE, {
+        quotationId,
+        ttlHours: 168,
+      });
+      const data = response.data;
+
+      if (data.success !== true) {
+        await enqueueSnackbar({
+          message:
+            typeof data.message === 'string'
+              ? data.message
+              : 'صدور لینک مشتری انجام نشد.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      const viewUrl = typeof data.viewUrl === 'string' ? data.viewUrl : '';
+      const linkId = typeof data.linkId === 'string' ? data.linkId : '';
+
+      if (viewUrl === '' || linkId === '') {
+        await enqueueSnackbar({
+          message: 'لینک مشتری ساخته نشد.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      setCustomerLink({
+        linkId,
+        viewUrl,
+        expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : '',
+      });
+      await enqueueSnackbar({
+        message:
+          typeof data.message === 'string'
+            ? data.message
+            : 'لینک مشتری صادر شد.',
+        variant: 'success',
+      });
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  const revokeIssuedCustomerLink = async () => {
+    if (busyRef.current || customerLink === null) {
+      return;
+    }
+
+    busyRef.current = true;
+    setBusy(true);
+
+    try {
+      const response = await callAppRoute(REVOKE_CUSTOMER_LINK_ROUTE, {
+        linkId: customerLink.linkId,
+      });
+
+      if (response.data.success !== true) {
+        await enqueueSnackbar({
+          message:
+            typeof response.data.message === 'string'
+              ? response.data.message
+              : 'لغو لینک مشتری انجام نشد.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      setCustomerLink(null);
+      await enqueueSnackbar({
+        message:
+          typeof response.data.message === 'string'
+            ? response.data.message
+            : 'لینک مشتری لغو شد.',
+        variant: 'success',
+      });
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
 
   const runAction = async (action: string, payload: Record<string, unknown>) => {
     if (busyRef.current) {
@@ -361,6 +482,43 @@ export const QuotationLifecyclePanel = () => {
         >
           دانلود PDF فارسی
         </button>
+
+        {CUSTOMER_LINK_STATUSES.has(lifecycle.status) ? (
+          <button
+            type="button"
+            disabled={busy}
+            style={{
+              ...styles.button,
+              ...(busy ? styles.buttonDisabled : {}),
+            }}
+            onClick={() => void issueCustomerLink()}
+          >
+            صدور لینک مشاهده مشتری
+          </button>
+        ) : null}
+
+        {customerLink !== null ? (
+          <>
+            <p style={styles.notice}>
+              لینک فقط یک‌بار نمایش داده می‌شود. توکن در سامانه ذخیره نمی‌شود.
+              {customerLink.expiresAt
+                ? ` انقضا: ${customerLink.expiresAt}`
+                : ''}
+            </p>
+            <p style={styles.meta}>{customerLink.viewUrl}</p>
+            <button
+              type="button"
+              disabled={busy}
+              style={{
+                ...styles.button,
+                ...(busy ? styles.buttonDisabled : {}),
+              }}
+              onClick={() => void revokeIssuedCustomerLink()}
+            >
+              لغو همین لینک
+            </button>
+          </>
+        ) : null}
 
         <button
           type="button"

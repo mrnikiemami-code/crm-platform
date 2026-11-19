@@ -7,6 +7,8 @@ import {
 } from 'twenty-sdk/define';
 
 import {
+  QUOTATION_CUSTOMER_LINK_FIELDS,
+  QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_FIELDS,
   QUOTATION_LINE_FIELDS,
   QUOTATION_LINE_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -403,6 +405,22 @@ export default defineObject({
         QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER,
       relationTargetFieldMetadataUniversalIdentifier:
         QUOTATION_REVISION_FIELDS.quotation,
+      universalSettings: {
+        relationType: RelationType.ONE_TO_MANY,
+      },
+    },
+    {
+      universalIdentifier: RELATION_FIELDS.quotationCustomerLinks,
+      type: FieldType.RELATION,
+      name: 'customerLinks',
+      label: 'لینک‌های مشتری',
+      description: 'لینک‌های امن مشاهدهٔ فقط‌خواندنی برای مشتری.',
+      icon: 'IconLink',
+      isNullable: true,
+      relationTargetObjectMetadataUniversalIdentifier:
+        QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+      relationTargetFieldMetadataUniversalIdentifier:
+        QUOTATION_CUSTOMER_LINK_FIELDS.quotation,
       universalSettings: {
         relationType: RelationType.ONE_TO_MANY,
       },
