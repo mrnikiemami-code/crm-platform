@@ -9,6 +9,8 @@ import {
   CatalogItemCombobox,
   type CatalogComboboxSelection,
 } from 'src/components/catalog-item-combobox';
+import { MoneyAmountInput } from 'src/components/money-amount-input';
+import { PersianPlainNumberInput } from 'src/components/persian-plain-number-input';
 import {
   SAVE_DRAFT_ROUTE,
   callAppRoute,
@@ -407,24 +409,22 @@ export const QuotationDraftForm = () => {
                 <div style={styles.row}>
                   <label style={styles.fieldLabel}>
                     تعداد
-                    <input
+                    <PersianPlainNumberInput
                       style={styles.fieldInput}
                       value={line.quantityText}
-                      onChange={(event) =>
-                        updateLine(line.clientLineId, {
-                          quantityText: event.target.value,
-                        })
+                      onValueChange={(quantityText) =>
+                        updateLine(line.clientLineId, { quantityText })
                       }
                     />
                   </label>
                   <label style={styles.fieldLabel}>
                     قیمت واحد
-                    <input
+                    <MoneyAmountInput
                       style={styles.fieldInput}
                       value={line.unitPriceText}
-                      onChange={(event) =>
+                      onValueChange={(unitPriceText) =>
                         updateLine(line.clientLineId, {
-                          unitPriceText: event.target.value,
+                          unitPriceText,
                           priceWarning: null,
                         })
                       }
@@ -452,12 +452,12 @@ export const QuotationDraftForm = () => {
                   {line.discountKind === 'RATE' ? (
                     <label style={styles.fieldLabel}>
                       درصد تخفیف
-                      <input
+                      <PersianPlainNumberInput
                         style={styles.fieldInput}
                         value={line.discountPercentText}
-                        onChange={(event) =>
+                        onValueChange={(discountPercentText) =>
                           updateLine(line.clientLineId, {
-                            discountPercentText: event.target.value,
+                            discountPercentText,
                           })
                         }
                       />
@@ -466,12 +466,12 @@ export const QuotationDraftForm = () => {
                   {line.discountKind === 'AMOUNT' ? (
                     <label style={styles.fieldLabel}>
                       مبلغ تخفیف
-                      <input
+                      <MoneyAmountInput
                         style={styles.fieldInput}
                         value={line.discountAmountText}
-                        onChange={(event) =>
+                        onValueChange={(discountAmountText) =>
                           updateLine(line.clientLineId, {
-                            discountAmountText: event.target.value,
+                            discountAmountText,
                           })
                         }
                       />
@@ -523,24 +523,20 @@ export const QuotationDraftForm = () => {
             {documentDiscountKind === 'RATE' ? (
               <label style={styles.label}>
                 درصد تخفیف کل
-                <input
+                <PersianPlainNumberInput
                   style={styles.input}
                   value={documentDiscountPercentText}
-                  onChange={(event) =>
-                    setDocumentDiscountPercentText(event.target.value)
-                  }
+                  onValueChange={setDocumentDiscountPercentText}
                 />
               </label>
             ) : null}
             {documentDiscountKind === 'AMOUNT' ? (
               <label style={styles.label}>
                 مبلغ تخفیف کل
-                <input
+                <MoneyAmountInput
                   style={styles.input}
                   value={documentDiscountAmountText}
-                  onChange={(event) =>
-                    setDocumentDiscountAmountText(event.target.value)
-                  }
+                  onValueChange={setDocumentDiscountAmountText}
                 />
               </label>
             ) : null}

@@ -1,3 +1,4 @@
+import { normalizeMoneyFigureText } from 'src/domain/money/money-input-text';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // IRR is the canonical storage unit. Toman exists only where a person types a number or
@@ -40,25 +41,6 @@ export const irrMicrosToTomanMicros = (irrMicros: bigint): Result<bigint> => {
   return accepted(irrMicros / TOMAN_TO_IRR_RATIO);
 };
 
-// Reads what a person typed, in the unit they chose, and returns micros of IRR.
-// `unit` is a required argument, not a default: a caller that has not decided which unit
-// it is reading must not be able to guess.
-const GROUPING_SEPARATORS = /[\u066c\u060c,'\u00a0\u202f\s]/g;
-const DECIMAL_SEPARATORS = /[\u066b.]/;
-const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
-const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
-
-const toAsciiDigits = (input: string): string =>
-  input.replace(/[۰-۹٠-٩]/g, (digit) => {
-    const persianIndex = PERSIAN_DIGITS.indexOf(digit);
-
-    return persianIndex >= 0
-      ? String(persianIndex)
-      : String(ARABIC_DIGITS.indexOf(digit));
-  });
-
-const MONEY_INPUT = /^(\d+)(?:\.(\d{1,6}))?$/;
-
 export type ParsedMoneyInput = {
   // Micros of IRR — the stored form.
   irrMicros: bigint;
@@ -66,31 +48,31 @@ export type ParsedMoneyInput = {
   unit: MoneyUnit;
 };
 
+// Reads what a person typed, in the unit they chose, and returns micros of IRR.
+// Grouping separators are validated (never silently repaired). Incomplete trailing
+// decimals are refused here — the UI may keep them as display-only intermediate text.
 export const parseMoneyInput = (
   input: string,
   unit: MoneyUnit,
 ): Result<ParsedMoneyInput> => {
-  const normalized = toAsciiDigits(input)
-    .replace(GROUPING_SEPARATORS, '')
-    .replace(DECIMAL_SEPARATORS, '.')
-    .trim();
+  const normalized = normalizeMoneyFigureText(input);
 
-  if (normalized === '') {
-    return refused('AMOUNT_EMPTY', 'an amount is required');
+  if (!normalized.ok) {
+    return normalized;
   }
 
-  const match = MONEY_INPUT.exec(normalized);
-
-  if (match === null) {
+  if (normalized.value.trailingDecimal) {
     return refused(
       'AMOUNT_NOT_A_DECIMAL',
       `expected a non-negative decimal with at most 6 fraction digits, received "${input.trim()}"`,
     );
   }
 
-  const fraction = (match[2] ?? '').padEnd(6, '0');
+  const [unitsText, fractionText = ''] =
+    normalized.value.asciiCompact.split('.');
+  const fraction = fractionText.padEnd(6, '0');
   const typedMicros =
-    BigInt(match[1]) * 1_000_000n + BigInt(fraction === '' ? '0' : fraction);
+    BigInt(unitsText) * 1_000_000n + BigInt(fraction === '' ? '0' : fraction);
 
   return accepted({
     irrMicros: unit === 'TOMAN' ? tomanToIrrMicros(typedMicros) : typedMicros,

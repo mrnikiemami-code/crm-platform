@@ -1,6 +1,5 @@
 import {
-  buildActiveCatalogItemsPageQuery,
-  buildDefaultPriceListQuery,
+  buildCatalogPageWithDefaultPriceListQuery,
   buildPricesForItemsOnListQuery,
   CATALOG_PICKER_PAGE_SIZE,
 } from 'src/data/quotation-queries';
@@ -22,15 +21,26 @@ export type CatalogPickerItem = {
   priceMessage: string | null;
 };
 
+export type CatalogPickerTimings = {
+  catalogItemsMs: number;
+  priceListMs: number;
+  pricesMs: number;
+  totalMs: number;
+  priceListCacheHit: boolean;
+  combinedCatalogAndPriceList: boolean;
+};
+
 export type CatalogPickerPage = {
   items: CatalogPickerItem[];
   endCursor: string | null;
   hasNextPage: boolean;
   pageSize: number;
+  timings: CatalogPickerTimings;
 };
 
 export type CatalogPickerDependencies = {
   execute: (query: string) => Promise<Record<string, unknown>>;
+  nowMs?: () => number;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -90,15 +100,6 @@ const readPageInfo = (
   };
 };
 
-const resolveDefaultPriceListId = async (
-  execute: CatalogPickerDependencies['execute'],
-): Promise<string | null> => {
-  const preferred = await execute(buildDefaultPriceListQuery());
-  const preferredEdge = readEdges(preferred, 'priceLists')[0];
-
-  return preferredEdge ? readString(preferredEdge.node.id) || null : null;
-};
-
 export const searchCatalogItemsForPicker = async (
   {
     search,
@@ -111,26 +112,40 @@ export const searchCatalogItemsForPicker = async (
   },
   dependencies: CatalogPickerDependencies,
 ): Promise<CatalogPickerPage> => {
+  const nowMs = dependencies.nowMs ?? (() => Date.now());
+  const totalStarted = nowMs();
   const limitedPageSize = Math.min(Math.max(pageSize, 1), CATALOG_PICKER_PAGE_SIZE);
+
+  const combinedStarted = nowMs();
   const pagePayload = await dependencies.execute(
-    buildActiveCatalogItemsPageQuery({
+    buildCatalogPageWithDefaultPriceListQuery({
       search,
       afterCursor,
       first: limitedPageSize,
     }),
   );
+  const combinedMs = nowMs() - combinedStarted;
 
   const edges = readEdges(pagePayload, 'catalogItems');
   const pageInfo = readPageInfo(pagePayload, 'catalogItems');
   const itemIds = edges.map((edge) => readString(edge.node.id)).filter(Boolean);
+  const priceListEdge = readEdges(pagePayload, 'priceLists')[0];
+  const priceListId = priceListEdge
+    ? readString(priceListEdge.node.id) || null
+    : null;
 
-  const priceListId = await resolveDefaultPriceListId(dependencies.execute);
+  let pricesMs = 0;
   const pricesByItemId = new Map<string, PriceCandidate[]>();
 
   if (priceListId !== null && itemIds.length > 0) {
+    const pricesStarted = nowMs();
     const pricesPayload = await dependencies.execute(
-      buildPricesForItemsOnListQuery({ itemIds, priceListId }),
+      buildPricesForItemsOnListQuery({
+        itemIds,
+        priceListId,
+      }),
     );
+    pricesMs = nowMs() - pricesStarted;
 
     for (const edge of readEdges(pricesPayload, 'prices')) {
       const itemId = readString(edge.node.itemId);
@@ -186,5 +201,19 @@ export const searchCatalogItemsForPicker = async (
     endCursor: pageInfo.endCursor,
     hasNextPage: pageInfo.hasNextPage,
     pageSize: limitedPageSize,
+    timings: {
+      // Combined root query — wall time attributed once to both stages.
+      catalogItemsMs: combinedMs,
+      priceListMs: combinedMs,
+      pricesMs,
+      totalMs: nowMs() - totalStarted,
+      priceListCacheHit: false,
+      combinedCatalogAndPriceList: true,
+    },
   };
+};
+
+// Kept for unit-test reset compatibility after earlier cache experiments.
+export const clearDefaultPriceListCacheForTests = (): void => {
+  // no-op: process cache removed; combined query is the durable optimization
 };

@@ -47,6 +47,17 @@ type CatalogItemComboboxProps = {
 
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 100;
+const EMPTY_SEARCH_CACHE_TTL_MS = 30_000;
+
+type CachedEmptyPage = {
+  rows: PickerRow[];
+  endCursor: string | null;
+  hasNextPage: boolean;
+  expiresAtMs: number;
+};
+
+// Shared across line comboboxes in one draft form session.
+let emptySearchCache: CachedEmptyPage | null = null;
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -158,6 +169,22 @@ export const CatalogItemCombobox = ({
     append: boolean;
   }) => {
     const serial = ++requestSerial.current;
+    const isEmptyFirstPage =
+      !append && afterCursor === null && search.trim() === '';
+
+    if (
+      isEmptyFirstPage &&
+      emptySearchCache !== null &&
+      emptySearchCache.expiresAtMs > Date.now()
+    ) {
+      setItems(emptySearchCache.rows);
+      setHasNextPage(emptySearchCache.hasNextPage);
+      setEndCursor(emptySearchCache.endCursor);
+      setError(null);
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
 
     if (append) {
       setLoadingMore(true);
@@ -192,6 +219,21 @@ export const CatalogItemCombobox = ({
       }
 
       const rows = readPickerRows(response.data);
+      const nextHasNextPage = response.data.hasNextPage === true;
+      const nextEndCursor =
+        typeof response.data.endCursor === 'string'
+          ? response.data.endCursor
+          : null;
+
+      if (isEmptyFirstPage) {
+        emptySearchCache = {
+          rows,
+          endCursor: nextEndCursor,
+          hasNextPage: nextHasNextPage,
+          expiresAtMs: Date.now() + EMPTY_SEARCH_CACHE_TTL_MS,
+        };
+      }
+
       setItems((current) => {
         if (!append) {
           return rows;
@@ -209,12 +251,8 @@ export const CatalogItemCombobox = ({
 
         return merged;
       });
-      setHasNextPage(response.data.hasNextPage === true);
-      setEndCursor(
-        typeof response.data.endCursor === 'string'
-          ? response.data.endCursor
-          : null,
-      );
+      setHasNextPage(nextHasNextPage);
+      setEndCursor(nextEndCursor);
       setError(null);
     } catch {
       if (serial !== requestSerial.current) {

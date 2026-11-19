@@ -59,15 +59,7 @@ export const buildCatalogItemByIdQuery = (id: string): string =>
 
 export const CATALOG_PICKER_PAGE_SIZE = 100;
 
-export const buildActiveCatalogItemsPageQuery = ({
-  search,
-  afterCursor,
-  first = CATALOG_PICKER_PAGE_SIZE,
-}: {
-  search: string;
-  afterCursor: string | null;
-  first?: number;
-}): string => {
+const buildActiveCatalogItemsFilterLiteral = (search: string): string => {
   const trimmed = search.trim();
   const activeFilter = { isActive: { eq: true } };
   const filter =
@@ -85,6 +77,18 @@ export const buildActiveCatalogItemsPageQuery = ({
           ],
         };
 
+  return toGraphqlLiteral(filter);
+};
+
+export const buildActiveCatalogItemsPageQuery = ({
+  search,
+  afterCursor,
+  first = CATALOG_PICKER_PAGE_SIZE,
+}: {
+  search: string;
+  afterCursor: string | null;
+  first?: number;
+}): string => {
   const afterArg =
     afterCursor === null || afterCursor === ''
       ? ''
@@ -93,7 +97,7 @@ export const buildActiveCatalogItemsPageQuery = ({
   // orderBy enums must stay unquoted GraphQL enums (not JSON strings).
   return `query ActiveCatalogItemsPage {
     catalogItems(
-      filter: ${toGraphqlLiteral(filter)}
+      filter: ${buildActiveCatalogItemsFilterLiteral(search)}
       orderBy: [{ name: AscNullsLast }, { id: AscNullsLast }]
       first: ${first}${afterArg}
     ) {
@@ -113,6 +117,52 @@ export const buildActiveCatalogItemsPageQuery = ({
         hasNextPage
         endCursor
       }
+    }
+  }`;
+};
+
+// One GraphQL round-trip for the catalog page + default IRR price list.
+// Logic-function isolates do not reliably keep process cache across HTTP calls,
+// so combining roots is the durable win over sequential queries.
+export const buildCatalogPageWithDefaultPriceListQuery = ({
+  search,
+  afterCursor,
+  first = CATALOG_PICKER_PAGE_SIZE,
+}: {
+  search: string;
+  afterCursor: string | null;
+  first?: number;
+}): string => {
+  const afterArg =
+    afterCursor === null || afterCursor === ''
+      ? ''
+      : `, after: ${toGraphqlLiteral(afterCursor)}`;
+
+  return `query CatalogPageWithDefaultPriceList {
+    catalogItems(
+      filter: ${buildActiveCatalogItemsFilterLiteral(search)}
+      orderBy: [{ name: AscNullsLast }, { id: AscNullsLast }]
+      first: ${first}${afterArg}
+    ) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          kind
+          sku
+          unit
+          description
+          isActive
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+    priceLists(filter: { and: [{ currencyCode: { eq: "IRR" } }, { isDefault: { eq: true } }] }, first: 1) {
+      edges { node { id } }
     }
   }`;
 };

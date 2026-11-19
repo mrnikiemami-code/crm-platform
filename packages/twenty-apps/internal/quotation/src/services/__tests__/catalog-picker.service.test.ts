@@ -5,7 +5,7 @@ import { searchCatalogItemsForPicker } from 'src/services/catalog-picker.service
 describe('searchCatalogItemsForPicker', () => {
   it('pages active items and attaches default-list prices without duplicates', async () => {
     const execute = vi.fn(async (query: string) => {
-      if (query.includes('ActiveCatalogItemsPage')) {
+      if (query.includes('CatalogPageWithDefaultPriceList')) {
         return {
           catalogItems: {
             edges: [
@@ -36,11 +36,6 @@ describe('searchCatalogItemsForPicker', () => {
             ],
             pageInfo: { hasNextPage: true, endCursor: 'c1' },
           },
-        };
-      }
-
-      if (query.includes('DefaultPriceList')) {
-        return {
           priceLists: {
             edges: [{ cursor: 'pl', node: { id: 'list-1' } }],
           },
@@ -79,6 +74,8 @@ describe('searchCatalogItemsForPicker', () => {
     expect(page.items[0].priceAvailable).toBe(true);
     expect(page.hasNextPage).toBe(true);
     expect(page.endCursor).toBe('c1');
-    expect(execute).toHaveBeenCalledTimes(3);
+    expect(page.timings.combinedCatalogAndPriceList).toBe(true);
+    // Combined catalog+priceList query, then prices.
+    expect(execute).toHaveBeenCalledTimes(2);
   });
 });

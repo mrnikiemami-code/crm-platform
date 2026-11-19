@@ -46,6 +46,7 @@ const handler = async (event: RoutePayload<unknown>) => {
       endCursor: page.endCursor,
       hasNextPage: page.hasNextPage,
       pageSize: page.pageSize,
+      timings: page.timings,
     };
   } catch (error) {
     if (error instanceof RecordApiError) {

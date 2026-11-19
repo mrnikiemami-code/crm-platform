@@ -6,19 +6,22 @@
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129 S2-R10 PASS / Professional Workspace & Floor Payable (2026-11-19; latest)
+## CURRENT CHECKPOINT — CRM-129 S2-R11 PASS / Catalog Perf, Persian Inputs, Rounding Verify (2026-11-19; latest)
 
-**Read first:** [CRM-129-S2-R10-PROOF.md](./CRM-129-S2-R10-PROOF.md).
+**Read first:** [CRM-129-S2-R11-PROOF.md](./CRM-129-S2-R11-PROOF.md).
 
-- **Branch / base:** `feat/crm-129-quotation` from S2-R9 checkpoint `ae65e83c29`.
-- **GitHub SHA (feature):** `5c831b52f72aab37f17be6bcc590706a7af13280`; **branch HEAD:** `2639e633991446fd5bf175c2e4e33bfc10249dbf`.
-- **Delivery:** primary «افزودن ردیف», alternating line cards, sticky financial summary; people-facing Persian money display (trim zeros / grouping); payable **floor toward −∞ to whole IRR** with independent `roundingExact`; app **0.1.6** on `dev-crm129`.
-- **Full page:** **DEFERRED** — FC lacks host customer picker without Core changes; side panel remains create UX; shared draft/save/totals retained.
-- **Dev evidence:** Vitest 217; server quotation Jest 13; `S2_R10_FLOOR_DISPLAY_PASS`; R8-R1 / R9 / R6 regressions PASS; authenticated browser summary shows `۱۰۰٬۰۰۳ تومان` / `۱۰۹٬۰۰۳٫۲ تومان` without six zeros.
-- **Negative floor:** defined toward −∞; credit-note documents not expanded.
+- **Branch / base:** `feat/crm-129-quotation` from S2-R10 `a96056f217`.
+- **Delivery:** catalog search cut from 3→2 GraphQL round-trips (combined catalog+default priceList); client empty-page cache; Persian money inputs with validated grouping parser; caret-safe inputs; rounding case verified consistent UI/DB/PDF (no domain change). App **0.1.7** on `dev-crm129`.
+- **Bench:** before open/page2/search avg 142/129/122 ms; after-combined 163/120/125 ms wall (LF cold-start noise); internal timings ~60–70 ms (catalog~50–58 + prices~10).
 - **Continue at:** architect gate — **S3** not authorized here.
 - **Operational bans:** no `:6080`, no live accounting, no SMS, no main-worker restart, no release-branch change, no screenshot loop.
 - **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS CHECKPOINT — CRM-129 S2-R10 PASS / Professional Workspace & Floor Payable (2026-11-19; historical)
+
+**Read first:** [CRM-129-S2-R10-PROOF.md](./CRM-129-S2-R10-PROOF.md). Superseded as “latest” by S2-R11 above.
+
+- Feature SHA `5c831b52f7`; people display + floor payable; full page DEFERRED; app was `0.1.6`.
 
 ## PREVIOUS — CRM-129 S2-R9 UAT FEEDBACK (2026-11-19; historical REPORT then implemented in R10)
 
