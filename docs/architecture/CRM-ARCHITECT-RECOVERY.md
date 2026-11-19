@@ -1,22 +1,25 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-20 (S3-R3)
-**Repository:** mrnikiemami-code/crm-platform
+**Updated:** 2026-11-20 (S3-R4)
+**Repository:** mrnikami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129 S3-R3 PASS / Quotation Multi-Channel Sharing (2026-11-20; latest)
+## CURRENT CHECKPOINT — CRM-129 S3-R4 PASS / Bale Direct Sending (2026-11-20; latest)
 
-**Read first:** [CRM-129-S3-R3-PROOF.md](./CRM-129-S3-R3-PROOF.md).
+**Read first:** [CRM-129-S3-R4-PROOF.md](./CRM-129-S3-R4-PROOF.md).
 
-- **Branch / base:** `feat/crm-129-quotation` from `a937656cc8c291f85f94f556e1c99d592709d9f6`.
-- **GitHub SHA:** `e18868767afa882799239279052ee9ff121df843`.
-- **Delivery:** lifecycle «ارسال پیش‌فاکتور» with Bale/WhatsApp/Telegram/Instagram/Eitaa/Rubika/Soroush; reuses Communication registry capability (SMS-only → all messengers `MANUAL_SHARE`); no fake SENT; Persian text + secure link; server `quotation.send`; durable `quotationShare` history (customer + quotation + linkId, no raw token/URL). App **0.1.10** on `dev-crm129`.
-- **Dev:** `S3_R3_SHARE_PASS`. App-token LF share refused. SMS channel refused. History detail log-safe.
-- **Continue at:** architect gate — wiring real messenger providers via Communication Send/Persist is out of scope here.
-- **Operational bans:** no `:6080`, no live accounting, no SMS blast, no main-worker restart, no release-branch change, no screenshot loop.
+- **Branch / base:** `feat/crm-129-quotation` from `03d6690d58b0a97ff83e772c42925152b9eb2961`.
+- **Delivery:** Communication `bale` provider + `BALE` channel + secret `BALE_BOT_TOKEN`; Send/Persist via `send-outbound-message`; quotation share BALE → PROVIDER path (numeric `chat_id`, `quotation.send`, duplicate refuse); `PROVIDER_SENT` only on real API success. Communication **0.1.78**, Quotation **0.1.11**.
+- **Dev:** `S3_R4_BALE_CONTRACT_PASS` with **`LIVE_UNVERIFIED`** (no authorized bot token/chat env). Missing/invalid chat refused; placeholder send → honest `PROVIDER_FAILED`.
+- **Continue at:** architect gate — supply authorized test bot + chat to flip live verification; other messengers still manual.
+- **Operational bans:** no `:6080`, no bulk send, no SMS blast, no main-worker restart, no release-branch change, no screenshot loop.
 - **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS CHECKPOINT — CRM-129 S3-R3 PASS / Quotation Multi-Channel Sharing (2026-11-20; historical)
+
+**Read first:** [CRM-129-S3-R3-PROOF.md](./CRM-129-S3-R3-PROOF.md). Feature SHA `e18868767a`; docs HEAD was `03d6690d58`.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S3-R2 PASS / Link Authorization & Browser UAT (2026-11-19; historical)
 

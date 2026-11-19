@@ -111,6 +111,10 @@ export const RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER =
   'ac7a5ffa-4a4f-4c7a-a092-5504319f0bdc';
 export const RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER =
   'da25b771-9e4e-4d2f-8fb3-0f5e6e40e79f';
+export const BALE_BOT_TOKEN_VARIABLE_UNIVERSAL_IDENTIFIER =
+  '0b58f284-8c65-54d4-834b-58590dcf4a07';
+export const SEND_OUTBOUND_MESSAGE_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '532d18b9-5499-5fe7-a602-f527dd8361c2';
 // NOTE (W16-R1): the W16 `RAZPAYAMAK_ENDPOINT` variable was REMOVED. The
 // production send endpoint is fixed by the official document, so a workspace
 // can never redirect the ApiKey to an arbitrary URL. Its former universal

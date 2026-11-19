@@ -22,8 +22,21 @@ describe('quotation share channels', () => {
     ]);
   });
 
-  it('never claims provider delivery for messengers (Communication is SMS-only)', () => {
-    for (const channel of QUOTATION_SHARE_CHANNELS) {
+  it('resolves BALE to PROVIDER and other messengers to MANUAL_SHARE', () => {
+    expect(resolveQuotationShareDelivery('BALE')).toEqual({
+      kind: 'PROVIDER',
+      communicationChannel: 'BALE',
+      providerId: 'bale',
+    });
+
+    for (const channel of [
+      'WHATSAPP',
+      'TELEGRAM',
+      'INSTAGRAM',
+      'EITAA',
+      'RUBIKA',
+      'SOROUSH',
+    ] as const) {
       expect(resolveQuotationShareDelivery(channel)).toEqual({
         kind: 'MANUAL_SHARE',
       });
@@ -32,7 +45,7 @@ describe('quotation share channels', () => {
 
   it('builds Persian share copy with number and secure link', () => {
     const text = buildQuotationShareMessage({
-      channel: 'WHATSAPP',
+      channel: 'BALE',
       quotationNumber: 'QF-9',
       quotationTitle: 'پیشنهاد',
       customerLabel: 'علی',
@@ -40,16 +53,16 @@ describe('quotation share channels', () => {
     });
 
     expect(text).toContain('شماره سند: QF-9');
-    expect(text).toContain('کانال: واتساپ');
+    expect(text).toContain('کانال: بله');
     expect(text).toContain('token=secret');
   });
 
   it('keeps public log summary free of token and secret URL', () => {
     const summary = buildQuotationShareLogSummary({
-      channel: 'EITAA',
+      channel: 'BALE',
       quotationId: 'q-1',
       linkId: 'link-9',
-      outcome: 'MANUAL_SHARE',
+      outcome: 'PROVIDER_SENT',
     });
 
     expect(summary).toContain('linkId=link-9');

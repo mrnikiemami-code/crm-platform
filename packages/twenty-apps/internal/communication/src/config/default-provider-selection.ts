@@ -5,7 +5,11 @@ import { type CommunicationProviderId } from 'src/providers/types/communication-
 // not choose one explicitly, e.g. `razpayamak`.
 export const COMMUNICATION_PROVIDER_ENV_VAR = 'COMMUNICATION_PROVIDER';
 
-const KNOWN_PROVIDER_IDS: readonly string[] = ['kavenegar', 'razpayamak'];
+const KNOWN_PROVIDER_IDS: readonly string[] = [
+  'kavenegar',
+  'razpayamak',
+  'bale',
+];
 
 export const isCommunicationProviderId = (
   value: string,

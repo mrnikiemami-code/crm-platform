@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Headers,
   Post,
   UseFilters,
   UseGuards,
@@ -27,6 +28,7 @@ type QuotationUiActionBody = {
   linkId?: unknown;
   ttlHours?: unknown;
   channel?: unknown;
+  chatId?: unknown;
 };
 
 const ALLOWED_ACTIONS = new Set([
@@ -50,7 +52,10 @@ export class QuotationUiController {
   ) {}
 
   @Post('actions')
-  async actions(@Body() body: QuotationUiActionBody): Promise<unknown> {
+  async actions(
+    @Body() body: QuotationUiActionBody,
+    @Headers('authorization') authorizationHeader?: string,
+  ): Promise<unknown> {
     const action = typeof body.action === 'string' ? body.action : '';
 
     if (!ALLOWED_ACTIONS.has(action)) {
@@ -152,6 +157,8 @@ export class QuotationUiController {
       if (action === 'share-quotation') {
         const channel =
           typeof body.channel === 'string' ? body.channel.trim() : '';
+        const chatId =
+          typeof body.chatId === 'string' ? body.chatId.trim() : undefined;
         const ttlHours =
           typeof body.ttlHours === 'number' && Number.isFinite(body.ttlHours)
             ? body.ttlHours
@@ -170,6 +177,11 @@ export class QuotationUiController {
           quotationId,
           channel,
           ttlHours,
+          chatId,
+          authorizationHeader:
+            typeof authorizationHeader === 'string'
+              ? authorizationHeader
+              : null,
         });
 
         return { success: true, ...shared };

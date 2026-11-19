@@ -6,6 +6,7 @@ import {
   KAVENEGAR_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER,
   KAVENEGAR_ENDPOINT_VARIABLE_UNIVERSAL_IDENTIFIER,
   KAVENEGAR_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
+  BALE_BOT_TOKEN_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_API_KEY_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_SENDER_VARIABLE_UNIVERSAL_IDENTIFIER,
   RAZPAYAMAK_USERNAME_VARIABLE_UNIVERSAL_IDENTIFIER,
@@ -56,7 +57,7 @@ export default defineApplication({
     COMMUNICATION_PROVIDER: {
       universalIdentifier: COMMUNICATION_PROVIDER_VARIABLE_UNIVERSAL_IDENTIFIER,
       description:
-        'Provider id used by default for outbound communication. One of: kavenegar, razpayamak.',
+        'Provider id used by default for outbound communication. One of: kavenegar, razpayamak, bale.',
       isSecret: false,
       value: 'razpayamak',
     },
@@ -93,6 +94,12 @@ export default defineApplication({
       description:
         'RazPayamak primary sender number used as the REST `from` field.',
       isSecret: false,
+    },
+    BALE_BOT_TOKEN: {
+      universalIdentifier: BALE_BOT_TOKEN_VARIABLE_UNIVERSAL_IDENTIFIER,
+      description:
+        'Bale Bot API token (docs.bale.ai). Stored encrypted per workspace; used only as https://tapi.bale.ai/bot<TOKEN>/METHOD. Never exposed in API responses or public logs.',
+      isSecret: true,
     },
     // Unattended (workflow-triggered) sending authority.
     //

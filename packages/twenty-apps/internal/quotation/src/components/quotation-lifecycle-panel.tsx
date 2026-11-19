@@ -194,6 +194,7 @@ export const QuotationLifecyclePanel = () => {
     expiresAt: string;
   } | null>(null);
   const [shareChannel, setShareChannel] = useState<string>('BALE');
+  const [baleChatId, setBaleChatId] = useState('');
   const [shareResult, setShareResult] = useState<{
     shareId: string;
     outcome: string;
@@ -201,6 +202,8 @@ export const QuotationLifecyclePanel = () => {
     shareText: string;
     linkId: string;
     customerLabel: string;
+    providerMessageId: string | null;
+    communicationId: string | null;
   } | null>(null);
 
   const loadLifecycle = useCallback(async () => {
@@ -361,6 +364,9 @@ export const QuotationLifecyclePanel = () => {
             quotationId,
             channel: shareChannel,
             ttlHours: 168,
+            ...(shareChannel === 'BALE' && baleChatId.trim() !== ''
+              ? { chatId: baleChatId.trim() }
+              : {}),
           },
         }),
       );
@@ -408,6 +414,14 @@ export const QuotationLifecyclePanel = () => {
           typeof response.customerLabel === 'string'
             ? response.customerLabel
             : '',
+        providerMessageId:
+          typeof response.providerMessageId === 'string'
+            ? response.providerMessageId
+            : null,
+        communicationId:
+          typeof response.communicationId === 'string'
+            ? response.communicationId
+            : null,
       });
 
       if (viewUrl !== '') {
@@ -418,7 +432,7 @@ export const QuotationLifecyclePanel = () => {
         });
       }
 
-      if (copyToClipboard !== null) {
+      if (copyToClipboard !== null && outcome !== 'PROVIDER_SENT') {
         await copyToClipboard({ text: shareText });
       }
 
@@ -427,7 +441,12 @@ export const QuotationLifecyclePanel = () => {
           typeof response.message === 'string'
             ? response.message
             : 'متن اشتراک آماده شد.',
-        variant: outcome === 'MANUAL_SHARE' ? 'info' : 'success',
+        variant:
+          outcome === 'PROVIDER_SENT'
+            ? 'success'
+            : outcome === 'PROVIDER_FAILED'
+              ? 'error'
+              : 'info',
       });
     } catch {
       await enqueueSnackbar({
@@ -705,19 +724,43 @@ export const QuotationLifecyclePanel = () => {
                 );
               })}
             </div>
+            {shareChannel === 'BALE' ? (
+              <input
+                type="text"
+                dir="ltr"
+                value={baleChatId}
+                disabled={busy || !canManageCustomerLink}
+                placeholder="شناسه گفت‌وگوی بله (chat_id)"
+                onChange={(event) => setBaleChatId(event.target.value)}
+                style={{
+                  ...styles.button,
+                  cursor: 'text',
+                  textAlign: 'left',
+                }}
+              />
+            ) : null}
+
             <button
               type="button"
-              disabled={busy || !canManageCustomerLink}
+              disabled={
+                busy ||
+                !canManageCustomerLink ||
+                (shareChannel === 'BALE' && baleChatId.trim() === '')
+              }
               style={{
                 ...styles.button,
                 ...styles.buttonPrimary,
-                ...(busy || !canManageCustomerLink
+                ...(busy ||
+                !canManageCustomerLink ||
+                (shareChannel === 'BALE' && baleChatId.trim() === '')
                   ? styles.buttonDisabled
                   : {}),
               }}
               title={
                 canManageCustomerLink
-                  ? 'برای کانال‌های بدون اتصال واقعی فقط کپی متن/لینک انجام می‌شود'
+                  ? shareChannel === 'BALE'
+                    ? 'ارسال واقعی از Provider Registry بله'
+                    : 'برای کانال‌های بدون اتصال واقعی فقط کپی متن/لینک انجام می‌شود'
                   : 'نیاز به مجوز quotation.send'
               }
               onClick={() => void shareQuotationOnChannel()}
@@ -725,8 +768,8 @@ export const QuotationLifecyclePanel = () => {
               ارسال پیش‌فاکتور
             </button>
             <p style={styles.notice}>
-              پیام‌رسان‌ها هنوز به Provider Registry وصل نیستند؛ نتیجهٔ واقعی
-              «اشتراک‌گذاری دستی» ثبت می‌شود و ارسال موفق جعلی نوشته نمی‌شود.
+              بله از Provider Registry و Send/Persist ارسال می‌شود؛ فقط پاسخ موفق
+              API وضعیت «ارسال‌شده» می‌گیرد. سایر کانال‌ها هنوز دستی هستند.
             </p>
           </>
         ) : null}
@@ -734,9 +777,14 @@ export const QuotationLifecyclePanel = () => {
         {shareResult !== null ? (
           <div style={styles.notice}>
             <p style={styles.meta}>
-              نتیجه: {shareResult.outcome === 'MANUAL_SHARE'
+              نتیجه:{' '}
+              {shareResult.outcome === 'MANUAL_SHARE'
                 ? 'اشتراک‌گذاری دستی'
-                : shareResult.outcome}
+                : shareResult.outcome === 'PROVIDER_SENT'
+                  ? 'ارسال‌شده توسط ارائه‌دهنده'
+                  : shareResult.outcome === 'PROVIDER_FAILED'
+                    ? 'ارسال ناموفق'
+                    : shareResult.outcome}
               {` — ${shareResult.channelLabel}`}
               {shareResult.customerLabel
                 ? ` — مشتری ${shareResult.customerLabel}`
@@ -744,6 +792,12 @@ export const QuotationLifecyclePanel = () => {
             </p>
             <p style={styles.meta}>
               شناسه اشتراک: {shareResult.shareId} — لینک: {shareResult.linkId}
+              {shareResult.communicationId
+                ? ` — ارتباط: ${shareResult.communicationId}`
+                : ''}
+              {shareResult.providerMessageId
+                ? ` — پیام: ${shareResult.providerMessageId}`
+                : ''}
             </p>
             <pre
               style={{

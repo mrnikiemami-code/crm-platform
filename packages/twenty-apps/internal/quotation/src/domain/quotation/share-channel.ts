@@ -1,7 +1,6 @@
 // Share channels offered on a quotation. These are product channels, not
-// Communication provider ids: Communication today only registers SMS providers
-// (kavenegar / razpayamak). Messenger channels therefore resolve to manual
-// share until a real provider is registered for that channel.
+// Communication provider ids. Delivery resolves only when Communication has a
+// registered provider for that channel (Bale as of S3-R4).
 
 export const QUOTATION_SHARE_CHANNELS = [
   'BALE',
@@ -48,27 +47,38 @@ export const QUOTATION_SHARE_OUTCOME_LABELS: Record<
   REFUSED: 'رد شده',
 };
 
-// Channels that Communication's provider registry can actually carry today.
-// Keep aligned with `communication` `CommunicationChannel` + registered
-// providers — do not invent messenger success here.
-const COMMUNICATION_SENDABLE_CHANNELS = new Set<string>(['SMS']);
+const SHARE_PROVIDER_BY_CHANNEL: Partial<
+  Record<
+    QuotationShareChannel,
+    { communicationChannel: 'BALE'; providerId: 'bale' }
+  >
+> = {
+  BALE: { communicationChannel: 'BALE', providerId: 'bale' },
+};
 
 export type QuotationShareDelivery =
   | { kind: 'MANUAL_SHARE' }
-  | { kind: 'PROVIDER'; communicationChannel: string };
+  | {
+      kind: 'PROVIDER';
+      communicationChannel: 'BALE';
+      providerId: 'bale';
+    };
 
 export const isQuotationShareChannel = (
   value: string,
 ): value is QuotationShareChannel =>
   (QUOTATION_SHARE_CHANNELS as readonly string[]).includes(value);
 
+export const isValidBaleChatId = (value: string): boolean =>
+  /^-?\d+$/.test(value.trim());
+
 export const resolveQuotationShareDelivery = (
   channel: QuotationShareChannel,
 ): QuotationShareDelivery => {
-  // No messenger maps onto Communication's SMS channel. When a real Bale /
-  // WhatsApp / … provider is registered, map it here and call Send/Persist.
-  if (COMMUNICATION_SENDABLE_CHANNELS.has(channel)) {
-    return { kind: 'PROVIDER', communicationChannel: channel };
+  const mapped = SHARE_PROVIDER_BY_CHANNEL[channel];
+
+  if (mapped !== undefined) {
+    return { kind: 'PROVIDER', ...mapped };
   }
 
   return { kind: 'MANUAL_SHARE' };

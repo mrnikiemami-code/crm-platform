@@ -5,4 +5,4 @@
 // option to the object field and one member here — both additive, no redesign.
 // Only channels that are actually implemented are listed, so a channel never
 // appears as a selectable dead control before it can be sent.
-export type CommunicationChannel = 'SMS';
+export type CommunicationChannel = 'SMS' | 'BALE';

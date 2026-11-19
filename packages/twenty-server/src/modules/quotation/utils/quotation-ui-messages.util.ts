@@ -22,6 +22,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   CUSTOMER_LINK_QUOTATION_MISMATCH: 'این لینک متعلق به این پیش‌فاکتور نیست.',
   CUSTOMER_LINK_CREATE_FAILED: 'صدور لینک مشتری انجام نشد.',
   API_URL_MISSING: 'آدرس عمومی سامانه برای ساخت لینک تنظیم نشده است.',
+  DUPLICATE_SHARE:
+    'این پیش‌فاکتور قبلاً از همین کانال با موفقیت ارسال شده است.',
 };
 
 export const persianMessageForQuotationCode = (

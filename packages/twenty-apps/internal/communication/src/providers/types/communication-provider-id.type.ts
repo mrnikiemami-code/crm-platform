@@ -5,4 +5,4 @@
 //
 // Kept as an open string union rather than an enum so adding a provider is
 // additive and does not touch shared types.
-export type CommunicationProviderId = 'kavenegar' | 'razpayamak';
+export type CommunicationProviderId = 'kavenegar' | 'razpayamak' | 'bale';

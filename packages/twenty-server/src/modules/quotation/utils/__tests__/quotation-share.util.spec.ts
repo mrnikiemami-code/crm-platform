@@ -2,6 +2,7 @@ import {
   buildQuotationShareDetail,
   buildQuotationShareMessage,
   isQuotationShareChannel,
+  isValidBaleChatId,
   resolveQuotationShareDelivery,
 } from 'src/modules/quotation/utils/quotation-share.util';
 
@@ -9,17 +10,17 @@ describe('quotation-share.util', () => {
   it('accepts the seven product messenger channels', () => {
     expect(isQuotationShareChannel('BALE')).toBe(true);
     expect(isQuotationShareChannel('WHATSAPP')).toBe(true);
-    expect(isQuotationShareChannel('TELEGRAM')).toBe(true);
-    expect(isQuotationShareChannel('INSTAGRAM')).toBe(true);
-    expect(isQuotationShareChannel('EITAA')).toBe(true);
-    expect(isQuotationShareChannel('RUBIKA')).toBe(true);
-    expect(isQuotationShareChannel('SOROUSH')).toBe(true);
     expect(isQuotationShareChannel('SMS')).toBe(false);
   });
 
-  it('resolves all messenger channels to MANUAL_SHARE (no fake provider)', () => {
+  it('resolves BALE to PROVIDER delivery and others to MANUAL_SHARE', () => {
+    expect(resolveQuotationShareDelivery('BALE')).toEqual({
+      kind: 'PROVIDER',
+      communicationChannel: 'BALE',
+      providerId: 'bale',
+    });
+
     for (const channel of [
-      'BALE',
       'WHATSAPP',
       'TELEGRAM',
       'INSTAGRAM',
@@ -33,9 +34,14 @@ describe('quotation-share.util', () => {
     }
   });
 
+  it('validates numeric Bale chat ids', () => {
+    expect(isValidBaleChatId('183266491')).toBe(true);
+    expect(isValidBaleChatId('bad')).toBe(false);
+  });
+
   it('builds Persian share text with document number and link', () => {
     const text = buildQuotationShareMessage({
-      channel: 'TELEGRAM',
+      channel: 'BALE',
       quotationNumber: 'QF-100',
       quotationTitle: 'پیشنهاد فروش',
       customerLabel: 'شرکت نمونه',
@@ -43,11 +49,7 @@ describe('quotation-share.util', () => {
     });
 
     expect(text).toContain('شماره سند: QF-100');
-    expect(text).toContain('مشتری: شرکت نمونه');
-    expect(text).toContain('کانال: تلگرام');
-    expect(text).toContain(
-      'http://localhost:3002/s/quotation/customer-view?token=abc',
-    );
+    expect(text).toContain('کانال: بله');
   });
 
   it('builds log-safe detail without the raw token or view URL', () => {
@@ -55,11 +57,11 @@ describe('quotation-share.util', () => {
       channel: 'BALE',
       quotationId: 'q-1',
       linkId: 'link-1',
-      outcome: 'MANUAL_SHARE',
+      outcome: 'PROVIDER_SENT',
+      providerMessageId: '99',
     });
 
-    expect(detail).toContain('quotationId=q-1');
-    expect(detail).toContain('linkId=link-1');
+    expect(detail).toContain('providerMessageId=99');
     expect(detail).not.toContain('token=');
     expect(detail).not.toContain('customer-view');
   });

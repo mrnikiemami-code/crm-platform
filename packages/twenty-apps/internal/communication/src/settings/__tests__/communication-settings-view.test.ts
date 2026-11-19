@@ -26,6 +26,7 @@ describe('buildCommunicationSettingsView', () => {
     expect(view.providers.map((provider) => provider.id)).toEqual([
       'razpayamak',
       'kavenegar',
+      'bale',
     ]);
     expect(view.providers).toHaveLength(
       IMPLEMENTED_COMMUNICATION_PROVIDERS.length,
@@ -112,7 +113,14 @@ describe('buildCommunicationSettingsView', () => {
     });
 
     expect(
-      view.providers.every((provider) => !provider.hasVisibleConfiguration),
+      view.providers
+        .filter((provider) => provider.id !== 'bale')
+        .every((provider) => !provider.hasVisibleConfiguration),
+    ).toBe(true);
+    // Bale has no non-secret fields (fixed host); token presence is not visible.
+    expect(
+      view.providers.find((provider) => provider.id === 'bale')
+        ?.hasVisibleConfiguration,
     ).toBe(true);
   });
 
@@ -123,7 +131,7 @@ describe('buildCommunicationSettingsView', () => {
       razpayamak: configuredRazpayamak,
     });
 
-    expect(view.channels).toEqual(['SMS']);
+    expect(view.channels).toEqual(['SMS', 'BALE']);
   });
 
   it('never carries a credential value in its output', () => {

@@ -22,7 +22,8 @@ import {
 // appending one option — never by a schema redesign. Only channels that are
 // actually implemented are listed: unsupported channels must not appear as
 // selectable dead controls. SMS is the first planned channel; WhatsApp,
-// Telegram, Instagram and Bale become options when their channel ships.
+// WhatsApp / Telegram / Instagram remain future options until their providers
+// ship. Bale is implemented (CRM-129-S3-R4).
 //
 // Option `value` is the stable machine identifier and must never change; the
 // `label` is the workspace-facing copy. This app is Persian-first, so labels
@@ -30,12 +31,14 @@ import {
 // app-defined options).
 enum CommunicationChannel {
   SMS = 'SMS',
+  BALE = 'BALE',
 }
 
 // Workspace-facing Persian labels for the channel option. The `value` is the
 // stable machine identifier and never changes; only the label is localized.
 const COMMUNICATION_CHANNEL_LABELS: Record<CommunicationChannel, string> = {
   [CommunicationChannel.SMS]: 'پیامک',
+  [CommunicationChannel.BALE]: 'بله',
 };
 
 enum CommunicationStatus {
@@ -112,6 +115,13 @@ export default defineObject({
           label: COMMUNICATION_CHANNEL_LABELS[CommunicationChannel.SMS],
           position: 0,
           color: 'blue',
+        },
+        {
+          id: '1d99885a-d73d-52e0-87bc-b64ea6226ddf',
+          value: CommunicationChannel.BALE,
+          label: COMMUNICATION_CHANNEL_LABELS[CommunicationChannel.BALE],
+          position: 1,
+          color: 'green',
         },
       ],
     },

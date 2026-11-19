@@ -8,6 +8,9 @@ describe('QuotationShareService authz', () => {
   const customerLinkService = {
     createCustomerLink: jest.fn(),
   };
+  const outboundService = {
+    sendOutbound: jest.fn(),
+  };
   const workspaceOrmManager = {
     executeInWorkspaceContext: jest.fn(),
     getRepository: jest.fn(),
@@ -17,6 +20,7 @@ describe('QuotationShareService authz', () => {
     workspaceOrmManager as never,
     permissionService as never,
     customerLinkService as never,
+    outboundService as never,
   );
 
   beforeEach(() => {
@@ -60,10 +64,43 @@ describe('QuotationShareService authz', () => {
     ).rejects.toThrow(/PERMISSION_MISSING/);
   });
 
-  it('refuses unknown channels', async () => {
+  it('refuses BALE without a numeric chat_id', async () => {
     permissionService.resolveHeldPermissions.mockResolvedValue([
       'quotation.send',
     ]);
+    workspaceOrmManager.executeInWorkspaceContext.mockImplementation(
+      async (callback: () => Promise<unknown>) => callback(),
+    );
+    workspaceOrmManager.getRepository.mockImplementation((objectName: string) => {
+      if (objectName === 'quotation') {
+        return {
+          findOne: async () => ({
+            id: 'q-1',
+            status: 'READY_TO_SEND',
+            quotationNumber: 'QF-1',
+            name: 'a',
+            personId: 'p-1',
+            companyId: null,
+          }),
+        };
+      }
+
+      if (objectName === 'person') {
+        return {
+          findOne: async () => ({
+            id: 'p-1',
+            nameFirstName: 'Ali',
+            nameLastName: 'A',
+          }),
+        };
+      }
+
+      if (objectName === 'quotationShare') {
+        return { findOne: async () => null };
+      }
+
+      return { findOne: async () => null };
+    });
 
     await expect(
       service.shareQuotation({
@@ -73,8 +110,9 @@ describe('QuotationShareService authz', () => {
           apiKey: { id: 'k', name: 'k' },
         } as never,
         quotationId: 'q-1',
-        channel: 'SMS',
+        channel: 'BALE',
+        chatId: 'not-numeric',
       }),
-    ).rejects.toThrow(/INVALID_INPUT/);
+    ).rejects.toThrow(/chat_id/);
   });
 });

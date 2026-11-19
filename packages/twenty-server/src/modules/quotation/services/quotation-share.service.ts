@@ -13,12 +13,14 @@ import {
   QuotationQueryValidationException,
   QuotationQueryValidationExceptionCode,
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
+import { QuotationCommunicationOutboundService } from 'src/modules/quotation/services/quotation-communication-outbound.service';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import {
   buildQuotationShareDetail,
   buildQuotationShareMessage,
   isQuotationShareChannel,
+  isValidBaleChatId,
   QUOTATION_SHARE_CHANNEL_LABELS,
   type QuotationShareChannel,
   type QuotationShareOutcome,
@@ -60,6 +62,7 @@ export type QuotationShareResult = {
   customerCompanyId: string | null;
   communicationId: string | null;
   providerId: string | null;
+  providerMessageId: string | null;
   message: string;
 };
 
@@ -72,6 +75,7 @@ export class QuotationShareService {
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     private readonly quotationPermissionService: QuotationPermissionService,
     private readonly quotationCustomerLinkService: QuotationCustomerLinkService,
+    private readonly quotationCommunicationOutboundService: QuotationCommunicationOutboundService,
   ) {}
 
   async shareQuotation({
@@ -79,11 +83,15 @@ export class QuotationShareService {
     quotationId,
     channel: rawChannel,
     ttlHours,
+    chatId: rawChatId,
+    authorizationHeader,
   }: {
     authContext: WorkspaceAuthContext;
     quotationId: string;
     channel: string;
     ttlHours?: number;
+    chatId?: string;
+    authorizationHeader?: string | null;
   }): Promise<QuotationShareResult> {
     this.assertActorMayShare(authContext);
 
@@ -110,6 +118,23 @@ export class QuotationShareService {
     const quotation = await this.readQuotation(authContext, quotationId);
     const customer = await this.resolveCustomer(authContext, quotation);
 
+    if (delivery.kind === 'PROVIDER') {
+      await this.assertNoDuplicateProviderSend({
+        authContext,
+        quotationId: quotation.id,
+        channel,
+      });
+
+      const chatId = readString(rawChatId);
+
+      if (!isValidBaleChatId(chatId)) {
+        throw new QuotationQueryValidationException(
+          'INVALID_INPUT: a valid numeric Bale chat_id is required',
+          QuotationQueryValidationExceptionCode.FORBIDDEN,
+        );
+      }
+    }
+
     // Mint uses the same customer-link path (permission + status gates).
     const link = await this.quotationCustomerLinkService.createCustomerLink({
       authContext,
@@ -117,18 +142,6 @@ export class QuotationShareService {
       ttlHours,
     });
 
-    // Communication Provider Registry only carries SMS today. Listed messenger
-    // channels therefore stay MANUAL_SHARE — never invent PROVIDER_SENT here.
-    // When a real messenger provider is registered, branch to Send/Persist and
-    // store communicationId / providerId from that outcome.
-    if (delivery.kind === 'PROVIDER') {
-      throw new QuotationQueryValidationException(
-        'INVALID_INPUT: provider delivery is not wired for this channel yet',
-        QuotationQueryValidationExceptionCode.FORBIDDEN,
-      );
-    }
-
-    const outcome: QuotationShareOutcome = 'MANUAL_SHARE';
     const shareText = buildQuotationShareMessage({
       channel,
       quotationNumber: quotation.quotationNumber,
@@ -136,11 +149,54 @@ export class QuotationShareService {
       customerLabel: customer.label,
       viewUrl: link.viewUrl,
     });
+
+    let outcome: QuotationShareOutcome = 'MANUAL_SHARE';
+    let communicationId: string | null = null;
+    let providerId: string | null = null;
+    let providerMessageId: string | null = null;
+    let message =
+      'اتصال خودکار این کانال فعال نیست. متن و لینک برای اشتراک‌گذاری دستی آماده شد؛ ارسال موفق ثبت نشد.';
+
+    if (delivery.kind === 'PROVIDER') {
+      const chatId = readString(rawChatId);
+      const outbound =
+        await this.quotationCommunicationOutboundService.sendOutbound({
+          channel: delivery.communicationChannel,
+          providerId: delivery.providerId,
+          recipient: chatId,
+          body: shareText,
+          targetPersonId: customer.personId,
+          sourceRecordId: quotation.id,
+          authorizationHeader: authorizationHeader ?? null,
+        });
+
+      providerId = delivery.providerId;
+
+      if (
+        outbound.success === true &&
+        (outbound.sendStatus === 'SENT' || outbound.sendStatus === 'DELIVERED')
+      ) {
+        outcome = 'PROVIDER_SENT';
+        communicationId = outbound.communicationId;
+        providerMessageId = outbound.providerMessageId;
+        message =
+          'پیش‌فاکتور از طریق بله ارسال شد و نتیجهٔ واقعی در تاریخچه ثبت شد.';
+      } else {
+        outcome = 'PROVIDER_FAILED';
+        communicationId = outbound.success === false ? outbound.communicationId : null;
+        message =
+          outbound.success === false
+            ? outbound.error
+            : 'ارسال بله ناموفق بود؛ ارسال موفق ثبت نشد.';
+      }
+    }
+
     const detail = buildQuotationShareDetail({
       channel,
       quotationId: quotation.id,
       linkId: link.linkId,
       outcome,
+      providerMessageId,
     });
     const occurredAt = new Date();
     const actor = this.resolveActorMetadata(authContext);
@@ -166,8 +222,8 @@ export class QuotationShareService {
           customerPersonId: customer.personId,
           customerCompanyId: customer.companyId,
           linkId: link.linkId,
-          communicationId: null,
-          providerId: null,
+          communicationId,
+          providerId,
           detail,
           occurredAt,
           quotationId: quotation.id,
@@ -197,18 +253,55 @@ export class QuotationShareService {
       channel,
       channelLabel,
       outcome,
-      deliveryKind: 'MANUAL_SHARE',
+      deliveryKind: delivery.kind === 'PROVIDER' ? 'PROVIDER' : 'MANUAL_SHARE',
       linkId: link.linkId,
       viewUrl: link.viewUrl,
       shareText,
       customerLabel: customer.label,
       customerPersonId: customer.personId,
       customerCompanyId: customer.companyId,
-      communicationId: null,
-      providerId: null,
-      message:
-        'اتصال خودکار این کانال فعال نیست. متن و لینک برای اشتراک‌گذاری دستی آماده شد؛ ارسال موفق ثبت نشد.',
+      communicationId,
+      providerId,
+      providerMessageId,
+      message,
     };
+  }
+
+  private async assertNoDuplicateProviderSend({
+    authContext,
+    quotationId,
+    channel,
+  }: {
+    authContext: WorkspaceAuthContext;
+    quotationId: string;
+    channel: QuotationShareChannel;
+  }): Promise<void> {
+    const existing = await this.workspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const repository = this.workspaceOrmManager.getRepository<{
+          id: string;
+          outcome: string;
+        }>('quotationShare', { shouldBypassPermissionChecks: true });
+
+        return repository.findOne({
+          where: {
+            quotationId,
+            channel,
+            outcome: 'PROVIDER_SENT',
+          } as never,
+          select: { id: true, outcome: true },
+          order: { createdAt: 'DESC' } as never,
+        });
+      },
+      authContext,
+    );
+
+    if (isDefined(existing)) {
+      throw new QuotationQueryValidationException(
+        'DUPLICATE_SHARE: this quotation was already sent on this channel',
+        QuotationQueryValidationExceptionCode.FORBIDDEN,
+      );
+    }
   }
 
   private assertActorMayShare(authContext: WorkspaceAuthContext): void {

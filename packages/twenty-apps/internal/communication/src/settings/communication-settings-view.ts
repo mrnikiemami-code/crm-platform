@@ -9,6 +9,7 @@ export const IMPLEMENTED_COMMUNICATION_PROVIDERS: {
 }[] = [
   { id: 'razpayamak', label: 'RazPayamak' },
   { id: 'kavenegar', label: 'Kavenegar' },
+  { id: 'bale', label: 'بله' },
 ];
 
 export type CommunicationSettingsInput = {
@@ -101,6 +102,8 @@ export const buildCommunicationSettingsView = (
   const configurationByProvider: Record<CommunicationProviderId, boolean> = {
     kavenegar: hasKavenegarConfiguration,
     razpayamak: hasRazpayamakConfiguration,
+    // Bale has no non-secret fields (API host is fixed; token is secret-only).
+    bale: true,
   };
 
   const providers: CommunicationProviderSettingsRow[] =
