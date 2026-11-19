@@ -21,10 +21,11 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 //
 // ORDER (unchanged provisional S1 contract, extended for document discount):
 //   1. line gross → line discount → line net
-//   2. document discount on sum(line nets), allocated proportionally
-//   3. tax on (line net − document share)   // tax still on discounted amount
-//   4. sum line totals → round half-up to whole IRR for payable
-//      (rounding delta absorbed into the last line's tax so columns still add up)
+//   2. document discount on sum(line nets), allocated with capacity-safe
+//      largest-remainder (see document-discount.ts)
+//   3. tax on (line net − document share) from the tax policy — never mutated
+//   4. payable = round half-up(sum(line totals)) to whole IRR
+//      roundingMicros = payable − (net + tax)  // independent field, not tax
 
 export type QuotationDocumentTotals = {
   grossMicros: bigint;
@@ -100,28 +101,21 @@ export const finalizeLinesWithDocumentDiscount = ({
       documentDiscountMicros,
       netMicros,
       taxMicros,
+      // Line total is pre-rounding; document payable adds roundingExact.
       totalMicros: netMicros + taxMicros,
     };
   });
 
-  const rawTotals = sumLineBuckets(lines);
-  const payableMicros = roundMicrosToWholeRial(rawTotals.totalMicros);
-  const roundingMicros = payableMicros - rawTotals.totalMicros;
+  const lineTotals = sumLineBuckets(lines);
+  const rawPayableMicros = lineTotals.netMicros + lineTotals.taxMicros;
+  const payableMicros = roundMicrosToWholeRial(rawPayableMicros);
+  const roundingMicros = payableMicros - rawPayableMicros;
 
-  if (roundingMicros !== 0n) {
-    const lastIndex = lines.length - 1;
-    const last = lines[lastIndex];
-
-    lines[lastIndex] = {
-      ...last,
-      taxMicros: last.taxMicros + roundingMicros,
-      totalMicros: last.totalMicros + roundingMicros,
-    };
-  }
-
-  const totals = sumLineBuckets(lines);
-  totals.roundingMicros = roundingMicros;
-  totals.totalMicros = payableMicros;
+  const totals: QuotationDocumentTotals = {
+    ...lineTotals,
+    roundingMicros,
+    totalMicros: payableMicros,
+  };
 
   if (totals.netMicros !== totals.grossMicros - totals.discountMicros) {
     return refused(
@@ -130,10 +124,14 @@ export const finalizeLinesWithDocumentDiscount = ({
     );
   }
 
-  if (totals.totalMicros !== totals.netMicros + totals.taxMicros) {
+  // Payable = net + tax + rounding adjustment (tax itself stays policy-pure).
+  if (
+    totals.totalMicros !==
+    totals.netMicros + totals.taxMicros + totals.roundingMicros
+  ) {
     return refused(
       'TOTALS_INCONSISTENT',
-      'total does not equal net plus tax after whole-rial rounding',
+      'payable does not equal net plus tax plus rounding',
     );
   }
 
@@ -182,7 +180,7 @@ const sumLineBuckets = (
 };
 
 // Backward-compatible helper used by older tests that only pass post-line amounts
-// with documentDiscountMicros already set (usually 0).
+// with documentDiscountMicros already set (usually 0). No document rounding here.
 export const computeDocumentTotals = (
   lines: QuotationLineAmounts[],
 ): Result<QuotationDocumentTotals> => {
@@ -250,7 +248,7 @@ export const readTotalsExact = (
     }
   }
 
-  return accepted({
+  const totals = {
     grossMicros: (parsed.grossMicros as { ok: true; value: bigint }).value,
     lineDiscountMicros: (
       parsed.lineDiscountMicros as { ok: true; value: bigint }
@@ -265,5 +263,17 @@ export const readTotalsExact = (
     totalMicros: (parsed.totalMicros as { ok: true; value: bigint }).value,
     roundingMicros: (parsed.roundingMicros as { ok: true; value: bigint })
       .value,
-  });
+  };
+
+  if (
+    totals.totalMicros !==
+    totals.netMicros + totals.taxMicros + totals.roundingMicros
+  ) {
+    return refused(
+      'TOTALS_INCONSISTENT',
+      'payable does not equal net plus tax plus rounding',
+    );
+  }
+
+  return accepted(totals);
 };

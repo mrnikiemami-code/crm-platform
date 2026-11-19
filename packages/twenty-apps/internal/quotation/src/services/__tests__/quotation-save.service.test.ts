@@ -62,6 +62,7 @@ describe('quotation-save.service', () => {
     expect(payload.value.quotation).toHaveProperty('grossExact');
     expect(payload.value.quotation).toHaveProperty('documentDiscountExact');
     expect(payload.value.quotation).toHaveProperty('taxExact');
+    expect(payload.value.quotation).toHaveProperty('roundingExact');
     expect(payload.value.lines.map((line) => line.kind)).toEqual([
       'PRODUCT',
       'SERVICE',

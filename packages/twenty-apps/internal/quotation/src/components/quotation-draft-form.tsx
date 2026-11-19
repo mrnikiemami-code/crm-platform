@@ -465,6 +465,12 @@ export const QuotationDraftForm = () => {
           <span>مالیات ({DEFAULT_TAX_POLICY_ID})</span>
           <strong>{plan.ok ? plan.value.displayTax : '—'}</strong>
         </div>
+        {plan.ok && plan.value.totalsExact.roundingExact !== '0.000000' ? (
+          <div style={styles.totalsRow}>
+            <span>تعدیل گردکردن</span>
+            <strong>{plan.value.displayRounding}</strong>
+          </div>
+        ) : null}
         <div style={styles.totals}>
           <span>مبلغ نهایی قابل پرداخت</span>
           <strong>{plan.ok ? plan.value.displayTotal : '—'}</strong>

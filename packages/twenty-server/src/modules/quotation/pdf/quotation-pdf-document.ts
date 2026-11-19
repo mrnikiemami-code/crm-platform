@@ -110,6 +110,7 @@ export type QuotationPdfSubtotals = {
   discount?: string;
   net?: string;
   tax?: string;
+  rounding?: string;
 };
 
 export type QuotationPdfInput = {
@@ -213,6 +214,10 @@ const buildSubtotalRows = (
 
   if (isNonEmptyString(subtotals.tax)) {
     rows.push({ label: 'مالیات', value: subtotals.tax });
+  }
+
+  if (isNonEmptyString(subtotals.rounding)) {
+    rows.push({ label: 'تعدیل گردکردن', value: subtotals.rounding });
   }
 
   return rows;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { allocateDocumentDiscount } from 'src/domain/money/document-discount';
 import { finalizeLinesWithDocumentDiscount } from 'src/domain/money/document-totals';
+import { applyBasisPoints } from 'src/domain/money/arithmetic';
 import { computeLinePreTaxAmounts } from 'src/domain/money/line';
 import {
   isWholeRialMicros,
@@ -20,21 +21,118 @@ const unwrap = <TValue>(
   return result.value;
 };
 
+const assertAllocationInvariants = (
+  nets: bigint[],
+  discount: bigint,
+  shares: bigint[],
+) => {
+  expect(shares.length).toBe(nets.length);
+  expect(shares.reduce((sum, share) => sum + share, 0n)).toBe(discount);
+
+  for (let index = 0; index < nets.length; index += 1) {
+    expect(shares[index] >= 0n).toBe(true);
+    expect(shares[index] <= nets[index]).toBe(true);
+
+    if (nets[index] === 0n) {
+      expect(shares[index]).toBe(0n);
+    }
+  }
+};
+
 describe('document discount allocation', () => {
-  it('allocates proportionally with remainder on the last line', () => {
+  it('allocates proportionally with capacity-safe remainder', () => {
+    const nets = [700n, 300n];
+    const shares = unwrap(allocateDocumentDiscount(
+      nets.map((netAfterLineDiscountMicros) => ({
+        netAfterLineDiscountMicros,
+      })),
+      100n,
+    ));
+
+    assertAllocationInvariants(nets, 100n, shares);
+    expect(shares[0]).toBe(70n);
+    expect(shares[1]).toBe(30n);
+  });
+
+  it('never over-allocates a small last line when remainder would overflow', () => {
+    // Classic bug: dump all remainder on the last line. Capacity-safe Hamilton
+    // must keep every share <= net and still sum to discount.
+    const nets = [1_000n, 1n, 1n];
+    const discount = 3n;
     const shares = unwrap(
       allocateDocumentDiscount(
-        [
-          { netAfterLineDiscountMicros: 700n },
-          { netAfterLineDiscountMicros: 300n },
-        ],
-        100n,
+        nets.map((netAfterLineDiscountMicros) => ({
+          netAfterLineDiscountMicros,
+        })),
+        discount,
       ),
     );
 
-    expect(shares[0] + shares[1]).toBe(100n);
-    expect(shares[0]).toBe(70n);
-    expect(shares[1]).toBe(30n);
+    assertAllocationInvariants(nets, discount, shares);
+  });
+
+  it('gives zero-net lines no share', () => {
+    const nets = [100n, 0n, 100n];
+    const discount = 50n;
+    const shares = unwrap(
+      allocateDocumentDiscount(
+        nets.map((netAfterLineDiscountMicros) => ({
+          netAfterLineDiscountMicros,
+        })),
+        discount,
+      ),
+    );
+
+    assertAllocationInvariants(nets, discount, shares);
+    expect(shares[1]).toBe(0n);
+  });
+
+  it('allocates 100% document discount exactly to capacity', () => {
+    const nets = [40n, 60n];
+    const discount = 100n;
+    const shares = unwrap(
+      allocateDocumentDiscount(
+        nets.map((netAfterLineDiscountMicros) => ({
+          netAfterLineDiscountMicros,
+        })),
+        discount,
+      ),
+    );
+
+    assertAllocationInvariants(nets, discount, shares);
+    expect(shares).toEqual([40n, 60n]);
+  });
+
+  it('handles tiny micros without negative or over-capacity shares', () => {
+    const nets = [1n, 1n, 1n];
+    const discount = 2n;
+    const shares = unwrap(
+      allocateDocumentDiscount(
+        nets.map((netAfterLineDiscountMicros) => ({
+          netAfterLineDiscountMicros,
+        })),
+        discount,
+      ),
+    );
+
+    assertAllocationInvariants(nets, discount, shares);
+  });
+
+  it('is reproducible for the same line order', () => {
+    const lines = [
+      { netAfterLineDiscountMicros: 333n },
+      { netAfterLineDiscountMicros: 333n },
+      { netAfterLineDiscountMicros: 334n },
+    ];
+    const first = unwrap(allocateDocumentDiscount(lines, 100n));
+    const second = unwrap(allocateDocumentDiscount(lines, 100n));
+
+    expect(first).toEqual(second);
+    assertAllocationInvariants(
+      lines.map((line) => line.netAfterLineDiscountMicros),
+      100n,
+      first,
+    );
   });
 
   it('refuses a discount larger than the discountable net', () => {
@@ -53,7 +151,7 @@ describe('document discount allocation', () => {
 });
 
 describe('finalizeLinesWithDocumentDiscount', () => {
-  it('taxes after line and document discounts and pays a whole rial', () => {
+  it('keeps tax policy-pure and stores independent rounding', () => {
     const lineA = unwrap(
       computeLinePreTaxAmounts({
         quantityScaled: 1_000_000n,
@@ -85,9 +183,19 @@ describe('finalizeLinesWithDocumentDiscount', () => {
       finalized.lines[0].documentDiscountMicros +
         finalized.lines[1].documentDiscountMicros,
     ).toBe(finalized.totals.documentDiscountMicros);
+
+    const expectedTax = finalized.lines.reduce(
+      (sum, line) =>
+        sum + applyBasisPoints(line.netMicros, taxPolicy.rateBasisPoints),
+      0n,
+    );
+
+    expect(finalized.totals.taxMicros).toBe(expectedTax);
     expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
     expect(finalized.totals.totalMicros).toBe(
-      finalized.totals.netMicros + finalized.totals.taxMicros,
+      finalized.totals.netMicros +
+        finalized.totals.taxMicros +
+        finalized.totals.roundingMicros,
     );
     expect(finalized.totals.netMicros).toBe(
       finalized.totals.grossMicros - finalized.totals.discountMicros,
@@ -112,7 +220,7 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     );
 
     // gross 1_000_000 rial, line 10% → 900_000, doc 10% → 90_000, net 810_000
-    // tax 9% → 72_900, total 882_900 whole rial
+    // tax 9% → 72_900, total 882_900 whole rial, rounding 0
     expect(finalized.totals.grossMicros).toBe(1_000_000n * MICROS_PER_UNIT);
     expect(finalized.totals.lineDiscountMicros).toBe(100_000n * MICROS_PER_UNIT);
     expect(finalized.totals.documentDiscountMicros).toBe(
@@ -120,7 +228,116 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     );
     expect(finalized.totals.netMicros).toBe(810_000n * MICROS_PER_UNIT);
     expect(finalized.totals.taxMicros).toBe(72_900n * MICROS_PER_UNIT);
+    expect(finalized.totals.roundingMicros).toBe(0n);
     expect(finalized.totals.totalMicros).toBe(882_900n * MICROS_PER_UNIT);
+  });
+
+  it('records a positive rounding adjustment without mutating tax', () => {
+    // 1 micros net * 9% bp → tax = 0 (floor via basis points), but use a net
+    // that leaves a fractional payable needing half-up.
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 1n,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'NONE' },
+        taxRateBasisPoints: 900n,
+      }),
+    );
+
+    const pureTax = applyBasisPoints(line.netAfterLineDiscountMicros, 900n);
+
+    expect(finalized.totals.taxMicros).toBe(pureTax);
+    expect(finalized.lines[0].taxMicros).toBe(pureTax);
+
+    const raw = finalized.totals.netMicros + finalized.totals.taxMicros;
+    const expectedRounding = roundMicrosToWholeRial(raw) - raw;
+
+    expect(finalized.totals.roundingMicros).toBe(expectedRounding);
+    expect(finalized.totals.totalMicros).toBe(raw + expectedRounding);
+    expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
+  });
+
+  it('records a negative rounding adjustment when half-up rounds down', () => {
+    // Build a payable whose fractional part is strictly below 0.5 rial.
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 1_499_999n,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'NONE' },
+        taxRateBasisPoints: 0n,
+      }),
+    );
+
+    expect(finalized.totals.taxMicros).toBe(0n);
+    expect(finalized.totals.roundingMicros < 0n).toBe(true);
+    expect(finalized.totals.totalMicros).toBe(
+      finalized.totals.netMicros +
+        finalized.totals.taxMicros +
+        finalized.totals.roundingMicros,
+    );
+    expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
+  });
+
+  it('keeps tax at zero when the rate is zero', () => {
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 10_000n * MICROS_PER_UNIT,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'NONE' },
+        taxRateBasisPoints: 0n,
+      }),
+    );
+
+    expect(finalized.totals.taxMicros).toBe(0n);
+    expect(finalized.totals.roundingMicros).toBe(0n);
+    expect(finalized.totals.totalMicros).toBe(finalized.totals.netMicros);
+  });
+
+  it('supports 100% document discount with zero tax and payable', () => {
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 50_000n * MICROS_PER_UNIT,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'RATE', basisPoints: 10_000n },
+        taxRateBasisPoints: 900n,
+      }),
+    );
+
+    expect(finalized.totals.documentDiscountMicros).toBe(
+      50_000n * MICROS_PER_UNIT,
+    );
+    expect(finalized.totals.netMicros).toBe(0n);
+    expect(finalized.totals.taxMicros).toBe(0n);
+    expect(finalized.totals.roundingMicros).toBe(0n);
+    expect(finalized.totals.totalMicros).toBe(0n);
   });
 });
 

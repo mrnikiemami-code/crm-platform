@@ -31,6 +31,7 @@ type QuotationPdfRow = {
   documentDiscountExact: string | null;
   netExact: string | null;
   taxExact: string | null;
+  roundingExact: string | null;
   totalExact: string | null;
   paymentTerms: string | null;
   currencyCode: string | null;
@@ -123,6 +124,7 @@ export class QuotationPdfService {
           documentDiscountExact: true,
           netExact: true,
           taxExact: true,
+          roundingExact: true,
           totalExact: true,
           paymentTerms: true,
           currencyCode: true,
@@ -264,6 +266,7 @@ export class QuotationPdfService {
         documentDiscount: formatStored(quotation.documentDiscountExact),
         net: formatStored(quotation.netExact),
         tax: formatStored(quotation.taxExact),
+        rounding: formatStored(quotation.roundingExact),
       },
       total,
     };

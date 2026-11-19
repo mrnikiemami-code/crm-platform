@@ -1,6 +1,5 @@
 import {
   applyBasisPoints,
-  divideRoundHalfUp,
   isBasisPointsInRange,
 } from 'src/domain/money/arithmetic';
 import { type LineDiscount } from 'src/domain/money/line';
@@ -8,11 +7,12 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Document-level discount applied AFTER line discounts and BEFORE tax.
 //
-// Allocation (auditable, deterministic):
-//   share_i = halfUp(documentDiscount * net_i / sumNets) for i = 0..n-2
-//   share_last = documentDiscount - sum(share_0..n-2)
-// so sum(shares) === documentDiscount exactly. Lines with zero net get zero share;
-// if every net is zero the discount must also be zero.
+// Allocation (largest-remainder + capacity, deterministic):
+//   1. zero-net lines get 0 and never receive remainder
+//   2. floor share_i = floor(discount * net_i / sumNets), capped at net_i
+//   3. remaining micros go one-by-one to lines with spare capacity, ordered by
+//      fractional remainder descending, then by stable line index ascending
+// so: sum(shares) === discount, 0 <= share_i <= net_i, reproducible.
 
 export type LineNetForAllocation = {
   netAfterLineDiscountMicros: bigint;
@@ -83,6 +83,15 @@ export const allocateDocumentDiscount = (
     return accepted(lines.map(() => 0n));
   }
 
+  for (const line of lines) {
+    if (line.netAfterLineDiscountMicros < 0n) {
+      return refused(
+        'DOCUMENT_NET_NEGATIVE',
+        'خالص ردیف نمی‌تواند منفی باشد',
+      );
+    }
+  }
+
   const sumNets = lines.reduce(
     (sum, line) => sum + line.netAfterLineDiscountMicros,
     0n,
@@ -102,22 +111,88 @@ export const allocateDocumentDiscount = (
     );
   }
 
-  const shares: bigint[] = [];
-  let allocated = 0n;
+  // Floor shares; zero-net lines stay at 0 by construction.
+  const shares: bigint[] = lines.map((line) => {
+    if (line.netAfterLineDiscountMicros === 0n) {
+      return 0n;
+    }
 
-  for (let index = 0; index < lines.length; index += 1) {
-    if (index === lines.length - 1) {
-      shares.push(documentDiscountMicros - allocated);
+    const uncapped =
+      (documentDiscountMicros * line.netAfterLineDiscountMicros) / sumNets;
+
+    return uncapped > line.netAfterLineDiscountMicros
+      ? line.netAfterLineDiscountMicros
+      : uncapped;
+  });
+
+  let remaining =
+    documentDiscountMicros - shares.reduce((sum, share) => sum + share, 0n);
+
+  // Fractional part for ranking: (discount * net) % sumNets — larger first.
+  // Tie-break by ascending index so the order is fully reproducible.
+  const rankOrder = lines
+    .map((line, index) => ({
+      index,
+      net: line.netAfterLineDiscountMicros,
+      fractional:
+        line.netAfterLineDiscountMicros === 0n
+          ? -1n
+          : (documentDiscountMicros * line.netAfterLineDiscountMicros) %
+            sumNets,
+    }))
+    .filter((entry) => entry.net > 0n)
+    .sort((left, right) => {
+      if (left.fractional !== right.fractional) {
+        return left.fractional > right.fractional ? -1 : 1;
+      }
+
+      return left.index - right.index;
+    });
+
+  // One micro per eligible line in rank order (classic largest-remainder).
+  for (const entry of rankOrder) {
+    if (remaining === 0n) {
       break;
     }
 
-    const share = divideRoundHalfUp(
-      documentDiscountMicros * lines[index].netAfterLineDiscountMicros,
-      sumNets,
-    );
+    if (shares[entry.index] >= entry.net) {
+      continue;
+    }
 
-    shares.push(share);
-    allocated += share;
+    shares[entry.index] += 1n;
+    remaining -= 1n;
+  }
+
+  if (remaining !== 0n) {
+    return refused(
+      'DOCUMENT_DISCOUNT_ALLOCATION_FAILED',
+      'تخفیف کل قابل تخصیص بدون عبور از ظرفیت ردیف‌ها نیست',
+    );
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (shares[index] < 0n) {
+      return refused(
+        'DOCUMENT_DISCOUNT_ALLOCATION_FAILED',
+        'سهم تخفیف ردیف نمی‌تواند منفی باشد',
+      );
+    }
+
+    if (shares[index] > lines[index].netAfterLineDiscountMicros) {
+      return refused(
+        'DOCUMENT_DISCOUNT_ALLOCATION_FAILED',
+        'سهم تخفیف ردیف از خالص همان ردیف بیشتر است',
+      );
+    }
+  }
+
+  const allocated = shares.reduce((sum, share) => sum + share, 0n);
+
+  if (allocated !== documentDiscountMicros) {
+    return refused(
+      'DOCUMENT_DISCOUNT_ALLOCATION_FAILED',
+      'مجموع سهم ردیف‌ها با تخفیف کل برابر نیست',
+    );
   }
 
   return accepted(shares);

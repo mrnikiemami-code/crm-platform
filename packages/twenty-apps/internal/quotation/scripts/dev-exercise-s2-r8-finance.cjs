@@ -84,9 +84,10 @@ const main = async () => {
       documentDiscountExact: "90000.000000"
       netExact: "810000.000000"
       taxExact: "72900.000000"
+      roundingExact: "0.000000"
       totalExact: "882900.000000"
       version: 1
-    }) { id name status version totalExact grossExact lineDiscountExact documentDiscountExact netExact taxExact }
+    }) { id name status version totalExact grossExact lineDiscountExact documentDiscountExact netExact taxExact roundingExact }
   }`);
 
   if (!created.data?.createQuotation) {
@@ -97,6 +98,8 @@ const main = async () => {
   assert(quotation.totalExact === '882900.000000', 'payable must be whole rial');
   assert(quotation.grossExact === '1000000.000000', 'gross stored');
   assert(quotation.documentDiscountExact === '90000.000000', 'doc discount stored');
+  assert(quotation.taxExact === '72900.000000', 'tax must stay policy-pure');
+  assert(quotation.roundingExact === '0.000000', 'roundingExact stored independently');
 
   const line = await gql(`mutation {
     createQuotationLine(data: {
@@ -151,6 +154,7 @@ const main = async () => {
         lineDiscountExact: quotation.lineDiscountExact,
         documentDiscountExact: quotation.documentDiscountExact,
         taxExact: quotation.taxExact,
+        roundingExact: quotation.roundingExact,
         pdfBytes: pdfBuffer.length,
       },
       null,

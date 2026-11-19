@@ -71,6 +71,8 @@ export const QUOTATION_FIELDS = {
   documentDiscountExact: 'c9e603d4-1f51-5c3a-ad48-607182930415',
   netExact: 'daf714e5-2062-5d4b-be59-718293041526',
   taxExact: 'eb0825f6-3173-5e5c-8f6a-829304152637',
+  // Independent whole-rial payable adjustment; never folded into taxExact.
+  roundingExact: '01920588-313c-536a-b432-13ffc6fd57c5',
   documentDiscountKind: 'fc193607-4284-5f6d-907b-930415263748',
   documentDiscountInputExact: '0d2a4718-5395-507e-a18c-a41526374859',
   version: '20b59a68-8057-5acd-bdb4-f3fdc163d246',

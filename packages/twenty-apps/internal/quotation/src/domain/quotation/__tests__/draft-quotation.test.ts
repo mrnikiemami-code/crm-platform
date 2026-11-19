@@ -102,10 +102,16 @@ describe('buildDraftQuotationPlan', () => {
 
     expect(plan.value.totalsExact.documentDiscountExact).not.toBe('0.000000');
     expect(plan.value.totalsExact.totalExact.endsWith('.000000')).toBe(true);
+    expect(plan.value.totalsExact).toHaveProperty('roundingExact');
     expect(plan.value.displayGross.length).toBeGreaterThan(0);
     expect(plan.value.displayLineDiscount.length).toBeGreaterThan(0);
     expect(plan.value.displayDocumentDiscount.length).toBeGreaterThan(0);
     expect(plan.value.displayTax.length).toBeGreaterThan(0);
+    expect(plan.value.displayRounding.length).toBeGreaterThan(0);
+    expect(plan.value.totalExact).toBe(
+      // payable = net + tax + rounding (exact text equality via micros already tested)
+      plan.value.totalsExact.totalExact,
+    );
   });
 
   it('refuses document discount larger than net after line discounts', () => {

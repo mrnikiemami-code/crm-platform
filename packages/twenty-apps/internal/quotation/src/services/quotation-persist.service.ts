@@ -277,6 +277,7 @@ export const persistDraftQuotation = async (
           payload.value.quotation.documentDiscountInputExact,
         netExact: payload.value.quotation.netExact,
         taxExact: payload.value.quotation.taxExact,
+        roundingExact: payload.value.quotation.roundingExact,
         totalExact: payload.value.quotation.totalExact,
         status: 'DRAFT',
         // Optimistic lock token: server compares this to the stored version.

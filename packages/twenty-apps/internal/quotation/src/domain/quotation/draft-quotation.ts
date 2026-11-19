@@ -110,6 +110,7 @@ export type DraftQuotationPlan = {
   displayLineDiscount: string;
   displayDocumentDiscount: string;
   displayTax: string;
+  displayRounding: string;
   lines: DraftLineRecord[];
 };
 
@@ -401,13 +402,18 @@ export const buildDraftQuotationPlan = (
     finalized.value.totals.taxMicros,
     input.displayMoneyUnit,
   );
+  const displayRounding = displayAmount(
+    finalized.value.totals.roundingMicros,
+    input.displayMoneyUnit,
+  );
 
   if (
     !displayTotal.ok ||
     !displayGross.ok ||
     !displayLineDiscount.ok ||
     !displayDocumentDiscount.ok ||
-    !displayTax.ok
+    !displayTax.ok ||
+    !displayRounding.ok
   ) {
     return refused('DISPLAY_AMOUNT_INVALID', 'نمایش مبلغ ممکن نیست');
   }
@@ -455,6 +461,7 @@ export const buildDraftQuotationPlan = (
     displayLineDiscount: displayLineDiscount.value,
     displayDocumentDiscount: displayDocumentDiscount.value,
     displayTax: displayTax.value,
+    displayRounding: displayRounding.value,
     lines,
   });
 };

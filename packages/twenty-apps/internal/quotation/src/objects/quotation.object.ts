@@ -263,9 +263,21 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'taxExact',
       label: 'مالیات (دقیق، ریال)',
-      description: 'جمع مالیات ردیف‌ها بر اساس سیاست مالیات سند.',
+      description:
+        'جمع مالیات ردیف‌ها بر اساس سیاست مالیات سند (بدون تعدیل گردکردن).',
       icon: 'IconPercentage',
       isNullable: true,
+    },
+    {
+      universalIdentifier: QUOTATION_FIELDS.roundingExact,
+      type: FieldType.TEXT,
+      name: 'roundingExact',
+      label: 'تعدیل گردکردن (دقیق، ریال)',
+      description:
+        'payable − (net + tax)؛ مستقل از مالیات. می‌تواند منفی باشد.',
+      icon: 'IconAdjustments',
+      isNullable: true,
+      defaultValue: "'0.000000'",
     },
     {
       universalIdentifier: QUOTATION_FIELDS.totalExact,
@@ -273,7 +285,7 @@ export default defineObject({
       name: 'totalExact',
       label: 'جمع کل قابل پرداخت (ریال صحیح)',
       description:
-        'مبلغ نهایی قابل پرداخت به ریال صحیح (بدون اعشار). تنها نسخهٔ معتبر مبلغ قابل پرداخت.',
+        'خالص + مالیات + تعدیل گردکردن، به ریال صحیح. تنها نسخهٔ معتبر مبلغ قابل پرداخت.',
       icon: 'IconCurrencyIranianRial',
       isNullable: true,
     },

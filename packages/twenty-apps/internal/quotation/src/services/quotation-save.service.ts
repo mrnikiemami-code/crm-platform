@@ -84,6 +84,7 @@ export const buildDraftQuotationWritePayload = (
       documentDiscountInputExact: plan.documentDiscountInputExact,
       netExact: plan.totalsExact.netExact,
       taxExact: plan.totalsExact.taxExact,
+      roundingExact: plan.totalsExact.roundingExact,
       totalExact: plan.totalExact,
       version: plan.version,
     },
