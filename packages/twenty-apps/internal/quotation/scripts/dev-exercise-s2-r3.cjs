@@ -75,6 +75,12 @@ const main = async () => {
   assert('create-line-on-draft', !!line.data?.createQuotationLine?.id, line);
   const lineId = line.data.createQuotationLine.id;
 
+  // Line mutations atomically bump the parent quotation version.
+  const afterLine = await gql(
+    `query { quotation(filter: { id: { eq: "${quotationId}" } }) { id version } }`,
+  );
+  version = afterLine.data.quotation.version;
+
   const pending = await gql(`mutation {
     updateQuotation(id: "${quotationId}", data: { status: PENDING_INTERNAL_APPROVAL, version: ${version} }) { id status version }
   }`);

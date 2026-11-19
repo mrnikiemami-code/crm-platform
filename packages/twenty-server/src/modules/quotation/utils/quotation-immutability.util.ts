@@ -124,6 +124,45 @@ export const isLegalQuotationTransition = (
   to: string,
 ): boolean => findQuotationTransition(from, to) !== undefined;
 
+export const parseQuotationVersion = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
+    return value;
+  }
+
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+
+  return null;
+};
+
+export const getQuotationUpdateContentKeys = (
+  patch: Record<string, unknown>,
+): string[] =>
+  Object.keys(patch).filter(
+    (key) =>
+      patch[key] !== undefined &&
+      key !== 'version' &&
+      !QUOTATION_LIFECYCLE_FIELD_NAMES.has(key) &&
+      !QUOTATION_SYSTEM_FIELD_NAMES.has(key),
+  );
+
+export const quotationUpdateTouchesProtectedState = ({
+  currentStatus,
+  patch,
+}: {
+  currentStatus: string;
+  patch: Record<string, unknown>;
+}): boolean => {
+  const contentKeys = getQuotationUpdateContentKeys(patch);
+  const nextStatus = patch.status;
+
+  return (
+    contentKeys.length > 0 ||
+    (typeof nextStatus === 'string' && nextStatus !== currentStatus)
+  );
+};
+
 export const evaluateQuotationUpdate = ({
   currentStatus,
   currentVersion,
@@ -143,15 +182,7 @@ export const evaluateQuotationUpdate = ({
     };
   }
 
-  const patchKeys = Object.keys(patch).filter(
-    (key) => patch[key] !== undefined,
-  );
-  const contentKeys = patchKeys.filter(
-    (key) =>
-      key !== 'version' &&
-      !QUOTATION_LIFECYCLE_FIELD_NAMES.has(key) &&
-      !QUOTATION_SYSTEM_FIELD_NAMES.has(key),
-  );
+  const contentKeys = getQuotationUpdateContentKeys(patch);
 
   if (contentKeys.length > 0 && !canEditQuotationContent(currentStatus)) {
     return {
@@ -172,12 +203,16 @@ export const evaluateQuotationUpdate = ({
 
   // Optimistic concurrency: content or status writers must prove they saw the
   // current version, otherwise a parallel freeze/send can be overwritten.
-  const touchesProtectedState =
-    contentKeys.length > 0 ||
-    (typeof patch.status === 'string' && patch.status !== currentStatus);
+  // Fail closed when the stored version is unreadable — never skip the lock.
+  const touchesProtectedState = quotationUpdateTouchesProtectedState({
+    currentStatus,
+    patch,
+  });
 
-  if (touchesProtectedState && currentVersion !== null) {
-    if (typeof patch.version !== 'number') {
+  if (touchesProtectedState) {
+    const patchVersion = parseQuotationVersion(patch.version);
+
+    if (patchVersion === null) {
       return {
         ok: false,
         code: 'QUOTATION_VERSION_REQUIRED',
@@ -186,7 +221,7 @@ export const evaluateQuotationUpdate = ({
       };
     }
 
-    if (patch.version !== currentVersion) {
+    if (currentVersion === null || patchVersion !== currentVersion) {
       return {
         ok: false,
         code: 'QUOTATION_VERSION_CONFLICT',

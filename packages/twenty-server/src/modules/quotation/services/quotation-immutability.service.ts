@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { isDefined } from 'twenty-shared/utils';
 
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
@@ -9,10 +10,13 @@ import {
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import {
+  QUOTATION_CONTENT_MUTABLE_STATUSES,
   evaluateQuotationDelete,
   evaluateQuotationLineMutation,
   evaluateQuotationLineReassignment,
   evaluateQuotationUpdate,
+  parseQuotationVersion,
+  quotationUpdateTouchesProtectedState,
   type QuotationImmutabilityDecision,
   type QuotationPermission,
 } from 'src/modules/quotation/utils/quotation-immutability.util';
@@ -57,6 +61,38 @@ export class QuotationImmutabilityService {
         heldPermissions,
       }),
     );
+
+    if (
+      !quotationUpdateTouchesProtectedState({
+        currentStatus: row.status,
+        patch,
+      })
+    ) {
+      return;
+    }
+
+    const observedVersion = parseQuotationVersion(patch.version);
+
+    if (observedVersion === null || row.version === null) {
+      throw new QuotationQueryValidationException(
+        'QUOTATION_VERSION_REQUIRED: version is required when changing a quotation; reload and retry',
+        QuotationQueryValidationExceptionCode.FORBIDDEN,
+      );
+    }
+
+    const nextStatus =
+      typeof patch.status === 'string' && patch.status !== row.status
+        ? patch.status
+        : undefined;
+
+    await this.claimQuotationVersion({
+      authContext,
+      quotationId,
+      observedVersion,
+      nextVersion: observedVersion + 1,
+      expectedStatus: row.status,
+      nextStatus,
+    });
   }
 
   async assertQuotationDeleteAllowed({
@@ -97,6 +133,24 @@ export class QuotationImmutabilityService {
         heldPermissions,
       }),
     );
+
+    if (row.version === null) {
+      throw new QuotationQueryValidationException(
+        'QUOTATION_VERSION_REQUIRED: parent quotation version is unreadable; reload and retry',
+        QuotationQueryValidationExceptionCode.FORBIDDEN,
+      );
+    }
+
+    // Atomic parent claim: freezes racing status transitions that leave mutable
+    // statuses, and serializes concurrent line writers on the same version.
+    await this.claimQuotationVersion({
+      authContext,
+      quotationId,
+      observedVersion: row.version,
+      nextVersion: row.version + 1,
+      expectedStatus: row.status,
+      requireMutableStatus: true,
+    });
   }
 
   async assertQuotationLineMutationAllowedByLineId({
@@ -121,6 +175,69 @@ export class QuotationImmutabilityService {
       authContext,
       quotationId: line.quotationId,
     });
+  }
+
+  private async claimQuotationVersion({
+    authContext,
+    quotationId,
+    observedVersion,
+    nextVersion,
+    expectedStatus,
+    nextStatus,
+    requireMutableStatus = false,
+  }: {
+    authContext: WorkspaceAuthContext;
+    quotationId: string;
+    observedVersion: number;
+    nextVersion: number;
+    expectedStatus: string;
+    nextStatus?: string;
+    requireMutableStatus?: boolean;
+  }): Promise<void> {
+    await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
+      const repository = this.workspaceOrmManager.getRepository<{
+        id: string;
+        status: string;
+        version: number;
+      }>('quotation', { shouldBypassPermissionChecks: true });
+
+      const where = requireMutableStatus
+        ? {
+            id: quotationId,
+            version: observedVersion,
+            status: In([...QUOTATION_CONTENT_MUTABLE_STATUSES]),
+          }
+        : {
+            id: quotationId,
+            version: observedVersion,
+            status: expectedStatus,
+          };
+
+      const setColumns: Record<string, unknown> = {
+        version: nextVersion,
+      };
+
+      if (isDefined(nextStatus)) {
+        setColumns.status = nextStatus;
+      }
+
+      const result = await repository
+        .createQueryBuilder()
+        .where(where)
+        .update()
+        .set(setColumns)
+        .returning(['id', 'version', 'status'])
+        .execute();
+
+      if (result.generatedMaps.length === 0) {
+        throw new QuotationQueryValidationException(
+          requireMutableStatus
+            ? 'QUOTATION_LINES_FROZEN: quotation changed concurrently or is no longer editable; reload and retry'
+            : 'QUOTATION_VERSION_CONFLICT: quotation was changed concurrently; reload the current version and retry',
+          QuotationQueryValidationExceptionCode.FORBIDDEN,
+        );
+      }
+    }, authContext);
   }
 
   private async readQuotationRow(
@@ -148,7 +265,7 @@ export class QuotationImmutabilityService {
       return {
         id: row.id,
         status: row.status,
-        version: typeof row.version === 'number' ? row.version : null,
+        version: parseQuotationVersion(row.version),
       };
     }, authContext);
   }

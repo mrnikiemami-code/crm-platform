@@ -129,6 +129,17 @@ describe('quotation-immutability.util', () => {
     if (!conflict.ok) {
       expect(conflict.code).toBe('QUOTATION_VERSION_CONFLICT');
     }
+
+    const unreadStoredVersion = evaluateQuotationUpdate({
+      currentStatus: 'DRAFT',
+      currentVersion: null,
+      patch: { name: 'x', version: 1 },
+      heldPermissions: EDITOR,
+    });
+    expect(unreadStoredVersion.ok).toBe(false);
+    if (!unreadStoredVersion.ok) {
+      expect(unreadStoredVersion.code).toBe('QUOTATION_VERSION_CONFLICT');
+    }
   });
 
   it('blocks moving a line between quotations', () => {
