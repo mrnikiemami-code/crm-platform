@@ -1,22 +1,26 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-20 (S3-R4)
+**Updated:** 2026-11-20 (S3-R4-HF1)
 **Repository:** mrnikami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129 S3-R4 PASS / Bale Direct Sending (2026-11-20; latest)
+## CURRENT CHECKPOINT — CRM-129 S3-R4-HF1 PASS / Quotation Form Crash Fix (2026-11-20; latest)
 
-**Read first:** [CRM-129-S3-R4-PROOF.md](./CRM-129-S3-R4-PROOF.md).
+**Read first:** [CRM-129-S3-R4-HF1-PROOF.md](./CRM-129-S3-R4-HF1-PROOF.md).
 
-- **Branch / base:** `feat/crm-129-quotation` from `03d6690d58b0a97ff83e772c42925152b9eb2961`.
-- **GitHub SHA:** `ddfa3ccb1a51e533481d8c8b8e6a71ffbe7a44aa`.
-- **Delivery:** Communication `bale` provider + `BALE` channel + secret `BALE_BOT_TOKEN`; Send/Persist via `send-outbound-message`; quotation share BALE → PROVIDER path (numeric `chat_id`, `quotation.send`, duplicate refuse); `PROVIDER_SENT` only on real API success. Communication **0.1.78**, Quotation **0.1.11**.
-- **Dev:** `S3_R4_BALE_CONTRACT_PASS` with **`LIVE_UNVERIFIED`** (no authorized bot token/chat env). Missing/invalid chat refused; placeholder send → honest `PROVIDER_FAILED`.
-- **Continue at:** architect gate — supply authorized test bot + chat to flip live verification; other messengers still manual.
+- **Branch / base:** `feat/crm-129-quotation` from `a4e29f9a78fcbcf6019b2174c2b8d77a1fbe17a6`.
+- **GitHub SHA:** `55eed5d8bc` (docs commit may follow).
+- **Delivery:** Guard FC caret restore (`setSelectionRange` no-op when missing); sidebar nav «همهٔ پیش‌فاکتورها»; prefer application GraphQL token for catalog/quotation LF. Quotation **0.1.13** on `dev-crm129`.
+- **Dev:** Form opens from Persons without crash; Persian money + 2-line draft + 10% discount saved (`2dd13611-…`); list reachable; math UI↔DB match. Vitest **240** PASS.
+- **Continue at:** architect gate — STOP_FOR_ARCHITECT.
 - **Operational bans:** no `:6080`, no bulk send, no SMS blast, no main-worker restart, no release-branch change, no screenshot loop.
 - **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS CHECKPOINT — CRM-129 S3-R4 PASS / Bale Direct Sending (2026-11-20; historical)
+
+**Read first:** [CRM-129-S3-R4-PROOF.md](./CRM-129-S3-R4-PROOF.md). Feature SHA `ddfa3ccb1a`; docs HEAD was `a4e29f9a78`. `LIVE_UNVERIFIED` Bale contract.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S3-R3 PASS / Quotation Multi-Channel Sharing (2026-11-20; historical)
 
