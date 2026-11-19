@@ -105,15 +105,26 @@ export const formatMoneyForDisplay = ({
   irrMicros,
   unit,
   formatExact,
+  formatPeople,
 }: {
   irrMicros: bigint;
   unit: MoneyUnit;
   // Injected so this module never depends on the formatting helpers, which keeps the
   // conversion rules testable on their own.
   formatExact: (micros: bigint) => string;
+  // Optional people-facing formatter (Persian digits / grouping). Defaults to exact.
+  formatPeople?: (exact: string) => string;
 }): Result<string> => {
+  const render = (micros: bigint, label: string): string => {
+    const exact = formatExact(micros);
+    const figure =
+      formatPeople === undefined ? exact : formatPeople(exact);
+
+    return `${figure} ${label}`;
+  };
+
   if (unit === 'IRR') {
-    return accepted(`${formatExact(irrMicros)} ${MONEY_UNIT_LABELS.IRR}`);
+    return accepted(render(irrMicros, MONEY_UNIT_LABELS.IRR));
   }
 
   const tomanMicros = irrMicrosToTomanMicros(irrMicros);
@@ -122,7 +133,5 @@ export const formatMoneyForDisplay = ({
     return tomanMicros;
   }
 
-  return accepted(
-    `${formatExact(tomanMicros.value)} ${MONEY_UNIT_LABELS.TOMAN}`,
-  );
+  return accepted(render(tomanMicros.value, MONEY_UNIT_LABELS.TOMAN));
 };

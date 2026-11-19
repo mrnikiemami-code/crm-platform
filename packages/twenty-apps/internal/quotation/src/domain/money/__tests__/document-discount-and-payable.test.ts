@@ -234,7 +234,7 @@ describe('finalizeLinesWithDocumentDiscount', () => {
 
   it('records a positive rounding adjustment without mutating tax', () => {
     // 1 micros net * 9% bp → tax = 0 (floor via basis points), but use a net
-    // that leaves a fractional payable needing half-up.
+    // that leaves a fractional payable needing whole-rial floor.
     const line = unwrap(
       computeLinePreTaxAmounts({
         quantityScaled: 1_000_000n,
@@ -264,8 +264,7 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
   });
 
-  it('records a negative rounding adjustment when half-up rounds down', () => {
-    // Build a payable whose fractional part is strictly below 0.5 rial.
+  it('records a negative rounding adjustment when floor drops a fraction', () => {
     const line = unwrap(
       computeLinePreTaxAmounts({
         quantityScaled: 1_000_000n,
@@ -283,13 +282,30 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     );
 
     expect(finalized.totals.taxMicros).toBe(0n);
-    expect(finalized.totals.roundingMicros < 0n).toBe(true);
-    expect(finalized.totals.totalMicros).toBe(
-      finalized.totals.netMicros +
-        finalized.totals.taxMicros +
-        finalized.totals.roundingMicros,
-    );
+    expect(finalized.totals.totalMicros).toBe(1_000_000n);
+    expect(finalized.totals.roundingMicros).toBe(-499_999n);
     expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
+  });
+
+  it('floors a payable above .5 rial instead of rounding half-up', () => {
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 1_900_000n,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'NONE' },
+        taxRateBasisPoints: 0n,
+      }),
+    );
+
+    expect(finalized.totals.totalMicros).toBe(1_000_000n);
+    expect(finalized.totals.roundingMicros).toBe(-900_000n);
   });
 
   it('keeps tax at zero when the rate is zero', () => {
@@ -342,10 +358,14 @@ describe('finalizeLinesWithDocumentDiscount', () => {
 });
 
 describe('whole rial payable', () => {
-  it('rounds half-up to the nearest whole rial', () => {
-    expect(roundMicrosToWholeRial(1_500_000n)).toBe(2_000_000n);
-    expect(roundMicrosToWholeRial(1_499_999n)).toBe(1_000_000n);
-    expect(roundMicrosToWholeRial(2_000_000n)).toBe(2_000_000n);
+  it('floors toward −∞ to a whole rial', () => {
+    expect(roundMicrosToWholeRial(1_900_000n)).toBe(1_000_000n);
+    expect(roundMicrosToWholeRial(1_100_000n)).toBe(1_000_000n);
+    expect(roundMicrosToWholeRial(1_000_000n)).toBe(1_000_000n);
+    expect(roundMicrosToWholeRial(0n)).toBe(0n);
+    // Explicit negative contract (not used by quotations today).
+    expect(roundMicrosToWholeRial(-1_100_000n)).toBe(-2_000_000n);
+    expect(roundMicrosToWholeRial(-2_000_000n)).toBe(-2_000_000n);
   });
 });
 

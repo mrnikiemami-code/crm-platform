@@ -6,14 +6,22 @@
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT QUOTATION UAT FEEDBACK — CRM-129 S2-R9 (2026-11-19; REPORT ONLY)
+## CURRENT CHECKPOINT — CRM-129 S2-R10 PASS / Professional Workspace & Floor Payable (2026-11-19; latest)
 
-**Status:** User-supplied authenticated UI screenshots reviewed against source. S2-R9 source baseline `2ce697a7796964dcf0b09b9aa5dfd69f4465c71b` on `feat/crm-129-quotation`; R9 catalog picker functionally accepted, but visual/money presentation feedback is OPEN. **No quotation source, Dev environment, production or rounding implementation changed by this documentation checkpoint.**
+**Read first:** [CRM-129-S2-R10-PROOF.md](./CRM-129-S2-R10-PROOF.md).
 
-- The operator requests a more visible primary-colored **«افزودن ردیف»** button and alternating subtle backgrounds for odd/even line cards. Existing layout is a constrained side panel; **full-page mode is a question to evaluate, not an authorized change.** Assess Twenty's existing full-page/record UI capabilities, usability tradeoffs and URL/navigation before implementation.
-- Display formatting: do not show `100003.000000 تومان`, `9000.270000 تومان` or `109003.300000 تومان` with six trailing zeros. Suppress insignificant zeroes, use Persian digit grouping and an unambiguous visible unit. Preserve exact bigint/micros storage. Do **not** conflate fractional toman with fractional rial: `109003.3 تومان = 1090033 ریال` is already whole rial.
-- User explicitly requests **round final payable down to a whole rial**, replacing the current `roundMicrosToWholeRial` half-up policy. This is a **requested business-contract change, NOT YET IMPLEMENTED or finance-signed-off**. Decide precisely floor vs truncation for negative adjustments and per-line vs document rounding; test positive fractional rial, negative rounding adjustment, snapshot/PDF/preview and tax purity. Keep `roundingExact` independent from tax; do not round intermediate quantities/unit prices or discard exact source amounts. Example raw 1,090,032.7 IRR -> payable 1,090,032 IRR; do not silently round to the nearest or floor toman to 10 IRR.
-- No request to implement UI or finance changes yet: user said **«فقط گزارش بده»**. Next action requires a bounded approved task. S3 remains unapproved. Preserve Dev `:3001/:3002` and intranet `:6080` isolation, untouched non-quotation local files, and existing historical checkpoints.
+- **Branch / base:** `feat/crm-129-quotation` from S2-R9 checkpoint `ae65e83c29`.
+- **Delivery:** primary «افزودن ردیف», alternating line cards, sticky financial summary; people-facing Persian money display (trim zeros / grouping); payable **floor toward −∞ to whole IRR** with independent `roundingExact`; app **0.1.6** on `dev-crm129`.
+- **Full page:** **DEFERRED** — FC lacks host customer picker without Core changes; side panel remains create UX; shared draft/save/totals retained.
+- **Dev evidence:** Vitest 217; server quotation Jest 13; `S2_R10_FLOOR_DISPLAY_PASS`; R8-R1 / R9 / R6 regressions PASS; authenticated browser summary shows `۱۰۰٬۰۰۳ تومان` / `۱۰۹٬۰۰۳٫۲ تومان` without six zeros.
+- **Negative floor:** defined toward −∞; credit-note documents not expanded.
+- **Continue at:** architect gate — **S3** not authorized here.
+- **Operational bans:** no `:6080`, no live accounting, no SMS, no main-worker restart, no release-branch change, no screenshot loop.
+- **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS — CRM-129 S2-R9 UAT FEEDBACK (2026-11-19; historical REPORT then implemented in R10)
+
+Historical report-only checkpoint on baseline `2ce697a779` / docs `ae65e83c29`: operator asked for primary add-row, alternating cards, people money display, and floor payable. Implemented and proven in **S2-R10** above.
 
 ## First actions in a new chat
 1. Fetch **this file from the working release branch**, then fetch the detailed historical file on the docs branch. Confirm actual remote HEAD and any newer reports before acting.
@@ -256,16 +264,12 @@ Directly inspected this recovery file and root package.json on the remote releas
 - **NEXT = CRM-129-S1-R1**, narrow contract corrections and Asan mapping fixtures. Local worker must fetch and safely align newer remote docs (including Asan and this status) without rewriting local S1 commit. Compute fresh divergence; no Push.
 - **STOP_FOR_ARCHITECT** after R1. S2 not authorized. No database writes, app install, live accounting writes, :6080 changes, service restart, deployment or automatic branch push.
 
-## CURRENT CHECKPOINT — CRM-129 S2-R9 PASS / Professional Form & Catalog Picker (2026-11-19; latest)
+## PREVIOUS CHECKPOINT — CRM-129 S2-R9 PASS / Professional Form & Catalog Picker (2026-11-19; historical)
 
-**Read first:** [CRM-129-S2-R9-PROOF.md](./CRM-129-S2-R9-PROOF.md), [CRM-129-S2-R8-R1-PROOF.md](./CRM-129-S2-R8-R1-PROOF.md), [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md).
+**Read first:** [CRM-129-S2-R9-PROOF.md](./CRM-129-S2-R9-PROOF.md). Superseded as “latest” by S2-R10 above.
 
 - **Branch / base:** `feat/crm-129-quotation` from S2-R8-R1 `d3eeff7a6d`.
-- **Delivery:** searchable catalog combobox (server cursor pages of 100, name/sku search, debounce + stale-drop); autofill from CatalogItem + default IRR Price snapshot; live money-domain totals with per-line errors; redesigned RTL draft form; app **0.1.5** on `dev-crm129`.
-- **Dev evidence:** `S2_R9_CATALOG_PICKER_PASS` (105 seeded, page1=100/page2=5, save+itemId+PDF+SENT); authenticated browser opens form and loads catalog options with prices; R6 regression PASS; vitest **214**. Intranet `:6080` untouched.
-- **Tax policy status (temporary):** registry still **only `IR_VAT_9`**. Discount→tax order still provisional (D5).
-- **Continue at:** architect gate — **S3** not authorized here.
-- **Operational bans:** no `:6080`, no live accounting, no SMS, no main-worker restart, no release-branch change, no screenshot loop.
+- Catalog combobox + draft form; app was `0.1.5`.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S2-R8-R1 PASS / Allocation & Rounding Correctness (2026-11-19; historical)
 

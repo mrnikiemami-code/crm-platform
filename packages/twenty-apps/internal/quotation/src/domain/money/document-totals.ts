@@ -24,7 +24,7 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 //   2. document discount on sum(line nets), allocated with capacity-safe
 //      largest-remainder (see document-discount.ts)
 //   3. tax on (line net − document share) from the tax policy — never mutated
-//   4. payable = round half-up(sum(line totals)) to whole IRR
+//   4. payable = floor(sum(line totals)) to whole IRR (toward −∞)
 //      roundingMicros = payable − (net + tax)  // independent field, not tax
 
 export type QuotationDocumentTotals = {

@@ -1,4 +1,3 @@
-import { divideRoundHalfUp } from 'src/domain/money/arithmetic';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // ONE authoritative monetary representation: an integer number of micros held in a
@@ -19,11 +18,21 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // exactly as the numbers order, so a text index still sorts correctly.
 export const MICROS_PER_UNIT = 1_000_000n;
 
-// Payable amount on a quotation must be a whole rial: fractional micros are kept
-// through line math, then the document total is rounded half-up to the nearest
-// whole IRR so the customer-facing figure has no decimal rial.
-export const roundMicrosToWholeRial = (micros: bigint): bigint =>
-  divideRoundHalfUp(micros, MICROS_PER_UNIT) * MICROS_PER_UNIT;
+// Document payable: floor toward −∞ to a whole IRR (commercial R10). Line math and
+// tax stay exact; only the final payable uses this. Quotation totals are non-negative
+// today; negative floor is defined explicitly so credit notes cannot silently truncate
+// toward zero if introduced later.
+export const roundMicrosToWholeRial = (micros: bigint): bigint => {
+  if (micros >= 0n) {
+    return (micros / MICROS_PER_UNIT) * MICROS_PER_UNIT;
+  }
+
+  if (micros % MICROS_PER_UNIT === 0n) {
+    return micros;
+  }
+
+  return (micros / MICROS_PER_UNIT - 1n) * MICROS_PER_UNIT;
+};
 
 export const isWholeRialMicros = (micros: bigint): boolean =>
   micros % MICROS_PER_UNIT === 0n;

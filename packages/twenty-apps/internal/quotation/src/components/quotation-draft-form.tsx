@@ -115,6 +115,11 @@ const toDraftLineInput = (
   ),
 });
 
+const lineCardStyle = (index: number): CSSProperties => ({
+  ...styles.lineCard,
+  background: index % 2 === 0 ? '#f7f8fa' : '#eef3fb',
+});
+
 export const QuotationDraftForm = () => {
   const sourceObject = useFrontComponentExecutionContext(
     selectObjectNameSingular,
@@ -146,6 +151,7 @@ export const QuotationDraftForm = () => {
   const [lines, setLines] = useState<LineDraft[]>([newLine()]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [addHovered, setAddHovered] = useState(false);
 
   const preview = useMemo(() => {
     const draftLines = lines.map((line) => toDraftLineInput(line, moneyUnit));
@@ -285,15 +291,20 @@ export const QuotationDraftForm = () => {
         ? 'مشتری: شخص انتخاب‌شده'
         : 'مشتری: شرکت انتخاب‌شده';
 
+  const canSave = preview.canSave && !saving;
+  const addButtonStyle: CSSProperties = {
+    ...styles.addLineButton,
+    background: addHovered ? '#1d4ed8' : '#2563eb',
+  };
+
   return (
     <div style={styles.root} dir="rtl">
       <div style={styles.scrollBody}>
         <header style={styles.header}>
           <h2 style={styles.title}>پیش‌فاکتور جدید</h2>
           <p style={styles.hint}>
-            کالا و خدمت را از کاتالوگ انتخاب کنید. قیمت واحد به‌صورت snapshot در
-            همین پیش‌فاکتور ذخیره می‌شود و تغییر بعدی کاتالوگ آن را عوض نمی‌کند.
-            مبلغ نهایی به ریال صحیح گرد می‌شود.
+            کالا و خدمت را از کاتالوگ انتخاب کنید. مبلغ نهایی به پایین‌ترین ریال
+            صحیح گرد می‌شود.
           </p>
         </header>
 
@@ -351,7 +362,9 @@ export const QuotationDraftForm = () => {
             <h3 style={styles.sectionTitle}>ردیف‌های کالا و خدمت</h3>
             <button
               type="button"
-              style={styles.secondaryButton}
+              style={addButtonStyle}
+              onMouseEnter={() => setAddHovered(true)}
+              onMouseLeave={() => setAddHovered(false)}
               onClick={() => setLines((current) => [...current, newLine()])}
             >
               افزودن ردیف
@@ -362,16 +375,16 @@ export const QuotationDraftForm = () => {
             const linePreview = preview.linePreviews[index];
 
             return (
-              <div key={line.clientLineId} style={styles.lineCard}>
+              <div key={line.clientLineId} style={lineCardStyle(index)}>
                 <div style={styles.lineHeader}>
-                  <strong>ردیف {index + 1}</strong>
+                  <strong style={styles.lineTitle}>ردیف {index + 1}</strong>
                   {line.sku ? (
-                    <span style={styles.badge}>کد {line.sku}</span>
+                    <span style={styles.badge}>{line.sku}</span>
                   ) : null}
                 </div>
 
-                <label style={styles.label}>
-                  کالا / خدمت
+                <label style={styles.fieldLabel}>
+                  عنوان کالا / خدمت
                   <CatalogItemCombobox
                     moneyUnit={moneyUnit}
                     selectedLabel={line.name}
@@ -383,9 +396,7 @@ export const QuotationDraftForm = () => {
 
                 {line.catalogItemId ? (
                   <p style={styles.meta}>
-                    از کاتالوگ ·{' '}
-                    {line.kind === 'SERVICE' ? 'خدمت' : 'کالا'} · واحد{' '}
-                    {line.unit}
+                    {line.kind === 'SERVICE' ? 'خدمت' : 'کالا'} · {line.unit}
                   </p>
                 ) : null}
 
@@ -394,10 +405,10 @@ export const QuotationDraftForm = () => {
                 ) : null}
 
                 <div style={styles.row}>
-                  <label style={styles.label}>
-                    مقدار (تا ۶ رقم اعشار)
+                  <label style={styles.fieldLabel}>
+                    تعداد
                     <input
-                      style={styles.input}
+                      style={styles.fieldInput}
                       value={line.quantityText}
                       onChange={(event) =>
                         updateLine(line.clientLineId, {
@@ -406,10 +417,10 @@ export const QuotationDraftForm = () => {
                       }
                     />
                   </label>
-                  <label style={styles.label}>
-                    قیمت واحد ({moneyUnit === 'TOMAN' ? 'تومان' : 'ریال'})
+                  <label style={styles.fieldLabel}>
+                    قیمت واحد
                     <input
-                      style={styles.input}
+                      style={styles.fieldInput}
                       value={line.unitPriceText}
                       onChange={(event) =>
                         updateLine(line.clientLineId, {
@@ -422,10 +433,10 @@ export const QuotationDraftForm = () => {
                 </div>
 
                 <div style={styles.row}>
-                  <label style={styles.label}>
-                    تخفیف ردیف
+                  <label style={styles.fieldLabel}>
+                    تخفیف
                     <select
-                      style={styles.input}
+                      style={styles.fieldInput}
                       value={line.discountKind}
                       onChange={(event) =>
                         updateLine(line.clientLineId, {
@@ -435,14 +446,14 @@ export const QuotationDraftForm = () => {
                     >
                       <option value="NONE">بدون تخفیف</option>
                       <option value="RATE">درصدی</option>
-                      <option value="AMOUNT">مبلغ ثابت</option>
+                      <option value="AMOUNT">مبلغی</option>
                     </select>
                   </label>
                   {line.discountKind === 'RATE' ? (
-                    <label style={styles.label}>
+                    <label style={styles.fieldLabel}>
                       درصد تخفیف
                       <input
-                        style={styles.input}
+                        style={styles.fieldInput}
                         value={line.discountPercentText}
                         onChange={(event) =>
                           updateLine(line.clientLineId, {
@@ -453,10 +464,10 @@ export const QuotationDraftForm = () => {
                     </label>
                   ) : null}
                   {line.discountKind === 'AMOUNT' ? (
-                    <label style={styles.label}>
+                    <label style={styles.fieldLabel}>
                       مبلغ تخفیف
                       <input
-                        style={styles.input}
+                        style={styles.fieldInput}
                         value={line.discountAmountText}
                         onChange={(event) =>
                           updateLine(line.clientLineId, {
@@ -506,7 +517,7 @@ export const QuotationDraftForm = () => {
               >
                 <option value="NONE">بدون تخفیف</option>
                 <option value="RATE">درصدی</option>
-                <option value="AMOUNT">مبلغ ثابت</option>
+                <option value="AMOUNT">مبلغی</option>
               </select>
             </label>
             {documentDiscountKind === 'RATE' ? (
@@ -536,6 +547,10 @@ export const QuotationDraftForm = () => {
           </div>
         </section>
 
+        {error ? <p style={styles.error}>{error}</p> : null}
+      </div>
+
+      <div style={styles.stickyFooter}>
         <section style={styles.totalsBox}>
           <h3 style={styles.sectionTitle}>خلاصه مالی</h3>
           {summaryPlan ? (
@@ -581,28 +596,27 @@ export const QuotationDraftForm = () => {
           )}
         </section>
 
-        {error ? <p style={styles.error}>{error}</p> : null}
-      </div>
-
-      <div style={styles.actions}>
-        <button
-          type="button"
-          style={styles.secondaryButton}
-          onClick={closeSidePanel}
-        >
-          بستن
-        </button>
-        <button
-          type="button"
-          style={{
-            ...styles.primaryButton,
-            opacity: preview.canSave && !saving ? 1 : 0.55,
-          }}
-          disabled={!preview.canSave || saving}
-          onClick={() => void onSave()}
-        >
-          {saving ? 'در حال ذخیره…' : 'ذخیره پیش‌نویس'}
-        </button>
+        <div style={styles.actions}>
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={closeSidePanel}
+          >
+            بستن
+          </button>
+          <button
+            type="button"
+            style={{
+              ...styles.primaryButton,
+              opacity: canSave ? 1 : 0.55,
+              cursor: canSave ? 'pointer' : 'not-allowed',
+            }}
+            disabled={!canSave}
+            onClick={() => void onSave()}
+          >
+            {saving ? 'در حال ذخیره…' : 'ذخیره پیش‌نویس'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -617,6 +631,7 @@ const styles: Record<string, CSSProperties> = {
     minWidth: 0,
     fontFamily: 'inherit',
     background: '#fff',
+    color: '#1a1a1a',
   },
   scrollBody: {
     flex: 1,
@@ -652,6 +667,16 @@ const styles: Record<string, CSSProperties> = {
     flex: 1,
     minWidth: 0,
   },
+  fieldLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#222',
+    flex: 1,
+    minWidth: 0,
+  },
   input: {
     width: '100%',
     boxSizing: 'border-box',
@@ -661,16 +686,26 @@ const styles: Record<string, CSSProperties> = {
     fontSize: 14,
     background: '#fff',
   },
+  fieldInput: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid #c5cdd8',
+    fontSize: 15,
+    fontWeight: 500,
+    background: '#fff',
+    color: '#111',
+  },
   row: { display: 'flex', gap: 8, minWidth: 0 },
   meta: { margin: 0, fontSize: 11, color: '#777', lineHeight: 1.5 },
   lineCard: {
-    border: '1px solid #e8e8e8',
+    border: '1px solid #e2e8f0',
     borderRadius: 10,
     padding: 12,
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-    background: '#fafafa',
+    gap: 10,
     minWidth: 0,
   },
   lineHeader: {
@@ -680,23 +715,28 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     fontSize: 13,
   },
+  lineTitle: { fontSize: 13, fontWeight: 700 },
   badge: {
     fontSize: 11,
-    color: '#555',
-    background: '#eee',
-    borderRadius: 999,
+    color: '#475569',
+    background: '#e2e8f0',
+    borderRadius: 6,
     padding: '2px 8px',
   },
   warning: { margin: 0, color: '#9a6700', fontSize: 12, lineHeight: 1.5 },
   lineError: { margin: 0, color: '#b42318', fontSize: 12 },
+  stickyFooter: {
+    flexShrink: 0,
+    borderTop: '1px solid #e5e7eb',
+    background: '#fff',
+    boxShadow: '0 -6px 16px rgba(15, 23, 42, 0.04)',
+  },
   totalsBox: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 8,
-    border: '1px solid #e6e6e6',
-    borderRadius: 12,
-    padding: 12,
-    background: '#fcfcfc',
+    gap: 6,
+    padding: '12px 16px 4px',
+    background: '#fafbfc',
   },
   totalsRow: {
     display: 'flex',
@@ -709,8 +749,8 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     gap: 12,
-    marginTop: 4,
-    paddingTop: 10,
+    marginTop: 2,
+    paddingTop: 8,
     borderTop: '1px solid #e0e0e0',
     fontSize: 15,
     fontWeight: 700,
@@ -720,10 +760,8 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     justifyContent: 'flex-end',
     gap: 8,
-    padding: 12,
-    borderTop: '1px solid #eee',
+    padding: '10px 16px 12px',
     background: '#fff',
-    flexShrink: 0,
   },
   primaryButton: {
     background: '#1a1a1a',
@@ -742,6 +780,16 @@ const styles: Record<string, CSSProperties> = {
     padding: '8px 12px',
     cursor: 'pointer',
     fontSize: 13,
+  },
+  addLineButton: {
+    background: '#2563eb',
+    color: '#fff',
+    border: 0,
+    borderRadius: 8,
+    padding: '8px 14px',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 650,
   },
   linkButton: {
     alignSelf: 'flex-start',

@@ -58,7 +58,8 @@ describe('buildDraftQuotationPlan', () => {
     expect(
       plan.value.displayTotal.includes('تومان') ||
         plan.value.displayTotal.includes('ریال'),
-    ).toBe(true);
+      ).toBe(true);
+    expect(plan.value.displayTotal).not.toMatch(/\d\.\d{6}/);
   });
 
   it('applies document discount and keeps payable as whole rial', () => {

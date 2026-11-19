@@ -14,6 +14,7 @@ import {
   type LineDiscount,
   type QuotationLineAmounts,
 } from 'src/domain/money/line';
+import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
 import { formatMicrosExact } from 'src/domain/money/micros';
 import {
   formatQuantityExact,
@@ -33,11 +34,11 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // amounts. Pure: no GraphQL, no install. The front component and the save route both
 // call this so the totals on screen and the totals on disk cannot disagree.
 //
-// FINANCIAL ORDER (S2-R8, extends provisional S1):
+// FINANCIAL ORDER (S2-R8/R10, extends provisional S1):
 //   line: gross → line discount → net
-//   document: discount on sum(nets), allocated half-up by net weight (remainder on last)
+//   document: discount on sum(nets), capacity-safe Hamilton allocation
 //   tax: on (net − document share), rate from resolved tax policy (not free-typed %)
-//   payable: sum(line totals) rounded half-up to whole IRR; delta on last line tax
+//   payable: floor(sum(line totals)) to whole IRR; roundingExact = payable − (net + tax)
 
 export type DraftDiscountInput =
   | { kind: 'NONE' }
@@ -278,6 +279,7 @@ const displayAmount = (
     irrMicros: micros,
     unit,
     formatExact: formatMicrosExact,
+    formatPeople: formatExactDecimalForPeople,
   });
 
   if (display.ok) {
@@ -288,6 +290,7 @@ const displayAmount = (
     irrMicros: micros,
     unit: 'IRR',
     formatExact: formatMicrosExact,
+    formatPeople: formatExactDecimalForPeople,
   });
 };
 

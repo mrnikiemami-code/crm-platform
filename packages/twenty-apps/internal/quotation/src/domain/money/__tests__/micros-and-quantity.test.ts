@@ -216,6 +216,7 @@ describe('IRR canonical, toman at the boundary', () => {
 
     expect(inRial).toBe('1250000.000000 ریال');
     expect(inToman).toBe('125000.000000 تومان');
+    // Exact storage form remains the default when formatPeople is omitted.
     // The two strings differ by the unit as well as the figure, so neither can be
     // misread as the other.
     expect(inRial).not.toBe(inToman);

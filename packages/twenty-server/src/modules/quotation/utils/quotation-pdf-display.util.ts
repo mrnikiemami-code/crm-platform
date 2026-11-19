@@ -2,6 +2,7 @@ import { isNonEmptyString } from '@sniptt/guards';
 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const THOUSANDS_SEPARATOR = '\u066c';
+const DECIMAL_SEPARATOR = '\u066b';
 const ZERO_EXACT_AMOUNT = '0.000000';
 
 const JALALI_DATE_FORMATTER = new Intl.DateTimeFormat('en-u-ca-persian-nu-latn', {
@@ -50,12 +51,11 @@ export const formatExactAmountForDisplay = (exact: string): string => {
   const integerFormatted = formatIntegerWithThousands(
     `${negative ? '-' : ''}${match[2]}`,
   );
-  const decimal =
-    fraction.length > 0
-      ? `${integerFormatted}.${toPersianDigits(fraction)}`
-      : integerFormatted;
+  if (fraction.length === 0) {
+    return toPersianDigits(integerFormatted);
+  }
 
-  return toPersianDigits(decimal);
+  return `${toPersianDigits(integerFormatted)}${DECIMAL_SEPARATOR}${toPersianDigits(fraction)}`;
 };
 
 export const formatExactAmountWithCurrency = (
