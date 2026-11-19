@@ -16,6 +16,12 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   QUOTATION_NOT_FOUND: 'پیش‌فاکتور یافت نشد.',
   INVALID_INPUT: 'درخواست نامعتبر است.',
   AUTH_REQUIRED: 'برای این عملیات باید وارد حساب کاربری شوید.',
+  CUSTOMER_LINK_STATUS_FORBIDDEN:
+    'فقط برای پیش‌فاکتورهای آماده ارسال یا ارسال‌شده می‌توان لینک ساخت.',
+  CUSTOMER_LINK_NOT_FOUND: 'لینک مشتری یافت نشد.',
+  CUSTOMER_LINK_QUOTATION_MISMATCH: 'این لینک متعلق به این پیش‌فاکتور نیست.',
+  CUSTOMER_LINK_CREATE_FAILED: 'صدور لینک مشتری انجام نشد.',
+  API_URL_MISSING: 'آدرس عمومی سامانه برای ساخت لینک تنظیم نشده است.',
 };
 
 export const persianMessageForQuotationCode = (

@@ -10,16 +10,12 @@ import {
   useSelectedRecordIds,
 } from 'twenty-sdk/front-component';
 
-import {
-  callAppRoute,
-  CREATE_CUSTOMER_LINK_ROUTE,
-  REVOKE_CUSTOMER_LINK_ROUTE,
-} from 'src/components/quotation-api';
-
 type QuotationRouteBridge = (request: {
   action: string;
   payload?: Record<string, unknown>;
 }) => Promise<unknown>;
+
+type HostClipboard = (request: { text: string }) => Promise<unknown>;
 
 type LifecycleAction = {
   toStatus: string;
@@ -37,6 +33,7 @@ type LifecycleSnapshot = {
   contentEditable: boolean;
   contentLocked: boolean;
   isTerminal: boolean;
+  heldPermissions?: string[];
   actions: LifecycleAction[];
   sentMeansRecordOnly: true;
 };
@@ -127,18 +124,27 @@ const styles: Record<string, CSSProperties> = {
   },
 };
 
-const readQuotationBridge = (): QuotationRouteBridge | null => {
+const readHostCommunicationApi = (): {
+  callQuotationRoute: QuotationRouteBridge | null;
+  copyToClipboard: HostClipboard | null;
+} => {
   const api = (
     globalThis as unknown as {
       frontComponentHostCommunicationApi?: {
         callQuotationRoute?: QuotationRouteBridge;
+        copyToClipboard?: HostClipboard;
       };
     }
   ).frontComponentHostCommunicationApi;
 
-  return typeof api?.callQuotationRoute === 'function'
-    ? api.callQuotationRoute
-    : null;
+  return {
+    callQuotationRoute:
+      typeof api?.callQuotationRoute === 'function'
+        ? api.callQuotationRoute
+        : null,
+    copyToClipboard:
+      typeof api?.copyToClipboard === 'function' ? api.copyToClipboard : null,
+  };
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -167,9 +173,9 @@ export const QuotationLifecyclePanel = () => {
       return;
     }
 
-    const bridge = readQuotationBridge();
+    const { callQuotationRoute } = readHostCommunicationApi();
 
-    if (bridge === null) {
+    if (callQuotationRoute === null) {
       setState({
         kind: 'ERROR',
         message:
@@ -181,7 +187,7 @@ export const QuotationLifecyclePanel = () => {
     setState({ kind: 'LOADING' });
 
     const response = asRecord(
-      await bridge({
+      await callQuotationRoute({
         action: 'get-lifecycle',
         payload: { quotationId },
       }),
@@ -223,29 +229,39 @@ export const QuotationLifecyclePanel = () => {
       return;
     }
 
+    const { callQuotationRoute, copyToClipboard } = readHostCommunicationApi();
+
+    if (callQuotationRoute === null) {
+      return;
+    }
+
     busyRef.current = true;
     setBusy(true);
 
     try {
-      const response = await callAppRoute(CREATE_CUSTOMER_LINK_ROUTE, {
-        quotationId,
-        ttlHours: 168,
-      });
-      const data = response.data;
+      // Session-cookie bridge: the signed-in user is the actor, not the app token.
+      const response = asRecord(
+        await callQuotationRoute({
+          action: 'create-customer-link',
+          payload: { quotationId, ttlHours: 168 },
+        }),
+      );
 
-      if (data.success !== true) {
+      if (response?.success !== true) {
         await enqueueSnackbar({
           message:
-            typeof data.message === 'string'
-              ? data.message
+            typeof response?.message === 'string'
+              ? response.message
               : 'صدور لینک مشتری انجام نشد.',
           variant: 'error',
         });
         return;
       }
 
-      const viewUrl = typeof data.viewUrl === 'string' ? data.viewUrl : '';
-      const linkId = typeof data.linkId === 'string' ? data.linkId : '';
+      const viewUrl =
+        typeof response.viewUrl === 'string' ? response.viewUrl : '';
+      const linkId =
+        typeof response.linkId === 'string' ? response.linkId : '';
 
       if (viewUrl === '' || linkId === '') {
         await enqueueSnackbar({
@@ -258,12 +274,18 @@ export const QuotationLifecyclePanel = () => {
       setCustomerLink({
         linkId,
         viewUrl,
-        expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : '',
+        expiresAt:
+          typeof response.expiresAt === 'string' ? response.expiresAt : '',
       });
+
+      if (copyToClipboard !== null) {
+        await copyToClipboard({ text: viewUrl });
+      }
+
       await enqueueSnackbar({
         message:
-          typeof data.message === 'string'
-            ? data.message
+          typeof response.message === 'string'
+            ? response.message
             : 'لینک مشتری صادر شد.',
         variant: 'success',
       });
@@ -279,7 +301,13 @@ export const QuotationLifecyclePanel = () => {
   };
 
   const revokeIssuedCustomerLink = async () => {
-    if (busyRef.current || customerLink === null) {
+    if (busyRef.current || customerLink === null || quotationId === null) {
+      return;
+    }
+
+    const { callQuotationRoute } = readHostCommunicationApi();
+
+    if (callQuotationRoute === null) {
       return;
     }
 
@@ -287,15 +315,21 @@ export const QuotationLifecyclePanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(REVOKE_CUSTOMER_LINK_ROUTE, {
-        linkId: customerLink.linkId,
-      });
+      const response = asRecord(
+        await callQuotationRoute({
+          action: 'revoke-customer-link',
+          payload: {
+            quotationId,
+            linkId: customerLink.linkId,
+          },
+        }),
+      );
 
-      if (response.data.success !== true) {
+      if (response?.success !== true) {
         await enqueueSnackbar({
           message:
-            typeof response.data.message === 'string'
-              ? response.data.message
+            typeof response?.message === 'string'
+              ? response.message
               : 'لغو لینک مشتری انجام نشد.',
           variant: 'error',
         });
@@ -305,8 +339,8 @@ export const QuotationLifecyclePanel = () => {
       setCustomerLink(null);
       await enqueueSnackbar({
         message:
-          typeof response.data.message === 'string'
-            ? response.data.message
+          typeof response.message === 'string'
+            ? response.message
             : 'لینک مشتری لغو شد.',
         variant: 'success',
       });
@@ -326,9 +360,9 @@ export const QuotationLifecyclePanel = () => {
       return;
     }
 
-    const bridge = readQuotationBridge();
+    const { callQuotationRoute } = readHostCommunicationApi();
 
-    if (bridge === null || quotationId === null) {
+    if (callQuotationRoute === null || quotationId === null) {
       return;
     }
 
@@ -337,7 +371,7 @@ export const QuotationLifecyclePanel = () => {
 
     try {
       const response = asRecord(
-        await bridge({
+        await callQuotationRoute({
           action,
           payload: { quotationId, ...payload },
         }),
@@ -406,6 +440,9 @@ export const QuotationLifecyclePanel = () => {
 
   const { lifecycle } = state;
   const statusLabel = STATUS_LABELS[lifecycle.status] ?? lifecycle.status;
+  const canManageCustomerLink =
+    Array.isArray(lifecycle.heldPermissions) &&
+    lifecycle.heldPermissions.includes('quotation.send');
 
   return (
     <div style={styles.root} dir="rtl">
@@ -486,11 +523,18 @@ export const QuotationLifecyclePanel = () => {
         {CUSTOMER_LINK_STATUSES.has(lifecycle.status) ? (
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !canManageCustomerLink}
             style={{
               ...styles.button,
-              ...(busy ? styles.buttonDisabled : {}),
+              ...(busy || !canManageCustomerLink
+                ? styles.buttonDisabled
+                : {}),
             }}
+            title={
+              canManageCustomerLink
+                ? undefined
+                : 'نیاز به مجوز quotation.send'
+            }
             onClick={() => void issueCustomerLink()}
           >
             صدور لینک مشاهده مشتری

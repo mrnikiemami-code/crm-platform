@@ -152,7 +152,8 @@ const main = async () => {
   assert(draft.data?.success === true, `save failed: ${JSON.stringify(draft.data)}`);
   const quotationId = draft.data.quotationId;
 
-  const blocked = await post('/quotation/create-customer-link', {
+  const blocked = await action({
+    action: 'create-customer-link',
     quotationId,
     ttlHours: 24,
   });
@@ -178,12 +179,13 @@ const main = async () => {
     version = step.data.version;
   }
 
-  const created = await post('/quotation/create-customer-link', {
+  const created = await action({
+    action: 'create-customer-link',
     quotationId,
     ttlHours: 24,
   });
   assert(created.data?.success === true, `mint failed: ${JSON.stringify(created.data)}`);
-  const rawToken = created.data.token;
+  const rawToken = created.data.token ?? created.data.rawToken;
   const viewUrl = created.data.viewUrl;
   const linkId = created.data.linkId;
   assert(typeof rawToken === 'string' && rawToken.length > 20, 'raw token missing');
@@ -211,17 +213,20 @@ const main = async () => {
   assert(!/apiKey|tokenHash|TWENTY_/i.test(valid.text), 'internal marker leaked');
   assert(!valid.text.includes(personId), 'person id leaked');
 
-  const anonymousMint = await fetch(`${apiBase}/s/quotation/create-customer-link`, {
+  const anonymousMint = await fetch(`${apiBase}/rest/quotation/actions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ quotationId }),
+    body: JSON.stringify({
+      action: 'create-customer-link',
+      quotationId,
+    }),
   });
   const anonymousBody = await anonymousMint.text();
-  // Platform currently answers a missing token with HTTP 500 and this body.
-  // The important contract is that the route does not run and creates nothing.
   assert(
-    anonymousBody.includes('Missing authentication token') &&
-      anonymousMint.status >= 400,
+    anonymousMint.status === 401 ||
+      anonymousMint.status === 403 ||
+      anonymousBody.toLowerCase().includes('unauthorized') ||
+      anonymousBody.includes('Missing authentication token'),
     `unauthenticated mint status ${anonymousMint.status} body=${anonymousBody.slice(0, 500)}`,
   );
   const linksAfterAnonymous = await gql(`{
@@ -277,13 +282,18 @@ const main = async () => {
     'customer page included another quotation id',
   );
 
-  const revoked = await post('/quotation/revoke-customer-link', { linkId });
+  const revoked = await action({
+    action: 'revoke-customer-link',
+    quotationId,
+    linkId,
+  });
   assert(revoked.data?.success === true, `revoke failed: ${JSON.stringify(revoked.data)}`);
   const afterRevoke = await publicGet(viewUrl);
   assert(afterRevoke.httpStatus === 410, `revoked status ${afterRevoke.httpStatus}`);
   assert(afterRevoke.text.includes('لغو'), 'revoke page missing Persian copy');
 
-  const expiredMint = await post('/quotation/create-customer-link', {
+  const expiredMint = await action({
+    action: 'create-customer-link',
     quotationId,
     ttlHours: 1,
   });

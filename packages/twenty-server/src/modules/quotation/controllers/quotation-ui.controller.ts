@@ -13,6 +13,7 @@ import { getWorkspaceAuthContext } from 'src/engine/core-modules/auth/storage/wo
 import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-rest-api-exception.filter';
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
+import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
@@ -22,12 +23,16 @@ type QuotationUiActionBody = {
   quotationId?: unknown;
   toStatus?: unknown;
   version?: unknown;
+  linkId?: unknown;
+  ttlHours?: unknown;
 };
 
 const ALLOWED_ACTIONS = new Set([
   'get-lifecycle',
   'transition',
   'generate-pdf',
+  'create-customer-link',
+  'revoke-customer-link',
 ]);
 
 @Controller(`${ApiPath.Rest}/quotation`)
@@ -37,6 +42,7 @@ export class QuotationUiController {
   constructor(
     private readonly quotationUiService: QuotationUiService,
     private readonly quotationPdfService: QuotationPdfService,
+    private readonly quotationCustomerLinkService: QuotationCustomerLinkService,
   ) {}
 
   @Post('actions')
@@ -100,6 +106,43 @@ export class QuotationUiController {
         });
 
         return { success: true, ...result };
+      }
+
+      if (action === 'create-customer-link') {
+        const ttlHours =
+          typeof body.ttlHours === 'number' && Number.isFinite(body.ttlHours)
+            ? body.ttlHours
+            : undefined;
+        const created =
+          await this.quotationCustomerLinkService.createCustomerLink({
+            authContext,
+            quotationId,
+            ttlHours,
+          });
+
+        return { success: true, ...created };
+      }
+
+      if (action === 'revoke-customer-link') {
+        const linkId =
+          typeof body.linkId === 'string' ? body.linkId.trim() : '';
+
+        if (!isNonEmptyString(linkId)) {
+          return {
+            success: false,
+            code: 'INVALID_INPUT',
+            message: persianMessageForQuotationCode('INVALID_INPUT'),
+          };
+        }
+
+        const revoked =
+          await this.quotationCustomerLinkService.revokeCustomerLink({
+            authContext,
+            quotationId,
+            linkId,
+          });
+
+        return { success: true, ...revoked };
       }
 
       const pdf = await this.quotationPdfService.generateQuotationPdf({

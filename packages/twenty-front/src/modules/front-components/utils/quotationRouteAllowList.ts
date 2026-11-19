@@ -6,6 +6,8 @@ export const ALLOWED_QUOTATION_ACTIONS = [
   'get-lifecycle',
   'transition',
   'generate-pdf',
+  'create-customer-link',
+  'revoke-customer-link',
 ] as const;
 
 export type AllowedQuotationAction = (typeof ALLOWED_QUOTATION_ACTIONS)[number];

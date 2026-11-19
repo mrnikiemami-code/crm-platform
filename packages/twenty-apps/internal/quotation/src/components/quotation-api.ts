@@ -66,5 +66,3 @@ export const callAppRoute = async (
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';
 export const SAVE_DRAFT_ROUTE = '/quotation/save-draft';
 export const SEARCH_CATALOG_ROUTE = '/quotation/search-catalog-items';
-export const CREATE_CUSTOMER_LINK_ROUTE = '/quotation/create-customer-link';
-export const REVOKE_CUSTOMER_LINK_ROUTE = '/quotation/revoke-customer-link';

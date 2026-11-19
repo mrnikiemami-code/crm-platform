@@ -5,6 +5,7 @@ import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
 import { QuotationUiController } from 'src/modules/quotation/controllers/quotation-ui.controller';
 import { QuotationQueryHookModule } from 'src/modules/quotation/query-hooks/quotation-query-hook.module';
+import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 
@@ -16,6 +17,10 @@ import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.
     QuotationQueryHookModule,
   ],
   controllers: [QuotationUiController],
-  providers: [QuotationUiService, QuotationPdfService],
+  providers: [
+    QuotationUiService,
+    QuotationPdfService,
+    QuotationCustomerLinkService,
+  ],
 })
 export class QuotationModule {}

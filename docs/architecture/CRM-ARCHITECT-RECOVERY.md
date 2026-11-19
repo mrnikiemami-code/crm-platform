@@ -1,22 +1,25 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-19 (S3-R1)
+**Updated:** 2026-11-19 (S3-R2)
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129 S3-R1 PASS / Secure Customer Quotation Link (2026-11-19; latest)
+## CURRENT CHECKPOINT — CRM-129 S3-R2 PASS / Link Authorization & Browser UAT (2026-11-19; latest)
 
-**Read first:** [CRM-129-S3-R1-PROOF.md](./CRM-129-S3-R1-PROOF.md).
+**Read first:** [CRM-129-S3-R2-PROOF.md](./CRM-129-S3-R2-PROOF.md).
 
-- **Branch / base:** `feat/crm-129-quotation` from `40b1ee34f99e35457a074629cd108c2e498f19d9`.
-- **GitHub SHA:** `e29f25d093806e21a081f79d7a86947e2138ab58`.
-- **Delivery:** hashed, expiring, revocable customer view link. Public GET returns only that quotation. App **0.1.8** on `dev-crm129`.
-- **Dev:** `S3_R1_CUSTOMER_LINK_PASS` — valid 200, unknown 404, revoked 410, expired 410, anonymous mint did not create a row. Vitest **231 PASS**.
-- **Continue at:** architect gate. Browser click of the lifecycle mint button is `MANUAL_UI_CHECK_REQUIRED`.
+- **Branch / base:** `feat/crm-129-quotation` from `0aa0ec2bd28de4ee4775df1c9835c3bf24f07b72`.
+- **Delivery:** mint/revoke moved to user-session bridge (`/rest/quotation/actions`); requires `quotation.send`. App-token LF mint/revoke refused. App **0.1.9** on `dev-crm129`.
+- **Dev:** `S3_R2_LINK_AUTHZ_PASS` + R1 regression `S3_R1_CUSTOMER_LINK_PASS`. Limited role blocked. Public browser view OK; revoked page OK. Lifecycle button click still `MANUAL_UI_CHECK_REQUIRED` (owner password).
+- **Continue at:** architect gate — messaging channels (Bale/WhatsApp/Telegram/…) not started here.
 - **Operational bans:** no `:6080`, no live accounting, no SMS, no main-worker restart, no release-branch change.
 - **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS CHECKPOINT — CRM-129 S3-R1 PASS / Secure Customer Quotation Link (2026-11-19; historical)
+
+**Read first:** [CRM-129-S3-R1-PROOF.md](./CRM-129-S3-R1-PROOF.md). Feature SHA `e29f25d093`; docs HEAD was `0aa0ec2bd2`.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S2-R11 PASS / Catalog Perf, Persian Inputs, Rounding Verify (2026-11-19; historical)
 
