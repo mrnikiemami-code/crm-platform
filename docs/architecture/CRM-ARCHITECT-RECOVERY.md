@@ -11,6 +11,7 @@
 **Read first:** [CRM-129-S3-R4-PROOF.md](./CRM-129-S3-R4-PROOF.md).
 
 - **Branch / base:** `feat/crm-129-quotation` from `03d6690d58b0a97ff83e772c42925152b9eb2961`.
+- **GitHub SHA:** `ddfa3ccb1a51e533481d8c8b8e6a71ffbe7a44aa`.
 - **Delivery:** Communication `bale` provider + `BALE` channel + secret `BALE_BOT_TOKEN`; Send/Persist via `send-outbound-message`; quotation share BALE → PROVIDER path (numeric `chat_id`, `quotation.send`, duplicate refuse); `PROVIDER_SENT` only on real API success. Communication **0.1.78**, Quotation **0.1.11**.
 - **Dev:** `S3_R4_BALE_CONTRACT_PASS` with **`LIVE_UNVERIFIED`** (no authorized bot token/chat env). Missing/invalid chat refused; placeholder send → honest `PROVIDER_FAILED`.
 - **Continue at:** architect gate — supply authorized test bot + chat to flip live verification; other messengers still manual.

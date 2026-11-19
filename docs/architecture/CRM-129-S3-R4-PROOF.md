@@ -2,6 +2,7 @@
 
 **Base:** `03d6690d58b0a97ff83e772c42925152b9eb2961`  
 **Branch:** `feat/crm-129-quotation`  
+**GitHub SHA:** `ddfa3ccb1a51e533481d8c8b8e6a71ffbe7a44aa`  
 **Result:** **PASS (contractual)** — `LIVE_UNVERIFIED` (no authorized test bot token / chat id supplied)
 
 ## 1. Contract (docs.bale.ai)
