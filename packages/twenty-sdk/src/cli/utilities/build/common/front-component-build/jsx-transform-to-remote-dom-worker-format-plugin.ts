@@ -7,7 +7,10 @@ export const jsxTransformToRemoteDomWorkerFormatPlugin: esbuild.Plugin = {
   name: 'jsx-transform-to-remote-dom-worker-format-plugin',
   setup: (esbuildBuild) => {
     esbuildBuild.onLoad(
-      { filter: /\.tsx$/ },
+      // Quotation (and other) apps author entrypoints as `*.front-component.ts`;
+      // without `.ts` the unwrap never runs and `default` stays a ValidationResult.
+      { filter: /\.tsx?$/ },
+
       async ({ path }): Promise<esbuild.OnLoadResult> => {
         try {
           const frontComponentSourceCode = await readFile(path, 'utf8');

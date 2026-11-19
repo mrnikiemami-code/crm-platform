@@ -24,4 +24,14 @@ describe('getFingerprintedRestUrl', () => {
       `${REST_API_BASE_URL}/front-component-shared-dependencies/application-id`,
     );
   });
+
+  it('falls back to the bare id URL when checksum is an empty string', () => {
+    expect(
+      getFingerprintedRestUrl({
+        resource: 'front-components',
+        id: 'front-component-id',
+        checksum: '',
+      }),
+    ).toBe(`${REST_API_BASE_URL}/front-components/front-component-id`);
+  });
 });

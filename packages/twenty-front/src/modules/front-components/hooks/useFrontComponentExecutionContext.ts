@@ -27,6 +27,7 @@ import {
 import { useOpenAskAiPageWithPreprompt } from '@/ai/hooks/useOpenAskAiPageWithPreprompt';
 import { currentUserState } from '@/auth/states/currentUserState';
 import { isAllowedCommunicationAction } from '@/front-components/utils/communicationRouteAllowList';
+import { downloadQuotationPdfFromHost } from '@/front-components/utils/downloadQuotationPdfFromHost';
 import { isAllowedQuotationAction } from '@/front-components/utils/quotationRouteAllowList';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import { useCommandMenuConfirmationModal } from '@/command-menu-item/confirmation-modal/hooks/useCommandMenuConfirmationModal';
@@ -653,11 +654,38 @@ export const useFrontComponentExecutionContext = ({
 
       const text = await response.text();
 
+      let parsed: Record<string, unknown>;
+
       try {
-        return text.length > 0 ? JSON.parse(text) : {};
+        parsed =
+          text.length > 0
+            ? (JSON.parse(text) as Record<string, unknown>)
+            : {};
       } catch {
         return { success: false, errorCode: 'UNEXPECTED' };
       }
+
+      // Worker cannot click a download anchor; strip base64 after host save.
+      if (
+        action === 'generate-pdf' &&
+        parsed.success === true &&
+        typeof parsed.pdfBase64 === 'string' &&
+        parsed.pdfBase64.length > 0
+      ) {
+        downloadQuotationPdfFromHost({
+          fileName:
+            typeof parsed.fileName === 'string'
+              ? parsed.fileName
+              : 'quotation.pdf',
+          pdfBase64: parsed.pdfBase64,
+        });
+
+        const { pdfBase64: _pdfBase64, ...withoutPdfBody } = parsed;
+
+        return { ...withoutPdfBody, downloadedOnHost: true };
+      }
+
+      return parsed;
     };
 
   const frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi =

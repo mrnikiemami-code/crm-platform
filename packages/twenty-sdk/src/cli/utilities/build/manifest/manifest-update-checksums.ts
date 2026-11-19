@@ -95,9 +95,11 @@ export const manifestUpdateChecksums = ({
       }
 
       const frontComponents = result.frontComponents;
+      // builtComponentPath is POSIX; rootBuiltPath may still be Windows-separated
+      // before normalisation — without this match checksums stay "" on Windows.
       const componentIndex =
         frontComponents.findIndex(
-          (c) => c.builtComponentPath === rootBuiltPath,
+          (c) => c.builtComponentPath === normalizedRootBuiltPath,
         ) ?? -1;
       if (componentIndex === -1) {
         continue;

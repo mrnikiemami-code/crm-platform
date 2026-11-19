@@ -133,24 +133,6 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null;
 
-const downloadBase64Pdf = (fileName: string, pdfBase64: string): void => {
-  const binary = atob(pdfBase64);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-
-  const blob = new Blob([bytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-};
-
 export const QuotationLifecyclePanel = () => {
   const selectedIds = useSelectedRecordIds();
   const quotationId = selectedIds[0] ?? null;
@@ -252,22 +234,7 @@ export const QuotationLifecyclePanel = () => {
       }
 
       if (action === 'generate-pdf') {
-        const fileName =
-          typeof response.fileName === 'string'
-            ? response.fileName
-            : 'quotation.pdf';
-        const pdfBase64 =
-          typeof response.pdfBase64 === 'string' ? response.pdfBase64 : '';
-
-        if (pdfBase64.length === 0) {
-          await enqueueSnackbar({
-            message: 'محتوای PDF خالی بود.',
-            variant: 'error',
-          });
-          return;
-        }
-
-        downloadBase64Pdf(fileName, pdfBase64);
+        // Host bridge performs the real browser download; worker only confirms.
         await enqueueSnackbar({
           message:
             typeof response.message === 'string'

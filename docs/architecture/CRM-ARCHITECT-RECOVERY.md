@@ -247,16 +247,25 @@ Directly inspected this recovery file and root package.json on the remote releas
 - **NEXT = CRM-129-S1-R1**, narrow contract corrections and Asan mapping fixtures. Local worker must fetch and safely align newer remote docs (including Asan and this status) without rewriting local S1 commit. Compute fresh divergence; no Push.
 - **STOP_FOR_ARCHITECT** after R1. S2 not authorized. No database writes, app install, live accounting writes, :6080 changes, service restart, deployment or automatic branch push.
 
-## CURRENT CHECKPOINT — CRM-129 S2-R6 PASS / browser UI PARTIAL (2026-11-19; latest)
+## CURRENT CHECKPOINT — CRM-129 S2-R7 PASS / Dev Front UI Acceptance (2026-11-19; latest)
 
-**Read first:** [CRM-129-S2-R6-PROOF.md](./CRM-129-S2-R6-PROOF.md) and [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md).
+**Read first:** [CRM-129-S2-R7-PROOF.md](./CRM-129-S2-R7-PROOF.md) and [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from S2-R6 `c83d5bd7c1`.
+- **Really testable now:** Dev front `:3001` → API `:3002`; catalog create; draft quotation; RECORD_PAGE tab **اقدامات**; DRAFT→PENDING→READY→SENT→CUSTOMER_ACCEPTED via in-browser `callQuotationRoute`; content lock after READY/SENT; Persian PDF download on host (~10KB `%PDF-1.3`).
+- **Browser UAT:** authenticated (`tim@apple.dev`); quotation `1a8bab82-3df6-4377-8e5e-99ba41ba478b` ended `CUSTOMER_ACCEPTED` v5 with `sentAt`/`decidedAt`. Not `BROWSER_UAT_BLOCKED`.
+- **Fixes this round:** FC entry `.tsx` unwrap; empty-checksum URL; Windows checksum path normalize (SDK source); host-side PDF download (worker cannot anchor-click).
+- **Dev / Intranet isolation:** Quotation app `0.1.2` on `dev-crm129` only. Intranet `crm-intranet-server` Up 2d on `:6080` — not restarted/redeployed. No Asan/Sepidar live, no SMS, no main-worker restart, no release-branch change.
+- **Residuals:** line-hook parent version after failed line insert (open); pdf.js ZWNJ copy PARTIAL; empty FC checksum until rebuilt SDK dist ships path fix (bare-id URL workaround live).
+- **Continue at:** **S3 Customer Quotation Portal** (not authorized in R7).
+- **Operational bans:** no `:6080` changes; no screenshot loops; no ORM/PDF-engine rewrite; no accounting workflow expansion.
+
+## PREVIOUS CHECKPOINT — CRM-129 S2-R6 PASS / browser UI PARTIAL (2026-11-19; historical)
+
+**Read first:** [CRM-129-S2-R6-PROOF.md](./CRM-129-S2-R6-PROOF.md). Superseded as “latest” by S2-R7 above.
 
 - **Branch / base:** `feat/crm-129-quotation` from S2-R5 `22b59bfc57`.
-- **Lifecycle UI:** Quotation RECORD_PAGE tab **اقدامات** + user-session host bridge `callQuotationRoute` → `POST /rest/quotation/actions`. Buttons gated by real role permissions + legal transitions. SENT = record-send only; customer decision internal.
-- **Persian PDF:** Spike `@react-pdf` + Vazirmatn + ZWNJ patches wired via `QuotationPdfService`; download as base64. Live `S2_R6_UI_PDF_PASS`. pdf.js browser-copy ZWNJ remains PARTIAL.
-- **Dev:** App `0.1.1` applied on `dev-crm129` (`:3002`). Regressions `S2_R3_LIVE_PASS` / `S2_R4_ROLE_PASS` / `S2_R5_INTEGRITY_PASS`. jest quotation 13; vitest 190. Intranet `:6080` untouched.
-- **PARTIAL:** `:3001` was not serving during this round — visual click attestation deferred; API + synced surfaces ready.
-- **Residual:** line-hook parent version bump after failed line insert still open.
+- **Lifecycle UI + Persian PDF API** shipped; `:3001` was down that round — browser click path completed in S2-R7.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S2-R5 PASS / UI PARTIAL (2026-11-19; historical)
 
