@@ -104,7 +104,11 @@ const runGraphql = async ({
 export const executeRecordGraphql = async (
   query: string,
 ): Promise<Record<string, unknown>> => {
-  const token = process.env.TWENTY_APP_ACCESS_TOKEN;
+  // Prefer the application token so catalog/quotation reads use the app role
+  // (not the triggering user's delegated JWT, which often lacks object perms).
+  const token =
+    process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN ??
+    process.env.TWENTY_APP_ACCESS_TOKEN;
 
   if (!token) {
     throw new RecordApiError('AUTH_REQUIRED', 'Record API credentials missing');

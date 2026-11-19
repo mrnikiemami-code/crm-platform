@@ -6,6 +6,10 @@ import {
 } from 'react';
 
 import {
+  readInputCaretIndex,
+  restoreInputCaret,
+} from 'src/components/front-component-input-caret';
+import {
   digitCountBeforeIndex,
   restoreCaretAfterDigitCount,
   toAsciiDigits,
@@ -50,19 +54,18 @@ export const PersianPlainNumberInput = ({
   const pendingCaret = useRef<number | null>(null);
 
   useLayoutEffect(() => {
-    const input = inputRef.current;
     const caret = pendingCaret.current;
 
-    if (input === null || caret === null) {
+    if (caret === null) {
       return;
     }
 
-    input.setSelectionRange(caret, caret);
+    restoreInputCaret(inputRef.current, caret);
     pendingCaret.current = null;
   }, [value]);
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const caret = event.target.selectionStart ?? event.target.value.length;
+    const caret = readInputCaretIndex(event.target);
     const digitsBefore = digitCountBeforeIndex(event.target.value, caret);
     const displayText = formatPlain(event.target.value);
 

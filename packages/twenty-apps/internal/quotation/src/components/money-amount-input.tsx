@@ -5,6 +5,10 @@ import {
   useRef,
 } from 'react';
 
+import {
+  readInputCaretIndex,
+  restoreInputCaret,
+} from 'src/components/front-component-input-caret';
 import { applyMoneyInputChange } from 'src/domain/money/money-input-text';
 
 type MoneyAmountInputProps = {
@@ -24,19 +28,18 @@ export const MoneyAmountInput = ({
   const pendingCaret = useRef<number | null>(null);
 
   useLayoutEffect(() => {
-    const input = inputRef.current;
     const caret = pendingCaret.current;
 
-    if (input === null || caret === null) {
+    if (caret === null) {
       return;
     }
 
-    input.setSelectionRange(caret, caret);
+    restoreInputCaret(inputRef.current, caret);
     pendingCaret.current = null;
   }, [value]);
 
   const onChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const caret = event.target.selectionStart ?? event.target.value.length;
+    const caret = readInputCaretIndex(event.target);
     const next = applyMoneyInputChange({
       nextRawText: event.target.value,
       caretIndex: caret,
