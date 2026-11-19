@@ -258,6 +258,9 @@ export const persistDraftQuotation = async (
         };
       }
 
+      const currentVersion =
+        typeof node.version === 'number' ? node.version : 1;
+
       const quotationData = omitNullish({
         name: payload.value.quotation.name,
         customerType: payload.value.quotation.customerType,
@@ -268,6 +271,8 @@ export const persistDraftQuotation = async (
         paymentTerms: payload.value.quotation.paymentTerms,
         totalExact: payload.value.quotation.totalExact,
         status: 'DRAFT',
+        // Optimistic lock token: server compares this to the stored version.
+        version: currentVersion,
       });
 
       await dependencies.execute(

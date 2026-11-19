@@ -7,16 +7,20 @@ import {
   QuotationQueryValidationException,
   QuotationQueryValidationExceptionCode,
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
+import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import {
   evaluateQuotationDelete,
   evaluateQuotationLineMutation,
+  evaluateQuotationLineReassignment,
   evaluateQuotationUpdate,
   type QuotationImmutabilityDecision,
+  type QuotationPermission,
 } from 'src/modules/quotation/utils/quotation-immutability.util';
 
 type QuotationStatusRow = {
   id: string;
   status: string;
+  version: number | null;
 };
 
 type QuotationLineRow = {
@@ -26,7 +30,10 @@ type QuotationLineRow = {
 
 @Injectable()
 export class QuotationImmutabilityService {
-  constructor(private readonly workspaceOrmManager: WorkspaceOrmManager) {}
+  constructor(
+    private readonly workspaceOrmManager: WorkspaceOrmManager,
+    private readonly quotationPermissionService: QuotationPermissionService,
+  ) {}
 
   async assertQuotationUpdateAllowed({
     authContext,
@@ -37,10 +44,18 @@ export class QuotationImmutabilityService {
     quotationId: string;
     patch: Record<string, unknown>;
   }): Promise<void> {
-    const status = await this.readQuotationStatus(authContext, quotationId);
+    const [row, heldPermissions] = await Promise.all([
+      this.readQuotationRow(authContext, quotationId),
+      this.quotationPermissionService.resolveHeldPermissions(authContext),
+    ]);
 
     this.throwUnlessOk(
-      evaluateQuotationUpdate({ currentStatus: status, patch }),
+      evaluateQuotationUpdate({
+        currentStatus: row.status,
+        currentVersion: row.version,
+        patch,
+        heldPermissions,
+      }),
     );
   }
 
@@ -51,9 +66,17 @@ export class QuotationImmutabilityService {
     authContext: WorkspaceAuthContext;
     quotationId: string;
   }): Promise<void> {
-    const status = await this.readQuotationStatus(authContext, quotationId);
+    const [row, heldPermissions] = await Promise.all([
+      this.readQuotationRow(authContext, quotationId),
+      this.quotationPermissionService.resolveHeldPermissions(authContext),
+    ]);
 
-    this.throwUnlessOk(evaluateQuotationDelete({ currentStatus: status }));
+    this.throwUnlessOk(
+      evaluateQuotationDelete({
+        currentStatus: row.status,
+        heldPermissions,
+      }),
+    );
   }
 
   async assertQuotationLineMutationAllowed({
@@ -63,41 +86,56 @@ export class QuotationImmutabilityService {
     authContext: WorkspaceAuthContext;
     quotationId: string;
   }): Promise<void> {
-    const status = await this.readQuotationStatus(authContext, quotationId);
+    const [row, heldPermissions] = await Promise.all([
+      this.readQuotationRow(authContext, quotationId),
+      this.quotationPermissionService.resolveHeldPermissions(authContext),
+    ]);
 
-    this.throwUnlessOk(evaluateQuotationLineMutation({ parentStatus: status }));
+    this.throwUnlessOk(
+      evaluateQuotationLineMutation({
+        parentStatus: row.status,
+        heldPermissions,
+      }),
+    );
   }
 
   async assertQuotationLineMutationAllowedByLineId({
     authContext,
     quotationLineId,
+    patch,
   }: {
     authContext: WorkspaceAuthContext;
     quotationLineId: string;
+    patch?: Record<string, unknown>;
   }): Promise<void> {
-    const quotationId = await this.readLineQuotationId(
-      authContext,
-      quotationLineId,
+    const line = await this.readLineRow(authContext, quotationLineId);
+
+    this.throwUnlessOk(
+      evaluateQuotationLineReassignment({
+        currentQuotationId: line.quotationId,
+        nextQuotationId: patch?.quotationId,
+      }),
     );
 
     await this.assertQuotationLineMutationAllowed({
       authContext,
-      quotationId,
+      quotationId: line.quotationId,
     });
   }
 
-  private async readQuotationStatus(
+  private async readQuotationRow(
     authContext: WorkspaceAuthContext,
     quotationId: string,
-  ): Promise<string> {
+  ): Promise<QuotationStatusRow> {
     return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const repository = this.workspaceOrmManager.getRepository<QuotationStatusRow>(
-        'quotation',
-        { shouldBypassPermissionChecks: true },
-      );
+      const repository =
+        this.workspaceOrmManager.getRepository<QuotationStatusRow>(
+          'quotation',
+          { shouldBypassPermissionChecks: true },
+        );
       const row = await repository.findOne({
         where: { id: quotationId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, version: true },
       });
 
       if (!isDefined(row) || typeof row.status !== 'string') {
@@ -107,14 +145,18 @@ export class QuotationImmutabilityService {
         );
       }
 
-      return row.status;
+      return {
+        id: row.id,
+        status: row.status,
+        version: typeof row.version === 'number' ? row.version : null,
+      };
     }, authContext);
   }
 
-  private async readLineQuotationId(
+  private async readLineRow(
     authContext: WorkspaceAuthContext,
     quotationLineId: string,
-  ): Promise<string> {
+  ): Promise<QuotationLineRow> {
     return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
       const repository = this.workspaceOrmManager.getRepository<QuotationLineRow>(
         'quotationLine',
@@ -132,7 +174,7 @@ export class QuotationImmutabilityService {
         );
       }
 
-      return row.quotationId;
+      return row;
     }, authContext);
   }
 
@@ -147,3 +189,5 @@ export class QuotationImmutabilityService {
     );
   }
 }
+
+export type { QuotationPermission };

@@ -6,7 +6,7 @@ import { QuotationUpdateOnePreQueryHook } from 'src/modules/quotation/query-hook
 import { type QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
 
 describe('QuotationUpdateOnePreQueryHook', () => {
-  it('delegates freeze checks to the immutability service', async () => {
+  it('delegates freeze checks and bumps the observed version', async () => {
     const assertQuotationUpdateAllowed = jest
       .fn()
       .mockResolvedValue(undefined);
@@ -16,17 +16,20 @@ describe('QuotationUpdateOnePreQueryHook', () => {
 
     const payload = {
       id: 'q-1',
-      data: { name: 'x' },
+      data: { name: 'x', version: 4 },
     };
 
     await expect(
       hook.execute({} as never, 'quotation', payload),
-    ).resolves.toEqual(payload);
+    ).resolves.toEqual({
+      id: 'q-1',
+      data: { name: 'x', version: 5 },
+    });
 
     expect(assertQuotationUpdateAllowed).toHaveBeenCalledWith({
       authContext: {},
       quotationId: 'q-1',
-      patch: { name: 'x' },
+      patch: { name: 'x', version: 4 },
     });
   });
 
@@ -43,7 +46,7 @@ describe('QuotationUpdateOnePreQueryHook', () => {
     await expect(
       hook.execute({} as never, 'quotation', {
         id: 'q-1',
-        data: { name: 'x' },
+        data: { name: 'x', version: 1 },
       }),
     ).rejects.toBeInstanceOf(QuotationQueryValidationException);
   });

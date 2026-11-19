@@ -21,11 +21,26 @@ export class QuotationUpdateOnePreQueryHook
     _objectName: string,
     payload: UpdateOneResolverArgs<Record<string, unknown>>,
   ): Promise<UpdateOneResolverArgs<Record<string, unknown>>> {
+    const patch = payload.data ?? {};
+    const observedVersion =
+      typeof patch.version === 'number' ? patch.version : null;
+
     await this.quotationImmutabilityService.assertQuotationUpdateAllowed({
       authContext,
       quotationId: payload.id,
-      patch: payload.data ?? {},
+      patch,
     });
+
+    // After the lock token matches, bump version so a concurrent writer fails.
+    if (observedVersion !== null) {
+      return {
+        ...payload,
+        data: {
+          ...patch,
+          version: observedVersion + 1,
+        },
+      };
+    }
 
     return payload;
   }

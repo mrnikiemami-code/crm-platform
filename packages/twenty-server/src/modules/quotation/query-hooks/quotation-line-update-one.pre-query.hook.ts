@@ -25,6 +25,7 @@ export class QuotationLineUpdateOnePreQueryHook
       {
         authContext,
         quotationLineId: payload.id,
+        patch: payload.data ?? {},
       },
     );
 
