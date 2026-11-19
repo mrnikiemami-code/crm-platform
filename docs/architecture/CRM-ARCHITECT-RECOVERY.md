@@ -11,6 +11,7 @@
 **Read first:** [CRM-129-S3-R2-PROOF.md](./CRM-129-S3-R2-PROOF.md).
 
 - **Branch / base:** `feat/crm-129-quotation` from `0aa0ec2bd28de4ee4775df1c9835c3bf24f07b72`.
+- **GitHub SHA:** `ff33b445eef2dca27825ac476c70de6356003dec`.
 - **Delivery:** mint/revoke moved to user-session bridge (`/rest/quotation/actions`); requires `quotation.send`. App-token LF mint/revoke refused. App **0.1.9** on `dev-crm129`.
 - **Dev:** `S3_R2_LINK_AUTHZ_PASS` + R1 regression `S3_R1_CUSTOMER_LINK_PASS`. Limited role blocked. Public browser view OK; revoked page OK. Lifecycle button click still `MANUAL_UI_CHECK_REQUIRED` (owner password).
 - **Continue at:** architect gate — messaging channels (Bale/WhatsApp/Telegram/…) not started here.

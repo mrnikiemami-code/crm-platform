@@ -2,6 +2,7 @@
 
 **Base:** `0aa0ec2bd28de4ee4775df1c9835c3bf24f07b72`  
 **Branch:** `feat/crm-129-quotation`  
+**GitHub SHA:** `ff33b445eef2dca27825ac476c70de6356003dec`  
 **Result:** **PASS** (authz + public browser). Lifecycle button click is `MANUAL_UI_CHECK_REQUIRED` (workspace login password unavailable).
 
 ## 1. Source review
