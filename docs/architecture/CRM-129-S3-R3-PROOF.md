@@ -2,6 +2,7 @@
 
 **Base:** `a937656cc8c291f85f94f556e1c99d592709d9f6`  
 **Branch:** `feat/crm-129-quotation`  
+**GitHub SHA:** `e18868767afa882799239279052ee9ff121df843`  
 **Result:** **PASS** (Dev share + honest MANUAL_SHARE history). Lifecycle channel-picker click remains operator-visible; REST path covers the same bridge action.
 
 ## 1. Source review

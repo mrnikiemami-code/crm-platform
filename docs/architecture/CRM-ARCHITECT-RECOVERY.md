@@ -11,6 +11,7 @@
 **Read first:** [CRM-129-S3-R3-PROOF.md](./CRM-129-S3-R3-PROOF.md).
 
 - **Branch / base:** `feat/crm-129-quotation` from `a937656cc8c291f85f94f556e1c99d592709d9f6`.
+- **GitHub SHA:** `e18868767afa882799239279052ee9ff121df843`.
 - **Delivery:** lifecycle «ارسال پیش‌فاکتور» with Bale/WhatsApp/Telegram/Instagram/Eitaa/Rubika/Soroush; reuses Communication registry capability (SMS-only → all messengers `MANUAL_SHARE`); no fake SENT; Persian text + secure link; server `quotation.send`; durable `quotationShare` history (customer + quotation + linkId, no raw token/URL). App **0.1.10** on `dev-crm129`.
 - **Dev:** `S3_R3_SHARE_PASS`. App-token LF share refused. SMS channel refused. History detail log-safe.
 - **Continue at:** architect gate — wiring real messenger providers via Communication Send/Persist is out of scope here.
