@@ -9,12 +9,18 @@ export type Refusal = {
 
 export type Result<TValue> = { ok: true; value: TValue } | { ok: false; refusal: Refusal };
 
-export const accepted = <TValue>(value: TValue): Result<TValue> => ({
-  ok: true,
-  value,
-});
+// Function declarations (not `<T>() =>` arrows): front-component esbuild loads
+// app `.ts` sources with the `tsx` loader, which would parse arrow generics as JSX.
+export function accepted<TValue>(value: TValue): Result<TValue> {
+  return {
+    ok: true,
+    value,
+  };
+}
 
-export const refused = <TValue = never>(
+export function refused<TValue = never>(
   code: string,
   detail: string,
-): Result<TValue> => ({ ok: false, refusal: { code, detail } });
+): Result<TValue> {
+  return { ok: false, refusal: { code, detail } };
+}

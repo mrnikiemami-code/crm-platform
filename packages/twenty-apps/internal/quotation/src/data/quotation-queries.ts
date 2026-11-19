@@ -56,3 +56,96 @@ export const buildQuotationLinesByQuotationQuery = (
 
 export const buildCatalogItemByIdQuery = (id: string): string =>
   `query CatalogItemById { catalogItem(filter: { id: { eq: ${toGraphqlLiteral(id)} } }) { id name kind sku unit isActive } }`;
+
+export const CATALOG_PICKER_PAGE_SIZE = 100;
+
+export const buildActiveCatalogItemsPageQuery = ({
+  search,
+  afterCursor,
+  first = CATALOG_PICKER_PAGE_SIZE,
+}: {
+  search: string;
+  afterCursor: string | null;
+  first?: number;
+}): string => {
+  const trimmed = search.trim();
+  const activeFilter = { isActive: { eq: true } };
+  const filter =
+    trimmed === ''
+      ? activeFilter
+      : {
+          and: [
+            activeFilter,
+            {
+              or: [
+                { name: { ilike: `%${trimmed}%` } },
+                { sku: { ilike: `%${trimmed}%` } },
+              ],
+            },
+          ],
+        };
+
+  const afterArg =
+    afterCursor === null || afterCursor === ''
+      ? ''
+      : `, after: ${toGraphqlLiteral(afterCursor)}`;
+
+  // orderBy enums must stay unquoted GraphQL enums (not JSON strings).
+  return `query ActiveCatalogItemsPage {
+    catalogItems(
+      filter: ${toGraphqlLiteral(filter)}
+      orderBy: [{ name: AscNullsLast }, { id: AscNullsLast }]
+      first: ${first}${afterArg}
+    ) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          kind
+          sku
+          unit
+          description
+          isActive
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }`;
+};
+
+export const buildPricesForItemsOnListQuery = ({
+  itemIds,
+  priceListId,
+}: {
+  itemIds: string[];
+  priceListId: string;
+}): string => {
+  if (itemIds.length === 0) {
+    return `query PricesForItemsOnList { prices(first: 0) { edges { node { id } } } }`;
+  }
+
+  return `query PricesForItemsOnList {
+    prices(
+      filter: {
+        and: [
+          { itemId: { in: ${toGraphqlLiteral(itemIds)} } }
+          { priceListId: { eq: ${toGraphqlLiteral(priceListId)} } }
+        ]
+      }
+      first: ${Math.max(itemIds.length * 5, 50)}
+    ) {
+      edges {
+        node {
+          unitPriceExact
+          validFrom
+          validTo
+          itemId
+        }
+      }
+    }
+  }`;
+};

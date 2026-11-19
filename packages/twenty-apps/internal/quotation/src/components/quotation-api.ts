@@ -65,3 +65,4 @@ export const callAppRoute = async (
 
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';
 export const SAVE_DRAFT_ROUTE = '/quotation/save-draft';
+export const SEARCH_CATALOG_ROUTE = '/quotation/search-catalog-items';
