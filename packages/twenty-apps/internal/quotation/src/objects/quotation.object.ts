@@ -15,6 +15,8 @@ import {
   QUOTATION_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_REVISION_FIELDS,
   QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER,
+  QUOTATION_SHARE_FIELDS,
+  QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER,
   RELATION_FIELDS,
   SELECT_OPTION_IDS,
 } from 'src/constants/universal-identifiers';
@@ -421,6 +423,22 @@ export default defineObject({
         QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
       relationTargetFieldMetadataUniversalIdentifier:
         QUOTATION_CUSTOMER_LINK_FIELDS.quotation,
+      universalSettings: {
+        relationType: RelationType.ONE_TO_MANY,
+      },
+    },
+    {
+      universalIdentifier: RELATION_FIELDS.quotationShares,
+      type: FieldType.RELATION,
+      name: 'shares',
+      label: 'اشتراک‌گذاری‌ها',
+      description: 'تاریخچهٔ واقعی اشتراک یا ارسال پیش‌فاکتور.',
+      icon: 'IconShare',
+      isNullable: true,
+      relationTargetObjectMetadataUniversalIdentifier:
+        QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER,
+      relationTargetFieldMetadataUniversalIdentifier:
+        QUOTATION_SHARE_FIELDS.quotation,
       universalSettings: {
         relationType: RelationType.ONE_TO_MANY,
       },

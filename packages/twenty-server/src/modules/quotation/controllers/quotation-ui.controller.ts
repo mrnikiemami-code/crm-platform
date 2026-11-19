@@ -15,6 +15,7 @@ import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
+import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
 
@@ -25,6 +26,7 @@ type QuotationUiActionBody = {
   version?: unknown;
   linkId?: unknown;
   ttlHours?: unknown;
+  channel?: unknown;
 };
 
 const ALLOWED_ACTIONS = new Set([
@@ -33,6 +35,7 @@ const ALLOWED_ACTIONS = new Set([
   'generate-pdf',
   'create-customer-link',
   'revoke-customer-link',
+  'share-quotation',
 ]);
 
 @Controller(`${ApiPath.Rest}/quotation`)
@@ -43,6 +46,7 @@ export class QuotationUiController {
     private readonly quotationUiService: QuotationUiService,
     private readonly quotationPdfService: QuotationPdfService,
     private readonly quotationCustomerLinkService: QuotationCustomerLinkService,
+    private readonly quotationShareService: QuotationShareService,
   ) {}
 
   @Post('actions')
@@ -143,6 +147,32 @@ export class QuotationUiController {
           });
 
         return { success: true, ...revoked };
+      }
+
+      if (action === 'share-quotation') {
+        const channel =
+          typeof body.channel === 'string' ? body.channel.trim() : '';
+        const ttlHours =
+          typeof body.ttlHours === 'number' && Number.isFinite(body.ttlHours)
+            ? body.ttlHours
+            : undefined;
+
+        if (!isNonEmptyString(channel)) {
+          return {
+            success: false,
+            code: 'INVALID_INPUT',
+            message: persianMessageForQuotationCode('INVALID_INPUT'),
+          };
+        }
+
+        const shared = await this.quotationShareService.shareQuotation({
+          authContext,
+          quotationId,
+          channel,
+          ttlHours,
+        });
+
+        return { success: true, ...shared };
       }
 
       const pdf = await this.quotationPdfService.generateQuotationPdf({

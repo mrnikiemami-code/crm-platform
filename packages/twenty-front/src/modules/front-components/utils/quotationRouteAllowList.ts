@@ -8,6 +8,7 @@ export const ALLOWED_QUOTATION_ACTIONS = [
   'generate-pdf',
   'create-customer-link',
   'revoke-customer-link',
+  'share-quotation',
 ] as const;
 
 export type AllowedQuotationAction = (typeof ALLOWED_QUOTATION_ACTIONS)[number];

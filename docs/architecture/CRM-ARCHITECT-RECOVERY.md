@@ -1,22 +1,25 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-19 (S3-R2)
+**Updated:** 2026-11-20 (S3-R3)
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
-**Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
+**Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129 S3-R2 PASS / Link Authorization & Browser UAT (2026-11-19; latest)
+## CURRENT CHECKPOINT — CRM-129 S3-R3 PASS / Quotation Multi-Channel Sharing (2026-11-20; latest)
 
-**Read first:** [CRM-129-S3-R2-PROOF.md](./CRM-129-S3-R2-PROOF.md).
+**Read first:** [CRM-129-S3-R3-PROOF.md](./CRM-129-S3-R3-PROOF.md).
 
-- **Branch / base:** `feat/crm-129-quotation` from `0aa0ec2bd28de4ee4775df1c9835c3bf24f07b72`.
-- **GitHub SHA:** `ff33b445eef2dca27825ac476c70de6356003dec`.
-- **Delivery:** mint/revoke moved to user-session bridge (`/rest/quotation/actions`); requires `quotation.send`. App-token LF mint/revoke refused. App **0.1.9** on `dev-crm129`.
-- **Dev:** `S3_R2_LINK_AUTHZ_PASS` + R1 regression `S3_R1_CUSTOMER_LINK_PASS`. Limited role blocked. Public browser view OK; revoked page OK. Lifecycle button click still `MANUAL_UI_CHECK_REQUIRED` (owner password).
-- **Continue at:** architect gate — messaging channels (Bale/WhatsApp/Telegram/…) not started here.
-- **Operational bans:** no `:6080`, no live accounting, no SMS, no main-worker restart, no release-branch change.
+- **Branch / base:** `feat/crm-129-quotation` from `a937656cc8c291f85f94f556e1c99d592709d9f6`.
+- **Delivery:** lifecycle «ارسال پیش‌فاکتور» with Bale/WhatsApp/Telegram/Instagram/Eitaa/Rubika/Soroush; reuses Communication registry capability (SMS-only → all messengers `MANUAL_SHARE`); no fake SENT; Persian text + secure link; server `quotation.send`; durable `quotationShare` history (customer + quotation + linkId, no raw token/URL). App **0.1.10** on `dev-crm129`.
+- **Dev:** `S3_R3_SHARE_PASS`. App-token LF share refused. SMS channel refused. History detail log-safe.
+- **Continue at:** architect gate — wiring real messenger providers via Communication Send/Persist is out of scope here.
+- **Operational bans:** no `:6080`, no live accounting, no SMS blast, no main-worker restart, no release-branch change, no screenshot loop.
 - **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS CHECKPOINT — CRM-129 S3-R2 PASS / Link Authorization & Browser UAT (2026-11-19; historical)
+
+**Read first:** [CRM-129-S3-R2-PROOF.md](./CRM-129-S3-R2-PROOF.md). Feature SHA `ff33b445ee`; docs HEAD was `a937656cc8`.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S3-R1 PASS / Secure Customer Quotation Link (2026-11-19; historical)
 

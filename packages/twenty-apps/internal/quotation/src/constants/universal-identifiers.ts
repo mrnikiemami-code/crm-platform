@@ -23,6 +23,8 @@ export const QUOTATION_SEQUENCE_OBJECT_UNIVERSAL_IDENTIFIER =
   'e859ac57-43dc-54ab-a1d2-03fc8ed34a10';
 export const QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER =
   'e106e576-13f6-59f3-9620-d842dc269f20';
+export const QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER =
+  'b32a8e14-f12c-5745-a38b-69f83627f06b';
 export const ACCOUNTING_CONNECTION_OBJECT_UNIVERSAL_IDENTIFIER =
   'dab886b2-ef12-53e7-93ca-505db4ea16fe';
 export const ACCOUNTING_ITEM_LINK_OBJECT_UNIVERSAL_IDENTIFIER =
@@ -127,6 +129,21 @@ export const QUOTATION_CUSTOMER_LINK_FIELDS = {
   quotation: '27592826-4e33-572b-9509-69b78e190395',
 } as const;
 
+export const QUOTATION_SHARE_FIELDS = {
+  name: '8a237b9a-ef45-55ae-8cac-8250384fdf3d',
+  channel: 'bea5e0e6-a2ec-533a-9bce-8392bc34284f',
+  outcome: 'c08b573f-ead5-5dd9-a2f9-397da39f6aaa',
+  customerLabel: '1bc0a5e1-faee-59d5-9d2f-da71f1a5b01b',
+  customerPersonId: '9b87635e-4935-5846-9d72-5bed2d161d02',
+  customerCompanyId: '45669096-553d-5ccd-ac52-d4516c3e7430',
+  linkId: '9e9e58ed-5eeb-5b3c-968b-4461e5c2c235',
+  communicationId: 'b3e9a0ac-d8f3-508f-8f47-eecd024d6126',
+  providerId: 'ac83c4d1-6370-53e0-82e9-ac6be43b4bee',
+  detail: '360c771c-7961-5093-ae2d-9e613ea6af64',
+  occurredAt: '615f537b-4164-5fb5-a9e4-1be1cadea442',
+  quotation: '37570b0a-a74f-5ab0-aaa0-f07cb5436d24',
+} as const;
+
 export const ACCOUNTING_CONNECTION_FIELDS = {
   name: 'c6868a67-5ff5-5485-8cfc-acd3f83296e6',
   adapterId: '299ce88f-9a97-5712-a14c-b4c4dc994f19',
@@ -170,6 +187,7 @@ export const RELATION_FIELDS = {
   quotationLines: 'f409170f-11d6-5ca1-9d3d-adfc1c21454b',
   quotationRevisions: '8f10d5a0-ca85-57c8-ab6a-f531935cfc30',
   quotationCustomerLinks: '92ea0130-9db1-5e46-a855-6386468dc811',
+  quotationShares: '3328de2e-b023-53e0-a299-5419f007a3d6',
   catalogItemQuotationLines: '56b6c96d-e4fa-58f2-ab0e-30172b48e577',
   catalogItemPrices: '2d808b0d-7715-508f-ab08-21776e9fe45b',
   catalogItemAccountingLinks: '8e1f288e-279f-5b57-8c83-5e6e3afebcd3',
@@ -216,6 +234,17 @@ export const SELECT_OPTION_IDS = {
   operationStateCancelled: 'c02d9586-da59-504b-9341-686632494a55',
   quotationLineKindProduct: 'a91b2c3d-4e5f-5601-8790-1a2b3c4d5e6f',
   quotationLineKindService: 'b02c3d4e-5f60-5712-9801-2b3c4d5e6f70',
+  quotationShareChannelBale: '9b420ba4-d490-5de0-ab5a-a9bfcb2f3315',
+  quotationShareChannelWhatsapp: '479ef3ce-8b29-5544-979c-8268d6cff8ed',
+  quotationShareChannelTelegram: 'c244c78a-c0e1-5266-9894-be252adce339',
+  quotationShareChannelInstagram: '24c881d0-4aad-59db-8a2b-9e16ad307d33',
+  quotationShareChannelEitaa: 'de0fe1a6-398b-5fe1-9f94-82a62862abe5',
+  quotationShareChannelRubika: '3c237c5c-039c-5c64-87ac-e5942835c453',
+  quotationShareChannelSoroush: 'a84d45a2-0cb3-5953-80ea-dbe9bde651e0',
+  quotationShareOutcomeManual: 'a7abd2c8-0fae-5de6-bd62-70e92183ede8',
+  quotationShareOutcomeSent: '1b2c07f8-250b-5476-8cca-c60fc9080b17',
+  quotationShareOutcomeFailed: '5653ba7c-f124-5266-ba71-82a9a10562ed',
+  quotationShareOutcomeRefused: 'f9e744ef-b026-5ba0-8aa1-4d945669dda4',
 } as const;
 
 // S2 UI / runtime entry points. Stable once installed. Variant nibble is 8|9|a|b.
@@ -253,6 +282,8 @@ export const CREATE_CUSTOMER_LINK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '802ddc48-2a18-5381-891b-512061cee0dd';
 export const REVOKE_CUSTOMER_LINK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   'a70fdff0-8f75-5356-940d-3acf28d037ad';
+export const SHARE_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'a4261e8a-5fdd-566d-a713-251dab5a046c';
 export const VIEW_CUSTOMER_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '6fd15134-15e6-5885-b861-18a5ab2c22e3';
 

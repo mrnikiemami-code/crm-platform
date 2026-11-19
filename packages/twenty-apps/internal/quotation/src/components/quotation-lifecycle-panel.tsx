@@ -50,6 +50,16 @@ const CUSTOMER_LINK_STATUSES = new Set([
   'CUSTOMER_REJECTED',
 ]);
 
+const SHARE_CHANNELS = [
+  { value: 'BALE', label: 'بله' },
+  { value: 'WHATSAPP', label: 'واتساپ' },
+  { value: 'TELEGRAM', label: 'تلگرام' },
+  { value: 'INSTAGRAM', label: 'اینستاگرام' },
+  { value: 'EITAA', label: 'ایتا' },
+  { value: 'RUBIKA', label: 'روبیکا' },
+  { value: 'SOROUSH', label: 'سروش' },
+] as const;
+
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'پیش‌نویس',
   PENDING_INTERNAL_APPROVAL: 'در انتظار تأیید',
@@ -117,6 +127,26 @@ const styles: Record<string, CSSProperties> = {
     color: 'var(--t-font-color-inverted)',
     borderColor: 'var(--t-color-blue)',
   },
+  channelRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 'var(--t-spacing-2)',
+  },
+  channelChip: {
+    border: '1px solid var(--t-border-color-medium)',
+    background: 'var(--t-background-primary)',
+    color: 'var(--t-font-color-primary)',
+    borderRadius: 'var(--t-border-radius-sm)',
+    padding: 'var(--t-spacing-1) var(--t-spacing-2)',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontSize: 'var(--t-font-size-sm)',
+  },
+  channelChipSelected: {
+    background: 'var(--t-color-blue)',
+    color: 'var(--t-font-color-inverted)',
+    borderColor: 'var(--t-color-blue)',
+  },
   error: {
     color: 'var(--t-color-red)',
     fontSize: 'var(--t-font-size-sm)',
@@ -162,6 +192,15 @@ export const QuotationLifecyclePanel = () => {
     linkId: string;
     viewUrl: string;
     expiresAt: string;
+  } | null>(null);
+  const [shareChannel, setShareChannel] = useState<string>('BALE');
+  const [shareResult, setShareResult] = useState<{
+    shareId: string;
+    outcome: string;
+    channelLabel: string;
+    shareText: string;
+    linkId: string;
+    customerLabel: string;
   } | null>(null);
 
   const loadLifecycle = useCallback(async () => {
@@ -288,6 +327,107 @@ export const QuotationLifecyclePanel = () => {
             ? response.message
             : 'لینک مشتری صادر شد.',
         variant: 'success',
+      });
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
+  const shareQuotationOnChannel = async () => {
+    if (busyRef.current || quotationId === null) {
+      return;
+    }
+
+    const { callQuotationRoute, copyToClipboard } = readHostCommunicationApi();
+
+    if (callQuotationRoute === null) {
+      return;
+    }
+
+    busyRef.current = true;
+    setBusy(true);
+
+    try {
+      const response = asRecord(
+        await callQuotationRoute({
+          action: 'share-quotation',
+          payload: {
+            quotationId,
+            channel: shareChannel,
+            ttlHours: 168,
+          },
+        }),
+      );
+
+      if (response?.success !== true) {
+        await enqueueSnackbar({
+          message:
+            typeof response?.message === 'string'
+              ? response.message
+              : 'اشتراک‌گذاری انجام نشد.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      const shareText =
+        typeof response.shareText === 'string' ? response.shareText : '';
+      const viewUrl =
+        typeof response.viewUrl === 'string' ? response.viewUrl : '';
+      const linkId =
+        typeof response.linkId === 'string' ? response.linkId : '';
+      const shareId =
+        typeof response.shareId === 'string' ? response.shareId : '';
+      const outcome =
+        typeof response.outcome === 'string' ? response.outcome : '';
+
+      if (shareText === '' || linkId === '' || shareId === '') {
+        await enqueueSnackbar({
+          message: 'پاسخ اشتراک‌گذاری ناقص بود.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      setShareResult({
+        shareId,
+        outcome,
+        channelLabel:
+          typeof response.channelLabel === 'string'
+            ? response.channelLabel
+            : shareChannel,
+        shareText,
+        linkId,
+        customerLabel:
+          typeof response.customerLabel === 'string'
+            ? response.customerLabel
+            : '',
+      });
+
+      if (viewUrl !== '') {
+        setCustomerLink({
+          linkId,
+          viewUrl,
+          expiresAt: '',
+        });
+      }
+
+      if (copyToClipboard !== null) {
+        await copyToClipboard({ text: shareText });
+      }
+
+      await enqueueSnackbar({
+        message:
+          typeof response.message === 'string'
+            ? response.message
+            : 'متن اشتراک آماده شد.',
+        variant: outcome === 'MANUAL_SHARE' ? 'info' : 'success',
       });
     } catch {
       await enqueueSnackbar({
@@ -521,24 +661,100 @@ export const QuotationLifecyclePanel = () => {
         </button>
 
         {CUSTOMER_LINK_STATUSES.has(lifecycle.status) ? (
-          <button
-            type="button"
-            disabled={busy || !canManageCustomerLink}
-            style={{
-              ...styles.button,
-              ...(busy || !canManageCustomerLink
-                ? styles.buttonDisabled
-                : {}),
-            }}
-            title={
-              canManageCustomerLink
-                ? undefined
-                : 'نیاز به مجوز quotation.send'
-            }
-            onClick={() => void issueCustomerLink()}
-          >
-            صدور لینک مشاهده مشتری
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={busy || !canManageCustomerLink}
+              style={{
+                ...styles.button,
+                ...(busy || !canManageCustomerLink
+                  ? styles.buttonDisabled
+                  : {}),
+              }}
+              title={
+                canManageCustomerLink
+                  ? undefined
+                  : 'نیاز به مجوز quotation.send'
+              }
+              onClick={() => void issueCustomerLink()}
+            >
+              صدور لینک مشاهده مشتری
+            </button>
+
+            <p style={styles.meta}>ارسال پیش‌فاکتور — انتخاب کانال</p>
+            <div style={styles.channelRow}>
+              {SHARE_CHANNELS.map((channel) => {
+                const selected = shareChannel === channel.value;
+
+                return (
+                  <button
+                    key={channel.value}
+                    type="button"
+                    disabled={busy || !canManageCustomerLink}
+                    style={{
+                      ...styles.channelChip,
+                      ...(selected ? styles.channelChipSelected : {}),
+                      ...(busy || !canManageCustomerLink
+                        ? styles.buttonDisabled
+                        : {}),
+                    }}
+                    onClick={() => setShareChannel(channel.value)}
+                  >
+                    {channel.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              disabled={busy || !canManageCustomerLink}
+              style={{
+                ...styles.button,
+                ...styles.buttonPrimary,
+                ...(busy || !canManageCustomerLink
+                  ? styles.buttonDisabled
+                  : {}),
+              }}
+              title={
+                canManageCustomerLink
+                  ? 'برای کانال‌های بدون اتصال واقعی فقط کپی متن/لینک انجام می‌شود'
+                  : 'نیاز به مجوز quotation.send'
+              }
+              onClick={() => void shareQuotationOnChannel()}
+            >
+              ارسال پیش‌فاکتور
+            </button>
+            <p style={styles.notice}>
+              پیام‌رسان‌ها هنوز به Provider Registry وصل نیستند؛ نتیجهٔ واقعی
+              «اشتراک‌گذاری دستی» ثبت می‌شود و ارسال موفق جعلی نوشته نمی‌شود.
+            </p>
+          </>
+        ) : null}
+
+        {shareResult !== null ? (
+          <div style={styles.notice}>
+            <p style={styles.meta}>
+              نتیجه: {shareResult.outcome === 'MANUAL_SHARE'
+                ? 'اشتراک‌گذاری دستی'
+                : shareResult.outcome}
+              {` — ${shareResult.channelLabel}`}
+              {shareResult.customerLabel
+                ? ` — مشتری ${shareResult.customerLabel}`
+                : ''}
+            </p>
+            <p style={styles.meta}>
+              شناسه اشتراک: {shareResult.shareId} — لینک: {shareResult.linkId}
+            </p>
+            <pre
+              style={{
+                ...styles.meta,
+                whiteSpace: 'pre-wrap',
+                margin: 0,
+              }}
+            >
+              {shareResult.shareText}
+            </pre>
+          </div>
         ) : null}
 
         {customerLink !== null ? (

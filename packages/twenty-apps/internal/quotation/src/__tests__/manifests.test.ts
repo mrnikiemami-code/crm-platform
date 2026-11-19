@@ -11,6 +11,7 @@ import quotationCustomerLink from 'src/objects/quotation-customer-link.object';
 import quotationLine from 'src/objects/quotation-line.object';
 import quotationRevision from 'src/objects/quotation-revision.object';
 import quotationSequence from 'src/objects/quotation-sequence.object';
+import quotationShare from 'src/objects/quotation-share.object';
 import applicationConfig from 'src/application.config';
 import companyQuotations from 'src/fields/company-quotations.field';
 import opportunityQuotations from 'src/fields/opportunity-quotations.field';
@@ -30,6 +31,7 @@ const allManifests: { name: string; manifest: Manifest }[] = [
   { name: 'price', manifest: price as Manifest },
   { name: 'quotation', manifest: quotation as Manifest },
   { name: 'quotationCustomerLink', manifest: quotationCustomerLink as Manifest },
+  { name: 'quotationShare', manifest: quotationShare as Manifest },
   { name: 'quotationLine', manifest: quotationLine as Manifest },
   { name: 'quotationRevision', manifest: quotationRevision as Manifest },
   { name: 'quotationSequence', manifest: quotationSequence as Manifest },

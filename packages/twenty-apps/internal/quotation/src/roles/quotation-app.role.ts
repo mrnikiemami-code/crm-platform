@@ -10,6 +10,7 @@ import {
   QUOTATION_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_SEQUENCE_OBJECT_UNIVERSAL_IDENTIFIER,
+  QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
 // Least-privilege role for quotation logic functions.
@@ -73,6 +74,13 @@ export default defineApplicationRole({
     {
       objectUniversalIdentifier:
         QUOTATION_CUSTOMER_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
+    },
+    {
+      objectUniversalIdentifier: QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER,
       canReadObjectRecords: true,
       canUpdateObjectRecords: true,
       canSoftDeleteObjectRecords: false,
