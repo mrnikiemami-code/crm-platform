@@ -247,15 +247,25 @@ Directly inspected this recovery file and root package.json on the remote releas
 - **NEXT = CRM-129-S1-R1**, narrow contract corrections and Asan mapping fixtures. Local worker must fetch and safely align newer remote docs (including Asan and this status) without rewriting local S1 commit. Compute fresh divergence; no Push.
 - **STOP_FOR_ARCHITECT** after R1. S2 not authorized. No database writes, app install, live accounting writes, :6080 changes, service restart, deployment or automatic branch push.
 
-## CURRENT CHECKPOINT — CRM-129 S2-R4 PASS (2026-11-19; latest)
+## CURRENT CHECKPOINT — CRM-129 S2-R5 PASS / UI PARTIAL (2026-11-19; latest)
 
-**Read first:** [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md) and [CRM-129-S2-R4-PROOF.md](./CRM-129-S2-R4-PROOF.md). This supersedes the S1-R3 “latest” pointer below for active quotation work on `feat/crm-129-quotation`.
+**Read first:** [CRM-129-S2-R5-PROOF.md](./CRM-129-S2-R5-PROOF.md) and [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from S2-R4 `7c504dab17`.
+- **Integrity:** Proven claim-then-fail left status advanced without content. Fixed by applying quotation domain patch + version in one ORM transaction conditional UPDATE. Live `S2_R5_INTEGRITY_PASS`; R3/R4 concurrency regressions pass; jest 11 + vitest 189.
+- **Dev UAT:** Frontend `:3001` / API `:3002`. Catalog create + person/company draft quotation form with lines/totals/save are **READY**. Transition-to-SENT UI and Persian PDF command/surface are **NOT_IMPLEMENTED** (API/server can SENT; PDF spike not wired).
+- **Cleanup:** Dev experiment `S2R3/S2R4/S2R5` quotation rows soft-deleted; seed people preserved; local quotation `.yarn`/`yarn.lock` removed; intranet `:6080` untouched.
+- **Residual:** line-hook parent version bump can outlive a failed line insert; lifecycle/PDF UI still required for full manual UAT.
+
+## PREVIOUS CHECKPOINT — CRM-129 S2-R4 PASS (2026-11-19; historical)
+
+**Read first:** [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md) and [CRM-129-S2-R4-PROOF.md](./CRM-129-S2-R4-PROOF.md). Superseded as “latest” by S2-R5 above.
 
 - **Branch / base:** `feat/crm-129-quotation` from S2-R3 `8161b40019`.
 - **S2-R4 result: PASS** — atomic optimistic version claim via Workspace ORM `UPDATE … WHERE id AND version AND status`; concurrent same-version writers reduced to a single winner on isolated Dev; real limited role (object update only) cannot approve/send/cancel/record customer decision; Admin path still can.
 - **Proof:** `docs/architecture/CRM-129-S2-R4-PROOF.md`. Live scripts under `packages/twenty-apps/internal/quotation/scripts/dev-exercise-s2-r4*.cjs` plus S2-R3 regression.
 - **Isolation:** only Dev `twenty-server-1` `:3002` / DB `default`; intranet `:6080` untouched.
-- **Residual:** immutable SENT/ACCEPTED experiment rows may remain named `S2R4-*`; minting a separate API key still needs a user access token (role proof used `roleTarget` + Redis role-cache flush).
+- **Residual (addressed in S2-R5 for quotation updates):** claim could commit before GraphQL write; experiment row cleanup deferred to R5.
 - **Historical:** S1-R3 PDF browser ZWNJ remains PARTIAL / not production-accepted; Asan live still unauthorized.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S1-R3 PARTIAL (2026-11-19; historical)

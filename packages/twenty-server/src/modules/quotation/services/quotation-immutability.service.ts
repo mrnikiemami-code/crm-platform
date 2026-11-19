@@ -11,6 +11,7 @@ import {
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import {
   QUOTATION_CONTENT_MUTABLE_STATUSES,
+  QUOTATION_SYSTEM_FIELD_NAMES,
   evaluateQuotationDelete,
   evaluateQuotationLineMutation,
   evaluateQuotationLineReassignment,
@@ -48,51 +49,92 @@ export class QuotationImmutabilityService {
     quotationId: string;
     patch: Record<string, unknown>;
   }): Promise<void> {
-    const [row, heldPermissions] = await Promise.all([
-      this.readQuotationRow(authContext, quotationId),
-      this.quotationPermissionService.resolveHeldPermissions(authContext),
-    ]);
+    const heldPermissions =
+      await this.quotationPermissionService.resolveHeldPermissions(authContext);
 
-    this.throwUnlessOk(
-      evaluateQuotationUpdate({
-        currentStatus: row.status,
-        currentVersion: row.version,
-        patch,
-        heldPermissions,
-      }),
-    );
+    // Apply content + version (+ status) in one conditional UPDATE so a later
+    // GraphQL write failure cannot leave a claimed status without content.
+    await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
+      await this.workspaceOrmManager.runInWorkspaceTransaction(
+        async (transactionScope) => {
+          const repository = transactionScope.getRepository<QuotationStatusRow>(
+            'quotation',
+            { shouldBypassPermissionChecks: true },
+          );
+          const row = await repository.findOne({
+            where: { id: quotationId },
+            select: { id: true, status: true, version: true },
+          });
 
-    if (
-      !quotationUpdateTouchesProtectedState({
-        currentStatus: row.status,
-        patch,
-      })
-    ) {
-      return;
-    }
+          if (!isDefined(row) || typeof row.status !== 'string') {
+            throw new QuotationQueryValidationException(
+              'quotation not found',
+              QuotationQueryValidationExceptionCode.FORBIDDEN,
+            );
+          }
 
-    const observedVersion = parseQuotationVersion(patch.version);
+          const currentVersion = parseQuotationVersion(row.version);
 
-    if (observedVersion === null || row.version === null) {
-      throw new QuotationQueryValidationException(
-        'QUOTATION_VERSION_REQUIRED: version is required when changing a quotation; reload and retry',
-        QuotationQueryValidationExceptionCode.FORBIDDEN,
+          this.throwUnlessOk(
+            evaluateQuotationUpdate({
+              currentStatus: row.status,
+              currentVersion,
+              patch,
+              heldPermissions,
+            }),
+          );
+
+          if (
+            !quotationUpdateTouchesProtectedState({
+              currentStatus: row.status,
+              patch,
+            })
+          ) {
+            return;
+          }
+
+          const observedVersion = parseQuotationVersion(patch.version);
+
+          if (observedVersion === null || currentVersion === null) {
+            throw new QuotationQueryValidationException(
+              'QUOTATION_VERSION_REQUIRED: version is required when changing a quotation; reload and retry',
+              QuotationQueryValidationExceptionCode.FORBIDDEN,
+            );
+          }
+
+          // Actor composites (updatedBy) are stamped by the GraphQL writer; raw
+          // ORM set() cannot expand them into source/name columns.
+          const setColumns: Record<string, unknown> = Object.fromEntries(
+            Object.entries(patch).filter(
+              ([key, value]) =>
+                value !== undefined &&
+                key !== 'version' &&
+                !QUOTATION_SYSTEM_FIELD_NAMES.has(key),
+            ),
+          );
+          setColumns.version = observedVersion + 1;
+
+          const result = await repository
+            .createQueryBuilder()
+            .where({
+              id: quotationId,
+              version: observedVersion,
+              status: row.status,
+            })
+            .update()
+            .set(setColumns)
+            .returning(['id', 'version', 'status'])
+            .execute();
+
+          if (result.generatedMaps.length === 0) {
+            throw new QuotationQueryValidationException(
+              'QUOTATION_VERSION_CONFLICT: quotation was changed concurrently; reload the current version and retry',
+              QuotationQueryValidationExceptionCode.FORBIDDEN,
+            );
+          }
+        },
       );
-    }
-
-    const nextStatus =
-      typeof patch.status === 'string' && patch.status !== row.status
-        ? patch.status
-        : undefined;
-
-    await this.claimQuotationVersion({
-      authContext,
-      quotationId,
-      observedVersion,
-      nextVersion: observedVersion + 1,
-      expectedStatus: row.status,
-      nextStatus,
-    });
+    }, authContext);
   }
 
   async assertQuotationDeleteAllowed({
@@ -141,8 +183,8 @@ export class QuotationImmutabilityService {
       );
     }
 
-    // Atomic parent claim: freezes racing status transitions that leave mutable
-    // statuses, and serializes concurrent line writers on the same version.
+    // Parent version claim only (no status mutation). Line insert/update still
+    // runs after the hook; a failed line write can leave a bumped parent version.
     await this.claimQuotationVersion({
       authContext,
       quotationId,
@@ -183,7 +225,6 @@ export class QuotationImmutabilityService {
     observedVersion,
     nextVersion,
     expectedStatus,
-    nextStatus,
     requireMutableStatus = false,
   }: {
     authContext: WorkspaceAuthContext;
@@ -191,52 +232,47 @@ export class QuotationImmutabilityService {
     observedVersion: number;
     nextVersion: number;
     expectedStatus: string;
-    nextStatus?: string;
     requireMutableStatus?: boolean;
   }): Promise<void> {
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const repository = this.workspaceOrmManager.getRepository<{
-        id: string;
-        status: string;
-        version: number;
-      }>('quotation', { shouldBypassPermissionChecks: true });
+      await this.workspaceOrmManager.runInWorkspaceTransaction(
+        async (transactionScope) => {
+          const repository = transactionScope.getRepository<{
+            id: string;
+            status: string;
+            version: number;
+          }>('quotation', { shouldBypassPermissionChecks: true });
 
-      const where = requireMutableStatus
-        ? {
-            id: quotationId,
-            version: observedVersion,
-            status: In([...QUOTATION_CONTENT_MUTABLE_STATUSES]),
+          const where = requireMutableStatus
+            ? {
+                id: quotationId,
+                version: observedVersion,
+                status: In([...QUOTATION_CONTENT_MUTABLE_STATUSES]),
+              }
+            : {
+                id: quotationId,
+                version: observedVersion,
+                status: expectedStatus,
+              };
+
+          const result = await repository
+            .createQueryBuilder()
+            .where(where)
+            .update()
+            .set({ version: nextVersion })
+            .returning(['id', 'version', 'status'])
+            .execute();
+
+          if (result.generatedMaps.length === 0) {
+            throw new QuotationQueryValidationException(
+              requireMutableStatus
+                ? 'QUOTATION_LINES_FROZEN: quotation changed concurrently or is no longer editable; reload and retry'
+                : 'QUOTATION_VERSION_CONFLICT: quotation was changed concurrently; reload the current version and retry',
+              QuotationQueryValidationExceptionCode.FORBIDDEN,
+            );
           }
-        : {
-            id: quotationId,
-            version: observedVersion,
-            status: expectedStatus,
-          };
-
-      const setColumns: Record<string, unknown> = {
-        version: nextVersion,
-      };
-
-      if (isDefined(nextStatus)) {
-        setColumns.status = nextStatus;
-      }
-
-      const result = await repository
-        .createQueryBuilder()
-        .where(where)
-        .update()
-        .set(setColumns)
-        .returning(['id', 'version', 'status'])
-        .execute();
-
-      if (result.generatedMaps.length === 0) {
-        throw new QuotationQueryValidationException(
-          requireMutableStatus
-            ? 'QUOTATION_LINES_FROZEN: quotation changed concurrently or is no longer editable; reload and retry'
-            : 'QUOTATION_VERSION_CONFLICT: quotation was changed concurrently; reload the current version and retry',
-          QuotationQueryValidationExceptionCode.FORBIDDEN,
-        );
-      }
+        },
+      );
     }, authContext);
   }
 
