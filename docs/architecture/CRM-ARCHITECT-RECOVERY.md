@@ -1,10 +1,19 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-17
+**Updated:** 2026-11-19
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
+
+## CURRENT QUOTATION UAT FEEDBACK — CRM-129 S2-R9 (2026-11-19; REPORT ONLY)
+
+**Status:** User-supplied authenticated UI screenshots reviewed against source. S2-R9 source baseline `2ce697a7796964dcf0b09b9aa5dfd69f4465c71b` on `feat/crm-129-quotation`; R9 catalog picker functionally accepted, but visual/money presentation feedback is OPEN. **No quotation source, Dev environment, production or rounding implementation changed by this documentation checkpoint.**
+
+- The operator requests a more visible primary-colored **«افزودن ردیف»** button and alternating subtle backgrounds for odd/even line cards. Existing layout is a constrained side panel; **full-page mode is a question to evaluate, not an authorized change.** Assess Twenty's existing full-page/record UI capabilities, usability tradeoffs and URL/navigation before implementation.
+- Display formatting: do not show `100003.000000 تومان`, `9000.270000 تومان` or `109003.300000 تومان` with six trailing zeros. Suppress insignificant zeroes, use Persian digit grouping and an unambiguous visible unit. Preserve exact bigint/micros storage. Do **not** conflate fractional toman with fractional rial: `109003.3 تومان = 1090033 ریال` is already whole rial.
+- User explicitly requests **round final payable down to a whole rial**, replacing the current `roundMicrosToWholeRial` half-up policy. This is a **requested business-contract change, NOT YET IMPLEMENTED or finance-signed-off**. Decide precisely floor vs truncation for negative adjustments and per-line vs document rounding; test positive fractional rial, negative rounding adjustment, snapshot/PDF/preview and tax purity. Keep `roundingExact` independent from tax; do not round intermediate quantities/unit prices or discard exact source amounts. Example raw 1,090,032.7 IRR -> payable 1,090,032 IRR; do not silently round to the nearest or floor toman to 10 IRR.
+- No request to implement UI or finance changes yet: user said **«فقط گزارش بده»**. Next action requires a bounded approved task. S3 remains unapproved. Preserve Dev `:3001/:3002` and intranet `:6080` isolation, untouched non-quotation local files, and existing historical checkpoints.
 
 ## First actions in a new chat
 1. Fetch **this file from the working release branch**, then fetch the detailed historical file on the docs branch. Confirm actual remote HEAD and any newer reports before acting.
