@@ -11,6 +11,7 @@
 **Read first:** [CRM-129-S3-R1-PROOF.md](./CRM-129-S3-R1-PROOF.md).
 
 - **Branch / base:** `feat/crm-129-quotation` from `40b1ee34f99e35457a074629cd108c2e498f19d9`.
+- **GitHub SHA:** `e29f25d093806e21a081f79d7a86947e2138ab58`.
 - **Delivery:** hashed, expiring, revocable customer view link. Public GET returns only that quotation. App **0.1.8** on `dev-crm129`.
 - **Dev:** `S3_R1_CUSTOMER_LINK_PASS` — valid 200, unknown 404, revoked 410, expired 410, anonymous mint did not create a row. Vitest **231 PASS**.
 - **Continue at:** architect gate. Browser click of the lifecycle mint button is `MANUAL_UI_CHECK_REQUIRED`.

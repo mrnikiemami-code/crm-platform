@@ -2,6 +2,7 @@
 
 **Base:** `40b1ee34f99e35457a074629cd108c2e498f19d9`  
 **Branch:** `feat/crm-129-quotation`  
+**GitHub SHA:** `e29f25d093806e21a081f79d7a86947e2138ab58`  
 **Result:** **PASS** (Dev API). Lifecycle button is present; browser click is `MANUAL_UI_CHECK_REQUIRED`.
 
 ## 1. Source review
