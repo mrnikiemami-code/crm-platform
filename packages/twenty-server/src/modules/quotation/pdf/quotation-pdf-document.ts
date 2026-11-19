@@ -105,6 +105,8 @@ export type QuotationPdfLine = {
 
 export type QuotationPdfSubtotals = {
   gross?: string;
+  lineDiscount?: string;
+  documentDiscount?: string;
   discount?: string;
   net?: string;
   tax?: string;
@@ -189,7 +191,19 @@ const buildSubtotalRows = (
     rows.push({ label: 'جمع ناخالص', value: subtotals.gross });
   }
 
-  if (isNonEmptyString(subtotals.discount)) {
+  if (isNonEmptyString(subtotals.lineDiscount)) {
+    rows.push({ label: 'تخفیف ردیف‌ها', value: subtotals.lineDiscount });
+  }
+
+  if (isNonEmptyString(subtotals.documentDiscount)) {
+    rows.push({ label: 'تخفیف کل', value: subtotals.documentDiscount });
+  }
+
+  if (
+    !isNonEmptyString(subtotals.lineDiscount) &&
+    !isNonEmptyString(subtotals.documentDiscount) &&
+    isNonEmptyString(subtotals.discount)
+  ) {
     rows.push({ label: 'تخفیف', value: subtotals.discount });
   }
 

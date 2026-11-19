@@ -17,6 +17,7 @@ describe('quotation-save.service', () => {
       name: 'پیش‌فاکتور تست',
       paymentTerms: 'نقد',
       taxPolicy: 'IR_VAT_9',
+      documentDiscount: { kind: 'NONE' },
       displayMoneyUnit: 'TOMAN',
       lines: [
         {
@@ -30,7 +31,6 @@ describe('quotation-save.service', () => {
           unitPriceText: '1000',
           moneyUnit: 'TOMAN',
           discount: { kind: 'NONE' },
-          taxRatePercentText: '9',
         },
         {
           clientLineId: '2',
@@ -43,7 +43,6 @@ describe('quotation-save.service', () => {
           unitPriceText: '500',
           moneyUnit: 'TOMAN',
           discount: { kind: 'NONE' },
-          taxRatePercentText: '9',
         },
       ],
     });
@@ -60,10 +59,15 @@ describe('quotation-save.service', () => {
     }
 
     expect(payload.value.quotation).not.toHaveProperty('accountingConnectionId');
+    expect(payload.value.quotation).toHaveProperty('grossExact');
+    expect(payload.value.quotation).toHaveProperty('documentDiscountExact');
+    expect(payload.value.quotation).toHaveProperty('taxExact');
     expect(payload.value.lines.map((line) => line.kind)).toEqual([
       'PRODUCT',
       'SERVICE',
     ]);
+    expect(payload.value.lines[0]).toHaveProperty('grossExact');
+    expect(payload.value.lines[0]).toHaveProperty('documentDiscountExact');
   });
 
   it('validates catalog upsert separately from quotation', () => {

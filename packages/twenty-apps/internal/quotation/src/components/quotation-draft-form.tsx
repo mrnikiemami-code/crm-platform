@@ -11,13 +11,14 @@ import {
 } from 'src/components/quotation-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
+import { DEFAULT_TAX_POLICY_ID } from 'src/domain/money/tax-policy';
 import {
   buildDraftQuotationPlan,
+  type DraftDiscountInput,
   type DraftLineInput,
 } from 'src/domain/quotation/draft-quotation';
 
-// Side-panel draft editor. Totals are computed locally with the same domain function
-// the server will use on save, so the operator never sees a total that later changes.
+type DiscountKind = 'NONE' | 'RATE' | 'AMOUNT';
 
 type LineDraft = {
   clientLineId: string;
@@ -26,8 +27,9 @@ type LineDraft = {
   unit: string;
   quantityText: string;
   unitPriceText: string;
+  discountKind: DiscountKind;
   discountPercentText: string;
-  taxRatePercentText: string;
+  discountAmountText: string;
 };
 
 const newLine = (): LineDraft => ({
@@ -37,8 +39,9 @@ const newLine = (): LineDraft => ({
   unit: 'عدد',
   quantityText: '۱',
   unitPriceText: '',
+  discountKind: 'NONE',
   discountPercentText: '',
-  taxRatePercentText: '۹',
+  discountAmountText: '',
 });
 
 const PROBLEM_FALLBACK = 'لطفاً ورودی‌ها را بررسی کنید.';
@@ -50,6 +53,26 @@ const selectObjectNameSingular = (
 const selectSelectedRecordIds = (
   context: { selectedRecordIds?: string[] | null } | null | undefined,
 ): string[] => context?.selectedRecordIds ?? [];
+
+const toDiscountInput = (
+  kind: DiscountKind,
+  percentText: string,
+  amountText: string,
+): DraftDiscountInput => {
+  if (kind === 'RATE') {
+    return percentText.trim() === ''
+      ? { kind: 'NONE' }
+      : { kind: 'RATE', percentText };
+  }
+
+  if (kind === 'AMOUNT') {
+    return amountText.trim() === ''
+      ? { kind: 'NONE' }
+      : { kind: 'AMOUNT', text: amountText };
+  }
+
+  return { kind: 'NONE' };
+};
 
 export const QuotationDraftForm = () => {
   const sourceObject = useFrontComponentExecutionContext(
@@ -73,6 +96,12 @@ export const QuotationDraftForm = () => {
   const [customerType, setCustomerType] = useState<'PERSON' | 'COMPANY'>(
     initialCustomerType,
   );
+  const [documentDiscountKind, setDocumentDiscountKind] =
+    useState<DiscountKind>('NONE');
+  const [documentDiscountPercentText, setDocumentDiscountPercentText] =
+    useState('');
+  const [documentDiscountAmountText, setDocumentDiscountAmountText] =
+    useState('');
   const [lines, setLines] = useState<LineDraft[]>([newLine()]);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,11 +116,11 @@ export const QuotationDraftForm = () => {
       quantityText: line.quantityText,
       unitPriceText: line.unitPriceText,
       moneyUnit,
-      discount:
-        line.discountPercentText.trim() === ''
-          ? { kind: 'NONE' }
-          : { kind: 'RATE', percentText: line.discountPercentText },
-      taxRatePercentText: line.taxRatePercentText,
+      discount: toDiscountInput(
+        line.discountKind,
+        line.discountPercentText,
+        line.discountAmountText,
+      ),
     }));
 
     return buildDraftQuotationPlan({
@@ -102,7 +131,12 @@ export const QuotationDraftForm = () => {
       companyId: customerType === 'COMPANY' ? sourceRecordId || null : null,
       name,
       paymentTerms,
-      taxPolicy: 'IR_VAT_9',
+      taxPolicy: DEFAULT_TAX_POLICY_ID,
+      documentDiscount: toDiscountInput(
+        documentDiscountKind,
+        documentDiscountPercentText,
+        documentDiscountAmountText,
+      ),
       displayMoneyUnit: moneyUnit,
       lines: draftLines,
     });
@@ -113,6 +147,9 @@ export const QuotationDraftForm = () => {
     sourceRecordId,
     name,
     paymentTerms,
+    documentDiscountKind,
+    documentDiscountPercentText,
+    documentDiscountAmountText,
   ]);
 
   const updateLine = (clientLineId: string, patch: Partial<LineDraft>) => {
@@ -139,8 +176,11 @@ export const QuotationDraftForm = () => {
         companyId: customerType === 'COMPANY' ? sourceRecordId || null : null,
         name,
         paymentTerms,
-        taxPolicy: 'IR_VAT_9',
+        taxPolicy: DEFAULT_TAX_POLICY_ID,
         displayMoneyUnit: moneyUnit,
+        documentDiscountKind,
+        documentDiscountPercentText,
+        documentDiscountAmountText,
         lines: lines.map((line) => ({
           clientLineId: line.clientLineId,
           kind: line.kind,
@@ -149,8 +189,9 @@ export const QuotationDraftForm = () => {
           quantityText: line.quantityText,
           unitPriceText: line.unitPriceText,
           moneyUnit,
+          discountKind: line.discountKind,
           discountPercentText: line.discountPercentText,
-          taxRatePercentText: line.taxRatePercentText,
+          discountAmountText: line.discountAmountText,
         })),
       });
 
@@ -180,8 +221,9 @@ export const QuotationDraftForm = () => {
     <div style={styles.root} dir="rtl">
       <h2 style={styles.title}>پیش‌فاکتور</h2>
       <p style={styles.hint}>
-        مبالغ ورودی به {moneyUnit === 'TOMAN' ? 'تومان' : 'ریال'} هستند و ذخیرهٔ
-        نهایی همیشه به ریال دقیق انجام می‌شود.
+        مبالغ ورودی به {moneyUnit === 'TOMAN' ? 'تومان' : 'ریال'} هستند؛ ذخیره
+        پایه همیشه ریال دقیق است و مبلغ نهایی به ریال صحیح گرد می‌شود. مالیات از
+        سیاست {DEFAULT_TAX_POLICY_ID} خوانده می‌شود.
       </p>
 
       <label style={styles.label}>
@@ -272,7 +314,7 @@ export const QuotationDraftForm = () => {
           </div>
           <div style={styles.row}>
             <label style={styles.label}>
-              مقدار
+              مقدار (تا ۶ رقم اعشار)
               <input
                 style={styles.input}
                 value={line.quantityText}
@@ -298,29 +340,49 @@ export const QuotationDraftForm = () => {
           </div>
           <div style={styles.row}>
             <label style={styles.label}>
-              تخفیف ٪
-              <input
+              نوع تخفیف ردیف
+              <select
                 style={styles.input}
-                value={line.discountPercentText}
+                value={line.discountKind}
                 onChange={(event) =>
                   updateLine(line.clientLineId, {
-                    discountPercentText: event.target.value,
+                    discountKind: event.target.value as DiscountKind,
                   })
                 }
-              />
+              >
+                <option value="NONE">بدون تخفیف</option>
+                <option value="RATE">درصدی</option>
+                <option value="AMOUNT">مبلغ ثابت</option>
+              </select>
             </label>
-            <label style={styles.label}>
-              مالیات ٪
-              <input
-                style={styles.input}
-                value={line.taxRatePercentText}
-                onChange={(event) =>
-                  updateLine(line.clientLineId, {
-                    taxRatePercentText: event.target.value,
-                  })
-                }
-              />
-            </label>
+            {line.discountKind === 'RATE' ? (
+              <label style={styles.label}>
+                تخفیف ردیف ٪
+                <input
+                  style={styles.input}
+                  value={line.discountPercentText}
+                  onChange={(event) =>
+                    updateLine(line.clientLineId, {
+                      discountPercentText: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            ) : null}
+            {line.discountKind === 'AMOUNT' ? (
+              <label style={styles.label}>
+                تخفیف ردیف (مبلغ)
+                <input
+                  style={styles.input}
+                  value={line.discountAmountText}
+                  onChange={(event) =>
+                    updateLine(line.clientLineId, {
+                      discountAmountText: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            ) : null}
           </div>
           {lines.length > 1 ? (
             <button
@@ -328,7 +390,9 @@ export const QuotationDraftForm = () => {
               style={styles.linkButton}
               onClick={() =>
                 setLines((current) =>
-                  current.filter((entry) => entry.clientLineId !== line.clientLineId),
+                  current.filter(
+                    (entry) => entry.clientLineId !== line.clientLineId,
+                  ),
                 )
               }
             >
@@ -338,11 +402,73 @@ export const QuotationDraftForm = () => {
         </div>
       ))}
 
-      <div style={styles.totals}>
-        <span>جمع کل</span>
-        <strong>
-          {plan.ok ? plan.value.displayTotal : '—'}
-        </strong>
+      <div style={styles.sectionHeader}>
+        <strong>تخفیف کل سند</strong>
+      </div>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          نوع
+          <select
+            style={styles.input}
+            value={documentDiscountKind}
+            onChange={(event) =>
+              setDocumentDiscountKind(event.target.value as DiscountKind)
+            }
+          >
+            <option value="NONE">بدون تخفیف</option>
+            <option value="RATE">درصدی</option>
+            <option value="AMOUNT">مبلغ ثابت</option>
+          </select>
+        </label>
+        {documentDiscountKind === 'RATE' ? (
+          <label style={styles.label}>
+            تخفیف کل ٪
+            <input
+              style={styles.input}
+              value={documentDiscountPercentText}
+              onChange={(event) =>
+                setDocumentDiscountPercentText(event.target.value)
+              }
+            />
+          </label>
+        ) : null}
+        {documentDiscountKind === 'AMOUNT' ? (
+          <label style={styles.label}>
+            تخفیف کل (مبلغ)
+            <input
+              style={styles.input}
+              value={documentDiscountAmountText}
+              onChange={(event) =>
+                setDocumentDiscountAmountText(event.target.value)
+              }
+            />
+          </label>
+        ) : null}
+      </div>
+
+      <div style={styles.totalsBox}>
+        <div style={styles.totalsRow}>
+          <span>ناخالص</span>
+          <strong>{plan.ok ? plan.value.displayGross : '—'}</strong>
+        </div>
+        <div style={styles.totalsRow}>
+          <span>تخفیف ردیف‌ها</span>
+          <strong>{plan.ok ? plan.value.displayLineDiscount : '—'}</strong>
+        </div>
+        <div style={styles.totalsRow}>
+          <span>تخفیف کل</span>
+          <strong>
+            {plan.ok ? plan.value.displayDocumentDiscount : '—'}
+          </strong>
+        </div>
+        <div style={styles.totalsRow}>
+          <span>مالیات ({DEFAULT_TAX_POLICY_ID})</span>
+          <strong>{plan.ok ? plan.value.displayTax : '—'}</strong>
+        </div>
+        <div style={styles.totals}>
+          <span>مبلغ نهایی قابل پرداخت</span>
+          <strong>{plan.ok ? plan.value.displayTotal : '—'}</strong>
+        </div>
       </div>
 
       {error || (!plan.ok ? plan.refusal.detail : null) ? (
@@ -352,7 +478,11 @@ export const QuotationDraftForm = () => {
       ) : null}
 
       <div style={styles.actions}>
-        <button type="button" style={styles.secondaryButton} onClick={closeSidePanel}>
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          onClick={closeSidePanel}
+        >
           بستن
         </button>
         <button type="button" style={styles.primaryButton} onClick={onSave}>
@@ -405,11 +535,24 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 8,
   },
+  totalsBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    borderTop: '1px solid #ddd',
+    paddingTop: 10,
+    fontSize: 13,
+  },
+  totalsRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    color: '#444',
+  },
   totals: {
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '10px 0',
-    borderTop: '1px solid #ddd',
+    paddingTop: 6,
+    borderTop: '1px dashed #ddd',
     fontSize: 14,
   },
   error: { color: '#b42318', margin: 0, fontSize: 13 },

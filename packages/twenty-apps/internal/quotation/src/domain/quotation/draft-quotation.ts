@@ -5,12 +5,12 @@ import {
   type MoneyUnit,
 } from 'src/domain/money/currency';
 import {
-  computeDocumentTotals,
+  finalizeLinesWithDocumentDiscount,
   formatTotalsExact,
   type QuotationTotalsExactText,
 } from 'src/domain/money/document-totals';
 import {
-  computeLineAmounts,
+  computeLinePreTaxAmounts,
   type LineDiscount,
   type QuotationLineAmounts,
 } from 'src/domain/money/line';
@@ -20,6 +20,10 @@ import {
   parseQuantity,
 } from 'src/domain/money/quantity';
 import {
+  DEFAULT_TAX_POLICY_ID,
+  resolveTaxPolicy,
+} from 'src/domain/money/tax-policy';
+import {
   canEditQuotationLines,
   type QuotationStatus,
 } from 'src/domain/quotation/status';
@@ -28,6 +32,17 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // Builds what a DRAFT quotation looks like after the operator typed quantities and
 // amounts. Pure: no GraphQL, no install. The front component and the save route both
 // call this so the totals on screen and the totals on disk cannot disagree.
+//
+// FINANCIAL ORDER (S2-R8, extends provisional S1):
+//   line: gross → line discount → net
+//   document: discount on sum(nets), allocated half-up by net weight (remainder on last)
+//   tax: on (net − document share), rate from resolved tax policy (not free-typed %)
+//   payable: sum(line totals) rounded half-up to whole IRR; delta on last line tax
+
+export type DraftDiscountInput =
+  | { kind: 'NONE' }
+  | { kind: 'AMOUNT'; text: string }
+  | { kind: 'RATE'; percentText: string };
 
 export type DraftLineInput = {
   clientLineId: string;
@@ -39,11 +54,7 @@ export type DraftLineInput = {
   quantityText: string;
   unitPriceText: string;
   moneyUnit: MoneyUnit;
-  discount:
-    | { kind: 'NONE' }
-    | { kind: 'AMOUNT'; text: string }
-    | { kind: 'RATE'; percentText: string };
-  taxRatePercentText: string;
+  discount: DraftDiscountInput;
 };
 
 export type DraftQuotationInput = {
@@ -55,6 +66,7 @@ export type DraftQuotationInput = {
   name: string;
   paymentTerms: string | null;
   taxPolicy: string | null;
+  documentDiscount: DraftDiscountInput;
   displayMoneyUnit: MoneyUnit;
   lines: DraftLineInput[];
 };
@@ -68,7 +80,9 @@ export type DraftLineRecord = {
   unit: string;
   quantityExact: string;
   unitPriceExact: string;
+  grossExact: string;
   discountExact: string;
+  documentDiscountExact: string;
   taxExact: string;
   totalExact: string;
   sortOrder: number;
@@ -83,12 +97,19 @@ export type DraftQuotationPlan = {
   companyId: string | null;
   name: string;
   paymentTerms: string | null;
-  taxPolicy: string | null;
+  taxPolicy: string;
+  taxRateBasisPoints: string;
   currencyCode: 'IRR';
   version: number;
+  documentDiscountKind: 'NONE' | 'RATE' | 'AMOUNT';
+  documentDiscountInputExact: string;
   totalExact: string;
   totalsExact: QuotationTotalsExactText;
   displayTotal: string;
+  displayGross: string;
+  displayLineDiscount: string;
+  displayDocumentDiscount: string;
+  displayTax: string;
   lines: DraftLineRecord[];
 };
 
@@ -96,19 +117,16 @@ const parsePercentToBasisPoints = (text: string): Result<bigint> => {
   const money = parseMoneyInput(text === '' ? '0' : text, 'IRR');
 
   if (!money.ok) {
-    return refused('TAX_RATE_INVALID', 'نرخ مالیات باید عدد معتبر باشد');
+    return refused('TAX_RATE_INVALID', 'نرخ باید عدد معتبر باشد');
   }
 
-  // parseMoneyInput scales by 1e6 micros; 9% → 9.000000 units → 9_000_000 micros.
-  // Basis points are hundredths of a percent: 9% = 900 bp. micros/10000 = bp when
-  // the typed number is a percent (9 → 900).
   const percentMicros = money.value.irrMicros;
   const basisPoints = percentMicros / 10_000n;
 
   if (percentMicros % 10_000n !== 0n) {
     return refused(
       'TAX_RATE_TOO_FINE',
-      'نرخ مالیات حداکثر دو رقم اعشار دارد (مثلاً ۹ یا ۹٫۵)',
+      'درصد حداکثر دو رقم اعشار دارد (مثلاً ۹ یا ۹٫۵)',
     );
   }
 
@@ -116,7 +134,7 @@ const parsePercentToBasisPoints = (text: string): Result<bigint> => {
 };
 
 const buildDiscount = (
-  discount: DraftLineInput['discount'],
+  discount: DraftDiscountInput,
   moneyUnit: MoneyUnit,
 ): Result<LineDiscount> => {
   switch (discount.kind) {
@@ -143,10 +161,62 @@ const buildDiscount = (
   }
 };
 
-const computeOneLine = (
+const documentDiscountInputExact = (
+  discount: DraftDiscountInput,
+  moneyUnit: MoneyUnit,
+): Result<{ kind: 'NONE' | 'RATE' | 'AMOUNT'; inputExact: string }> => {
+  switch (discount.kind) {
+    case 'NONE':
+      return accepted({ kind: 'NONE', inputExact: '0.000000' });
+    case 'RATE': {
+      const rate = parsePercentToBasisPoints(discount.percentText);
+
+      if (!rate.ok) {
+        return refused('DISCOUNT_RATE_INVALID', 'درصد تخفیف کل معتبر نیست');
+      }
+
+      // Store percent with 6 fraction digits of the percent value (9 → 9.000000).
+      return accepted({
+        kind: 'RATE',
+        inputExact: formatMicrosExact(rate.value * 10_000n),
+      });
+    }
+    case 'AMOUNT': {
+      const amount = parseMoneyInput(discount.text, moneyUnit);
+
+      if (!amount.ok) {
+        return refused('DISCOUNT_AMOUNT_INVALID', 'مبلغ تخفیف کل معتبر نیست');
+      }
+
+      return accepted({
+        kind: 'AMOUNT',
+        inputExact: formatMicrosExact(amount.value.irrMicros),
+      });
+    }
+  }
+};
+
+type BuiltPreTaxLine = {
+  clientLineId: string;
+  catalogItemId: string | null;
+  kind: CatalogItemKind;
+  name: string;
+  description: string | null;
+  unit: string;
+  quantityExact: string;
+  unitPriceExact: string;
+  sortOrder: number;
+  preTax: {
+    grossMicros: bigint;
+    discountMicros: bigint;
+    netAfterLineDiscountMicros: bigint;
+  };
+};
+
+const computeOnePreTaxLine = (
   line: DraftLineInput,
   sortOrder: number,
-): Result<DraftLineRecord> => {
+): Result<BuiltPreTaxLine> => {
   const name = line.name.trim();
 
   if (name === '') {
@@ -175,21 +245,14 @@ const computeOneLine = (
     return discount;
   }
 
-  const taxRate = parsePercentToBasisPoints(line.taxRatePercentText);
-
-  if (!taxRate.ok) {
-    return taxRate;
-  }
-
-  const amounts = computeLineAmounts({
+  const preTax = computeLinePreTaxAmounts({
     quantityScaled: quantity.value,
     unitPriceMicros: unitPrice.value.irrMicros,
     discount: discount.value,
-    taxRateBasisPoints: taxRate.value,
   });
 
-  if (!amounts.ok) {
-    return refused(amounts.refusal.code, amounts.refusal.detail);
+  if (!preTax.ok) {
+    return refused(preTax.refusal.code, preTax.refusal.detail);
   }
 
   return accepted({
@@ -201,11 +264,29 @@ const computeOneLine = (
     unit: line.unit.trim(),
     quantityExact: formatQuantityExact(quantity.value),
     unitPriceExact: formatMicrosExact(unitPrice.value.irrMicros),
-    discountExact: formatMicrosExact(amounts.value.discountMicros),
-    taxExact: formatMicrosExact(amounts.value.taxMicros),
-    totalExact: formatMicrosExact(amounts.value.totalMicros),
     sortOrder,
-    amounts: amounts.value,
+    preTax: preTax.value,
+  });
+};
+
+const displayAmount = (
+  micros: bigint,
+  unit: MoneyUnit,
+): Result<string> => {
+  const display = formatMoneyForDisplay({
+    irrMicros: micros,
+    unit,
+    formatExact: formatMicrosExact,
+  });
+
+  if (display.ok) {
+    return display;
+  }
+
+  return formatMoneyForDisplay({
+    irrMicros: micros,
+    unit: 'IRR',
+    formatExact: formatMicrosExact,
   });
 };
 
@@ -251,60 +332,107 @@ export const buildDraftQuotationPlan = (
     return refused('DOCUMENT_HAS_NO_LINES', 'حداقل یک ردیف کالا یا خدمت لازم است');
   }
 
-  const builtLines: DraftLineRecord[] = [];
+  const taxPolicy = resolveTaxPolicy(
+    input.taxPolicy ?? DEFAULT_TAX_POLICY_ID,
+  );
+
+  if (!taxPolicy.ok) {
+    return taxPolicy;
+  }
+
+  const documentDiscount = buildDiscount(
+    input.documentDiscount,
+    input.displayMoneyUnit,
+  );
+
+  if (!documentDiscount.ok) {
+    return documentDiscount;
+  }
+
+  const documentDiscountMeta = documentDiscountInputExact(
+    input.documentDiscount,
+    input.displayMoneyUnit,
+  );
+
+  if (!documentDiscountMeta.ok) {
+    return documentDiscountMeta;
+  }
+
+  const builtPreTax: BuiltPreTaxLine[] = [];
 
   for (let index = 0; index < input.lines.length; index += 1) {
-    const built = computeOneLine(input.lines[index], index);
+    const built = computeOnePreTaxLine(input.lines[index], index);
 
     if (!built.ok) {
       return built;
     }
 
-    builtLines.push(built.value);
+    builtPreTax.push(built.value);
   }
 
-  const totals = computeDocumentTotals(builtLines.map((line) => line.amounts));
-
-  if (!totals.ok) {
-    return totals;
-  }
-
-  const totalsExact = formatTotalsExact(totals.value);
-  const display = formatMoneyForDisplay({
-    irrMicros: totals.value.totalMicros,
-    unit: input.displayMoneyUnit,
-    formatExact: formatMicrosExact,
+  const finalized = finalizeLinesWithDocumentDiscount({
+    preTaxLines: builtPreTax.map((line) => line.preTax),
+    documentDiscount: documentDiscount.value,
+    taxRateBasisPoints: taxPolicy.value.rateBasisPoints,
   });
 
-  if (!display.ok) {
-    // Fall back to rial when toman cannot express the micro remainder.
-    const rialDisplay = formatMoneyForDisplay({
-      irrMicros: totals.value.totalMicros,
-      unit: 'IRR',
-      formatExact: formatMicrosExact,
-    });
-
-    if (!rialDisplay.ok) {
-      return rialDisplay;
-    }
-
-    return accepted({
-      quotationId: input.quotationId,
-      status: 'DRAFT',
-      customerType: input.customerType,
-      personId: input.customerType === 'PERSON' ? input.personId : null,
-      companyId: input.customerType === 'COMPANY' ? input.companyId : null,
-      name: title,
-      paymentTerms: input.paymentTerms?.trim() ? input.paymentTerms.trim() : null,
-      taxPolicy: input.taxPolicy?.trim() ? input.taxPolicy.trim() : null,
-      currencyCode: 'IRR',
-      version: 1,
-      totalExact: totalsExact.totalExact,
-      totalsExact,
-      displayTotal: rialDisplay.value,
-      lines: builtLines,
-    });
+  if (!finalized.ok) {
+    return finalized;
   }
+
+  const totalsExact = formatTotalsExact(finalized.value.totals);
+  const displayTotal = displayAmount(
+    finalized.value.totals.totalMicros,
+    input.displayMoneyUnit,
+  );
+  const displayGross = displayAmount(
+    finalized.value.totals.grossMicros,
+    input.displayMoneyUnit,
+  );
+  const displayLineDiscount = displayAmount(
+    finalized.value.totals.lineDiscountMicros,
+    input.displayMoneyUnit,
+  );
+  const displayDocumentDiscount = displayAmount(
+    finalized.value.totals.documentDiscountMicros,
+    input.displayMoneyUnit,
+  );
+  const displayTax = displayAmount(
+    finalized.value.totals.taxMicros,
+    input.displayMoneyUnit,
+  );
+
+  if (
+    !displayTotal.ok ||
+    !displayGross.ok ||
+    !displayLineDiscount.ok ||
+    !displayDocumentDiscount.ok ||
+    !displayTax.ok
+  ) {
+    return refused('DISPLAY_AMOUNT_INVALID', 'نمایش مبلغ ممکن نیست');
+  }
+
+  const lines: DraftLineRecord[] = builtPreTax.map((preTaxLine, index) => {
+    const amounts = finalized.value.lines[index];
+
+    return {
+      clientLineId: preTaxLine.clientLineId,
+      catalogItemId: preTaxLine.catalogItemId,
+      kind: preTaxLine.kind,
+      name: preTaxLine.name,
+      description: preTaxLine.description,
+      unit: preTaxLine.unit,
+      quantityExact: preTaxLine.quantityExact,
+      unitPriceExact: preTaxLine.unitPriceExact,
+      grossExact: formatMicrosExact(amounts.grossMicros),
+      discountExact: formatMicrosExact(amounts.discountMicros),
+      documentDiscountExact: formatMicrosExact(amounts.documentDiscountMicros),
+      taxExact: formatMicrosExact(amounts.taxMicros),
+      totalExact: formatMicrosExact(amounts.totalMicros),
+      sortOrder: preTaxLine.sortOrder,
+      amounts,
+    };
+  });
 
   return accepted({
     quotationId: input.quotationId,
@@ -314,12 +442,19 @@ export const buildDraftQuotationPlan = (
     companyId: input.customerType === 'COMPANY' ? input.companyId : null,
     name: title,
     paymentTerms: input.paymentTerms?.trim() ? input.paymentTerms.trim() : null,
-    taxPolicy: input.taxPolicy?.trim() ? input.taxPolicy.trim() : null,
+    taxPolicy: taxPolicy.value.id,
+    taxRateBasisPoints: taxPolicy.value.rateBasisPoints.toString(),
     currencyCode: 'IRR',
     version: 1,
+    documentDiscountKind: documentDiscountMeta.value.kind,
+    documentDiscountInputExact: documentDiscountMeta.value.inputExact,
     totalExact: totalsExact.totalExact,
     totalsExact,
-    displayTotal: display.value,
-    lines: builtLines,
+    displayTotal: displayTotal.value,
+    displayGross: displayGross.value,
+    displayLineDiscount: displayLineDiscount.value,
+    displayDocumentDiscount: displayDocumentDiscount.value,
+    displayTax: displayTax.value,
+    lines,
   });
 };

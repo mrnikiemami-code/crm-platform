@@ -1,3 +1,4 @@
+import { divideRoundHalfUp } from 'src/domain/money/arithmetic';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // ONE authoritative monetary representation: an integer number of micros held in a
@@ -17,6 +18,15 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // recovered with `formatMicrosSortable`, a fixed-width form that orders lexicographically
 // exactly as the numbers order, so a text index still sorts correctly.
 export const MICROS_PER_UNIT = 1_000_000n;
+
+// Payable amount on a quotation must be a whole rial: fractional micros are kept
+// through line math, then the document total is rounded half-up to the nearest
+// whole IRR so the customer-facing figure has no decimal rial.
+export const roundMicrosToWholeRial = (micros: bigint): bigint =>
+  divideRoundHalfUp(micros, MICROS_PER_UNIT) * MICROS_PER_UNIT;
+
+export const isWholeRialMicros = (micros: bigint): boolean =>
+  micros % MICROS_PER_UNIT === 0n;
 
 // The largest integer a JS number represents exactly. Not a storage limit any more — a
 // storage limit would mean rejecting the data — but the boundary beyond which a DISPLAY

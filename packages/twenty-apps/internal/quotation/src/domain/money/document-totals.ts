@@ -1,18 +1,188 @@
-import { type QuotationLineAmounts } from 'src/domain/money/line';
-import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
+import { applyBasisPoints } from 'src/domain/money/arithmetic';
+import {
+  allocateDocumentDiscount,
+  computeDocumentDiscountMicros,
+} from 'src/domain/money/document-discount';
+import {
+  type LineDiscount,
+  type QuotationLineAmounts,
+  type QuotationLinePreTaxAmounts,
+} from 'src/domain/money/line';
+import {
+  formatMicrosExact,
+  isWholeRialMicros,
+  parseMicrosExact,
+  roundMicrosToWholeRial,
+} from 'src/domain/money/micros';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
-// A document total is the sum of already-rounded line buckets. There is no second// rounding pass here on purpose: re-rounding a sum is how a printed total ends up
-// one micro away from the column it summarises, and that is the single most common
-// reason an accountant rejects a document.
+// Document totals after line discounts, document discount allocation, tax, and
+// whole-rial payable rounding.
+//
+// ORDER (unchanged provisional S1 contract, extended for document discount):
+//   1. line gross → line discount → line net
+//   2. document discount on sum(line nets), allocated proportionally
+//   3. tax on (line net − document share)   // tax still on discounted amount
+//   4. sum line totals → round half-up to whole IRR for payable
+//      (rounding delta absorbed into the last line's tax so columns still add up)
+
 export type QuotationDocumentTotals = {
   grossMicros: bigint;
+  lineDiscountMicros: bigint;
+  documentDiscountMicros: bigint;
+  // Alias kept for callers that still read `discountMicros` as "all discounts".
   discountMicros: bigint;
   netMicros: bigint;
   taxMicros: bigint;
   totalMicros: bigint;
+  roundingMicros: bigint;
 };
 
+export type QuotationTotalsExactText = {
+  grossExact: string;
+  lineDiscountExact: string;
+  documentDiscountExact: string;
+  discountExact: string;
+  netExact: string;
+  taxExact: string;
+  totalExact: string;
+  roundingExact: string;
+};
+
+export const finalizeLinesWithDocumentDiscount = ({
+  preTaxLines,
+  documentDiscount,
+  taxRateBasisPoints,
+}: {
+  preTaxLines: QuotationLinePreTaxAmounts[];
+  documentDiscount: LineDiscount;
+  taxRateBasisPoints: bigint;
+}): Result<{ lines: QuotationLineAmounts[]; totals: QuotationDocumentTotals }> => {
+  if (preTaxLines.length === 0) {
+    return refused(
+      'DOCUMENT_HAS_NO_LINES',
+      'a quotation must have at least one line',
+    );
+  }
+
+  const sumNets = preTaxLines.reduce(
+    (sum, line) => sum + line.netAfterLineDiscountMicros,
+    0n,
+  );
+
+  const documentDiscountResult = computeDocumentDiscountMicros(
+    documentDiscount,
+    sumNets,
+  );
+
+  if (!documentDiscountResult.ok) {
+    return documentDiscountResult;
+  }
+
+  const sharesResult = allocateDocumentDiscount(
+    preTaxLines,
+    documentDiscountResult.value,
+  );
+
+  if (!sharesResult.ok) {
+    return sharesResult;
+  }
+
+  const lines: QuotationLineAmounts[] = preTaxLines.map((preTax, index) => {
+    const documentDiscountMicros = sharesResult.value[index];
+    const netMicros =
+      preTax.netAfterLineDiscountMicros - documentDiscountMicros;
+    const taxMicros = applyBasisPoints(netMicros, taxRateBasisPoints);
+
+    return {
+      grossMicros: preTax.grossMicros,
+      discountMicros: preTax.discountMicros,
+      documentDiscountMicros,
+      netMicros,
+      taxMicros,
+      totalMicros: netMicros + taxMicros,
+    };
+  });
+
+  const rawTotals = sumLineBuckets(lines);
+  const payableMicros = roundMicrosToWholeRial(rawTotals.totalMicros);
+  const roundingMicros = payableMicros - rawTotals.totalMicros;
+
+  if (roundingMicros !== 0n) {
+    const lastIndex = lines.length - 1;
+    const last = lines[lastIndex];
+
+    lines[lastIndex] = {
+      ...last,
+      taxMicros: last.taxMicros + roundingMicros,
+      totalMicros: last.totalMicros + roundingMicros,
+    };
+  }
+
+  const totals = sumLineBuckets(lines);
+  totals.roundingMicros = roundingMicros;
+  totals.totalMicros = payableMicros;
+
+  if (totals.netMicros !== totals.grossMicros - totals.discountMicros) {
+    return refused(
+      'TOTALS_INCONSISTENT',
+      'net total does not equal gross minus all discounts',
+    );
+  }
+
+  if (totals.totalMicros !== totals.netMicros + totals.taxMicros) {
+    return refused(
+      'TOTALS_INCONSISTENT',
+      'total does not equal net plus tax after whole-rial rounding',
+    );
+  }
+
+  if (!isWholeRialMicros(totals.totalMicros)) {
+    return refused(
+      'PAYABLE_NOT_WHOLE_RIAL',
+      'مبلغ نهایی باید به ریال صحیح باشد',
+    );
+  }
+
+  return accepted({ lines, totals });
+};
+
+const sumLineBuckets = (
+  lines: QuotationLineAmounts[],
+): QuotationDocumentTotals => {
+  const totals = lines.reduce<QuotationDocumentTotals>(
+    (accumulator, line) => ({
+      grossMicros: accumulator.grossMicros + line.grossMicros,
+      lineDiscountMicros:
+        accumulator.lineDiscountMicros + line.discountMicros,
+      documentDiscountMicros:
+        accumulator.documentDiscountMicros + line.documentDiscountMicros,
+      discountMicros:
+        accumulator.discountMicros +
+        line.discountMicros +
+        line.documentDiscountMicros,
+      netMicros: accumulator.netMicros + line.netMicros,
+      taxMicros: accumulator.taxMicros + line.taxMicros,
+      totalMicros: accumulator.totalMicros + line.totalMicros,
+      roundingMicros: 0n,
+    }),
+    {
+      grossMicros: 0n,
+      lineDiscountMicros: 0n,
+      documentDiscountMicros: 0n,
+      discountMicros: 0n,
+      netMicros: 0n,
+      taxMicros: 0n,
+      totalMicros: 0n,
+      roundingMicros: 0n,
+    },
+  );
+
+  return totals;
+};
+
+// Backward-compatible helper used by older tests that only pass post-line amounts
+// with documentDiscountMicros already set (usually 0).
 export const computeDocumentTotals = (
   lines: QuotationLineAmounts[],
 ): Result<QuotationDocumentTotals> => {
@@ -23,22 +193,12 @@ export const computeDocumentTotals = (
     );
   }
 
-  const totals = lines.reduce<QuotationDocumentTotals>(
-    (accumulator, line) => ({
-      grossMicros: accumulator.grossMicros + line.grossMicros,
-      discountMicros: accumulator.discountMicros + line.discountMicros,
-      netMicros: accumulator.netMicros + line.netMicros,
-      taxMicros: accumulator.taxMicros + line.taxMicros,
-      totalMicros: accumulator.totalMicros + line.totalMicros,
-    }),
-    {
-      grossMicros: 0n,
-      discountMicros: 0n,
-      netMicros: 0n,
-      taxMicros: 0n,
-      totalMicros: 0n,
-    },
-  );
+  const normalized = lines.map((line) => ({
+    ...line,
+    documentDiscountMicros: line.documentDiscountMicros ?? 0n,
+  }));
+
+  const totals = sumLineBuckets(normalized);
 
   if (totals.netMicros !== totals.grossMicros - totals.discountMicros) {
     return refused(
@@ -57,42 +217,31 @@ export const computeDocumentTotals = (
   return accepted(totals);
 };
 
-// Every amount that will be written to a CURRENCY field must survive the API
-// round trip, so the check happens once here rather than at each write site.
-// The stored form of every bucket: exact decimal text, which is what a snapshot records and
-// what an accountant reads. There is deliberately no "fit the column" check any more — the
-// column is text, so there is no boundary to fit. That check existed only because an amount
-// used to be written to a numeric field that silently changed large values.
-export type QuotationTotalsExactText = {
-  grossExact: string;
-  discountExact: string;
-  netExact: string;
-  taxExact: string;
-  totalExact: string;
-};
-
 export const formatTotalsExact = (
   totals: QuotationDocumentTotals,
 ): QuotationTotalsExactText => ({
   grossExact: formatMicrosExact(totals.grossMicros),
+  lineDiscountExact: formatMicrosExact(totals.lineDiscountMicros),
+  documentDiscountExact: formatMicrosExact(totals.documentDiscountMicros),
   discountExact: formatMicrosExact(totals.discountMicros),
   netExact: formatMicrosExact(totals.netMicros),
   taxExact: formatMicrosExact(totals.taxMicros),
   totalExact: formatMicrosExact(totals.totalMicros),
+  roundingExact: formatMicrosExact(totals.roundingMicros),
 });
 
-// Round-tripping the stored text back to the amounts must be identity. This is the check a
-// caller reuses after loading a record, and it is the one that would have caught the numeric
-// field losing precision.
 export const readTotalsExact = (
   text: QuotationTotalsExactText,
 ): Result<QuotationDocumentTotals> => {
   const parsed = {
     grossMicros: parseMicrosExact(text.grossExact),
+    lineDiscountMicros: parseMicrosExact(text.lineDiscountExact),
+    documentDiscountMicros: parseMicrosExact(text.documentDiscountExact),
     discountMicros: parseMicrosExact(text.discountExact),
     netMicros: parseMicrosExact(text.netExact),
     taxMicros: parseMicrosExact(text.taxExact),
     totalMicros: parseMicrosExact(text.totalExact),
+    roundingMicros: parseMicrosExact(text.roundingExact),
   };
 
   for (const [label, result] of Object.entries(parsed)) {
@@ -103,9 +252,18 @@ export const readTotalsExact = (
 
   return accepted({
     grossMicros: (parsed.grossMicros as { ok: true; value: bigint }).value,
-    discountMicros: (parsed.discountMicros as { ok: true; value: bigint }).value,
+    lineDiscountMicros: (
+      parsed.lineDiscountMicros as { ok: true; value: bigint }
+    ).value,
+    documentDiscountMicros: (
+      parsed.documentDiscountMicros as { ok: true; value: bigint }
+    ).value,
+    discountMicros: (parsed.discountMicros as { ok: true; value: bigint })
+      .value,
     netMicros: (parsed.netMicros as { ok: true; value: bigint }).value,
     taxMicros: (parsed.taxMicros as { ok: true; value: bigint }).value,
     totalMicros: (parsed.totalMicros as { ok: true; value: bigint }).value,
+    roundingMicros: (parsed.roundingMicros as { ok: true; value: bigint })
+      .value,
   });
 };

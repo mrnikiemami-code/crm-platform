@@ -247,18 +247,23 @@ Directly inspected this recovery file and root package.json on the remote releas
 - **NEXT = CRM-129-S1-R1**, narrow contract corrections and Asan mapping fixtures. Local worker must fetch and safely align newer remote docs (including Asan and this status) without rewriting local S1 commit. Compute fresh divergence; no Push.
 - **STOP_FOR_ARCHITECT** after R1. S2 not authorized. No database writes, app install, live accounting writes, :6080 changes, service restart, deployment or automatic branch push.
 
-## CURRENT CHECKPOINT — CRM-129 S2-R7 PASS / Dev Front UI Acceptance (2026-11-19; latest)
+## CURRENT CHECKPOINT — CRM-129 S2-R8 PASS / Financial Rules & Discounts (2026-11-19; latest)
 
-**Read first:** [CRM-129-S2-R7-PROOF.md](./CRM-129-S2-R7-PROOF.md) and [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md).
+**Read first:** [CRM-129-S2-R8-PROOF.md](./CRM-129-S2-R8-PROOF.md) and [CRM-QUOTATION-ACCOUNTING-PLAN.md](./CRM-QUOTATION-ACCOUNTING-PLAN.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from S2-R7 `f4d1b7228d`.
+- **Financial contract:** qty 6dp; IRR micros bigint; line + document discount (RATE|AMOUNT); tax from policy registry (`IR_VAT_9` only); document discount allocated half-up by net weight; payable rounded half-up to **whole IRR**; stored breakdown (gross / line discount / document discount / net / tax / total); PDF reads stored fields only.
+- **Dev:** App `0.1.3` on `dev-crm129`; `S2_R8_FINANCE_PASS`; R6 lifecycle+PDF regression PASS; vitest **199**. Dev `twenty-server-1` restarted once after PDF JS docker-cp; intranet `:6080` untouched.
+- **Residuals:** line-hook version bump (open); pdf.js ZWNJ PARTIAL; tax/discount order still provisional pending finance/legal (plan D5); no new tax policies without commercial approval.
+- **Continue at:** **S3 Customer Quotation Portal** (not authorized in R8).
+- **Operational bans:** no `:6080`, no live accounting, no SMS, no main-worker restart, no release-branch change, no screenshot loop.
+
+## PREVIOUS CHECKPOINT — CRM-129 S2-R7 PASS / Dev Front UI Acceptance (2026-11-19; historical)
+
+**Read first:** [CRM-129-S2-R7-PROOF.md](./CRM-129-S2-R7-PROOF.md). Superseded as “latest” by S2-R8 above.
 
 - **Branch / base:** `feat/crm-129-quotation` from S2-R6 `c83d5bd7c1`.
-- **Really testable now:** Dev front `:3001` → API `:3002`; catalog create; draft quotation; RECORD_PAGE tab **اقدامات**; DRAFT→PENDING→READY→SENT→CUSTOMER_ACCEPTED via in-browser `callQuotationRoute`; content lock after READY/SENT; Persian PDF download on host (~10KB `%PDF-1.3`).
-- **Browser UAT:** authenticated (`tim@apple.dev`); quotation `1a8bab82-3df6-4377-8e5e-99ba41ba478b` ended `CUSTOMER_ACCEPTED` v5 with `sentAt`/`decidedAt`. Not `BROWSER_UAT_BLOCKED`.
-- **Fixes this round:** FC entry `.tsx` unwrap; empty-checksum URL; Windows checksum path normalize (SDK source); host-side PDF download (worker cannot anchor-click).
-- **Dev / Intranet isolation:** Quotation app `0.1.2` on `dev-crm129` only. Intranet `crm-intranet-server` Up 2d on `:6080` — not restarted/redeployed. No Asan/Sepidar live, no SMS, no main-worker restart, no release-branch change.
-- **Residuals:** line-hook parent version after failed line insert (open); pdf.js ZWNJ copy PARTIAL; empty FC checksum until rebuilt SDK dist ships path fix (bare-id URL workaround live).
-- **Continue at:** **S3 Customer Quotation Portal** (not authorized in R7).
-- **Operational bans:** no `:6080` changes; no screenshot loops; no ORM/PDF-engine rewrite; no accounting workflow expansion.
+- Browser UAT PASS for lifecycle + host PDF download; app was `0.1.2`.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S2-R6 PASS / browser UI PARTIAL (2026-11-19; historical)
 

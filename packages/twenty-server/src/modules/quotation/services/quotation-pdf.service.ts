@@ -26,6 +26,11 @@ type QuotationPdfRow = {
   id: string;
   name: string | null;
   quotationNumber: string | null;
+  grossExact: string | null;
+  lineDiscountExact: string | null;
+  documentDiscountExact: string | null;
+  netExact: string | null;
+  taxExact: string | null;
   totalExact: string | null;
   paymentTerms: string | null;
   currencyCode: string | null;
@@ -113,6 +118,11 @@ export class QuotationPdfService {
           id: true,
           name: true,
           quotationNumber: true,
+          grossExact: true,
+          lineDiscountExact: true,
+          documentDiscountExact: true,
+          netExact: true,
+          taxExact: true,
           totalExact: true,
           paymentTerms: true,
           currencyCode: true,
@@ -232,6 +242,11 @@ export class QuotationPdfService {
         ? formatExactAmountWithCurrency(quotation.totalExact, currencyLabel)
         : formatExactAmountWithCurrency('0.000000', currencyLabel);
 
+    const formatStored = (value: string | null | undefined) =>
+      isNonEmptyString(value) && isSignificantExactAmount(value)
+        ? formatExactAmountWithCurrency(value, currencyLabel)
+        : undefined;
+
     return {
       title,
       quotationNumber,
@@ -242,6 +257,14 @@ export class QuotationPdfService {
         : undefined,
       currencyLabel,
       lines: pdfLines,
+      // Stored breakdown only — never recompute money in the PDF layer.
+      subtotals: {
+        gross: formatStored(quotation.grossExact),
+        lineDiscount: formatStored(quotation.lineDiscountExact),
+        documentDiscount: formatStored(quotation.documentDiscountExact),
+        net: formatStored(quotation.netExact),
+        tax: formatStored(quotation.taxExact),
+      },
       total,
     };
   }

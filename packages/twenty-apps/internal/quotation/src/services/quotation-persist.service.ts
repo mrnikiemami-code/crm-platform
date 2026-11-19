@@ -269,6 +269,14 @@ export const persistDraftQuotation = async (
         currencyCode: payload.value.quotation.currencyCode,
         taxPolicy: payload.value.quotation.taxPolicy,
         paymentTerms: payload.value.quotation.paymentTerms,
+        grossExact: payload.value.quotation.grossExact,
+        lineDiscountExact: payload.value.quotation.lineDiscountExact,
+        documentDiscountExact: payload.value.quotation.documentDiscountExact,
+        documentDiscountKind: payload.value.quotation.documentDiscountKind,
+        documentDiscountInputExact:
+          payload.value.quotation.documentDiscountInputExact,
+        netExact: payload.value.quotation.netExact,
+        taxExact: payload.value.quotation.taxExact,
         totalExact: payload.value.quotation.totalExact,
         status: 'DRAFT',
         // Optimistic lock token: server compares this to the stored version.

@@ -4,6 +4,10 @@ import { SAVE_DRAFT_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/co
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
+import { DEFAULT_TAX_POLICY_ID } from 'src/domain/money/tax-policy';
+import {
+  type DraftDiscountInput,
+} from 'src/domain/quotation/draft-quotation';
 import { persistDraftQuotation } from 'src/services/quotation-persist.service';
 import {
   buildDraftQuotationWritePayload,
@@ -18,6 +22,28 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
+const readDiscount = (
+  row: Record<string, unknown>,
+): DraftDiscountInput => {
+  const kind = readString(row.discountKind).toUpperCase();
+  const percent = readString(row.discountPercentText);
+  const amount = readString(row.discountAmountText);
+
+  if (kind === 'AMOUNT' || (amount !== '' && percent === '')) {
+    return amount === ''
+      ? { kind: 'NONE' }
+      : { kind: 'AMOUNT', text: amount };
+  }
+
+  if (kind === 'RATE' || percent !== '') {
+    return percent === ''
+      ? { kind: 'NONE' }
+      : { kind: 'RATE', percentText: percent };
+  }
+
+  return { kind: 'NONE' };
+};
+
 const handler = async (event: RoutePayload<unknown>) => {
   const body = asRecord(event.body);
   const linesRaw = Array.isArray(body.lines) ? body.lines : [];
@@ -26,12 +52,19 @@ const handler = async (event: RoutePayload<unknown>) => {
     quotationId: readString(body.quotationId) || null,
     status: (readString(body.status) || 'DRAFT') as 'DRAFT',
     customerType:
-      readString(body.customerType) === 'PERSON' ? ('PERSON' as const) : ('COMPANY' as const),
+      readString(body.customerType) === 'PERSON'
+        ? ('PERSON' as const)
+        : ('COMPANY' as const),
     personId: readString(body.personId) || null,
     companyId: readString(body.companyId) || null,
     name: readString(body.name),
     paymentTerms: readString(body.paymentTerms) || null,
-    taxPolicy: readString(body.taxPolicy) || null,
+    taxPolicy: readString(body.taxPolicy) || DEFAULT_TAX_POLICY_ID,
+    documentDiscount: readDiscount({
+      discountKind: body.documentDiscountKind,
+      discountPercentText: body.documentDiscountPercentText,
+      discountAmountText: body.documentDiscountAmountText,
+    }),
     displayMoneyUnit:
       readString(body.displayMoneyUnit) === 'IRR'
         ? ('IRR' as const)
@@ -39,23 +72,20 @@ const handler = async (event: RoutePayload<unknown>) => {
     lines: linesRaw.map((line, index) => {
       const row = asRecord(line);
       const moneyUnit = (readString(row.moneyUnit) || 'TOMAN') as MoneyUnit;
-      const discountPercent = readString(row.discountPercentText);
 
       return {
         clientLineId: readString(row.clientLineId) || `line-${index}`,
         catalogItemId: readString(row.catalogItemId) || null,
-        kind: (readString(row.kind) === 'SERVICE' ? 'SERVICE' : 'PRODUCT') as CatalogItemKind,
+        kind: (readString(row.kind) === 'SERVICE'
+          ? 'SERVICE'
+          : 'PRODUCT') as CatalogItemKind,
         name: readString(row.name),
         description: readString(row.description) || null,
         unit: readString(row.unit) || 'عدد',
         quantityText: readString(row.quantityText),
         unitPriceText: readString(row.unitPriceText),
         moneyUnit,
-        discount:
-          discountPercent === ''
-            ? { kind: 'NONE' as const }
-            : { kind: 'RATE' as const, percentText: discountPercent },
-        taxRatePercentText: readString(row.taxRatePercentText) || '0',
+        discount: readDiscount(row),
       };
     }),
   };
@@ -81,6 +111,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         'محاسبات معتبر است؛ برای نوشتن در پایگاه، اپ باید روی فضای کاری نصب شود.',
       plan: {
         totalExact: outcome.plan.totalExact,
+        totalsExact: outcome.plan.totalsExact,
         displayTotal: outcome.plan.displayTotal,
         lineCount: outcome.plan.lines.length,
       },
@@ -106,6 +137,7 @@ const handler = async (event: RoutePayload<unknown>) => {
     quotationId: saved.quotationId,
     plan: {
       totalExact: saved.plan.totalExact,
+      totalsExact: saved.plan.totalsExact,
       displayTotal: saved.plan.displayTotal,
       lineCount: saved.plan.lines.length,
     },

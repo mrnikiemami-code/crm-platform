@@ -35,15 +35,25 @@ export type QuotationLineInput = {
 
 export type QuotationLineAmounts = {
   grossMicros: bigint;
+  // Line-level discount only (not the document discount share).
   discountMicros: bigint;
+  // Net after line discount and after this line's share of the document discount.
   netMicros: bigint;
+  // Document-discount share allocated to this line (0 when none).
+  documentDiscountMicros: bigint;
   taxMicros: bigint;
   totalMicros: bigint;
 };
 
-export const computeLineAmounts = (
-  input: QuotationLineInput,
-): Result<QuotationLineAmounts> => {
+export type QuotationLinePreTaxAmounts = {
+  grossMicros: bigint;
+  discountMicros: bigint;
+  netAfterLineDiscountMicros: bigint;
+};
+
+export const computeLinePreTaxAmounts = (
+  input: Omit<QuotationLineInput, 'taxRateBasisPoints'>,
+): Result<QuotationLinePreTaxAmounts> => {
   if (input.quantityScaled <= 0n) {
     return refused(
       'QUANTITY_NOT_POSITIVE',
@@ -53,13 +63,6 @@ export const computeLineAmounts = (
 
   if (input.unitPriceMicros < 0n) {
     return refused('UNIT_PRICE_NEGATIVE', 'a unit price cannot be negative');
-  }
-
-  if (!isBasisPointsInRange(input.taxRateBasisPoints)) {
-    return refused(
-      'TAX_RATE_OUT_OF_RANGE',
-      'a tax rate must be between 0% and 100% in basis points',
-    );
   }
 
   const grossMicros = divideRoundHalfUp(
@@ -74,12 +77,37 @@ export const computeLineAmounts = (
   }
 
   const discountMicros = discountResult.value;
-  const netMicros = grossMicros - discountMicros;
-  const taxMicros = applyBasisPoints(netMicros, input.taxRateBasisPoints);
 
   return accepted({
     grossMicros,
     discountMicros,
+    netAfterLineDiscountMicros: grossMicros - discountMicros,
+  });
+};
+
+export const computeLineAmounts = (
+  input: QuotationLineInput,
+): Result<QuotationLineAmounts> => {
+  if (!isBasisPointsInRange(input.taxRateBasisPoints)) {
+    return refused(
+      'TAX_RATE_OUT_OF_RANGE',
+      'a tax rate must be between 0% and 100% in basis points',
+    );
+  }
+
+  const preTax = computeLinePreTaxAmounts(input);
+
+  if (!preTax.ok) {
+    return preTax;
+  }
+
+  const netMicros = preTax.value.netAfterLineDiscountMicros;
+  const taxMicros = applyBasisPoints(netMicros, input.taxRateBasisPoints);
+
+  return accepted({
+    grossMicros: preTax.value.grossMicros,
+    discountMicros: preTax.value.discountMicros,
+    documentDiscountMicros: 0n,
     netMicros,
     taxMicros,
     totalMicros: netMicros + taxMicros,

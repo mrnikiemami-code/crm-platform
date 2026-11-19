@@ -68,6 +68,7 @@ describe('quotation-persist.service', () => {
         name: 'تلاش برای ویرایش',
         paymentTerms: null,
         taxPolicy: 'IR_VAT_9',
+        documentDiscount: { kind: 'NONE' },
         displayMoneyUnit: 'TOMAN',
         lines: [
           {
@@ -81,7 +82,6 @@ describe('quotation-persist.service', () => {
             unitPriceText: '1000',
             moneyUnit: 'TOMAN',
             discount: { kind: 'NONE' },
-            taxRatePercentText: '9',
           },
         ],
       },
@@ -119,6 +119,7 @@ describe('quotation-persist.service', () => {
         name: 'پیش‌فاکتور شخص',
         paymentTerms: 'نقد',
         taxPolicy: 'IR_VAT_9',
+        documentDiscount: { kind: 'RATE', percentText: '5' },
         displayMoneyUnit: 'TOMAN',
         lines: [
           {
@@ -132,7 +133,6 @@ describe('quotation-persist.service', () => {
             unitPriceText: '1000',
             moneyUnit: 'TOMAN',
             discount: { kind: 'RATE', percentText: '10' },
-            taxRatePercentText: '9',
           },
           {
             clientLineId: '2',
@@ -145,7 +145,6 @@ describe('quotation-persist.service', () => {
             unitPriceText: '500',
             moneyUnit: 'TOMAN',
             discount: { kind: 'NONE' },
-            taxRatePercentText: '9',
           },
         ],
       },
