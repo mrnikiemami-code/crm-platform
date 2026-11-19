@@ -11,6 +11,7 @@
 **Read first:** [CRM-129-S2-R11-PROOF.md](./CRM-129-S2-R11-PROOF.md).
 
 - **Branch / base:** `feat/crm-129-quotation` from S2-R10 `a96056f217`.
+- **GitHub SHA:** `72375a7aecdb34e4754e0023f189c13b72efd637`.
 - **Delivery:** catalog search cut from 3→2 GraphQL round-trips (combined catalog+default priceList); client empty-page cache; Persian money inputs with validated grouping parser; caret-safe inputs; rounding case verified consistent UI/DB/PDF (no domain change). App **0.1.7** on `dev-crm129`.
 - **Bench:** before open/page2/search avg 142/129/122 ms; after-combined 163/120/125 ms wall (LF cold-start noise); internal timings ~60–70 ms (catalog~50–58 + prices~10).
 - **Continue at:** architect gate — **S3** not authorized here.

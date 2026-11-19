@@ -2,6 +2,7 @@
 
 **Base:** `a96056f217` (S2-R10 HEAD)  
 **Branch:** `feat/crm-129-quotation`  
+**GitHub SHA:** `72375a7aecdb34e4754e0023f189c13b72efd637`  
 **Result:** **PASS**
 
 ## 1. Source review
