@@ -1,10 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
 **Updated:** 2026-11-20 (CRM-129-QUOTATION-LIST-UX-001)
-**Repository:** mrnikami-code/crm-platform
+**Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
-**Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
+**Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
+
+## ARCHITECT DECISION — CRM-129 LIST UX ACCEPTED (2026-11-20; latest gate)
+
+- **Verified GitHub HEAD:** `8c33411c5c061502edaee26552c29e90e79571f3` on `feat/crm-129-quotation`. The 246 Vitest / 32 Jest / Dev `:3002` evidence is worker-reported in [CRM-129-QUOTATION-LIST-UX-001-PROOF.md](./CRM-129-QUOTATION-LIST-UX-001-PROOF.md), not a fresh architect-run browser test.
+- **Decision:** ACCEPT app-owned sidebar view «همهٔ پیش‌فاکتورها» as the operator-facing view. KEEP Twenty's 34-column platform-provisioned `All پیش‌فاکتورها` view unchanged for now. Do **not** change Core/default-view provisioning or delete the other view without a separate product need and bounded approval.
+- **Numbering contract:** null `quotationNumber` in DRAFT is intentional; number allocated atomically on transition to `READY_TO_SEND`. Never invent/backfill legacy numbers or mistake `version` for document number. Preserve concurrent issuance tests and no duplicate numbers.
+- **Customer and money presentation:** app view projects customer from actual Person/Company relations and money through shared exact formatter; retain raw exact storage untouched. Dev browser operator URL is `http://localhost:3002/objects/quotations?viewId=c3a14f2d-d0a9-4ecb-8514-e1d61cbafaff`.
+- **Next:** resume CRM-129 customer acceptance/rejection online or other prioritized product capability as separately approved; no additional list-view Core task. Continue short source-grounded tasks with real browser handoff. Bale direct API remains `LIVE_UNVERIFIED`; `:6080` off-limits. Preserve unrelated local dirty files.
 
 ## CURRENT CHECKPOINT — CRM-129-QUOTATION-LIST-UX-001 PASS / Professional Quotation List (2026-11-20; latest)
 
