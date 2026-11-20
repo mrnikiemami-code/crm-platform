@@ -60,6 +60,9 @@ export type DraftLineInput = {
 
 export type DraftQuotationInput = {
   quotationId: string | null;
+  // The version the form was opened at. A mismatch means someone else saved in
+  // between, so the write is refused instead of silently overwriting their edit.
+  expectedVersion?: number | null;
   status: QuotationStatus;
   customerType: 'PERSON' | 'COMPANY';
   personId: string | null;
@@ -83,6 +86,10 @@ export type DraftLineRecord = {
   unitPriceExact: string;
   grossExact: string;
   discountExact: string;
+  // The operator's instruction, not just its result: reopening a draft must show
+  // "10%" again instead of a frozen amount that means something else next time.
+  discountKind: 'NONE' | 'RATE' | 'AMOUNT';
+  discountInputExact: string;
   documentDiscountExact: string;
   taxExact: string;
   totalExact: string;
@@ -163,7 +170,7 @@ const buildDiscount = (
   }
 };
 
-const documentDiscountInputExact = (
+const buildDiscountInputMeta = (
   discount: DraftDiscountInput,
   moneyUnit: MoneyUnit,
 ): Result<{ kind: 'NONE' | 'RATE' | 'AMOUNT'; inputExact: string }> => {
@@ -208,6 +215,8 @@ type BuiltPreTaxLine = {
   quantityExact: string;
   unitPriceExact: string;
   sortOrder: number;
+  discountKind: 'NONE' | 'RATE' | 'AMOUNT';
+  discountInputExact: string;
   preTax: {
     grossMicros: bigint;
     discountMicros: bigint;
@@ -247,6 +256,12 @@ const computeOnePreTaxLine = (
     return discount;
   }
 
+  const discountMeta = buildDiscountInputMeta(line.discount, line.moneyUnit);
+
+  if (!discountMeta.ok) {
+    return discountMeta;
+  }
+
   const preTax = computeLinePreTaxAmounts({
     quantityScaled: quantity.value,
     unitPriceMicros: unitPrice.value.irrMicros,
@@ -267,6 +282,8 @@ const computeOnePreTaxLine = (
     quantityExact: formatQuantityExact(quantity.value),
     unitPriceExact: formatMicrosExact(unitPrice.value.irrMicros),
     sortOrder,
+    discountKind: discountMeta.value.kind,
+    discountInputExact: discountMeta.value.inputExact,
     preTax: preTax.value,
   });
 };
@@ -353,7 +370,7 @@ export const buildDraftQuotationPlan = (
     return documentDiscount;
   }
 
-  const documentDiscountMeta = documentDiscountInputExact(
+  const documentDiscountMeta = buildDiscountInputMeta(
     input.documentDiscount,
     input.displayMoneyUnit,
   );
@@ -435,6 +452,8 @@ export const buildDraftQuotationPlan = (
       unitPriceExact: preTaxLine.unitPriceExact,
       grossExact: formatMicrosExact(amounts.grossMicros),
       discountExact: formatMicrosExact(amounts.discountMicros),
+      discountKind: preTaxLine.discountKind,
+      discountInputExact: preTaxLine.discountInputExact,
       documentDiscountExact: formatMicrosExact(amounts.documentDiscountMicros),
       taxExact: formatMicrosExact(amounts.taxMicros),
       totalExact: formatMicrosExact(amounts.totalMicros),

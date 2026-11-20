@@ -12,6 +12,7 @@ import {
   buildQuotationCustomerNameQuery,
   buildQuotationLinesByQuotationQuery,
   buildUpdateCatalogItemMutation,
+  buildUpdateQuotationLineMutation,
   buildUpdateQuotationMutation,
 } from 'src/data/quotation-queries';
 import { type GraphqlValue } from 'src/data/graphql-literal';
@@ -282,6 +283,10 @@ export const persistDraftQuotation = async (
 
   try {
     let quotationId = input.quotationId;
+    let savedVersion = 1;
+    // Ids of the lines the document already had, in document order. Reusing them
+    // turns a save into an in-place edit instead of a delete/recreate churn.
+    let existingLineIds: string[] = [];
 
     if (quotationId) {
       const existing = await dependencies.execute(
@@ -311,6 +316,18 @@ export const persistDraftQuotation = async (
       const currentVersion =
         typeof node.version === 'number' ? node.version : 1;
 
+      if (
+        typeof input.expectedVersion === 'number' &&
+        input.expectedVersion !== currentVersion
+      ) {
+        return {
+          kind: 'REJECTED',
+          code: 'VERSION_CONFLICT',
+          message:
+            'این پیش‌فاکتور پس از باز شدن شما تغییر کرده است؛ صفحه را تازه کنید و دوباره تلاش کنید',
+        };
+      }
+
       const customer = await resolveQuotationCustomer(dependencies.execute, {
         personId:
           typeof payload.value.quotation.personId === 'string'
@@ -322,60 +339,66 @@ export const persistDraftQuotation = async (
             : null,
       });
 
-      const quotationData = omitNullish({
-        name: payload.value.quotation.name,
-        customerType: payload.value.quotation.customerType,
-        personId: payload.value.quotation.personId,
-        companyId: payload.value.quotation.companyId,
-        currencyCode: payload.value.quotation.currencyCode,
-        taxPolicy: payload.value.quotation.taxPolicy,
-        paymentTerms: payload.value.quotation.paymentTerms,
-        grossExact: payload.value.quotation.grossExact,
-        lineDiscountExact: payload.value.quotation.lineDiscountExact,
-        documentDiscountExact: payload.value.quotation.documentDiscountExact,
-        documentDiscountKind: payload.value.quotation.documentDiscountKind,
-        documentDiscountInputExact:
-          payload.value.quotation.documentDiscountInputExact,
-        netExact: payload.value.quotation.netExact,
-        taxExact: payload.value.quotation.taxExact,
-        roundingExact: payload.value.quotation.roundingExact,
-        totalExact: payload.value.quotation.totalExact,
-        // Display projections are recomputed here, never accepted from the client.
-        // The number label is absent on purpose: only issuance touches it.
-        ...(customer === null
-          ? {}
-          : {
-              customerName: buildQuotationCustomerLabel(customer),
-              totalDisplay: buildQuotationTotalDisplay({
-                totalExact:
-                  typeof payload.value.quotation.totalExact === 'string'
-                    ? payload.value.quotation.totalExact
-                    : null,
-                currencyCode:
-                  typeof payload.value.quotation.currencyCode === 'string'
-                    ? payload.value.quotation.currencyCode
-                    : null,
+      const quotationData = {
+        ...omitNullish({
+          name: payload.value.quotation.name,
+          customerType: payload.value.quotation.customerType,
+          currencyCode: payload.value.quotation.currencyCode,
+          taxPolicy: payload.value.quotation.taxPolicy,
+          paymentTerms: payload.value.quotation.paymentTerms,
+          grossExact: payload.value.quotation.grossExact,
+          lineDiscountExact: payload.value.quotation.lineDiscountExact,
+          documentDiscountExact: payload.value.quotation.documentDiscountExact,
+          documentDiscountKind: payload.value.quotation.documentDiscountKind,
+          documentDiscountInputExact:
+            payload.value.quotation.documentDiscountInputExact,
+          netExact: payload.value.quotation.netExact,
+          taxExact: payload.value.quotation.taxExact,
+          roundingExact: payload.value.quotation.roundingExact,
+          totalExact: payload.value.quotation.totalExact,
+          // Display projections are recomputed here, never accepted from the client.
+          // The number label is absent on purpose: only issuance touches it.
+          ...(customer === null
+            ? {}
+            : {
+                customerName: buildQuotationCustomerLabel(customer),
+                totalDisplay: buildQuotationTotalDisplay({
+                  totalExact:
+                    typeof payload.value.quotation.totalExact === 'string'
+                      ? payload.value.quotation.totalExact
+                      : null,
+                  currencyCode:
+                    typeof payload.value.quotation.currencyCode === 'string'
+                      ? payload.value.quotation.currencyCode
+                      : null,
+                }),
               }),
-            }),
-        status: 'DRAFT',
-        // Optimistic lock token: server compares this to the stored version.
+        }),
+        // null must be SENT, not omitted: switching the customer side has to clear
+        // the relation the quotation no longer points at, and the status is never
+        // written here — only a lifecycle action may change it.
+        personId: (payload.value.quotation.personId ??
+          null) as GraphqlValue,
+        companyId: (payload.value.quotation.companyId ??
+          null) as GraphqlValue,
+        // Optimistic lock token: the workspace query hook compares this against
+        // the stored version and bumps it itself, so the client must send the
+        // version it actually saw. A stale panel is refused, never overwritten.
         version: currentVersion,
-      });
+      };
+
+      savedVersion = currentVersion;
 
       await dependencies.execute(
         buildUpdateQuotationMutation(quotationId, quotationData),
       );
 
-      const lineIds = readEdgesIds(
+      existingLineIds = readEdgesIds(
         await dependencies.execute(
           buildQuotationLinesByQuotationQuery(quotationId),
         ),
         'quotationLines',
       );
-
-      for (const lineId of lineIds) {
-        await dependencies.execute(buildDeleteQuotationLineMutation(lineId));
-      }
     } else {
       const customer = await resolveQuotationCustomer(dependencies.execute, {
         personId:
@@ -424,18 +447,47 @@ export const persistDraftQuotation = async (
       };
     }
 
-    for (const line of payload.value.lines) {
+    const lineInputs = payload.value.lines.map((line) =>
+      omitNullish({
+        ...line,
+        quotationId,
+      }),
+    );
+
+    for (let index = 0; index < lineInputs.length; index += 1) {
+      const existingLineId = existingLineIds[index];
+
       await dependencies.execute(
-        buildCreateQuotationLineMutation(
-          omitNullish({
-            ...line,
-            quotationId,
-          }),
-        ),
+        typeof existingLineId === 'string'
+          ? buildUpdateQuotationLineMutation(existingLineId, lineInputs[index])
+          : buildCreateQuotationLineMutation(lineInputs[index]),
       );
     }
 
-    return { kind: 'SAVED', quotationId, plan: outcome.plan };
+    // Lines the document no longer has. Last, so a failure earlier never leaves
+    // the quotation with fewer lines than the operator saw.
+    for (const staleLineId of existingLineIds.slice(lineInputs.length)) {
+      await dependencies.execute(buildDeleteQuotationLineMutation(staleLineId));
+    }
+
+    // Every line write claims a version of its own, so the authoritative number is
+    // read back instead of assumed: the next save from this panel must not be
+    // refused as stale.
+    const saved = await dependencies.execute(
+      buildQuotationByIdQuery(quotationId),
+    );
+    const savedNode = asRecord(saved.quotation);
+
+    if (typeof savedNode?.version === 'number') {
+      savedVersion = savedNode.version;
+    }
+
+    return {
+      kind: 'SAVED',
+      quotationId,
+      version: savedVersion,
+      plan: outcome.plan,
+    };
   } catch (error) {
     if (error instanceof RecordApiError && error.code === 'FORBIDDEN') {
       return {

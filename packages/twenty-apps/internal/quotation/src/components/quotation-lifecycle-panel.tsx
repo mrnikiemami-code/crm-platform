@@ -7,8 +7,15 @@ import {
 } from 'react';
 import {
   enqueueSnackbar,
+  openSidePanelPage,
+  SidePanelPages,
   useSelectedRecordIds,
 } from 'twenty-sdk/front-component';
+
+import {
+  QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
+} from 'src/constants/universal-identifiers';
+import { permissionLabel, toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 type QuotationRouteBridge = (request: {
   action: string;
@@ -238,10 +245,7 @@ export const QuotationLifecyclePanel = () => {
     if (response?.success !== true) {
       setState({
         kind: 'ERROR',
-        message:
-          typeof response?.message === 'string'
-            ? response.message
-            : 'بارگذاری وضعیت پیش‌فاکتور ناموفق بود.',
+        message: toPersianUiMessage(response?.message, 'بارگذاری وضعیت پیش‌فاکتور ناموفق بود.'),
       });
       return;
     }
@@ -291,10 +295,7 @@ export const QuotationLifecyclePanel = () => {
 
       if (response?.success !== true) {
         await enqueueSnackbar({
-          message:
-            typeof response?.message === 'string'
-              ? response.message
-              : 'صدور لینک مشتری انجام نشد.',
+          message: toPersianUiMessage(response?.message, 'صدور لینک مشتری انجام نشد.'),
           variant: 'error',
         });
         return;
@@ -325,10 +326,7 @@ export const QuotationLifecyclePanel = () => {
       }
 
       await enqueueSnackbar({
-        message:
-          typeof response.message === 'string'
-            ? response.message
-            : 'لینک مشتری صادر شد.',
+        message: toPersianUiMessage(response.message, 'لینک مشتری صادر شد.'),
         variant: 'success',
       });
     } catch {
@@ -373,10 +371,7 @@ export const QuotationLifecyclePanel = () => {
 
       if (response?.success !== true) {
         await enqueueSnackbar({
-          message:
-            typeof response?.message === 'string'
-              ? response.message
-              : 'اشتراک‌گذاری انجام نشد.',
+          message: toPersianUiMessage(response?.message, 'اشتراک‌گذاری انجام نشد.'),
           variant: 'error',
         });
         return;
@@ -436,11 +431,14 @@ export const QuotationLifecyclePanel = () => {
         await copyToClipboard({ text: shareText });
       }
 
+      // A provider that refused the message must not read like a prepared
+      // share; the server's generic success copy is only true when nothing
+      // was sent on the user's behalf.
       await enqueueSnackbar({
         message:
-          typeof response.message === 'string'
-            ? response.message
-            : 'متن اشتراک آماده شد.',
+          outcome === 'PROVIDER_FAILED'
+            ? 'ارسال از کانال انجام نشد؛ متن و لینک برای ارسال دستی آماده است.'
+            : toPersianUiMessage(response.message, 'متن اشتراک آماده شد.'),
         variant:
           outcome === 'PROVIDER_SENT'
             ? 'success'
@@ -486,10 +484,7 @@ export const QuotationLifecyclePanel = () => {
 
       if (response?.success !== true) {
         await enqueueSnackbar({
-          message:
-            typeof response?.message === 'string'
-              ? response.message
-              : 'لغو لینک مشتری انجام نشد.',
+          message: toPersianUiMessage(response?.message, 'لغو لینک مشتری انجام نشد.'),
           variant: 'error',
         });
         return;
@@ -497,10 +492,7 @@ export const QuotationLifecyclePanel = () => {
 
       setCustomerLink(null);
       await enqueueSnackbar({
-        message:
-          typeof response.message === 'string'
-            ? response.message
-            : 'لینک مشتری لغو شد.',
+        message: toPersianUiMessage(response.message, 'لینک مشتری لغو شد.'),
         variant: 'success',
       });
     } catch {
@@ -538,10 +530,7 @@ export const QuotationLifecyclePanel = () => {
 
       if (response?.success !== true) {
         await enqueueSnackbar({
-          message:
-            typeof response?.message === 'string'
-              ? response.message
-              : 'عملیات انجام نشد.',
+          message: toPersianUiMessage(response?.message, 'عملیات انجام نشد.'),
           variant: 'error',
         });
         return;
@@ -550,20 +539,14 @@ export const QuotationLifecyclePanel = () => {
       if (action === 'generate-pdf') {
         // Host bridge performs the real browser download; worker only confirms.
         await enqueueSnackbar({
-          message:
-            typeof response.message === 'string'
-              ? response.message
-              : 'PDF دانلود شد.',
+          message: toPersianUiMessage(response.message, 'PDF دانلود شد.'),
           variant: 'success',
         });
         return;
       }
 
       await enqueueSnackbar({
-        message:
-          typeof response.message === 'string'
-            ? response.message
-            : 'وضعیت به‌روز شد.',
+        message: toPersianUiMessage(response.message, 'وضعیت به‌روز شد.'),
         variant: 'success',
       });
       await loadLifecycle();
@@ -575,6 +558,34 @@ export const QuotationLifecyclePanel = () => {
     } finally {
       busyRef.current = false;
       setBusy(false);
+    }
+  };
+
+  // Opening the draft form here is what makes a record opened from the list
+  // editable: everything else in this tab changes state, never content.
+  const openDraftForm = async () => {
+    if (quotationId === null) {
+      return;
+    }
+
+    try {
+      await openSidePanelPage({
+        page: SidePanelPages.ViewFrontComponent,
+        frontComponentId: QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
+        recordId: quotationId,
+        objectNameSingular: 'quotation',
+        pageTitle: 'ویرایش پیش‌نویس',
+        pageIcon: 'IconPencil',
+      });
+    } catch (openFailure) {
+      console.error(
+        'quotation-lifecycle-panel: open draft form failed',
+        openFailure,
+      );
+      await enqueueSnackbar({
+        message: 'باز کردن فرم ویرایش ممکن نشد؛ صفحه را دوباره باز کنید.',
+        variant: 'error',
+      });
     }
   };
 
@@ -620,9 +631,19 @@ export const QuotationLifecyclePanel = () => {
           عملیات مجاز وضعیت در دسترس است.
         </p>
       ) : (
-        <p style={styles.notice}>
-          ذخیره و ویرایش پیش‌نویس از زبانهٔ «فیلدها» یا فرم ایجاد انجام می‌شود.
-        </p>
+        <>
+          <p style={styles.notice}>
+            ویرایش سند از فرم پیش‌نویس انجام می‌شود؛ پس از ذخیره، همان پیش‌فاکتور
+            به‌روزرسانی می‌شود و رکورد جدیدی ساخته نمی‌شود.
+          </p>
+          <button
+            type="button"
+            style={{ ...styles.button, ...styles.buttonPrimary }}
+            onClick={() => void openDraftForm()}
+          >
+            ویرایش پیش‌نویس
+          </button>
+        </>
       )}
 
       {lifecycle.status === 'SENT' ||
@@ -653,7 +674,7 @@ export const QuotationLifecyclePanel = () => {
               title={
                 action.enabled
                   ? undefined
-                  : `نیاز به مجوز ${action.requiredPermission}`
+                  : `نیاز به مجوز ${permissionLabel(action.requiredPermission)}`
               }
               onClick={() =>
                 void runAction('transition', {

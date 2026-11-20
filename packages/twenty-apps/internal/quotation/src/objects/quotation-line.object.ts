@@ -96,10 +96,11 @@ export default defineObject({
       name: 'quantityExact',
       label: 'مقدار (دقیق)',
       description:
-        'مقدار با شش رقم اعشار دقیق. متن است تا از دست رفتن دقت GraphQL رخ ندهد.',
+        'مقدار با شش رقم اعشار دقیق. متن است تا از دست رفتن دقت GraphQL رخ ندهد. از فرم ویرایش، نه جدول، تغییر می‌کند.',
       icon: 'IconHash',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.unitPriceExact,
@@ -110,6 +111,7 @@ export default defineObject({
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.grossExact,
@@ -120,6 +122,7 @@ export default defineObject({
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.discountExact,
@@ -130,6 +133,32 @@ export default defineObject({
       icon: 'IconPercentage',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
+    },
+    {
+      // Kept so editing a draft can show the same discount the operator typed.
+      // The amount is the authority; this only explains how it was requested.
+      universalIdentifier: QUOTATION_LINE_FIELDS.discountKind,
+      type: FieldType.TEXT,
+      name: 'discountKind',
+      label: 'نوع تخفیف ردیف',
+      description: 'NONE یا RATE یا AMOUNT — ورودی اپراتور برای تخفیف ردیف.',
+      icon: 'IconList',
+      isNullable: true,
+      defaultValue: "'NONE'",
+      isUIEditable: false,
+    },
+    {
+      universalIdentifier: QUOTATION_LINE_FIELDS.discountInputExact,
+      type: FieldType.TEXT,
+      name: 'discountInputExact',
+      label: 'ورودی تخفیف ردیف (دقیق)',
+      description:
+        'برای RATE درصد به‌صورت اعشار دقیق؛ برای AMOUNT مبلغ ریال دقیق؛ برای NONE صفر.',
+      icon: 'IconHash',
+      isNullable: true,
+      defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.documentDiscountExact,
@@ -140,6 +169,7 @@ export default defineObject({
       icon: 'IconPercentage',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.taxExact,
@@ -150,6 +180,7 @@ export default defineObject({
       icon: 'IconPercentage',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.totalExact,
@@ -160,6 +191,7 @@ export default defineObject({
       icon: 'IconFileText',
       isNullable: false,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.sortOrder,
@@ -170,6 +202,7 @@ export default defineObject({
       icon: 'IconListNumbers',
       isNullable: false,
       defaultValue: 0,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_LINE_FIELDS.quotation,

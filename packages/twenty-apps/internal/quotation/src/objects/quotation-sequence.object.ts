@@ -47,6 +47,7 @@ export default defineObject({
         'Document type and fiscal year, for example QUOTATION:1403. Unique: this is the row the allocator contends on.',
       icon: 'IconKey',
       isNullable: false,
+      defaultValue: "''",
       isUnique: true,
     },
     {

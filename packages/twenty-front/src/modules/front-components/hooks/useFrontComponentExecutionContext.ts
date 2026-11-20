@@ -1,3 +1,4 @@
+import { useApolloCoreClient } from '@/object-metadata/hooks/useApolloCoreClient';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
 import { getFieldMetadataItemById } from '@/object-metadata/utils/getFieldMetadataItemById';
 import { resolveOpenRecordIn } from '@/object-record/record-index/utils/resolveOpenRecordIn';
@@ -26,6 +27,7 @@ import {
 
 import { useOpenAskAiPageWithPreprompt } from '@/ai/hooks/useOpenAskAiPageWithPreprompt';
 import { currentUserState } from '@/auth/states/currentUserState';
+import { frontComponentsSelector } from '@/front-components/states/frontComponentsSelector';
 import { isAllowedCommunicationAction } from '@/front-components/utils/communicationRouteAllowList';
 import { downloadQuotationPdfFromHost } from '@/front-components/utils/downloadQuotationPdfFromHost';
 import { isAllowedQuotationAction } from '@/front-components/utils/quotationRouteAllowList';
@@ -143,8 +145,10 @@ export const useFrontComponentExecutionContext = ({
   storageNamespace?: string;
 } => {
   const currentUser = useAtomStateValue(currentUserState);
+  const frontComponents = useAtomStateValue(frontComponentsSelector);
   const navigateApp = useNavigateApp();
   const store = useStore();
+  const apolloCoreClient = useApolloCoreClient();
   const { requestAccessTokenRefresh } = useRequestApplicationTokenRefresh({
     frontComponentId,
   });
@@ -345,6 +349,17 @@ export const useFrontComponentExecutionContext = ({
       }
 
       if (params.page === SidePanelPages.ViewFrontComponent) {
+        // Application code only knows the front component's universal
+        // identifier (that is what the manifest declares); the panel renders by
+        // record id. Resolving here keeps `openSidePanelPage` usable from apps
+        // without leaking workspace ids into application bundles.
+        const resolvedFrontComponentId =
+          frontComponents.find(
+            (frontComponent) =>
+              frontComponent.id === params.frontComponentId ||
+              frontComponent.universalIdentifier === params.frontComponentId,
+          )?.id ?? params.frontComponentId;
+
         const recordContext =
           isDefined(params.recordId) && isDefined(params.objectNameSingular)
             ? {
@@ -357,7 +372,7 @@ export const useFrontComponentExecutionContext = ({
             : undefined;
 
         openFrontComponentInSidePanel({
-          frontComponentId: params.frontComponentId,
+          frontComponentId: resolvedFrontComponentId,
           pageTitle: params.pageTitle,
           pageIcon: getIcon(params.pageIcon),
           resetNavigationStack: params.resetNavigationStack,
@@ -663,6 +678,17 @@ export const useFrontComponentExecutionContext = ({
             : {};
       } catch {
         return { success: false, errorCode: 'UNEXPECTED' };
+      }
+
+      // A transition writes the record outside Apollo, so the open record page and
+      // the list behind it would keep showing the old status and a missing number.
+      if (action === 'transition' && parsed.success === true) {
+        void apolloCoreClient
+          .refetchQueries({ include: 'active' })
+          .catch(() => {
+            // The toast already reports the transition; a stale cache is not worth
+            // a second error the user cannot act on.
+          });
       }
 
       // Worker cannot click a download anchor; strip base64 after host save.

@@ -22,6 +22,16 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
+const readVersion = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+
+  return typeof value === 'string' && /^\d+$/.test(value.trim())
+    ? Number(value.trim())
+    : null;
+};
+
 const readDiscount = (
   row: Record<string, unknown>,
 ): DraftDiscountInput => {
@@ -50,6 +60,7 @@ const handler = async (event: RoutePayload<unknown>) => {
 
   const input = {
     quotationId: readString(body.quotationId) || null,
+    expectedVersion: readVersion(body.expectedVersion),
     status: (readString(body.status) || 'DRAFT') as 'DRAFT',
     customerType:
       readString(body.customerType) === 'PERSON'
@@ -123,11 +134,14 @@ const handler = async (event: RoutePayload<unknown>) => {
     execute: executeRecordGraphql,
   });
 
-  if (saved.kind === 'REJECTED') {
+  if (saved.kind !== 'SAVED') {
     return {
       success: false,
-      code: saved.code,
-      message: saved.message,
+      code: saved.kind === 'REJECTED' ? saved.code : 'PERSISTENCE_FAILED',
+      message:
+        saved.kind === 'REJECTED'
+          ? saved.message
+          : 'ذخیره پیش‌فاکتور انجام نشد',
     };
   }
 
@@ -135,6 +149,7 @@ const handler = async (event: RoutePayload<unknown>) => {
     success: true,
     persisted: true,
     quotationId: saved.quotationId,
+    version: saved.version,
     plan: {
       totalExact: saved.plan.totalExact,
       totalsExact: saved.plan.totalsExact,

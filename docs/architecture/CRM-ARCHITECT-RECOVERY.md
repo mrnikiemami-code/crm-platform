@@ -1,12 +1,28 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-20 (CRM-129-QUOTATION-LIST-UX-001)
+**Updated:** 2026-11-20 (CRM-129-QUOTATION-RECORD-UX-002)
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## ARCHITECT DECISION — CRM-129 LIST UX ACCEPTED (2026-11-20; latest gate)
+## CURRENT CHECKPOINT — CRM-129-QUOTATION-RECORD-UX-002 PASS / Record Panel Edit, Lifecycle, Sharing (2026-11-20; latest)
+
+**Read first:** [CRM-129-QUOTATION-RECORD-UX-002-PROOF.md](./CRM-129-QUOTATION-RECORD-UX-002-PROOF.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from `8e91f7904cb30554b2d45519b23b175b59b6d7a7`. Quotation app **0.1.15** on `dev-crm129`.
+- **Draft editing:** opening a row from «همهٔ پیش‌فاکتورها» now loads the real document and its lines into `QuotationDraftForm` (`services/quotation-draft-edit.service.ts`), and saving updates the **same** record with `expectedVersion` (Dev: `40f8213a-…`, version 3 → 4, payable ۹۸۱ → ۴٬۷۸۴ تومان, no duplicate row).
+- **Protection:** computed/system fields are `isUIEditable: false`; server still rejects locked writes (`QUOTATION_IMMUTABLE`, Persian) and illegal transitions (`TRANSITION_NOT_ALLOWED`, Persian). `dev-verify-crm129-locked-guard.cjs` → `CRM129_LOCKED_GUARD_PASS`, nothing mutated.
+- **Lifecycle/sharing:** «اقدامات» tab drives پیش‌نویس → در انتظار تأیید → آماده ارسال on the open record; document number `QT-1405-000019` and the new status appeared in the table without reload; «دانلود PDF فارسی» produced a real PDF; seven channels listed; Bale remains provider-only (`PROVIDER_FAILED` without a real API success, `LIVE_UNVERIFIED`).
+- **RTL:** panel resize is fixed generally — RTL drag right 400→480 px, drag left 480→400 px; mirrored LTR narrows/widens correctly; unit tests cover both directions and zoom.
+- **Operator copy:** quotation errors surface Persian `userFriendlyMessage` only (machine codes stripped by `ui-message.ts`), and the panel header shows the record label instead of `/object/quotation/…`.
+- **Tests:** quotation app vitest **258**, server quotation jest **4**, front jest **65**; `tsgo` clean for twenty-front and the app. Server `tsgo` has 2 pre-existing errors in untouched files (`quotation-communication-outbound.service.ts:135`, `test/spikes/quotation-pdf/quotation-pdf-document.ts:125`).
+- **Regression:** `S2_R8_FINANCE_PASS`, `S2_R6_UI_PDF_PASS`, `S3_R3_SHARE_PASS`, `S3_R4_BALE_CONTRACT_PASS`, `S2_R4_ROLE_PASS`, version-bypass guards, numbering race 000025–000028 distinct.
+- **Continue at:** architect gate — STOP_FOR_ARCHITECT.
+- **Operational bans:** no `:6080`, no release-branch change, no parallel form/Send stack, no direct DB status edits, no screenshot loop.
+- **Unrelated locals left dirty (not committed):** Settings select/API-key front files + their test, plus `.tmp-*` probe files.
+
+## PREVIOUS CHECKPOINT — CRM-129 LIST UX ACCEPTED (2026-11-20; historical gate)
 
 - **Verified GitHub HEAD:** `8c33411c5c061502edaee26552c29e90e79571f3` on `feat/crm-129-quotation`. The 246 Vitest / 32 Jest / Dev `:3002` evidence is worker-reported in [CRM-129-QUOTATION-LIST-UX-001-PROOF.md](./CRM-129-QUOTATION-LIST-UX-001-PROOF.md), not a fresh architect-run browser test.
 - **Decision:** ACCEPT app-owned sidebar view «همهٔ پیش‌فاکتورها» as the operator-facing view. KEEP Twenty's 34-column platform-provisioned `All پیش‌فاکتورها` view unchanged for now. Do **not** change Core/default-view provisioning or delete the other view without a separate product need and bounded approval.
@@ -14,7 +30,7 @@
 - **Customer and money presentation:** app view projects customer from actual Person/Company relations and money through shared exact formatter; retain raw exact storage untouched. Dev browser operator URL is `http://localhost:3002/objects/quotations?viewId=c3a14f2d-d0a9-4ecb-8514-e1d61cbafaff`.
 - **Next:** resume CRM-129 customer acceptance/rejection online or other prioritized product capability as separately approved; no additional list-view Core task. Continue short source-grounded tasks with real browser handoff. Bale direct API remains `LIVE_UNVERIFIED`; `:6080` off-limits. Preserve unrelated local dirty files.
 
-## CURRENT CHECKPOINT — CRM-129-QUOTATION-LIST-UX-001 PASS / Professional Quotation List (2026-11-20; latest)
+## PREVIOUS CHECKPOINT — CRM-129-QUOTATION-LIST-UX-001 PASS / Professional Quotation List (2026-11-20; historical)
 
 **Read first:** [CRM-129-QUOTATION-LIST-UX-001-PROOF.md](./CRM-129-QUOTATION-LIST-UX-001-PROOF.md).
 

@@ -67,6 +67,14 @@ const handler = async (event: RoutePayload<unknown>) => {
     };
   }
 
+  if (saved.kind !== 'SAVED') {
+    return {
+      success: false,
+      code: 'PERSISTENCE_FAILED',
+      message: 'ذخیره کالا/خدمت انجام نشد',
+    };
+  }
+
   return {
     success: true,
     persisted: true,

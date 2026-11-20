@@ -1,4 +1,4 @@
-import { type CSSProperties, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import {
   closeSidePanel,
   enqueueSnackbar,
@@ -15,6 +15,7 @@ import {
   SAVE_DRAFT_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
+import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
 import {
@@ -26,6 +27,11 @@ import {
   type DraftLineInput,
 } from 'src/domain/quotation/draft-quotation';
 import { buildDraftQuotationPreview } from 'src/domain/quotation/draft-preview';
+import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
+import {
+  type EditableDraft,
+  loadDraftForEdit,
+} from 'src/services/quotation-draft-edit.service';
 
 type DiscountKind = 'NONE' | 'RATE' | 'AMOUNT';
 
@@ -69,13 +75,27 @@ const TAX_LABEL = (() => {
   return policy.ok ? policy.value.label : 'مالیات';
 })();
 
+// The host already sends `objectNameSingular`, but the SDK release this app is
+// pinned to does not declare it yet; the field is read through a narrow cast so
+// the record identity is not lost until the SDK type catches up.
+type ExecutionContextWithObjectName = {
+  objectNameSingular?: string | null;
+};
+
 const selectObjectNameSingular = (
-  context: { objectNameSingular?: string | null } | null | undefined,
-): string => context?.objectNameSingular ?? '';
+  context: Record<string, unknown> | null | undefined,
+): string =>
+  (context as ExecutionContextWithObjectName | null | undefined)
+    ?.objectNameSingular ?? '';
 
 const selectSelectedRecordIds = (
-  context: { selectedRecordIds?: string[] | null } | null | undefined,
-): string[] => context?.selectedRecordIds ?? [];
+  context: Record<string, unknown> | null | undefined,
+): string[] => {
+  const ids = (context as { selectedRecordIds?: string[] | null } | null)
+    ?.selectedRecordIds;
+
+  return Array.isArray(ids) ? ids : [];
+};
 
 const toDiscountInput = (
   kind: DiscountKind,
@@ -130,6 +150,7 @@ export const QuotationDraftForm = () => {
     selectSelectedRecordIds,
   );
   const sourceRecordId = selectedRecordIds[0] ?? '';
+  const isRecordEdit = sourceObject === 'quotation' && sourceRecordId !== '';
 
   const initialCustomerType =
     sourceObject === 'person'
@@ -144,6 +165,22 @@ export const QuotationDraftForm = () => {
   const [customerType, setCustomerType] = useState<'PERSON' | 'COMPANY'>(
     initialCustomerType,
   );
+  const [customerIds, setCustomerIds] = useState<{
+    personId: string | null;
+    companyId: string | null;
+  }>(() =>
+    sourceObject === 'person' && sourceRecordId !== ''
+      ? { personId: sourceRecordId, companyId: null }
+      : sourceObject === 'company' && sourceRecordId !== ''
+        ? { personId: null, companyId: sourceRecordId }
+        : { personId: null, companyId: null },
+  );
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(
+    null,
+  );
+  const [recordVersion, setRecordVersion] = useState<number | null>(null);
+  const [loadingDraft, setLoadingDraft] = useState(isRecordEdit);
+  const [draftLocked, setDraftLocked] = useState(false);
   const [documentDiscountKind, setDocumentDiscountKind] =
     useState<DiscountKind>('NONE');
   const [documentDiscountPercentText, setDocumentDiscountPercentText] =
@@ -155,15 +192,105 @@ export const QuotationDraftForm = () => {
   const [saving, setSaving] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
 
+  useEffect(() => {
+    if (!isRecordEdit) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrate = async () => {
+      setLoadingDraft(true);
+      setError(null);
+
+      try {
+        const result = await loadDraftForEdit(sourceRecordId, {
+          execute: executeRecordGraphql,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!result.ok) {
+          setError(
+            toPersianUiMessage(
+              result.refusal.detail,
+              'بارگذاری پیش‌فاکتور ممکن نشد؛ صفحه را دوباره باز کنید.',
+            ),
+          );
+          return;
+        }
+
+        const draft: EditableDraft = result.value;
+
+        setEditingQuotationId(draft.quotationId);
+        setRecordVersion(draft.version);
+        setName(draft.name);
+        setPaymentTerms(draft.paymentTerms);
+        setMoneyUnit(draft.moneyUnit);
+        setCustomerType(draft.customerType);
+        setCustomerIds({
+          personId: draft.personId,
+          companyId: draft.companyId,
+        });
+        setDocumentDiscountKind(draft.documentDiscountKind);
+        setDocumentDiscountPercentText(draft.documentDiscountPercentText);
+        setDocumentDiscountAmountText(draft.documentDiscountAmountText);
+        setLines(
+          draft.lines.map((line) => ({
+            clientLineId: line.clientLineId,
+            catalogItemId: line.catalogItemId,
+            kind: line.kind,
+            name: line.name,
+            sku: null,
+            description: line.description,
+            unit: line.unit,
+            quantityText: line.quantityText,
+            unitPriceText: line.unitPriceText,
+            discountKind: line.discountKind,
+            discountPercentText: line.discountPercentText,
+            discountAmountText: line.discountAmountText,
+            priceWarning: null,
+          })),
+        );
+
+        if (!draft.contentEditable) {
+          // The real lock lives on the server; this only stops the form from
+          // offering a save that would be refused anyway.
+          setDraftLocked(true);
+        }
+      } catch (loadFailure) {
+        // A transport or GraphQL failure is not something an operator can act on.
+        // The technical detail belongs in the console, the panel gets Persian.
+        console.error('quotation-draft-form: draft load failed', loadFailure);
+
+        if (!cancelled) {
+          setError('بارگذاری پیش‌فاکتور ممکن نشد؛ صفحه را دوباره باز کنید.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingDraft(false);
+        }
+      }
+    };
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRecordEdit, sourceRecordId]);
+
   const preview = useMemo(() => {
     const draftLines = lines.map((line) => toDraftLineInput(line, moneyUnit));
 
     return buildDraftQuotationPreview({
-      quotationId: null,
+      quotationId: editingQuotationId,
       status: 'DRAFT',
       customerType,
-      personId: customerType === 'PERSON' ? sourceRecordId || null : null,
-      companyId: customerType === 'COMPANY' ? sourceRecordId || null : null,
+      personId: customerType === 'PERSON' ? customerIds.personId : null,
+      companyId: customerType === 'COMPANY' ? customerIds.companyId : null,
       name,
       paymentTerms,
       taxPolicy: DEFAULT_TAX_POLICY_ID,
@@ -179,7 +306,8 @@ export const QuotationDraftForm = () => {
     lines,
     moneyUnit,
     customerType,
-    sourceRecordId,
+    customerIds,
+    editingQuotationId,
     name,
     paymentTerms,
     documentDiscountKind,
@@ -221,6 +349,10 @@ export const QuotationDraftForm = () => {
   };
 
   const onSave = async () => {
+    if (draftLocked || loadingDraft) {
+      return;
+    }
+
     if (!preview.canSave || !preview.fullPlan.ok) {
       setError(
         preview.fullPlan.ok
@@ -235,10 +367,12 @@ export const QuotationDraftForm = () => {
 
     try {
       const response = await callAppRoute(SAVE_DRAFT_ROUTE, {
+        quotationId: editingQuotationId,
+        expectedVersion: recordVersion,
         status: 'DRAFT',
         customerType,
-        personId: customerType === 'PERSON' ? sourceRecordId || null : null,
-        companyId: customerType === 'COMPANY' ? sourceRecordId || null : null,
+        personId: customerType === 'PERSON' ? customerIds.personId : null,
+        companyId: customerType === 'COMPANY' ? customerIds.companyId : null,
         name,
         paymentTerms,
         taxPolicy: DEFAULT_TAX_POLICY_ID,
@@ -264,22 +398,37 @@ export const QuotationDraftForm = () => {
 
       if (!response.ok || response.data.success === false) {
         setError(
-          typeof response.data.message === 'string'
-            ? response.data.message
-            : PROBLEM_FALLBACK,
+          toPersianUiMessage(response.data.message, PROBLEM_FALLBACK),
         );
         return;
       }
 
+      const savedVersion =
+        typeof response.data.version === 'number'
+          ? response.data.version
+          : recordVersion;
+
+      if (editingQuotationId === null) {
+        // Created records keep the panel where it is only when they were opened
+        // from a person or company; the existing close behaviour stays.
+        enqueueSnackbar({
+          message: toPersianUiMessage(
+            response.data.message,
+            'پیش‌نویس ذخیره شد',
+          ),
+          variant: 'success',
+        });
+        closeSidePanel();
+        return;
+      }
+
+      setRecordVersion(savedVersion);
       enqueueSnackbar({
-        message:
-          typeof response.data.message === 'string'
-            ? response.data.message
-            : 'پیش‌نویس ذخیره شد',
+        message: 'تغییرات پیش‌نویس ذخیره شد',
         variant: 'success',
       });
-      closeSidePanel();
-    } catch {
+    } catch (saveFailure) {
+      console.error('quotation-draft-form: save failed', saveFailure);
       setError('ارتباط با سرور برقرار نشد');
     } finally {
       setSaving(false);
@@ -287,13 +436,26 @@ export const QuotationDraftForm = () => {
   };
 
   const customerHint =
-    sourceRecordId === ''
-      ? 'مشتری از رکورد انتخاب‌شده در CRM گرفته می‌شود؛ از فرمان ایجاد روی شخص یا شرکت استفاده کنید.'
-      : customerType === 'PERSON'
-        ? 'مشتری: شخص انتخاب‌شده'
-        : 'مشتری: شرکت انتخاب‌شده';
+    editingQuotationId !== null
+      ? customerType === 'PERSON'
+        ? customerIds.personId === null
+          ? 'این پیش‌فاکتور هنوز به شخصی وصل نشده است.'
+          : 'مشتری: شخص متصل به این پیش‌فاکتور'
+        : customerIds.companyId === null
+          ? 'این پیش‌فاکتور هنوز به شرکتی وصل نشده است.'
+          : 'مشتری: شرکت متصل به این پیش‌فاکتور'
+      : sourceRecordId === ''
+        ? 'مشتری از رکورد انتخاب‌شده در CRM گرفته می‌شود؛ از فرمان ایجاد روی شخص یا شرکت استفاده کنید.'
+        : customerType === 'PERSON'
+          ? 'مشتری: شخص انتخاب‌شده'
+          : 'مشتری: شرکت انتخاب‌شده';
 
-  const canSave = preview.canSave && !saving;
+  const isFormLocked = loadingDraft || draftLocked;
+  const canSave =
+    preview.canSave && !saving && !isFormLocked;
+  const formSectionStyle: CSSProperties = isFormLocked
+    ? { ...styles.section, opacity: 0.6, pointerEvents: 'none' }
+    : styles.section;
   const addButtonStyle: CSSProperties = {
     ...styles.addLineButton,
     background: addHovered ? '#1d4ed8' : '#2563eb',
@@ -303,14 +465,31 @@ export const QuotationDraftForm = () => {
     <div style={styles.root} dir="rtl">
       <div style={styles.scrollBody}>
         <header style={styles.header}>
-          <h2 style={styles.title}>پیش‌فاکتور جدید</h2>
+          <h2 style={styles.title}>
+            {editingQuotationId !== null
+              ? 'ویرایش پیش‌نویس'
+              : isRecordEdit
+                ? 'پیش‌فاکتور'
+                : 'پیش‌فاکتور جدید'}
+          </h2>
           <p style={styles.hint}>
-            کالا و خدمت را از کاتالوگ انتخاب کنید. مبلغ نهایی به پایین‌ترین ریال
-            صحیح گرد می‌شود.
+            {isRecordEdit
+              ? 'اطلاعات همین پیش‌فاکتور بارگذاری شده است. مبلغ نهایی به پایین‌ترین ریال صحیح گرد می‌شود.'
+              : 'کالا و خدمت را از کاتالوگ انتخاب کنید. مبلغ نهایی به پایین‌ترین ریال صحیح گرد می‌شود.'}
           </p>
         </header>
 
-        <section style={styles.section}>
+        {loadingDraft ? (
+          <p style={styles.meta}>در حال بارگذاری پیش‌فاکتور…</p>
+        ) : null}
+        {draftLocked ? (
+          <p style={styles.warning}>
+            این پیش‌فاکتور دیگر پیش‌نویس نیست و ویرایش مستقیم آن مجاز نیست؛
+            برای تغییر وضعیت از تب «اقدامات» استفاده کنید.
+          </p>
+        ) : null}
+
+        <section style={formSectionStyle}>
           <h3 style={styles.sectionTitle}>مشخصات</h3>
           <label style={styles.label}>
             عنوان
@@ -359,7 +538,7 @@ export const QuotationDraftForm = () => {
           </label>
         </section>
 
-        <section style={styles.section}>
+        <section style={formSectionStyle}>
           <div style={styles.sectionHeader}>
             <h3 style={styles.sectionTitle}>ردیف‌های کالا و خدمت</h3>
             <button
@@ -593,13 +772,15 @@ export const QuotationDraftForm = () => {
         </section>
 
         <div style={styles.actions}>
-          <button
-            type="button"
-            style={styles.secondaryButton}
-            onClick={closeSidePanel}
-          >
-            بستن
-          </button>
+          {isRecordEdit ? null : (
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={closeSidePanel}
+            >
+              بستن
+            </button>
+          )}
           <button
             type="button"
             style={{
@@ -610,7 +791,11 @@ export const QuotationDraftForm = () => {
             disabled={!canSave}
             onClick={() => void onSave()}
           >
-            {saving ? 'در حال ذخیره…' : 'ذخیره پیش‌نویس'}
+            {saving
+              ? 'در حال ذخیره…'
+              : editingQuotationId !== null
+                ? 'ذخیره تغییرات'
+                : 'ذخیره پیش‌نویس'}
           </button>
         </div>
       </div>

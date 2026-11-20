@@ -43,16 +43,68 @@ export const buildCreateQuotationLineMutation = (
 ): string =>
   `mutation CreateQuotationLine { createQuotationLine(data: ${toGraphqlLiteral(data)}) { id } }`;
 
+// Editing a line in place keeps its id (and therefore its history) instead of
+// deleting and recreating the row on every draft save.
+export const buildUpdateQuotationLineMutation = (
+  id: string,
+  data: Record<string, GraphqlValue>,
+): string =>
+  `mutation UpdateQuotationLine { updateQuotationLine(id: ${toGraphqlLiteral(id)}, data: ${toGraphqlLiteral(data)}) { id } }`;
+
 export const buildDeleteQuotationLineMutation = (id: string): string =>
   `mutation DeleteQuotationLine { deleteQuotationLine(id: ${toGraphqlLiteral(id)}) { id } }`;
 
 export const buildQuotationByIdQuery = (id: string): string =>
   `query QuotationById { quotation(filter: { id: { eq: ${toGraphqlLiteral(id)} } }) { id status version name } }`;
 
+// One round-trip for everything the edit form needs: the header plus every line,
+// in document order. Relations are read through their nodes (`person { id }`)
+// because the join column names are a storage detail of the platform.
+export const buildQuotationDraftEditQuery = (quotationId: string): string =>
+  `query QuotationDraftEdit {
+    quotation(filter: { id: { eq: ${toGraphqlLiteral(quotationId)} } }) {
+      id
+      status
+      version
+      name
+      customerType
+      paymentTerms
+      taxPolicy
+      currencyCode
+      documentDiscountKind
+      documentDiscountInputExact
+      documentDiscountExact
+      person { id }
+      company { id }
+    }
+    quotationLines(
+      filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }
+      orderBy: [{ sortOrder: AscNullsLast }]
+      first: 200
+    ) {
+      edges {
+        node {
+          id
+          name
+          kind
+          description
+          unit
+          quantityExact
+          unitPriceExact
+          discountExact
+          discountKind
+          discountInputExact
+          sortOrder
+          item { id }
+        }
+      }
+    }
+  }`;
+
 export const buildQuotationLinesByQuotationQuery = (
   quotationId: string,
 ): string =>
-  `query QuotationLinesByQuotation { quotationLines(filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }) { edges { node { id } } } }`;
+  `query QuotationLinesByQuotation { quotationLines(filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }, orderBy: [{ sortOrder: AscNullsLast }], first: 200) { edges { node { id } } } }`;
 
 export const buildCatalogItemByIdQuery = (id: string): string =>
   `query CatalogItemById { catalogItem(filter: { id: { eq: ${toGraphqlLiteral(id)} } }) { id name kind sku unit isActive } }`;

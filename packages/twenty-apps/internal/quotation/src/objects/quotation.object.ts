@@ -62,6 +62,7 @@ export default defineObject({
       icon: 'IconHash',
       isNullable: true,
       isUnique: true,
+      isUIEditable: false,
     },
     {
       // The list table cannot render a null as a label, and a draft is a real
@@ -164,6 +165,7 @@ export default defineObject({
           position: 8,
         },
       ],
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.customerType,
@@ -191,6 +193,7 @@ export default defineObject({
           position: 1,
         },
       ],
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.currencyCode,
@@ -202,6 +205,7 @@ export default defineObject({
       icon: 'IconCurrencyIranianRial',
       isNullable: false,
       defaultValue: `'IRR'`,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.taxPolicy,
@@ -212,6 +216,7 @@ export default defineObject({
         'شناسهٔ قاعدهٔ مالیات، مثلاً IR_VAT_9. نرخ و مبنای قانونی تصمیم کسب‌وکار است.',
       icon: 'IconPercentage',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.paymentTerms,
@@ -239,6 +244,7 @@ export default defineObject({
       description: 'جمع ناخالص ردیف‌ها قبل از هر تخفیف، به ریال دقیق.',
       icon: 'IconCurrencyIranianRial',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.lineDiscountExact,
@@ -248,6 +254,7 @@ export default defineObject({
       description: 'جمع تخفیف‌های سطح ردیف.',
       icon: 'IconPercentage',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.documentDiscountExact,
@@ -257,6 +264,7 @@ export default defineObject({
       description: 'مبلغ تخفیف سطح سند پس از تخصیص به ردیف‌ها.',
       icon: 'IconPercentage',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.documentDiscountKind,
@@ -267,6 +275,7 @@ export default defineObject({
       icon: 'IconList',
       isNullable: true,
       defaultValue: "'NONE'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.documentDiscountInputExact,
@@ -278,6 +287,7 @@ export default defineObject({
       icon: 'IconHash',
       isNullable: true,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.netExact,
@@ -287,6 +297,7 @@ export default defineObject({
       description: 'ناخالص منهای همهٔ تخفیف‌ها، قبل از مالیات.',
       icon: 'IconCurrencyIranianRial',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.taxExact,
@@ -297,6 +308,7 @@ export default defineObject({
         'جمع مالیات ردیف‌ها بر اساس سیاست مالیات سند (بدون تعدیل گردکردن).',
       icon: 'IconPercentage',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.roundingExact,
@@ -307,6 +319,7 @@ export default defineObject({
       icon: 'IconAdjustments',
       isNullable: true,
       defaultValue: "'0.000000'",
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.totalExact,
@@ -317,6 +330,7 @@ export default defineObject({
         'خالص + مالیات + تعدیل گردکردن، به ریال صحیح. تنها نسخهٔ معتبر مبلغ قابل پرداخت.',
       icon: 'IconCurrencyIranianRial',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       // The table shows money, not storage. Rendered by the shared money
@@ -342,6 +356,7 @@ export default defineObject({
       icon: 'IconVersions',
       isNullable: false,
       defaultValue: 1,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.sentAt,
@@ -351,6 +366,7 @@ export default defineObject({
       description: 'زمان رسیدن پیش‌فاکتور به مشتری.',
       icon: 'IconSend',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.decidedAt,
@@ -360,6 +376,7 @@ export default defineObject({
       description: 'زمان قبول یا رد توسط مشتری.',
       icon: 'IconCircleCheck',
       isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.person,
@@ -378,6 +395,7 @@ export default defineObject({
         onDelete: OnDeleteAction.SET_NULL,
         joinColumnName: 'personId',
       },
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.company,
@@ -396,6 +414,7 @@ export default defineObject({
         onDelete: OnDeleteAction.SET_NULL,
         joinColumnName: 'companyId',
       },
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.opportunity,
@@ -484,3 +503,4 @@ export default defineObject({
     },
   ],
 });
+

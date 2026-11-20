@@ -60,6 +60,9 @@ export default defineApplicationRole({
       objectUniversalIdentifier: QUOTATION_LINE_OBJECT_UNIVERSAL_IDENTIFIER,
       canReadObjectRecords: true,
       canUpdateObjectRecords: true,
+      // Removing a line from a draft is a soft delete; without it a save that
+      // drops a row would be refused. Hard destroy stays closed.
+      canSoftDeleteObjectRecords: true,
     },
     {
       objectUniversalIdentifier: QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER,

@@ -1,7 +1,9 @@
 import { getObjectMetadataIdentifierFields } from '@/object-metadata/utils/getObjectMetadataIdentifierFields';
 import { ObjectRecordShowPageBreadcrumb } from '@/object-record/record-show/components/ObjectRecordShowPageBreadcrumb';
 import { RecordIdentifierBarTitle } from '@/object-record/record-show/components/RecordIdentifierBarTitle';
+import { useRecordShowPageName } from '@/object-record/record-show/hooks/useRecordShowPageName';
 import { useRecordShowPagePagination } from '@/object-record/record-show/hooks/useRecordShowPagePagination';
+import { SidePanelPageTitleSyncEffect } from '@/side-panel/components/SidePanelPageTitleSyncEffect';
 import { useWorkspaceSurface } from '@/ui/layout/hooks/useWorkspaceSurface';
 import { PageCardHeader } from '@/ui/layout/page/components/PageCardHeader';
 
@@ -48,18 +50,29 @@ const RecordShowPageMainHeader = ({
 const RecordShowPagePanelHeader = ({
   objectNameSingular,
   objectRecordId,
-}: RecordShowPagePanelHeaderProps) => (
-  <PageCardHeader
-    title={
-      <RecordIdentifierBarTitle
-        objectNameSingular={objectNameSingular}
-        objectRecordId={objectRecordId}
-        variant="side-panel"
-        recordLinkSurface="main"
+}: RecordShowPagePanelHeaderProps) => {
+  const recordName = useRecordShowPageName({
+    objectNameSingular,
+    objectRecordId,
+  });
+
+  return (
+    <>
+      {/* The panel bar otherwise keeps the routed path it was opened with. */}
+      <SidePanelPageTitleSyncEffect pageTitle={recordName} />
+      <PageCardHeader
+        title={
+          <RecordIdentifierBarTitle
+            objectNameSingular={objectNameSingular}
+            objectRecordId={objectRecordId}
+            variant="side-panel"
+            recordLinkSurface="main"
+          />
+        }
       />
-    }
-  />
-);
+    </>
+  );
+};
 
 export const RecordShowPageHeader = ({
   objectNameSingular,

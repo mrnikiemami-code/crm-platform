@@ -100,6 +100,11 @@ export const QUOTATION_LINE_FIELDS = {
   unitPriceExact: '65709ed5-88af-5eba-b81a-67547894a274',
   grossExact: '1e3b5829-64a6-518f-a29d-b5263748596a',
   discountExact: 'e2ae7f84-6a92-598d-a168-3d086c3c4d9d',
+  // The operator's original discount instruction, kept next to the amount it
+  // produced so reopening a draft shows "10%" again instead of an amount that
+  // silently changes meaning when the quantity is edited later.
+  discountKind: 'b7c1d2e3-4f50-5a61-8b72-93a4c5d6e7f8',
+  discountInputExact: 'c8d2e3f4-5a61-5b72-9c83-a4b5c6d7e8f9',
   documentDiscountExact: '2f4c693a-75b7-5290-a3ae-c63748596a7b',
   taxExact: '2f3ce772-0169-5895-b580-8aa6c7be41ec',
   totalExact: '58d8751e-476a-501c-9cdb-6bf88162598a',
@@ -308,3 +313,6 @@ export const QUOTATION_ACTIONS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
   'a7b8c9d0-e1f2-5345-b678-9f0123456789';
 export const QUOTATION_ACTIONS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
   'b8c9d0e1-f2a3-5456-8789-0123456789ab';
+
+export const EDIT_QUOTATION_DRAFT_COMMAND_UNIVERSAL_IDENTIFIER =
+  'c9d0e1f2-a3b4-5567-9891-0123456789ac';

@@ -247,14 +247,34 @@ const main = async () => {
   );
 
   // A second messenger channel also stays manual.
-  const bale = await action({
+  const rubika = await action({
+    action: 'share-quotation',
+    quotationId,
+    channel: 'RUBIKA',
+    ttlHours: 24,
+  });
+  assert(
+    rubika.data?.success === true,
+    `rubika share failed: ${JSON.stringify(rubika.data)}`,
+  );
+  assert(rubika.data.outcome === 'MANUAL_SHARE', 'rubika must be MANUAL_SHARE');
+
+  // Bale is a real provider channel: without a numeric chat_id the server must
+  // refuse instead of pretending a manual share happened.
+  const baleWithoutChat = await action({
     action: 'share-quotation',
     quotationId,
     channel: 'BALE',
     ttlHours: 24,
   });
-  assert(bale.data?.success === true, `bale share failed: ${JSON.stringify(bale.data)}`);
-  assert(bale.data.outcome === 'MANUAL_SHARE', 'bale must be MANUAL_SHARE');
+  assert(
+    baleWithoutChat.data?.success === false,
+    `bale without chat_id must fail: ${JSON.stringify(baleWithoutChat.data)}`,
+  );
+  assert(
+    /[\u0600-\u06FF]/.test(baleWithoutChat.data.message ?? ''),
+    'bale refusal must be Persian',
+  );
 
   console.log(
     JSON.stringify({

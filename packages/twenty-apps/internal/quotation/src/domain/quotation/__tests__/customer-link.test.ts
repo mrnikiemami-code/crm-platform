@@ -216,7 +216,7 @@ describe('customer link service', () => {
       id: 'link-1',
       tokenHash: hash,
       expiresAt: '2026-11-19T09:00:00.000Z',
-      revokedAt: null,
+      revokedAt: null as string | null,
       quotationId: 'q-1',
     };
 

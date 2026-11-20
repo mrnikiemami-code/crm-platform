@@ -1,22 +1,31 @@
 import { type MessageDescriptor } from '@lingui/core';
-import { msg } from '@lingui/core/macro';
-import { assertUnreachable } from 'twenty-shared/utils';
 
+import {
+  extractQuotationErrorCode,
+  persianMessageForQuotationCode,
+} from 'src/modules/quotation/utils/quotation-ui-messages.util';
 import { CustomException } from 'src/utils/custom-exception';
 
 export enum QuotationQueryValidationExceptionCode {
   FORBIDDEN = 'FORBIDDEN',
 }
 
+// Twenty renders userFriendlyMessage in the toast and keeps `message` for the
+// logs, so the two must not be the same string: the message stays English with
+// its machine-readable code, the toast is Persian without that code.
+const FALLBACK_PERSIAN_MESSAGE =
+  'این پیش‌فاکتور قابل تغییر نیست. برای تغییر، نسخهٔ جدید صادر کنید.';
+
 const getQuotationQueryValidationExceptionUserFriendlyMessage = (
-  code: QuotationQueryValidationExceptionCode,
-) => {
-  switch (code) {
-    case QuotationQueryValidationExceptionCode.FORBIDDEN:
-      return msg`This quotation can no longer be changed. Create a new revision instead.`;
-    default:
-      assertUnreachable(code);
-  }
+  message: string,
+): MessageDescriptor => {
+  const semanticCode = extractQuotationErrorCode(message);
+  const persianMessage =
+    semanticCode === null
+      ? FALLBACK_PERSIAN_MESSAGE
+      : persianMessageForQuotationCode(semanticCode, FALLBACK_PERSIAN_MESSAGE);
+
+  return { id: persianMessage, message: persianMessage };
 };
 
 export class QuotationQueryValidationException extends CustomException<QuotationQueryValidationExceptionCode> {
@@ -28,7 +37,7 @@ export class QuotationQueryValidationException extends CustomException<Quotation
     super(message, code, {
       userFriendlyMessage:
         userFriendlyMessage ??
-        getQuotationQueryValidationExceptionUserFriendlyMessage(code),
+        getQuotationQueryValidationExceptionUserFriendlyMessage(message),
     });
   }
 }

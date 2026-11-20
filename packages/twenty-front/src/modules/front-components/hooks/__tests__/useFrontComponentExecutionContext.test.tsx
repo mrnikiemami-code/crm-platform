@@ -18,6 +18,12 @@ jest.mock('@/object-metadata/hooks/useObjectMetadataItems', () => ({
   }),
 }));
 
+jest.mock('@/object-metadata/hooks/useApolloCoreClient', () => ({
+  useApolloCoreClient: () => ({
+    refetchQueries: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 jest.mock('@/object-metadata/utils/getFieldMetadataItemById', () => ({
   getFieldMetadataItemById: (parameters: { fieldMetadataId: string }) => ({
     fieldMetadataItem:
@@ -52,6 +58,8 @@ const mockStorageDelete = jest.fn();
 const mockStorageClear = jest.fn();
 
 let mockCurrentUser: { id: string } | null = { id: 'user-123' };
+let mockFrontComponents: Array<{ id: string; universalIdentifier: string }> =
+  [];
 let mockIsMobile = false;
 
 jest.mock('~/hooks/useNavigateApp', () => ({
@@ -140,7 +148,13 @@ jest.mock('twenty-ui/utilities', () => ({
 }));
 
 jest.mock('@/ui/utilities/state/jotai/hooks/useAtomStateValue', () => ({
-  useAtomStateValue: () => mockCurrentUser,
+  useAtomStateValue: (atom: unknown) =>
+    atom ===
+    jest.requireActual(
+      '@/front-components/states/frontComponentsSelector',
+    ).frontComponentsSelector
+      ? mockFrontComponents
+      : mockCurrentUser,
 }));
 
 jest.mock('@/ui/utilities/state/jotai/hooks/useSetAtomState', () => ({
@@ -222,6 +236,7 @@ describe('useFrontComponentExecutionContext', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCurrentUser = { id: 'user-123' };
+    mockFrontComponents = [];
     mockIsMobile = false;
     getDefaultStore().set(parentViewAtom, undefined);
   });
@@ -238,6 +253,7 @@ describe('useFrontComponentExecutionContext', () => {
         userId: 'user-123',
         recordId: 'record-456',
         selectedRecordIds: ['record-456'],
+        objectNameSingular: null,
         timelineActivityId: null,
         colorScheme: 'light',
         locale: i18n.locale as AppLocale,
@@ -255,6 +271,7 @@ describe('useFrontComponentExecutionContext', () => {
         userId: 'user-123',
         recordId: null,
         selectedRecordIds: ['record-1', 'record-2', 'record-3'],
+        objectNameSingular: null,
         timelineActivityId: null,
         colorScheme: 'light',
         locale: i18n.locale as AppLocale,
@@ -751,6 +768,56 @@ describe('useFrontComponentExecutionContext', () => {
           objectNameSingular: 'lead',
         },
       });
+    });
+
+    it('resolves the universal identifier an app can know to the record id', async () => {
+      mockFrontComponents = [
+        { id: 'fc-record-id', universalIdentifier: 'fc-universal-id' },
+      ];
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      await act(async () => {
+        await result.current.frontComponentHostCommunicationApi.openSidePanelPage(
+          {
+            page: SidePanelPages.ViewFrontComponent,
+            frontComponentId: 'fc-universal-id',
+            pageTitle: 'ویرایش پیش‌نویس',
+            recordId: 'lead-1',
+            objectNameSingular: 'lead',
+          },
+        );
+      });
+
+      expect(mockOpenFrontComponentInSidePanel).toHaveBeenCalledWith(
+        expect.objectContaining({ frontComponentId: 'fc-record-id' }),
+      );
+    });
+
+    it('keeps a record id the panel already knows', async () => {
+      mockFrontComponents = [
+        { id: 'fc-record-id', universalIdentifier: 'fc-universal-id' },
+      ];
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      await act(async () => {
+        await result.current.frontComponentHostCommunicationApi.openSidePanelPage(
+          {
+            page: SidePanelPages.ViewFrontComponent,
+            frontComponentId: 'fc-record-id',
+            pageTitle: 'ویرایش پیش‌نویس',
+          },
+        );
+      });
+
+      expect(mockOpenFrontComponentInSidePanel).toHaveBeenCalledWith(
+        expect.objectContaining({ frontComponentId: 'fc-record-id' }),
+      );
     });
   });
 

@@ -15,7 +15,7 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 export type SaveDraftOutcome =
   | { kind: 'VALIDATED'; plan: DraftQuotationPlan }
-  | { kind: 'SAVED'; quotationId: string; plan: DraftQuotationPlan }
+  | { kind: 'SAVED'; quotationId: string; version: number; plan: DraftQuotationPlan }
   | { kind: 'REJECTED'; code: string; message: string };
 
 export type SaveCatalogOutcome =
@@ -97,6 +97,8 @@ export const buildDraftQuotationWritePayload = (
       unitPriceExact: line.unitPriceExact,
       grossExact: line.grossExact,
       discountExact: line.discountExact,
+      discountKind: line.discountKind,
+      discountInputExact: line.discountInputExact,
       documentDiscountExact: line.documentDiscountExact,
       taxExact: line.taxExact,
       totalExact: line.totalExact,

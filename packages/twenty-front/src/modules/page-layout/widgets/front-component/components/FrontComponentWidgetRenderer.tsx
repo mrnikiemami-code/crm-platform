@@ -54,6 +54,9 @@ export const FrontComponentWidgetRenderer = ({
   const selectedRecordIds = isDefined(targetRecordIdentifier?.id)
     ? [targetRecordIdentifier.id]
     : undefined;
+  // A widget can sit on any record page, so the component cannot infer which
+  // object it is showing from an id alone.
+  const objectNameSingular = targetRecordIdentifier?.targetObjectNameSingular;
 
   return (
     <StyledContainer
@@ -64,6 +67,7 @@ export const FrontComponentWidgetRenderer = ({
         <FrontComponentRenderer
           frontComponentId={frontComponentId}
           selectedRecordIds={selectedRecordIds}
+          objectNameSingular={objectNameSingular}
           loadingFallback={<FrontComponentSkeletonLoader />}
         />
       </Suspense>

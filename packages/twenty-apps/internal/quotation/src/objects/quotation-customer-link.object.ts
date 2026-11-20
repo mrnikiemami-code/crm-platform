@@ -49,6 +49,7 @@ export default defineObject({
       icon: 'IconFingerprint',
       isNullable: false,
       isUnique: true,
+      defaultValue: "''",
     },
     {
       universalIdentifier: QUOTATION_CUSTOMER_LINK_FIELDS.expiresAt,
