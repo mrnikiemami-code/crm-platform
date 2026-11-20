@@ -58,6 +58,11 @@ export const PRICE_FIELDS = {
 export const QUOTATION_FIELDS = {
   name: '60155b6e-8458-5387-adcf-770e753410df',
   quotationNumber: '2241c56a-c284-5853-98d2-13f70c258197',
+  // Read-only projections for the list table. They never replace the exact or
+  // relation fields above; the server keeps them in step on write.
+  quotationNumberLabel: '4c6e8f90-2153-5d74-be96-5071829304a6',
+  customerName: '5d7f9012-3264-5e85-9fa7-6182930415b7',
+  totalDisplay: '6e809123-4375-5f96-a0b8-7293041526c8',
   status: 'd86c1624-f482-5290-ba9c-6bf575ed4025',
   customerType: 'a9152a49-0707-5141-990e-a801e9fef017',
   person: 'e6030469-996b-5dea-8203-06c46173ee7a',

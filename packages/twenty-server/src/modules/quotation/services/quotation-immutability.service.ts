@@ -8,7 +8,12 @@ import {
   QuotationQueryValidationException,
   QuotationQueryValidationExceptionCode,
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
+import { QuotationNumberService } from 'src/modules/quotation/services/quotation-number.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
+import {
+  DRAFT_QUOTATION_NUMBER_LABEL,
+  formatQuotationNumberLabel,
+} from 'src/modules/quotation/utils/quotation-numbering.util';
 import {
   QUOTATION_CONTENT_MUTABLE_STATUSES,
   QUOTATION_SYSTEM_FIELD_NAMES,
@@ -28,6 +33,11 @@ type QuotationStatusRow = {
   version: number | null;
 };
 
+type QuotationNumberedStatusRow = QuotationStatusRow & {
+  quotationNumber: string | null;
+  quotationNumberLabel: string | null;
+};
+
 type QuotationLineRow = {
   id: string;
   quotationId: string;
@@ -38,6 +48,7 @@ export class QuotationImmutabilityService {
   constructor(
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     private readonly quotationPermissionService: QuotationPermissionService,
+    private readonly quotationNumberService: QuotationNumberService,
   ) {}
 
   async assertQuotationUpdateAllowed({
@@ -57,13 +68,20 @@ export class QuotationImmutabilityService {
     await this.workspaceOrmManager.executeInWorkspaceContext(async () => {
       await this.workspaceOrmManager.runInWorkspaceTransaction(
         async (transactionScope) => {
-          const repository = transactionScope.getRepository<QuotationStatusRow>(
-            'quotation',
-            { shouldBypassPermissionChecks: true },
-          );
+          const repository =
+            transactionScope.getRepository<QuotationNumberedStatusRow>(
+              'quotation',
+              { shouldBypassPermissionChecks: true },
+            );
           const row = await repository.findOne({
             where: { id: quotationId },
-            select: { id: true, status: true, version: true },
+            select: {
+              id: true,
+              status: true,
+              version: true,
+              quotationNumber: true,
+              quotationNumberLabel: true,
+            },
           });
 
           if (!isDefined(row) || typeof row.status !== 'string') {
@@ -113,6 +131,36 @@ export class QuotationImmutabilityService {
             ),
           );
           setColumns.version = observedVersion + 1;
+
+          // Issuance is the only moment a number is born: approving (or sending) a
+          // document that has none claims the next one from the workspace sequence.
+          // A number already on the record is never replaced, so re-saving an issued
+          // quotation cannot mint a second identity for the same document.
+          const nextStatus =
+            typeof patch.status === 'string' ? patch.status : row.status;
+          const issuedNumber =
+            row.quotationNumber === null || row.quotationNumber.trim() === ''
+              ? nextStatus === 'READY_TO_SEND'
+                ? await this.quotationNumberService.allocateQuotationNumber({
+                    transactionScope,
+                    issuedAt: new Date(),
+                  })
+                : null
+              : null;
+
+          if (issuedNumber !== null) {
+            setColumns.quotationNumber = issuedNumber.quotationNumber;
+            setColumns.quotationNumberLabel = formatQuotationNumberLabel(
+              issuedNumber.quotationNumber,
+            );
+          } else if (
+            (row.quotationNumber ?? '').trim() === '' &&
+            (row.quotationNumberLabel ?? '').trim() === ''
+          ) {
+            // A draft has no document number yet; the list must say so instead of
+            // showing a blank cell that reads like a missing document.
+            setColumns.quotationNumberLabel = DRAFT_QUOTATION_NUMBER_LABEL;
+          }
 
           const result = await repository
             .createQueryBuilder()
@@ -311,10 +359,11 @@ export class QuotationImmutabilityService {
     quotationLineId: string,
   ): Promise<QuotationLineRow> {
     return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
-      const repository = this.workspaceOrmManager.getRepository<QuotationLineRow>(
-        'quotationLine',
-        { shouldBypassPermissionChecks: true },
-      );
+      const repository =
+        this.workspaceOrmManager.getRepository<QuotationLineRow>(
+          'quotationLine',
+          { shouldBypassPermissionChecks: true },
+        );
       const row = await repository.findOne({
         where: { id: quotationLineId },
         select: { id: true, quotationId: true },

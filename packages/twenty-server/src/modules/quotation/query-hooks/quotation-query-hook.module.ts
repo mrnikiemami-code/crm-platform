@@ -16,12 +16,14 @@ import { QuotationRestoreOnePreQueryHook } from 'src/modules/quotation/query-hoo
 import { QuotationUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-many.pre-query.hook';
 import { QuotationUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-one.pre-query.hook';
 import { QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
+import { QuotationNumberService } from 'src/modules/quotation/services/quotation-number.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 
 @Module({
   imports: [WorkspaceCacheModule],
   providers: [
     QuotationPermissionService,
+    QuotationNumberService,
     QuotationImmutabilityService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
@@ -38,6 +40,10 @@ import { QuotationPermissionService } from 'src/modules/quotation/services/quota
     QuotationLineDeleteManyPreQueryHook,
     QuotationLineDestroyOnePreQueryHook,
   ],
-  exports: [QuotationPermissionService, QuotationImmutabilityService],
+  exports: [
+    QuotationPermissionService,
+    QuotationNumberService,
+    QuotationImmutabilityService,
+  ],
 })
 export class QuotationQueryHookModule {}

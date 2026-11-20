@@ -9,6 +9,7 @@ import {
   buildDefaultPriceListQuery,
   buildDeleteQuotationLineMutation,
   buildQuotationByIdQuery,
+  buildQuotationCustomerNameQuery,
   buildQuotationLinesByQuotationQuery,
   buildUpdateCatalogItemMutation,
   buildUpdateQuotationMutation,
@@ -20,6 +21,14 @@ import {
   type QuotationStatus,
 } from 'src/domain/quotation/status';
 import {
+  buildQuotationCustomerLabel,
+  type QuotationCustomerSource,
+} from 'src/domain/quotation/customer-label';
+import {
+  buildQuotationListDisplay,
+  buildQuotationTotalDisplay,
+} from 'src/domain/quotation/list-display';
+import {
   buildCatalogItemWritePayload,
   buildDraftQuotationWritePayload,
   type SaveCatalogOutcome,
@@ -27,9 +36,7 @@ import {
   validateCatalogItemUpsert,
   validateDraftQuotation,
 } from 'src/services/quotation-save.service';
-import {
-  type CatalogItemUpsertInput,
-} from 'src/domain/catalog/catalog-upsert';
+import { type CatalogItemUpsertInput } from 'src/domain/catalog/catalog-upsert';
 import { type DraftQuotationInput } from 'src/domain/quotation/draft-quotation';
 
 export type PersistDependencies = {
@@ -66,6 +73,49 @@ const readEdgesIds = (
 
     return typeof node?.id === 'string' ? [node.id] : [];
   });
+};
+
+const readNullableString = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+
+// Reads the readable name from the relation the quotation actually points at. A
+// failed lookup returns null (the caller then skips the projection) rather than
+// inventing a name or failing a save over a display column.
+const resolveQuotationCustomer = async (
+  execute: PersistDependencies['execute'],
+  {
+    personId,
+    companyId,
+  }: { personId: string | null; companyId: string | null },
+): Promise<QuotationCustomerSource | null> => {
+  const query = buildQuotationCustomerNameQuery({ personId, companyId });
+
+  if (query === null) {
+    return { person: null, company: null };
+  }
+
+  try {
+    const data = await execute(query);
+    const person = asRecord(data.person);
+    const company = asRecord(data.company);
+    const personName = asRecord(person?.name);
+
+    return {
+      person:
+        person === null
+          ? null
+          : {
+              name: {
+                firstName: readNullableString(personName?.firstName),
+                lastName: readNullableString(personName?.lastName),
+              },
+            },
+      company:
+        company === null ? null : { name: readNullableString(company.name) },
+    };
+  } catch {
+    return null;
+  }
 };
 
 const omitNullish = (
@@ -261,6 +311,17 @@ export const persistDraftQuotation = async (
       const currentVersion =
         typeof node.version === 'number' ? node.version : 1;
 
+      const customer = await resolveQuotationCustomer(dependencies.execute, {
+        personId:
+          typeof payload.value.quotation.personId === 'string'
+            ? payload.value.quotation.personId
+            : null,
+        companyId:
+          typeof payload.value.quotation.companyId === 'string'
+            ? payload.value.quotation.companyId
+            : null,
+      });
+
       const quotationData = omitNullish({
         name: payload.value.quotation.name,
         customerType: payload.value.quotation.customerType,
@@ -279,6 +340,23 @@ export const persistDraftQuotation = async (
         taxExact: payload.value.quotation.taxExact,
         roundingExact: payload.value.quotation.roundingExact,
         totalExact: payload.value.quotation.totalExact,
+        // Display projections are recomputed here, never accepted from the client.
+        // The number label is absent on purpose: only issuance touches it.
+        ...(customer === null
+          ? {}
+          : {
+              customerName: buildQuotationCustomerLabel(customer),
+              totalDisplay: buildQuotationTotalDisplay({
+                totalExact:
+                  typeof payload.value.quotation.totalExact === 'string'
+                    ? payload.value.quotation.totalExact
+                    : null,
+                currencyCode:
+                  typeof payload.value.quotation.currencyCode === 'string'
+                    ? payload.value.quotation.currencyCode
+                    : null,
+              }),
+            }),
         status: 'DRAFT',
         // Optimistic lock token: server compares this to the stored version.
         version: currentVersion,
@@ -299,9 +377,37 @@ export const persistDraftQuotation = async (
         await dependencies.execute(buildDeleteQuotationLineMutation(lineId));
       }
     } else {
+      const customer = await resolveQuotationCustomer(dependencies.execute, {
+        personId:
+          typeof payload.value.quotation.personId === 'string'
+            ? payload.value.quotation.personId
+            : null,
+        companyId:
+          typeof payload.value.quotation.companyId === 'string'
+            ? payload.value.quotation.companyId
+            : null,
+      });
+
+      const display =
+        customer === null
+          ? null
+          : buildQuotationListDisplay({
+              quotationNumber: null,
+              customer,
+              totalExact:
+                typeof payload.value.quotation.totalExact === 'string'
+                  ? payload.value.quotation.totalExact
+                  : null,
+              currencyCode:
+                typeof payload.value.quotation.currencyCode === 'string'
+                  ? payload.value.quotation.currencyCode
+                  : null,
+            });
+
       const quotationData = omitNullish({
         ...payload.value.quotation,
         status: 'DRAFT',
+        ...(display === null ? {} : display),
       });
       const created = await dependencies.execute(
         buildCreateQuotationMutation(quotationData),

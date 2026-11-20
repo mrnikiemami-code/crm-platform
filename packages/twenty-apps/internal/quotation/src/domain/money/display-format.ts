@@ -1,5 +1,6 @@
 // People-facing money text: Persian digits, thousands grouping, trimmed fraction.
 // Storage stays `formatMicrosExact` (six fraction digits, ASCII).
+import { MONEY_UNIT_LABELS } from 'src/domain/money/currency';
 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const THOUSANDS_SEPARATOR = '\u066c';
@@ -48,3 +49,23 @@ export const formatExactDecimalForPeople = (exact: string): string => {
 
   return `${toPersianDigits(integerFormatted)}${DECIMAL_SEPARATOR}${toPersianDigits(fraction)}`;
 };
+
+// The unit is always stated: an unlabelled number is ambiguous between rial and
+// toman, and this app stores rial only.
+export const resolveCurrencyLabel = (
+  currencyCode: string | null | undefined,
+): string => {
+  const trimmed = currencyCode?.trim() ?? '';
+
+  if (trimmed === '' || trimmed.toUpperCase() === 'IRR') {
+    return MONEY_UNIT_LABELS.IRR;
+  }
+
+  return trimmed;
+};
+
+export const formatExactAmountWithCurrency = (
+  exact: string,
+  currencyCode: string | null | undefined,
+): string =>
+  `${formatExactDecimalForPeople(exact)} ${resolveCurrencyLabel(currencyCode)}`.trim();

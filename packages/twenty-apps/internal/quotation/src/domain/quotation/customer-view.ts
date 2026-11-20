@@ -1,6 +1,10 @@
-import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
+import {
+  formatExactDecimalForPeople,
+  resolveCurrencyLabel,
+} from 'src/domain/money/display-format';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 import { canIssueCustomerLinkForStatus } from 'src/domain/quotation/customer-link-token';
+import { buildQuotationCustomerLabel } from 'src/domain/quotation/customer-label';
 
 export type CustomerViewLine = {
   name: string;
@@ -99,24 +103,13 @@ export const buildCustomerQuotationView = ({
     return refused('CUSTOMER_VIEW_TOTAL_MISSING', 'quotation total is missing');
   }
 
-  const personFirst = quotation.person?.name?.firstName?.trim() ?? '';
-  const personLast = quotation.person?.name?.lastName?.trim() ?? '';
-  const personLabel = `${personFirst} ${personLast}`.trim();
-  const companyLabel = quotation.company?.name?.trim() ?? '';
   const customerLabel =
-    personLabel !== ''
-      ? personLabel
-      : companyLabel !== ''
-        ? companyLabel
-        : 'مشتری';
+    buildQuotationCustomerLabel({
+      person: quotation.person,
+      company: quotation.company,
+    }) ?? 'مشتری';
 
-  const currencyLabel =
-    quotation.currencyCode?.trim().toUpperCase() === 'IRR' ||
-    quotation.currencyCode === null ||
-    quotation.currencyCode === undefined ||
-    quotation.currencyCode.trim() === ''
-      ? 'ریال'
-      : quotation.currencyCode.trim();
+  const currencyLabel = resolveCurrencyLabel(quotation.currencyCode);
 
   const viewLines: CustomerViewLine[] = lines.map((line) => ({
     name: line.name?.trim() || '—',

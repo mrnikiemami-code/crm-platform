@@ -1,12 +1,26 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-20 (S3-R4-HF1)
+**Updated:** 2026-11-20 (CRM-129-QUOTATION-LIST-UX-001)
 **Repository:** mrnikami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129 S3-R4-HF1 PASS / Quotation Form Crash Fix (2026-11-20; latest)
+## CURRENT CHECKPOINT — CRM-129-QUOTATION-LIST-UX-001 PASS / Professional Quotation List (2026-11-20; latest)
+
+**Read first:** [CRM-129-QUOTATION-LIST-UX-001-PROOF.md](./CRM-129-QUOTATION-LIST-UX-001-PROOF.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from `5ab67884a156095101e7bf171f550a6d95093316`.
+- **Delivery:** List «همهٔ پیش‌فاکتورها» now shows `عنوان · شماره سند · مشتری · وضعیت · مبلغ کل`. Document numbers are claimed **at issuance** (`READY_TO_SEND`) by a single-statement `INSERT … ON CONFLICT … RETURNING` on `_quotationSequence` (Jalali year scope, `QT-۱۴۰۵-۰۰۰۰۰۱`); unnumbered rows render «بدون شماره» and were not reconstructed. `customerName` / `quotationNumberLabel` / `totalDisplay` are read-only projections; `totalExact` (six decimals) and `version` stay stored but hidden.
+- **Money:** `۲٬۳۰۵٬۳۵۰ ریال` from stored `2305350.000000` via the shared Money Domain formatter — no `Number`/`parseFloat`/re-rounding.
+- **Dev (`:3002`):** sidebar «همهٔ پیش‌فاکتورها» → `?viewId=c3a14f2d-d0a9-4ecb-8514-e1d61cbafaff`; 61 active rows (5 numbered, 56 «بدون شماره»); 4-way race produced 4 consecutive distinct numbers.
+- **Tests:** quotation app vitest **246**, server quotation jest **32**.
+- **Known limitation:** the platform-provisioned `All پیش‌فاکتورها` view still lists all 34 columns; making the app view the workspace default is a platform-level change, left undecided.
+- **Continue at:** architect gate — STOP_FOR_ARCHITECT.
+- **Operational bans:** no `:6080`, no bulk send, no SMS blast, no main-worker restart, no release-branch change, no screenshot loop.
+- **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
+
+## PREVIOUS CHECKPOINT — CRM-129 S3-R4-HF1 PASS / Quotation Form Crash Fix (2026-11-20; historical)
 
 **Read first:** [CRM-129-S3-R4-HF1-PROOF.md](./CRM-129-S3-R4-HF1-PROOF.md).
 
@@ -14,9 +28,6 @@
 - **GitHub SHA:** `55eed5d8bc` (docs commit may follow).
 - **Delivery:** Guard FC caret restore (`setSelectionRange` no-op when missing); sidebar nav «همهٔ پیش‌فاکتورها»; prefer application GraphQL token for catalog/quotation LF. Quotation **0.1.13** on `dev-crm129`.
 - **Dev:** Form opens from Persons without crash; Persian money + 2-line draft + 10% discount saved (`2dd13611-…`); list reachable; math UI↔DB match. Vitest **240** PASS.
-- **Continue at:** architect gate — STOP_FOR_ARCHITECT.
-- **Operational bans:** no `:6080`, no bulk send, no SMS blast, no main-worker restart, no release-branch change, no screenshot loop.
-- **Unrelated locals left dirty (not committed):** Settings select/API-key front files + `enterprise-plan.service.ts`.
 
 ## PREVIOUS CHECKPOINT — CRM-129 S3-R4 PASS / Bale Direct Sending (2026-11-20; historical)
 

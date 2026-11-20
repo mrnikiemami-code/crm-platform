@@ -200,7 +200,9 @@ export const buildPricesForItemsOnListQuery = ({
   }`;
 };
 
-export const buildQuotationForCustomerLinkQuery = (quotationId: string): string =>
+export const buildQuotationForCustomerLinkQuery = (
+  quotationId: string,
+): string =>
   `query QuotationForCustomerLink {
     quotations(filter: { id: { eq: ${toGraphqlLiteral(quotationId)} } }, first: 1) {
       edges {
@@ -266,9 +268,36 @@ export const buildQuotationCustomerLinkByHashQuery = (
     }
   }`;
 
-export const buildQuotationCustomerViewQuery = (
-  quotationId: string,
-): string =>
+// One round-trip for the display name of whichever relation the quotation points at.
+// Returns null when the quotation has no customer yet, so callers never issue an
+// empty selection set (which GraphQL rejects).
+export const buildQuotationCustomerNameQuery = ({
+  personId,
+  companyId,
+}: {
+  personId: string | null;
+  companyId: string | null;
+}): string | null => {
+  const roots: string[] = [];
+
+  if (personId !== null && personId.trim() !== '') {
+    roots.push(
+      `person(filter: { id: { eq: ${toGraphqlLiteral(personId)} } }) { id name { firstName lastName } }`,
+    );
+  }
+
+  if (companyId !== null && companyId.trim() !== '') {
+    roots.push(
+      `company(filter: { id: { eq: ${toGraphqlLiteral(companyId)} } }) { id name }`,
+    );
+  }
+
+  return roots.length === 0
+    ? null
+    : `query QuotationCustomerName { ${roots.join('\n')} }`;
+};
+
+export const buildQuotationCustomerViewQuery = (quotationId: string): string =>
   `query QuotationCustomerView {
     quotation(filter: { id: { eq: ${toGraphqlLiteral(quotationId)} } }) {
       id

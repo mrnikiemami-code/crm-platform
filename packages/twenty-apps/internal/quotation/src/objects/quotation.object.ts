@@ -64,6 +64,33 @@ export default defineObject({
       isUnique: true,
     },
     {
+      // The list table cannot render a null as a label, and a draft is a real
+      // state a person has to read at a glance. Derived server-side from
+      // quotationNumber, never typed.
+      universalIdentifier: QUOTATION_FIELDS.quotationNumberLabel,
+      type: FieldType.TEXT,
+      name: 'quotationNumberLabel',
+      label: 'شماره سند',
+      description:
+        'نمایش خوانا شماره سند؛ تا پیش از صدور «بدون شماره». محاسبه‌شده، قابل ویرایش نیست.',
+      icon: 'IconHash',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      // Derived from the actual related record (person or company), so the list
+      // never shows a name somebody typed.
+      universalIdentifier: QUOTATION_FIELDS.customerName,
+      type: FieldType.TEXT,
+      name: 'customerName',
+      label: 'مشتری',
+      description:
+        'نام شخص یا شرکت مرتبط، خوانده‌شده از خود رکورد. محاسبه‌شده، قابل ویرایش نیست.',
+      icon: 'IconUser',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: QUOTATION_FIELDS.status,
       type: FieldType.SELECT,
       name: 'status',
@@ -200,8 +227,7 @@ export default defineObject({
       type: FieldType.DATE,
       name: 'expiresAt',
       label: 'اعتبار تا',
-      description:
-        'پس از این تاریخ ممکن است به منقضی برود. تایمر خودکار نیست.',
+      description: 'پس از این تاریخ ممکن است به منقضی برود. تایمر خودکار نیست.',
       icon: 'IconCalendarStats',
       isNullable: true,
     },
@@ -277,8 +303,7 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'roundingExact',
       label: 'تعدیل گردکردن (دقیق، ریال)',
-      description:
-        'payable − (net + tax)؛ مستقل از مالیات. می‌تواند منفی باشد.',
+      description: 'payable − (net + tax)؛ مستقل از مالیات. می‌تواند منفی باشد.',
       icon: 'IconAdjustments',
       isNullable: true,
       defaultValue: "'0.000000'",
@@ -292,6 +317,20 @@ export default defineObject({
         'خالص + مالیات + تعدیل گردکردن، به ریال صحیح. تنها نسخهٔ معتبر مبلغ قابل پرداخت.',
       icon: 'IconCurrencyIranianRial',
       isNullable: true,
+    },
+    {
+      // The table shows money, not storage. Rendered by the shared money
+      // formatter (Persian digits, grouping, unit) and derived from totalExact;
+      // totalExact remains the authority for every calculation.
+      universalIdentifier: QUOTATION_FIELDS.totalDisplay,
+      type: FieldType.TEXT,
+      name: 'totalDisplay',
+      label: 'مبلغ کل',
+      description:
+        'جمع کل قابل پرداخت برای نمایش: اعداد فارسی، جداکننده هزارگان و واحد ریال. محاسبه‌شده از totalExact.',
+      icon: 'IconCurrencyIranianRial',
+      isNullable: true,
+      isUIEditable: false,
     },
     {
       universalIdentifier: QUOTATION_FIELDS.version,
