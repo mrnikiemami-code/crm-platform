@@ -14,13 +14,14 @@ identity for one document. Totals that disagree with the stored lines refuse the
 sealing numbers nobody can reproduce. Legacy quotations approved before this change (for example
 `d66aba78…`) stay unsealed, which is why accounting-006's V11b row still reports zero revisions for it.
 
-Live proof on Dev :3002 — `scripts/dev-exercise-crm129-revision-seal.cjs`, **11/11 PASS**: draft and
+Live proof on Dev :3002 — `scripts/dev-exercise-crm129-revision-seal.cjs`, **14/14 PASS**: draft and
 pending approval carry no revision; approval seals exactly one ISSUED v1; the stored hash reproduces from
 the stored JSON through an independent canonicaliser; snapshot totals match the header and the lines;
 SENT and CUSTOMER_ACCEPTED keep the same id, hash and document number; the export planner reports
-`revisionVersion: 1` with `OUTBOUND_DISABLED`; a person-customer PDF renders (12,495 bytes).
-`dev-exercise-accounting-006.cjs` remains 15/15 and the numbering race still allocates four consecutive
-distinct numbers, each with its own revision.
+`revisionVersion: 1` with `OUTBOUND_DISABLED`; update/create/delete through GraphQL are refused with
+`FORBIDDEN` + `REVISION_IMMUTABLE` while the stored bytes stay identical; a person-customer PDF renders
+(12,384 bytes). `dev-exercise-accounting-006.cjs` remains 15/15 and the numbering race still allocates
+four consecutive distinct numbers, each with its own revision.
 
 Three real defects surfaced only against the live stack and are fixed in the same commit:
 
@@ -38,8 +39,16 @@ Deployment note: `twenty-server-1` runs a baked image (`twenty-dev/o117:69b776f6
 copied into the running container's `dist` and the API container restarted. **`twenty-worker-1` was not
 restarted and the intranet `:6080` stack was not touched.**
 
-Known gap, reported not hidden: the platform still accepts `updateQuotationRevision`, so a sealed
-revision is hash-detectable rather than write-protected. Needs an object-level permission follow-up.
+Gap closed (commit `d396d0853c`): `quotationRevision` now has workspace pre-query hooks for `createOne`,
+`createMany`, `updateOne`, `updateMany`, `deleteOne`, `deleteMany`, `destroyOne`, `destroyMany`,
+`restoreOne` and `restoreMany`. Each refuses with `QuotationQueryValidationException` (`FORBIDDEN`,
+message code `REVISION_IMMUTABLE`) and a Persian operator toast, so a sealed revision can only be minted
+by the approval transaction (`shouldBypassPermissionChecks: true`). Live: R10/R10b/R10c all refuse and
+the stored hash is unchanged. Unit: 13/13 in the quotation query-hook suites, 96/96 in the quotation
+module; `tsgo --noEmit` clean; `oxlint` 0/0.
+
+Deployment caveat learned: `docker cp <dir> <container>:<existing-dir>` nests the copy one level down
+(`quotation/quotation`). Copy with a trailing `\.` so the modules land where the running image loads them.
 
 ## 2026-10-18 — Brand Independence execution plan (documentation only)
 

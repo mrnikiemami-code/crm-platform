@@ -81,13 +81,13 @@ real Asan server: the successful path uses the mock adapter, the Asan connection
 | V13 | item push | preview `CREATE`; execution `OUTBOUND_DISABLED` |
 | V14 | quotation untouched | `status=READY_TO_SEND`, `version=4`, `totalExact=10900.000000` |
 
-## 6. Known dependency (not a silent failure)
+## 6. Dependency resolved after the first landing
 
-`quotationRevision` has **zero rows in the workspace** and nothing in the server or app writes one yet. The export
-planner therefore resolves `revisionVersion: null` and, with the switches on, would refuse with `REVISION_NOT_FOUND`.
-Producing sealed revisions belongs to the quotation lifecycle, which this task was not allowed to change (form, money
-domain and atomic save stay untouched). The path from an approved quotation to a pro-forma is implemented and proven
-against the revision fixture in unit tests; it becomes executable the moment revisions exist.
+`quotationRevision` was empty when this proof was first recorded; the export planner therefore resolved
+`revisionVersion: null` (V11b). The quotation lifecycle now seals an ISSUED revision inside the approval
+transaction (branch `feat/crm-129-quotation`), the planner resolves it (`scripts/dev-exercise-crm129-revision-seal.cjs`,
+R9), and every API mutation of a sealed revision is refused with `FORBIDDEN` / `REVISION_IMMUTABLE`
+(R10/R10b/R10c). V11b below is kept as the historical row; the export path itself is executable now.
 
 ## 7. Dev data hygiene performed
 
