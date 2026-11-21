@@ -224,6 +224,17 @@ export default defineObject({
       isUIEditable: false,
     },
     {
+      universalIdentifier: QUOTATION_FIELDS.taxRateBasisPoints,
+      type: FieldType.TEXT,
+      name: 'taxRateBasisPoints',
+      label: 'نرخ مالیات (پایه‌واحد)',
+      description:
+        'نرخی که مالیات این سند با آن حساب شده است؛ ۹۰۰ یعنی ۹٪. برای بازخوانی و صدور، نه ویرایش دستی.',
+      icon: 'IconPercentage',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: QUOTATION_FIELDS.paymentTerms,
       type: FieldType.TEXT,
       name: 'paymentTerms',

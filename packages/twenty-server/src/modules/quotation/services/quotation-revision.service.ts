@@ -75,6 +75,7 @@ export class QuotationRevisionService {
         quotationNumber: true,
         currencyCode: true,
         taxPolicy: true,
+        taxRateBasisPoints: true,
         paymentTerms: true,
         grossExact: true,
         lineDiscountExact: true,

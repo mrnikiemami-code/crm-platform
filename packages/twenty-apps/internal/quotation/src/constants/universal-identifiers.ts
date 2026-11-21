@@ -72,6 +72,9 @@ export const QUOTATION_FIELDS = {
   opportunity: '91b58882-98e7-5c05-9095-2ce463f2ff11',
   currencyCode: 'a0916c12-9176-5674-a363-a65964a4d308',
   taxPolicy: 'b0bf0dd6-17dd-5c24-b34d-dfd9da1727ee',
+  // The rate the stored tax was computed with. Frozen with the document so a
+  // later settings change cannot make a stored amount unexplainable.
+  taxRateBasisPoints: 'fc24bf2c-1fd2-5228-bb1c-9fe4450996d5',
   paymentTerms: 'cf04f6e1-8c8a-5097-9e1e-8139bfdfcb96',
   expiresAt: 'c32e9743-fd46-58ce-a4fa-9833a1e871ad',
   totalExact: '30552386-2860-5833-9731-0082e6e1ed16',
@@ -376,3 +379,36 @@ export const ACCOUNTING_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
   'a81f1eb0-1993-5743-bf8f-e71c13cfe7a6';
 export const ACCOUNTING_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
   'b4b47ec1-1241-5e73-ac9e-28642de2a481';
+
+// Tax policy configuration. Also UUID v5 of the app namespace and the entity
+// path; the initial 9% policy is DATA in this object, not a rate in code.
+export const TAX_POLICY_OBJECT_UNIVERSAL_IDENTIFIER =
+  'cd118c37-176e-5398-9ab9-bd94a050360a';
+
+export const TAX_POLICY_FIELDS = {
+  name: '2ee75ed2-95da-55fc-b065-effce219240b',
+  code: '6a158a02-5cb2-52a0-b5fc-b8e1bd7f25b6',
+  rateBasisPoints: '978bc29a-6dc7-52b6-9710-1f466696cead',
+  isDefault: 'c56c91eb-166a-583b-a518-3a5f207b2dc7',
+  isActive: '6544a8f9-7dca-5d94-a89f-6198e390f912',
+  isExempt: '9fab9fe7-53f3-5c4f-a705-1e2a273dfa9a',
+} as const;
+
+export const TAX_POLICY_SETTINGS_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  '09605adf-c6e9-5f95-98b1-5258c2e633a3';
+// The settings surface above only renders from Settings → Applications, which this
+// fork hides. The same panel is therefore also registered as a normal front
+// component and mounted on a standalone page so administrators can actually reach
+// it; the rate logic lives in the panel, not in either host.
+export const TAX_POLICY_SETTINGS_PAGE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  '56fc29a2-894a-56ce-acd8-fd6c044b06a4';
+export const TAX_POLICY_SETTINGS_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER =
+  '52593f93-b553-541f-9860-dea946189880';
+export const TAX_POLICY_SETTINGS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  '39221868-2df5-526b-b47c-843c28f7e72c';
+export const TAX_POLICY_SETTINGS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'd1739cf5-09b8-563c-a2f6-dfa3143ef4c6';
+export const TAX_POLICY_SETTINGS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  'cf90d325-8207-58fb-b1bd-32e7ea768f4a';
+export const TAX_POLICIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '8520069f-3d4f-5b37-85fa-7d170dd67038';

@@ -887,6 +887,15 @@ export const executeQuotationExport = async (
     userId,
     productCodeByLineId,
     specialCodesInUse: settings.specialCodes,
+    ...(settings.taxPolicyMappings[context.value.revision.snapshot.taxPolicy] ===
+    undefined
+      ? {}
+      : {
+          taxVendorCode:
+            settings.taxPolicyMappings[
+              context.value.revision.snapshot.taxPolicy
+            ],
+        }),
     description:
       context.value.quotation.name === ''
         ? context.value.quotation.id

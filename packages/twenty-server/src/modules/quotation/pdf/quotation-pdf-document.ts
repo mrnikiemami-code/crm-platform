@@ -42,7 +42,10 @@ export const registerQuotationPdfFont = (): void => {
   fontsRegistered = true;
 };
 
-const RTL_TEXT_STYLE = { direction: 'rtl' as const, textAlign: 'right' as const };
+const RTL_TEXT_STYLE = {
+  direction: 'rtl' as const,
+  textAlign: 'right' as const,
+};
 
 const styles = StyleSheet.create({
   page: {
@@ -110,6 +113,9 @@ export type QuotationPdfSubtotals = {
   discount?: string;
   net?: string;
   tax?: string;
+  // The sealed rate, shown beside the tax amount. Absent on documents issued
+  // before configurable policies; the amount is still the stored one.
+  taxRatePercent?: string;
   rounding?: string;
 };
 
@@ -213,7 +219,12 @@ const buildSubtotalRows = (
   }
 
   if (isNonEmptyString(subtotals.tax)) {
-    rows.push({ label: 'مالیات', value: subtotals.tax });
+    rows.push({
+      label: isNonEmptyString(subtotals.taxRatePercent)
+        ? `مالیات (${subtotals.taxRatePercent}٪)`
+        : 'مالیات',
+      value: subtotals.tax,
+    });
   }
 
   if (isNonEmptyString(subtotals.rounding)) {
@@ -329,7 +340,11 @@ export const buildQuotationPdfDocument = (
     createElement(
       Page,
       { size: 'A4', style: styles.page, wrap: true },
-      createElement(Text, { style: [styles.heading, RTL_TEXT_STYLE] }, input.title),
+      createElement(
+        Text,
+        { style: [styles.heading, RTL_TEXT_STYLE] },
+        input.title,
+      ),
       ...buildMetaLines(input).map((line, index) =>
         createElement(
           Text,
@@ -346,11 +361,7 @@ export const buildQuotationPdfDocument = (
         tableCell(styles.totalLabel, 'جمع کل'),
         tableCell(styles.totalValue, input.total),
       ),
-      createElement(
-        Text,
-        { style: styles.footer, fixed: true },
-        footerNote,
-      ),
+      createElement(Text, { style: styles.footer, fixed: true }, footerNote),
     ),
   ) as ReactElement<DocumentProps>;
 };

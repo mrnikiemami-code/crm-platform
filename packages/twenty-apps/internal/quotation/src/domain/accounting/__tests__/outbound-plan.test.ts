@@ -50,6 +50,7 @@ const settings = (overrides: Partial<ConnectionSettings> = {}): ConnectionSettin
   moneyUnit: 'RIAL',
   transportApproved: true,
   specialCodes: { discount: true, duty: false, tax: true },
+  taxPolicyMappings: { IR_VAT_9: '999141' },
   ...overrides,
 });
 
@@ -62,6 +63,7 @@ const snapshot = (
   currencyCode: 'IRR',
   customerRef: 'company:c-1',
   taxPolicy: 'IR_VAT_9',
+  taxRateBasisPoints: '900',
   paymentTerms: null,
   lines: [
     {
@@ -324,6 +326,74 @@ describe('quotation export gate', () => {
         exportInput({ settings: settings({ moneyUnit: 'UNCONFIRMED' }) }),
       ),
     ).toMatchObject({ kind: 'BLOCKED', code: 'MONEY_UNIT_UNCONFIRMED' });
+  });
+
+  it('blocks a taxed document whose policy has no vendor tax code', () => {
+    expect(
+      planQuotationExport(
+        exportInput({ settings: settings({ taxPolicyMappings: {} }) }),
+      ),
+    ).toMatchObject({ kind: 'BLOCKED', code: 'TAX_POLICY_NOT_MAPPED' });
+  });
+
+  it('blocks when the mapping exists only for a different policy code', () => {
+    expect(
+      planQuotationExport(
+        exportInput({
+          settings: settings({ taxPolicyMappings: { TAX_1000: '999142' } }),
+        }),
+      ),
+    ).toMatchObject({ kind: 'BLOCKED', code: 'TAX_POLICY_NOT_MAPPED' });
+  });
+
+  it('maps the policy actually sealed on the document, not the legacy default', () => {
+    const decision = planQuotationExport(
+      exportInput({
+        settings: settings({ taxPolicyMappings: { TAX_1000: '999142' } }),
+        revision: {
+          version: 2,
+          snapshot: snapshot({ taxPolicy: 'TAX_1000', taxRateBasisPoints: '1000' }),
+        },
+      }),
+    );
+
+    expect(decision).toMatchObject({ kind: 'READY' });
+  });
+
+  it('needs no mapping for an exempt document that carries no tax', () => {
+    const decision = planQuotationExport(
+      exportInput({
+        settings: settings({ taxPolicyMappings: {} }),
+        revision: {
+          version: 2,
+          snapshot: snapshot({
+            taxPolicy: 'TAX_0',
+            taxRateBasisPoints: '0',
+            lines: [
+              {
+                lineId: 'line-1',
+                description: 'کالا',
+                unit: 'عدد',
+                quantityScaled: '1',
+                unitPriceMicros: '1000000.000000',
+                discountMicros: '0.000000',
+                taxMicros: '0.000000',
+                totalMicros: '1000000.000000',
+              },
+            ],
+            totals: {
+              grossMicros: '1000000.000000',
+              discountMicros: '0.000000',
+              netMicros: '1000000.000000',
+              taxMicros: '0.000000',
+              totalMicros: '1000000.000000',
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(decision).toMatchObject({ kind: 'READY' });
   });
 
   it('blocks when the customer has no vendor id', () => {

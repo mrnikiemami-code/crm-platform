@@ -22,7 +22,10 @@ import {
 } from 'src/domain/money/quantity';
 import {
   DEFAULT_TAX_POLICY_ID,
+  buildTaxPolicyDefinition,
+  parsePercentToBasisPoints,
   resolveTaxPolicy,
+  type TaxPolicyDefinition,
 } from 'src/domain/money/tax-policy';
 import {
   canEditQuotationLines,
@@ -70,6 +73,10 @@ export type DraftQuotationInput = {
   name: string;
   paymentTerms: string | null;
   taxPolicy: string | null;
+  // The policy row the operator picked, already read from the workspace. When it
+  // is absent the legacy registry decides, which keeps older callers and every
+  // sealed document readable without a second source of truth.
+  taxPolicyDefinition?: TaxPolicyDefinition | null;
   documentDiscount: DraftDiscountInput;
   displayMoneyUnit: MoneyUnit;
   lines: DraftLineInput[];
@@ -117,29 +124,10 @@ export type DraftQuotationPlan = {
   displayGross: string;
   displayLineDiscount: string;
   displayDocumentDiscount: string;
+  displayNet: string;
   displayTax: string;
   displayRounding: string;
   lines: DraftLineRecord[];
-};
-
-const parsePercentToBasisPoints = (text: string): Result<bigint> => {
-  const money = parseMoneyInput(text === '' ? '0' : text, 'IRR');
-
-  if (!money.ok) {
-    return refused('TAX_RATE_INVALID', 'نرخ باید عدد معتبر باشد');
-  }
-
-  const percentMicros = money.value.irrMicros;
-  const basisPoints = percentMicros / 10_000n;
-
-  if (percentMicros % 10_000n !== 0n) {
-    return refused(
-      'TAX_RATE_TOO_FINE',
-      'درصد حداکثر دو رقم اعشار دارد (مثلاً ۹ یا ۹٫۵)',
-    );
-  }
-
-  return accepted(basisPoints);
 };
 
 const buildDiscount = (
@@ -311,6 +299,34 @@ const displayAmount = (
   });
 };
 
+// A rate is never taken from the form: the selected policy is re-validated here,
+// and a definition that disagrees with the requested code is refused instead of
+// silently pricing the document with a different rate.
+const resolveSelectedTaxPolicy = (
+  input: DraftQuotationInput,
+): Result<TaxPolicyDefinition> => {
+  if (input.taxPolicyDefinition === undefined || input.taxPolicyDefinition === null) {
+    return resolveTaxPolicy(input.taxPolicy ?? DEFAULT_TAX_POLICY_ID);
+  }
+
+  const requested =
+    (input.taxPolicy ?? '').trim() || input.taxPolicyDefinition.id;
+
+  if (requested !== input.taxPolicyDefinition.id) {
+    return refused(
+      'TAX_POLICY_MISMATCH',
+      'سیاست مالیات انتخاب‌شده با نرخ ارسالی هم‌خوان نیست',
+    );
+  }
+
+  return buildTaxPolicyDefinition({
+    code: input.taxPolicyDefinition.id,
+    label: input.taxPolicyDefinition.label,
+    rateBasisPoints: input.taxPolicyDefinition.rateBasisPoints,
+    isExempt: input.taxPolicyDefinition.isExempt,
+  });
+};
+
 export const buildDraftQuotationPlan = (
   input: DraftQuotationInput,
 ): Result<DraftQuotationPlan> => {
@@ -353,9 +369,7 @@ export const buildDraftQuotationPlan = (
     return refused('DOCUMENT_HAS_NO_LINES', 'حداقل یک ردیف کالا یا خدمت لازم است');
   }
 
-  const taxPolicy = resolveTaxPolicy(
-    input.taxPolicy ?? DEFAULT_TAX_POLICY_ID,
-  );
+  const taxPolicy = resolveSelectedTaxPolicy(input);
 
   if (!taxPolicy.ok) {
     return taxPolicy;
@@ -418,6 +432,10 @@ export const buildDraftQuotationPlan = (
     finalized.value.totals.documentDiscountMicros,
     input.displayMoneyUnit,
   );
+  const displayNet = displayAmount(
+    finalized.value.totals.netMicros,
+    input.displayMoneyUnit,
+  );
   const displayTax = displayAmount(
     finalized.value.totals.taxMicros,
     input.displayMoneyUnit,
@@ -432,6 +450,7 @@ export const buildDraftQuotationPlan = (
     !displayGross.ok ||
     !displayLineDiscount.ok ||
     !displayDocumentDiscount.ok ||
+    !displayNet.ok ||
     !displayTax.ok ||
     !displayRounding.ok
   ) {
@@ -482,6 +501,7 @@ export const buildDraftQuotationPlan = (
     displayGross: displayGross.value,
     displayLineDiscount: displayLineDiscount.value,
     displayDocumentDiscount: displayDocumentDiscount.value,
+    displayNet: displayNet.value,
     displayTax: displayTax.value,
     displayRounding: displayRounding.value,
     lines,

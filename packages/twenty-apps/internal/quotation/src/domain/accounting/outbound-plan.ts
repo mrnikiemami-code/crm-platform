@@ -487,6 +487,26 @@ export const planQuotationExport = (
     );
   }
 
+  // The CRM's policy code and the vendor's fiscal tax code are not the same
+  // identifier, so the document is refused until an operator maps this policy to
+  // the vendor's own code. Exempt (zero-tax) documents need no mapping.
+  if (tax.value > 0n) {
+    const policyCode = (snapshot.taxPolicy ?? '').trim();
+    const vendorTaxCode = input.settings.taxPolicyMappings[policyCode];
+
+    if (
+      policyCode === '' ||
+      vendorTaxCode === undefined ||
+      vendorTaxCode.trim() === ''
+    ) {
+      return block(
+        'TAX_POLICY_NOT_MAPPED',
+        `tax policy "${policyCode}" has no vendor tax code mapping`,
+        operationId,
+      );
+    }
+  }
+
   const requiresReconciliationBeforeRetry =
     !input.capabilities.documents.remoteIdempotency;
 

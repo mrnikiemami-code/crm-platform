@@ -48,6 +48,7 @@ const revision = (
   currencyCode: 'IRR',
   customerRef: 'company-9',
   taxPolicy: 'IR_VAT_9',
+  taxRateBasisPoints: '900',
   paymentTerms: null,
   lines: [
     {

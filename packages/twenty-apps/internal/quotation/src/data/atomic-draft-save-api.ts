@@ -29,6 +29,9 @@ export type AtomicSaveHeaderPayload = {
   companyId: string | null;
   currencyCode: string;
   taxPolicy: string | null;
+  // The rate the amounts were computed with, in basis points. Recorded so the
+  // server can re-check the tax it is asked to store instead of trusting it.
+  taxRateBasisPoints: string | null;
   paymentTerms: string | null;
   documentDiscountKind: 'NONE' | 'RATE' | 'AMOUNT';
   documentDiscountInputExact: string;

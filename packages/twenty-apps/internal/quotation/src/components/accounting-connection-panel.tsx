@@ -35,6 +35,7 @@ type ConnectionSettings = {
   moneyUnit: string;
   transportApproved: boolean;
   specialCodes: { discount: boolean; duty: boolean; tax: boolean };
+  taxPolicyMappings?: Record<string, string>;
 };
 
 type ConnectionRecord = {
@@ -112,6 +113,9 @@ type FormState = {
   discount: boolean;
   duty: boolean;
   tax: boolean;
+  // `CODE=VENDOR_CODE`, one per line. The CRM policy code is not the vendor's
+  // fiscal code; an operator states the mapping explicitly.
+  taxPolicyMappingsText: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -126,6 +130,37 @@ const EMPTY_FORM: FormState = {
   discount: false,
   duty: false,
   tax: false,
+  taxPolicyMappingsText: '',
+};
+
+const formatTaxPolicyMappingsText = (
+  mappings: Record<string, string> | undefined,
+): string =>
+  Object.entries(mappings ?? {})
+    .map(([code, vendorCode]) => `${code}=${vendorCode}`)
+    .join('\n');
+
+const parseTaxPolicyMappingsText = (
+  text: string,
+): Record<string, string> => {
+  const mappings: Record<string, string> = {};
+
+  for (const line of text.split(/\r?\n/)) {
+    const separatorIndex = line.indexOf('=');
+
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const code = line.slice(0, separatorIndex).trim();
+    const vendorCode = line.slice(separatorIndex + 1).trim();
+
+    if (code !== '' && vendorCode !== '') {
+      mappings[code] = vendorCode;
+    }
+  }
+
+  return mappings;
 };
 
 const DECISION_LABELS: Record<string, string> = {
@@ -190,6 +225,9 @@ const toForm = (connection: ConnectionRecord): FormState => ({
   discount: connection.settings.specialCodes.discount,
   duty: connection.settings.specialCodes.duty,
   tax: connection.settings.specialCodes.tax,
+  taxPolicyMappingsText: formatTaxPolicyMappingsText(
+    connection.settings.taxPolicyMappings,
+  ),
 });
 
 const styles: Record<string, CSSProperties> = {
@@ -424,6 +462,9 @@ export const AccountingConnectionPanel = () => {
             duty: form.duty,
             tax: form.tax,
           },
+          taxPolicyMappings: parseTaxPolicyMappingsText(
+            form.taxPolicyMappingsText,
+          ),
         },
       });
 
@@ -982,6 +1023,26 @@ export const AccountingConnectionPanel = () => {
                 کد ویژهٔ مالیات
               </label>
             </div>
+
+            <Field label="نگاشت مالیات CRM به کد مالیات مقصد">
+              <textarea
+                style={styles.input}
+                rows={3}
+                value={form.taxPolicyMappingsText}
+                placeholder={'IR_VAT_9=999141'}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    taxPolicyMappingsText: event.target.value,
+                  })
+                }
+              />
+            </Field>
+            <p style={styles.meta}>
+              هر خط یک نگاشت «کد سیاست مالیات CRM = کد مالیات مقصد». بدون این
+              نگاشت، سندی که مالیات دارد ارسال نمی‌شود؛ سیاست‌های CRM و کدهای
+              مالیاتی نرم‌افزار حسابداری یکی فرض نمی‌شوند.
+            </p>
 
             {form.moneyUnit === 'UNCONFIRMED' ? (
               <p style={styles.warning}>

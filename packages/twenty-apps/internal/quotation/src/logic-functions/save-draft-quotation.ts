@@ -4,11 +4,17 @@ import { SAVE_DRAFT_QUOTATION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/co
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
-import { DEFAULT_TAX_POLICY_ID } from 'src/domain/money/tax-policy';
+import {
+  DEFAULT_TAX_POLICY_ID,
+  resolveTaxPolicyFromCatalog,
+  selectDefaultTaxPolicy,
+} from 'src/domain/money/tax-policy';
 import {
   type DraftDiscountInput,
+  type DraftQuotationInput,
 } from 'src/domain/quotation/draft-quotation';
 import { persistDraftQuotation } from 'src/services/quotation-persist.service';
+import { loadTaxPoliciesWithBaseline } from 'src/services/tax-policy.service';
 import {
   buildDraftQuotationWritePayload,
   validateDraftQuotation,
@@ -58,7 +64,7 @@ const handler = async (event: RoutePayload<unknown>) => {
   const body = asRecord(event.body);
   const linesRaw = Array.isArray(body.lines) ? body.lines : [];
 
-  const input = {
+  const input: DraftQuotationInput = {
     quotationId: readString(body.quotationId) || null,
     expectedVersion: readVersion(body.expectedVersion),
     status: (readString(body.status) || 'DRAFT') as 'DRAFT',
@@ -130,7 +136,48 @@ const handler = async (event: RoutePayload<unknown>) => {
     };
   }
 
-  const saved = await persistDraftQuotation(input, {
+  // The rate is read from the workspace, never from the request. The form sends the
+  // policy code it selected; an unknown or deactivated code is refused here, so a
+  // client cannot price a document with a percentage the settings never approved.
+  let definedInput: DraftQuotationInput;
+
+  try {
+    const catalog = await loadTaxPoliciesWithBaseline();
+    const requestedCode =
+      input.taxPolicy ??
+      selectDefaultTaxPolicy(catalog)?.id ??
+      DEFAULT_TAX_POLICY_ID;
+    const policy = resolveTaxPolicyFromCatalog(requestedCode, catalog);
+
+    if (!policy.ok) {
+      return {
+        success: false,
+        code: policy.refusal.code,
+        message: policy.refusal.detail,
+      };
+    }
+
+    definedInput = {
+      ...input,
+      taxPolicy: policy.value.id,
+      taxPolicyDefinition: {
+        id: policy.value.id,
+        label: policy.value.label,
+        rateBasisPoints: policy.value.rateBasisPoints,
+        isExempt: policy.value.isExempt,
+      },
+    };
+  } catch (error) {
+    console.error('save-draft-quotation: tax policy lookup failed', error);
+
+    return {
+      success: false,
+      code: 'PERSISTENCE_FAILED',
+      message: 'خواندن سیاست مالیات انجام نشد؛ دوباره تلاش کنید',
+    };
+  }
+
+  const saved = await persistDraftQuotation(definedInput, {
     execute: executeRecordGraphql,
   });
 

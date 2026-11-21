@@ -18,14 +18,20 @@ import {
 import {
   SAVE_DRAFT_ROUTE,
   SEARCH_CUSTOMERS_ROUTE,
+  TAX_POLICIES_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
+import { toPersianDigits } from 'src/domain/money/display-format';
 import {
   DEFAULT_TAX_POLICY_ID,
+  formatBasisPointsAsPercent,
+  parseBasisPointsText,
   resolveTaxPolicy,
+  selectDefaultTaxPolicy,
+  type TaxPolicyCatalogEntry,
 } from 'src/domain/money/tax-policy';
 import {
   type DraftDiscountInput,
@@ -107,11 +113,67 @@ const refreshRecordDataFromHost = async (): Promise<void> => {
   }
 };
 
-const TAX_LABEL = (() => {
+const LEGACY_TAX_LABEL = (() => {
   const policy = resolveTaxPolicy(DEFAULT_TAX_POLICY_ID);
 
   return policy.ok ? policy.value.label : 'مالیات';
 })();
+
+// The workspace catalog, as the settings route describes it. `rateBasisPoints`
+// arrives as text because an integer percentage must not go through a float
+// scalar; a row whose rate cannot be parsed is skipped rather than guessed.
+const readTaxPolicies = (
+  data: Record<string, unknown>,
+): TaxPolicyCatalogEntry[] => {
+  const policies = Array.isArray(data.policies) ? data.policies : [];
+
+  return policies.flatMap((candidate, index) => {
+    if (candidate === null || typeof candidate !== 'object') {
+      return [];
+    }
+
+    const row = candidate as Record<string, unknown>;
+    const code = typeof row.code === 'string' ? row.code.trim() : '';
+    const rate = parseBasisPointsText(
+      typeof row.rateBasisPoints === 'string' ? row.rateBasisPoints : '',
+    );
+
+    if (code === '' || !rate.ok) {
+      return [];
+    }
+
+    return [
+      {
+        recordId: typeof row.recordId === 'string' ? row.recordId : '',
+        id: code,
+        label:
+          typeof row.name === 'string' && row.name.trim() !== ''
+            ? row.name.trim()
+            : code,
+        rateBasisPoints: rate.value,
+        isActive: row.isActive !== false,
+        isDefault: row.isDefault === true,
+        isExempt: row.isExempt === true,
+        position: index,
+      },
+    ];
+  });
+};
+
+const legacyTaxPolicyEntry = (): TaxPolicyCatalogEntry => {
+  const legacy = resolveTaxPolicy(DEFAULT_TAX_POLICY_ID);
+
+  return {
+    recordId: '',
+    id: DEFAULT_TAX_POLICY_ID,
+    label: legacy.ok ? legacy.value.label : LEGACY_TAX_LABEL,
+    rateBasisPoints: legacy.ok ? legacy.value.rateBasisPoints : 900n,
+    isActive: true,
+    isDefault: true,
+    isExempt: false,
+    position: 0,
+  };
+};
 
 // The host already sends `objectNameSingular`, but the SDK release this app is
 // pinned to does not declare it yet; the field is read through a narrow cast so
@@ -232,9 +294,56 @@ export const QuotationDraftForm = () => {
   const [documentDiscountAmountText, setDocumentDiscountAmountText] =
     useState('');
   const [lines, setLines] = useState<LineDraft[]>([newLine()]);
+  const [taxPolicies, setTaxPolicies] = useState<TaxPolicyCatalogEntry[]>([]);
+  const [taxPolicyCode, setTaxPolicyCode] = useState(DEFAULT_TAX_POLICY_ID);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
+
+  // The rate is workspace data, so the form reads it instead of embedding one. A
+  // failure here leaves the legacy 9% baseline in place; it must not block a save
+  // that the settings page may not have been opened for yet.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTaxPolicies = async () => {
+      try {
+        const response = await callAppRoute(TAX_POLICIES_ROUTE, {
+          action: 'list',
+        });
+
+        if (cancelled || response.data.success !== true) {
+          return;
+        }
+
+        const rows = readTaxPolicies(response.data);
+
+        if (rows.length === 0) {
+          return;
+        }
+
+        setTaxPolicies(rows);
+        setTaxPolicyCode((current) =>
+          rows.some((row) => row.id === current)
+            ? current
+            : (selectDefaultTaxPolicy(rows)?.id ?? current),
+        );
+      } catch (loadFailure) {
+        // The save route validates the policy on the server; this panel only
+        // needs a rate to preview with.
+        console.error(
+          'quotation-draft-form: tax policy load failed',
+          loadFailure,
+        );
+      }
+    };
+
+    void loadTaxPolicies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isRecordEdit) {
@@ -286,6 +395,11 @@ export const QuotationDraftForm = () => {
         setDocumentDiscountKind(draft.documentDiscountKind);
         setDocumentDiscountPercentText(draft.documentDiscountPercentText);
         setDocumentDiscountAmountText(draft.documentDiscountAmountText);
+        setTaxPolicyCode(
+          draft.taxPolicy !== null && draft.taxPolicy.trim() !== ''
+            ? draft.taxPolicy.trim()
+            : DEFAULT_TAX_POLICY_ID,
+        );
         setLines(
           draft.lines.map((line) => ({
             clientLineId: line.clientLineId,
@@ -402,6 +516,53 @@ export const QuotationDraftForm = () => {
     customerLabels.COMPANY,
   ]);
 
+  const taxPolicyOptions = useMemo(() => {
+    const active = taxPolicies.filter((policy) => policy.isActive);
+    const selected = taxPolicies.find(
+      (policy) => policy.id === taxPolicyCode,
+    );
+
+    if (selected !== undefined && !selected.isActive) {
+      // Reopening a draft whose policy was later deactivated must still show the
+      // rate it was saved with; the save route refuses to re-apply it.
+      return [selected, ...active.filter((policy) => policy.id !== selected.id)];
+    }
+
+    return active.length > 0 ? active : [legacyTaxPolicyEntry()];
+  }, [taxPolicies, taxPolicyCode]);
+
+  const selectedTaxPolicy = useMemo(
+    () =>
+      taxPolicies.find((policy) => policy.id === taxPolicyCode) ??
+      (taxPolicyCode === DEFAULT_TAX_POLICY_ID
+        ? legacyTaxPolicyEntry()
+        : null),
+    [taxPolicies, taxPolicyCode],
+  );
+
+  const taxPolicyDefinition = useMemo(
+    () =>
+      selectedTaxPolicy === null
+        ? null
+        : {
+            id: selectedTaxPolicy.id,
+            label: selectedTaxPolicy.label,
+            rateBasisPoints: selectedTaxPolicy.rateBasisPoints,
+            isExempt: selectedTaxPolicy.isExempt,
+          },
+    [selectedTaxPolicy],
+  );
+
+  const taxRateLabel =
+    selectedTaxPolicy === null
+      ? null
+      : toPersianDigits(
+          formatBasisPointsAsPercent(selectedTaxPolicy.rateBasisPoints),
+        );
+
+  const taxPolicyLabel =
+    selectedTaxPolicy?.label ?? LEGACY_TAX_LABEL;
+
   const preview = useMemo(() => {
     const draftLines = lines.map((line) => toDraftLineInput(line, moneyUnit));
 
@@ -413,7 +574,8 @@ export const QuotationDraftForm = () => {
       companyId: customerType === 'COMPANY' ? customerIds.companyId : null,
       name,
       paymentTerms,
-      taxPolicy: DEFAULT_TAX_POLICY_ID,
+      taxPolicy: taxPolicyCode,
+      taxPolicyDefinition,
       documentDiscount: toDiscountInput(
         documentDiscountKind,
         documentDiscountPercentText,
@@ -430,6 +592,8 @@ export const QuotationDraftForm = () => {
     editingQuotationId,
     name,
     paymentTerms,
+    taxPolicyCode,
+    taxPolicyDefinition,
     documentDiscountKind,
     documentDiscountPercentText,
     documentDiscountAmountText,
@@ -524,7 +688,7 @@ export const QuotationDraftForm = () => {
         companyId: customerType === 'COMPANY' ? customerIds.companyId : null,
         name,
         paymentTerms,
-        taxPolicy: DEFAULT_TAX_POLICY_ID,
+        taxPolicy: taxPolicyCode,
         displayMoneyUnit: moneyUnit,
         documentDiscountKind,
         documentDiscountPercentText,
@@ -877,6 +1041,67 @@ export const QuotationDraftForm = () => {
           </div>
         </section>
 
+        <section style={formSectionStyle}>
+          <h3 style={styles.sectionTitle}>مالیات و عوارض</h3>
+          <div style={styles.row}>
+            <label style={styles.label}>
+              سیاست مالیات
+              <select
+                style={styles.input}
+                value={taxPolicyCode}
+                disabled={isFormLocked}
+                onChange={(event) => setTaxPolicyCode(event.target.value)}
+              >
+                {taxPolicyOptions.map((policy) => (
+                  <option key={policy.id} value={policy.id}>
+                    {policy.label}
+                    {policy.isExempt ? ' — معاف' : ''}
+                    {policy.isActive ? '' : ' — غیرفعال'}
+                  </option>
+                ))}
+                {taxPolicyOptions.every(
+                  (policy) => policy.id !== taxPolicyCode,
+                ) ? (
+                  <option value={taxPolicyCode}>{taxPolicyCode}</option>
+                ) : null}
+              </select>
+            </label>
+            {taxRateLabel !== null ? (
+              <div style={styles.label}>
+                نرخ اعمال‌شده
+                <strong style={styles.fieldInput}>{taxRateLabel}٪</strong>
+              </div>
+            ) : null}
+          </div>
+          <p style={styles.meta}>
+            نرخ‌ها در تنظیمات «مالیات و عوارض» تعریف می‌شوند و همین سیاست روی
+            سند مهروموم ثبت می‌شود؛ تغییر آیندهٔ تنظیمات مبلغ سند صادرشده را
+            عوض نمی‌کند.
+          </p>
+          {selectedTaxPolicy === null ? (
+            <p style={styles.warning}>
+              سیاست مالیات انتخاب‌شده در تنظیمات پیدا نشد؛ یک سیاست فعال انتخاب
+              کنید.
+            </p>
+          ) : null}
+          {summaryPlan ? (
+            <>
+              <div style={styles.totalsRow}>
+                <span>مبلغ مشمول مالیات</span>
+                <strong>{summaryPlan.displayNet}</strong>
+              </div>
+              <div style={styles.totalsRow}>
+                <span>{taxPolicyLabel}</span>
+                <strong>{summaryPlan.displayTax}</strong>
+              </div>
+              <div style={styles.totalsRow}>
+                <span>جمع کل</span>
+                <strong>{summaryPlan.displayTotal}</strong>
+              </div>
+            </>
+          ) : null}
+        </section>
+
         {error ? <p style={styles.error}>{error}</p> : null}
       </div>
 
@@ -898,7 +1123,7 @@ export const QuotationDraftForm = () => {
                 <strong>{summaryPlan.displayDocumentDiscount}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>{TAX_LABEL}</span>
+                <span>{taxPolicyLabel}</span>
                 <strong>{summaryPlan.displayTax}</strong>
               </div>
               {summaryPlan.totalsExact.roundingExact !== '0.000000' ? (

@@ -16,6 +16,7 @@ import { renderQuotationPdf } from 'src/modules/quotation/pdf/render-quotation-p
 import {
   formatExactAmountWithCurrency,
   formatExactAmountForDisplay,
+  formatBasisPointsAsPersianPercent,
   formatJalaliDateFromInstant,
   isSignificantExactAmount,
   resolveCurrencyLabel,
@@ -31,6 +32,7 @@ type QuotationPdfRow = {
   documentDiscountExact: string | null;
   netExact: string | null;
   taxExact: string | null;
+  taxRateBasisPoints: string | null;
   roundingExact: string | null;
   totalExact: string | null;
   paymentTerms: string | null;
@@ -123,6 +125,7 @@ export class QuotationPdfService {
           documentDiscountExact: true,
           netExact: true,
           taxExact: true,
+          taxRateBasisPoints: true,
           roundingExact: true,
           totalExact: true,
           paymentTerms: true,
@@ -268,6 +271,9 @@ export class QuotationPdfService {
         documentDiscount: formatStored(quotation.documentDiscountExact),
         net: formatStored(quotation.netExact),
         tax: formatStored(quotation.taxExact),
+        taxRatePercent:
+          formatBasisPointsAsPersianPercent(quotation.taxRateBasisPoints) ??
+          undefined,
         rounding: formatStored(quotation.roundingExact),
       },
       total,

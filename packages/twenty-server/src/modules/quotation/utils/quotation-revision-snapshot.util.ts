@@ -30,6 +30,7 @@ export type QuotationRevisionSnapshot = {
   currencyCode: string;
   customerRef: string;
   taxPolicy: string;
+  taxRateBasisPoints: string | null;
   paymentTerms: string | null;
   lines: QuotationRevisionLine[];
   totals: {
@@ -47,6 +48,7 @@ export type QuotationRevisionHeaderRow = {
   quotationNumber: string | null;
   currencyCode: string | null;
   taxPolicy: string | null;
+  taxRateBasisPoints: string | null;
   paymentTerms: string | null;
   grossExact: string | null;
   lineDiscountExact: string | null;
@@ -128,6 +130,12 @@ export const buildQuotationRevisionSnapshot = ({
   issuedAt: Date;
 }): QuotationRevisionSnapshotResult => {
   const quotationNumber = (header.quotationNumber ?? '').trim();
+  // Only a readable rate is sealed; an absent one stays null so an older document
+  // remains explicable instead of being given an invented percentage.
+  const declaredTaxRate = (header.taxRateBasisPoints ?? '').trim();
+  const taxRateBasisPoints = /^\d{1,5}$/.test(declaredTaxRate)
+    ? declaredTaxRate
+    : null;
 
   if (quotationNumber === '') {
     return {
@@ -285,6 +293,7 @@ export const buildQuotationRevisionSnapshot = ({
       currencyCode: (header.currencyCode ?? '').trim() || 'IRR',
       customerRef: (header.companyId ?? header.personId ?? '').trim(),
       taxPolicy: (header.taxPolicy ?? '').trim(),
+      taxRateBasisPoints,
       paymentTerms:
         (header.paymentTerms ?? '').trim() === ''
           ? null

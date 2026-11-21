@@ -26,7 +26,10 @@ const refused = (
   message: string,
 ): QuotationDraftSaveParseOutcome => ({ ok: false, code, message });
 
-const readText = (value: unknown, maxLength = MAX_TEXT_LENGTH): string | null =>
+const readText = (
+  value: unknown,
+  maxLength = MAX_TEXT_LENGTH,
+): string | null =>
   typeof value === 'string' &&
   value.trim().length > 0 &&
   value.trim().length <= maxLength
@@ -50,9 +53,7 @@ const readNullableText = (
   return trimmed.length === 0 || trimmed.length > maxLength ? null : trimmed;
 };
 
-type NullableIdOutcome =
-  | { ok: true; value: string | null }
-  | { ok: false };
+type NullableIdOutcome = { ok: true; value: string | null } | { ok: false };
 
 // Absent (`null`) and malformed are different answers: an absent relation is a
 // valid draft, a malformed id is a request the server must not guess at.
@@ -91,6 +92,23 @@ const readVersion = (value: unknown): number | null | undefined => {
   return typeof value === 'number' && Number.isInteger(value) && value > 0
     ? value
     : undefined;
+};
+
+// Absent is legitimate for a client that predates configurable tax; a present but
+// unreadable rate is not, because the server would then be unable to check the tax
+// it is asked to store.
+const readTaxRateBasisPoints = (value: unknown): string | null | undefined => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return /^\d{1,5}$/.test(trimmed) ? trimmed : undefined;
 };
 
 const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
@@ -159,6 +177,7 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
   const personId = readNullableId(raw.personId);
   const companyId = readNullableId(raw.companyId);
   const taxPolicy = readNullableText(raw.taxPolicy, 64);
+  const taxRateBasisPoints = readTaxRateBasisPoints(raw.taxRateBasisPoints);
 
   if (
     name === null ||
@@ -166,6 +185,7 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     currencyCode === null ||
     !/^[A-Z]{3}$/.test(currencyCode) ||
     documentDiscountKind === null ||
+    taxRateBasisPoints === undefined ||
     !personId.ok ||
     !companyId.ok
   ) {
@@ -194,6 +214,7 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     companyId: companyId.value,
     currencyCode,
     taxPolicy,
+    taxRateBasisPoints,
     paymentTerms: readNullableText(raw.paymentTerms),
     documentDiscountKind,
     documentDiscountInputExact: raw.documentDiscountInputExact as string,
@@ -218,7 +239,10 @@ export const parseQuotationDraftSaveRequest = (
   const expectedVersion = readVersion(body.expectedVersion);
 
   if (!quotationId.ok || expectedVersion === undefined) {
-    return refused('INVALID_INPUT', 'quotationId or expectedVersion is invalid');
+    return refused(
+      'INVALID_INPUT',
+      'quotationId or expectedVersion is invalid',
+    );
   }
 
   const header = parseHeader(body.header);
@@ -229,7 +253,10 @@ export const parseQuotationDraftSaveRequest = (
 
   if (header.customerType === 'PERSON') {
     if (!isNonEmptyString(header.personId) || header.companyId !== null) {
-      return refused('CUSTOMER_INVALID', 'a person quotation needs exactly one person');
+      return refused(
+        'CUSTOMER_INVALID',
+        'a person quotation needs exactly one person',
+      );
     }
   } else if (!isNonEmptyString(header.companyId) || header.personId !== null) {
     return refused(
@@ -252,7 +279,10 @@ export const parseQuotationDraftSaveRequest = (
   }
 
   if (!Array.isArray(body.lines) || body.lines.length === 0) {
-    return refused('DOCUMENT_HAS_NO_LINES', 'a quotation needs at least one line');
+    return refused(
+      'DOCUMENT_HAS_NO_LINES',
+      'a quotation needs at least one line',
+    );
   }
 
   if (body.lines.length > QUOTATION_DRAFT_MAX_LINES) {

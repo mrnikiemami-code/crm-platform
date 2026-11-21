@@ -242,10 +242,14 @@ export const saveConnection = async (
     defaultStorageId: settings.value.defaultStorageId,
     moneyUnit: settings.value.moneyUnit,
     transportApproved: settings.value.transportApproved,
-    specialCodes: settings.value.specialCodes as unknown as Record<
-      string,
-      GraphqlValue
-    >,
+    specialCodes: {
+      ...settings.value.specialCodes,
+      // An empty object is not a writable GraphQL literal; omitting the key means
+      // "no mapping", which is exactly the same decision.
+      ...(Object.keys(settings.value.taxPolicyMappings).length === 0
+        ? {}
+        : { taxPolicyMappings: settings.value.taxPolicyMappings }),
+    } as unknown as Record<string, GraphqlValue>,
     verificationState: verificationFor(descriptor),
   };
 

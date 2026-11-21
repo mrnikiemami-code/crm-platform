@@ -16,6 +16,7 @@ export const DEFAULT_CONNECTION_SETTINGS: ConnectionSettings = {
   moneyUnit: 'UNCONFIRMED',
   transportApproved: false,
   specialCodes: { discount: false, duty: false, tax: false },
+  taxPolicyMappings: {},
 };
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -28,6 +29,37 @@ const readString = (value: unknown): string =>
 
 const readBoolean = (value: unknown, fallback: boolean): boolean =>
   typeof value === 'boolean' ? value : fallback;
+
+// A mapping entry is only kept when both sides are usable: a blank vendor code is
+// indistinguishable from "not mapped" and must not authorize a tax line.
+const parseTaxPolicyMappings = (
+  value: unknown,
+): Record<string, string> => {
+  const raw = asRecord(value);
+  const mappings: Record<string, string> = {};
+
+  for (const [key, entry] of Object.entries(raw)) {
+    const code = key.trim();
+    const vendorCode = readString(entry);
+
+    if (code !== '' && vendorCode !== '') {
+      mappings[code] = vendorCode;
+    }
+  }
+
+  return mappings;
+};
+
+// Mappings used to live inside `specialCodes`; the current shape keeps them at the
+// top level. Reading both means an older record keeps working, and a top-level
+// entry wins because it is the one the settings page writes.
+const readTaxPolicyMappings = (
+  raw: Record<string, unknown>,
+  specialCodes: Record<string, unknown>,
+): Record<string, string> => ({
+  ...parseTaxPolicyMappings(specialCodes.taxPolicyMappings),
+  ...parseTaxPolicyMappings(raw.taxPolicyMappings),
+});
 
 export const normalizeMoneyUnit = (value: unknown): AccountingMoneyUnit =>
   typeof value === 'string' &&
@@ -142,6 +174,7 @@ export const parseConnectionSettings = (
       duty: readBoolean(specialCodes.duty, false),
       tax: readBoolean(specialCodes.tax, false),
     },
+    taxPolicyMappings: readTaxPolicyMappings(raw, specialCodes),
   });
 };
 
@@ -166,6 +199,7 @@ export const connectionSettingsFromRecord = (
       duty: readBoolean(specialCodes.duty, false),
       tax: readBoolean(specialCodes.tax, false),
     },
+    taxPolicyMappings: readTaxPolicyMappings(raw, specialCodes),
   };
 };
 

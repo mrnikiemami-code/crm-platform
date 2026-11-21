@@ -61,6 +61,7 @@ describe('connection settings', () => {
     moneyUnit: 'RIAL',
     transportApproved: true,
     specialCodes: { discount: true, duty: false, tax: true },
+    taxPolicyMappings: {},
   };
 
   it('parses a complete non-secret configuration', () => {
@@ -103,6 +104,20 @@ describe('connection settings', () => {
     });
 
     expect(parsed).toEqual({ ok: true, value: { ...valid, remoteUserId: '', defaultStorageId: '' } });
+  });
+
+  it('keeps an explicit CRM policy to vendor tax code mapping', () => {
+    const parsed = parseConnectionSettings({
+      ...valid,
+      specialCodes: {
+        ...valid.specialCodes,
+        taxPolicyMappings: { IR_VAT_9: '999141' },
+      },
+    });
+
+    expect(parsed.ok && parsed.value.taxPolicyMappings).toEqual({
+      IR_VAT_9: '999141',
+    });
   });
 
   it('reads a pre-existing record with safe defaults instead of failing', () => {

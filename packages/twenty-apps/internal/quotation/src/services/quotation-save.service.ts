@@ -125,6 +125,7 @@ export const buildDraftQuotationSaveRequest = (
     companyId: plan.companyId,
     currencyCode: plan.currencyCode,
     taxPolicy: plan.taxPolicy,
+    taxRateBasisPoints: plan.taxRateBasisPoints,
     paymentTerms: plan.paymentTerms,
     documentDiscountKind: plan.documentDiscountKind,
     documentDiscountInputExact: plan.documentDiscountInputExact,

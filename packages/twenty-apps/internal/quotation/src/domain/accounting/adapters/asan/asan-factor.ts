@@ -1,6 +1,5 @@
 import {
   ASAN_SPECIAL_ITEM_CODES,
-  type AsanSpecialItemCode,
 } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract';
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
@@ -128,6 +127,11 @@ export type AsanMappingInput = {
   // Which special codes this installation actually has defined. A false entry means the
   // amount is folded into no separate line, which the caller must have decided.
   specialCodesInUse: AsanSpecialCodeAvailability;
+  // The Asan tax item code this CRM tax policy maps to, resolved from the
+  // connection. Absent keeps the documented default for callers that predate
+  // configurable policies; the export planner refuses an unmapped taxed document
+  // before it can reach this mapper.
+  taxVendorCode?: string;
   description: string;
   storageId?: number;
   // The unit Asan stores amounts in. Absent keeps the legacy rial assumption for callers that
@@ -229,7 +233,7 @@ export const mapRevisionToAsanFactor = (
       },
       {
         enabled: input.specialCodesInUse.tax,
-        code: ASAN_SPECIAL_ITEM_CODES.tax,
+        code: input.taxVendorCode ?? ASAN_SPECIAL_ITEM_CODES.tax,
         micros: taxTotalMicros,
         label: 'مالیات',
       },
@@ -262,7 +266,7 @@ const appendSpecialLines = ({
   convertToVendorUnits: (micros: bigint) => Result<number>;
   amounts: {
     enabled: boolean;
-    code: AsanSpecialItemCode;
+    code: string;
     micros: bigint;
     label: string;
   }[];

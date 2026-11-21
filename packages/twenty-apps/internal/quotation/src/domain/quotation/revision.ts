@@ -32,6 +32,9 @@ export type QuotationRevisionSnapshot = {
   currencyCode: string;
   customerRef: string;
   taxPolicy: string;
+  // The exact rate the sealed amounts were computed with, in basis points. Kept in
+  // the snapshot so changing the policy's rate later cannot rewrite history.
+  taxRateBasisPoints: string | null;
   paymentTerms: string | null;
   lines: QuotationRevisionLine[];
   totals: {

@@ -36,6 +36,25 @@ export const parseExactAmountToMicros = (value: string): bigint | null => {
 const sum = (values: bigint[]): bigint =>
   values.reduce((total, value) => total + value, BigInt(0));
 
+// Basis points are integers (100% = 10000 bp). Halves round away from zero, the
+// same rule the app's Money Domain uses; a different rule here would reject a
+// document the app computed correctly.
+const BASIS_POINTS_DENOMINATOR = BigInt(10000);
+
+const applyBasisPoints = (base: bigint, basisPoints: bigint): bigint => {
+  const numerator = base * basisPoints;
+  const negative = numerator < BigInt(0);
+  const absolute = negative ? -numerator : numerator;
+  const quotient = absolute / BASIS_POINTS_DENOMINATOR;
+  const remainder = absolute % BASIS_POINTS_DENOMINATOR;
+  const rounded =
+    remainder * BigInt(2) >= BASIS_POINTS_DENOMINATOR
+      ? quotient + BigInt(1)
+      : quotient;
+
+  return negative ? -rounded : rounded;
+};
+
 const LINE_EXACT_KEYS = [
   'quantityExact',
   'unitPriceExact',
@@ -111,6 +130,38 @@ export const evaluateQuotationDraftTotals = ({
         ]),
       ) as Record<(typeof LINE_EXACT_KEYS)[number], bigint>,
   );
+
+  // When the app declares the rate it used, the server re-derives every line's
+  // tax instead of trusting the amounts it is asked to store. A client cannot
+  // lower the tax on a document by sending a smaller taxExact.
+  if (
+    typeof header.taxRateBasisPoints === 'string' &&
+    /^\d{1,5}$/.test(header.taxRateBasisPoints)
+  ) {
+    const rate = BigInt(header.taxRateBasisPoints);
+
+    if (rate > BASIS_POINTS_DENOMINATOR) {
+      return {
+        ok: false,
+        code: 'TAX_RATE_OUT_OF_RANGE',
+        message: 'the declared tax rate is outside 0%..100%',
+      };
+    }
+
+    for (const [index, line] of lineMicros.entries()) {
+      const taxableNet =
+        line.grossExact - line.discountExact - line.documentDiscountExact;
+      const expectedTax = applyBasisPoints(taxableNet, rate);
+
+      if (line.taxExact !== expectedTax) {
+        return {
+          ok: false,
+          code: 'TAX_AMOUNT_MISMATCH',
+          message: `lines[${index}].taxExact is not the declared rate applied to its net`,
+        };
+      }
+    }
+  }
 
   const checks: Array<{ ok: boolean; message: string }> = [
     {

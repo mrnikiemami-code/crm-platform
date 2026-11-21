@@ -24,6 +24,7 @@ const settings = (overrides: Partial<ConnectionSettings> = {}): ConnectionSettin
   moneyUnit: 'RIAL',
   transportApproved: true,
   specialCodes: { discount: true, duty: false, tax: true },
+  taxPolicyMappings: { IR_VAT_9: '999141' },
   ...overrides,
 });
 
@@ -42,6 +43,7 @@ const snapshot = (): QuotationRevisionSnapshot => ({
   currencyCode: 'IRR',
   customerRef: 'company:company-1',
   taxPolicy: 'IR_VAT_9',
+  taxRateBasisPoints: '0',
   paymentTerms: null,
   lines: [
     {

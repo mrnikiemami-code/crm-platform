@@ -12,10 +12,10 @@ import {
 // `packages/twenty-apps/internal/quotation/src/domain/quotation/__tests__/revision.test.ts`.
 // If either canonical form drifts, one of the two tests fails.
 const SHARED_FIXTURE_HASH =
-  '7910eb7db5a0825dcceb0347c12de4f63a4ef48bad5351a625bdc0dcec57ab51';
+  '5df2777760c29c491e64f25c66741a7c7ecfe0f3014da72619c486b79b26ea6d';
 
 const SHARED_FIXTURE_CANONICAL =
-  '{"currencyCode":"IRR","customerRef":"c-1","issuedAt":"2026-11-21T08:00:00.000Z","lines":[{"description":"خدمت","discountMicros":"100000000","lineId":"l-1","quantityScaled":"1000000","taxMicros":"81000000","totalMicros":"981000000","unit":"ساعت","unitPriceMicros":"1000000000"}],"paymentTerms":null,"quotationId":"q-1","quotationNumber":"QT-1405-000001","taxPolicy":"VAT_9","totals":{"discountMicros":"100000000","grossMicros":"1000000000","netMicros":"900000000","taxMicros":"81000000","totalMicros":"981000000"},"version":1}';
+  '{"currencyCode":"IRR","customerRef":"c-1","issuedAt":"2026-11-21T08:00:00.000Z","lines":[{"description":"خدمت","discountMicros":"100000000","lineId":"l-1","quantityScaled":"1000000","taxMicros":"81000000","totalMicros":"981000000","unit":"ساعت","unitPriceMicros":"1000000000"}],"paymentTerms":null,"quotationId":"q-1","quotationNumber":"QT-1405-000001","taxPolicy":"VAT_9","taxRateBasisPoints":"900","totals":{"discountMicros":"100000000","grossMicros":"1000000000","netMicros":"900000000","taxMicros":"81000000","totalMicros":"981000000"},"version":1}';
 
 const SHARED_SNAPSHOT: QuotationRevisionSnapshot = {
   quotationId: 'q-1',
@@ -24,6 +24,7 @@ const SHARED_SNAPSHOT: QuotationRevisionSnapshot = {
   currencyCode: 'IRR',
   customerRef: 'c-1',
   taxPolicy: 'VAT_9',
+  taxRateBasisPoints: '900',
   paymentTerms: null,
   lines: [
     {
@@ -52,6 +53,7 @@ const header: QuotationRevisionHeaderRow = {
   quotationNumber: 'QT-1405-000001',
   currencyCode: 'IRR',
   taxPolicy: 'VAT_9',
+  taxRateBasisPoints: '900',
   paymentTerms: null,
   grossExact: '1000.000000',
   lineDiscountExact: '100.000000',

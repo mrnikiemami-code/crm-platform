@@ -213,4 +213,73 @@ describe('buildDraftQuotationPlan', () => {
 
     expect(plan.refusal.code).toBe('QUOTATION_NOT_EDITABLE');
   });
+
+  it('uses the configured policy rate instead of the hardcoded one', () => {
+    const plan = buildDraftQuotationPlan({
+      quotationId: null,
+      status: 'DRAFT',
+      customerType: 'COMPANY',
+      personId: null,
+      companyId: 'company-1',
+      name: 'با نرخ تنظیم‌شده',
+      paymentTerms: null,
+      taxPolicy: 'TAX_1000',
+      taxPolicyDefinition: {
+        id: 'TAX_1000',
+        label: 'مالیات ۱۰٪',
+        rateBasisPoints: 1000n,
+        isExempt: false,
+      },
+      documentDiscount: { kind: 'NONE' },
+      displayMoneyUnit: 'IRR',
+      lines: [
+        {
+          ...baseLine,
+          quantityText: '1',
+          unitPriceText: '1000000',
+          moneyUnit: 'IRR',
+          discount: { kind: 'NONE' },
+        },
+      ],
+    });
+
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) {
+      return;
+    }
+
+    expect(plan.value.taxPolicy).toBe('TAX_1000');
+    expect(plan.value.taxRateBasisPoints).toBe('1000');
+    // 10% of 1,000,000 rial, no float anywhere in the path.
+    expect(plan.value.totalsExact.taxExact).toBe('100000.000000');
+  });
+
+  it('refuses a rate that disagrees with the selected policy code', () => {
+    const plan = buildDraftQuotationPlan({
+      quotationId: null,
+      status: 'DRAFT',
+      customerType: 'COMPANY',
+      personId: null,
+      companyId: 'company-1',
+      name: 'ناسازگار',
+      paymentTerms: null,
+      taxPolicy: 'TAX_1000',
+      taxPolicyDefinition: {
+        id: 'IR_VAT_9',
+        label: 'مالیات ۹٪',
+        rateBasisPoints: 900n,
+        isExempt: false,
+      },
+      documentDiscount: { kind: 'NONE' },
+      displayMoneyUnit: 'IRR',
+      lines: [baseLine],
+    });
+
+    expect(plan.ok).toBe(false);
+    if (plan.ok) {
+      return;
+    }
+
+    expect(plan.refusal.code).toBe('TAX_POLICY_MISMATCH');
+  });
 });

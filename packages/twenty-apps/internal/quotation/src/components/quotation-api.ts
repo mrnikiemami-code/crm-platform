@@ -70,3 +70,4 @@ export const SEARCH_CUSTOMERS_ROUTE = '/quotation/search-customers';
 export const ACCOUNTING_CONNECTION_ROUTE = '/quotation/accounting-connection';
 export const ACCOUNTING_IMPORT_ROUTE = '/quotation/accounting-import';
 export const ACCOUNTING_OUTBOUND_ROUTE = '/quotation/accounting-outbound';
+export const TAX_POLICIES_ROUTE = '/quotation/tax-policies';

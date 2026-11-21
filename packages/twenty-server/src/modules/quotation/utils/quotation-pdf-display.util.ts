@@ -5,12 +5,15 @@ const THOUSANDS_SEPARATOR = '\u066c';
 const DECIMAL_SEPARATOR = '\u066b';
 const ZERO_EXACT_AMOUNT = '0.000000';
 
-const JALALI_DATE_FORMATTER = new Intl.DateTimeFormat('en-u-ca-persian-nu-latn', {
-  timeZone: 'UTC',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
+const JALALI_DATE_FORMATTER = new Intl.DateTimeFormat(
+  'en-u-ca-persian-nu-latn',
+  {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  },
+);
 
 const DECIMAL_AMOUNT = /^(-)?(\d+)(?:\.(\d{1,6}))?$/;
 
@@ -61,13 +64,46 @@ export const formatExactAmountForDisplay = (exact: string): string => {
 export const formatExactAmountWithCurrency = (
   exact: string,
   currencyLabel: string,
-): string =>
-  `${formatExactAmountForDisplay(exact)} ${currencyLabel}`.trim();
+): string => `${formatExactAmountForDisplay(exact)} ${currencyLabel}`.trim();
 
-export const isSignificantExactAmount = (exact: string | null | undefined): boolean =>
-  isNonEmptyString(exact) && exact.trim() !== '' && exact.trim() !== ZERO_EXACT_AMOUNT;
+export const isSignificantExactAmount = (
+  exact: string | null | undefined,
+): boolean =>
+  isNonEmptyString(exact) &&
+  exact.trim() !== '' &&
+  exact.trim() !== ZERO_EXACT_AMOUNT;
 
-export const formatJalaliDateFromInstant = (isoInstant: string): string | null => {
+// Basis points -> the percent a reader sees: 900 -> "۹", 1050 -> "۱۰٫۵". The
+// stored rate is an integer string because a percentage never travels as a float.
+export const formatBasisPointsAsPersianPercent = (
+  basisPointsText: string | null | undefined,
+): string | null => {
+  if (!isNonEmptyString(basisPointsText)) {
+    return null;
+  }
+
+  const trimmed = basisPointsText.trim();
+
+  if (!/^\d{1,5}$/.test(trimmed)) {
+    return null;
+  }
+
+  const basisPoints = BigInt(trimmed);
+  const whole = basisPoints / BigInt(100);
+  const fraction = basisPoints % BigInt(100);
+
+  if (fraction === BigInt(0)) {
+    return toPersianDigits(whole.toString());
+  }
+
+  const fractionText = fraction.toString().padStart(2, '0').replace(/0$/, '');
+
+  return `${toPersianDigits(whole.toString())}${DECIMAL_SEPARATOR}${toPersianDigits(fractionText)}`;
+};
+
+export const formatJalaliDateFromInstant = (
+  isoInstant: string,
+): string | null => {
   const instant = new Date(isoInstant);
 
   if (Number.isNaN(instant.getTime())) {
@@ -82,18 +118,16 @@ export const formatJalaliDateFromInstant = (isoInstant: string): string | null =
   const month = read('month');
   const day = read('day');
 
-  if (
-    year === undefined ||
-    month === undefined ||
-    day === undefined
-  ) {
+  if (year === undefined || month === undefined || day === undefined) {
     return null;
   }
 
   return toPersianDigits(`${year}/${month}/${day}`);
 };
 
-export const resolveCurrencyLabel = (currencyCode: string | null | undefined): string => {
+export const resolveCurrencyLabel = (
+  currencyCode: string | null | undefined,
+): string => {
   if (currencyCode?.trim().toUpperCase() === 'IRR') {
     return 'ریال';
   }

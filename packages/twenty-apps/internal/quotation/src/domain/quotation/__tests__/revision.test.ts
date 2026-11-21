@@ -30,6 +30,7 @@ const snapshot = (): QuotationRevisionSnapshot => {
     currencyCode: 'IRR',
     customerRef: 'company-9',
     taxPolicy: 'IR_VAT_9',
+    taxRateBasisPoints: '900',
     paymentTerms: '۳۰ روز',
     lines: [
       buildQuotationRevisionLine({
@@ -85,6 +86,7 @@ describe('revision hash', () => {
       lines: original.lines,
       issuedAt: original.issuedAt,
       taxPolicy: original.taxPolicy,
+      taxRateBasisPoints: original.taxRateBasisPoints,
       paymentTerms: original.paymentTerms,
       customerRef: original.customerRef,
       currencyCode: original.currencyCode,
@@ -138,6 +140,7 @@ describe('revision hash', () => {
       currencyCode: 'IRR',
       customerRef: 'c-1',
       taxPolicy: 'VAT_9',
+      taxRateBasisPoints: '900',
       paymentTerms: null,
       lines: [
         {
@@ -162,7 +165,7 @@ describe('revision hash', () => {
     };
 
     expect(hashQuotationRevision(shared)).toBe(
-      '7910eb7db5a0825dcceb0347c12de4f63a4ef48bad5351a625bdc0dcec57ab51',
+      '5df2777760c29c491e64f25c66741a7c7ecfe0f3014da72619c486b79b26ea6d',
     );
   });
 });

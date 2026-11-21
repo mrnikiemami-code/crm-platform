@@ -59,6 +59,11 @@ export type ConnectionSettings = {
     duty: boolean;
     tax: boolean;
   };
+  // CRM tax policy code -> the vendor's own tax code, for example IR_VAT_9 -> 999141.
+  // Deliberately a mapping and not an identity: the CRM's policies and the vendor's
+  // fiscal codes are decided by different people, and assuming they match would post
+  // the wrong tax. A rate with no mapping is refused rather than sent unmapped.
+  taxPolicyMappings: Record<string, string>;
 };
 
 export type RemoteCatalogItem = {

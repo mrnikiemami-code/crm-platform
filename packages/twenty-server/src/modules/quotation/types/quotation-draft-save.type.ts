@@ -1,6 +1,7 @@
 export const QUOTATION_DRAFT_LINE_KINDS = ['PRODUCT', 'SERVICE'] as const;
 
-export type QuotationDraftLineKind = (typeof QUOTATION_DRAFT_LINE_KINDS)[number];
+export type QuotationDraftLineKind =
+  (typeof QUOTATION_DRAFT_LINE_KINDS)[number];
 
 export const QUOTATION_DRAFT_DISCOUNT_KINDS = [
   'NONE',
@@ -42,6 +43,9 @@ export type QuotationDraftSaveHeader = {
   companyId: string | null;
   currencyCode: string;
   taxPolicy: string | null;
+  // Basis points the app computed the tax with (900 = 9%). Stored with the
+  // document so a later settings change cannot re-interpret old amounts.
+  taxRateBasisPoints: string | null;
   paymentTerms: string | null;
   documentDiscountKind: QuotationDraftDiscountKind;
   documentDiscountInputExact: string;

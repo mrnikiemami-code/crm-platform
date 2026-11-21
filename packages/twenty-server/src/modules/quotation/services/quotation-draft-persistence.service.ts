@@ -387,6 +387,7 @@ export class QuotationDraftPersistenceService {
       companyId: header.companyId,
       currencyCode: header.currencyCode,
       taxPolicy: header.taxPolicy,
+      taxRateBasisPoints: header.taxRateBasisPoints,
       paymentTerms: header.paymentTerms,
       documentDiscountKind: header.documentDiscountKind,
       documentDiscountInputExact: header.documentDiscountInputExact,
