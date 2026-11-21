@@ -36,6 +36,7 @@ const body = (overrides: Record<string, unknown> = {}) => ({
     companyId: 'company-1',
     currencyCode: 'IRR',
     taxPolicy: 'IR_VAT_9',
+    taxRateBasisPoints: '900',
     paymentTerms: null,
     documentDiscountKind: 'NONE',
     documentDiscountInputExact: '0.000000',
@@ -63,6 +64,7 @@ const buildScope = ({
   lineFind,
   companyFindOne,
   personFindOne,
+  taxPolicyFindOne,
 }: {
   headerInsert?: jest.Mock;
   lineInsert?: jest.Mock;
@@ -71,7 +73,14 @@ const buildScope = ({
   lineFind?: jest.Mock;
   companyFindOne?: jest.Mock;
   personFindOne?: jest.Mock;
+  taxPolicyFindOne?: jest.Mock;
 } = {}): Scope => {
+  const activeNinePercentPolicy = {
+    id: 'tp-1',
+    code: 'IR_VAT_9',
+    rateBasisPoints: '900',
+    isActive: true,
+  };
   const repositories: Record<string, Record<string, jest.Mock>> = {
     quotation: {
       insert:
@@ -94,6 +103,9 @@ const buildScope = ({
     },
     person: {
       findOne: personFindOne ?? jest.fn(async () => null),
+    },
+    taxPolicy: {
+      findOne: taxPolicyFindOne ?? jest.fn(async () => activeNinePercentPolicy),
     },
   };
 
@@ -392,6 +404,188 @@ describe('QuotationDraftPersistenceService', () => {
     });
     expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
     expect(scope.getRepository('quotationLine').insert).not.toHaveBeenCalled();
+  });
+
+  it('refuses a rate that no policy of this workspace carries', async () => {
+    const scope = buildScope();
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    // Amounts are internally consistent at 12%, so only the policy authority can
+    // catch this: the rate was never approved in the settings.
+    const result = await service.saveDraft({
+      authContext,
+      body: body({
+        header: {
+          ...body().header,
+          taxRateBasisPoints: '1200',
+          taxExact: '120000.000000',
+          totalExact: '1120000.000000',
+        },
+        lines: [
+          rawLine({
+            taxExact: '120000.000000',
+            totalExact: '1120000.000000',
+          }),
+        ],
+      }),
+    });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'TAX_POLICY_RATE_MISMATCH',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+    expect(scope.getRepository('quotationLine').insert).not.toHaveBeenCalled();
+  });
+
+  it('refuses a policy code this workspace does not define', async () => {
+    const scope = buildScope({
+      taxPolicyFindOne: jest.fn(async () => null),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({ authContext, body: body() });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'TAX_POLICY_UNKNOWN',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+  });
+
+  it('refuses a deactivated policy for a new draft', async () => {
+    const scope = buildScope({
+      taxPolicyFindOne: jest.fn(async () => ({
+        id: 'tp-1',
+        code: 'IR_VAT_9',
+        rateBasisPoints: '900',
+        isActive: false,
+      })),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({ authContext, body: body() });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'TAX_POLICY_INACTIVE',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+  });
+
+  it('keeps the stored rate when its policy was edited after the draft was saved', async () => {
+    const scope = buildScope({
+      headerFindOne: jest.fn(async () => ({
+        id: 'q-1',
+        status: 'DRAFT',
+        version: 2,
+        taxPolicy: 'IR_VAT_9',
+        taxRateBasisPoints: '900',
+      })),
+      // The settings moved to 12% after this draft was written.
+      taxPolicyFindOne: jest.fn(async () => ({
+        id: 'tp-1',
+        code: 'IR_VAT_9',
+        rateBasisPoints: '1200',
+        isActive: true,
+      })),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({ quotationId: 'q-1', expectedVersion: 2 }),
+    });
+
+    expect(result).toMatchObject({ kind: 'SAVED', version: 3 });
+  });
+
+  it('accepts a draft whose policy was deactivated after it was saved', async () => {
+    const scope = buildScope({
+      headerFindOne: jest.fn(async () => ({
+        id: 'q-1',
+        status: 'DRAFT',
+        version: 2,
+        taxPolicy: 'IR_VAT_9',
+        taxRateBasisPoints: '900',
+      })),
+      taxPolicyFindOne: jest.fn(async () => ({
+        id: 'tp-1',
+        code: 'IR_VAT_9',
+        rateBasisPoints: '900',
+        isActive: false,
+      })),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({ quotationId: 'q-1', expectedVersion: 2 }),
+    });
+
+    expect(result).toMatchObject({ kind: 'SAVED', version: 3 });
+  });
+
+  it('refuses tax whose declared rate is missing', async () => {
+    const scope = buildScope();
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({
+        header: { ...body().header, taxRateBasisPoints: null },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'TAX_RATE_REQUIRED',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+  });
+
+  it('still saves a legacy draft with no policy and no tax', async () => {
+    const scope = buildScope();
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({
+        header: {
+          ...body().header,
+          taxPolicy: null,
+          taxRateBasisPoints: null,
+          taxExact: '0.000000',
+          totalExact: '1000000.000000',
+        },
+        lines: [
+          rawLine({ taxExact: '0.000000', totalExact: '1000000.000000' }),
+        ],
+      }),
+    });
+
+    expect(result).toMatchObject({ kind: 'SAVED' });
   });
 
   it('lets a transaction failure escape so the caller never sees success', async () => {

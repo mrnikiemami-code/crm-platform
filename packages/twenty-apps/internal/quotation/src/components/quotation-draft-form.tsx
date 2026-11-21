@@ -160,6 +160,24 @@ const readTaxPolicies = (
   });
 };
 
+// A draft carries the rate it was priced at. Reopening it keeps that rate until the
+// operator chooses another policy; a legacy draft with no stored rate stays
+// unpinned and is never assigned a guessed one.
+const readStoredTaxRate = (
+  code: string | null,
+  rateBasisPoints: string | null,
+): { code: string; rateBasisPoints: bigint } | null => {
+  const normalizedCode = (code ?? '').trim();
+
+  if (normalizedCode === '' || rateBasisPoints === null) {
+    return null;
+  }
+
+  const rate = parseBasisPointsText(rateBasisPoints);
+
+  return rate.ok ? { code: normalizedCode, rateBasisPoints: rate.value } : null;
+};
+
 const legacyTaxPolicyEntry = (): TaxPolicyCatalogEntry => {
   const legacy = resolveTaxPolicy(DEFAULT_TAX_POLICY_ID);
 
@@ -296,6 +314,13 @@ export const QuotationDraftForm = () => {
   const [lines, setLines] = useState<LineDraft[]>([newLine()]);
   const [taxPolicies, setTaxPolicies] = useState<TaxPolicyCatalogEntry[]>([]);
   const [taxPolicyCode, setTaxPolicyCode] = useState(DEFAULT_TAX_POLICY_ID);
+  // The rate a reopened draft was saved with. It wins over the catalog until the
+  // operator picks a different policy, so a later settings edit cannot silently
+  // reprice a document that already exists.
+  const [storedTaxRate, setStoredTaxRate] = useState<{
+    code: string;
+    rateBasisPoints: bigint;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
@@ -400,6 +425,7 @@ export const QuotationDraftForm = () => {
             ? draft.taxPolicy.trim()
             : DEFAULT_TAX_POLICY_ID,
         );
+        setStoredTaxRate(readStoredTaxRate(draft.taxPolicy, draft.taxRateBasisPoints));
         setLines(
           draft.lines.map((line) => ({
             clientLineId: line.clientLineId,
@@ -531,14 +557,25 @@ export const QuotationDraftForm = () => {
     return active.length > 0 ? active : [legacyTaxPolicyEntry()];
   }, [taxPolicies, taxPolicyCode]);
 
-  const selectedTaxPolicy = useMemo(
-    () =>
+  const selectedTaxPolicy = useMemo(() => {
+    const fromCatalog =
       taxPolicies.find((policy) => policy.id === taxPolicyCode) ??
       (taxPolicyCode === DEFAULT_TAX_POLICY_ID
         ? legacyTaxPolicyEntry()
-        : null),
-    [taxPolicies, taxPolicyCode],
-  );
+        : null);
+
+    if (fromCatalog === null) {
+      return null;
+    }
+
+    // The stored rate belongs to the policy it was saved with; adopting a new
+    // policy means adopting that policy's rate.
+    if (storedTaxRate !== null && storedTaxRate.code === taxPolicyCode) {
+      return { ...fromCatalog, rateBasisPoints: storedTaxRate.rateBasisPoints };
+    }
+
+    return fromCatalog;
+  }, [taxPolicies, taxPolicyCode, storedTaxRate]);
 
   const taxPolicyDefinition = useMemo(
     () =>
@@ -1050,7 +1087,10 @@ export const QuotationDraftForm = () => {
                 style={styles.input}
                 value={taxPolicyCode}
                 disabled={isFormLocked}
-                onChange={(event) => setTaxPolicyCode(event.target.value)}
+                onChange={(event) => {
+                  setTaxPolicyCode(event.target.value);
+                  setStoredTaxRate(null);
+                }}
               >
                 {taxPolicyOptions.map((policy) => (
                   <option key={policy.id} value={policy.id}>

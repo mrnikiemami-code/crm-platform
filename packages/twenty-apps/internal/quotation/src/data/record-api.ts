@@ -116,11 +116,3 @@ export const executeRecordGraphql = async (
 
   return runGraphql({ endpoint: '/graphql', query, accessToken: token });
 };
-
-// The caller's own token, not the app's: `currentUser` describes a session and an
-// application-only token belongs to no person, so it cannot answer who is asking.
-export const executeMetadataGraphql = async (
-  query: string,
-  accessToken: string,
-): Promise<Record<string, unknown>> =>
-  runGraphql({ endpoint: '/metadata', query, accessToken });

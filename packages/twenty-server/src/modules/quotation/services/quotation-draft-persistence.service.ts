@@ -13,6 +13,7 @@ import {
   type QuotationDraftSaveOutcome,
   type QuotationDraftSaveRequest,
 } from 'src/modules/quotation/types/quotation-draft-save.type';
+import { type WorkspaceTaxPolicyRow } from 'src/modules/quotation/types/tax-policy.type';
 import { parseQuotationDraftSaveRequest } from 'src/modules/quotation/utils/parse-quotation-draft-save-request.util';
 import { DRAFT_QUOTATION_NUMBER_LABEL } from 'src/modules/quotation/utils/quotation-numbering.util';
 import {
@@ -20,6 +21,11 @@ import {
   resolveCurrencyLabel,
 } from 'src/modules/quotation/utils/quotation-pdf-display.util';
 import { evaluateQuotationDraftTotals } from 'src/modules/quotation/utils/quotation-draft-totals.util';
+import {
+  type DraftTaxPolicyChoice,
+  type DraftTaxPolicyStored,
+  evaluateDraftTaxPolicy,
+} from 'src/modules/quotation/utils/quotation-draft-tax-policy.util';
 import {
   QUOTATION_CONTENT_MUTABLE_STATUSES,
   canEditQuotationContent,
@@ -31,6 +37,8 @@ type QuotationHeaderRow = {
   id: string;
   status: string;
   version: number | null;
+  taxPolicy?: string | null;
+  taxRateBasisPoints?: string | null;
 };
 
 type QuotationLineIdRow = {
@@ -153,6 +161,18 @@ export class QuotationDraftPersistenceService {
       return rejected('CUSTOMER_NOT_FOUND', 'customer record does not exist');
     }
 
+    // A new document has no stored rate to fall back on: the policy named here must
+    // be an active policy of this workspace, at exactly its current rate.
+    const taxPolicyRejection = await this.assertTaxPolicyAuthority({
+      transactionScope,
+      request,
+      stored: null,
+    });
+
+    if (taxPolicyRejection !== null) {
+      return taxPolicyRejection;
+    }
+
     const quotationRepository = transactionScope.getRepository('quotation', {
       shouldBypassPermissionChecks: true,
     });
@@ -198,7 +218,13 @@ export class QuotationDraftPersistenceService {
     });
     const existing = await quotationRepository.findOne({
       where: { id: quotationId },
-      select: { id: true, status: true, version: true },
+      select: {
+        id: true,
+        status: true,
+        version: true,
+        taxPolicy: true,
+        taxRateBasisPoints: true,
+      },
     });
 
     if (!isDefined(existing) || typeof existing.status !== 'string') {
@@ -239,6 +265,22 @@ export class QuotationDraftPersistenceService {
         'QUOTATION_VERSION_CONFLICT',
         `expected version ${request.expectedVersion} but stored version is ${currentVersion}`,
       );
+    }
+
+    // The stored pair is what makes a draft survive a later settings edit: it may
+    // keep the rate this server wrote, and nothing else.
+    const storedTaxPolicy: DraftTaxPolicyStored = {
+      code: row.taxPolicy ?? null,
+      rateBasisPoints: row.taxRateBasisPoints ?? null,
+    };
+    const taxPolicyRejection = await this.assertTaxPolicyAuthority({
+      transactionScope,
+      request,
+      stored: storedTaxPolicy,
+    });
+
+    if (taxPolicyRejection !== null) {
+      return taxPolicyRejection;
     }
 
     const customerName = await this.resolveCustomerName({
@@ -283,8 +325,72 @@ export class QuotationDraftPersistenceService {
     };
   }
 
-  private async describeLostClaim({
+  // The one authority check the direct REST boundary was missing. `evaluateQuotationDraftTotals`
+  // proves the amounts match the *declared* rate; this proves the declared
+  // `(policy, rate)` pair is one this workspace approved. Runs in the same
+  // transaction as the write, so the check cannot go stale before the insert.
+  private async assertTaxPolicyAuthority({
     transactionScope,
+    request,
+    stored,
+  }: {
+    transactionScope: WorkspaceTransactionScope;
+    request: QuotationDraftSaveRequest;
+    stored: DraftTaxPolicyStored | null;
+  }): Promise<QuotationDraftSaveOutcome | null> {
+    const code = (request.header.taxPolicy ?? '').trim();
+    let policy: DraftTaxPolicyChoice | null = null;
+
+    if (code !== '') {
+      let row: WorkspaceTaxPolicyRow | null;
+
+      try {
+        row = await transactionScope
+          .getRepository<WorkspaceTaxPolicyRow>('taxPolicy', {
+            shouldBypassPermissionChecks: true,
+          })
+          .findOne({
+            where: { code },
+            select: {
+              id: true,
+              code: true,
+              rateBasisPoints: true,
+              isActive: true,
+            },
+          });
+      } catch (error) {
+        this.logger.error(
+          `Tax policy lookup failed for "${code}": ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+
+        return rejected(
+          'TAX_POLICY_UNAVAILABLE',
+          'the workspace has no readable tax policy table',
+        );
+      }
+
+      policy =
+        row === null
+          ? null
+          : {
+              code: (row.code ?? code).trim(),
+              rateBasisPoints: (row.rateBasisPoints ?? '').trim(),
+              isActive: row.isActive !== false,
+            };
+    }
+
+    const decision = evaluateDraftTaxPolicy({
+      header: request.header,
+      policy,
+      stored,
+    });
+
+    return decision.ok ? null : rejected(decision.code, decision.message);
+  }
+
+  private async describeLostClaim({    transactionScope,
     quotationId,
     row,
   }: {

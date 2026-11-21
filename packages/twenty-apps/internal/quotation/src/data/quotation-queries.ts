@@ -70,6 +70,7 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
       customerType
       paymentTerms
       taxPolicy
+      taxRateBasisPoints
       currencyCode
       documentDiscountKind
       documentDiscountInputExact

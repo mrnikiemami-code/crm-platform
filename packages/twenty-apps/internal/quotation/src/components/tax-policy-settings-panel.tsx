@@ -192,6 +192,12 @@ export const TaxPolicySettingsPanel = () => {
     );
   };
 
+  // The initial 9% policy is created only here, by an explicit admin action. It is
+  // idempotent on the server, so a second press cannot create a duplicate.
+  const onBootstrap = async () => {
+    await runAction({ action: 'bootstrap' }, 'سیاست پایه آماده شد');
+  };
+
   const editorStyle: CSSProperties = editor === null ? styles.hidden : styles.editor;
 
   return (
@@ -210,7 +216,10 @@ export const TaxPolicySettingsPanel = () => {
       {loading ? null : (
         <section style={styles.list}>
           {rows.length === 0 ? (
-            <p style={styles.meta}>هنوز سیاستی تعریف نشده است.</p>
+            <p style={styles.meta}>
+              هنوز سیاستی تعریف نشده است. می‌توانید سیاست پایهٔ ۹٪ را بسازید یا
+              سیاست دلخواه خود را اضافه کنید.
+            </p>
           ) : (
             rows.map((row) => (
               <div
@@ -283,13 +292,24 @@ export const TaxPolicySettingsPanel = () => {
       )}
 
       {rows.length === 0 && !loading && editor === null ? (
-        <button
-          type="button"
-          style={styles.primaryButton}
-          onClick={() => setEditor(emptyEditor())}
-        >
-          افزودن سیاست مالیات
-        </button>
+        <div style={styles.actions}>
+          <button
+            type="button"
+            style={styles.primaryButton}
+            disabled={busy}
+            onClick={() => void onBootstrap()}
+          >
+            {busy ? 'در حال آماده‌سازی…' : 'ساخت سیاست پایهٔ ۹٪'}
+          </button>
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            disabled={busy}
+            onClick={() => setEditor(emptyEditor())}
+          >
+            افزودن سیاست مالیات
+          </button>
+        </div>
       ) : null}
 
       {rows.length > 0 && editor === null ? (

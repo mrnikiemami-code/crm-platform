@@ -144,3 +144,73 @@ M packages/twenty-front/src/pages/settings/developers/api-keys/SettingsDeveloper
 0. this document (no executable change);
 1. Gate 1 + negative/zero-write tests, then 2A, then 2B/2C, then dev deploy on `:3002`,
    then independent regression. Any FAIL stops at that phase.
+
+## 8. Executed results (2026-11-21, Dev `:3002`)
+
+Baseline `a35ccde8f4`, branch `feat/crm-129-quotation`. Every number below is from a
+command run against the Dev stack (Docker `twenty-server-1` + `twenty-db-1`), not from a
+mock.
+
+### Gate 1 — identity at the server boundary
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Admin, anonymous, invalid bearer, service-reachable-but-domain-refused, read purity | `dev-verify-crm129-tax-008-gate1.cjs --mode=guard` | 5/5 PASS |
+| Real non-admin principal (minted API key for a role with `canUpdateAllSettings=false`): save/bootstrap/deactivate refused, read still allowed | `--mode=forbidden` | 4/4 PASS, policy fingerprint unchanged |
+| Same principal after the capability is granted | `--mode=restored` | 2/2 PASS (positive control) |
+| Revoked key rejected (`revokedAt` honoured after cache recompute) | live POST | `403 "This API Key is revoked"` |
+
+### Gate 2 — financial integrity (real PostgreSQL)
+
+`dev-verify-crm129-tax-008-gate2.cjs` → **15/15 PASS**:
+
+- one active default in Postgres; three consecutive `tax-policy-list` calls leave the
+  table fingerprint byte-identical (no write-on-read);
+- three concurrent `set-default` calls serialize and still leave exactly one default;
+- a failed transition (`TAX_POLICY_NOT_FOUND`) rolls back with the fingerprint intact;
+- a rate outside 0–100 (`TAX_RATE_OUT_OF_RANGE`) writes no row;
+- editing the 9% policy to 10% leaves every stored document, `updatedAt` and all 19
+  sealed revision hashes untouched;
+- re-saving a stored draft keeps its `900` basis points after the policy moved to `1000`
+  (`TAX_POLICY_RATE_MISMATCH` for a counterfeit `1100` instead);
+- a new draft with an inactive policy → `TAX_POLICY_INACTIVE`, unknown code →
+  `TAX_POLICY_UNKNOWN`, both with zero rows written;
+- the approved pair saves exactly `100000 / 9000 / 109000` (net/tax/total, 6 decimals);
+- switching the default leaves existing documents untouched;
+- baseline restored: single default `IR_VAT_9` at `900`.
+
+### Gate 3 — Dev deployment and UAT
+
+- Server build copied into `twenty-server-1`; `dist/modules/quotation/services/
+  tax-policy-authority.service.js` contains `pg_advisory_xact_lock`.
+- App `0.1.20` applied to `dev-crm129` (`37 files` synced); `core."application"` readback
+  confirms `0.1.20`; record layout tabs remain `FRONT_COMPONENT`.
+- Tax settings page (`/page/3eb639f7-…`): 5 policies render, «مالیات و عوارض», usage
+  counts, `پیش‌فرض/ویرایش/غیرفعال`; created «مالیات ۱۰٪ ۰۰۸» via the form (`10٪`),
+  set it default, edited it to `10.5٪`, restored `IR_VAT_9`, deactivated the fixture
+  (DB readback after each step).
+- Draft form: catalog offers exactly the 4 active policies (inactive `TAX_1050` absent);
+  switching to exempt → tax `۰`, total `۱۰٬۰۰۰ تومان`; switching to `TAX_1000` (12%) →
+  tax `۱٬۲۰۰`, total `۱۱٬۲۰۰`; back to 9% and save → «تغییرات پیش‌نویس ذخیره شد».
+- Reload/reopen: `9%`, `۱۰٬۰۰۰ / ۹۰۰ / ۱۰٬۹۰۰ تومان`; DB row `900 / 100000 / 9000 /
+  109000`, version 6.
+- PDF: `generate-pdf` → `quotation-6b65e1f4-….pdf` (11,622 bytes). Text extraction by
+  PDF row shows rate `(۹٪)`, tax `۹٬۰۰۰ ریال`, totals `۱۰۰٬۰۰۰ / ۱۰۹٬۰۰۰ ریال`, matching
+  the stored row in the document currency (IRR).
+- «بله/خیر»: `fa-IR.po` `msgid "Yes" → "بله"`, `msgid "No" → "خیر"`
+  (commit `e3b6488516`), catalog clean in the working tree.
+
+### Gate 4 — independent regression
+
+| Suite | Result |
+| --- | --- |
+| Quotation Vitest (whole app) | 40 files / 431 tests PASS |
+| Named areas (atomic save, version guard, revision seal, numbering race, accounting mock, RTL/boolean, tax config/auth) | 12 files / 91 tests PASS |
+| Quotation server Jest (whole module) | 19 suites / 146 tests PASS |
+| Focused server specs (authority, controller, persistence, draft tax policy) | 4 suites / 46 tests PASS |
+| Typecheck `tsgo --noEmit` | `twenty-server` and `twenty-apps/internal/quotation` clean |
+
+`NOT VERIFIED` (no evidence claimed): visual glyph shaping inside the PDF (only the
+positional text rows were asserted), and the 16 stale metadata rows `twenty apply`
+reported as destroyed were not enumerated one by one — the layouts, fields, panels and
+both UAT routes were re-read after the apply and are intact.

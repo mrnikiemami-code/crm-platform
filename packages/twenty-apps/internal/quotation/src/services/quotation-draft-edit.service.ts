@@ -48,6 +48,9 @@ export type EditableDraft = {
   customerLabel: string | null;
   paymentTerms: string;
   taxPolicy: string | null;
+  // The rate the document was priced at, in basis points. Kept so reopening a
+  // draft does not adopt a rate the settings changed after it was saved.
+  taxRateBasisPoints: string | null;
   moneyUnit: MoneyUnit;
   documentDiscountKind: EditableDraftDiscountKind;
   documentDiscountPercentText: string;
@@ -338,6 +341,7 @@ export const parseDraftForEdit = (
     customerLabel: readRelationLabel(quotation),
     paymentTerms: readText(quotation.paymentTerms),
     taxPolicy: readNullableText(quotation.taxPolicy),
+    taxRateBasisPoints: readNullableText(quotation.taxRateBasisPoints),
     moneyUnit,
     documentDiscountKind: resolvedDocumentDiscountKind,
     documentDiscountPercentText:

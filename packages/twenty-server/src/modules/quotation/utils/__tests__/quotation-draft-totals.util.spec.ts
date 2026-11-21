@@ -37,6 +37,7 @@ const header = (
   companyId: 'company-1',
   currencyCode: 'IRR',
   taxPolicy: 'IR_VAT_9',
+  taxRateBasisPoints: null,
   paymentTerms: null,
   documentDiscountKind: 'NONE',
   documentDiscountInputExact: '0.000000',

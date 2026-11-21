@@ -14,7 +14,7 @@ import {
   type DraftQuotationInput,
 } from 'src/domain/quotation/draft-quotation';
 import { persistDraftQuotation } from 'src/services/quotation-persist.service';
-import { loadTaxPoliciesWithBaseline } from 'src/services/tax-policy.service';
+import { loadTaxPolicies } from 'src/services/tax-policy.service';
 import {
   buildDraftQuotationWritePayload,
   validateDraftQuotation,
@@ -137,12 +137,24 @@ const handler = async (event: RoutePayload<unknown>) => {
   }
 
   // The rate is read from the workspace, never from the request. The form sends the
-  // policy code it selected; an unknown or deactivated code is refused here, so a
-  // client cannot price a document with a percentage the settings never approved.
+  // policy code it selected; an unknown or deactivated code is refused here, and a
+  // counterfeit rate is refused again at the server boundary.
   let definedInput: DraftQuotationInput;
 
   try {
-    const catalog = await loadTaxPoliciesWithBaseline();
+    // A read, not a seed: an empty catalog means the settings have not been set up
+    // yet, and inventing a policy here would be a silent financial decision.
+    const catalog = await loadTaxPolicies();
+
+    if (catalog.length === 0) {
+      return {
+        success: false,
+        code: 'TAX_POLICY_UNAVAILABLE',
+        message:
+          'هیچ سیاست مالیاتی تعریف نشده است؛ ابتدا در تنظیمات مالیات یک سیاست بسازید.',
+      };
+    }
+
     const requestedCode =
       input.taxPolicy ??
       selectDefaultTaxPolicy(catalog)?.id ??

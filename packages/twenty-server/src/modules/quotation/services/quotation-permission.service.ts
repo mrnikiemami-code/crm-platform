@@ -4,6 +4,7 @@ import { isDefined } from 'twenty-shared/utils';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { buildObjectIdByNameMaps } from 'src/engine/metadata-modules/flat-object-metadata/utils/build-object-id-by-name-maps.util';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
+import { type TaxSettingsAuthority } from 'src/modules/quotation/types/tax-policy.type';
 import {
   type QuotationPermission,
   resolveQuotationPermissionsFromRoleCapabilities,
@@ -74,6 +75,45 @@ export class QuotationPermissionService {
         quotationObjectPermission?.canUpdateObjectRecords === true ||
         role.canUpdateAllObjectRecords === true,
     });
+  }
+
+  // Whether the caller may change a financial setting such as a tax rate. A user or
+  // API key must hold the role capability from the workspace cache; a failed lookup
+  // is a refusal, never an implicit grant. `application` is the platform-issued app
+  // identity bound to this workspace, and `system` never comes from an HTTP client.
+  async resolveSettingsAuthority(
+    authContext: WorkspaceAuthContext,
+  ): Promise<TaxSettingsAuthority | null> {
+    if (authContext.type === 'system') {
+      return 'SYSTEM';
+    }
+
+    if (authContext.type === 'application') {
+      return 'APPLICATION';
+    }
+
+    if (authContext.type === 'pendingActivationUser') {
+      return null;
+    }
+
+    const roleId = await this.resolveRoleId(authContext);
+
+    if (!isDefined(roleId)) {
+      return null;
+    }
+
+    const { flatRoleMaps } = await this.workspaceCacheService.getOrRecompute(
+      authContext.workspace.id,
+      ['flatRoleMaps'],
+    );
+
+    const roleUniversalIdentifier =
+      flatRoleMaps.universalIdentifierById[roleId];
+    const role = isDefined(roleUniversalIdentifier)
+      ? flatRoleMaps.byUniversalIdentifier[roleUniversalIdentifier]
+      : undefined;
+
+    return role?.canUpdateAllSettings === true ? 'SETTINGS_ROLE' : null;
   }
 
   private async resolveRoleId(

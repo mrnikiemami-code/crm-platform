@@ -11,6 +11,7 @@ import { QuotationDraftPersistenceService } from 'src/modules/quotation/services
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
+import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.
     QuotationCommunicationOutboundService,
     QuotationShareService,
     QuotationDraftPersistenceService,
+    TaxPolicyAuthorityService,
   ],
 })
 export class QuotationModule {}

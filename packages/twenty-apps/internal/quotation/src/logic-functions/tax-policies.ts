@@ -1,27 +1,21 @@
 import { defineLogicFunction, type RoutePayload } from 'twenty-sdk/define';
 
 import { TAX_POLICIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
-import { buildCurrentUserPermissionFlagsQuery } from 'src/data/caller-identity-queries';
-import { RecordApiError, executeMetadataGraphql } from 'src/data/record-api';
 import {
   formatBasisPointsAsPercent,
   selectDefaultTaxPolicy,
   type TaxPolicyCatalogEntry,
 } from 'src/domain/money/tax-policy';
 import {
-  mayChangeTaxSettings,
-  readCallerPermissionFlags,
-} from 'src/domain/tax-settings/settings-access';
-import {
+  bootstrapTaxPolicies,
   countQuotationsPerTaxPolicy,
   deactivateTaxPolicy,
-  loadTaxPoliciesWithBaseline,
+  loadTaxPolicies,
   saveTaxPolicy,
   setDefaultTaxPolicy,
 } from 'src/services/tax-policy.service';
 import {
   appNotInstalled,
-  asRecord,
   failure,
   isAppInstalled,
   readBody,
@@ -30,7 +24,7 @@ import {
 
 // The settings page and the quotation form read the same catalog through this route,
 // so a rate can never be shown in one place and applied from another. Validation of
-// what the operator typed happens on the server; the panel only renders.
+// what the operator typed happens on the server boundary; the panel only renders.
 const describePolicy = (
   entry: TaxPolicyCatalogEntry,
   usage: Map<string, number>,
@@ -63,62 +57,18 @@ const readOptionalId = (value: unknown): string | null => {
   return text === '' ? null : text;
 };
 
-const MUTATING_ACTIONS = ['save', 'set-default', 'deactivate'] as const;
-
-const isMutatingAction = (action: string): boolean =>
-  (MUTATING_ACTIONS as readonly string[]).includes(action);
-
-// The caller's own bearer token, forwarded by the route. Asking `currentUser` with
-// the app token would always answer "no person", which would let any signed-in user
-// change a tax rate.
-const readCallerToken = (
+// The caller's own bearer token, forwarded to the server boundary. Authority is
+// decided there from the workspace role; this route never infers a privilege from a
+// missing header or a failed identity lookup, and never substitutes the app token
+// for a caller header that the server rejected.
+const readCallerAuthorization = (
   headers: Record<string, string | undefined>,
 ): string | null => {
   const authorization = headers.authorization;
 
-  if (typeof authorization !== 'string') {
-    return null;
-  }
-
-  const token = authorization.replace(/^Bearer\s+/i, '').trim();
-
-  return token.length > 0 ? token : null;
-};
-
-// `true` means the request carries no person (application/API-key path, trusted),
-// or carries a person holding a settings-level flag. A signed-in non-admin is
-// refused before any write reaches the policy table.
-const callerMayChangeSettings = async (
-  headers: Record<string, string | undefined>,
-): Promise<boolean> => {
-  const token = readCallerToken(headers);
-
-  if (token === null) {
-    return true;
-  }
-
-  try {
-    const identity = await executeMetadataGraphql(
-      buildCurrentUserPermissionFlagsQuery(),
-      token,
-    );
-
-    return mayChangeTaxSettings(readCallerPermissionFlags(identity));
-  } catch (error) {
-    // An API key or the app runtime has no person behind it: the metadata layer
-    // answers FORBIDDEN for that token. That is the trusted platform path, not a
-    // failed check. Any other failure is treated as "not proven an admin".
-    if (
-      error instanceof RecordApiError &&
-      (error.code === 'FORBIDDEN' || error.code === 'AUTH_REQUIRED')
-    ) {
-      return true;
-    }
-
-    console.error('tax-policies: caller identity failed', error);
-
-    return false;
-  }
+  return typeof authorization === 'string' && authorization.trim() !== ''
+    ? authorization
+    : null;
 };
 
 const handler = async (event: RoutePayload<unknown>) => {
@@ -129,33 +79,28 @@ const handler = async (event: RoutePayload<unknown>) => {
     return appNotInstalled();
   }
 
-  try {
-    const entries = await loadTaxPoliciesWithBaseline();
-    const usage = await countQuotationsPerTaxPolicy();
+  const authorizationHeader = readCallerAuthorization(event.headers);
 
+  try {
     if (action === 'list' || action === '') {
+      const entries = await loadTaxPolicies();
+      const usage = await countQuotationsPerTaxPolicy();
+
       return { success: true, ...describeCatalog(entries, usage) };
     }
 
-    if (
-      isMutatingAction(action) &&
-      !(await callerMayChangeSettings(event.headers))
-    ) {
-      return failure(
-        'TAX_SETTINGS_FORBIDDEN',
-        'تغییر تنظیمات مالیات فقط برای مدیر فضای کاری مجاز است',
-      );
-    }
-
     if (action === 'save') {
-      const saved = await saveTaxPolicy({
-        recordId: readOptionalId(body.recordId),
-        name: readString(body.name),
-        ratePercentText: readString(body.ratePercentText),
-        isActive: readBoolean(body.isActive, true),
-        isDefault: body.isDefault === true,
-        isExempt: body.isExempt === true,
-      });
+      const saved = await saveTaxPolicy(
+        {
+          recordId: readOptionalId(body.recordId),
+          name: readString(body.name),
+          ratePercentText: readString(body.ratePercentText),
+          isActive: readBoolean(body.isActive, true),
+          isDefault: body.isDefault === true,
+          isExempt: body.isExempt === true,
+        },
+        { authorizationHeader },
+      );
 
       if (!saved.ok) {
         return failure(saved.refusal.code, saved.refusal.detail);
@@ -163,8 +108,28 @@ const handler = async (event: RoutePayload<unknown>) => {
 
       return {
         success: true,
-        ...describeCatalog(saved.value, usage),
+        ...describeCatalog(
+          saved.value,
+          await countQuotationsPerTaxPolicy(),
+        ),
         message: 'سیاست مالیات ذخیره شد',
+      };
+    }
+
+    if (action === 'bootstrap') {
+      const bootstrapped = await bootstrapTaxPolicies({ authorizationHeader });
+
+      if (!bootstrapped.ok) {
+        return failure(bootstrapped.refusal.code, bootstrapped.refusal.detail);
+      }
+
+      return {
+        success: true,
+        ...describeCatalog(
+          bootstrapped.value,
+          await countQuotationsPerTaxPolicy(),
+        ),
+        message: 'سیاست پایه آماده شد',
       };
     }
 
@@ -175,7 +140,9 @@ const handler = async (event: RoutePayload<unknown>) => {
         return failure('TAX_POLICY_REQUIRED', 'سیاست مالیات را انتخاب کنید');
       }
 
-      const updated = await setDefaultTaxPolicy(recordId);
+      const updated = await setDefaultTaxPolicy(recordId, {
+        authorizationHeader,
+      });
 
       if (!updated.ok) {
         return failure(updated.refusal.code, updated.refusal.detail);
@@ -183,7 +150,7 @@ const handler = async (event: RoutePayload<unknown>) => {
 
       return {
         success: true,
-        ...describeCatalog(updated.value, usage),
+        ...describeCatalog(updated.value, await countQuotationsPerTaxPolicy()),
         message: 'سیاست پیش‌فرض تغییر کرد',
       };
     }
@@ -195,7 +162,9 @@ const handler = async (event: RoutePayload<unknown>) => {
         return failure('TAX_POLICY_REQUIRED', 'سیاست مالیات را انتخاب کنید');
       }
 
-      const updated = await deactivateTaxPolicy(recordId);
+      const updated = await deactivateTaxPolicy(recordId, {
+        authorizationHeader,
+      });
 
       if (!updated.ok) {
         return failure(updated.refusal.code, updated.refusal.detail);
@@ -203,7 +172,7 @@ const handler = async (event: RoutePayload<unknown>) => {
 
       return {
         success: true,
-        ...describeCatalog(updated.value, usage),
+        ...describeCatalog(updated.value, await countQuotationsPerTaxPolicy()),
         message: 'سیاست مالیات غیرفعال شد',
       };
     }
@@ -230,8 +199,8 @@ export default defineLogicFunction({
     path: '/quotation/tax-policies',
     httpMethod: 'POST',
     isAuthRequired: true,
-    // The admin check asks `currentUser` with the caller's session; the app token
-    // belongs to no person, so the route must hand the authorization header over.
+    // The server boundary checks the human caller's workspace role, so the route
+    // must hand the caller's own authorization header over.
     forwardedRequestHeaders: ['authorization'],
   },
 });
