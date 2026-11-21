@@ -1,5 +1,13 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ARCHITECT ACCEPTANCE — RECORD FORM (2026-11-21)
+
+- **User acceptance:** the operator explicitly confirmed on 2026-11-21 that the quotation record form issue is fixed. This is user acceptance of the visible form, not evidence of any additional deployment or transaction integrity.
+- **Verified branch:** `feat/crm-129-quotation` at `f3230a0ff9710240cf806ad3f623e8e85a503f6f`; application `0.1.18` installed on Dev `:3002` per applied-form verification. Do not conflate with production `:6080`.
+- **Next authorized scope for task proposal:** transactional save of quotation header and lines as a single server-side unit with version/permission/immutability enforcement, fault injection and rollback verification; reuse existing quotation Money Domain and application form, no parallel form or payment/send stack.
+- **Open gate:** `DATA_INTEGRITY_PASS` is still NOT established. Implement and independently inspect before stating PASS. Continue with `STOP_FOR_ARCHITECT`.
+
+
 **Updated:** 2026-11-21 (CRM-129-QUOTATION-UNIFIED-CREATION-003)
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
