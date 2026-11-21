@@ -6,12 +6,15 @@ import {
   QUOTATION_FIELDS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
   QUOTATION_FIELDS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
   QUOTATION_LIFECYCLE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
+  QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
   QUOTATION_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
-// App RECORD_PAGE replaces the default layout, so a FIELDS tab is required or
-// the record shows "No Data". Lifecycle actions live on a second tab.
+// A quotation is a document with lines and exact-money calculations, not a bag
+// of editable database fields. Reuse the same professional editor that creates
+// quotations; the record widget receives its quotation id from the host.
+// Lifecycle operations remain on the separate Actions tab.
 export default definePageLayout({
   universalIdentifier: QUOTATION_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
   name: 'صفحه پیش‌فاکتور',
@@ -20,18 +23,20 @@ export default definePageLayout({
   tabs: [
     {
       universalIdentifier: QUOTATION_FIELDS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-      title: 'فیلدها',
+      title: 'پیش‌فاکتور',
       position: 0,
-      icon: 'IconList',
+      icon: 'IconFileInvoice',
       layoutMode: PageLayoutTabLayoutMode.VERTICAL_LIST,
       widgets: [
         {
           universalIdentifier:
             QUOTATION_FIELDS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
-          title: 'فیلدهای پیش‌فاکتور',
-          type: 'FIELDS',
+          title: 'مشخصات و ردیف‌های پیش‌فاکتور',
+          type: 'FRONT_COMPONENT',
           configuration: {
-            configurationType: 'FIELDS',
+            configurationType: 'FRONT_COMPONENT',
+            frontComponentUniversalIdentifier:
+              QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
           },
         },
       ],
