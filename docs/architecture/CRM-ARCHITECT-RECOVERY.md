@@ -1,5 +1,13 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ARCHITECT REVIEW — ATOMIC SAVE 004 (2026-11-21)
+
+- **Remote verification:** GitHub branch `feat/crm-129-quotation` at `a81f9c0203c0bcbd2f92040aab2cf219c852d3de`. Source confirms a single server-side transactional write path and removal of the app's previous per-line GraphQL mutation path. The 52/52 PostgreSQL, 19/19 form, 16/16 headless, 64/64 server and 270/270 app tests are reported in the committed recovery/worker report; the architect did not independently rerun the live tests.
+- **Architect review:** transactional boundary/rollback architecture **accepted provisionally**, but full optimistic-version integrity remains **OPEN**. `parseQuotationDraftSaveRequest` accepts `expectedVersion: null` for an existing `quotationId`, and `QuotationDraftPersistenceService.updateDraft` skips the stale-version check when null. The conditional UPDATE still guards against simultaneously competing updates, but an older client can overwrite a newer saved draft by omitting the version.
+- **Narrow next gate:** require a positive integer `expectedVersion` on every edit request; require null only on create. Add regression tests for omitted/null, invalid, stale, and current version, plus a direct-endpoint test proving zero writes when an edit omits the version. Preserve the existing transaction and domain contracts. Stop for architect acceptance.
+- **Not touched:** production `:6080`, release branch, worker. No new deployment performed by this review.
+
+
 ## ARCHITECT ACCEPTANCE — RECORD FORM (2026-11-21)
 
 - **User acceptance:** the operator explicitly confirmed on 2026-11-21 that the quotation record form issue is fixed. This is user acceptance of the visible form, not evidence of any additional deployment or transaction integrity.
