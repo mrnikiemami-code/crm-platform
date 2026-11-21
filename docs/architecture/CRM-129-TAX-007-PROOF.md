@@ -16,7 +16,10 @@ The settings surface is a standalone page reachable from the sidebar item «ما
 - Navigation: `navigation-menu-items/tax-policy-settings.navigation-menu-item.ts` (icon `IconPercentage`, position 36)
 - Panel: `components/tax-policy-settings-panel.tsx`, mounted by `tax-policy-settings.front-component.tsx` / `tax-policy-settings-page.front-component.tsx`
 
-A standalone page + sidebar entry is used because this fork runs with `IS_APPLICATIONS_SETTINGS_ENABLED = false`, so the application settings slot is not reachable.
+A standalone page + sidebar entry is used because this fork runs with
+`IS_APPLICATIONS_SETTINGS_ENABLED = false` (`settings/constants/IsApplicationsSettingsEnabled.ts`, introduced
+deliberately by `0bc7a3644b` "hide applications marketplace and remove Twenty branding"), so the application settings
+slot is not reachable.
 
 | Capability | Where |
 |---|---|
