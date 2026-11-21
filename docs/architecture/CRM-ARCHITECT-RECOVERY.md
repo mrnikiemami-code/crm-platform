@@ -6,6 +6,19 @@
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
+## RECORD FORM APPLIED AND VERIFIED — CRM-129 FIX QUOTATION RECORD FORM (2026-11-21; PASS)
+
+- **HEAD:** `0073ec8d1d` on `feat/crm-129-quotation`; installed app version **0.1.18**.
+- **Why the operator saw «No Data»:** the installed layout still carried the old first-tab widget, whose stored configuration was `{"configurationType":"FIELDS","viewUniversalIdentifier":null}` — a FIELDS widget with no view renders the «No Data» placeholder. The source fix was already correct; only the deployed metadata was stale.
+- **Metadata readback after `twenty apply`:** `core."pageLayoutWidget"` for layout `94e85adc-43eb-4729-bb6a-cf2d36f7ca54` → tab «پیش‌فاکتور» = `FRONT_COMPONENT` → front component `quotation-draft-form`; tab «اقدامات» = `FRONT_COMPONENT` → `quotation-lifecycle-panel`. No FIELDS widget remains on the app layout.
+- **Why the leftover layout cannot shadow it:** `recordPageLayoutByObjectMetadataIdFamilySelector` picks the first `RECORD_PAGE` with `isSystemSideEffect = false`. The platform's `Default پیش‌فاکتور Layout` is `isSystemSideEffect = true`, so it is skipped; the app's `صفحه پیش‌فاکتور` (`f`) is always chosen.
+- **Side panel (row click):** list row → panel URL `?panel=/object/quotation/d66aba78-…` → accessibility tree exposes the real form: title, customer «شرکت آزمایشی S2R1», payment terms, one catalog line (`R7-خدمت-…`, qty ۱, price ۱٬۰۰۰), both discount selects, «ذخیره تغییرات», plus tabs «پیش‌فاکتور»/«اقدامات». No generic fields widget, no «No Data».
+- **Actions tab intact:** «گردش وضعیت — وضعیت: پیش‌نویس، نسخه 2», «ویرایش پیش‌نویس», «ارسال برای تأیید», «لغو», «دانلود PDF فارسی», «تازه کردن وضعیت».
+- **No writes on open/close:** before and after opening + tab switching + closing the panel, DB stayed `1` active quotation (`d66aba78-…`, `DRAFT`, `totalExact 10900.000000`, `version 2`, same `updatedAt`) with `1` active line.
+- **Dev data cleanup (operator request):** kept exactly one quotation with data (`d66aba78-…`). `23` DRAFT rows were soft-deleted through the app API; `71` non-DRAFT rows refused API deletion (`QUOTATION_IMMUTABLE: a quotation in <STATUS> cannot be deleted`, the issuance guard) and were soft-deleted at the data layer with status/version/number untouched; `15` orphan lines from previously deleted quotations were also closed. Result: `1` quotation, `1` line, list header `· ۱`. Original data/production untouched.
+- **Cosmetic note:** the panel still renders a secondary heading with the raw path `/object/quotation/<id>` beside the record name. Not a widget and not blocking; queued as a small follow-up.
+- **Still open:** non-atomic draft persistence (`DATA_INTEGRITY_PASS` not asserted). No `:6080`, no release-branch, no production data change.
+
 ## SOURCE FIX — CRM-129 RECORD PAGE USES PROFESSIONAL EDITOR (2026-11-21; deployed and verified on Dev)
 
 - **Issue confirmed by user's browser image:** opening a quotation from the list still showed the generic Twenty **FIELDS** widget, despite the earlier command-menu creation and edit-flow fixes.
