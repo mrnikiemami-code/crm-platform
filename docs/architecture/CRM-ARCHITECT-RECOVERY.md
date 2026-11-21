@@ -426,6 +426,22 @@ Directly inspected this recovery file and root package.json on the remote releas
 - **NEXT = CRM-129-S1-R1**, narrow contract corrections and Asan mapping fixtures. Local worker must fetch and safely align newer remote docs (including Asan and this status) without rewriting local S1 commit. Compute fresh divergence; no Push.
 - **STOP_FOR_ARCHITECT** after R1. S2 not authorized. No database writes, app install, live accounting writes, :6080 changes, service restart, deployment or automatic branch push.
 
+**Superseded:** the current state of this branch is the dated checkpoint immediately below.
+
+## CURRENT CHECKPOINT — CRM-129-ACCOUNTING-ASAN-INTEGRATION-006 PASS (2026-11-21)
+
+**Read first:** [CRM-129-ACCOUNTING-006-PROOF.md](./CRM-129-ACCOUNTING-006-PROOF.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from `2d48787f87`; app «پیش‌فاکتور» **0.1.19** on `dev-crm129`, `plan` = **no changes**.
+- Accounting domain reused and completed behind `adapter-contract.ts`; Asan and Mock adapters, Sepidar only via the shared contract.
+- «حسابداری» tab on the quotation record: adapter choice, non-secret settings, secret status, connection test, capability matrix, import previews, export gate, operation history — all Persian.
+- Money stays blocked while `moneyUnit=UNCONFIRMED`; export switches `ACCOUNTING_OUTBOUND_ENABLED` / `ACCOUNTING_DOCUMENT_EXPORT_ENABLED` are **false** on Dev.
+- **Tests:** 37 files / 398 Vitest pass, `tsgo --noEmit` clean. **Live Dev:** `scripts/dev-exercise-accounting-006.cjs` 15/15 pass (mock success path, unreachable-vendor failure path, read-only previews, duplicate-safe ledger).
+- **Live Asan = `LIVE_UNVERIFIED`:** no reachable vendor server or credentials were supplied.
+- **Dependency:** `quotationRevision` has 0 rows and nothing writes it, so export stops at `REVISION_NOT_FOUND` once switches are on; revision production is the lifecycle task's scope.
+- Dev hygiene: test connections soft-deleted, 11 `CRM129-*` test roles removed, CLI API key rebound to `Admin` (had been left on a test role, which broke `plan` with `FORBIDDEN`) and the Redis `apiKeyRoleMap` cache invalidated.
+- **STOP_FOR_ARCHITECT.** No intranet `:6080` change, no worker restart, no real accounting write, no quotation form/money/atomic-save change, no push.
+
 ## PREVIOUS CHECKPOINT — CRM-129 S2-R9 PASS / Professional Form & Catalog Picker (2026-11-19; historical)
 
 **Read first:** [CRM-129-S2-R9-PROOF.md](./CRM-129-S2-R9-PROOF.md). Superseded as “latest” by S2-R10 above.

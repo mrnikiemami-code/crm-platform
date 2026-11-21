@@ -1,6 +1,9 @@
 import { definePageLayout, PageLayoutTabLayoutMode } from 'twenty-sdk/define';
 
 import {
+  ACCOUNTING_CONNECTION_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
+  ACCOUNTING_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
+  ACCOUNTING_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
   QUOTATION_ACTIONS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
   QUOTATION_ACTIONS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
   QUOTATION_FIELDS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
@@ -57,6 +60,25 @@ export default definePageLayout({
             configurationType: 'FRONT_COMPONENT',
             frontComponentUniversalIdentifier:
               QUOTATION_LIFECYCLE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
+          },
+        },
+      ],
+    },
+    {
+      universalIdentifier: ACCOUNTING_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
+      title: 'حسابداری',
+      position: 100,
+      icon: 'IconPlugConnected',
+      layoutMode: PageLayoutTabLayoutMode.VERTICAL_LIST,
+      widgets: [
+        {
+          universalIdentifier: ACCOUNTING_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
+          title: 'اتصال و همگام‌سازی حسابداری',
+          type: 'FRONT_COMPONENT',
+          configuration: {
+            configurationType: 'FRONT_COMPONENT',
+            frontComponentUniversalIdentifier:
+              ACCOUNTING_CONNECTION_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
           },
         },
       ],

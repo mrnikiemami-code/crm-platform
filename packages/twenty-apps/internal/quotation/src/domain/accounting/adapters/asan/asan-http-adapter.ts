@@ -1,0 +1,808 @@
+import { createHash } from 'node:crypto';
+
+import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
+import { ASAN_ENDPOINTS, buildAsanUrl } from 'src/domain/accounting/adapters/asan/asan-endpoints';
+import {
+  mapItemPricesToAsanUpdate,
+  mapItemToAsanProduct,
+} from 'src/domain/accounting/adapters/asan/asan-product';
+import {
+  mapPartyToAsanCustomer,
+} from 'src/domain/accounting/adapters/asan/asan-customer';
+import {
+  classifyAsanResponse,
+  type AsanOperation,
+} from 'src/domain/accounting/adapters/asan/asan-response';
+import {
+  ACCOUNTING_ADAPTER_CONTRACT_VERSION,
+  type AccountingAdapter,
+  type AdapterHealth,
+  type RemoteCatalogItem,
+  type RemoteDocument,
+  type RemoteItemInput,
+  type RemoteParty,
+  type RemotePartyInput,
+  type RemoteProformaInput,
+} from 'src/domain/accounting/adapter-contract';
+import { accepted, refused, type Result } from 'src/domain/shared/result';
+
+export type AsanFetch = (
+  input: string,
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+  },
+) => Promise<{
+  ok: boolean;
+  status: number;
+  text: () => Promise<string>;
+}>;
+
+export type AsanHttpAdapterConfig = {
+  baseUrl: string;
+  remoteUserId: string;
+  // A bearer token for an approved tunnel/proxy in front of Asan. Asan itself documents no
+  // authentication, so this is never required and never sent to a plain address.
+  tunnelToken?: string;
+  // The explicit approval that lets a write use a non-TLS address (for example a loopback
+  // tunnel that terminates TLS elsewhere). Default false, so a forgotten approval fails
+  // closed instead of moving money over clear text.
+  allowInsecureTransport?: boolean;
+  timeoutMs?: number;
+  fetchImpl?: AsanFetch;
+  now?: () => Date;
+};
+
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const readString = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
+
+const readNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value.trim())) {
+    return Number(value);
+  }
+
+  return null;
+};
+
+// The guide shows payloads as arrays, but not every build wraps them the same way. Accepting
+// the documented array plus the two plausible envelopes is how the adapter survives a build
+// difference without inventing data: anything else is an unreadable response, not an empty
+// catalog.
+const extractArray = (
+  payload: unknown,
+  envelopeKeys: readonly string[],
+): unknown[] | null => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  const record = asRecord(payload);
+
+  if (record === null) {
+    return null;
+  }
+
+  for (const key of envelopeKeys) {
+    const candidate = record[key];
+
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+};
+
+// Asan documents no etag or version on products and customers, so the change marker is a
+// hash of the record the vendor returned. That is enough to notice "this moved since we
+// read it" without pretending the vendor gave us something it did not.
+const hashRecord = (value: unknown): string =>
+  createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+
+const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
+  const record = asRecord(raw);
+
+  if (record === null) {
+    return null;
+  }
+
+  const code = readNumber(record.ProductCode);
+
+  if (code === null || !Number.isInteger(code) || code <= 0) {
+    return null;
+  }
+
+  const salesPrices = Array.isArray(record.SalesPrice)
+    ? record.SalesPrice.map(readNumber).filter((price): price is number => price !== null)
+    : [];
+
+  return {
+    externalItemId: String(code),
+    code: String(code),
+    name: readString(record.ProductName),
+    secondaryName: readString(record.ProductName2) || null,
+    sellPriceUnits: readNumber(record.SellPrice),
+    salesPriceUnits: salesPrices,
+    stock: readNumber(record.Stock) ?? readNumber(record.Quantity),
+    remoteVersion: hashRecord(record),
+    isActive: true,
+  };
+};
+
+const parseParty = (raw: unknown): RemoteParty | null => {
+  const record = asRecord(raw);
+
+  if (record === null) {
+    return null;
+  }
+
+  const code = readNumber(record.PersonCode);
+
+  if (code === null || !Number.isInteger(code)) {
+    return null;
+  }
+
+  return {
+    externalPartyId: String(code),
+    code: String(code),
+    fullName: readString(record.PersonFullName),
+    mobile: readString(record.PersonMobile) || null,
+    nationalCode: readString(record.PersonNationalCode) || null,
+    remoteVersion: hashRecord(record),
+  };
+};
+
+type RawResponse = {
+  status: number;
+  text: string;
+  latencyMs: number;
+};
+
+export class AsanHttpAdapter implements AccountingAdapter {
+  readonly id = 'asan' as const;
+  readonly contractVersion = ACCOUNTING_ADAPTER_CONTRACT_VERSION;
+  readonly capabilities = ASAN_CAPABILITIES;
+  readonly isLive = true;
+
+  private readonly config: AsanHttpAdapterConfig;
+  private readonly fetchImpl: AsanFetch;
+  private readonly now: () => Date;
+
+  constructor(config: AsanHttpAdapterConfig) {
+    this.config = config;
+    this.fetchImpl =
+      config.fetchImpl ??
+      ((input, init) => fetch(input, init));
+    this.now = config.now ?? (() => new Date());
+  }
+
+  private transportIsSecure(): boolean {
+    return this.config.baseUrl.trim().toLowerCase().startsWith('https://');
+  }
+
+  // Reads may use the documented plain-HTTP address: they carry no document and no amount.
+  // Writes need TLS or an explicit approval, so a workspace that never configured a tunnel
+  // cannot move data over clear text by accident.
+  private checkWriteTransport(): Result<true> {
+    if (this.transportIsSecure() || this.config.allowInsecureTransport === true) {
+      return accepted(true);
+    }
+
+    return refused(
+      'TRANSPORT_NOT_APPROVED',
+      'writes to this destination require TLS or an explicitly approved tunnel',
+    );
+  }
+
+  private async request({
+    path,
+    method,
+    query,
+    body,
+  }: {
+    path: string;
+    method: 'GET' | 'POST';
+    query?: Record<string, string>;
+    body?: unknown;
+  }): Promise<Result<RawResponse>> {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    const startedAt = Date.now();
+
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (this.config.tunnelToken !== undefined && this.config.tunnelToken !== '') {
+      headers.Authorization = `Bearer ${this.config.tunnelToken}`;
+    }
+
+    let response: Awaited<ReturnType<AsanFetch>>;
+
+    try {
+      response = await this.fetchImpl(
+        buildAsanUrl({
+          baseUrl: this.config.baseUrl,
+          path,
+          query,
+        }),
+        {
+          method,
+          headers,
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          signal: AbortSignal.timeout(
+            this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+          ),
+        },
+      );
+    } catch (error) {
+      const timedOut =
+        error instanceof Error &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError');
+
+      return refused(
+        timedOut ? 'TIMEOUT' : 'TRANSPORT_ERROR',
+        timedOut
+          ? 'the vendor did not answer within the allowed time'
+          : 'the vendor address could not be reached',
+      );
+    }
+
+    let text = '';
+
+    try {
+      text = await response.text();
+    } catch {
+      return refused('INVALID_RESPONSE', 'the response body could not be read');
+    }
+
+    return accepted({
+      status: response.status,
+      text,
+      latencyMs: Date.now() - startedAt,
+    });
+  }
+
+  private parseJson(text: string): Result<unknown> {
+    if (text.trim() === '') {
+      return accepted(null);
+    }
+
+    try {
+      return accepted(JSON.parse(text) as unknown);
+    } catch {
+      return refused('INVALID_RESPONSE', 'the response was not JSON');
+    }
+  }
+
+  // Asan answers writes with a bare integer, which proxies and older gateways sometimes
+  // quote. Anything else is UNEXPECTED rather than an assumed success.
+  private parseWriteCode(text: string): number {
+    const parsed = this.parseJson(text);
+
+    if (!parsed.ok) {
+      return Number.NaN;
+    }
+
+    if (typeof parsed.value === 'number') {
+      return parsed.value;
+    }
+
+    if (typeof parsed.value === 'string') {
+      return Number(parsed.value);
+    }
+
+    const record = asRecord(parsed.value);
+
+    if (record !== null) {
+      return (
+        readNumber(record.result) ??
+        readNumber(record.Result) ??
+        readNumber(record.code) ??
+        Number.NaN
+      );
+    }
+
+    return Number.NaN;
+  }
+
+  private classifyWrite(
+    operation: AsanOperation,
+    text: string,
+  ): ReturnType<typeof classifyAsanResponse> {
+    return classifyAsanResponse({
+      operation,
+      rawCode: this.parseWriteCode(text),
+    });
+  }
+
+  async testConnection(): Promise<Result<AdapterHealth>> {
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.lastProducts,
+      method: 'GET',
+      query: { Count: '1' },
+    });
+    const checkedAt = this.now().toISOString();
+
+    if (!result.ok) {
+      return accepted({
+        kind: 'UNREACHABLE',
+        checkedAt,
+        latencyMs: 0,
+        transportIsSecure: this.transportIsSecure(),
+        code:
+          result.refusal.code === 'TIMEOUT'
+            ? 'TIMEOUT'
+            : result.refusal.code === 'INVALID_RESPONSE'
+              ? 'INVALID_RESPONSE'
+              : 'TRANSPORT_ERROR',
+        detail: result.refusal.detail,
+      });
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return accepted({
+        kind: 'UNREACHABLE',
+        checkedAt,
+        latencyMs: result.value.latencyMs,
+        transportIsSecure: this.transportIsSecure(),
+        code: 'INVALID_RESPONSE',
+        detail: `the vendor answered HTTP ${result.value.status} for the documented read`,
+      });
+    }
+
+    return accepted({
+      kind: 'REACHABLE',
+      checkedAt,
+      latencyMs: result.value.latencyMs,
+      transportIsSecure: this.transportIsSecure(),
+      detail: this.transportIsSecure()
+        ? 'the vendor answered the documented read over TLS'
+        : 'the vendor answered the documented read over plain HTTP; approve a tunnel before writing',
+    });
+  }
+
+  async listItems(): Promise<Result<RemoteCatalogItem[]>> {
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.allProducts,
+      method: 'GET',
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'INVALID_RESPONSE',
+        `the vendor answered HTTP ${result.value.status} for the product list`,
+      );
+    }
+
+    const parsed = this.parseJson(result.value.text);
+
+    if (!parsed.ok) {
+      return parsed;
+    }
+
+    const records = extractArray(parsed.value, ['data', 'products', 'Products']);
+
+    if (records === null) {
+      return refused(
+        'INVALID_RESPONSE',
+        'the product list was not an array',
+      );
+    }
+
+    const items: RemoteCatalogItem[] = [];
+
+    for (const record of records) {
+      const item = parseProduct(record);
+
+      // A row without a usable ProductCode cannot be linked to anything, so it is skipped
+      // instead of being given a fabricated identity.
+      if (item !== null) {
+        items.push(item);
+      }
+    }
+
+    return accepted(items);
+  }
+
+  async listParties(): Promise<Result<RemoteParty[]>> {
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.allCustomers,
+      method: 'GET',
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'INVALID_RESPONSE',
+        `the vendor answered HTTP ${result.value.status} for the customer list`,
+      );
+    }
+
+    const parsed = this.parseJson(result.value.text);
+
+    if (!parsed.ok) {
+      return parsed;
+    }
+
+    const records = extractArray(parsed.value, [
+      'data',
+      'customers',
+      'Customers',
+    ]);
+
+    if (records === null) {
+      return refused('INVALID_RESPONSE', 'the customer list was not an array');
+    }
+
+    return accepted(
+      records
+        .map(parseParty)
+        .filter((party): party is RemoteParty => party !== null),
+    );
+  }
+
+  async createItem(input: RemoteItemInput): Promise<Result<RemoteCatalogItem>> {
+    const transport = this.checkWriteTransport();
+
+    if (!transport.ok) {
+      return transport;
+    }
+
+    const mapped = mapItemToAsanProduct({
+      productCode: Number(input.externalItemId ?? input.code),
+      name: input.name,
+      secondaryName: input.secondaryName,
+      sellPrice: input.sellPriceUnits,
+      salesPrices: input.salesPriceUnits,
+    });
+
+    if (!mapped.ok) {
+      return mapped;
+    }
+
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.addProduct,
+      method: 'POST',
+      body: mapped.value,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'VENDOR_REFUSED',
+        `the vendor answered HTTP ${result.value.status} for the product create`,
+      );
+    }
+
+    return accepted({
+      externalItemId: String(mapped.value.ProductCode),
+      code: String(mapped.value.ProductCode),
+      name: mapped.value.ProductName,
+      secondaryName: mapped.value.ProductName2 ?? null,
+      sellPriceUnits: mapped.value.SellPrice,
+      salesPriceUnits: mapped.value.SalesPrice ?? [],
+      stock: null,
+      // The create response is not documented as a record, so the version starts empty and
+      // the next read establishes it.
+      remoteVersion: '',
+      isActive: true,
+    });
+  }
+
+  async updateItemPrices(
+    input: RemoteItemInput,
+  ): Promise<Result<RemoteCatalogItem>> {
+    const transport = this.checkWriteTransport();
+
+    if (!transport.ok) {
+      return transport;
+    }
+
+    const mapped = mapItemPricesToAsanUpdate({
+      productCode: Number(input.externalItemId ?? input.code),
+      currentName: input.name,
+      currentSecondaryName: input.secondaryName,
+      sellPrice: input.sellPriceUnits,
+      salesPrices: input.salesPriceUnits,
+    });
+
+    if (!mapped.ok) {
+      return mapped;
+    }
+
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.editProduct,
+      method: 'POST',
+      body: mapped.value,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'VENDOR_REFUSED',
+        `the vendor answered HTTP ${result.value.status} for the price update`,
+      );
+    }
+
+    return accepted({
+      externalItemId: String(mapped.value.ProductCode),
+      code: String(mapped.value.ProductCode),
+      name: mapped.value.ProductName,
+      secondaryName: mapped.value.ProductName2 ?? null,
+      sellPriceUnits: mapped.value.SellPrice,
+      salesPriceUnits: mapped.value.SalesPrice ?? [],
+      stock: null,
+      remoteVersion: '',
+      isActive: true,
+    });
+  }
+
+  async createParty(input: RemotePartyInput): Promise<Result<RemoteParty>> {
+    const transport = this.checkWriteTransport();
+
+    if (!transport.ok) {
+      return transport;
+    }
+
+    const mapped = mapPartyToAsanCustomer(
+      {
+        personCode: null,
+        fullName: input.fullName,
+        mobile: input.mobile,
+        nationalCode: input.nationalCode,
+        address: input.address,
+        economicCode: null,
+        postalCode: null,
+        firstPhone: null,
+        secondPhone: null,
+        fax: null,
+        accountGroup: null,
+        userId: Number(this.config.remoteUserId || '0'),
+      },
+      { isUpdate: false },
+    );
+
+    if (!mapped.ok) {
+      return mapped;
+    }
+
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.addCustomer,
+      method: 'POST',
+      body: mapped.value,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'VENDOR_REFUSED',
+        `the vendor answered HTTP ${result.value.status} for the customer create`,
+      );
+    }
+
+    const classification = this.classifyWrite(
+      'CREATE_CUSTOMER',
+      result.value.text,
+    );
+
+    if (classification.kind === 'FAILED') {
+      return refused(
+        `ASAN_${classification.reason}`,
+        `the vendor refused the customer write (code ${classification.code})`,
+      );
+    }
+
+    if (classification.kind === 'UNEXPECTED') {
+      return refused('VENDOR_UNDOCUMENTED', classification.detail);
+    }
+
+    // The documented create response is a result flag, never the assigned PersonCode. The
+    // lookup is best-effort: a customer created without a national code has no documented
+    // way back to its code, so the caller gets an empty id and must re-read in Asan instead
+    // of storing the flag "1" as an id.
+    const assigned =
+      input.nationalCode === null || input.nationalCode.trim() === ''
+        ? null
+        : await this.findPartyByNationalCode(input.nationalCode);
+
+    return accepted({
+      externalPartyId: assigned?.externalPartyId ?? '',
+      code: assigned?.code ?? '',
+      fullName: input.fullName,
+      mobile: input.mobile,
+      nationalCode: input.nationalCode,
+      remoteVersion: assigned?.remoteVersion ?? '',
+    });
+  }
+
+  private async findPartyByNationalCode(
+    nationalCode: string,
+  ): Promise<RemoteParty | null> {
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.customerByNationalCode,
+      method: 'GET',
+      query: { NationalCode: nationalCode },
+    });
+
+    if (!result.ok || result.value.status < 200 || result.value.status >= 300) {
+      return null;
+    }
+
+    const parsed = this.parseJson(result.value.text);
+
+    if (!parsed.ok) {
+      return null;
+    }
+
+    const records = extractArray(parsed.value, [
+      'data',
+      'customers',
+      'Customers',
+    ]);
+
+    if (records === null || records.length === 0) {
+      return parseParty(parsed.value);
+    }
+
+    return parseParty(records[0]);
+  }
+
+  async updateParty(input: RemotePartyInput): Promise<Result<RemoteParty>> {
+    const transport = this.checkWriteTransport();
+
+    if (!transport.ok) {
+      return transport;
+    }
+
+    const personCode = Number(input.externalPartyId ?? '');
+
+    const mapped = mapPartyToAsanCustomer(
+      {
+        personCode: Number.isSafeInteger(personCode) ? personCode : null,
+        fullName: input.fullName,
+        mobile: input.mobile,
+        nationalCode: input.nationalCode,
+        address: input.address,
+        economicCode: null,
+        postalCode: null,
+        firstPhone: null,
+        secondPhone: null,
+        fax: null,
+        accountGroup: null,
+        userId: Number(this.config.remoteUserId || '0'),
+      },
+      { isUpdate: true },
+    );
+
+    if (!mapped.ok) {
+      return mapped;
+    }
+
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.editCustomer,
+      method: 'POST',
+      body: mapped.value,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'VENDOR_REFUSED',
+        `the vendor answered HTTP ${result.value.status} for the customer update`,
+      );
+    }
+
+    const classification = this.classifyWrite(
+      'UPDATE_CUSTOMER',
+      result.value.text,
+    );
+
+    if (classification.kind === 'FAILED') {
+      return refused(
+        `ASAN_${classification.reason}`,
+        `the vendor refused the customer update (code ${classification.code})`,
+      );
+    }
+
+    if (classification.kind === 'UNEXPECTED') {
+      return refused('VENDOR_UNDOCUMENTED', classification.detail);
+    }
+
+    return accepted({
+      externalPartyId: String(mapped.value.PersonCode),
+      code: String(mapped.value.PersonCode),
+      fullName: input.fullName,
+      mobile: input.mobile,
+      nationalCode: input.nationalCode,
+      remoteVersion: '',
+    });
+  }
+
+  async registerProforma(
+    input: RemoteProformaInput,
+  ): Promise<Result<RemoteDocument>> {
+    const transport = this.checkWriteTransport();
+
+    if (!transport.ok) {
+      return transport;
+    }
+
+    const result = await this.request({
+      path: ASAN_ENDPOINTS.registerProforma,
+      method: 'POST',
+      body: input.payload,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    if (result.value.status < 200 || result.value.status >= 300) {
+      return refused(
+        'VENDOR_REFUSED',
+        `the vendor answered HTTP ${result.value.status} for the pro-forma registration`,
+      );
+    }
+
+    const classification = this.classifyWrite(
+      'REGISTER_PROFORMA',
+      result.value.text,
+    );
+
+    if (classification.kind === 'DOCUMENT_REGISTERED') {
+      return accepted({
+        externalDocumentId: String(classification.documentNumber),
+        documentNumber: String(classification.documentNumber),
+        registeredAt: this.now().toISOString(),
+      });
+    }
+
+    if (classification.kind === 'FAILED') {
+      return refused(
+        `ASAN_${classification.reason}`,
+        `the vendor did not register the document (code ${classification.code}); a retry needs reconciliation because 0 is also the answer for an unspecified failure`,
+      );
+    }
+
+    // SUCCEEDED_WITHOUT_IDENTIFIER is correct for a customer write and impossible for a
+    // document: registration is only proven by a positive document number.
+    return refused(
+      'VENDOR_UNDOCUMENTED',
+      classification.kind === 'UNEXPECTED'
+        ? classification.detail
+        : 'the registration answer carried no document number',
+    );
+  }
+}

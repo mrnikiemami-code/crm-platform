@@ -40,6 +40,31 @@ export default defineApplication({
         'Shared secret for the mock adapter used in development and integration tests. Never a real credential.',
       isSecret: true,
     },
+    // Asan documents no authentication. When the vendor sits behind an approved tunnel
+    // or reverse proxy that requires a bearer token, it lives here, never on the
+    // connection record (which is readable through the API and in backups).
+    ASAN_TUNNEL_TOKEN: {
+      universalIdentifier: 'e0b1c2d3-0005-4000-8000-000000000005',
+      description:
+        'Bearer token added to Asan requests by the approved tunnel. Secret; empty when the tunnel needs no token.',
+      isSecret: true,
+    },
+    // The second, environment-level approval that lets a write use a plain-HTTP Asan
+    // address. The connection record has its own switch; both must agree.
+    ASAN_TRANSPORT_APPROVED: {
+      universalIdentifier: 'e0b1c2d3-0006-4000-8000-000000000006',
+      description:
+        'Set to true only after a TLS tunnel is confirmed in front of Asan. Without it, no write leaves the CRM over clear text.',
+      isSecret: false,
+    },
+    // Registering a pro-forma in accounting is a fiscal act, so it has its own switch
+    // separate from ordinary catalog/price pushes.
+    ACCOUNTING_DOCUMENT_EXPORT_ENABLED: {
+      universalIdentifier: 'e0b1c2d3-0007-4000-8000-000000000007',
+      description:
+        'Master switch for registering approved quotations in accounting. Off by default; a saved draft is never exported.',
+      isSecret: false,
+    },
     // Whether outbound writes to accounting are enabled at all for this workspace.
     // A distinct switch from the connection being active, because turning off every
     // outbound write must not lose the connection's configuration.

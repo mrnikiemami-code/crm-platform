@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import accountingConnection from 'src/objects/accounting-connection.object';
 import accountingItemLink from 'src/objects/accounting-item-link.object';
+import accountingPartyLink from 'src/objects/accounting-party-link.object';
 import accountingSyncOperation from 'src/objects/accounting-sync-operation.object';
 import catalogItem from 'src/objects/catalog-item.object';
 import price from 'src/objects/price.object';
@@ -37,6 +38,7 @@ const allManifests: { name: string; manifest: Manifest }[] = [
   { name: 'quotationSequence', manifest: quotationSequence as Manifest },
   { name: 'accountingConnection', manifest: accountingConnection as Manifest },
   { name: 'accountingItemLink', manifest: accountingItemLink as Manifest },
+  { name: 'accountingPartyLink', manifest: accountingPartyLink as Manifest },
   {
     name: 'accountingSyncOperation',
     manifest: accountingSyncOperation as Manifest,

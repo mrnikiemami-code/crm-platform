@@ -9,9 +9,12 @@ import {
   ACCOUNTING_CONNECTION_OBJECT_UNIVERSAL_IDENTIFIER,
   ACCOUNTING_ITEM_LINK_FIELDS,
   ACCOUNTING_ITEM_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+  ACCOUNTING_PARTY_LINK_FIELDS,
+  ACCOUNTING_PARTY_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
   ACCOUNTING_SYNC_OPERATION_FIELDS,
   ACCOUNTING_SYNC_OPERATION_OBJECT_UNIVERSAL_IDENTIFIER,
   RELATION_FIELDS,
+  SELECT_OPTION_IDS,
 } from 'src/constants/universal-identifiers';
 
 // One configured accounting destination. Vendor-neutral by construction: `adapterId`
@@ -94,6 +97,184 @@ export default defineObject({
       description: 'When testConnection last succeeded.',
       icon: 'IconClock',
       isNullable: true,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.baseUrl,
+      type: FieldType.TEXT,
+      name: 'baseUrl',
+      label: 'Service address',
+      description:
+        'Address of the vendor API. Never carries a user name, a password or a token; credentials are workspace secrets.',
+      icon: 'IconWorld',
+      isNullable: true,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.remoteUserId,
+      type: FieldType.TEXT,
+      name: 'remoteUserId',
+      label: 'Vendor user id',
+      description:
+        'The vendor user the CRM writes as, kept as text because it is a vendor identifier, not a CRM user.',
+      icon: 'IconUser',
+      isNullable: true,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.defaultStorageId,
+      type: FieldType.TEXT,
+      name: 'defaultStorageId',
+      label: 'Default warehouse id',
+      description:
+        'Warehouse the vendor should book a line into. Empty means the adapter default.',
+      icon: 'IconBuildingWarehouse',
+      isNullable: true,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.moneyUnit,
+      type: FieldType.SELECT,
+      name: 'moneyUnit',
+      label: 'Amount unit',
+      description:
+        'The unit the vendor stores amounts in. UNCONFIRMED is the safe default and blocks every amount transfer.',
+      icon: 'IconCurrencyIranianRial',
+      isNullable: false,
+      defaultValue: `'UNCONFIRMED'`,
+      options: [
+        {
+          id: SELECT_OPTION_IDS.accountingMoneyUnitUnconfirmed,
+          value: 'UNCONFIRMED',
+          label: 'تأییدنشده',
+          color: 'red',
+          position: 0,
+        },
+        {
+          id: SELECT_OPTION_IDS.accountingMoneyUnitRial,
+          value: 'RIAL',
+          label: 'ریال',
+          color: 'green',
+          position: 1,
+        },
+        {
+          id: SELECT_OPTION_IDS.accountingMoneyUnitToman,
+          value: 'TOMAN',
+          label: 'تومان',
+          color: 'blue',
+          position: 2,
+        },
+      ],
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.transportApproved,
+      type: FieldType.BOOLEAN,
+      name: 'transportApproved',
+      label: 'Transport approved',
+      description:
+        'Whether a person approved TLS/tunnel for this destination. Writes stay closed until it is true.',
+      icon: 'IconLock',
+      isNullable: false,
+      defaultValue: false,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.specialCodes,
+      type: FieldType.RAW_JSON,
+      name: 'specialCodes',
+      label: 'Special item codes',
+      description:
+        'Which vendor special item codes (discount, duty, tax) exist in this installation. Sending an undefined code would fail at the vendor.',
+      icon: 'IconCode',
+      isNullable: true,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.healthState,
+      type: FieldType.SELECT,
+      name: 'healthState',
+      label: 'Health',
+      description: 'Result of the last connection test.',
+      icon: 'IconHeartbeat',
+      isNullable: false,
+      defaultValue: `'UNKNOWN'`,
+      options: [
+        {
+          id: SELECT_OPTION_IDS.accountingHealthUnknown,
+          value: 'UNKNOWN',
+          label: 'آزمایش‌نشده',
+          color: 'gray',
+          position: 0,
+        },
+        {
+          id: SELECT_OPTION_IDS.accountingHealthOk,
+          value: 'OK',
+          label: 'پاسخ داد',
+          color: 'green',
+          position: 1,
+        },
+        {
+          id: SELECT_OPTION_IDS.accountingHealthFailed,
+          value: 'FAILED',
+          label: 'خطا',
+          color: 'red',
+          position: 2,
+        },
+      ],
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.lastHealthMessage,
+      type: FieldType.TEXT,
+      name: 'lastHealthMessage',
+      label: 'Last health message',
+      description:
+        'Readable result of the last test, including why it failed. Persian because a person acts on it.',
+      icon: 'IconMessage',
+      isNullable: true,
+    },
+    {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.verificationState,
+      type: FieldType.SELECT,
+      name: 'verificationState',
+      label: 'Verification',
+      description:
+        'MOCK or LIVE_UNVERIFIED until a real vendor server answers; only then LIVE_VERIFIED.',
+      icon: 'IconShieldCheck',
+      isNullable: false,
+      defaultValue: `'LIVE_UNVERIFIED'`,
+      options: [
+        {
+          id: SELECT_OPTION_IDS.accountingVerificationMock,
+          value: 'MOCK',
+          label: 'آزمایشی',
+          color: 'gray',
+          position: 0,
+        },
+        {
+          id: SELECT_OPTION_IDS.accountingVerificationLiveUnverified,
+          value: 'LIVE_UNVERIFIED',
+          label: 'فعال، تأییدنشده',
+          color: 'orange',
+          position: 1,
+        },
+        {
+          id: SELECT_OPTION_IDS.accountingVerificationLiveVerified,
+          value: 'LIVE_VERIFIED',
+          label: 'فعال، تأییدشده',
+          color: 'green',
+          position: 2,
+        },
+      ],
+    },
+    {
+      universalIdentifier: RELATION_FIELDS.accountingConnectionPartyLinks,
+      type: FieldType.RELATION,
+      name: 'partyLinks',
+      label: 'Party links',
+      description: 'Customers and companies mapped into this destination.',
+      icon: 'IconUsers',
+      isNullable: true,
+      relationTargetObjectMetadataUniversalIdentifier:
+        ACCOUNTING_PARTY_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+      relationTargetFieldMetadataUniversalIdentifier:
+        ACCOUNTING_PARTY_LINK_FIELDS.connection,
+      universalSettings: {
+        relationType: RelationType.ONE_TO_MANY,
+      },
     },
     {
       universalIdentifier: RELATION_FIELDS.accountingConnectionItemLinks,

@@ -2,6 +2,8 @@ import {
   ASAN_SPECIAL_ITEM_CODES,
   type AsanSpecialItemCode,
 } from 'src/domain/accounting/adapters/asan/asan-capabilities';
+import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract';
+import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { toAsanFactorDate } from 'src/domain/accounting/adapters/asan/jalali';
 import { QUANTITY_SCALE } from 'src/domain/money/quantity';
 import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
@@ -128,6 +130,10 @@ export type AsanMappingInput = {
   specialCodesInUse: AsanSpecialCodeAvailability;
   description: string;
   storageId?: number;
+  // The unit Asan stores amounts in. Absent keeps the legacy rial assumption for callers that
+  // predate the connection setting; a connection ALWAYS passes the confirmed unit, and the
+  // export planner refuses to reach here with UNCONFIRMED.
+  moneyUnit?: AccountingMoneyUnit;
 };
 
 export const mapRevisionToAsanFactor = (
@@ -142,6 +148,15 @@ export const mapRevisionToAsanFactor = (
   const details: AsanFactorDetail[] = [];
   let discountTotalMicros = 0n;
   let taxTotalMicros = 0n;
+
+  // The unit is applied at ONE point so a line price and a special-code amount can never be
+  // converted by different rules.
+  const convertToVendorUnits = (
+    micros: bigint,
+  ): Result<number> =>
+    input.moneyUnit === undefined
+      ? microsToAsanMoney(micros)
+      : crmMicrosToAsanUnits(micros, input.moneyUnit);
 
   for (const line of input.revision.lines) {
     const productCode = input.productCodeByLineId[line.lineId];
@@ -180,7 +195,7 @@ export const mapRevisionToAsanFactor = (
     // `Price` is the whole line amount AFTER discount. Tax is excluded here because Asan
     // takes tax as its own special-code line, so including it would double-charge the VAT.
     const netOfTaxMicros = lineTotal.value - tax.value;
-    const price = microsToAsanMoney(netOfTaxMicros);
+    const price = convertToVendorUnits(netOfTaxMicros);
 
     if (!price.ok) {
       return price;
@@ -204,6 +219,7 @@ export const mapRevisionToAsanFactor = (
   const specialResult = appendSpecialLines({
     details,
     storageId: input.storageId ?? ASAN_DEFAULT_STORAGE_ID,
+    convertToVendorUnits,
     amounts: [
       {
         enabled: input.specialCodesInUse.discount,
@@ -238,10 +254,12 @@ export const mapRevisionToAsanFactor = (
 const appendSpecialLines = ({
   details,
   storageId,
+  convertToVendorUnits,
   amounts,
 }: {
   details: AsanFactorDetail[];
   storageId: number;
+  convertToVendorUnits: (micros: bigint) => Result<number>;
   amounts: {
     enabled: boolean;
     code: AsanSpecialItemCode;
@@ -254,7 +272,7 @@ const appendSpecialLines = ({
       continue;
     }
 
-    const value = microsToAsanMoney(amount.micros);
+    const value = convertToVendorUnits(amount.micros);
 
     if (!value.ok) {
       return value;

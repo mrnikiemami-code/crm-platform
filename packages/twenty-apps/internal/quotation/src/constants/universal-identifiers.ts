@@ -29,6 +29,8 @@ export const ACCOUNTING_CONNECTION_OBJECT_UNIVERSAL_IDENTIFIER =
   'dab886b2-ef12-53e7-93ca-505db4ea16fe';
 export const ACCOUNTING_ITEM_LINK_OBJECT_UNIVERSAL_IDENTIFIER =
   'bd2952f8-d37d-52f7-b22b-35a4bc761864';
+export const ACCOUNTING_PARTY_LINK_OBJECT_UNIVERSAL_IDENTIFIER =
+  'a3c7e1d5-6b2f-5c48-9d10-4f8e2a7b6c31';
 export const ACCOUNTING_SYNC_OPERATION_OBJECT_UNIVERSAL_IDENTIFIER =
   '2fb711ff-a9c4-5886-81b7-c747b9306c7a';
 
@@ -161,6 +163,15 @@ export const ACCOUNTING_CONNECTION_FIELDS = {
   capabilities: '00247aaa-1647-59e2-9d8b-184d16263f7c',
   isActive: '5a2511cb-f67f-531b-91ef-1bb871a927c4',
   lastHealthCheckAt: '3100cdfc-79d2-5cfa-be34-4313b9b8a8cf',
+  baseUrl: '0ac5e8f1-3b16-5e20-8f71-6a9b2c4d5e01',
+  remoteUserId: '1bd6f902-4c27-5f31-9a82-7b0c3d5e6f12',
+  defaultStorageId: '2ce70a13-5d38-5042-ab93-8c1d4e6f7013',
+  moneyUnit: '3df81b24-6e49-5153-bca4-9d2e5f708114',
+  transportApproved: '4e092c35-7f5a-5264-8db5-ae3f60918225',
+  specialCodes: '5f1a3d46-806b-5375-9ec6-bf4071a29336',
+  healthState: '602b4e57-917c-5486-8fd7-c05182b3a447',
+  lastHealthMessage: '713c5f68-a28d-5597-9ae8-d16293c4b558',
+  verificationState: '824d6079-b39e-56a8-8bf9-e273a4d5c669',
 } as const;
 
 export const ACCOUNTING_ITEM_LINK_FIELDS = {
@@ -172,6 +183,18 @@ export const ACCOUNTING_ITEM_LINK_FIELDS = {
   remoteVersion: '12855f1e-4456-5366-afcf-393a5f1951f4',
   lastSyncedAt: 'ee2ff19b-63fe-5682-8131-29fedfb29262',
   syncStatus: '9c4399a3-62f2-5653-a581-f1e1fc8e19ae',
+} as const;
+
+export const ACCOUNTING_PARTY_LINK_FIELDS = {
+  name: 'b4d8f2e6-7c30-5d59-ae21-5a9f3b8c7d42',
+  externalPartyId: 'c5e9a3f7-8d41-5e6a-bf32-6b0a4c9d8e53',
+  externalCode: 'd6f0b4a8-9e52-5f7b-8a43-7c1b5d0e9f64',
+  remoteVersion: 'e7a1c5b9-af63-5a8c-9b54-8d2c6e1f0a75',
+  lastSyncedAt: 'f8b2d6ca-b074-5b9d-ac65-9e3d7f2a1b86',
+  syncStatus: '09c3e7db-c185-5cae-bd76-af4e803b2c97',
+  partyType: '1ad4f8ec-d296-5dbf-8e87-b05f914c3da8',
+  internalPartyId: '2be509fd-e3a7-5ec0-9f98-c160a25d4eb9',
+  connection: '3cf61a0e-f4b8-5fd1-8aa9-d271b36e5fca',
 } as const;
 
 export const ACCOUNTING_SYNC_OPERATION_FIELDS = {
@@ -204,6 +227,7 @@ export const RELATION_FIELDS = {
   priceListPrices: '6f799474-1cc7-5be0-aaac-0e836cea03b3',
   accountingConnectionItemLinks: '08d76d75-1026-5e01-864c-6e643cff85dc',
   accountingConnectionSyncOperations: '2b9e64a2-8aa6-5471-9431-6a2217658d8d',
+  accountingConnectionPartyLinks: '4d072b1f-05c9-50e2-9bba-e382c47f60db',
 } as const;
 
 // SELECT option ids. The `value` of an option is the machine identity and must never
@@ -255,6 +279,18 @@ export const SELECT_OPTION_IDS = {
   quotationShareOutcomeSent: '1b2c07f8-250b-5476-8cca-c60fc9080b17',
   quotationShareOutcomeFailed: '5653ba7c-f124-5266-ba71-82a9a10562ed',
   quotationShareOutcomeRefused: 'f9e744ef-b026-5ba0-8aa1-4d945669dda4',
+  accountingMoneyUnitUnconfirmed: '5e183c20-16da-51f3-accb-f493d58071ec',
+  accountingMoneyUnitRial: '6f294d31-27eb-52a4-bddc-05a4e69182fd',
+  accountingMoneyUnitToman: '703a5e42-38fc-53b5-8eed-16b5f7a2930e',
+  accountingHealthUnknown: '814b6f53-490d-54c6-9ffe-27c608b3a41f',
+  accountingHealthOk: '925c7064-5a1e-55d7-800f-38d719c4b520',
+  accountingHealthFailed: 'a36d8175-6b2f-56e8-9110-49e82ad5c631',
+  accountingVerificationMock: 'b47e9286-7c30-57f9-a221-5af93be6d742',
+  accountingVerificationLiveUnverified:
+    'c58fa397-8d41-58aa-b332-6b0a4cf7e853',
+  accountingVerificationLiveVerified: 'd690b4a8-9e52-59bb-8443-7c1b5d08f964',
+  accountingPartyTypePerson: 'e7a1c5ba-af63-5acc-9554-8d2c6e190a75',
+  accountingPartyTypeCompany: 'f8b2d6cb-b074-5bdd-a665-9e3d7f201b86',
 } as const;
 
 // S2 UI / runtime entry points. Stable once installed. Variant nibble is 8|9|a|b.
@@ -323,3 +359,20 @@ export const CREATE_QUOTATION_FROM_QUOTATIONS_COMMAND_UNIVERSAL_IDENTIFIER =
   'd1e2f3a4-b5c6-5780-a123-456789abcdef';
 export const SEARCH_CUSTOMERS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   'e2f3a4b5-c6d7-5891-8234-56789abcdef0';
+
+// Accounting bridge entry points. UUID v5 of the app namespace and the entity
+// path, same derivation as the identifiers above.
+export const ACCOUNTING_CONNECTION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'cddbc58c-4fb2-578d-bd99-9e3dccc51440';
+export const ACCOUNTING_IMPORT_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'b257fa8c-38a4-5cec-ba65-0cf27634abf9';
+export const ACCOUNTING_OUTBOUND_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'f55e7a5a-81af-562c-b96b-1f95fb102ec7';
+
+export const ACCOUNTING_CONNECTION_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'e6e84e4a-7fdd-5ea9-87ae-9415927dc0eb';
+
+export const ACCOUNTING_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  'a81f1eb0-1993-5743-bf8f-e71c13cfe7a6';
+export const ACCOUNTING_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'b4b47ec1-1241-5e73-ac9e-28642de2a481';

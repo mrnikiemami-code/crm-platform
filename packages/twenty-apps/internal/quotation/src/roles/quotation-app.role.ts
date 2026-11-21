@@ -1,6 +1,10 @@
 import { defineApplicationRole, STANDARD_OBJECT } from 'twenty-sdk/define';
 
 import {
+  ACCOUNTING_CONNECTION_OBJECT_UNIVERSAL_IDENTIFIER,
+  ACCOUNTING_ITEM_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+  ACCOUNTING_PARTY_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+  ACCOUNTING_SYNC_OPERATION_OBJECT_UNIVERSAL_IDENTIFIER,
   CATALOG_ITEM_OBJECT_UNIVERSAL_IDENTIFIER,
   PRICE_LIST_OBJECT_UNIVERSAL_IDENTIFIER,
   PRICE_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -15,9 +19,9 @@ import {
 
 // Least-privilege role for quotation logic functions.
 //
-// Accounting connection / sync objects are intentionally ABSENT: S2 does not
-// write to accounting, and leaving those objects off the role keeps a buggy
-// route from ever touching Asan credentials or sync rows.
+// Accounting objects are read/update only: the app never destroys a sync row or a link,
+// because the ledger is the audit trail of what was sent. The connection record holds no
+// credential, so granting update here does not expose a secret.
 export default defineApplicationRole({
   universalIdentifier: QUOTATION_APP_ROLE_UNIVERSAL_IDENTIFIER,
   label: 'نقش اپ پیش‌فاکتور',
@@ -84,6 +88,37 @@ export default defineApplicationRole({
     },
     {
       objectUniversalIdentifier: QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
+    },
+    {
+      objectUniversalIdentifier:
+        ACCOUNTING_CONNECTION_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
+    },
+    {
+      objectUniversalIdentifier: ACCOUNTING_ITEM_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
+    },
+    {
+      objectUniversalIdentifier:
+        ACCOUNTING_PARTY_LINK_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
+    },
+    {
+      objectUniversalIdentifier:
+        ACCOUNTING_SYNC_OPERATION_OBJECT_UNIVERSAL_IDENTIFIER,
       canReadObjectRecords: true,
       canUpdateObjectRecords: true,
       canSoftDeleteObjectRecords: false,
