@@ -1,5 +1,13 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ACCOUNTING INTEGRATION GAP — ARCHITECT STATUS (2026-11-21)
+
+- **User correction:** the quotation work is NOT complete as a business integration: no confirmed live accounting connection, bidirectional catalog sync, customer mapping or accounting pro-forma registration.
+- **Source checked:** `docs/architecture/CRM-QUOTATION-ACCOUNTING-PLAN.md` specifies vendor-neutral accounting ownership and Asan first / Sepidar second; app manifests for `accounting-connection`, `accounting-item-link`, `accounting-sync-operation` exist, and `src/domain/accounting/adapters/asan/` contains mapping/capability helpers. These source files are NOT evidence that an Asan server is connected.
+- **Next bounded slice:** build/verify accounting integration runtime with connection configuration, secure transport, real read-only Asan capability handshake, catalog/customer preview and mapping and durable idempotent operation ledger, initially using fixtures/mocks and explicit read-only testing if endpoint unavailable. Actual production Asan credentials, server reachability, monetary unit, special tax/discount codes and user approval are prerequisites for live writes. Only after reviewed evidence should register-pro-forma/customer/item outbound writes be enabled. Sepidar later behind same interface.
+- **Guardrails:** never treat CRM quotation as posted fiscal invoice; no automatic invoice creation/payment/ledger writes; no `:6080`, no production or unapproved external writes, no main worker restart; `STOP_FOR_ARCHITECT`.
+
+
 ## ARCHITECT ACCEPTANCE — ATOMIC-SAVE-005 (2026-11-21; ACCEPT)
 
 - **Architect source review:** commit `2d48787f877ec2d4cf0c78e09329f685857820cf` on `feat/crm-129-quotation` inspected; parser rejects omitted/null expectedVersion on edits and the service checks version defensively. Create null/null and stale-edit conflict behaviors retained.
