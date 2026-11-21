@@ -246,6 +246,30 @@ describe('QuotationDraftPersistenceService', () => {
     expect(scope.getRepository('quotation').update).not.toHaveBeenCalled();
   });
 
+  it('refuses an update that carries no version instead of skipping the claim', async () => {
+    const scope = buildScope();
+    const { service, workspaceOrmManager } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({ quotationId: 'q-1', expectedVersion: null }),
+    });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'QUOTATION_VERSION_REQUIRED',
+    });
+    expect(workspaceOrmManager.runInWorkspaceTransaction).not.toHaveBeenCalled();
+    expect(scope.getRepository('quotation').update).not.toHaveBeenCalled();
+    expect(scope.getRepository('quotationLine').insert).not.toHaveBeenCalled();
+    expect(
+      scope.getRepository('quotationLine').softDelete,
+    ).not.toHaveBeenCalled();
+  });
+
   it('refuses to write a document that is no longer a draft', async () => {
     const scope = buildScope({
       headerFindOne: jest.fn(async () => ({

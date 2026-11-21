@@ -242,6 +242,15 @@ export const parseQuotationDraftSaveRequest = (
     return refused('INVALID_INPUT', 'a new quotation cannot carry a version');
   }
 
+  // Editing without a version would silently skip the concurrency claim, so an
+  // update that omits it is refused here, before any connection is opened.
+  if (quotationId.value !== null && expectedVersion === null) {
+    return refused(
+      'QUOTATION_VERSION_REQUIRED',
+      'editing a quotation requires expectedVersion',
+    );
+  }
+
   if (!Array.isArray(body.lines) || body.lines.length === 0) {
     return refused('DOCUMENT_HAS_NO_LINES', 'a quotation needs at least one line');
   }

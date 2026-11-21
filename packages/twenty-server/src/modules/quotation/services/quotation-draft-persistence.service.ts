@@ -215,10 +215,18 @@ export class QuotationDraftPersistenceService {
       );
     }
 
-    if (
-      request.expectedVersion !== null &&
-      request.expectedVersion !== currentVersion
-    ) {
+    // The conditional update is the concurrency gate: a parallel save that bumps
+    // the version, or a lifecycle transition that freezes the content, makes this
+    // statement match zero rows and the whole transaction is abandoned. A missing
+    // version is refused too, so an update can never skip the claim.
+    if (request.expectedVersion === null) {
+      return rejected(
+        'QUOTATION_VERSION_REQUIRED',
+        'editing a quotation requires expectedVersion',
+      );
+    }
+
+    if (request.expectedVersion !== currentVersion) {
       return rejected(
         'QUOTATION_VERSION_CONFLICT',
         `expected version ${request.expectedVersion} but stored version is ${currentVersion}`,

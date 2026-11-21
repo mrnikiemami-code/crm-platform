@@ -77,6 +77,25 @@ describe('parseQuotationDraftSaveRequest', () => {
     expect(parsed.value.expectedVersion).toBe(4);
   });
 
+  it('refuses an edit that omits the expected version', () => {
+    const body = rawBody({ quotationId: 'q-1' });
+
+    delete (body as Record<string, unknown>).expectedVersion;
+
+    expect(parseQuotationDraftSaveRequest(body)).toMatchObject({
+      ok: false,
+      code: 'QUOTATION_VERSION_REQUIRED',
+    });
+  });
+
+  it('refuses an edit that sends a null expected version', () => {
+    expect(
+      parseQuotationDraftSaveRequest(
+        rawBody({ quotationId: 'q-1', expectedVersion: null }),
+      ),
+    ).toMatchObject({ ok: false, code: 'QUOTATION_VERSION_REQUIRED' });
+  });
+
   it('refuses a body that is not an object', () => {
     expect(parseQuotationDraftSaveRequest('{}')).toEqual({
       ok: false,

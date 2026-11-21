@@ -1,10 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## VERSION GUARD CLOSED — CRM-129-QUOTATION-ATOMIC-SAVE-005 (2026-11-21; DATA_INTEGRITY_PASS maintained)
+
+- **Gap the architect flagged is closed:** `parseQuotationDraftSaveRequest` now refuses an edit (`quotationId` present) whose `expectedVersion` is missing or `null` with `QUOTATION_VERSION_REQUIRED`, before any permission lookup or connection. `QuotationDraftPersistenceService.updateDraft` repeats the check defensively and then requires exact equality with the stored version, so an update can no longer skip the claim. Create still requires `quotationId=null` + `expectedVersion=null`.
+- **Contract as implemented:** create → `null`/`null` only; edit → positive integer required; fractional/zero/string version → `INVALID_INPUT`; stale → `QUOTATION_VERSION_CONFLICT`; immutable status → `QUOTATION_IMMUTABLE`. Persian copy for `VERSION_REQUIRED` already existed and is what the form shows.
+- **Direct-endpoint verification on Dev `:3002` (real PostgreSQL):** **18/18** — V1 create null/null saved as DRAFT v1 without a number; V2 edit with stored version saved v2 with both lines; V3 edit with the key omitted **and** with explicit `null` both refused `QUOTATION_VERSION_REQUIRED` with a byte-identical header+lines snapshot and the attempted name absent from the table; V4 stale version refused `QUOTATION_VERSION_CONFLICT` with an identical snapshot; V5 fractional version refused `INVALID_INPUT` with nothing written; V6 baseline restored (`quotations 158→158`, `lines 101→101`).
+- **No regression:** atomic core suite **52/52**, deployed form route **19/19**, bundled form handler **16/16**, server quotation jest **67/67** (3 new: omitted version, explicit null, service-level refusal before the transaction), app vitest **270/270**. `tsgo` server shows only the two pre-existing errors in untouched files; oxlint clean on the four changed files.
+- **Deployment / isolation:** only `dist/modules/quotation` was copied into `twenty-server-1` and only that container restarted; `twenty-worker-1` `StartedAt` unchanged. No app version bump was needed (no app code changed). `:6080` untouched, no form/PDF/numbering/lifecycle change.
+
 ## ARCHITECT REVIEW — ATOMIC SAVE 004 (2026-11-21)
 
 - **Remote verification:** GitHub branch `feat/crm-129-quotation` at `a81f9c0203c0bcbd2f92040aab2cf219c852d3de`. Source confirms a single server-side transactional write path and removal of the app's previous per-line GraphQL mutation path. The 52/52 PostgreSQL, 19/19 form, 16/16 headless, 64/64 server and 270/270 app tests are reported in the committed recovery/worker report; the architect did not independently rerun the live tests.
-- **Architect review:** transactional boundary/rollback architecture **accepted provisionally**, but full optimistic-version integrity remains **OPEN**. `parseQuotationDraftSaveRequest` accepts `expectedVersion: null` for an existing `quotationId`, and `QuotationDraftPersistenceService.updateDraft` skips the stale-version check when null. The conditional UPDATE still guards against simultaneously competing updates, but an older client can overwrite a newer saved draft by omitting the version.
-- **Narrow next gate:** require a positive integer `expectedVersion` on every edit request; require null only on create. Add regression tests for omitted/null, invalid, stale, and current version, plus a direct-endpoint test proving zero writes when an edit omits the version. Preserve the existing transaction and domain contracts. Stop for architect acceptance.
+- **Architect review:** transactional boundary/rollback architecture **accepted provisionally**. The version gap it flagged (an edit could omit `expectedVersion`) was closed by ATOMIC-SAVE-005 above; see that checkpoint for the contract and the zero-write proofs.
+- **Narrow next gate:** closed by ATOMIC-SAVE-005 — a positive integer `expectedVersion` is now required on every edit, with omitted/null, invalid, stale and current-version regression coverage plus a direct-endpoint zero-write proof. Preserve the existing transaction and domain contracts.
 - **Not touched:** production `:6080`, release branch, worker. No new deployment performed by this review.
 
 
@@ -16,7 +24,7 @@
 - **Open gate:** `DATA_INTEGRITY_PASS` is still NOT established. Implement and independently inspect before stating PASS. Continue with `STOP_FOR_ARCHITECT`.
 
 
-**Updated:** 2026-11-21 (CRM-129-QUOTATION-ATOMIC-SAVE-004)
+**Updated:** 2026-11-21 (CRM-129-QUOTATION-ATOMIC-SAVE-005)
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
