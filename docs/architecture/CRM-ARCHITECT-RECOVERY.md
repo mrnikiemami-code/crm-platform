@@ -1,5 +1,14 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ARCHITECT ACCEPTANCE — SEALED REVISION API GUARD (2026-11-21; ACCEPT)
+
+- **GitHub source verified:** actual feature commit is `a98f484966e84f17ca17a6132554fbf37de4ee9b` (operator report labeled it `d396d0853c`, which GitHub could not resolve); documentation commit `5cf7b6ffe6aa45679d87d3d5684eec1a22a793b8` is on `feat/crm-129-quotation`.
+- **Review:** ten workspace pre-query hooks block public `quotationRevision` create/update/delete/destroy/restore, one and many, using `QuotationRevisionWriteGuardService` and `REVISION_IMMUTABLE`. The legal issuance transaction remains a privileged internal write. Architect accepts the scoped API immutability implementation.
+- **Reported (not independently re-executed) live tests:** revision-seal 14/14, accounting mock 15/15, server Jest 96/96, four unique consecutive numbers, clean typecheck and lint. No fresh independent Dev probe was done by the architect.
+- **Next gate:** Asan adapter remains `LIVE_UNVERIFIED`. Prioritize a bounded read-only connection/capability and monetary-unit verification on the actual accessible Asan installation, then explicitly authorize any outbound writes only with credentials/transport/security, customer and product mappings, idempotency/reconciliation and currency evidence. No production `:6080` writes or unapproved external export. Sepidar later.
+- **STOP_FOR_ARCHITECT:** no automatic start of a new coding task.
+
+
 ## ACCOUNTING INTEGRATION GAP — ARCHITECT STATUS (2026-11-21)
 
 - **User correction:** the quotation work is NOT complete as a business integration: no confirmed live accounting connection, bidirectional catalog sync, customer mapping or accounting pro-forma registration.
