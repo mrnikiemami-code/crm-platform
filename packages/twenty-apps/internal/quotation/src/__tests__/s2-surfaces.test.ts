@@ -6,6 +6,7 @@ import quotationLine from 'src/objects/quotation-line.object';
 import quotationAppRole from 'src/roles/quotation-app.role';
 import catalogItemsView from 'src/views/catalog-items.view';
 import quotationsView from 'src/views/quotations.view';
+import { QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 
 describe('S2 Persian UX surfaces', () => {
   it('labels catalog and quotation objects in Persian', () => {
@@ -44,7 +45,7 @@ describe('S2 Persian UX surfaces', () => {
     expect(quotationsView.config.name).toContain('پیش‌فاکتور');
   });
 
-  it('ships quotation record page with fields + lifecycle panel', async () => {
+  it('renders the professional editor instead of raw quotation fields', async () => {
     const pageLayout = await import(
       'src/page-layouts/quotation-record.page-layout'
     );
@@ -55,6 +56,16 @@ describe('S2 Persian UX surfaces', () => {
     expect(pageLayout.default.errors).toEqual([]);
     expect(pageLayout.default.config.type).toBe('RECORD_PAGE');
     expect(pageLayout.default.config.tabs?.length).toBe(2);
+    expect(pageLayout.default.config.tabs?.[0]?.title).toBe('پیش‌فاکتور');
+    expect(pageLayout.default.config.tabs?.[0]?.widgets?.[0]).toMatchObject({
+      type: 'FRONT_COMPONENT',
+      configuration: {
+        configurationType: 'FRONT_COMPONENT',
+        frontComponentUniversalIdentifier:
+          QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
+      },
+    });
+    expect(pageLayout.default.config.tabs?.[1]?.title).toBe('اقدامات');
     expect(lifecycle.default.errors).toEqual([]);
     expect(lifecycle.default.config.name).toBe('quotation-lifecycle-panel');
   });
