@@ -13,12 +13,23 @@ import { QuotationLineDestroyOnePreQueryHook } from 'src/modules/quotation/query
 import { QuotationLineUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-line-update-many.pre-query.hook';
 import { QuotationLineUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-line-update-one.pre-query.hook';
 import { QuotationRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-restore-one.pre-query.hook';
+import { QuotationRevisionCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-create-many.pre-query.hook';
+import { QuotationRevisionCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-create-one.pre-query.hook';
+import { QuotationRevisionDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-delete-many.pre-query.hook';
+import { QuotationRevisionDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-delete-one.pre-query.hook';
+import { QuotationRevisionDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-destroy-many.pre-query.hook';
+import { QuotationRevisionDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-destroy-one.pre-query.hook';
+import { QuotationRevisionRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-restore-many.pre-query.hook';
+import { QuotationRevisionRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-restore-one.pre-query.hook';
+import { QuotationRevisionUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-update-many.pre-query.hook';
+import { QuotationRevisionUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-update-one.pre-query.hook';
 import { QuotationUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-many.pre-query.hook';
 import { QuotationUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-one.pre-query.hook';
 import { QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
 import { QuotationNumberService } from 'src/modules/quotation/services/quotation-number.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { QuotationRevisionService } from 'src/modules/quotation/services/quotation-revision.service';
+import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/services/quotation-revision-write-guard.service';
 
 @Module({
   imports: [WorkspaceCacheModule],
@@ -27,6 +38,7 @@ import { QuotationRevisionService } from 'src/modules/quotation/services/quotati
     QuotationNumberService,
     QuotationRevisionService,
     QuotationImmutabilityService,
+    QuotationRevisionWriteGuardService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
     QuotationDeleteOnePreQueryHook,
@@ -41,6 +53,16 @@ import { QuotationRevisionService } from 'src/modules/quotation/services/quotati
     QuotationLineDeleteOnePreQueryHook,
     QuotationLineDeleteManyPreQueryHook,
     QuotationLineDestroyOnePreQueryHook,
+    QuotationRevisionCreateOnePreQueryHook,
+    QuotationRevisionCreateManyPreQueryHook,
+    QuotationRevisionUpdateOnePreQueryHook,
+    QuotationRevisionUpdateManyPreQueryHook,
+    QuotationRevisionDeleteOnePreQueryHook,
+    QuotationRevisionDeleteManyPreQueryHook,
+    QuotationRevisionDestroyOnePreQueryHook,
+    QuotationRevisionDestroyManyPreQueryHook,
+    QuotationRevisionRestoreOnePreQueryHook,
+    QuotationRevisionRestoreManyPreQueryHook,
   ],
   exports: [
     QuotationPermissionService,

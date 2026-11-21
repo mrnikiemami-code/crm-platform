@@ -399,34 +399,64 @@ const main = async () => {
     `revision=${exportPreview.preview?.revisionVersion} decision=${exportPreview.preview?.decision?.code} lines=${exportPreview.preview?.lineItemIds?.length}`,
   );
 
-  // R10: the record is written by issuing the quotation, not by the API. The update is
-  // attempted with its current value so a permissive platform cannot leave the fixture
-  // damaged. The platform accepts the write today, so this is reported as evidence
-  // rather than a pass/fail gate: it is a platform-wide permission gap, not a defect of
-  // the sealing path.
-  const tamper = await gql(`mutation {
+  // R10: the record is written by issuing the quotation, not by the API. Every public
+  // mutation route is refused by the workspace pre-query hooks, so a sealed revision can
+  // neither be minted nor rewritten; the attempts below send current values so a hook
+  // regression cannot leave the fixture damaged.
+  const errorSummary = (response) =>
+    (response.errors ?? [])
+      .map((error) => `${error?.extensions?.code ?? 'no-code'}:${String(error?.message ?? '')}`)
+      .join(' | ');
+
+  const updateRefusal = await gql(`mutation {
     updateQuotationRevision(
       id: "${revision?.id}",
       data: { snapshotHash: "${revision?.snapshotHash}" }
     ) { id snapshotHash }
   }`);
   const updateRefused =
-    Array.isArray(tamper.errors) && tamper.errors.length > 0
-      ? true
-      : (tamper.data?.updateQuotationRevision ?? null) === null;
+    (Array.isArray(updateRefusal.errors) && updateRefusal.errors.length > 0) &&
+    (updateRefusal.data?.updateQuotationRevision ?? null) === null;
 
-  if (updateRefused) {
-    record(
-      'R10 sealed revision is not writable through the API',
-      true,
-      `refused code=${(tamper.errors ?? []).map((error) => error?.extensions?.code).join(',') || 'null-result'}`,
-    );
-  } else {
-    recordInfo(
-      'R10 sealed revision accepts a generic API update',
-      'API_UPDATE_ALLOWED: a stored revision can be re-written through updateQuotationRevision; the hash makes tampering detectable, but the platform does not refuse it. Needs an object-level permission follow-up.',
-    );
-  }
+  record(
+    'R10 sealed revision is not writable through the API',
+    updateRefused,
+    `refused=${updateRefused} errors=${errorSummary(updateRefusal) || 'none'}`,
+  );
+
+  const deleteRefusal = await gql(`mutation {
+    deleteQuotationRevision(id: "${revision?.id}") { id }
+  }`);
+  const deleteRefused =
+    (Array.isArray(deleteRefusal.errors) && deleteRefusal.errors.length > 0) &&
+    (deleteRefusal.data?.deleteQuotationRevision ?? null) === null;
+
+  record(
+    'R10b sealed revision cannot be deleted through the API',
+    deleteRefused,
+    `refused=${deleteRefused} errors=${errorSummary(deleteRefusal) || 'none'}`,
+  );
+
+  const createRefusal = await gql(`mutation {
+    createQuotationRevision(data: {
+      name: "forged-${revision?.version}",
+      version: 99,
+      status: "ISSUED",
+      snapshotJson: {},
+      snapshotHash: "0000000000000000000000000000000000000000000000000000000000000000",
+      totalExact: "1.0000",
+      issuedAt: "${new Date().toISOString()}"
+    }) { id version }
+  }`);
+  const createRefused =
+    (Array.isArray(createRefusal.errors) && createRefusal.errors.length > 0) &&
+    (createRefusal.data?.createQuotationRevision ?? null) === null;
+
+  record(
+    'R10c sealed revision cannot be minted through the API',
+    createRefused,
+    `refused=${createRefused} errors=${errorSummary(createRefusal) || 'none'}`,
+  );
 
   const afterTamper = await readRevisions(quotationId);
   record(

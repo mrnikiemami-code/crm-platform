@@ -4,13 +4,16 @@
 const MESSAGE_BY_CODE: Record<string, string> = {
   QUOTATION_IMMUTABLE:
     'محتوای این پیش‌فاکتور قفل است. برای تغییر، نسخهٔ جدید صادر کنید.',
-  QUOTATION_ALREADY_TERMINAL: 'این پیش‌فاکتور در وضعیت پایانی است و قابل تغییر نیست.',
+  QUOTATION_ALREADY_TERMINAL:
+    'این پیش‌فاکتور در وضعیت پایانی است و قابل تغییر نیست.',
   QUOTATION_VERSION_REQUIRED:
     'نسخهٔ پیش‌فاکتور لازم است. صفحه را تازه کنید و دوباره تلاش کنید.',
   QUOTATION_VERSION_CONFLICT:
     'پیش‌فاکتور هم‌زمان تغییر کرده است. صفحه را تازه کنید و دوباره تلاش کنید.',
   QUOTATION_LINES_FROZEN:
     'ردیف‌های این پیش‌فاکتور قفل هستند. برای تغییر، نسخهٔ جدید صادر کنید.',
+  REVISION_IMMUTABLE:
+    'نسخهٔ صادرشدهٔ پیش‌فاکتور مهروموم شده و قابل ویرایش، حذف یا بازسازی نیست.',
   TRANSITION_NOT_ALLOWED: 'این تغییر وضعیت مجاز نیست.',
   PERMISSION_MISSING: 'مجوز لازم برای این عملیات را ندارید.',
   QUOTATION_NOT_FOUND: 'پیش‌فاکتور یافت نشد.',
@@ -30,8 +33,7 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   CUSTOMER_LINK_QUOTATION_MISMATCH: 'این لینک متعلق به این پیش‌فاکتور نیست.',
   CUSTOMER_LINK_CREATE_FAILED: 'صدور لینک مشتری انجام نشد.',
   API_URL_MISSING: 'آدرس عمومی سامانه برای ساخت لینک تنظیم نشده است.',
-  DUPLICATE_SHARE:
-    'این پیش‌فاکتور قبلاً از همین کانال با موفقیت ارسال شده است.',
+  DUPLICATE_SHARE: 'این پیش‌فاکتور قبلاً از همین کانال با موفقیت ارسال شده است.',
 };
 
 export const persianMessageForQuotationCode = (
@@ -46,11 +48,17 @@ export const extractQuotationErrorCode = (message: string): string | null => {
     return match[1];
   }
 
-  if (message.includes('QUOTATION_IMMUTABLE') || message.includes('immutable')) {
+  if (
+    message.includes('QUOTATION_IMMUTABLE') ||
+    message.includes('immutable')
+  ) {
     return 'QUOTATION_IMMUTABLE';
   }
 
-  if (message.includes('VERSION_CONFLICT') || message.includes('concurrently')) {
+  if (
+    message.includes('VERSION_CONFLICT') ||
+    message.includes('concurrently')
+  ) {
     return 'QUOTATION_VERSION_CONFLICT';
   }
 
