@@ -6,6 +6,15 @@
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
+## SOURCE FIX — CRM-129 RECORD PAGE USES PROFESSIONAL EDITOR (2026-11-21; deployment not verified)
+
+- **Issue confirmed by user's browser image:** opening a quotation from the list still showed the generic Twenty **FIELDS** widget, despite the earlier command-menu creation and edit-flow fixes.
+- **Root cause:** `src/page-layouts/quotation-record.page-layout.ts` explicitly configured the first tab as `type: 'FIELDS'`, while the existing `QuotationDraftForm` was only used in command-menu surfaces.
+- **Source correction:** replace the first tab's widget with `FRONT_COMPONENT` pointing at `QUOTATION_DRAFT_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER`; rename tab to «پیش‌فاکتور». Keep the separate «اقدامات» lifecycle widget unchanged. The host's `FrontComponentWidgetRenderer` passes `selectedRecordIds` and `objectNameSingular` from the record page; the existing form uses these to load the current quotation.
+- **Regression coverage:** `src/__tests__/s2-surfaces.test.ts` now asserts the record page uses the professional editor widget instead of raw fields.
+- **Scope/limitations:** GitHub source commits only. No SDK app apply, running Dev browser, database test, or live intranet deployment was performed by the architect. The source is not yet proven installed on `:3002`; a new app apply and real browser verification are still required. Existing non-atomic draft persistence remains separately open. No `:6080` action.
+
+
 ## CURRENT CHECKPOINT — CRM-129-QUOTATION-UNIFIED-CREATION-003 PASS WITH OPEN INTEGRITY RISK / One Creation Door (2026-11-21; latest)
 
 **Read first:** [CRM-129-QUOTATION-UNIFIED-CREATION-003-PROOF.md](./CRM-129-QUOTATION-UNIFIED-CREATION-003-PROOF.md).
