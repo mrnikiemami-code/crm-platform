@@ -316,3 +316,10 @@ export const QUOTATION_ACTIONS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
 
 export const EDIT_QUOTATION_DRAFT_COMMAND_UNIVERSAL_IDENTIFIER =
   'c9d0e1f2-a3b4-5567-9891-0123456789ac';
+// The quotation index page has no record selection, so the create entry point is
+// its own object-context command; the platform's generic create is closed for
+// quotation (isUICreatable: false) precisely so this becomes the only door.
+export const CREATE_QUOTATION_FROM_QUOTATIONS_COMMAND_UNIVERSAL_IDENTIFIER =
+  'd1e2f3a4-b5c6-5780-a123-456789abcdef';
+export const SEARCH_CUSTOMERS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'e2f3a4b5-c6d7-5891-8234-56789abcdef0';

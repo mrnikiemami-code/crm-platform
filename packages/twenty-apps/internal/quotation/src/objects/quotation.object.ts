@@ -40,6 +40,11 @@ export default defineObject({
   description:
     'پیش‌فاکتور کالا و خدمات. سند مالی قطعی نیست؛ فاکتور رسمی در سیستم حسابداری ثبت می‌شود.',
   icon: 'IconFileInvoice',
+  // A quotation is never created from Twenty's generic record form: a blank
+  // header with no customer and no lines is not a document. Closing the generic
+  // create affordance here is what routes every entry point to the professional
+  // draft form (the app's own command), while leaving other objects untouched.
+  isUICreatable: false,
   labelIdentifierFieldMetadataUniversalIdentifier: QUOTATION_FIELDS.name,
   fields: [
     {

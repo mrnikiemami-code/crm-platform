@@ -44,6 +44,7 @@ export type {
   OpenCommandConfirmationModalHostFunction,
   OpenSidePanelPageFunction,
   OpenSidePanelPageParams,
+  RefreshRecordDataFunction,
   RequestAccessTokenRefreshFunction,
   StorageClearFunction,
   StorageDeleteFunction,

@@ -5,6 +5,34 @@ import {
   persistDraftQuotation,
 } from 'src/services/quotation-persist.service';
 
+// A save verifies the customer round-trip before it writes anything, so every
+// mock that reaches a write has to answer that lookup like a real workspace.
+const answerCustomerLookup = (
+  query: string,
+): Record<string, unknown> | null => {
+  if (query.includes('query CustomerCompanies')) {
+    return {
+      companies: {
+        edges: [{ node: { id: 'company-1', name: 'شرکت تست' } }],
+        pageInfo: { hasNextPage: false },
+      },
+    };
+  }
+
+  if (query.includes('query CustomerPeople')) {
+    return {
+      people: {
+        edges: [
+          { node: { id: 'person-1', name: { firstName: 'سارا', lastName: 'تستی' } } },
+        ],
+        pageInfo: { hasNextPage: false },
+      },
+    };
+  }
+
+  return null;
+};
+
 describe('quotation-persist.service', () => {
   it('creates a catalog item through GraphQL when installed', async () => {
     const execute = vi.fn(async (query: string) => {
@@ -49,6 +77,12 @@ describe('quotation-persist.service', () => {
 
   it('refuses mutating a sent quotation', async () => {
     const execute = vi.fn(async (query: string) => {
+      const customerAnswer = answerCustomerLookup(query);
+
+      if (customerAnswer !== null) {
+        return customerAnswer;
+      }
+
       if (query.includes('QuotationById')) {
         return {
           quotation: { id: 'q-1', status: 'SENT', version: 1, name: 'قدیمی' },
@@ -98,6 +132,12 @@ describe('quotation-persist.service', () => {
 
   it('creates quotation and lines for a new draft', async () => {
     const execute = vi.fn(async (query: string) => {
+      const customerAnswer = answerCustomerLookup(query);
+
+      if (customerAnswer !== null) {
+        return customerAnswer;
+      }
+
       if (query.includes('createQuotation')) {
         return { createQuotation: { id: 'q-new', status: 'DRAFT', version: 1 } };
       }
@@ -172,6 +212,12 @@ describe('quotation-persist.service', () => {
 
   it('refuses a stale save whose version moved on', async () => {
     const execute = vi.fn(async (query: string) => {
+      const customerAnswer = answerCustomerLookup(query);
+
+      if (customerAnswer !== null) {
+        return customerAnswer;
+      }
+
       if (query.includes('QuotationById')) {
         return {
           quotation: { id: 'q-1', status: 'DRAFT', version: 3, name: 'دستی' },
@@ -224,6 +270,12 @@ describe('quotation-persist.service', () => {
     let quotationReads = 0;
 
     const execute = vi.fn(async (query: string) => {
+      const customerAnswer = answerCustomerLookup(query);
+
+      if (customerAnswer !== null) {
+        return customerAnswer;
+      }
+
       if (query.includes('QuotationById')) {
         quotationReads += 1;
 
@@ -322,10 +374,68 @@ describe('quotation-persist.service', () => {
     expect(queries.filter((query) => query.includes('deleteQuotationLine'))).toHaveLength(0);
   });
 
+  it('refuses a customer id the workspace cannot resolve, before any write', async () => {
+    const execute = vi.fn(async (query: string) => {
+      if (query.includes('query CustomerCompanies')) {
+        return { companies: { edges: [], pageInfo: { hasNextPage: false } } };
+      }
+
+      throw new Error(`unexpected query: ${query.slice(0, 80)}`);
+    });
+
+    const result = await persistDraftQuotation(
+      {
+        quotationId: null,
+        status: 'DRAFT',
+        customerType: 'COMPANY',
+        personId: null,
+        companyId: 'company-does-not-exist',
+        name: 'مشتری ساختگی',
+        paymentTerms: null,
+        taxPolicy: 'IR_VAT_9',
+        documentDiscount: { kind: 'NONE' },
+        displayMoneyUnit: 'TOMAN',
+        lines: [
+          {
+            clientLineId: '1',
+            catalogItemId: null,
+            kind: 'PRODUCT',
+            name: 'کالا',
+            description: null,
+            unit: 'عدد',
+            quantityText: '1',
+            unitPriceText: '1000',
+            moneyUnit: 'TOMAN',
+            discount: { kind: 'NONE' },
+          },
+        ],
+      },
+      { execute },
+    );
+
+    expect(result.kind).toBe('REJECTED');
+    if (result.kind !== 'REJECTED') {
+      return;
+    }
+
+    expect(result.code).toBe('CUSTOMER_NOT_FOUND');
+
+    const queries = execute.mock.calls.map(([query]) => String(query));
+
+    expect(queries.filter((query) => query.includes('mutation CreateQuotation {'))).toHaveLength(0);
+    expect(queries.filter((query) => query.includes('createQuotationLine'))).toHaveLength(0);
+  });
+
   it('soft deletes only the line a draft no longer has', async () => {
     let quotationReads = 0;
 
     const execute = vi.fn(async (query: string) => {
+      const customerAnswer = answerCustomerLookup(query);
+
+      if (customerAnswer !== null) {
+        return customerAnswer;
+      }
+
       if (query.includes('QuotationById')) {
         quotationReads += 1;
 

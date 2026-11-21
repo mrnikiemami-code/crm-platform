@@ -124,6 +124,7 @@ export const StorageRoundTrip: Story = {
         success: false,
         errorCode: 'UNEXPECTED',
       }),
+      refreshRecordData: async () => {},
     },
   },
 };

@@ -714,6 +714,20 @@ export const useFrontComponentExecutionContext = ({
       return parsed;
     };
 
+  // A draft is written by an app route, so the Apollo cache never learns about it.
+  // Refetching the active queries is the cache-neutral way to show the new row (or
+  // the edited total) in the table behind the panel, instead of a silently stale
+  // list until the operator reloads.
+  const refreshRecordData: FrontComponentHostCommunicationApi['refreshRecordData'] =
+    async () => {
+      try {
+        await apolloCoreClient.refetchQueries({ include: 'active' });
+      } catch {
+        // The write already succeeded; the panel reports it. A stale background
+        // row is not an error the operator can act on.
+      }
+    };
+
   const frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi =
     {
       navigate,
@@ -731,6 +745,7 @@ export const useFrontComponentExecutionContext = ({
       storageClear,
       callCommunicationRoute,
       callQuotationRoute,
+      refreshRecordData,
     };
 
   return {

@@ -30,6 +30,7 @@ export const hostApiMocks = {
     success: false,
     errorCode: 'UNEXPECTED',
   }),
+  refreshRecordData: fn().mockResolvedValue(undefined),
 };
 
 export const FRONT_COMPONENT_STORY_DEFAULT_ARGS: NonNullable<

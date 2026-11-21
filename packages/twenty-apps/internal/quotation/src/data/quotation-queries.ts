@@ -74,8 +74,8 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
       documentDiscountKind
       documentDiscountInputExact
       documentDiscountExact
-      person { id }
-      company { id }
+      person { id name { firstName lastName } }
+      company { id name }
     }
     quotationLines(
       filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }

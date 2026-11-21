@@ -44,4 +44,5 @@ export type WorkerFrontComponentHostCommunicationApi = {
     action: string;
     payload?: Record<string, unknown>;
   }) => Promise<unknown>;
+  refreshRecordData?: () => Promise<void>;
 };

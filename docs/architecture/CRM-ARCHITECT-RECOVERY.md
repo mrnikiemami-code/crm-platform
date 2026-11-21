@@ -1,12 +1,29 @@
 # CRM — Canonical Architect Recovery (read first)
 
-**Updated:** 2026-11-20 (CRM-129-QUOTATION-RECORD-UX-002)
+**Updated:** 2026-11-21 (CRM-129-QUOTATION-UNIFIED-CREATION-003)
 **Repository:** mrnikiemami-code/crm-platform
 **Authoritative working branch:** `release/record-access-115`
 **Historical detailed record:** [CRM-RECORD-ACCESS-RECOVERY.md](https://github.com/mrnikiemami-code/crm-platform/blob/docs/record-access-architecture-recovery-098-102/docs/architecture/CRM-RECORD-ACCESS-RECOVERY.md), branch `docs/record-access-architecture-recovery-098-102`. The historical file has stale early headers: read its **latest appended checkpoint**.
 **Scope:** CRM intranet on port 6080. Dev port 3002 is not production. Never silently substitute.
 
-## CURRENT CHECKPOINT — CRM-129-QUOTATION-RECORD-UX-002 PASS / Record Panel Edit, Lifecycle, Sharing (2026-11-20; latest)
+## CURRENT CHECKPOINT — CRM-129-QUOTATION-UNIFIED-CREATION-003 PASS WITH OPEN INTEGRITY RISK / One Creation Door (2026-11-21; latest)
+
+**Read first:** [CRM-129-QUOTATION-UNIFIED-CREATION-003-PROOF.md](./CRM-129-QUOTATION-UNIFIED-CREATION-003-PROOF.md).
+
+- **Branch / base:** `feat/crm-129-quotation` from `82447297c8d52e55f02f67c4978a3f5ed3ddb749`. Quotation app **0.1.17** deployed to `dev-crm129`.
+- **One creation door:** `quotation` now has `isUICreatable: false`, so Twenty's generic record form can no longer start a quotation from any screen (list, inline, panel). The only entry is the app's `GLOBAL_OBJECT_CONTEXT` command «پیش‌فاکتور جدید» (`create-quotation-from-quotations.command-menu-item.ts`), which opens `QuotationDraftForm`. Verified in dev: opening and cancelling the form leaves the table at 95 rows — no blank header row is written.
+- **Customer:** new `CustomerPicker` (debounced real Person/Company search, loading/empty/error/retry, readable names) plus `/quotation/search-customers` (auth-required, app-role reads, Persian permission errors). `verifyCustomerRecord` refuses fabricated/empty customers **before the first write** (`CUSTOMER_NOT_FOUND`, zero mutations in test). Person/Company creation preselects and preserves the relation; the form resolves the id to a real label and never populates both sides.
+- **Edit in place:** «اقدامات» → «ویرایش پیش‌نویس» opens the same form with the real `quotationId`; header, customer label (now hydrated via `person { name { firstName lastName } }` / `company { name }`), lines, discounts, payment terms and version are read from the DB. Save updates the same id with `expectedVersion`; stale saves get `VERSION_CONFLICT` (Persian). Dev: `3ac47bbf-fabe-492b-83a1-14e70905e8c3`, version 2 → 4, 33,000 + 2,970 = **35,970 IRR**, exactly one row and one line — no duplicate.
+- **Locked documents:** non-DRAFT refuses content edits with `QUOTATION_IMMUTABLE` (Persian) and every content section is `pointerEvents: none`, dimmed, save disabled. Verified on the same document after it reached `READY_TO_SEND`.
+- **Live list sync:** a narrow, argument-free `refreshRecordData` was added to the Front Component host API (`refetchQueries({ include: 'active' })`), so the table shows the new name/customer/status/amount/number right after an app-route save. Missing bridge degrades gracefully (stale row until reload, save still succeeds).
+- **Lifecycle / number:** same document went `DRAFT` → `PENDING_INTERNAL_APPROVAL` → `READY_TO_SEND` (version 5 → 6) and claimed `QT-1405-000030`; `_quotationSequence` shows `QUOTATION:1405 lastIssued=30` — unique, no gap-filling. PDF action present and seven sharing channels listed; **no share row was written** and no provider was called (Bale stays `LIVE_UNVERIFIED`).
+- **Regression:** metadata readback shows `person`, `company`, `task` still `isUICreatable = true`; native create forms still open for all three. RTL drawer resize re-checked (180 → 320 px out, back to 220 px).
+- **DATA INTEGRITY — NOT PASS:** header and each line are still separate GraphQL round-trips (`update/create quotation` → per-line update/create → stale deletes → read-back). No transaction exists; a mid-save failure can leave a DRAFT with new totals and partly-old lines. It stays DRAFT, so numbering/PDF/send cannot consume it as final. A transactional server endpoint is required before any `DATA_INTEGRITY_PASS`.
+- **Tests:** quotation app vitest **269**; renderer host-API jest **2**; front execution-context jest **60** (needs `NODE_ENV=test`); `tsgo` clean for twenty-front, twenty-sdk, twenty-front-component-renderer and the app. Dev scripts `dev-verify-crm129-unified-creation.cjs` and `tmp-uni003-locked.cjs` passed.
+- **Continue at:** architect gate — STOP_FOR_ARCHITECT. Next decision: approve a transactional save endpoint, and connect real outbound sharing separately.
+- **Unrelated locals left dirty (not committed):** Settings select/API-key front files + their test, plus `.tmp-*` probe files.
+
+## PREVIOUS CHECKPOINT — CRM-129-QUOTATION-RECORD-UX-002 PASS / Record Panel Edit, Lifecycle, Sharing (2026-11-20; historical)
 
 **Read first:** [CRM-129-QUOTATION-RECORD-UX-002-PROOF.md](./CRM-129-QUOTATION-RECORD-UX-002-PROOF.md).
 

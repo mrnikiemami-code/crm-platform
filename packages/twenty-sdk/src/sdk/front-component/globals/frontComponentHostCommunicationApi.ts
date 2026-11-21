@@ -118,6 +118,11 @@ export type UpdateProgressFunction = (progress: number) => Promise<void>;
 
 export type RequestAccessTokenRefreshFunction = () => Promise<string>;
 
+// Asks the host to refetch what is on screen. A front component writes through
+// its own app routes, so the browser cache behind the panel cannot know the row
+// changed; the host owns that cache and is the only place a refresh can happen.
+export type RefreshRecordDataFunction = () => Promise<void>;
+
 export type CopyToClipboardFunction = (text: string) => Promise<void>;
 
 export type UploadedFrontComponentFile = {
@@ -179,6 +184,7 @@ export type FrontComponentHostCommunicationApiStore = {
   storageSet?: StorageSetFunction;
   storageDelete?: StorageDeleteFunction;
   storageClear?: StorageClearFunction;
+  refreshRecordData?: RefreshRecordDataFunction;
 };
 
 import { FRONT_COMPONENT_HOST_COMMUNICATION_API_KEY } from '../constants/front-component-host-communication-api-key';

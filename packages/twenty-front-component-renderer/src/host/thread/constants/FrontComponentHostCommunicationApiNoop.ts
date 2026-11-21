@@ -23,4 +23,5 @@ export const FRONT_COMPONENT_HOST_COMMUNICATION_API_NOOP: FrontComponentHostComm
       success: false,
       errorCode: 'UNEXPECTED',
     }),
+    refreshRecordData: async () => {},
   };

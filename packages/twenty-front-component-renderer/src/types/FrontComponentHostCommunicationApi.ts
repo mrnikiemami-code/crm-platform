@@ -5,6 +5,7 @@ import {
   type NavigateFunction,
   type OpenCommandConfirmationModalHostFunction,
   type OpenSidePanelPageFunction,
+  type RefreshRecordDataFunction,
   type RequestAccessTokenRefreshFunction,
   type StorageClearFunction,
   type StorageDeleteFunction,
@@ -62,4 +63,13 @@ export type FrontComponentHostCommunicationApi = {
   storageClear: StorageClearFunction;
   callCommunicationRoute: CallCommunicationRouteFunction;
   callQuotationRoute: CallQuotationRouteFunction;
+  /**
+   * Refetches the records currently on screen.
+   *
+   * A front component writes through its own app routes, so nothing in the
+   * browser cache learns a row changed. This is the narrow, argument-free way to
+   * ask the host to re-read: it cannot name a URL, a query or a record, so it
+   * cannot be used to read anything the host would not already fetch.
+   */
+  refreshRecordData: RefreshRecordDataFunction;
 };

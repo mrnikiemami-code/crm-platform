@@ -19,6 +19,7 @@ const meta: Meta<typeof FrontComponentRenderer> = {
       frontComponentId: 'storybook-test',
       userId: null,
       recordId: null,
+      objectNameSingular: null,
       selectedRecordIds: [],
       timelineActivityId: null,
       colorScheme: 'light',

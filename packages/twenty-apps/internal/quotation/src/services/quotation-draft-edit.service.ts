@@ -10,6 +10,7 @@ import {
 } from 'src/domain/money/display-format';
 import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
 import { canEditQuotationLines, type QuotationStatus } from 'src/domain/quotation/status';
+import { buildQuotationCustomerLabel } from 'src/domain/quotation/customer-label';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Reads a saved draft back into the same shape the edit form holds in state.
@@ -42,6 +43,9 @@ export type EditableDraft = {
   customerType: 'PERSON' | 'COMPANY';
   personId: string | null;
   companyId: string | null;
+  // Readable name of the relation the draft points at, so reopening a draft shows
+  // the customer instead of an empty picker the operator would have to re-choose.
+  customerLabel: string | null;
   paymentTerms: string;
   taxPolicy: string | null;
   moneyUnit: MoneyUnit;
@@ -83,6 +87,23 @@ const readRelationId = (value: unknown): string | null => {
   return typeof node?.id === 'string' && node.id.trim() !== ''
     ? node.id.trim()
     : null;
+};
+
+const readRelationLabel = (quotation: Record<string, unknown>): string | null => {
+  const person = asRecord(quotation.person);
+  const company = asRecord(quotation.company);
+
+  return buildQuotationCustomerLabel({
+    person:
+      person === null
+        ? null
+        : {
+            name: asRecord(person.name) as
+              | { firstName?: string | null; lastName?: string | null }
+              | null,
+          },
+    company: company === null ? null : { name: readNullableText(company.name) },
+  });
 };
 
 const parseExact = (text: string): bigint | null => {
@@ -314,6 +335,7 @@ export const parseDraftForEdit = (
     customerType,
     personId: customerType === 'PERSON' ? personId : null,
     companyId: customerType === 'COMPANY' ? companyId : null,
+    customerLabel: readRelationLabel(quotation),
     paymentTerms: readText(quotation.paymentTerms),
     taxPolicy: readNullableText(quotation.taxPolicy),
     moneyUnit,

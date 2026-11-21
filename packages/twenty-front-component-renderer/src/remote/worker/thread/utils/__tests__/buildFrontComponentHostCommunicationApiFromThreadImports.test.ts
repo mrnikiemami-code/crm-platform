@@ -17,6 +17,9 @@ const createHostThreadImportsStub = () =>
     storageSet: jest.fn(),
     storageDelete: jest.fn(),
     storageClear: jest.fn(),
+    callCommunicationRoute: jest.fn(),
+    callQuotationRoute: jest.fn(),
+    refreshRecordData: jest.fn(),
     hostFetch: jest.fn(),
   }) as unknown as FrontComponentHostThreadExports;
 
@@ -34,12 +37,15 @@ describe('buildFrontComponentHostCommunicationApiFromThreadImports', () => {
       );
 
     expect(Object.keys(hostCommunicationApi).sort()).toEqual([
+      'callCommunicationRoute',
+      'callQuotationRoute',
       'closeSidePanel',
       'copyToClipboard',
       'enqueueSnackbar',
       'navigate',
       'openCommandConfirmationModal',
       'openSidePanelPage',
+      'refreshRecordData',
       'requestAccessTokenRefresh',
       'storageClear',
       'storageDelete',
@@ -77,6 +83,15 @@ describe('buildFrontComponentHostCommunicationApiFromThreadImports', () => {
     );
     expect(hostCommunicationApi.storageClear).toBe(
       hostThreadImports.storageClear,
+    );
+    expect(hostCommunicationApi.callCommunicationRoute).toBe(
+      hostThreadImports.callCommunicationRoute,
+    );
+    expect(hostCommunicationApi.callQuotationRoute).toBe(
+      hostThreadImports.callQuotationRoute,
+    );
+    expect(hostCommunicationApi.refreshRecordData).toBe(
+      hostThreadImports.refreshRecordData,
     );
   });
 

@@ -18,9 +18,12 @@ jest.mock('@/object-metadata/hooks/useObjectMetadataItems', () => ({
   }),
 }));
 
+const mockRefetchQueries = jest.fn().mockResolvedValue(undefined);
+
 jest.mock('@/object-metadata/hooks/useApolloCoreClient', () => ({
+  // Called lazily so the mock above is initialized by the time a test uses it.
   useApolloCoreClient: () => ({
-    refetchQueries: jest.fn().mockResolvedValue(undefined),
+    refetchQueries: (...args: unknown[]) => mockRefetchQueries(...args),
   }),
 }));
 
@@ -1341,6 +1344,36 @@ describe('useFrontComponentExecutionContext', () => {
       ).rejects.toThrow('Device storage requires a signed-in user');
 
       expect(mockStorageSet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshRecordData', () => {
+    beforeEach(() => {
+      mockRefetchQueries.mockReset().mockResolvedValue(undefined);
+    });
+
+    it('should refetch every active query so the list behind the panel updates', async () => {
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      await act(async () => {
+        await result.current.frontComponentHostCommunicationApi.refreshRecordData();
+      });
+
+      expect(mockRefetchQueries).toHaveBeenCalledWith({ include: 'active' });
+    });
+
+    it('should not reject when the refetch itself fails', async () => {
+      mockRefetchQueries.mockRejectedValueOnce(new Error('network down'));
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      await expect(
+        result.current.frontComponentHostCommunicationApi.refreshRecordData(),
+      ).resolves.toBeUndefined();
     });
   });
 });

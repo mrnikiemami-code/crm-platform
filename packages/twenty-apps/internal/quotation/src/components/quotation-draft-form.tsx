@@ -12,7 +12,12 @@ import {
 import { MoneyAmountInput } from 'src/components/money-amount-input';
 import { PersianPlainNumberInput } from 'src/components/persian-plain-number-input';
 import {
+  CustomerPicker,
+  type CustomerSelection,
+} from 'src/components/customer-picker';
+import {
   SAVE_DRAFT_ROUTE,
+  SEARCH_CUSTOMERS_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
 import { executeRecordGraphql } from 'src/data/record-api';
@@ -68,6 +73,39 @@ const newLine = (): LineDraft => ({
 });
 
 const PROBLEM_FALLBACK = 'لطفاً ورودی‌ها را بررسی کنید.';
+
+// The draft is written by an app route, outside the browser's Apollo cache. The
+// host owns that cache, so the only honest way to refresh the list behind the
+// panel is to ask the host to refetch. Older hosts do not expose it; a missing
+// bridge must not turn a successful save into an error.
+type RefreshRecordDataHostFunction = () => Promise<void>;
+
+const readRefreshRecordData = (): RefreshRecordDataHostFunction | null => {
+  const api = (
+    globalThis as unknown as {
+      frontComponentHostCommunicationApi?: {
+        refreshRecordData?: RefreshRecordDataHostFunction;
+      };
+    }
+  ).frontComponentHostCommunicationApi;
+  const refresh = api?.refreshRecordData;
+
+  return typeof refresh === 'function' ? refresh : null;
+};
+
+const refreshRecordDataFromHost = async (): Promise<void> => {
+  const refresh = readRefreshRecordData();
+
+  if (refresh === null) {
+    return;
+  }
+
+  try {
+    await refresh();
+  } catch {
+    // The save already succeeded; a stale table row is not worth a second alert.
+  }
+};
 
 const TAX_LABEL = (() => {
   const policy = resolveTaxPolicy(DEFAULT_TAX_POLICY_ID);
@@ -175,6 +213,12 @@ export const QuotationDraftForm = () => {
         ? { personId: null, companyId: sourceRecordId }
         : { personId: null, companyId: null },
   );
+  // Labels are never derived from an id: a preselected relation is resolved by
+  // reading the record, so the operator sees a name they can trust.
+  const [customerLabels, setCustomerLabels] = useState<{
+    PERSON: string | null;
+    COMPANY: string | null;
+  }>({ PERSON: null, COMPANY: null });
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(
     null,
   );
@@ -234,6 +278,11 @@ export const QuotationDraftForm = () => {
           personId: draft.personId,
           companyId: draft.companyId,
         });
+        setCustomerLabels({
+          PERSON: draft.customerType === 'PERSON' ? draft.customerLabel : null,
+          COMPANY:
+            draft.customerType === 'COMPANY' ? draft.customerLabel : null,
+        });
         setDocumentDiscountKind(draft.documentDiscountKind);
         setDocumentDiscountPercentText(draft.documentDiscountPercentText);
         setDocumentDiscountAmountText(draft.documentDiscountAmountText);
@@ -281,6 +330,77 @@ export const QuotationDraftForm = () => {
       cancelled = true;
     };
   }, [isRecordEdit, sourceRecordId]);
+
+  // A preselected customer (create from a person/company) arrives as an id only.
+  // The label is read back from the record so the panel never shows a raw id.
+  useEffect(() => {
+    if (isRecordEdit) {
+      return;
+    }
+
+    const pending: { type: 'PERSON' | 'COMPANY'; id: string }[] = [];
+
+    if (customerIds.personId !== null && customerLabels.PERSON === null) {
+      pending.push({ type: 'PERSON', id: customerIds.personId });
+    }
+
+    if (customerIds.companyId !== null && customerLabels.COMPANY === null) {
+      pending.push({ type: 'COMPANY', id: customerIds.companyId });
+    }
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveLabels = async () => {
+      for (const entry of pending) {
+        try {
+          const response = await callAppRoute(SEARCH_CUSTOMERS_ROUTE, {
+            customerType: entry.type,
+            search: '',
+            recordId: entry.id,
+          });
+
+          if (cancelled) {
+            return;
+          }
+
+          const rows = Array.isArray(response.data.rows)
+            ? response.data.rows
+            : [];
+          const row = rows.find(
+            (candidate) =>
+              typeof candidate === 'object' &&
+              candidate !== null &&
+              (candidate as { id?: unknown }).id === entry.id,
+          ) as { label?: unknown } | undefined;
+
+          if (typeof row?.label === 'string' && row.label.trim() !== '') {
+            setCustomerLabels((current) => ({
+              ...current,
+              [entry.type]: row.label as string,
+            }));
+          }
+        } catch {
+          // The save validates the id on the server; a missing label is cosmetic.
+        }
+      }
+    };
+
+    void resolveLabels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isRecordEdit,
+    customerIds.personId,
+    customerIds.companyId,
+    customerLabels.PERSON,
+    customerLabels.COMPANY,
+  ]);
 
   const preview = useMemo(() => {
     const draftLines = lines.map((line) => toDraftLineInput(line, moneyUnit));
@@ -330,6 +450,35 @@ export const QuotationDraftForm = () => {
         line.clientLineId === clientLineId ? { ...line, ...patch } : line,
       ),
     );
+  };
+
+  const selectedCustomer: CustomerSelection | null =
+    customerType === 'PERSON'
+      ? customerIds.personId === null
+        ? null
+        : {
+            id: customerIds.personId,
+            label: customerLabels.PERSON ?? 'در حال خواندن نام مشتری…',
+          }
+      : customerIds.companyId === null
+        ? null
+        : {
+            id: customerIds.companyId,
+            label: customerLabels.COMPANY ?? 'در حال خواندن نام مشتری…',
+          };
+
+  // Selecting a record is the only way a customer is set. The other side is
+  // cleared so a stale relation can never be sent alongside the new one.
+  const onSelectCustomer = (selection: CustomerSelection) => {
+    setCustomerIds(
+      customerType === 'PERSON'
+        ? { personId: selection.id, companyId: null }
+        : { personId: null, companyId: selection.id },
+    );
+    setCustomerLabels((current) => ({
+      ...current,
+      [customerType]: selection.label,
+    }));
   };
 
   const applyCatalogSelection = (
@@ -408,9 +557,12 @@ export const QuotationDraftForm = () => {
           ? response.data.version
           : recordVersion;
 
+      // The write happens in an app route, so the browser cache behind this panel
+      // still holds the old row. Without this the list would keep the previous
+      // amount (or miss the new quotation) until a manual reload.
+      await refreshRecordDataFromHost();
+
       if (editingQuotationId === null) {
-        // Created records keep the panel where it is only when they were opened
-        // from a person or company; the existing close behaviour stays.
         enqueueSnackbar({
           message: toPersianUiMessage(
             response.data.message,
@@ -436,19 +588,13 @@ export const QuotationDraftForm = () => {
   };
 
   const customerHint =
-    editingQuotationId !== null
-      ? customerType === 'PERSON'
-        ? customerIds.personId === null
-          ? 'این پیش‌فاکتور هنوز به شخصی وصل نشده است.'
-          : 'مشتری: شخص متصل به این پیش‌فاکتور'
-        : customerIds.companyId === null
-          ? 'این پیش‌فاکتور هنوز به شرکتی وصل نشده است.'
-          : 'مشتری: شرکت متصل به این پیش‌فاکتور'
-      : sourceRecordId === ''
-        ? 'مشتری از رکورد انتخاب‌شده در CRM گرفته می‌شود؛ از فرمان ایجاد روی شخص یا شرکت استفاده کنید.'
-        : customerType === 'PERSON'
-          ? 'مشتری: شخص انتخاب‌شده'
-          : 'مشتری: شرکت انتخاب‌شده';
+    selectedCustomer === null
+      ? 'تا وقتی یک شخص یا شرکت واقعی انتخاب نشود، ذخیره ممکن نیست.'
+      : editingQuotationId !== null
+        ? 'مشتری متصل به این پیش‌فاکتور؛ با «تغییر مشتری» می‌توانید آن را عوض کنید.'
+        : sourceRecordId === ''
+          ? 'مشتری از میان رکوردهای واقعی CRM انتخاب می‌شود.'
+          : 'مشتری از رکوردی گرفته شده که فرم از آن باز شده است.';
 
   const isFormLocked = loadingDraft || draftLocked;
   const canSave =
@@ -499,7 +645,6 @@ export const QuotationDraftForm = () => {
               onChange={(event) => setName(event.target.value)}
             />
           </label>
-          <p style={styles.meta}>{customerHint}</p>
           <div style={styles.row}>
             <label style={styles.label}>
               نوع مشتری
@@ -528,6 +673,16 @@ export const QuotationDraftForm = () => {
               </select>
             </label>
           </div>
+          <label style={styles.label}>
+            مشتری
+            <CustomerPicker
+              customerType={customerType}
+              selected={selectedCustomer}
+              onSelect={onSelectCustomer}
+              disabled={isFormLocked}
+            />
+          </label>
+          <p style={styles.meta}>{customerHint}</p>
           <label style={styles.label}>
             شرایط پرداخت
             <input
@@ -682,7 +837,7 @@ export const QuotationDraftForm = () => {
           })}
         </section>
 
-        <section style={styles.section}>
+        <section style={formSectionStyle}>
           <h3 style={styles.sectionTitle}>تخفیف کل سند</h3>
           <div style={styles.row}>
             <label style={styles.label}>

@@ -39,6 +39,7 @@ import {
 } from 'src/services/quotation-save.service';
 import { type CatalogItemUpsertInput } from 'src/domain/catalog/catalog-upsert';
 import { type DraftQuotationInput } from 'src/domain/quotation/draft-quotation';
+import { verifyCustomerRecord } from 'src/services/customer-picker.service';
 
 export type PersistDependencies = {
   execute: (query: string) => Promise<Record<string, unknown>>;
@@ -278,6 +279,32 @@ export const persistDraftQuotation = async (
       kind: 'REJECTED',
       code: payload.refusal.code,
       message: payload.refusal.detail,
+    };
+  }
+
+  // Existence and read permission are checked BEFORE the first write. A customer
+  // id the workspace cannot resolve is a fabricated value, and writing the header
+  // first would leave a quotation pointing at nothing. The domain already refuses
+  // a missing or mixed customer; this is the part only a round-trip can answer.
+  const customerType =
+    payload.value.quotation.customerType === 'PERSON' ? 'PERSON' : 'COMPANY';
+  const customerRecordId =
+    customerType === 'PERSON'
+      ? payload.value.quotation.personId
+      : payload.value.quotation.companyId;
+  const customerCheck = await verifyCustomerRecord(
+    {
+      customerType,
+      recordId: typeof customerRecordId === 'string' ? customerRecordId : '',
+    },
+    dependencies,
+  );
+
+  if (!customerCheck.ok) {
+    return {
+      kind: 'REJECTED',
+      code: customerCheck.refusal.code,
+      message: customerCheck.refusal.detail,
     };
   }
 
