@@ -295,10 +295,11 @@ const main = async () => {
     `status=${exportPreview.body.preview?.quotationStatus} revision=${exportPreview.body.preview?.revisionVersion} lines=${exportPreview.body.preview?.lineItemIds?.length}`,
   );
 
-  // 11b. KNOWN DEPENDENCY, recorded rather than hidden: this workspace has no sealed
-  //      revision yet, so even with the switches on the export stops at REVISION_NOT_FOUND.
-  //      The gate is proven by unit tests with a revision fixture; producing revisions is the
-  //      quotation-lifecycle task, which this task must not modify.
+  // 11b. KNOWN HISTORICAL GAP, recorded rather than hidden: this quotation was approved
+  //      before revisions were sealed, so it has none and an export would stop at
+  //      REVISION_NOT_FOUND with the switches on. New approvals seal a revision inside
+  //      the approval transaction (proven by dev-exercise-crm129-revision-seal.cjs), so
+  //      this is a legacy record, not a missing feature.
   const revisionCount = await gql(
     `{ quotationRevisions(filter: { quotationId: { eq: "${QUOTATION_ID}" } }) { edges { node { id status version } } } }`,
   );

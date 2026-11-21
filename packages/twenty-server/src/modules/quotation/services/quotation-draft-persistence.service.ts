@@ -37,10 +37,15 @@ type QuotationLineIdRow = {
   id: string;
 };
 
+// The ORM hands back `name` as a composite object even when the select lists the flat
+// columns, so reading `nameFirstName` off the row silently yields nothing and every
+// person draft would be refused as a missing customer.
 type PersonNameRow = {
   id: string;
-  nameFirstName: string | null;
-  nameLastName: string | null;
+  name: {
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
 };
 
 type CompanyNameRow = {
@@ -48,7 +53,10 @@ type CompanyNameRow = {
   name: string | null;
 };
 
-const rejected = (code: string, detail?: string): QuotationDraftSaveOutcome => ({
+const rejected = (
+  code: string,
+  detail?: string,
+): QuotationDraftSaveOutcome => ({
   kind: 'REJECTED',
   code,
   message: persianMessageForQuotationCode(code, detail),
@@ -438,20 +446,17 @@ export class QuotationDraftPersistenceService {
         .getRepository<PersonNameRow>('person', {
           shouldBypassPermissionChecks: true,
         })
-        .findOne({
-          where: { id: header.personId },
-          select: { id: true, nameFirstName: true, nameLastName: true },
-        });
+        .findOne({ where: { id: header.personId } });
 
       if (!isDefined(person)) {
         return null;
       }
 
-      const firstName = isNonEmptyString(person.nameFirstName)
-        ? person.nameFirstName
+      const firstName = isNonEmptyString(person.name?.firstName)
+        ? person.name.firstName
         : '';
-      const lastName = isNonEmptyString(person.nameLastName)
-        ? person.nameLastName
+      const lastName = isNonEmptyString(person.name?.lastName)
+        ? person.name.lastName
         : '';
       const label = `${firstName} ${lastName}`.trim();
 

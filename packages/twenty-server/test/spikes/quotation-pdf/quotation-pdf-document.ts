@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type ViewProps,
 } from '@react-pdf/renderer';
 
 import { applyPersianPdfTextLayerFixes } from './fontkit-zwnj-preservation';
@@ -113,10 +114,13 @@ export type QuotationPdfSpikeInput = {
 // `direction: 'rtl'` is the switch that matters: @react-pdf/stylesheet passes it
 // through untouched, textkit derives the bidi embedding level from it, and it
 // also defaults text alignment to the right.
-const RTL_TEXT_STYLE = { direction: 'rtl' as const, textAlign: 'right' as const };
+const RTL_TEXT_STYLE = {
+  direction: 'rtl' as const,
+  textAlign: 'right' as const,
+};
 
 const tableCell = (
-  style: object,
+  style: ViewProps['style'],
   text: string,
   key?: string,
 ): ReactElement =>
@@ -141,7 +145,11 @@ export const buildQuotationPdfSpikeDocument = (
     createElement(
       Page,
       { size: 'A4', style: styles.page, wrap: true },
-      createElement(Text, { style: [styles.heading, RTL_TEXT_STYLE] }, input.title),
+      createElement(
+        Text,
+        { style: [styles.heading, RTL_TEXT_STYLE] },
+        input.title,
+      ),
       createElement(
         Text,
         { style: [styles.meta, RTL_TEXT_STYLE] },

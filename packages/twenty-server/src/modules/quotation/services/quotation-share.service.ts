@@ -43,8 +43,7 @@ type CompanyNameRow = {
 
 type PersonNameRow = {
   id: string;
-  nameFirstName: string | null;
-  nameLastName: string | null;
+  name: { firstName: string | null; lastName: string | null } | null;
 };
 
 export type QuotationShareResult = {
@@ -183,7 +182,8 @@ export class QuotationShareService {
           'پیش‌فاکتور از طریق بله ارسال شد و نتیجهٔ واقعی در تاریخچه ثبت شد.';
       } else {
         outcome = 'PROVIDER_FAILED';
-        communicationId = outbound.success === false ? outbound.communicationId : null;
+        communicationId =
+          outbound.success === false ? outbound.communicationId : null;
         message =
           outbound.success === false
             ? outbound.error
@@ -381,11 +381,11 @@ export class QuotationShareService {
   }> {
     return this.workspaceOrmManager.executeInWorkspaceContext(async () => {
       if (isNonEmptyString(quotation.companyId)) {
-        const company =
-          await this.workspaceOrmManager.getRepository<CompanyNameRow>(
-            'company',
-            { shouldBypassPermissionChecks: true },
-          ).findOne({
+        const company = await this.workspaceOrmManager
+          .getRepository<CompanyNameRow>('company', {
+            shouldBypassPermissionChecks: true,
+          })
+          .findOne({
             where: { id: quotation.companyId },
             select: { id: true, name: true },
           });
@@ -398,24 +398,20 @@ export class QuotationShareService {
       }
 
       if (isNonEmptyString(quotation.personId)) {
-        const person =
-          await this.workspaceOrmManager.getRepository<PersonNameRow>(
-            'person',
-            { shouldBypassPermissionChecks: true },
-          ).findOne({
+        const person = await this.workspaceOrmManager
+          .getRepository<PersonNameRow>('person', {
+            shouldBypassPermissionChecks: true,
+          })
+          .findOne({
             where: { id: quotation.personId },
-            select: {
-              id: true,
-              nameFirstName: true,
-              nameLastName: true,
-            },
           });
 
-        const firstName = isNonEmptyString(person?.nameFirstName)
-          ? person.nameFirstName
+        // The ORM returns `name` as a composite object; the flat columns are not hydrated.
+        const firstName = isNonEmptyString(person?.name?.firstName)
+          ? person.name.firstName
           : '';
-        const lastName = isNonEmptyString(person?.nameLastName)
-          ? person.nameLastName
+        const lastName = isNonEmptyString(person?.name?.lastName)
+          ? person.name.lastName
           : '';
         const personName = `${firstName} ${lastName}`.trim();
 

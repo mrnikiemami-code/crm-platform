@@ -126,6 +126,45 @@ describe('revision hash', () => {
   it('is a hex sha256', () => {
     expect(hashQuotationRevision(snapshot())).toMatch(/^[0-9a-f]{64}$/);
   });
+
+  // The server seals revisions and the app verifies them, so both canonical forms must
+  // produce the same bytes. The matching assertion lives in
+  // packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-revision-snapshot.util.spec.ts
+  it('matches the fingerprint the server seals', () => {
+    const shared: QuotationRevisionSnapshot = {
+      quotationId: 'q-1',
+      version: 1,
+      quotationNumber: 'QT-1405-000001',
+      currencyCode: 'IRR',
+      customerRef: 'c-1',
+      taxPolicy: 'VAT_9',
+      paymentTerms: null,
+      lines: [
+        {
+          lineId: 'l-1',
+          description: 'خدمت',
+          unit: 'ساعت',
+          quantityScaled: '1000000',
+          unitPriceMicros: '1000000000',
+          discountMicros: '100000000',
+          taxMicros: '81000000',
+          totalMicros: '981000000',
+        },
+      ],
+      totals: {
+        grossMicros: '1000000000',
+        discountMicros: '100000000',
+        netMicros: '900000000',
+        taxMicros: '81000000',
+        totalMicros: '981000000',
+      },
+      issuedAt: '2026-11-21T08:00:00.000Z',
+    };
+
+    expect(hashQuotationRevision(shared)).toBe(
+      '7910eb7db5a0825dcceb0347c12de4f63a4ef48bad5351a625bdc0dcec57ab51',
+    );
+  });
 });
 
 describe('immutability', () => {

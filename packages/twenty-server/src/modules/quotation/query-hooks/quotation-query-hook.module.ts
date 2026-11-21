@@ -18,12 +18,14 @@ import { QuotationUpdateOnePreQueryHook } from 'src/modules/quotation/query-hook
 import { QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
 import { QuotationNumberService } from 'src/modules/quotation/services/quotation-number.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
+import { QuotationRevisionService } from 'src/modules/quotation/services/quotation-revision.service';
 
 @Module({
   imports: [WorkspaceCacheModule],
   providers: [
     QuotationPermissionService,
     QuotationNumberService,
+    QuotationRevisionService,
     QuotationImmutabilityService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,

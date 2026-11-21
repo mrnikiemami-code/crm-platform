@@ -10,6 +10,7 @@ import {
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
 import { QuotationNumberService } from 'src/modules/quotation/services/quotation-number.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
+import { QuotationRevisionService } from 'src/modules/quotation/services/quotation-revision.service';
 import {
   DRAFT_QUOTATION_NUMBER_LABEL,
   formatQuotationNumberLabel,
@@ -33,6 +34,16 @@ type QuotationStatusRow = {
   version: number | null;
 };
 
+// A revision exists from the moment a customer could be holding the document. CANCELLED
+// is deliberately absent: cancelling a draft must not mint a sealed document, and a
+// cancelled issued quotation already carries the revision sealed at approval.
+const QUOTATION_ISSUED_STATUSES = new Set([
+  'READY_TO_SEND',
+  'SENT',
+  'CUSTOMER_ACCEPTED',
+  'CUSTOMER_REJECTED',
+]);
+
 type QuotationNumberedStatusRow = QuotationStatusRow & {
   quotationNumber: string | null;
   quotationNumberLabel: string | null;
@@ -49,6 +60,7 @@ export class QuotationImmutabilityService {
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     private readonly quotationPermissionService: QuotationPermissionService,
     private readonly quotationNumberService: QuotationNumberService,
+    private readonly quotationRevisionService: QuotationRevisionService,
   ) {}
 
   async assertQuotationUpdateAllowed({
@@ -138,12 +150,13 @@ export class QuotationImmutabilityService {
           // quotation cannot mint a second identity for the same document.
           const nextStatus =
             typeof patch.status === 'string' ? patch.status : row.status;
+          const issuedAt = new Date();
           const issuedNumber =
             row.quotationNumber === null || row.quotationNumber.trim() === ''
               ? nextStatus === 'READY_TO_SEND'
                 ? await this.quotationNumberService.allocateQuotationNumber({
                     transactionScope,
-                    issuedAt: new Date(),
+                    issuedAt,
                   })
                 : null
               : null;
@@ -179,6 +192,20 @@ export class QuotationImmutabilityService {
               'QUOTATION_VERSION_CONFLICT: quotation was changed concurrently; reload the current version and retry',
               QuotationQueryValidationExceptionCode.FORBIDDEN,
             );
+          }
+
+          // Sealed after the write, in this transaction: the bytes are read back from the
+          // row that was just approved, not from the patch a caller supplied.
+          if (QUOTATION_ISSUED_STATUSES.has(nextStatus)) {
+            await this.quotationRevisionService.sealIfMissing({
+              transactionScope,
+              quotationId,
+              issuedBy:
+                'workspaceMemberId' in authContext
+                  ? authContext.workspaceMemberId
+                  : null,
+              issuedAt,
+            });
           }
         },
       );

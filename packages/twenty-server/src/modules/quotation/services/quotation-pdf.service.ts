@@ -55,8 +55,7 @@ type QuotationLinePdfRow = {
 
 type PersonNameRow = {
   id: string;
-  nameFirstName: string | null;
-  nameLastName: string | null;
+  name: { firstName: string | null; lastName: string | null } | null;
 };
 
 type CompanyNameRow = {
@@ -173,11 +172,11 @@ export class QuotationPdfService {
     quotation: QuotationPdfRow,
   ): Promise<string> {
     if (isNonEmptyString(quotation.companyId)) {
-      const company =
-        await this.workspaceOrmManager.getRepository<CompanyNameRow>(
-          'company',
-          { shouldBypassPermissionChecks: true },
-        ).findOne({
+      const company = await this.workspaceOrmManager
+        .getRepository<CompanyNameRow>('company', {
+          shouldBypassPermissionChecks: true,
+        })
+        .findOne({
           where: { id: quotation.companyId },
           select: { id: true, name: true },
         });
@@ -188,20 +187,20 @@ export class QuotationPdfService {
     }
 
     if (isNonEmptyString(quotation.personId)) {
-      const person =
-        await this.workspaceOrmManager.getRepository<PersonNameRow>(
-          'person',
-          { shouldBypassPermissionChecks: true },
-        ).findOne({
+      const person = await this.workspaceOrmManager
+        .getRepository<PersonNameRow>('person', {
+          shouldBypassPermissionChecks: true,
+        })
+        .findOne({
           where: { id: quotation.personId },
-          select: { id: true, nameFirstName: true, nameLastName: true },
         });
 
-      const firstName = isNonEmptyString(person?.nameFirstName)
-        ? person.nameFirstName
+      // The ORM returns `name` as a composite object; the flat columns are not hydrated.
+      const firstName = isNonEmptyString(person?.name?.firstName)
+        ? person.name.firstName
         : '';
-      const lastName = isNonEmptyString(person?.nameLastName)
-        ? person.nameLastName
+      const lastName = isNonEmptyString(person?.name?.lastName)
+        ? person.name.lastName
         : '';
       const personName = `${firstName} ${lastName}`.trim();
 
@@ -234,15 +233,18 @@ export class QuotationPdfService {
     const sentAt =
       quotation.sentAt instanceof Date
         ? quotation.sentAt.toISOString()
-        : quotation.sentAt ?? null;
+        : (quotation.sentAt ?? null);
     const jalaliDate =
-      sentAt !== null ? (formatJalaliDateFromInstant(sentAt) ?? undefined) : undefined;
+      sentAt !== null
+        ? (formatJalaliDateFromInstant(sentAt) ?? undefined)
+        : undefined;
 
-    const pdfLines = lines.map((line) => this.mapLineToPdf(line, currencyLabel));
-    const total =
-      isNonEmptyString(quotation.totalExact)
-        ? formatExactAmountWithCurrency(quotation.totalExact, currencyLabel)
-        : formatExactAmountWithCurrency('0.000000', currencyLabel);
+    const pdfLines = lines.map((line) =>
+      this.mapLineToPdf(line, currencyLabel),
+    );
+    const total = isNonEmptyString(quotation.totalExact)
+      ? formatExactAmountWithCurrency(quotation.totalExact, currencyLabel)
+      : formatExactAmountWithCurrency('0.000000', currencyLabel);
 
     const formatStored = (value: string | null | undefined) =>
       isNonEmptyString(value) && isSignificantExactAmount(value)

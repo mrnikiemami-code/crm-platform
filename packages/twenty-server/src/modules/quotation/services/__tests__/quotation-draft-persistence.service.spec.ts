@@ -62,6 +62,7 @@ const buildScope = ({
   headerUpdate,
   lineFind,
   companyFindOne,
+  personFindOne,
 }: {
   headerInsert?: jest.Mock;
   lineInsert?: jest.Mock;
@@ -69,6 +70,7 @@ const buildScope = ({
   headerUpdate?: jest.Mock;
   lineFind?: jest.Mock;
   companyFindOne?: jest.Mock;
+  personFindOne?: jest.Mock;
 } = {}): Scope => {
   const repositories: Record<string, Record<string, jest.Mock>> = {
     quotation: {
@@ -91,7 +93,7 @@ const buildScope = ({
         jest.fn(async () => ({ id: 'company-1', name: 'شرکت آزمون' })),
     },
     person: {
-      findOne: jest.fn(async () => null),
+      findOne: personFindOne ?? jest.fn(async () => null),
     },
   };
 
@@ -113,13 +115,15 @@ const buildService = ({
     executeInWorkspaceContext: jest.fn(async (callback: () => unknown) =>
       callback(),
     ),
-    runInWorkspaceTransaction: jest.fn(async (work: (scope: Scope) => unknown) => {
-      if (transactionError) {
-        throw transactionError;
-      }
+    runInWorkspaceTransaction: jest.fn(
+      async (work: (scope: Scope) => unknown) => {
+        if (transactionError) {
+          throw transactionError;
+        }
 
-      return work(scope);
-    }),
+        return work(scope);
+      },
+    ),
   };
   const permissionService = {
     resolveHeldPermissions: jest.fn(async () => permissions),
@@ -143,8 +147,13 @@ describe('QuotationDraftPersistenceService', () => {
 
     const result = await service.saveDraft({ authContext, body: body() });
 
-    expect(result).toMatchObject({ kind: 'REJECTED', code: 'PERMISSION_MISSING' });
-    expect(workspaceOrmManager.runInWorkspaceTransaction).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'PERMISSION_MISSING',
+    });
+    expect(
+      workspaceOrmManager.runInWorkspaceTransaction,
+    ).not.toHaveBeenCalled();
     expect(scope.getRepository).not.toHaveBeenCalled();
   });
 
@@ -162,7 +171,9 @@ describe('QuotationDraftPersistenceService', () => {
       quotationId: 'q-1',
       version: 1,
     });
-    expect(workspaceOrmManager.runInWorkspaceTransaction).toHaveBeenCalledTimes(1);
+    expect(workspaceOrmManager.runInWorkspaceTransaction).toHaveBeenCalledTimes(
+      1,
+    );
 
     const headerInsert = scope.getRepository('quotation').insert;
 
@@ -183,6 +194,67 @@ describe('QuotationDraftPersistenceService', () => {
       quotationId: 'q-1',
       sortOrder: 0,
       totalExact: '1090000.000000',
+    });
+  });
+
+  it('labels a person draft from the composite name the ORM returns', async () => {
+    const personFindOne = jest.fn(async () => ({
+      id: 'person-1',
+      name: { firstName: 'فرید', lastName: 'رفیعی' },
+    }));
+    const scope = buildScope({ personFindOne });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({
+        header: {
+          ...body().header,
+          customerType: 'PERSON',
+          personId: 'person-1',
+          companyId: null,
+        },
+      }),
+    });
+
+    expect(result).toMatchObject({ kind: 'SAVED' });
+
+    const headerInsert = scope.getRepository('quotation').insert;
+
+    expect(headerInsert.mock.calls[0][0]).toMatchObject({
+      customerName: 'فرید رفیعی',
+    });
+  });
+
+  it('refuses a person draft whose name is empty', async () => {
+    const personFindOne = jest.fn(async () => ({
+      id: 'person-1',
+      name: { firstName: null, lastName: null },
+    }));
+    const scope = buildScope({ personFindOne });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({
+        header: {
+          ...body().header,
+          customerType: 'PERSON',
+          personId: 'person-1',
+          companyId: null,
+        },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'CUSTOMER_NOT_FOUND',
     });
   });
 
@@ -262,7 +334,9 @@ describe('QuotationDraftPersistenceService', () => {
       kind: 'REJECTED',
       code: 'QUOTATION_VERSION_REQUIRED',
     });
-    expect(workspaceOrmManager.runInWorkspaceTransaction).not.toHaveBeenCalled();
+    expect(
+      workspaceOrmManager.runInWorkspaceTransaction,
+    ).not.toHaveBeenCalled();
     expect(scope.getRepository('quotation').update).not.toHaveBeenCalled();
     expect(scope.getRepository('quotationLine').insert).not.toHaveBeenCalled();
     expect(

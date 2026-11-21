@@ -98,8 +98,7 @@ export class QuotationCommunicationOutboundService {
             : '',
         providerId:
           typeof payload.providerId === 'string' ? payload.providerId : 'bale',
-        sendStatus:
-          payload.sendStatus === 'DELIVERED' ? 'DELIVERED' : 'SENT',
+        sendStatus: payload.sendStatus === 'DELIVERED' ? 'DELIVERED' : 'SENT',
         providerMessageId:
           typeof payload.providerMessageId === 'string'
             ? payload.providerMessageId
@@ -132,7 +131,9 @@ export class QuotationCommunicationOutboundService {
     // Same Nest process serves `/s/communication/*`. Prefer the container /
     // process listen port on loopback — host-mapped SERVER_URL (:3002) is not
     // reachable from inside Docker and must not be used for this bridge.
-    const port = String(this.twentyConfigService.get('PORT') ?? '3000').trim();
+    const port = String(
+      this.twentyConfigService.get('NODE_PORT') ?? '3000',
+    ).trim();
     const listenPort = /^\d+$/.test(port) ? port : '3000';
 
     return `http://127.0.0.1:${listenPort}`;

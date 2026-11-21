@@ -89,8 +89,7 @@ describe('QuotationShareService authz', () => {
         return {
           findOne: async () => ({
             id: 'p-1',
-            nameFirstName: 'Ali',
-            nameLastName: 'A',
+            name: { firstName: 'Ali', lastName: 'A' },
           }),
         };
       }
