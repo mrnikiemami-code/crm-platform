@@ -4,34 +4,14 @@ import {
   buildCreateCatalogItemMutation,
   buildCreatePriceListMutation,
   buildCreatePriceMutation,
-  buildCreateQuotationLineMutation,
-  buildCreateQuotationMutation,
   buildDefaultPriceListQuery,
-  buildDeleteQuotationLineMutation,
-  buildQuotationByIdQuery,
-  buildQuotationCustomerNameQuery,
-  buildQuotationLinesByQuotationQuery,
   buildUpdateCatalogItemMutation,
-  buildUpdateQuotationLineMutation,
-  buildUpdateQuotationMutation,
 } from 'src/data/quotation-queries';
 import { type GraphqlValue } from 'src/data/graphql-literal';
 import { RecordApiError } from 'src/data/record-api';
 import {
-  canEditQuotationLines,
-  type QuotationStatus,
-} from 'src/domain/quotation/status';
-import {
-  buildQuotationCustomerLabel,
-  type QuotationCustomerSource,
-} from 'src/domain/quotation/customer-label';
-import {
-  buildQuotationListDisplay,
-  buildQuotationTotalDisplay,
-} from 'src/domain/quotation/list-display';
-import {
   buildCatalogItemWritePayload,
-  buildDraftQuotationWritePayload,
+  buildDraftQuotationSaveRequest,
   type SaveCatalogOutcome,
   type SaveDraftOutcome,
   validateCatalogItemUpsert,
@@ -39,10 +19,21 @@ import {
 } from 'src/services/quotation-save.service';
 import { type CatalogItemUpsertInput } from 'src/domain/catalog/catalog-upsert';
 import { type DraftQuotationInput } from 'src/domain/quotation/draft-quotation';
+import {
+  saveDraftAtomically,
+  type AtomicSaveOutcome,
+  type AtomicSaveRequest,
+} from 'src/data/atomic-draft-save-api';
 import { verifyCustomerRecord } from 'src/services/customer-picker.service';
 
 export type PersistDependencies = {
   execute: (query: string) => Promise<Record<string, unknown>>;
+};
+
+export type DraftPersistDependencies = PersistDependencies & {
+  saveDraftAtomically?: (
+    request: AtomicSaveRequest,
+  ) => Promise<AtomicSaveOutcome>;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -75,49 +66,6 @@ const readEdgesIds = (
 
     return typeof node?.id === 'string' ? [node.id] : [];
   });
-};
-
-const readNullableString = (value: unknown): string | null =>
-  typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
-
-// Reads the readable name from the relation the quotation actually points at. A
-// failed lookup returns null (the caller then skips the projection) rather than
-// inventing a name or failing a save over a display column.
-const resolveQuotationCustomer = async (
-  execute: PersistDependencies['execute'],
-  {
-    personId,
-    companyId,
-  }: { personId: string | null; companyId: string | null },
-): Promise<QuotationCustomerSource | null> => {
-  const query = buildQuotationCustomerNameQuery({ personId, companyId });
-
-  if (query === null) {
-    return { person: null, company: null };
-  }
-
-  try {
-    const data = await execute(query);
-    const person = asRecord(data.person);
-    const company = asRecord(data.company);
-    const personName = asRecord(person?.name);
-
-    return {
-      person:
-        person === null
-          ? null
-          : {
-              name: {
-                firstName: readNullableString(personName?.firstName),
-                lastName: readNullableString(personName?.lastName),
-              },
-            },
-      company:
-        company === null ? null : { name: readNullableString(company.name) },
-    };
-  } catch {
-    return null;
-  }
 };
 
 const omitNullish = (
@@ -264,7 +212,7 @@ export const persistCatalogItem = async (
 
 export const persistDraftQuotation = async (
   input: DraftQuotationInput,
-  dependencies: PersistDependencies,
+  dependencies: DraftPersistDependencies,
 ): Promise<SaveDraftOutcome> => {
   const outcome = validateDraftQuotation(input);
 
@@ -272,30 +220,16 @@ export const persistDraftQuotation = async (
     return outcome;
   }
 
-  const payload = buildDraftQuotationWritePayload(outcome.plan);
+  const plan = outcome.plan;
 
-  if (!payload.ok) {
-    return {
-      kind: 'REJECTED',
-      code: payload.refusal.code,
-      message: payload.refusal.detail,
-    };
-  }
-
-  // Existence and read permission are checked BEFORE the first write. A customer
-  // id the workspace cannot resolve is a fabricated value, and writing the header
-  // first would leave a quotation pointing at nothing. The domain already refuses
-  // a missing or mixed customer; this is the part only a round-trip can answer.
-  const customerType =
-    payload.value.quotation.customerType === 'PERSON' ? 'PERSON' : 'COMPANY';
-  const customerRecordId =
-    customerType === 'PERSON'
-      ? payload.value.quotation.personId
-      : payload.value.quotation.companyId;
+  // Readable customer check before the transaction, so an unresolvable id returns
+  // its specific refusal instead of a generic failure. The backend repeats the same
+  // check inside the transaction; this is the message, not the guarantee.
   const customerCheck = await verifyCustomerRecord(
     {
-      customerType,
-      recordId: typeof customerRecordId === 'string' ? customerRecordId : '',
+      customerType: plan.customerType,
+      recordId:
+        (plan.customerType === 'PERSON' ? plan.personId : plan.companyId) ?? '',
     },
     dependencies,
   );
@@ -308,226 +242,37 @@ export const persistDraftQuotation = async (
     };
   }
 
+  // One request, one transaction. Header, lines and totals are handed to the backend
+  // together, so there is no partial-write window to recover from on this side.
+  const saveDraft = dependencies.saveDraftAtomically ?? saveDraftAtomically;
+
+  let saved: AtomicSaveOutcome;
+
   try {
-    let quotationId = input.quotationId;
-    let savedVersion = 1;
-    // Ids of the lines the document already had, in document order. Reusing them
-    // turns a save into an in-place edit instead of a delete/recreate churn.
-    let existingLineIds: string[] = [];
-
-    if (quotationId) {
-      const existing = await dependencies.execute(
-        buildQuotationByIdQuery(quotationId),
-      );
-      const node = asRecord(existing.quotation);
-
-      if (node === null || typeof node.status !== 'string') {
-        return {
-          kind: 'REJECTED',
-          code: 'QUOTATION_NOT_FOUND',
-          message: 'پیش‌فاکتور برای ویرایش پیدا نشد',
-        };
-      }
-
-      const status = node.status as QuotationStatus;
-
-      if (!canEditQuotationLines(status)) {
-        return {
-          kind: 'REJECTED',
-          code: 'QUOTATION_IMMUTABLE',
-          message:
-            'پس از ارسال، ویرایش مستقیم مجاز نیست؛ باید نسخهٔ جدید ساخته شود',
-        };
-      }
-
-      const currentVersion =
-        typeof node.version === 'number' ? node.version : 1;
-
-      if (
-        typeof input.expectedVersion === 'number' &&
-        input.expectedVersion !== currentVersion
-      ) {
-        return {
-          kind: 'REJECTED',
-          code: 'VERSION_CONFLICT',
-          message:
-            'این پیش‌فاکتور پس از باز شدن شما تغییر کرده است؛ صفحه را تازه کنید و دوباره تلاش کنید',
-        };
-      }
-
-      const customer = await resolveQuotationCustomer(dependencies.execute, {
-        personId:
-          typeof payload.value.quotation.personId === 'string'
-            ? payload.value.quotation.personId
-            : null,
-        companyId:
-          typeof payload.value.quotation.companyId === 'string'
-            ? payload.value.quotation.companyId
-            : null,
-      });
-
-      const quotationData = {
-        ...omitNullish({
-          name: payload.value.quotation.name,
-          customerType: payload.value.quotation.customerType,
-          currencyCode: payload.value.quotation.currencyCode,
-          taxPolicy: payload.value.quotation.taxPolicy,
-          paymentTerms: payload.value.quotation.paymentTerms,
-          grossExact: payload.value.quotation.grossExact,
-          lineDiscountExact: payload.value.quotation.lineDiscountExact,
-          documentDiscountExact: payload.value.quotation.documentDiscountExact,
-          documentDiscountKind: payload.value.quotation.documentDiscountKind,
-          documentDiscountInputExact:
-            payload.value.quotation.documentDiscountInputExact,
-          netExact: payload.value.quotation.netExact,
-          taxExact: payload.value.quotation.taxExact,
-          roundingExact: payload.value.quotation.roundingExact,
-          totalExact: payload.value.quotation.totalExact,
-          // Display projections are recomputed here, never accepted from the client.
-          // The number label is absent on purpose: only issuance touches it.
-          ...(customer === null
-            ? {}
-            : {
-                customerName: buildQuotationCustomerLabel(customer),
-                totalDisplay: buildQuotationTotalDisplay({
-                  totalExact:
-                    typeof payload.value.quotation.totalExact === 'string'
-                      ? payload.value.quotation.totalExact
-                      : null,
-                  currencyCode:
-                    typeof payload.value.quotation.currencyCode === 'string'
-                      ? payload.value.quotation.currencyCode
-                      : null,
-                }),
-              }),
-        }),
-        // null must be SENT, not omitted: switching the customer side has to clear
-        // the relation the quotation no longer points at, and the status is never
-        // written here — only a lifecycle action may change it.
-        personId: (payload.value.quotation.personId ??
-          null) as GraphqlValue,
-        companyId: (payload.value.quotation.companyId ??
-          null) as GraphqlValue,
-        // Optimistic lock token: the workspace query hook compares this against
-        // the stored version and bumps it itself, so the client must send the
-        // version it actually saw. A stale panel is refused, never overwritten.
-        version: currentVersion,
-      };
-
-      savedVersion = currentVersion;
-
-      await dependencies.execute(
-        buildUpdateQuotationMutation(quotationId, quotationData),
-      );
-
-      existingLineIds = readEdgesIds(
-        await dependencies.execute(
-          buildQuotationLinesByQuotationQuery(quotationId),
-        ),
-        'quotationLines',
-      );
-    } else {
-      const customer = await resolveQuotationCustomer(dependencies.execute, {
-        personId:
-          typeof payload.value.quotation.personId === 'string'
-            ? payload.value.quotation.personId
-            : null,
-        companyId:
-          typeof payload.value.quotation.companyId === 'string'
-            ? payload.value.quotation.companyId
-            : null,
-      });
-
-      const display =
-        customer === null
-          ? null
-          : buildQuotationListDisplay({
-              quotationNumber: null,
-              customer,
-              totalExact:
-                typeof payload.value.quotation.totalExact === 'string'
-                  ? payload.value.quotation.totalExact
-                  : null,
-              currencyCode:
-                typeof payload.value.quotation.currencyCode === 'string'
-                  ? payload.value.quotation.currencyCode
-                  : null,
-            });
-
-      const quotationData = omitNullish({
-        ...payload.value.quotation,
-        status: 'DRAFT',
-        ...(display === null ? {} : display),
-      });
-      const created = await dependencies.execute(
-        buildCreateQuotationMutation(quotationData),
-      );
-
-      quotationId = readCreatedId(created, 'createQuotation');
-    }
-
-    if (!quotationId) {
-      return {
-        kind: 'REJECTED',
-        code: 'PERSISTENCE_FAILED',
-        message: 'ذخیره پیش‌فاکتور انجام نشد',
-      };
-    }
-
-    const lineInputs = payload.value.lines.map((line) =>
-      omitNullish({
-        ...line,
-        quotationId,
-      }),
+    saved = await saveDraft(
+      buildDraftQuotationSaveRequest(
+        plan,
+        typeof input.expectedVersion === 'number'
+          ? input.expectedVersion
+          : null,
+      ),
     );
-
-    for (let index = 0; index < lineInputs.length; index += 1) {
-      const existingLineId = existingLineIds[index];
-
-      await dependencies.execute(
-        typeof existingLineId === 'string'
-          ? buildUpdateQuotationLineMutation(existingLineId, lineInputs[index])
-          : buildCreateQuotationLineMutation(lineInputs[index]),
-      );
-    }
-
-    // Lines the document no longer has. Last, so a failure earlier never leaves
-    // the quotation with fewer lines than the operator saw.
-    for (const staleLineId of existingLineIds.slice(lineInputs.length)) {
-      await dependencies.execute(buildDeleteQuotationLineMutation(staleLineId));
-    }
-
-    // Every line write claims a version of its own, so the authoritative number is
-    // read back instead of assumed: the next save from this panel must not be
-    // refused as stale.
-    const saved = await dependencies.execute(
-      buildQuotationByIdQuery(quotationId),
-    );
-    const savedNode = asRecord(saved.quotation);
-
-    if (typeof savedNode?.version === 'number') {
-      savedVersion = savedNode.version;
-    }
-
-    return {
-      kind: 'SAVED',
-      quotationId,
-      version: savedVersion,
-      plan: outcome.plan,
-    };
-  } catch (error) {
-    if (error instanceof RecordApiError && error.code === 'FORBIDDEN') {
-      return {
-        kind: 'REJECTED',
-        code: 'PERMISSION_DENIED',
-        message: 'دسترسی لازم برای ذخیره پیش‌فاکتور وجود ندارد',
-      };
-    }
-
+  } catch {
     return {
       kind: 'REJECTED',
       code: 'PERSISTENCE_FAILED',
       message: 'ذخیره پیش‌فاکتور انجام نشد',
     };
   }
+
+  if (saved.kind === 'REJECTED') {
+    return saved;
+  }
+
+  return {
+    kind: 'SAVED',
+    quotationId: saved.quotationId,
+    version: saved.version,
+    plan,
+  };
 };

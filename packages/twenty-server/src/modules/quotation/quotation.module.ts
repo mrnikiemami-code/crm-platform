@@ -7,6 +7,7 @@ import { QuotationUiController } from 'src/modules/quotation/controllers/quotati
 import { QuotationQueryHookModule } from 'src/modules/quotation/query-hooks/quotation-query-hook.module';
 import { QuotationCommunicationOutboundService } from 'src/modules/quotation/services/quotation-communication-outbound.service';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
+import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
@@ -25,6 +26,7 @@ import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.
     QuotationCustomerLinkService,
     QuotationCommunicationOutboundService,
     QuotationShareService,
+    QuotationDraftPersistenceService,
   ],
 })
 export class QuotationModule {}

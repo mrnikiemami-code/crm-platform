@@ -9,6 +9,7 @@ import {
   type DraftQuotationPlan,
 } from 'src/domain/quotation/draft-quotation';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
+import { type AtomicSaveRequest } from 'src/data/atomic-draft-save-api';
 
 // Persistence is prepared here as GraphQL mutation documents. Execution requires an
 // installed app and a live token; S2 ships the code but does not install or call Asan.
@@ -107,6 +108,51 @@ export const buildDraftQuotationWritePayload = (
     })),
   });
 };
+
+// Shape of the one atomic save call. Header and lines travel together so the
+// backend can write them in a single transaction; nothing here is persisted on its
+// own.
+export const buildDraftQuotationSaveRequest = (
+  plan: DraftQuotationPlan,
+  expectedVersion: number | null,
+): AtomicSaveRequest => ({
+  quotationId: plan.quotationId,
+  expectedVersion,
+  header: {
+    name: plan.name,
+    customerType: plan.customerType,
+    personId: plan.personId,
+    companyId: plan.companyId,
+    currencyCode: plan.currencyCode,
+    taxPolicy: plan.taxPolicy,
+    paymentTerms: plan.paymentTerms,
+    documentDiscountKind: plan.documentDiscountKind,
+    documentDiscountInputExact: plan.documentDiscountInputExact,
+    grossExact: plan.totalsExact.grossExact,
+    lineDiscountExact: plan.totalsExact.lineDiscountExact,
+    documentDiscountExact: plan.totalsExact.documentDiscountExact,
+    netExact: plan.totalsExact.netExact,
+    taxExact: plan.totalsExact.taxExact,
+    roundingExact: plan.totalsExact.roundingExact,
+    totalExact: plan.totalExact,
+  },
+  lines: plan.lines.map((line) => ({
+    name: line.name,
+    kind: line.kind,
+    description: line.description,
+    unit: line.unit,
+    quantityExact: line.quantityExact,
+    unitPriceExact: line.unitPriceExact,
+    grossExact: line.grossExact,
+    discountExact: line.discountExact,
+    discountKind: line.discountKind,
+    discountInputExact: line.discountInputExact,
+    documentDiscountExact: line.documentDiscountExact,
+    taxExact: line.taxExact,
+    totalExact: line.totalExact,
+    itemId: line.catalogItemId,
+  })),
+});
 
 export const buildCatalogItemWritePayload = (
   plan: CatalogItemUpsertPlan,

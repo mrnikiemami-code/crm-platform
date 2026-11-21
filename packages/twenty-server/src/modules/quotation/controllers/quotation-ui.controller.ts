@@ -15,6 +15,7 @@ import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
+import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
@@ -38,6 +39,7 @@ const ALLOWED_ACTIONS = new Set([
   'create-customer-link',
   'revoke-customer-link',
   'share-quotation',
+  'save-draft',
 ]);
 
 @Controller(`${ApiPath.Rest}/quotation`)
@@ -49,6 +51,7 @@ export class QuotationUiController {
     private readonly quotationPdfService: QuotationPdfService,
     private readonly quotationCustomerLinkService: QuotationCustomerLinkService,
     private readonly quotationShareService: QuotationShareService,
+    private readonly quotationDraftPersistenceService: QuotationDraftPersistenceService,
   ) {}
 
   @Post('actions')
@@ -66,6 +69,38 @@ export class QuotationUiController {
       };
     }
 
+    const authContext = getWorkspaceAuthContext();
+
+    // A new draft has no id yet, so this action cannot sit behind the shared
+    // quotationId requirement below.
+    if (action === 'save-draft') {
+      try {
+        const outcome =
+          await this.quotationDraftPersistenceService.saveDraft({
+            authContext,
+            body,
+          });
+
+        if (outcome.kind !== 'SAVED') {
+          return {
+            success: false,
+            code: outcome.code,
+            message: outcome.message,
+          };
+        }
+
+        return {
+          success: true,
+          quotationId: outcome.quotationId,
+          version: outcome.version,
+          status: outcome.status,
+          message: 'پیش‌نویس پیش‌فاکتور ذخیره شد',
+        };
+      } catch (error) {
+        return this.quotationUiService.toPersianFailure(error);
+      }
+    }
+
     const quotationId =
       typeof body.quotationId === 'string' ? body.quotationId.trim() : '';
 
@@ -76,8 +111,6 @@ export class QuotationUiController {
         message: persianMessageForQuotationCode('INVALID_INPUT'),
       };
     }
-
-    const authContext = getWorkspaceAuthContext();
 
     try {
       if (action === 'get-lifecycle') {

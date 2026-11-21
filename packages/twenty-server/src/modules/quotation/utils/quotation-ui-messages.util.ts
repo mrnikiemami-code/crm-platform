@@ -14,6 +14,14 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   TRANSITION_NOT_ALLOWED: 'این تغییر وضعیت مجاز نیست.',
   PERMISSION_MISSING: 'مجوز لازم برای این عملیات را ندارید.',
   QUOTATION_NOT_FOUND: 'پیش‌فاکتور یافت نشد.',
+  CUSTOMER_NOT_FOUND: 'مشتری انتخاب‌شده پیدا نشد. یک مشتری واقعی انتخاب کنید.',
+  TOTALS_INCONSISTENT:
+    'جمع مبالغ سند با ردیف‌ها هم‌خوان نیست؛ صفحه را تازه کنید و دوباره تلاش کنید.',
+  DOCUMENT_HAS_NO_LINES: 'حداقل یک ردیف کالا یا خدمت لازم است.',
+  LINE_INVALID: 'یکی از ردیف‌های سند کامل نیست.',
+  INVALID_EXACT_AMOUNT: 'قالب یکی از مبالغ معتبر نیست.',
+  CUSTOMER_INVALID: 'مشتری سند باید دقیقاً یک شخص یا یک شرکت باشد.',
+  PERSISTENCE_FAILED: 'ذخیره پیش‌فاکتور انجام نشد.',
   INVALID_INPUT: 'درخواست نامعتبر است.',
   AUTH_REQUIRED: 'برای این عملیات باید وارد حساب کاربری شوید.',
   CUSTOMER_LINK_STATUS_FORBIDDEN:
