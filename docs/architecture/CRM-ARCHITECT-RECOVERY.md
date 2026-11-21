@@ -1,5 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## LATEST CHECKPOINT — CRM-129-TAX-007 LANDED / awaiting architect (2026-11-21)
+
+**Read first:** [CRM-129-TAX-007-PROOF.md](./CRM-129-TAX-007-PROOF.md).
+
+- **Branch / commits:** `feat/crm-129-quotation` from `daf525013d`; tax work `e2cb35a287c5a83196013dd925ce4aa1c94af4c8`, Persian booleans `e3b64885161e4d5ad99be98435e681eceec0cf77`. Both pushed.
+- **Tax is workspace data:** a new `taxPolicy` object stores Persian name, policy code, integer basis-point rate, default/active/exempt flags. The settings surface is the sidebar page «مالیات و عوارض» at `/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d`, because Settings → Applications is disabled in this fork. `IR_VAT_9` at 900 bp is kept only as the legacy baseline; no rate is hardcoded and no policy is ever deleted (only deactivated).
+- **Draft pricing:** the existing `QuotationDraftForm` selects among active policies, recalculates net/tax/total in integer micros from the chosen policy, and stores both the policy code and the rate it used. The server re-derives each line's tax from the declared rate and refuses `TAX_AMOUNT_MISMATCH` / `TAX_RATE_OUT_OF_RANGE`; the atomic save and optimistic-version contracts are unchanged.
+- **Immutability:** `taxRateBasisPoints` is sealed in the revision snapshot beside `taxPolicy`, so changing the default later cannot re-interpret an issued document (live T13: `policyRate=1200 issuedRate=900 hashStable=true`). No document was migrated or rewritten.
+- **Accounting:** `taxPolicyMappings` (CRM policy code → vendor tax code) is part of the connection settings; a taxed document with no mapping is blocked `TAX_POLICY_NOT_MAPPED`. No real vendor call was made.
+- **Persian booleans:** the shared field input now resolves True/False through Lingui, with `fa-IR.po` mapping to «بله»/«خیر»; form, table and filter share the same msgids, stored values stay `true`/`false`. Verified in the live UI on the «فعال» filter.
+- **Evidence:** app vitest **39 files / 424 tests**, server quotation jest **15 suites / 99 tests**, app `tsgo` clean, `twenty plan` on `dev-crm129` reports no changes, live `dev-verify-crm129-tax-007.cjs` **17/17**, revision-seal **14/14** and accounting-006 **15/15** regressions intact.
+- **Isolation:** Dev `:3002` only; no `:6080`, no worker restart, no real accounting traffic. `STOP_FOR_ARCHITECT`.
+
 ## ARCHITECT ACCEPTANCE — SEALED REVISION API GUARD (2026-11-21; ACCEPT)
 
 - **GitHub source verified:** actual feature commit is `a98f484966e84f17ca17a6132554fbf37de4ee9b` (operator report labeled it `d396d0853c`, which GitHub could not resolve); documentation commit `5cf7b6ffe6aa45679d87d3d5684eec1a22a793b8` is on `feat/crm-129-quotation`.
