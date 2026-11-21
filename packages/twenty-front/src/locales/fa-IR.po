@@ -9950,7 +9950,7 @@ msgstr "جایگزین"
 #: src/modules/side-panel/pages/page-layout/hooks/useChartSettingsValues.ts
 #: src/modules/ui/field/display/components/BooleanDisplay.tsx
 msgid "False"
-msgstr "نادرست"
+msgstr "خیر"
 
 #. js-lingui-id: KziH2K
 #: src/modules/ai/utils/getAiModelTierLabel.ts
@@ -22690,7 +22690,7 @@ msgstr "تابع را با درخواست HTTP اجرا می‌کند"
 #: src/modules/side-panel/pages/page-layout/hooks/useChartSettingsValues.ts
 #: src/modules/ui/field/display/components/BooleanDisplay.tsx
 msgid "True"
-msgstr "درست"
+msgstr "بله"
 
 #. js-lingui-id: lOfOMM
 #: src/modules/settings/data-model/constants/SettingsNonCompositeFieldTypeConfigs.ts

@@ -124,8 +124,8 @@ export const FormBooleanFieldInput = ({
           <Select
             dropdownId={`${instanceId}-select-display`}
             options={[
-              { label: 'True', value: 'true', Icon: IconCheck },
-              { label: 'False', value: 'false', Icon: IconX },
+              { label: t`True`, value: 'true', Icon: IconCheck },
+              { label: t`False`, value: 'false', Icon: IconX },
             ]}
             value={castBooleanToStringifiedBoolean(draftValue.value)}
             onChange={onSelect}
