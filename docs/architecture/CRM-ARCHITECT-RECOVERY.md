@@ -1,5 +1,13 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ARCHITECT ACCEPTANCE — ATOMIC-SAVE-005 (2026-11-21; ACCEPT)
+
+- **Architect source review:** commit `2d48787f877ec2d4cf0c78e09329f685857820cf` on `feat/crm-129-quotation` inspected; parser rejects omitted/null expectedVersion on edits and the service checks version defensively. Create null/null and stale-edit conflict behaviors retained.
+- **Decision:** `ACCEPT` for the bounded 004/005 atomic persistence and optimistic-version contract. `DATA_INTEGRITY_PASS` is accepted within the reported Dev test scope; direct PostgreSQL test totals (18/18, 52/52, 19/19, 16/16, 67/67, 270/270) are evidence from the committed execution report, not independently rerun by the architect.
+- **Next work:** separately scope quotation business lifecycle/customer approval/outbound delivery, preserving current Money Domain, numbering, atomic save, PDF and send authorization contracts. No automatic implementation or production deployment.
+- **Isolation:** no `:6080` activity or production acceptance is claimed.
+
+
 ## VERSION GUARD CLOSED — CRM-129-QUOTATION-ATOMIC-SAVE-005 (2026-11-21; DATA_INTEGRITY_PASS maintained)
 
 - **Gap the architect flagged is closed:** `parseQuotationDraftSaveRequest` now refuses an edit (`quotationId` present) whose `expectedVersion` is missing or `null` with `QUOTATION_VERSION_REQUIRED`, before any permission lookup or connection. `QuotationDraftPersistenceService.updateDraft` repeats the check defensively and then requires exact equality with the stored version, so an update can no longer skip the claim. Create still requires `quotationId=null` + `expectedVersion=null`.
