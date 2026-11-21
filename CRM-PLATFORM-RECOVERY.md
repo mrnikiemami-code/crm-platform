@@ -1,5 +1,46 @@
 # CRM Platform Recovery — Persian / RTL / Jalali Track
 
+## 2026-11-21 — issued quotations now seal their own revision (Dev :3002)
+
+Branch `feat/crm-129-quotation`, commit `5959c119c0`. The pro-forma export pipeline had a hole: an
+approved quotation had no sealed bytes for the planner to export, so even with the accounting switches
+on the export stopped at `REVISION_NOT_FOUND`.
+
+A quotation that moves into `READY_TO_SEND`, `SENT`, `CUSTOMER_ACCEPTED` or `CUSTOMER_REJECTED` now gets
+a `quotationRevision` row inside the same PostgreSQL transaction that flips the status and allocates the
+document number: canonical snapshot, sha256 of its key-sorted JSON, version, total and issuer. An
+already-ISSUED revision is reused, so sending or recording a customer decision cannot mint a second
+identity for one document. Totals that disagree with the stored lines refuse the transition instead of
+sealing numbers nobody can reproduce. Legacy quotations approved before this change (for example
+`d66aba78…`) stay unsealed, which is why accounting-006's V11b row still reports zero revisions for it.
+
+Live proof on Dev :3002 — `scripts/dev-exercise-crm129-revision-seal.cjs`, **11/11 PASS**: draft and
+pending approval carry no revision; approval seals exactly one ISSUED v1; the stored hash reproduces from
+the stored JSON through an independent canonicaliser; snapshot totals match the header and the lines;
+SENT and CUSTOMER_ACCEPTED keep the same id, hash and document number; the export planner reports
+`revisionVersion: 1` with `OUTBOUND_DISABLED`; a person-customer PDF renders (12,495 bytes).
+`dev-exercise-accounting-006.cjs` remains 15/15 and the numbering race still allocates four consecutive
+distinct numbers, each with its own revision.
+
+Three real defects surfaced only against the live stack and are fixed in the same commit:
+
+1. **Every person draft was refused as `CUSTOMER_NOT_FOUND`.** The persistence service read
+   `nameFirstName`/`nameLastName`, but the workspace ORM hydrates the composite `name` object for a
+   person even when the flat columns are selected. Person PDFs and shared links silently fell back to
+   `—` for the same reason.
+2. The revision service's line query omitted `grossExact`; mock repositories ignore `select`, so only a
+   real database could catch it. A contract test now pins the query shape.
+3. `twentyConfigService.get('PORT')` is not a declared key (`NODE_PORT` is), so the communication bridge
+   always resolved port 3000.
+
+Deployment note: `twenty-server-1` runs a baked image (`twenty-dev/o117:69b776f62f`, built from
+`69b776f62f`), not a source mount. The new server code was built on the host (`nx build twenty-server`),
+copied into the running container's `dist` and the API container restarted. **`twenty-worker-1` was not
+restarted and the intranet `:6080` stack was not touched.**
+
+Known gap, reported not hidden: the platform still accepts `updateQuotationRevision`, so a sealed
+revision is hash-detectable rather than write-protected. Needs an object-level permission follow-up.
+
 ## 2026-10-18 — Brand Independence execution plan (documentation only)
 
 The user authorized a technical execution program to remove Twenty-facing branding, links, remote assets, outbound vendor dependencies and upstream installation/update dependencies. Codex owns supervision and final independent acceptance; Cursor executes bounded tasks. Help is explicitly internal/same-origin, including its search and support entry points. No screenshots are requested.
