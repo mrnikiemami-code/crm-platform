@@ -23,6 +23,17 @@ import { QuotationRevisionRestoreManyPreQueryHook } from 'src/modules/quotation/
 import { QuotationRevisionRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-restore-one.pre-query.hook';
 import { QuotationRevisionUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-update-many.pre-query.hook';
 import { QuotationRevisionUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-revision-update-one.pre-query.hook';
+import { TaxPolicyCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-create-many.pre-query.hook';
+import { TaxPolicyCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-create-one.pre-query.hook';
+import { TaxPolicyDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-delete-many.pre-query.hook';
+import { TaxPolicyDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-delete-one.pre-query.hook';
+import { TaxPolicyDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-destroy-many.pre-query.hook';
+import { TaxPolicyDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-destroy-one.pre-query.hook';
+import { TaxPolicyMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-merge-many.pre-query.hook';
+import { TaxPolicyRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-restore-many.pre-query.hook';
+import { TaxPolicyRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-restore-one.pre-query.hook';
+import { TaxPolicyUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-update-many.pre-query.hook';
+import { TaxPolicyUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-update-one.pre-query.hook';
 import { QuotationUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-many.pre-query.hook';
 import { QuotationUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-one.pre-query.hook';
 import { QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
@@ -30,6 +41,7 @@ import { QuotationNumberService } from 'src/modules/quotation/services/quotation
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { QuotationRevisionService } from 'src/modules/quotation/services/quotation-revision.service';
 import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/services/quotation-revision-write-guard.service';
+import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-policy-write-guard.service';
 
 @Module({
   imports: [WorkspaceCacheModule],
@@ -39,6 +51,7 @@ import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/servic
     QuotationRevisionService,
     QuotationImmutabilityService,
     QuotationRevisionWriteGuardService,
+    TaxPolicyWriteGuardService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
     QuotationDeleteOnePreQueryHook,
@@ -63,6 +76,17 @@ import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/servic
     QuotationRevisionDestroyManyPreQueryHook,
     QuotationRevisionRestoreOnePreQueryHook,
     QuotationRevisionRestoreManyPreQueryHook,
+    TaxPolicyCreateOnePreQueryHook,
+    TaxPolicyCreateManyPreQueryHook,
+    TaxPolicyUpdateOnePreQueryHook,
+    TaxPolicyUpdateManyPreQueryHook,
+    TaxPolicyDeleteOnePreQueryHook,
+    TaxPolicyDeleteManyPreQueryHook,
+    TaxPolicyDestroyOnePreQueryHook,
+    TaxPolicyDestroyManyPreQueryHook,
+    TaxPolicyRestoreOnePreQueryHook,
+    TaxPolicyRestoreManyPreQueryHook,
+    TaxPolicyMergeManyPreQueryHook,
   ],
   exports: [
     QuotationPermissionService,

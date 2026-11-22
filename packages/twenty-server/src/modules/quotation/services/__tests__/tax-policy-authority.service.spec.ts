@@ -157,6 +157,16 @@ describe('TaxPolicyAuthorityService', () => {
           rateBasisPoints: '1000',
           isDefault: true,
         }),
+      ])
+      // The invariant read after the writes: exactly one active default.
+      .mockResolvedValue([
+        row({ id: 'tp-1', isDefault: false }),
+        row({
+          id: 'tp-2',
+          code: 'TAX_1000',
+          rateBasisPoints: '1000',
+          isDefault: true,
+        }),
       ]);
     const { service, scope, workspaceOrmManager } = buildService({
       repository,
@@ -265,6 +275,14 @@ describe('TaxPolicyAuthorityService', () => {
       .mockResolvedValueOnce([
         row({ id: 'tp-1', isDefault: true }),
         row({ id: 'tp-2', code: 'TAX_1050', rateBasisPoints: '1050' }),
+      ])
+      .mockResolvedValueOnce([
+        row({ id: 'tp-1', isDefault: true }),
+        row({ id: 'tp-2', code: 'TAX_1050', rateBasisPoints: '1050' }),
+      ])
+      .mockResolvedValue([
+        row({ id: 'tp-1', isDefault: true }),
+        row({ id: 'tp-2', code: 'TAX_1050', rateBasisPoints: '1050' }),
       ]);
     const { service } = buildService({ repository });
 
@@ -302,5 +320,148 @@ describe('TaxPolicyAuthorityService', () => {
       code: 'TAX_POLICY_LAST_ACTIVE',
     });
     expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('never rewrites createdBy when editing a stored policy', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([row({ id: 'tp-1', isDefault: true })]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.savePolicy(
+      {
+        recordId: 'tp-1',
+        name: 'مالیات ۱۰٪',
+        ratePercentText: '۱۰',
+        isActive: true,
+        isDefault: true,
+        isExempt: false,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+
+    const updateColumns = repository.update.mock.calls.find(
+      ([filter]) => filter.id === 'tp-1',
+    )?.[1];
+
+    // Who introduced the rate is history; an edit may only move updatedBy.
+    expect(updateColumns).not.toHaveProperty('createdBy');
+    expect(updateColumns).toMatchObject({
+      updatedBy: {
+        source: 'MANUAL',
+        name: 'فرید رفیعی',
+        workspaceMemberId: 'wm-1',
+      },
+    });
+  });
+
+  it('makes the first policy of an empty workspace the active default', async () => {
+    const repository = buildRepository();
+    repository.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([
+        row({ id: 'tp-new', code: 'TAX_1000', rateBasisPoints: '1000', isActive: true, isDefault: true }),
+      ]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.savePolicy(
+      {
+        recordId: null,
+        name: 'مالیات ۱۰٪',
+        ratePercentText: '۱۰',
+        isActive: true,
+        isDefault: false,
+        isExempt: false,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(repository.insert.mock.calls[0][0]).toMatchObject({
+      isActive: true,
+      isDefault: true,
+    });
+  });
+
+  it('refuses an inactive first policy instead of creating a catalog without a rate', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.savePolicy(
+      {
+        recordId: null,
+        name: 'غیرفعال',
+        ratePercentText: '۱۰',
+        isActive: false,
+        isDefault: false,
+        isExempt: false,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'TAX_POLICY_FIRST_MUST_BE_ACTIVE',
+    });
+    expect(repository.insert).not.toHaveBeenCalled();
+  });
+
+  it('repairs two active defaults to the oldest and reports the repair', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([
+      row({ id: 'tp-1', isDefault: true }),
+      row({ id: 'tp-2', code: 'TAX_1000', isDefault: true }),
+    ]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.savePolicy(
+      {
+        recordId: null,
+        name: 'مالیات ۱۲٪',
+        ratePercentText: '۱۲',
+        isActive: true,
+        isDefault: false,
+        isExempt: false,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect((outcome as { message: string }).message).toContain(
+      'بازگردانده شد',
+    );
+    // The older row keeps the flag; the newer duplicate is cleared.
+    expect(repository.update).toHaveBeenCalledWith(
+      { id: 'tp-2' },
+      expect.objectContaining({ isDefault: false }),
+    );
+    expect(repository.update).not.toHaveBeenCalledWith(
+      { id: 'tp-1' },
+      expect.objectContaining({ isDefault: false }),
+    );
+  });
+
+  it('aborts rather than persisting a catalog with no active policy', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([
+      row({ id: 'tp-1', isActive: false, isDefault: true }),
+    ]);
+    const { service } = buildService({ repository });
+
+    await expect(
+      service.savePolicy(
+        {
+          recordId: null,
+          name: 'تازه',
+          ratePercentText: '۱۰',
+          isActive: true,
+          isDefault: false,
+          isExempt: false,
+        },
+        authContext,
+      ),
+    ).rejects.toThrow('TAX_POLICY_INVARIANT_VIOLATED');
   });
 });

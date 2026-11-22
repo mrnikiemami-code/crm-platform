@@ -79,8 +79,15 @@ export class QuotationPermissionService {
 
   // Whether the caller may change a financial setting such as a tax rate. A user or
   // API key must hold the role capability from the workspace cache; a failed lookup
-  // is a refusal, never an implicit grant. `application` is the platform-issued app
-  // identity bound to this workspace, and `system` never comes from an HTTP client.
+  // is a refusal, never an implicit grant.
+  //
+  // An application token is not trusted for being an application: any workspace app
+  // can present one. It qualifies only when either
+  //   1. it is the application that owns `taxPolicy` (the quotation app that defines
+  //      this object in the workspace), or
+  //   2. its platform default role carries `canUpdateAllSettings`.
+  // The identity in (1) comes from the object metadata the platform already stores,
+  // and (2) is the same role capability users and API keys are held to.
   async resolveSettingsAuthority(
     authContext: WorkspaceAuthContext,
   ): Promise<TaxSettingsAuthority | null> {
@@ -89,7 +96,7 @@ export class QuotationPermissionService {
     }
 
     if (authContext.type === 'application') {
-      return 'APPLICATION';
+      return this.resolveApplicationSettingsAuthority(authContext);
     }
 
     if (authContext.type === 'pendingActivationUser') {
@@ -109,6 +116,44 @@ export class QuotationPermissionService {
 
     const roleUniversalIdentifier =
       flatRoleMaps.universalIdentifierById[roleId];
+    const role = isDefined(roleUniversalIdentifier)
+      ? flatRoleMaps.byUniversalIdentifier[roleUniversalIdentifier]
+      : undefined;
+
+    return role?.canUpdateAllSettings === true ? 'SETTINGS_ROLE' : null;
+  }
+
+  private async resolveApplicationSettingsAuthority(
+    authContext: Extract<WorkspaceAuthContext, { type: 'application' }>,
+  ): Promise<TaxSettingsAuthority | null> {
+    const { flatObjectMetadataMaps, flatRoleMaps } =
+      await this.workspaceCacheService.getOrRecompute(authContext.workspace.id, [
+        'flatObjectMetadataMaps',
+        'flatRoleMaps',
+      ]);
+
+    const taxPolicyObjectMetadata = Object.values(
+      flatObjectMetadataMaps.byUniversalIdentifier,
+    ).find(
+      (objectMetadata) =>
+        isDefined(objectMetadata) &&
+        objectMetadata.nameSingular === 'taxPolicy',
+    );
+    const owningApplicationUniversalIdentifier =
+      taxPolicyObjectMetadata?.applicationUniversalIdentifier;
+
+    if (
+      isDefined(owningApplicationUniversalIdentifier) &&
+      owningApplicationUniversalIdentifier ===
+        authContext.application.universalIdentifier
+    ) {
+      return 'APPLICATION';
+    }
+
+    const defaultRoleId = authContext.application.defaultRoleId;
+    const roleUniversalIdentifier = isDefined(defaultRoleId)
+      ? flatRoleMaps.universalIdentifierById[defaultRoleId]
+      : undefined;
     const role = isDefined(roleUniversalIdentifier)
       ? flatRoleMaps.byUniversalIdentifier[roleUniversalIdentifier]
       : undefined;

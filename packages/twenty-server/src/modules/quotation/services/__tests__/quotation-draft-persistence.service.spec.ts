@@ -53,6 +53,8 @@ const body = (overrides: Record<string, unknown> = {}) => ({
 });
 
 type Scope = {
+  workspaceId: string;
+  executeRawQuery: jest.Mock;
   getRepository: jest.Mock;
 };
 
@@ -110,6 +112,8 @@ const buildScope = ({
   };
 
   return {
+    workspaceId: 'workspace-1',
+    executeRawQuery: jest.fn(async () => []),
     getRepository: jest.fn((name: string) => repositories[name]),
   };
 };
@@ -185,6 +189,15 @@ describe('QuotationDraftPersistenceService', () => {
     });
     expect(workspaceOrmManager.runInWorkspaceTransaction).toHaveBeenCalledTimes(
       1,
+    );
+    // The shared advisory lock is the transaction's first statement, so a policy
+    // edit cannot land between the policy read and the commit.
+    expect(scope.executeRawQuery).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock_shared(hashtext($1))',
+      ['quotation-tax-policy:workspace-1'],
+    );
+    expect(scope.executeRawQuery.mock.invocationCallOrder[0]).toBeLessThan(
+      scope.getRepository.mock.invocationCallOrder[0],
     );
 
     const headerInsert = scope.getRepository('quotation').insert;

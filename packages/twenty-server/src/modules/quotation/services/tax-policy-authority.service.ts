@@ -21,6 +21,7 @@ import {
   formatBasisPointsAsPercent,
   parseTaxRatePercent,
 } from 'src/modules/quotation/utils/parse-tax-rate-percent.util';
+import { acquireTaxPolicyExclusiveLock } from 'src/modules/quotation/utils/quotation-tax-policy-lock.util';
 
 // The initial policy of a workspace that has none: the same 9% definition the
 // sealed legacy documents were written with. Created only by the explicit,
@@ -207,8 +208,30 @@ export class TaxPolicyAuthorityService {
           );
         }
 
+        // A workspace must never be left without an active policy: there would be no
+        // rate to price a new document with. Deactivation is therefore refused when it
+        // would remove the last active one, on this path as well as `deactivatePolicy`.
+        const activeOthers = rows.filter(
+          (row) => row.recordId !== existing?.recordId && row.isActive,
+        );
+
+        if (input.isActive === false && activeOthers.length === 0) {
+          return existing === null && rows.length === 0
+            ? refused(
+                'TAX_POLICY_FIRST_MUST_BE_ACTIVE',
+                'اولین سیاست مالیات باید فعال باشد',
+              )
+            : refused(
+                'TAX_POLICY_LAST_ACTIVE',
+                'حداقل یک سیاست مالیات فعال لازم است',
+              );
+        }
+
         const code = readText(existing?.code ?? null) || this.nextCode(rows, rate.rateBasisPoints);
-        const shouldBeDefault = input.isDefault || wasDefault;
+        // The first policy of a workspace has to become the default: a catalog with a
+        // rate but no default cannot price anything, and there is nothing else to pick.
+        const shouldBeDefault =
+          input.isDefault || wasDefault || rows.length === 0;
 
         // Clear first, then write, in the same transaction: a failure on the second
         // statement rolls the first one back, so no state is ever observed with two
@@ -217,29 +240,38 @@ export class TaxPolicyAuthorityService {
           await this.clearDefaults(repository, rows, existing?.recordId ?? null, actor);
         }
 
-        const columns = {
+        const values = {
           code,
           name,
           rateBasisPoints: rate.rateBasisPoints.toString(),
           isActive: input.isActive,
           isDefault: shouldBeDefault,
           isExempt: input.isExempt,
-          createdBy: actor,
-          updatedBy: actor,
         };
 
         if (existing === null) {
-          await repository.insert(columns as never);
+          await repository.insert({
+            ...values,
+            // `createdBy` belongs to the insert only. An update that rewrote it would
+            // turn "who introduced this rate" into "who touched it last".
+            createdBy: actor,
+            updatedBy: actor,
+          } as never);
         } else {
-          await repository.update({ id: existing.recordId }, columns as never);
+          await repository.update({ id: existing.recordId }, {
+            ...values,
+            updatedBy: actor,
+          } as never);
         }
 
-        await this.ensureSingleDefault(repository, actor);
+        const repaired = await this.enforceSingleActiveDefault(repository, actor);
 
         return {
           kind: 'OK',
           policies: await this.findAll(repository),
-          message: 'سیاست مالیات ذخیره شد',
+          message: repaired
+            ? 'سیاست مالیات ذخیره شد؛ وضعیت پیش‌فرض ناسازگار بود و به قدیمی‌ترین سیاست فعال بازگردانده شد'
+            : 'سیاست مالیات ذخیره شد',
         };
       }),
     );
@@ -270,11 +302,14 @@ export class TaxPolicyAuthorityService {
 
         await this.clearDefaults(repository, rows, recordId, actor);
         await repository.update({ id: recordId }, { isDefault: true, updatedBy: actor } as never);
+        const repaired = await this.enforceSingleActiveDefault(repository, actor);
 
         return {
           kind: 'OK',
           policies: await this.findAll(repository),
-          message: 'سیاست پیش‌فرض تغییر کرد',
+          message: repaired
+            ? 'سیاست پیش‌فرض تغییر کرد؛ وضعیت ناسازگار به قدیمی‌ترین سیاست فعال بازگردانده شد'
+            : 'سیاست پیش‌فرض تغییر کرد',
         };
       }),
     );
@@ -317,11 +352,14 @@ export class TaxPolicyAuthorityService {
         // Deactivation, never destruction: documents that name this policy must stay
         // readable forever.
         await repository.update({ id: recordId }, { isActive: false, updatedBy: actor } as never);
+        const repaired = await this.enforceSingleActiveDefault(repository, actor);
 
         return {
           kind: 'OK',
           policies: await this.findAll(repository),
-          message: 'سیاست مالیات غیرفعال شد',
+          message: repaired
+            ? 'سیاست مالیات غیرفعال شد؛ وضعیت پیش‌فرض ناسازگار به قدیمی‌ترین سیاست فعال بازگردانده شد'
+            : 'سیاست مالیات غیرفعال شد',
         };
       }),
     );
@@ -355,11 +393,9 @@ export class TaxPolicyAuthorityService {
     return this.workspaceOrmManager.runInWorkspaceTransaction(async (scope) => {
       // Serialize policy mutations for this workspace. Clearing the old default and
       // setting the new one are two statements; without the lock two concurrent
-      // requests interleave and leave two defaults behind.
-      await scope.executeRawQuery(
-        'SELECT pg_advisory_xact_lock(hashtext($1))',
-        [`quotation-tax-policy:${scope.workspaceId}`],
-      );
+      // requests interleave and leave two defaults behind. The same lock is taken in
+      // shared mode by a draft save, so a rate cannot change mid-pricing.
+      await acquireTaxPolicyExclusiveLock(scope);
 
       return work(scope);
     });
@@ -439,41 +475,54 @@ export class TaxPolicyAuthorityService {
     }
   }
 
-  // A workspace with policies but no default has no starting rate. The first policy
-  // (oldest) takes the flag; the alternative is a draft form that cannot pick one.
-  private async ensureSingleDefault(
+  // The invariant is "exactly one ACTIVE default", not "one default": a default on an
+  // inactive row prices nothing, and two defaults make the choice non-deterministic.
+  // Contradictory state is repaired deterministically (oldest active policy wins) and
+  // reported in the outcome message — never silently. Running it after every write
+  // means the transaction that introduced the contradiction is the one that fixes it.
+  private async enforceSingleActiveDefault(
     repository: WorkspaceRepository<WorkspaceTaxPolicyRow>,
     actor: ActorMetadata,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const rows = await repository.find({
       select: POLICY_COLUMNS,
       order: { createdAt: 'ASC' },
     });
-    const defaults = rows.filter((row) => row.isDefault === true);
+    const activeRows = rows.filter((row) => row.isActive === true);
 
-    if (defaults.length === 1) {
-      return;
-    }
-
-    if (defaults.length > 1) {
-      for (const extra of defaults.slice(1)) {
-        await repository.update(
-          { id: extra.id },
-          { isDefault: false, updatedBy: actor } as never,
-        );
-      }
-
-      return;
-    }
-
-    const first = rows[0];
-
-    if (first !== undefined) {
-      await repository.update(
-        { id: first.id },
-        { isDefault: true, updatedBy: actor } as never,
+    if (activeRows.length === 0) {
+      // No permitted mutation can leave the catalog without an active rate; reaching
+      // here means a write path was bypassed. Throwing aborts the transaction instead
+      // of persisting a catalog that cannot price a document.
+      throw new Error(
+        'TAX_POLICY_INVARIANT_VIOLATED: a workspace must keep at least one active tax policy',
       );
     }
+
+    const preferred =
+      activeRows.find((row) => row.isDefault === true) ?? activeRows[0];
+    const preferredId = readText(preferred.id);
+    let repaired = false;
+
+    for (const row of rows) {
+      if (row.isDefault === true && row.id !== preferredId) {
+        await repository.update(
+          { id: row.id },
+          { isDefault: false, updatedBy: actor } as never,
+        );
+        repaired = true;
+      }
+    }
+
+    if (preferred.isDefault !== true) {
+      await repository.update(
+        { id: preferred.id },
+        { isDefault: true, updatedBy: actor } as never,
+      );
+      repaired = true;
+    }
+
+    return repaired;
   }
 
   private nextCode(

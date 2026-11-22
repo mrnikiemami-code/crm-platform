@@ -32,6 +32,7 @@ import {
   parseQuotationVersion,
 } from 'src/modules/quotation/utils/quotation-immutability.util';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
+import { acquireTaxPolicyReadLock } from 'src/modules/quotation/utils/quotation-tax-policy-lock.util';
 
 type QuotationHeaderRow = {
   id: string;
@@ -117,6 +118,12 @@ export class QuotationDraftPersistenceService {
         () =>
           this.workspaceOrmManager.runInWorkspaceTransaction(
             async (transactionScope) => {
+              // First statement, before any row: a settings edit cannot change the
+              // policy between the read below and this transaction's commit. Shared
+              // mode keeps concurrent draft saves parallel; see the lock util for the
+              // fixed ordering that makes a deadlock impossible.
+              await acquireTaxPolicyReadLock(transactionScope);
+
               const totals = evaluateQuotationDraftTotals({
                 header: request.header,
                 lines: request.lines,
