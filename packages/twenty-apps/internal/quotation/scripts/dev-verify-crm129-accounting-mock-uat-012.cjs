@@ -26,7 +26,7 @@ if (!apiBase.includes('localhost:3002')) {
 const DATABASE_URL =
   process.env.CRM129_DATABASE_URL ??
   'postgres://postgres:563162150m8084M@localhost:5432/default';
-const EXPECTED_APP_VERSION = '0.1.24';
+const EXPECTED_APP_VERSION = '0.1.25';
 const ACCOUNTING_PAGE_UNIVERSAL_IDENTIFIER =
   '8d4356f5-95ef-54ef-91a6-12e955e4c9df';
 
