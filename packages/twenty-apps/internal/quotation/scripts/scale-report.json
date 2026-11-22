@@ -1,0 +1,126 @@
+{
+  "generatedAt": "2026-11-22T16:32:55.718Z",
+  "database": "twenty_scale_crm129_013",
+  "dataset": {
+    "customers": 1000000,
+    "items": 100000
+  },
+  "paging": {
+    "pageSize": 25,
+    "firstPageRows": 25,
+    "firstPageMs": 142.31,
+    "deepPageRows": 25,
+    "deepPageMs": 78.73,
+    "deepOffsetMs": 725.9,
+    "rowsReturnedPerPage": 25,
+    "plan": [
+      "Limit  (cost=35558.37..35561.29 rows=25 width=108) (actual time=75.928..78.538 rows=25 loops=1)",
+      "  Buffers: shared hit=4693 read=19726",
+      "  ->  Gather Merge  (cost=35558.37..67968.07 rows=277778 width=108) (actual time=75.926..78.535 rows=25 loops=1)",
+      "        Workers Planned: 2",
+      "        Workers Launched: 2",
+      "        Buffers: shared hit=4693 read=19726",
+      "        ->  Sort  (cost=34558.35..34905.57 rows=138889 width=108) (actual time=68.658..68.660 rows=18 loops=3)",
+      "              Sort Key: (COALESCE(\"nameLastName\", ''::text)), id",
+      "              Sort Method: top-N heapsort  Memory: 29kB",
+      "              Buffers: shared hit=4693 read=19726",
+      "              Worker 0:  Sort Method: top-N heapsort  Memory: 28kB",
+      "              Worker 1:  Sort Method: top-N heapsort  Memory: 28kB",
+      "              ->  Parallel Seq Scan on person  (cost=0.00..30639.00 rows=138889 width=108) (actual time=1.455..60.663 rows=33333 loops=3)",
+      "                    Filter: (ROW(COALESCE(\"nameLastName\", ''::text), id) > ROW('خانواده 909999'::text, '15cf460f-d518-4f37-9b7d-9634ae182c78'::uuid))",
+      "                    Rows Removed by Filter: 300000",
+      "                    Buffers: shared hit=4663 read=19726",
+      "Planning Time: 0.061 ms",
+      "Execution Time: 78.556 ms"
+    ]
+  },
+  "catalogPaging": {
+    "p50": 20.73,
+    "p95": 21.24,
+    "plan": [
+      "Limit  (cost=4478.22..4481.09 rows=25 width=50) (actual time=19.423..21.406 rows=25 loops=1)",
+      "  Buffers: shared hit=1274",
+      "  ->  Gather Merge  (cost=4478.22..11242.98 rows=58824 width=50) (actual time=19.422..21.403 rows=25 loops=1)",
+      "        Workers Planned: 1",
+      "        Workers Launched: 1",
+      "        Buffers: shared hit=1274",
+      "        ->  Sort  (cost=3478.21..3625.27 rows=58824 width=50) (actual time=14.183..14.184 rows=22 loops=2)",
+      "              Sort Key: name, id",
+      "              Sort Method: top-N heapsort  Memory: 28kB",
+      "              Buffers: shared hit=1274",
+      "              Worker 0:  Sort Method: top-N heapsort  Memory: 27kB",
+      "              ->  Parallel Seq Scan on \"catalogItem\"  (cost=0.00..1818.24 rows=58824 width=50) (actual time=0.005..2.983 rows=50000 loops=2)",
+      "                    Buffers: shared hit=1230",
+      "Planning Time: 0.043 ms",
+      "Execution Time: 21.417 ms"
+    ]
+  },
+  "search": {
+    "ilikeMs": {
+      "p50": 122.76,
+      "p95": 169.13
+    },
+    "searchVectorMs": {
+      "p50": 54.38,
+      "p95": 56.65
+    },
+    "ilikePlan": [
+      "Limit  (cost=30598.49..30601.41 rows=25 width=51) (actual time=124.151..126.667 rows=1 loops=1)",
+      "  Buffers: shared hit=5297 read=19180 written=2",
+      "  ->  Gather Merge  (cost=30598.49..30608.29 rows=84 width=51) (actual time=124.148..126.663 rows=1 loops=1)",
+      "        Workers Planned: 2",
+      "        Workers Launched: 2",
+      "        Buffers: shared hit=5297 read=19180 written=2",
+      "        ->  Sort  (cost=29598.47..29598.57 rows=42 width=51) (actual time=112.996..112.997 rows=0 loops=3)",
+      "              Sort Key: \"nameLastName\", id",
+      "              Sort Method: quicksort  Memory: 25kB",
+      "              Buffers: shared hit=5297 read=19180 written=2",
+      "              Worker 0:  Sort Method: quicksort  Memory: 25kB",
+      "              Worker 1:  Sort Method: quicksort  Memory: 25kB",
+      "              ->  Parallel Seq Scan on person  (cost=0.00..29597.33 rows=42 width=51) (actual time=95.006..112.947 rows=0 loops=3)",
+      "                    Filter: (\"nameLastName\" ~~* '%خانواده 512345%'::text)",
+      "                    Rows Removed by Filter: 333333",
+      "                    Buffers: shared hit=5209 read=19180 written=2",
+      "Planning Time: 0.344 ms",
+      "Execution Time: 126.701 ms"
+    ],
+    "vectorPlan": [
+      "Limit  (cost=1982.32..2074.24 rows=25 width=51) (actual time=3.086..3.088 rows=1 loops=1)",
+      "  Buffers: shared hit=469",
+      "  ->  Bitmap Heap Scan on person  (cost=1982.32..3022.88 rows=283 width=51) (actual time=3.085..3.086 rows=1 loops=1)",
+      "        Recheck Cond: (\"searchVector\" @@ '''خانواده'' & ''512345'''::tsquery)",
+      "        Heap Blocks: exact=1",
+      "        Buffers: shared hit=469",
+      "        ->  Bitmap Index Scan on person_search_vector  (cost=0.00..1982.25 rows=283 width=0) (actual time=3.080..3.081 rows=1 loops=1)",
+      "              Index Cond: (\"searchVector\" @@ '''خانواده'' & ''512345'''::tsquery)",
+      "              Buffers: shared hit=468",
+      "Planning:",
+      "  Buffers: shared hit=1",
+      "Planning Time: 0.082 ms",
+      "Execution Time: 3.099 ms"
+    ]
+  },
+  "withOrderedIndex": {
+    "indexBuildMs": 4229,
+    "deepPageMs": 1.15,
+    "deepPageRows": 25,
+    "catalogFirstPageP50Ms": 0.49,
+    "catalogFirstPageP95Ms": 0.88,
+    "plan": [
+      "Limit  (cost=0.42..15.82 rows=25 width=83) (actual time=0.037..0.048 rows=25 loops=1)",
+      "  Buffers: shared hit=11",
+      "  ->  Index Scan using person_name_id_order on person  (cost=0.42..67532.42 rows=109689 width=83) (actual time=0.036..0.046 rows=25 loops=1)",
+      "        Index Cond: (ROW(COALESCE(\"nameLastName\", ''::text), id) > ROW('خانواده 909999'::text, '15cf460f-d518-4f37-9b7d-9634ae182c78'::uuid))",
+      "        Buffers: shared hit=11",
+      "Planning Time: 0.121 ms",
+      "Execution Time: 0.064 ms"
+    ]
+  },
+  "unboundedBaseline": {
+    "fullScanMs": 1803.7,
+    "fullPayloadBytes": 166670793,
+    "pagePayloadBytes": 4108,
+    "heapDeltaBytes": 587410488
+  },
+  "nodeHeapLimitMb": 4288
+}

@@ -1,8 +1,10 @@
 import {
   type CustomerKind,
   buildCustomerPickerQuery,
+  CUSTOMER_PICKER_PAGE_SIZE,
 } from 'src/data/customer-queries';
 import { RecordApiError } from 'src/data/record-api';
+import { clampPageSize } from 'src/domain/accounting/pagination';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Reads the records a quotation can point at. The picker and the save-time check
@@ -18,6 +20,13 @@ export type CustomerPickerRow = {
 export type CustomerPickerPage = {
   rows: CustomerPickerRow[];
   hasNextPage: boolean;
+  // Passed back verbatim on "next page". Twenty's cursor is opaque: it encodes the sort
+  // position, so re-using it across a different search term is rejected by the server
+  // instead of silently returning rows from the previous term.
+  endCursor: string | null;
+  // The server does not aggregate a count on this connection, so the total is honestly
+  // unknown rather than a guess.
+  totalKnown: number | null;
 };
 
 export type CustomerDependencies = {
@@ -93,7 +102,7 @@ export const parseCustomerPickerPage = (
   const edges = connection?.edges;
 
   if (!Array.isArray(edges)) {
-    return { rows: [], hasNextPage: false };
+    return { rows: [], hasNextPage: false, endCursor: null, totalKnown: null };
   }
 
   const rows = edges.flatMap((edge) => {
@@ -108,9 +117,17 @@ export const parseCustomerPickerPage = (
     return row === null ? [] : [row];
   });
 
+  const pageInfo = asRecord(connection?.pageInfo);
+  const endCursor =
+    typeof pageInfo?.endCursor === 'string' && pageInfo.endCursor !== ''
+      ? pageInfo.endCursor
+      : null;
+
   return {
     rows,
-    hasNextPage: asRecord(connection?.pageInfo)?.hasNextPage === true,
+    hasNextPage: pageInfo?.hasNextPage === true,
+    endCursor,
+    totalKnown: null,
   };
 };
 
@@ -119,15 +136,25 @@ export const searchCustomersForPicker = async (
     customerType,
     search,
     recordId = null,
+    afterCursor = null,
+    pageSize = CUSTOMER_PICKER_PAGE_SIZE,
   }: {
     customerType: CustomerKind;
     search: string;
     recordId?: string | null;
+    afterCursor?: string | null;
+    pageSize?: number;
   },
   dependencies: CustomerDependencies,
 ): Promise<CustomerPickerPage> => {
   const data = await dependencies.execute(
-    buildCustomerPickerQuery({ customerType, search, recordId }),
+    buildCustomerPickerQuery({
+      customerType,
+      search,
+      recordId,
+      afterCursor,
+      first: clampPageSize(pageSize),
+    }),
   );
 
   return parseCustomerPickerPage(data, customerType);

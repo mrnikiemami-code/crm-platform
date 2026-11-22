@@ -78,6 +78,9 @@ export type ItemImportRow = {
   existingLinkId: string | null;
   // A CRM item this row could attach to. Only ever a SUGGESTION unless a person confirms it.
   suggestedInternalItemId: string | null;
+  // The suggested item's name, so the screen never has to translate an id into a name it
+  // does not have. Optional because the apply plan speaks ids only.
+  suggestedInternalItemName?: string | null;
   priceMicros: string | null;
   priceUnits: number | null;
   planPrice: string;

@@ -43,6 +43,7 @@ const FULL: AdapterCapabilities = {
   },
   requiresSpecialItemCodes: false,
   transportIsSecure: true,
+  readStrategy: 'REMOTE_PAGED',
 };
 
 describe('outbound decisions', () => {

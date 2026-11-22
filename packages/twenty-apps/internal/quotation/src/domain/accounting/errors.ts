@@ -32,6 +32,11 @@ const PERSIAN_MESSAGES: Record<string, string> = {
   TIMEOUT: 'نرم‌افزار حسابداری در زمان مجاز پاسخ نداد.',
   INVALID_RESPONSE:
     'پاسخ نرم‌افزار حسابداری قابل خواندن نبود؛ ممکن است آدرس یا نسخهٔ سرویس اشتباه باشد.',
+  // A destination that answers its whole list in one response can hand over more than this
+  // process may hold. This is an explicit refusal, not a silent truncation: a list that shows
+  // "the first 100 000" of a million customers must never look like the whole customer book.
+  REMOTE_DATASET_TOO_LARGE:
+    'فهرست نرم‌افزار حسابداری از سقف قابل نگهداری بزرگ‌تر است و برای جلوگیری از بارگذاری نامحدود در حافظه بارگذاری نشد؛ دامنهٔ دریافت را محدود کنید یا از سرویس صفحه‌بندی‌شده استفاده کنید.',
   VENDOR_REFUSED: 'نرم‌افزار حسابداری این عملیات را نپذیرفت.',
   VENDOR_UNDOCUMENTED:
     'نرم‌افزار حسابداری کدی برگرداند که در مستندات آن تعریف نشده است؛ نتیجه نامشخص است.',

@@ -55,10 +55,38 @@ export type DocumentCapabilities = {
   acceptsCallerDocumentNumber: boolean;
 };
 
+// How a destination hands over its long lists, decided by what its API can actually do.
+//
+// REMOTE_PAGED   the destination accepts a cursor/offset/limit, so page N is fetched from
+//                the destination itself.
+// REMOTE_UNPAGED the destination answers a whole list in one response and documents no
+//                cursor, offset or page token. The rows are ingested once, bounded, into a
+//                local snapshot, and the CRM pages inside that snapshot.
+//
+// This is a capability, not a per-call decision: it is declared once per adapter and read
+// by the mapping service. The screens read one page shape either way, so a person never
+// sees a different interface because a vendor pages differently.
+export const REMOTE_READ_STRATEGIES = [
+  'REMOTE_PAGED',
+  'REMOTE_UNPAGED',
+] as const;
+
+export type RemoteReadStrategy = (typeof REMOTE_READ_STRATEGIES)[number];
+
+export const isRemoteReadStrategy = (
+  value: unknown,
+): value is RemoteReadStrategy =>
+  typeof value === 'string' &&
+  (REMOTE_READ_STRATEGIES as readonly string[]).includes(value);
+
 export type AdapterCapabilities = {
   items: ItemCapabilities;
   parties: PartyCapabilities;
   documents: DocumentCapabilities;
+  // How long lists are read. A `REMOTE_UNPAGED` adapter must be ingested through the
+  // bounded snapshot reader; treating it as paged would re-download the whole list per
+  // page, which is the unbounded path the scale gate forbids.
+  readStrategy: RemoteReadStrategy;
   // Whether the vendor needs pre-existing special item codes (a discount line, a tax line)
   // rather than accepting tax and discount as fields on a normal line.
   requiresSpecialItemCodes: boolean;
@@ -97,6 +125,9 @@ export const NO_CAPABILITIES: AdapterCapabilities = {
   },
   requiresSpecialItemCodes: true,
   transportIsSecure: false,
+  // The conservative default: an adapter that declares nothing is ingested through the
+  // bounded snapshot path rather than trusted to page.
+  readStrategy: 'REMOTE_UNPAGED',
 };
 
 export type OutboundIntent =

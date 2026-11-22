@@ -142,6 +142,23 @@ export type RemoteProformaInput = {
   description: string;
 };
 
+// One page fetched from a destination that can page. Only a `REMOTE_PAGED` adapter
+// implements this; `cursor` is the destination's own opaque token, never a local offset.
+export type RemotePageRequest = {
+  cursor: string | null;
+  pageSize: number;
+  search: string;
+};
+
+export type RemotePage<TRow> = {
+  rows: TRow[];
+  nextCursor: string | null;
+  hasNextPage: boolean;
+  // `null` when the destination cannot state a total. Guessing a total turns into
+  // "page 1 of 40" on a list of 40 000.
+  totalKnown: number | null;
+};
+
 export type AccountingAdapter = {
   readonly id: AccountingAdapterId;
   readonly contractVersion: string;
@@ -151,8 +168,19 @@ export type AccountingAdapter = {
   readonly isLive: boolean;
 
   testConnection(): Promise<Result<AdapterHealth>>;
+  // Whole-list reads. Required of every adapter because the `REMOTE_UNPAGED` path ingests
+  // exactly this one response into a bounded snapshot.
   listItems(): Promise<Result<RemoteCatalogItem[]>>;
   listParties(): Promise<Result<RemoteParty[]>>;
+  // Implemented only when `capabilities.readStrategy === 'REMOTE_PAGED'`. Its absence is the
+  // machine-readable proof that the destination cannot page, so the reader falls back to
+  // the bounded snapshot instead of guessing an offset the vendor does not accept.
+  readItemPage?(
+    request: RemotePageRequest,
+  ): Promise<Result<RemotePage<RemoteCatalogItem>>>;
+  readPartyPage?(
+    request: RemotePageRequest,
+  ): Promise<Result<RemotePage<RemoteParty>>>;
   createItem(input: RemoteItemInput): Promise<Result<RemoteCatalogItem>>;
   updateItemPrices(
     input: RemoteItemInput,

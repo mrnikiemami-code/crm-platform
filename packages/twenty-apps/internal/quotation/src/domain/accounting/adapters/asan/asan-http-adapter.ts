@@ -57,6 +57,24 @@ export type AsanHttpAdapterConfig = {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+// Asan answers `AllProducts`/`AllCustomers` with the whole list in one body, so a large
+// installation produces a large body. This ceiling is checked BEFORE the JSON is parsed:
+// parsing first and counting afterwards would allocate exactly the memory the ceiling exists
+// to protect. A workspace above it gets an explicit refusal instead of a process that grows
+// with the vendor's table.
+const DEFAULT_LIST_BODY_MAX_BYTES = 64 * 1024 * 1024;
+
+const readListBodyMaxBytes = (): number => {
+  const parsed = Number.parseInt(
+    String(process.env.ACCOUNTING_REMOTE_RESPONSE_MAX_BYTES ?? ''),
+    10,
+  );
+
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_LIST_BODY_MAX_BYTES;
+};
+
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -287,6 +305,22 @@ export class AsanHttpAdapter implements AccountingAdapter {
     }
   }
 
+  // Checked on the raw body, before JSON.parse: the point is to refuse the allocation, not
+  // to measure it after it happened.
+  private checkListBodySize(
+    text: string,
+    resource: 'product' | 'customer',
+  ): Result<never> | null {
+    if (text.length <= readListBodyMaxBytes()) {
+      return null;
+    }
+
+    return refused(
+      'REMOTE_DATASET_TOO_LARGE',
+      `the vendor answered ${text.length} bytes for the ${resource} list, above the ${readListBodyMaxBytes()} byte ceiling`,
+    );
+  }
+
   // Asan answers writes with a bare integer, which proxies and older gateways sometimes
   // quote. Anything else is UNEXPECTED rather than an assumed success.
   private parseWriteCode(text: string): number {
@@ -391,6 +425,12 @@ export class AsanHttpAdapter implements AccountingAdapter {
       );
     }
 
+    const oversized = this.checkListBodySize(result.value.text, 'product');
+
+    if (oversized !== null) {
+      return oversized;
+    }
+
     const parsed = this.parseJson(result.value.text);
 
     if (!parsed.ok) {
@@ -436,6 +476,12 @@ export class AsanHttpAdapter implements AccountingAdapter {
         'INVALID_RESPONSE',
         `the vendor answered HTTP ${result.value.status} for the customer list`,
       );
+    }
+
+    const oversized = this.checkListBodySize(result.value.text, 'customer');
+
+    if (oversized !== null) {
+      return oversized;
     }
 
     const parsed = this.parseJson(result.value.text);

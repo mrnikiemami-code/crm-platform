@@ -41,6 +41,7 @@ const FULL: AdapterCapabilities = {
   },
   requiresSpecialItemCodes: false,
   transportIsSecure: true,
+  readStrategy: 'REMOTE_PAGED',
 };
 
 const settings = (overrides: Partial<ConnectionSettings> = {}): ConnectionSettings => ({

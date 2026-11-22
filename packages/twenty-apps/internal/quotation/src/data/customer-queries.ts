@@ -57,25 +57,34 @@ export const buildCustomerPickerQuery = ({
   search,
   recordId = null,
   first = CUSTOMER_PICKER_PAGE_SIZE,
+  afterCursor = null,
 }: {
   customerType: CustomerKind;
   search: string;
   recordId?: string | null;
   first?: number;
+  afterCursor?: string | null;
 }): string => {
+  // `after` is only appended when a cursor exists: an `after: null` literal is rejected by
+  // the schema, and an empty string is a cursor the server cannot resolve.
+  const afterArg =
+    afterCursor === null || afterCursor === ''
+      ? ''
+      : `after: ${toGraphqlLiteral(afterCursor)}, `;
+
   if (customerType === 'COMPANY') {
     return `query CustomerCompanies {
-      companies(${withFilter(buildCompanyFilterLiteral(search, recordId))}first: ${first}) {
-        edges { node { ${COMPANY_FIELDS} } }
-        pageInfo { hasNextPage }
+      companies(${withFilter(buildCompanyFilterLiteral(search, recordId))}${afterArg}first: ${first}) {
+        edges { cursor node { ${COMPANY_FIELDS} } }
+        pageInfo { hasNextPage endCursor }
       }
     }`;
   }
 
   return `query CustomerPeople {
-    people(${withFilter(buildPersonFilterLiteral(search, recordId))}first: ${first}) {
-      edges { node { ${PERSON_FIELDS} } }
-      pageInfo { hasNextPage }
+    people(${withFilter(buildPersonFilterLiteral(search, recordId))}${afterArg}first: ${first}) {
+      edges { cursor node { ${PERSON_FIELDS} } }
+      pageInfo { hasNextPage endCursor }
     }
   }`;
 };

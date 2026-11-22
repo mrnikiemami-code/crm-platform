@@ -92,7 +92,31 @@ describe('customer-picker.service', () => {
     expect(parseCustomerPickerPage({}, 'COMPANY')).toEqual({
       rows: [],
       hasNextPage: false,
+      endCursor: null,
+      totalKnown: null,
     });
+  });
+
+  it('pages with the cursor the server issued so the next page continues the same order', async () => {
+    const execute = vi.fn(async (_query: string) => ({
+      companies: {
+        edges: [{ cursor: 'c-3', node: { id: 'company-3', name: 'شرکت سوم' } }],
+        pageInfo: { hasNextPage: true, endCursor: 'c-3' },
+      },
+    }));
+
+    const page = await searchCustomersForPicker(
+      { customerType: 'COMPANY', search: 'شرکت', afterCursor: 'c-2', pageSize: 1 },
+      { execute },
+    );
+
+    const query = String(execute.mock.calls[0][0]);
+
+    expect(query).toContain('after: "c-2"');
+    expect(query).toContain('first: 1');
+    expect(page.endCursor).toBe('c-3');
+    expect(page.hasNextPage).toBe(true);
+    expect(page.totalKnown).toBeNull();
   });
 
   it('asks for the selected record only when hydrating a preselection', async () => {

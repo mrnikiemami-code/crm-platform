@@ -1,6 +1,6 @@
 {
   "name": "quotation",
-  "version": "0.1.25",
+  "version": "0.1.28",
   "license": "MIT",
   "engines": {
     "node": "^24.5.0",
@@ -8,7 +8,9 @@
     "yarn": ">=4.0.2",
     "twenty": ">=2.41.0"
   },
-  "keywords": ["twenty-app"],
+  "keywords": [
+    "twenty-app"
+  ],
   "packageManager": "yarn@4.13.0",
   "scripts": {
     "twenty": "twenty",

@@ -65,6 +65,11 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
   // Asan needs discount, duty and tax as SEPARATE lines carrying the pre-existing item
   // codes 999123 / 999140 / 999141 with Count = 0 — they are not fields on a normal line.
   requiresSpecialItemCodes: true,
+  // The guide documents `ProductsNew/AllProducts` and `CustomersNew/AllCustomers` with NO
+  // input parameters, and `LastProducts`/`LastCustomers` accept only `Count` — "the last N".
+  // There is no offset, page number or cursor anywhere in the guide, so there is no page 2 to
+  // ask for. Declaring this as paged would re-download the whole catalog per page.
+  readStrategy: 'REMOTE_UNPAGED',
   // The guide documents plain HTTP over a service address with no authentication
   // mechanism. Treated as insecure: a connector must not carry credentials over it without
   // an approved tunnel.

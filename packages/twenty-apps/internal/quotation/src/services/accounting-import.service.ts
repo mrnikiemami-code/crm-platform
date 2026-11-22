@@ -2,7 +2,6 @@ import {
   buildAccountingItemLinksQuery,
   buildAccountingPartyCandidatesQuery,
   buildAccountingPartyLinksQuery,
-  buildAccountingCatalogItemsQuery,
   buildCreateAccountingItemLinkMutation,
   buildCreateAccountingPartyLinkMutation,
   buildUpdateAccountingItemLinkMutation,
@@ -22,7 +21,6 @@ import {
   planItemImport,
   planPartyImport,
   resolveItemApplyPlan,
-  type CrmItemSummary,
   type CrmPartyCandidate,
   type CrmPartySummary,
   type ExistingItemLink,
@@ -31,6 +29,11 @@ import {
   type ItemImportPreview,
   type PartyImportPreview,
 } from 'src/domain/accounting/import-plan';
+import {
+  countItemDecisions,
+  enrichItemPage,
+} from 'src/domain/accounting/mapping-page';
+import { loadCrmItemIndex } from 'src/services/accounting-crm-lookup.service';
 import { accepted, type Result } from 'src/domain/shared/result';
 
 export type ImportDependencies = {
@@ -124,47 +127,6 @@ export const loadPartyLinks = async (
   });
 };
 
-const loadCrmItems = async (
-  dependencies: ImportDependencies,
-): Promise<CrmItemSummary[]> => {
-  const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(buildAccountingCatalogItemsQuery());
-
-  return readRows(data, 'catalogItems').flatMap((node) => {
-    const id = readString(node.id);
-
-    if (id === '') {
-      return [];
-    }
-
-    const prices = Array.isArray(asRecord(node.prices)?.edges)
-      ? (asRecord(node.prices)?.edges as unknown[]).flatMap((edge) => {
-          const price = asRecord(asRecord(edge)?.node);
-          const amount = readString(price?.unitPriceExact);
-
-          return amount === ''
-            ? []
-            : [
-                {
-                  amount,
-                  isDefault: asRecord(price?.priceList)?.isDefault === true,
-                },
-              ];
-        })
-      : [];
-    const chosen = prices.find((price) => price.isDefault) ?? prices[0];
-
-    return [
-      {
-        id,
-        name: readString(node.name),
-        sku: readString(node.sku) || null,
-        priceMicros: chosen?.amount ?? null,
-      },
-    ];
-  });
-};
-
 // A person's full name is stored as two fields; the candidate list is displayed, never used
 // to match, so a joined label is enough.
 const loadCrmPartyCandidates = async (
@@ -204,10 +166,14 @@ export const previewItemImport = async (
     connectionId,
     adapter,
     moneyUnit,
+    // Set by the apply path: only the selected rows need their CRM side resolved, so a
+    // confirmation of 3 rows costs one lookup and not one per row in the catalog.
+    onlyExternalIds = null,
   }: {
     connectionId: string;
     adapter: AccountingAdapter;
     moneyUnit: AccountingMoneyUnit;
+    onlyExternalIds?: string[] | null;
   },
   dependencies: ImportDependencies = {},
 ): Promise<Result<ItemImportPreview>> => {
@@ -217,19 +183,46 @@ export const previewItemImport = async (
     return remote;
   }
 
-  const [links, crmItems] = await Promise.all([
-    loadItemLinks(connectionId, dependencies),
-    loadCrmItems(dependencies),
-  ]);
+  const links = await loadItemLinks(connectionId, dependencies);
 
-  return accepted(
-    planItemImport({
-      remoteItems: remote.value,
-      links,
-      crmItems,
-      moneyUnit,
-    }),
+  // Planned WITHOUT the CRM catalog: the plan's destination-side facts (duplicate codes,
+  // numeric ids, price units) do not depend on it, and reading the catalog to find them was
+  // the unbounded scan this replaces.
+  const planned = planItemImport({
+    remoteItems: remote.value,
+    links,
+    crmItems: [],
+    moneyUnit,
+  });
+
+  const selected =
+    onlyExternalIds === null
+      ? planned.rows
+      : planned.rows.filter((row) =>
+          onlyExternalIds.includes(row.externalItemId),
+        );
+
+  const index = await loadCrmItemIndex(
+    {
+      skus: selected.map((row) => row.code),
+      ids: selected.flatMap((row) =>
+        row.suggestedInternalItemId === null
+          ? []
+          : [row.suggestedInternalItemId],
+      ),
+    },
+    { execute: dependencies.execute },
   );
+  const rows = enrichItemPage({ rows: selected, index });
+
+  const summary = countItemDecisions(rows);
+
+  return accepted({
+    moneyUnit,
+    rows,
+    summary,
+    totalRemoteItems: remote.value.length,
+  });
 };
 
 export type ItemApplyOutcome = {

@@ -6,10 +6,21 @@ import {
   type RemoteCatalogItem,
   type RemoteDocument,
   type RemoteItemInput,
+  type RemotePage,
+  type RemotePageRequest,
   type RemoteParty,
   type RemotePartyInput,
   type RemoteProformaInput,
 } from 'src/domain/accounting/adapter-contract';
+import {
+  type AdapterCapabilities,
+  type RemoteReadStrategy,
+} from 'src/domain/accounting/capabilities';
+import {
+  clampPageSize,
+  decodeRemoteOffsetCursor,
+  encodeRemoteOffsetCursor,
+} from 'src/domain/accounting/pagination';
 import { MOCK_CATALOG_ITEMS, MOCK_PARTIES } from 'src/domain/accounting/adapters/mock/mock-dataset';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
@@ -17,9 +28,15 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // import/preview surfaces without a vendor server. It is deliberately NOT a simulation of
 // Asan's response codes: those are tested against the real parser with recorded fixtures.
 // Its job is to make the CRM side of the contract observable and repeatable.
+//
+// It can declare either read strategy. `REMOTE_PAGED` gives tests a destination that really
+// pages (the page is cut from its own store and the cursor is its own token), which is how
+// the paged branch is proven end to end with no vendor call. `REMOTE_UNPAGED` is the default
+// because that is what Asan is, and the mock must not describe a richer API than Asan has.
 export type MockAdapterConfig = {
   items?: RemoteCatalogItem[];
   parties?: RemoteParty[];
+  readStrategy?: RemoteReadStrategy;
   // Forces every write to fail so retry and failure paths can be exercised.
   refuseWrites?: boolean;
   now?: () => Date;
@@ -29,10 +46,17 @@ const DEFAULT_ITEMS: RemoteCatalogItem[] = MOCK_CATALOG_ITEMS;
 
 const DEFAULT_PARTIES: RemoteParty[] = MOCK_PARTIES;
 
+const mockCapabilities = (
+  readStrategy: RemoteReadStrategy,
+): AdapterCapabilities => ({
+  ...ASAN_CAPABILITIES,
+  readStrategy,
+});
+
 export class MockAccountingAdapter implements AccountingAdapter {
   readonly id = 'mock' as const;
   readonly contractVersion = ACCOUNTING_ADAPTER_CONTRACT_VERSION;
-  readonly capabilities = ASAN_CAPABILITIES;
+  readonly capabilities: AdapterCapabilities;
   readonly isLive = false;
 
   private items: RemoteCatalogItem[];
@@ -44,6 +68,7 @@ export class MockAccountingAdapter implements AccountingAdapter {
   constructor(config: MockAdapterConfig = {}) {
     this.items = [...(config.items ?? DEFAULT_ITEMS)];
     this.parties = [...(config.parties ?? DEFAULT_PARTIES)];
+    this.capabilities = mockCapabilities(config.readStrategy ?? 'REMOTE_UNPAGED');
     this.refuseWrites = config.refuseWrites ?? false;
     this.now = config.now ?? (() => new Date());
   }
@@ -64,6 +89,71 @@ export class MockAccountingAdapter implements AccountingAdapter {
 
   async listParties(): Promise<Result<RemoteParty[]>> {
     return accepted([...this.parties]);
+  }
+
+  // Present on the mock regardless of the declared strategy, so a test can prove that a
+  // `REMOTE_PAGED` destination is read page by page. The mapping service only calls these
+  // when the adapter DECLARES `REMOTE_PAGED`, which is the same gate a real vendor uses.
+  async readItemPage(
+    request: RemotePageRequest,
+  ): Promise<Result<RemotePage<RemoteCatalogItem>>> {
+    return this.readPage(
+      this.items,
+      request,
+      (item) => [item.code, item.name, item.externalItemId, item.secondaryName ?? ''],
+    );
+  }
+
+  async readPartyPage(
+    request: RemotePageRequest,
+  ): Promise<Result<RemotePage<RemoteParty>>> {
+    return this.readPage(
+      this.parties,
+      request,
+      (party) => [
+        party.code,
+        party.fullName,
+        party.externalPartyId,
+        party.nationalCode ?? '',
+        party.mobile ?? '',
+      ],
+    );
+  }
+
+  // One page, cut from the adapter's own store. A cursor from a different generation is
+  // refused rather than reinterpreted, because an offset into a changed list would attach a
+  // decision to the wrong record.
+  private readPage<TRow>(
+    rows: TRow[],
+    request: RemotePageRequest,
+    haystack: (row: TRow) => string[],
+  ): Result<RemotePage<TRow>> {
+    const offset = decodeRemoteOffsetCursor(request.cursor);
+
+    if (offset === null) {
+      return refused('INVALID_RESPONSE', 'the mock adapter did not issue this cursor');
+    }
+
+    const needle = request.search.trim().toLowerCase();
+    const matching =
+      needle === ''
+        ? rows
+        : rows.filter((row) =>
+            haystack(row).some((field) =>
+              field.toLowerCase().includes(needle),
+            ),
+          );
+
+    const pageSize = clampPageSize(request.pageSize);
+    const safeOffset = Math.min(offset, matching.length);
+    const end = Math.min(safeOffset + pageSize, matching.length);
+
+    return accepted({
+      rows: matching.slice(safeOffset, end),
+      nextCursor: end < matching.length ? encodeRemoteOffsetCursor(end) : null,
+      hasNextPage: end < matching.length,
+      totalKnown: matching.length,
+    });
   }
 
   async createItem(input: RemoteItemInput): Promise<Result<RemoteCatalogItem>> {
