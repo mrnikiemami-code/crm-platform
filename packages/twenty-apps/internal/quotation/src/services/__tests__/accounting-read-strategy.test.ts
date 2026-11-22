@@ -335,6 +335,42 @@ describe('remote read strategies', () => {
     expect(page.snapshot.incompleteReason).toBe('SNAPSHOT_LIMIT_REACHED');
     expect(page.totalKnown).toBe(12);
   });
+
+  // A broken adapter must fail loudly. Falling back to listItems() would read the vendor's
+  // whole table on every page request while the capability screen still claimed paging.
+  it('refuses a paged adapter that has no item page reader, and never reads the whole list', async () => {
+    const adapter = new MockAccountingAdapter({
+      items: items(30),
+      readStrategy: 'REMOTE_PAGED',
+    });
+
+    (adapter as unknown as { readItemPage?: unknown }).readItemPage = undefined;
+
+    const listItems = vi.spyOn(adapter, 'listItems');
+
+    await expect(
+      loadItemMappingPage(itemInput(adapter), { execute, storage: storage() }),
+    ).rejects.toMatchObject({ code: 'ADAPTER_CONTRACT_INCOMPLETE' });
+
+    expect(listItems).not.toHaveBeenCalled();
+  });
+
+  it('refuses a paged adapter that has no party page reader, and never reads the whole list', async () => {
+    const adapter = new MockAccountingAdapter({
+      parties: Array.from({ length: 30 }, (_, index) => party(index)),
+      readStrategy: 'REMOTE_PAGED',
+    });
+
+    (adapter as unknown as { readPartyPage?: unknown }).readPartyPage = undefined;
+
+    const listParties = vi.spyOn(adapter, 'listParties');
+
+    await expect(
+      loadPartyMappingPage(partyInput(adapter), { execute, storage: storage() }),
+    ).rejects.toMatchObject({ code: 'ADAPTER_CONTRACT_INCOMPLETE' });
+
+    expect(listParties).not.toHaveBeenCalled();
+  });
 });
 
 

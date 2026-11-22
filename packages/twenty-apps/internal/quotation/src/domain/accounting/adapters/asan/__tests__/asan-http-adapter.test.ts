@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AsanHttpAdapter,
   type AsanFetch,
+  readBoundedResponseText,
 } from 'src/domain/accounting/adapters/asan/asan-http-adapter';
 
 type Call = {
@@ -319,5 +320,132 @@ describe('asan document registration', () => {
       ok: false,
       refusal: { code: 'VENDOR_UNDOCUMENTED' },
     });
+  });
+});
+
+describe('asan response body budget', () => {
+  const streamed = (
+    chunks: string[],
+    declaredLength?: string,
+  ): {
+    response: Parameters<typeof readBoundedResponseText>[0];
+    readerCalls: () => number;
+    cancellations: () => number;
+  } => {
+    const encoder = new TextEncoder();
+    let index = 0;
+    let reads = 0;
+    let cancelled = 0;
+
+    return {
+      readerCalls: () => reads,
+      cancellations: () => cancelled,
+      response: {
+        ok: true,
+        status: 200,
+        headers: { get: () => declaredLength ?? null },
+        body: {
+          getReader: () => ({
+            read: async () => {
+              reads += 1;
+
+              if (index >= chunks.length) {
+                return { done: true };
+              }
+
+              const value = encoder.encode(chunks[index]);
+              index += 1;
+
+              return { done: false, value };
+            },
+            cancel: async () => {
+              cancelled += 1;
+            },
+          }),
+        },
+        text: async () => {
+          throw new Error('the buffered path must not run when a stream is present');
+        },
+      },
+    };
+  };
+
+  it('aborts a streamed body as soon as the byte ceiling is crossed', async () => {
+    const fake = streamed(['a'.repeat(1024), 'b'.repeat(1024), 'c'.repeat(1024)]);
+
+    const result = await readBoundedResponseText(fake.response, 1500);
+
+    expect(result).toMatchObject({
+      ok: false,
+      refusal: { code: 'REMOTE_DATASET_TOO_LARGE' },
+    });
+    expect(fake.cancellations()).toBe(1);
+    // Two chunks were read: the second one is what crossed the budget. The third never
+    // arrived, which is the whole point of aborting mid-body.
+    expect(fake.readerCalls()).toBe(2);
+  });
+
+  it('refuses on a declared content-length above the ceiling without reading the body', async () => {
+    const fake = streamed(['small'], '104857600');
+
+    const result = await readBoundedResponseText(fake.response, 1024);
+
+    expect(result).toMatchObject({
+      ok: false,
+      refusal: { code: 'REMOTE_DATASET_TOO_LARGE' },
+    });
+    expect(fake.readerCalls()).toBe(0);
+    expect(fake.cancellations()).toBe(0);
+  });
+
+  it('reads a body inside the budget to the end', async () => {
+    const fake = streamed(['{"data":', '[]}']);
+
+    const result = await readBoundedResponseText(fake.response, 1024);
+
+    expect(result).toEqual({ ok: true, value: '{"data":[]}' });
+    expect(fake.cancellations()).toBe(0);
+  });
+
+  it('measures real utf-8 bytes when the runtime exposes no stream', async () => {
+    const response = {
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      body: null,
+      text: async () => 'کالا',
+    };
+
+    // Four Persian characters are eight bytes, not four: a character count would let this
+    // through and then claim the ceiling had been honoured.
+    const refusedResult = await readBoundedResponseText(response, 6);
+    const acceptedResult = await readBoundedResponseText(response, 8);
+
+    expect(refusedResult).toMatchObject({ ok: false });
+    expect(acceptedResult).toEqual({ ok: true, value: 'کالا' });
+  });
+
+  it('stops the adapter read at the ceiling instead of buffering the whole list', async () => {
+    const previous = process.env.ACCOUNTING_REMOTE_RESPONSE_MAX_BYTES;
+    process.env.ACCOUNTING_REMOTE_RESPONSE_MAX_BYTES = '1024';
+
+    try {
+      const fake = streamed(['a'.repeat(700), 'b'.repeat(700)]);
+      const fetchImpl: AsanFetch = async () => fake.response;
+      const result = await adapter({}, fetchImpl).listItems();
+
+      expect(result).toMatchObject({
+        ok: false,
+        refusal: { code: 'REMOTE_DATASET_TOO_LARGE' },
+      });
+      expect(fake.cancellations()).toBe(1);
+      expect(fake.readerCalls()).toBe(2);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.ACCOUNTING_REMOTE_RESPONSE_MAX_BYTES;
+      } else {
+        process.env.ACCOUNTING_REMOTE_RESPONSE_MAX_BYTES = previous;
+      }
+    }
   });
 });

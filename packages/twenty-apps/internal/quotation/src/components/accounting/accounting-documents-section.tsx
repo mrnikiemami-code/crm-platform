@@ -3,9 +3,14 @@ import { useMemo, useState } from 'react';
 import {
   Badge,
   Card,
-  SectionHeader,
+  Details,
+  EmptyState,
+  InlineAlert,
+  PrimaryButton,
+  SecondaryButton,
   StatCard,
   StatGrid,
+  StateBlock,
 } from 'src/components/accounting/accounting-business-ui';
 import {
   type ConnectionRecord,
@@ -20,6 +25,10 @@ import {
 // The "unfinished work" list is the recovery surface. A failed or stuck operation is not an
 // error banner that disappears on reload — it stays here, with the state that says whether
 // retrying is safe, until someone acts on it.
+//
+// Readiness is expressed as a list of things that are true or not, each with the section
+// that fixes it. A merchant does not need to know what "outbound flag" means to understand
+// «ارسال به حسابداری خاموش است» followed by a button that goes there.
 const UNFINISHED_STATES = new Set([
   'PENDING',
   'IN_FLIGHT',
@@ -27,6 +36,12 @@ const UNFINISHED_STATES = new Set([
   'FAILED_FINAL',
   'MANUAL_EXPORT_REQUIRED',
 ]);
+
+type ReadinessItem = {
+  ok: boolean;
+  label: string;
+  fix?: { label: string; onClick: () => void };
+};
 
 export const AccountingDocumentsSection = ({
   connection,
@@ -37,6 +52,9 @@ export const AccountingDocumentsSection = ({
   documentExportEnabled,
   taxMappingCount,
   onReload,
+  onGoToConnections,
+  onGoToCatalog,
+  onTestConnection,
 }: {
   connection: ConnectionRecord | null;
   operations: OperationRow[];
@@ -46,6 +64,9 @@ export const AccountingDocumentsSection = ({
   documentExportEnabled: boolean;
   taxMappingCount: number;
   onReload: () => void;
+  onGoToConnections?: () => void;
+  onGoToCatalog?: () => void;
+  onTestConnection?: () => void;
 }) => {
   const [onlyUnfinished, setOnlyUnfinished] = useState(false);
 
@@ -57,22 +78,77 @@ export const AccountingDocumentsSection = ({
   const visible = onlyUnfinished ? unfinished : operations;
   const outboundDisabled = !outboundEnabled && !documentExportEnabled;
 
+  const readiness: ReadinessItem[] = [
+    {
+      ok: connection !== null,
+      label: 'اتصال حسابداری ثبت شده است',
+      ...(onGoToConnections === undefined
+        ? {}
+        : { fix: { label: 'رفتن به اتصال‌ها', onClick: onGoToConnections } }),
+    },
+    {
+      ok: connection?.healthState === 'OK',
+      label: 'آخرین آزمایش اتصال موفق بوده است',
+      ...(onTestConnection !== undefined
+        ? { fix: { label: 'آزمایش اتصال', onClick: onTestConnection } }
+        : onGoToConnections === undefined
+          ? {}
+          : { fix: { label: 'رفتن به اتصال‌ها', onClick: onGoToConnections } }),
+    },
+    {
+      ok: connection?.settings.moneyUnit !== 'UNCONFIRMED',
+      label: 'واحد پول (ریال یا تومان) تأیید شده است',
+      ...(onGoToConnections === undefined
+        ? {}
+        : { fix: { label: 'تعیین واحد پول', onClick: onGoToConnections } }),
+    },
+    {
+      ok: taxMappingCount > 0,
+      label: 'کدهای مالیات به مقصد متصل شده‌اند',
+      ...(onGoToConnections === undefined
+        ? {}
+        : { fix: { label: 'تنظیم کدهای مالیات', onClick: onGoToConnections } }),
+    },
+    {
+      ok: !outboundDisabled,
+      label: 'ارسال به حسابداری فعال است',
+    },
+  ];
+
+  const missing = readiness.filter((item) => !item.ok);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
-      <SectionHeader
-        title="اسناد و سوابق"
-        description="آمادگی ارسال سند مالی و تاریخچهٔ عملیات به نرم‌افزار حسابداری."
-        actions={
-          <button
-            type="button"
-            style={{ ...styles.button, ...(busy ? styles.buttonDisabled : {}) }}
-            disabled={busy || connection === null}
-            onClick={onReload}
-          >
-            به‌روزرسانی سوابق
-          </button>
-        }
-      />
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 'var(--t-spacing-2)',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <p style={{ ...styles.meta, margin: 0 }}>
+          این صفحه فقط می‌خواند؛ ارسال سند از مسیر پیش‌فاکتور انجام می‌شود.
+        </p>
+        <PrimaryButton
+          label={busy ? 'در حال به‌روزرسانی…' : 'به‌روزرسانی سوابق'}
+          disabled={busy || connection === null}
+          onClick={onReload}
+        />
+      </div>
+
+      {outboundDisabled ? (
+        <InlineAlert tone="info" title="ارسال خودکار به حسابداری خاموش است">
+          در این نسخه هیچ سند، فاکتور یا مشتری‌ای به نرم‌افزار حسابداری نوشته نمی‌شود. این
+          وضعیت برای آزمایش امن است.
+        </InlineAlert>
+      ) : (
+        <InlineAlert tone="warning" title="یکی از مسیرهای ارسال فعال است">
+          این صفحه خودش چیزی ارسال نمی‌کند، اما اسناد از مسیر پیش‌فاکتور ممکن است ارسال
+          شوند. پیش از آزمایش، مقصد را بررسی کنید.
+        </InlineAlert>
+      )}
 
       <StatGrid>
         <StatCard
@@ -100,42 +176,50 @@ export const AccountingDocumentsSection = ({
         />
       </StatGrid>
 
-      {outboundDisabled ? (
-        <p style={styles.notice}>
-          ارسال به نرم‌افزار حسابداری غیرفعال است. این صفحه فقط می‌خواند و هیچ سند،
-          فاکتور یا مشتری‌ای به مقصد نمی‌نویسد.
-        </p>
-      ) : (
-        <p style={styles.warning}>
-          یکی از کلیدهای ارسال فعال است. با این حال، این صفحه خودش هیچ سندی ارسال
-          نمی‌کند؛ ارسال از مسیر پیش‌فاکتور انجام می‌شود.
-        </p>
-      )}
-
       <Card>
-        <p style={styles.subtitle}>آمادگی ارسال سند</p>
+        <p style={styles.subtitle}>
+          {missing.length === 0
+            ? 'برای ارسال سند آماده است'
+            : `${missing.length.toLocaleString('fa-IR')} کار باقی مانده است`}
+        </p>
         <ul
           style={{
             margin: 0,
             paddingInlineStart: '1.1rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
+            gap: '6px',
             fontSize: 'var(--t-font-size-sm)',
           }}
         >
-          <Check ok={connection !== null} label="اتصال حسابداری ثبت شده است" />
-          <Check
-            ok={connection?.healthState === 'OK'}
-            label="آخرین آزمایش اتصال موفق بوده است"
-          />
-          <Check
-            ok={connection?.settings.moneyUnit !== 'UNCONFIRMED'}
-            label="واحد پول (ریال یا تومان) تأیید شده است"
-          />
-          <Check ok={taxMappingCount > 0} label="کدهای مالیات به مقصد متصل شده‌اند" />
-          <Check ok={!outboundDisabled} label="ارسال به حسابداری فعال است" />
+          {readiness.map((item) => (
+            <li
+              key={item.label}
+              style={{
+                color: item.ok ? 'var(--t-color-green)' : 'var(--t-font-color-primary)',
+                display: 'flex',
+                gap: '6px',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span>{`${item.ok ? '✓' : '○'} ${item.label}`}</span>
+              {!item.ok && item.fix !== undefined ? (
+                <SecondaryButton label={item.fix.label} onClick={item.fix.onClick} />
+              ) : null}
+            </li>
+          ))}
         </ul>
+        {missing.length === 0 ? null : (
+          <p style={{ ...styles.meta, margin: 0 }}>
+            تا زمانی که موارد بالا کامل نشوند، ارسال سند ممکن نیست یا ناقص انجام می‌شود.
+          </p>
+        )}
+        {onGoToCatalog === undefined ? null : (
+          <span>
+            <SecondaryButton label="رفتن به کالاها" onClick={onGoToCatalog} />
+          </span>
+        )}
       </Card>
 
       <div style={styles.section}>
@@ -168,17 +252,38 @@ export const AccountingDocumentsSection = ({
 
         {canManage ? null : (
           <p style={styles.meta}>
-            نمایش سوابق برای همهٔ کاربران ممکن است؛ ارسال و اصلاح فقط با نقش
-            مدیر انجام می‌شود.
+            نمایش سوابق برای همهٔ کاربران ممکن است؛ ارسال و اصلاح فقط با نقش مدیر انجام
+            می‌شود.
           </p>
         )}
 
-        {visible.length === 0 ? (
-          <p style={styles.meta}>
-            {operations.length === 0
-              ? 'هنوز عملیاتی در این اتصال ثبت نشده است.'
-              : 'عملیات ناتمامی وجود ندارد.'}
-          </p>
+        {busy && operations.length === 0 ? (
+          <StateBlock
+            state="loading"
+            title="در حال خواندن سوابق…"
+            description="عملیات این اتصال خوانده می‌شود."
+          />
+        ) : visible.length === 0 ? (
+          <EmptyState
+            title={
+              operations.length === 0
+                ? 'هنوز عملیاتی ثبت نشده است'
+                : 'عملیات ناتمامی وجود ندارد'
+            }
+            description={
+              operations.length === 0
+                ? 'با ارسال اولین سند، نتیجهٔ آن در همین فهرست ثبت می‌شود.'
+                : 'همهٔ عملیات این اتصال به پایان رسیده‌اند.'
+            }
+            action={
+              onlyUnfinished ? (
+                <SecondaryButton
+                  label="نمایش همهٔ عملیات"
+                  onClick={() => setOnlyUnfinished(false)}
+                />
+              ) : undefined
+            }
+          />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <OperationTable operations={visible} />
@@ -197,9 +302,9 @@ export const AccountingDocumentsSection = ({
           >
             <p style={styles.subtitle}>بازیابی عملیات ناتمام</p>
             <p style={styles.meta}>
-              «قابل تکرار» را می‌توان دوباره فرستاد؛ «قطعی» و «نیازمند اقدام دستی»
-              را باید ابتدا در نرم‌افزار حسابداری بررسی کرد. تا زمانی که این ردیف‌ها
-              باقی‌اند، وضعیت آن سند نامعلوم فرض می‌شود.
+              «قابل تکرار» را می‌توان دوباره فرستاد؛ «قطعی» و «نیازمند اقدام دستی» را باید
+              ابتدا در نرم‌افزار حسابداری بررسی کرد. تا زمانی که این ردیف‌ها باقی‌اند،
+              وضعیت آن سند نامعلوم فرض می‌شود.
             </p>
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
               {[...new Set(unfinished.map((row) => row.state))].map((state) => (
@@ -213,12 +318,16 @@ export const AccountingDocumentsSection = ({
           </div>
         ) : null}
       </div>
+
+      <Details summary="جزئیات فنی: کلیدهای ارسال، ثبت سند و تاریخچهٔ خواندن">
+        <span>{`ارسال به حسابداری: ${outboundEnabled ? 'فعال' : 'غیرفعال'}`}</span>
+        <span>{`ثبت سند مالی: ${documentExportEnabled ? 'فعال' : 'غیرفعال'}`}</span>
+        <span>{`تعداد عملیات خوانده‌شده: ${operations.length.toLocaleString('fa-IR')}`}</span>
+        <span>
+          اجرای هر عملیات پیش از ارسال، در سمت سرور اعتبارسنجی می‌شود؛ این صفحه تنها
+          می‌خواند.
+        </span>
+      </Details>
     </div>
   );
 };
-
-const Check = ({ ok, label }: { ok: boolean; label: string }) => (
-  <li style={{ color: ok ? 'var(--t-color-green)' : 'var(--t-font-color-secondary)' }}>
-    {`${ok ? '✓' : '○'} ${label}`}
-  </li>
-);

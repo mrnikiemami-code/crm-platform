@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>طرح الف — کارتابل حسابداری</title>
+<style>
+  :root{
+    --bg:#fff; --bg2:#fcfcfc; --bg3:#f1f1f1;
+    --fg:#333; --fg2:#666; --fg3:#999;
+    --line:#ebebeb; --line2:#e0e0e0;
+    --blue:#3b5bd4; --green:#2b7048; --orange:#8a4a12; --red:#b5473f;
+    --r:6px;
+    font-family:"Vazirmatn","IRANSans","Segoe UI",Inter,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg2);color:var(--fg)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 96px}
+
+  header.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .crumb{font-size:13px;color:var(--fg2);display:flex;gap:6px;align-items:center}
+  .crumb a{color:var(--fg2)}
+  h1{font-size:20px;margin:0 0 2px}
+  .sub{font-size:13px;color:var(--fg2);margin:0}
+  .chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 10px;font-size:12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  .dot.warn{background:var(--orange)}
+
+  .index{position:sticky;top:0;z-index:5;background:var(--bg2);padding:8px 0 10px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+  .index ol{display:flex;gap:6px;list-style:none;margin:0;padding:0;min-width:max-content}
+  .index a{display:flex;gap:6px;align-items:center;text-decoration:none;color:var(--fg2);border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:13px;white-space:nowrap}
+  .index a[aria-current="true"]{border-color:var(--blue);color:var(--blue);font-weight:600}
+  .num{width:18px;height:18px;border-radius:50%;background:var(--bg3);display:grid;place-items:center;font-size:11px}
+  .index a[aria-current="true"] .num{background:var(--blue);color:#fff}
+
+  section.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:16px}
+  .card h2{font-size:15px;margin:0 0 4px}
+  .card .lead{font-size:13px;color:var(--fg2);margin:0 0 12px}
+  .row{display:flex;flex-wrap:wrap;gap:12px}
+  .grow{flex:1 1 200px;min-width:0}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .kpi{border:1px solid var(--line);border-radius:var(--r);padding:10px}
+  .kpi b{display:block;font-size:18px;margin-top:2px}
+  .kpi span{font-size:12px;color:var(--fg2)}
+  .next{border:1px solid var(--blue);border-radius:var(--r);padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .next p{margin:0;font-size:13px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:8px;text-align:right;vertical-align:top}
+  th{color:var(--fg2);font-weight:500;font-size:12px}
+  .tag{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;background:var(--bg3);color:var(--fg2)}
+  .tag.ok{background:#e8f4ec;color:var(--green)}
+  .tag.warn{background:#fdf1e3;color:var(--orange)}
+  .tag.bad{background:#fbeae9;color:var(--red)}
+
+  button{font:inherit;font-size:13px;border:1px solid var(--line2);background:var(--bg);color:var(--fg);border-radius:var(--r);padding:8px 12px;cursor:pointer}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  button.link{border:0;background:none;color:var(--blue);padding:4px}
+  label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg2);flex:1 1 190px}
+  input,select{font:inherit;font-size:13px;padding:8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--bg);color:var(--fg);width:100%}
+  input[dir="ltr"]{text-align:left}
+  details{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-top:10px}
+  summary{cursor:pointer;font-size:13px;color:var(--fg2)}
+  .warnbar{border:1px solid #f0d3ae;background:#fdf6ec;color:#7a4a12;border-radius:var(--r);padding:10px;font-size:13px;margin:10px 0}
+  .help{font-size:12px;color:var(--fg2)}
+  .pager{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--fg2)}
+  @media (max-width:520px){ .wrap{padding:14px 12px 90px} .index a{padding:6px 10px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="crumb"><a href="#">CRM</a><span>/</span><span>تنظیمات حسابداری</span></div>
+      <h1>حسابداری</h1>
+      <p class="sub">اتصال به نرم‌افزار حسابداری، کالاها، مشتریان و سوابق.</p>
+    </div>
+    <span class="chip"><span class="dot"></span> متصل: اتصال آزمایشی نسخه</span>
+  </header>
+
+  <nav class="index" aria-label="بخش‌های حسابداری">
+    <ol>
+      <li><a href="#overview" aria-current="true"><span class="num">۱</span> نمای کلی</a></li>
+      <li><a href="#connections"><span class="num">۲</span> اتصال‌ها</a></li>
+      <li><a href="#products"><span class="num">۳</span> کالاها</a></li>
+      <li><a href="#customers"><span class="num">۴</span> مشتریان</a></li>
+      <li><a href="#documents"><span class="num">۵</span> اسناد</a></li>
+    </ol>
+  </nav>
+
+  <section class="card" id="overview" aria-labelledby="overview-h">
+    <h2 id="overview-h">وضعیت امروز</h2>
+    <p class="lead">سه چیز را نشان می‌دهد: اتصال، تازگی اطلاعات، و کاری که باید انجام دهید.</p>
+    <div class="kpis">
+      <div class="kpi"><span>وضعیت اتصال</span><b>آماده</b><span>آخرین آزمایش: موفق</span></div>
+      <div class="kpi"><span>آخرین به‌روزرسانی</span><b>۴ دقیقه پیش</b><span>۳۳ کالا، ۲۲ مشتری</span></div>
+      <div class="kpi"><span>کالاهای وصل‌نشده</span><b>۷</b><span>در حسابداری هست، در CRM نه</span></div>
+      <div class="kpi"><span>مشتریان وصل‌نشده</span><b>۳</b><span>نیازمند انتخاب مشتری CRM</span></div>
+    </div>
+    <div class="next" style="margin-top:12px">
+      <p><strong>اقدام بعدی:</strong> ۷ کالا هنوز به کالای CRM وصل نشده‌اند.</p>
+      <a href="#products"><button class="primary">بررسی کالاها</button></a>
+    </div>
+  </section>
+
+  <section class="card" id="connections" aria-labelledby="conn-h">
+    <h2 id="conn-h">اتصال‌ها</h2>
+    <p class="lead">نرم‌افزاری که این فضای کاری با آن کار می‌کند.</p>
+    <div class="row">
+      <div class="grow">
+        <label class="fld">جست‌وجو در اتصال‌ها
+          <input type="search" placeholder="نام اتصال یا نرم‌افزار" />
+        </label>
+      </div>
+      <div style="align-self:flex-end"><button class="primary">+ اتصال جدید</button></div>
+    </div>
+    <table style="margin-top:12px">
+      <thead><tr><th>اتصال</th><th>نرم‌افزار</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>اتصال آزمایشی نسخه</td><td>حسابداری آزمایشی</td><td><span class="tag ok">آماده</span></td><td><button class="link">ویرایش</button></td></tr>
+        <tr><td>آسان — فروشگاه مرکزی</td><td>آسان</td><td><span class="tag warn">آزمایش‌نشده</span></td><td><button class="link">ویرایش</button></td></tr>
+      </tbody>
+    </table>
+
+    <details>
+      <summary>جزئیات فنی</summary>
+      <p class="help">کدهای ویژه، نگاشت کد مالیات، شناسهٔ کاربر مقصد و توکن تونل امن در این بخش قرار می‌گیرند. اطلاعات ورود هرگز روی این صفحه نمایش داده نمی‌شود.</p>
+    </details>
+  </section>
+
+  <section class="card" id="products" aria-labelledby="prod-h">
+    <h2 id="prod-h">کالاها و خدمات</h2>
+    <p class="lead">هر کالای حسابداری را به کالای CRM وصل کنید. یک صفحه در هر بار.</p>
+    <div class="warnbar">این نرم‌افزار امکان صفحه‌بندی ندارد؛ ۳۳ ردیف خوانده شد و جست‌وجو در همین برنامه انجام می‌شود.</div>
+    <form class="row" onsubmit="return false">
+      <label class="fld grow">جست‌وجو در کالاها
+        <input type="search" placeholder="نام یا کد کالا" />
+      </label>
+      <div style="align-self:flex-end"><button class="primary">جست‌وجو</button></div>
+    </form>
+    <table style="margin-top:12px">
+      <thead><tr><th>کد</th><th>نام در حسابداری</th><th>قیمت</th><th>کالای CRM</th><th>وضعیت</th></tr></thead>
+      <tbody>
+        <tr><td>1001</td><td>کالای ۱</td><td>۱٬۰۰۰٬۰۰۰</td><td>کالای ۱</td><td><span class="tag ok">وصل‌شده</span></td></tr>
+        <tr><td>2004</td><td>کالای ۲ (کد تکراری)</td><td>۱٬۲۰۰٬۰۰۰</td><td>—</td><td><span class="tag bad">کد تکراری</span></td></tr>
+        <tr><td>5001</td><td>کالای بدون قیمت</td><td>—</td><td>—</td><td><span class="tag warn">نیازمند بررسی</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pager"><span>صفحهٔ ۱ — ۳۳ مورد</span><span><button>قبلی</button> <button>بعدی</button></span></div>
+  </section>
+
+  <section class="card" id="customers" aria-labelledby="cust-h">
+    <h2 id="cust-h">مشتریان</h2>
+    <p class="lead">برای هر مشتری حسابداری، مشتری CRM را خودتان انتخاب می‌کنید.</p>
+    <form class="row" onsubmit="return false">
+      <label class="fld grow">جست‌وجو در مشتریان
+        <input type="search" placeholder="نام، کد ملی یا شناسه" />
+      </label>
+      <div style="align-self:flex-end"><button class="primary">جست‌وجو</button></div>
+    </form>
+    <table style="margin-top:12px">
+      <thead><tr><th>مشتری در حسابداری</th><th>شناسه</th><th>مشتری CRM</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>شرکت نمونه</td><td>101</td><td>شرکت نمونه</td><td><span class="tag ok">وصل‌شده</span></td><td>—</td></tr>
+        <tr><td>مشتری ۲ <br><span class="help">کد ملی تکراری</span></td><td>102</td><td>انتخاب نشده</td><td><span class="tag warn">نیازمند انتخاب</span></td><td><button class="link">انتخاب مشتری</button></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card" id="documents" aria-labelledby="doc-h">
+    <h2 id="doc-h">اسناد و سوابق</h2>
+    <p class="lead">آمادگی ارسال سند و تاریخچهٔ عملیات.</p>
+    <div class="kpis">
+      <div class="kpi"><span>ارسال به حسابداری</span><b>غیرفعال</b><span>در این نسخه سندی ارسال نمی‌شود</span></div>
+      <div class="kpi"><span>اتصال کدهای مالیات</span><b>۰</b><span>سند دارای مالیات ارسال نمی‌شود</span></div>
+      <div class="kpi"><span>عملیات ناتمام</span><b>۰</b><span>همه‌چیز پایان یافته</span></div>
+    </div>
+    <details>
+      <summary>جزئیات فنی</summary>
+      <p class="help">شرایط لازم برای ثبت سند: اتصال ثبت‌شده، آزمایش موفق، واحد پول تأییدشده، نگاشت کد مالیات و فعال بودن کلید ارسال.</p>
+    </details>
+  </section>
+
+</div>
+</body>
+</html>

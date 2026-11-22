@@ -1,0 +1,17 @@
+Impeccable — audit evidence for CRM-129-ACCOUNTING-013-FINAL-UX-AND-INTEGRITY (S0)
+
+Command (skill script, plugin cache):
+  impeccable detect a-cartable.html b-rail.html --no-advisory
+
+Run 1 (before fix):
+  a-cartable.html — 3 anti-patterns [low-contrast] 3.9:1 (need 4.5:1) — text #b5651d on #fdf1e3
+  b-rail.html    — 0 anti-patterns
+  Advisory: a-cartable 4.4:1 (need 4.5:1) — text #2f7d55 on #e8f4ec
+            b-rail 8 em-dashes in body text
+  → Fix applied to a-cartable.html: --green #2f7d55 → #2b7048, --orange #b5651d → #8a4a12
+    (same tokens already used by b-rail.html)
+
+Run 2 (after fix):
+  exit code 0, empty report body = 0 anti-patterns on both files.
+
+Decision: b-rail.html selected (see A-DECISION-RATIONALE.md).

@@ -190,6 +190,28 @@ describe('destination snapshot', () => {
       expect(snapshot.meta.syncStatus).toBe('COMPLETE');
       expect(snapshot.meta.incompleteReason).toBeNull();
     });
+
+    // The screen reads linked/unlinked/blocked/needsAttention. Storing the internal decision
+    // histogram here made those counters render as zero next to a table full of unlinked
+    // rows, and made the overview claim nothing needed attention.
+    it('stores the counts the screen reads, not the internal decision names', () => {
+      const snapshot = unwrapSnapshot(
+        buildItemSnapshot({
+          snapshotId: 'snap-summary',
+          nowMs: 0,
+          remoteItems: MOCK_CATALOG_ITEMS,
+          links: [],
+          moneyUnit: 'RIAL',
+          limit: 20_000,
+        }),
+      );
+
+      expect(snapshot.itemSummary.CREATE).toBeUndefined();
+      expect(snapshot.itemSummary.blocked).toBe(2);
+      expect(snapshot.itemSummary.unlinked).toBe(MOCK_CATALOG_ITEMS.length - 2);
+      expect(snapshot.itemSummary.linked).toBe(0);
+      expect(typeof snapshot.itemSummary.needsAttention).toBe('number');
+    });
   });
 
   describe('paging a stored snapshot', () => {
@@ -531,6 +553,24 @@ describe('destination snapshot', () => {
       expect(chunkKeys.some((key) => key.includes('two'))).toBe(true);
       // The index is one small value; rows never live in it.
       expect(client.getRaw('acct-snap:index')?.includes('1001')).toBe(false);
+    });
+
+    it('keeps one workspace snapshot invisible to another workspace', async () => {
+      // The logic function hands each invocation its workspace-scoped `kv`. Two workspaces
+      // therefore hold two stores; a snapshot must never answer from beside its workspace,
+      // even when both use the same connection key shape.
+      const workspaceA = createFakeKvClient();
+      const workspaceB = createFakeKvClient();
+      const storageA = createKvSnapshotStorage({ client: workspaceA });
+      const storageB = createKvSnapshotStorage({ client: workspaceB });
+
+      await store({ storage: storageA, key: 'conn-1|asan|ITEMS', snapshot: snapshotWith('a') });
+
+      const indexB = await storageB.readIndex();
+
+      expect(indexB).toEqual({});
+      expect(await storageB.readRegistry('conn-1|asan|ITEMS')).toEqual({});
+      expect(Object.keys(await storageA.readIndex())).toHaveLength(1);
     });
   });
 });

@@ -131,6 +131,13 @@ const parseNumericSetting = (
   return accepted(value);
 };
 
+// A vendor base URL is typed by a person, so it is validated rather than trusted. It must
+// be absolute and credential-free: a password inside the URL would end up in a log line
+// and in the connection record, which is exactly where a secret must never be.
+//
+// An adapter that never dials out still needs a value here, because the record shape is
+// shared; `MOCK_SERVICE_ADDRESS` in the panel is the explicit, non-routable placeholder it
+// stores, so the field is never a silent empty string the server would have to guess about.
 export const parseConnectionSettings = (
   input: unknown,
 ): Result<ConnectionSettings> => {

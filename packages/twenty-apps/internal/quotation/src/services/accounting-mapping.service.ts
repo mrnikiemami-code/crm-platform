@@ -137,11 +137,13 @@ const resolveSnapshotRevision = async ({
   refresh,
   dependencies,
   build,
+  isUnusable,
 }: {
   key: string;
   refresh: boolean;
   dependencies: MappingDependencies;
   build: () => Promise<Result<DestinationSnapshot>>;
+  isUnusable?: (revision: SnapshotRevision) => boolean;
 }): Promise<{
   revision: SnapshotRevision;
   key: string;
@@ -150,7 +152,13 @@ const resolveSnapshotRevision = async ({
 }> => {
   const nowMs = dependencies.nowMs ?? (() => Date.now());
   const index = await dependencies.storage.readIndex();
-  const fresh = refresh ? null : getFreshSnapshotEntry(index, key, nowMs());
+  const freshCandidate = refresh ? null : getFreshSnapshotEntry(index, key, nowMs());
+  // A snapshot can outlive the shape it was written in. Serving one whose stored counts no
+  // longer mean what the screen reads shows zeros next to real rows, so it is rebuilt once.
+  const fresh =
+    freshCandidate !== null && isUnusable !== undefined && isUnusable(freshCandidate)
+      ? null
+      : freshCandidate;
 
   if (fresh !== null) {
     return { revision: fresh, key, reused: true, degradedReason: null };
@@ -196,10 +204,16 @@ export const loadItemMappingPage = async (
   const started = nowMs();
 
   // A destination that pages is asked for the page itself: no snapshot, no full read.
-  if (
-    input.adapter.capabilities.readStrategy === 'REMOTE_PAGED' &&
-    input.adapter.readItemPage !== undefined
-  ) {
+  if (input.adapter.capabilities.readStrategy === 'REMOTE_PAGED') {
+    // Declaring paging and then reading the whole list anyway is the failure this contract
+    // exists to prevent: the vendor's limit, not ours, would decide how much memory this
+    // process allocates. Missing reader is a broken adapter, not a reason to fall back.
+    if (input.adapter.readItemPage === undefined) {
+      throw new SnapshotRefusal(
+        'ADAPTER_CONTRACT_INCOMPLETE',
+        `${input.adapterId} declares REMOTE_PAGED but implements no readItemPage`,
+      );
+    }
     const remote = await input.adapter.readItemPage({
       cursor: input.request.cursor,
       pageSize: input.request.pageSize,
@@ -265,6 +279,9 @@ export const loadItemMappingPage = async (
     key,
     refresh: input.refresh === true,
     dependencies,
+    // Snapshots written before the counters were business-shaped stored the internal
+    // decision histogram, which the screen reads as zeros. Rebuild those once.
+    isUnusable: (candidate) => candidate.itemSummary.unlinked === undefined,
     build: async () => {
       const links = await loadItemLinks(input.connectionId, { execute });
       const remote = await input.adapter.listItems();
@@ -360,10 +377,13 @@ export const loadPartyMappingPage = async (
   const execute = dependencies.execute ?? executeRecordGraphql;
   const started = nowMs();
 
-  if (
-    input.adapter.capabilities.readStrategy === 'REMOTE_PAGED' &&
-    input.adapter.readPartyPage !== undefined
-  ) {
+  if (input.adapter.capabilities.readStrategy === 'REMOTE_PAGED') {
+    if (input.adapter.readPartyPage === undefined) {
+      throw new SnapshotRefusal(
+        'ADAPTER_CONTRACT_INCOMPLETE',
+        `${input.adapterId} declares REMOTE_PAGED but implements no readPartyPage`,
+      );
+    }
     const remote = await input.adapter.readPartyPage({
       cursor: input.request.cursor,
       pageSize: input.request.pageSize,

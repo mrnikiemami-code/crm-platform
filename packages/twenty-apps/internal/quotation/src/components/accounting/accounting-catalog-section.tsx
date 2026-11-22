@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import {
@@ -7,10 +7,15 @@ import {
 } from 'src/components/quotation-api';
 import {
   Badge,
+  Details,
+  EmptyState,
+  InlineAlert,
   LimitNotice,
   Pager,
+  PrimaryButton,
   SearchField,
-  SectionHeader,
+  SecondaryButton,
+  StateBlock,
 } from 'src/components/accounting/accounting-business-ui';
 import {
   ITEM_STATUS_LABELS,
@@ -33,33 +38,78 @@ const PAGE_SIZE = 25;
 
 type Selection = { internalItemId: string | null };
 
+// One Persian sentence per decision, written for the person fixing the row rather than the
+// person who wrote the matcher. The badge already says «کد تکراری»; this says what to do.
+const DECISION_HELP: Record<string, string> = {
+  DUPLICATE_REMOTE_CODE:
+    'دو کالا در نرم‌افزار حسابداری همین کد را دارند. تا وقتی کد یکی اصلاح نشود، اتصال ممکن نیست.',
+  IN_SYNC: 'این کالا قبلاً به CRM وصل شده است.',
+  LINK_SUGGESTED: 'کالای مشابه در CRM پیدا شد؛ با تأیید شما وصل می‌شود.',
+  LINK_AMBIGUOUS: 'چند کالای هم‌کد در CRM هست؛ باید دستی یکی را انتخاب کنید.',
+  CREATE: 'کالای متناظر در CRM نیست؛ با ثبت، ساخته می‌شود.',
+  REMOTE_CHANGED: 'اطلاعات این کالا در حسابداری تغییر کرده است؛ پس از بررسی، دوباره وصل کنید.',
+};
+
+type RowFilter = 'ALL' | 'NEEDS_ACTION' | 'UNLINKED' | 'DUPLICATE';
+
+const ROW_FILTERS: { id: RowFilter; label: string }[] = [
+  { id: 'ALL', label: 'همه' },
+  { id: 'NEEDS_ACTION', label: 'نیازمند رسیدگی' },
+  { id: 'UNLINKED', label: 'وصل‌نشده' },
+  { id: 'DUPLICATE', label: 'کد تکراری' },
+];
+
+const matchesFilter = (row: ItemMappingRow, filter: RowFilter): boolean => {
+  if (filter === 'ALL') {
+    return true;
+  }
+  if (filter === 'DUPLICATE') {
+    return row.decision === 'DUPLICATE_REMOTE_CODE';
+  }
+  if (filter === 'UNLINKED') {
+    return row.decision !== 'IN_SYNC';
+  }
+  return (
+    row.decision === 'DUPLICATE_REMOTE_CODE' ||
+    row.decision === 'LINK_AMBIGUOUS' ||
+    row.decision === 'REMOTE_CHANGED'
+  );
+};
+
 // Products and services: what the destination has, and how it attaches to the CRM catalog.
 //
 // Everything visible here is ONE page. The list is asked for with a cursor, the search runs
 // on the server, and the destination rows are read once into a bounded snapshot whose limit
 // is stated on screen. Selections live outside the page, so choosing a row, searching for
 // another, and paging do not lose what was already chosen.
+//
+// The status filter is client-side and says so, because the destination reader has no status
+// parameter; shipping a chip row that silently searched only the current page would be a lie.
 export const AccountingCatalogSection = ({
   connectionId,
   canManage,
   moneyUnitLabel,
   onPendingCountChange,
+  onGoToConnections,
 }: {
   connectionId: string | null;
   canManage: boolean;
   moneyUnitLabel: string;
   onPendingCountChange?: (count: number) => void;
+  onGoToConnections?: () => void;
 }) => {
   const [page, setPage] = useState<ItemMappingPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchDraft, setSearchDraft] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
+  const [rowFilter, setRowFilter] = useState<RowFilter>('ALL');
   // A stack of the cursors that produced each visited page, so "previous" is exact and does
   // not need a reverse cursor the destination does not provide.
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Map<string, Selection>>(new Map());
   const [applying, setApplying] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   const pageIndex = cursorStack.length - 1;
   const cursor = cursorStack[pageIndex] ?? null;
@@ -116,8 +166,9 @@ export const AccountingCatalogSection = ({
     setPage(null);
     setSubmittedSearch('');
     setSearchDraft('');
+    setRowFilter('ALL');
     void loadPage({ atCursor: null, search: '' });
-  }, [connectionId, loadPage]);
+  }, [connectionId, loadPage, reloadToken]);
 
   useEffect(() => {
     onPendingCountChange?.(page?.summary.unlinked ?? 0);
@@ -125,6 +176,7 @@ export const AccountingCatalogSection = ({
 
   const applySearch = (term: string) => {
     setSubmittedSearch(term);
+    setRowFilter('ALL');
     setCursorStack([null]);
     void loadPage({ atCursor: null, search: term });
   };
@@ -140,10 +192,7 @@ export const AccountingCatalogSection = ({
 
       // A row that is already linked, or that the destination reports as a duplicate code,
       // cannot be applied; offering a checkbox would promise a write that will be refused.
-      if (
-        row.decision === 'IN_SYNC' ||
-        row.decision === 'DUPLICATE_REMOTE_CODE'
-      ) {
+      if (row.decision === 'IN_SYNC' || row.decision === 'DUPLICATE_REMOTE_CODE') {
         return current;
       }
 
@@ -166,14 +215,12 @@ export const AccountingCatalogSection = ({
       const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
         action: 'apply-items',
         connectionId,
-        selections: [...selected.entries()].map(
-          ([externalItemId, selection]) => ({
-            externalItemId,
-            ...(selection.internalItemId === null
-              ? {}
-              : { internalItemId: selection.internalItemId }),
-          }),
-        ),
+        selections: [...selected.entries()].map(([externalItemId, selection]) => ({
+          externalItemId,
+          ...(selection.internalItemId === null
+            ? {}
+            : { internalItemId: selection.internalItemId }),
+        })),
       });
 
       if (!response.ok || response.data.success !== true) {
@@ -209,11 +256,22 @@ export const AccountingCatalogSection = ({
     }
   };
 
+  const visibleRows = useMemo(
+    () => (page === null ? [] : page.rows.filter((row) => matchesFilter(row, rowFilter))),
+    [page, rowFilter],
+  );
+
   if (connectionId === null) {
     return (
-      <p style={styles.meta}>
-        برای دیدن کالاها و خدمات، ابتدا در بخش «اتصال‌ها» یک اتصال انتخاب کنید.
-      </p>
+      <EmptyState
+        title="ابتدا یک اتصال انتخاب کنید"
+        description="کالاها از نرم‌افزار حسابداری خوانده می‌شوند. در بخش «اتصال‌ها» یک اتصال بسازید یا انتخاب کنید، سپس به اینجا برگردید."
+        action={
+          onGoToConnections === undefined ? undefined : (
+            <PrimaryButton label="رفتن به اتصال‌ها" onClick={onGoToConnections} />
+          )
+        }
+      />
     );
   }
 
@@ -222,100 +280,111 @@ export const AccountingCatalogSection = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
-      <SectionHeader
-        title="کالاها و خدمات"
-        description="فهرست کالاهای نرم‌افزار حسابداری، یک صفحه در هر بار. تطبیق با کالاهای CRM هنگام مرور هر صفحه انجام می‌شود."
-        actions={
-          <button
-            type="button"
-            style={{ ...styles.button, ...(loading ? styles.buttonDisabled : {}) }}
-            disabled={loading}
-            onClick={() =>
-              void loadPage({
-                atCursor: null,
-                search: submittedSearch,
-                refresh: true,
-              }).then(() => setCursorStack([null]))
-            }
-          >
-            خواندن دوباره از حسابداری
-          </button>
-        }
-      />
-
-      {snapshot === undefined ? null : (
-        <>
-          <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-            {snapshot.reused
-              ? `فهرست مقصد از بارگذاری قبلی استفاده شد (${Math.max(
-                  1,
-                  Math.round(snapshot.ageMs / 60000),
-                )} دقیقه پیش).`
-              : 'فهرست مقصد همین حالا خوانده شد.'}
-          </p>
-          <LimitNotice
-            truncated={truncated}
-            taken={
-              snapshot.truncation.kind === 'BOUNDED'
-                ? snapshot.truncation.taken
-                : 0
-            }
-            limit={
-              snapshot.truncation.kind === 'BOUNDED'
-                ? snapshot.truncation.limit
-                : 0
-            }
-            declaredTotal={snapshot.truncation.declaredTotal}
-            vendorCannotPage={snapshot.vendorPagination === 'NONE'}
-            syncStatus={snapshot.syncStatus}
-            degradedReason={snapshot.degradedReason}
-          />
-        </>
-      )}
-
-      {page !== null ? (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-            gap: 'var(--t-spacing-2)',
-          }}
-        >
-          <SummaryChip label="وصل‌شده" value={page.summary.linked ?? 0} />
-          <SummaryChip label="وصل‌نشده" value={page.summary.unlinked ?? 0} />
-          <SummaryChip label="کد تکراری" value={page.summary.blocked ?? 0} />
-          <SummaryChip label="نیازمند بررسی" value={page.summary.needsAttention ?? 0} />
-        </div>
-      ) : null}
-
-      <form
-        style={{ display: 'flex', gap: 'var(--t-spacing-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}
-        onSubmit={(event) => {
-          event.preventDefault();
-          applySearch(searchDraft.trim());
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 'var(--t-spacing-2)',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
         }}
       >
-        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <SearchField
-            label="جست‌وجو در کالاهای حسابداری"
-            value={searchDraft}
-            placeholder="نام یا کد کالا"
-            onChange={setSearchDraft}
-          />
-        </div>
-        <button
-          type="submit"
-          style={{ ...styles.button, ...(loading ? styles.buttonDisabled : {}) }}
-          disabled={loading}
+        <form
+          style={{ display: 'flex', gap: 'var(--t-spacing-2)', alignItems: 'flex-end', flex: '1 1 260px' }}
+          onSubmit={(event) => {
+            event.preventDefault();
+            applySearch(searchDraft.trim());
+          }}
         >
-          جست‌وجو
-        </button>
-      </form>
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <SearchField
+              label="جست‌وجو در کالاهای حسابداری"
+              value={searchDraft}
+              placeholder="نام یا کد کالا"
+              onChange={setSearchDraft}
+            />
+          </div>
+          <SecondaryButton
+            label="جست‌وجو"
+            onClick={() => applySearch(searchDraft.trim())}
+            disabled={loading}
+          />
+        </form>
+        <SecondaryButton
+          label={loading ? 'در حال خواندن…' : 'خواندن دوباره از حسابداری'}
+          onClick={() => setReloadToken((token) => token + 1)}
+          disabled={loading}
+        />
+      </div>
 
-      {error !== null ? <p style={styles.error}>{error}</p> : null}
-      {loading ? <p style={styles.meta}>در حال خواندن صفحه…</p> : null}
+      {page !== null ? (
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {ROW_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                aria-pressed={rowFilter === filter.id ? 'true' : 'false'}
+                style={{
+                  ...styles.button,
+                  ...(rowFilter === filter.id ? styles.buttonPrimary : {}),
+                }}
+                onClick={() => setRowFilter(filter.id)}
+              >
+                {filter.label}
+              </button>
+            ))}
+            <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', alignSelf: 'center' }}>
+              {rowFilter === 'ALL'
+                ? 'همهٔ کالاهای این صفحه نمایش داده می‌شوند.'
+                : 'این فیلتر فقط روی کالاهای همین صفحه اعمال می‌شود؛ برای دیدن بقیه، صفحه را عوض کنید یا جست‌وجو کنید.'}
+            </span>
+          </div>
 
-      {page !== null && !loading ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gap: 'var(--t-spacing-2)',
+            }}
+          >
+            <SummaryChip label="وصل‌شده" value={page.summary.linked ?? 0} tone="success" />
+            <SummaryChip label="وصل‌نشده" value={page.summary.unlinked ?? 0} />
+            <SummaryChip label="کد تکراری" value={page.summary.blocked ?? 0} tone="danger" />
+            <SummaryChip
+              label="نیازمند بررسی"
+              value={page.summary.needsAttention ?? 0}
+              tone="warning"
+            />
+          </div>
+        </>
+      ) : null}
+
+      {error !== null ? (
+        <InlineAlert tone="danger" title="خواندن کالاها انجام نشد">
+          {error}
+          <span style={{ display: 'block', marginTop: '6px' }}>
+            اتصال را در بخش «اتصال‌ها» آزمایش کنید و دوباره تلاش کنید.
+          </span>
+          <span style={{ display: 'block', marginTop: '6px' }}>
+            <SecondaryButton
+              label="تلاش دوباره"
+              onClick={() => setReloadToken((token) => token + 1)}
+              disabled={loading}
+            />
+          </span>
+        </InlineAlert>
+      ) : null}
+
+      {loading && page === null ? (
+        <StateBlock
+          state="loading"
+          title="در حال خواندن کالاها…"
+          description="یک صفحه از نرم‌افزار حسابداری خوانده می‌شود."
+        />
+      ) : null}
+
+      {page !== null ? (
         <>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ ...styles.table, minWidth: '720px' }}>
@@ -327,15 +396,16 @@ export const AccountingCatalogSection = ({
                   <th style={styles.cell}>قیمت حسابداری</th>
                   <th style={styles.cell}>کالای CRM</th>
                   <th style={styles.cell}>تفاوت قیمت</th>
-                  <th style={styles.cell}>وضعیت</th>
+                  <th style={styles.cell}>وضعیت و دلیل</th>
                 </tr>
               </thead>
               <tbody>
-                {page.rows.map((row) => {
+                {visibleRows.map((row) => {
                   const checked = selected.has(row.externalItemId);
                   const selectable =
                     row.decision !== 'IN_SYNC' &&
                     row.decision !== 'DUPLICATE_REMOTE_CODE';
+                  const help = DECISION_HELP[row.decision];
 
                   return (
                     <tr key={row.externalItemId}>
@@ -387,22 +457,53 @@ export const AccountingCatalogSection = ({
                             DECISION_LABELS[row.decision] ??
                             row.decision}
                         </Badge>
+                        {help === undefined ? null : (
+                          <span
+                            style={{
+                              display: 'block',
+                              ...styles.meta,
+                              fontSize: 'var(--t-font-size-xs)',
+                            }}
+                          >
+                            {help}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
-                {page.rows.length === 0 ? (
-                  <tr>
-                    <td style={styles.cell} colSpan={7}>
-                      {submittedSearch === ''
-                        ? 'کالایی در نرم‌افزار حسابداری پیدا نشد.'
-                        : `کالایی با «${submittedSearch}» پیدا نشد.`}
-                    </td>
-                  </tr>
-                ) : null}
               </tbody>
             </table>
           </div>
+
+          {visibleRows.length === 0 ? (
+            <EmptyState
+              title={
+                rowFilter === 'ALL'
+                  ? submittedSearch === ''
+                    ? 'کالایی در نرم‌افزار حسابداری نیست'
+                    : `کالایی با «${submittedSearch}» پیدا نشد`
+                  : 'کالایی با این فیلتر در این صفحه نیست'
+              }
+              description={
+                rowFilter === 'ALL'
+                  ? 'جست‌وجو را پاک کنید یا در بخش «اتصال‌ها» وضعیت اتصال را بررسی کنید.'
+                  : 'فیلتر را روی «همه» بگذارید تا بقیهٔ کالاهای این صفحه دیده شوند.'
+              }
+              action={
+                <SecondaryButton
+                  label={rowFilter === 'ALL' ? 'پاک کردن جست‌وجو' : 'نمایش همهٔ این صفحه'}
+                  onClick={() => {
+                    if (rowFilter === 'ALL') {
+                      applySearch('');
+                      return;
+                    }
+                    setRowFilter('ALL');
+                  }}
+                />
+              }
+            />
+          ) : null}
 
           <Pager
             pageNumber={pageIndex + 1}
@@ -448,37 +549,77 @@ export const AccountingCatalogSection = ({
               <span style={styles.meta}>
                 {`${selected.size.toLocaleString('fa-IR')} مورد انتخاب شده است (در جست‌وجو و صفحه‌های دیگر حفظ می‌شود).`}
               </span>
-              <button
-                type="button"
-                style={{
-                  ...styles.button,
-                  ...styles.buttonPrimary,
-                  ...(applying || !canManage ? styles.buttonDisabled : {}),
-                }}
-                disabled={applying || !canManage}
+              <PrimaryButton
+                label={applying ? 'در حال ثبت…' : 'ثبت اتصال موارد انتخاب‌شده'}
                 onClick={() => void applySelection()}
-              >
-                ثبت اتصال موارد انتخاب‌شده
-              </button>
-              <button
-                type="button"
-                style={styles.button}
+                disabled={applying || !canManage}
+              />
+              <SecondaryButton
+                label="پاک کردن انتخاب"
                 onClick={() => setSelected(new Map())}
-              >
-                پاک کردن انتخاب
-              </button>
+                disabled={applying}
+              />
             </div>
           ) : null}
+
+          {snapshot === undefined ? null : (
+            <Details
+              summary={`جزئیات فنی: منبع فهرست، محدودیت${truncated ? ' و ناقص‌بودن' : ''}، وضعیت همگام‌سازی`}
+            >
+              <LimitNotice
+                truncated={truncated}
+                taken={
+                  snapshot.truncation.kind === 'BOUNDED'
+                    ? snapshot.truncation.taken
+                    : 0
+                }
+                limit={
+                  snapshot.truncation.kind === 'BOUNDED'
+                    ? snapshot.truncation.limit
+                    : 0
+                }
+                declaredTotal={snapshot.truncation.declaredTotal}
+                vendorCannotPage={snapshot.vendorPagination === 'NONE'}
+                syncStatus={snapshot.syncStatus}
+                degradedReason={snapshot.degradedReason}
+              />
+              <span>
+                {snapshot.reused
+                  ? `فهرست مقصد از بارگذاری قبلی استفاده شد (${Math.max(
+                      1,
+                      Math.round(snapshot.ageMs / 60000),
+                    )} دقیقه پیش).`
+                  : 'فهرست مقصد همین حالا خوانده شد.'}
+              </span>
+            </Details>
+          )}
         </>
       ) : null}
     </div>
   );
 };
 
-const SummaryChip = ({ label, value }: { label: string; value: number }) => (
+const SummaryChip = ({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: 'success' | 'warning' | 'danger';
+}) => (
   <div
     style={{
       border: '1px solid var(--t-border-color-light)',
+      borderTopWidth: tone === undefined ? '1px' : '3px',
+      borderTopColor:
+        tone === 'success'
+          ? 'var(--t-color-green)'
+          : tone === 'warning'
+            ? 'var(--t-color-yellow)'
+            : tone === 'danger'
+              ? 'var(--t-color-red)'
+              : 'var(--t-border-color-light)',
       borderRadius: 'var(--t-border-radius-sm)',
       padding: 'var(--t-spacing-2)',
       display: 'flex',

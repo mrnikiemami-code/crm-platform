@@ -12,6 +12,7 @@ import {
   type ItemImportRow,
   type PartyImportRow,
 } from 'src/domain/accounting/import-plan';
+import { summarizeItemDecisions } from 'src/domain/accounting/mapping-page';
 import {
   type SnapshotMeta,
   type SnapshotTruncation,
@@ -171,7 +172,9 @@ export const buildItemSnapshot = ({
     },
     itemRows: preview.rows,
     partyRows: [],
-    itemSummary: preview.summary,
+    // Business counts, not the internal decision names: this is what the screen shows, and
+    // storing the histogram here made every counter read as zero.
+    itemSummary: summarizeItemDecisions(preview.rows),
     partySummary: {},
   });
 };
@@ -299,7 +302,7 @@ export const buildItemPageFromRemote = ({
       syncStatus: 'COMPLETE',
       incompleteReason: null,
     },
-    summary: preview.summary,
+    summary: summarizeItemDecisions(preview.rows),
   };
 };
 

@@ -26,6 +26,19 @@ import {
 } from 'src/domain/accounting/adapter-contract';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
+export type AsanFetchResponse = {
+  ok: boolean;
+  status: number;
+  headers?: { get: (name: string) => string | null } | null;
+  body?: {
+    getReader: () => {
+      read: () => Promise<{ done: boolean; value?: Uint8Array }>;
+      cancel: () => Promise<unknown>;
+    };
+  } | null;
+  text: () => Promise<string>;
+};
+
 export type AsanFetch = (
   input: string,
   init: {
@@ -34,11 +47,7 @@ export type AsanFetch = (
     body?: string;
     signal?: AbortSignal;
   },
-) => Promise<{
-  ok: boolean;
-  status: number;
-  text: () => Promise<string>;
-}>;
+) => Promise<AsanFetchResponse>;
 
 export type AsanHttpAdapterConfig = {
   baseUrl: string;
@@ -73,6 +82,97 @@ const readListBodyMaxBytes = (): number => {
   return Number.isFinite(parsed) && parsed > 0
     ? parsed
     : DEFAULT_LIST_BODY_MAX_BYTES;
+};
+
+// The ceiling has to be enforced while the bytes arrive, not after they are all in a string:
+// `response.text()` already allocates the whole body, so checking `.length` afterwards is a
+// measurement of the damage, not a guard against it. This reads the stream chunk by chunk,
+// counts real UTF-8 bytes, and aborts the reader the moment the budget is crossed. When the
+// runtime hands us no stream we still check the buffered text, and the caller is told which
+// path ran so nothing here is called "streaming" unless it streamed.
+export const readBoundedResponseText = async (
+  response: AsanFetchResponse,
+  maxBytes: number,
+): Promise<Result<string>> => {
+  const declared = Number.parseInt(
+    String(response.headers?.get('content-length') ?? ''),
+    10,
+  );
+
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    return refused(
+      'REMOTE_DATASET_TOO_LARGE',
+      `the vendor declared ${declared} bytes, above the ${maxBytes} byte ceiling; the body was not read`,
+    );
+  }
+
+  const body = response.body;
+
+  if (body !== undefined && body !== null && typeof body.getReader === 'function') {
+    const reader = body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+
+    try {
+      for (;;) {
+        const step = await reader.read();
+
+        if (step.done) {
+          break;
+        }
+
+        if (step.value === undefined) {
+          continue;
+        }
+
+        total += step.value.byteLength;
+
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => undefined);
+
+          return refused(
+            'REMOTE_DATASET_TOO_LARGE',
+            `the vendor streamed more than ${maxBytes} bytes; the read was aborted after ${total} bytes`,
+          );
+        }
+
+        chunks.push(step.value);
+      }
+    } catch {
+      await reader.cancel().catch(() => undefined);
+
+      return refused('INVALID_RESPONSE', 'the response body could not be read');
+    }
+
+    const buffer = new Uint8Array(total);
+    let offset = 0;
+
+    for (const chunk of chunks) {
+      buffer.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    return accepted(new TextDecoder('utf-8').decode(buffer));
+  }
+
+  let text: string;
+
+  try {
+    text = await response.text();
+  } catch {
+    return refused('INVALID_RESPONSE', 'the response body could not be read');
+  }
+
+  const bufferedBytes = new TextEncoder().encode(text).byteLength;
+
+  if (bufferedBytes > maxBytes) {
+    return refused(
+      'REMOTE_DATASET_TOO_LARGE',
+      `the vendor answered ${bufferedBytes} bytes, above the ${maxBytes} byte ceiling (the runtime exposed no stream, so the body was already buffered)`,
+    );
+  }
+
+  return accepted(text);
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -278,17 +378,18 @@ export class AsanHttpAdapter implements AccountingAdapter {
       );
     }
 
-    let text = '';
+    const bounded = await readBoundedResponseText(
+      response,
+      readListBodyMaxBytes(),
+    );
 
-    try {
-      text = await response.text();
-    } catch {
-      return refused('INVALID_RESPONSE', 'the response body could not be read');
+    if (!bounded.ok) {
+      return bounded;
     }
 
     return accepted({
       status: response.status,
-      text,
+      text: bounded.value,
       latencyMs: Date.now() - startedAt,
     });
   }
@@ -303,22 +404,6 @@ export class AsanHttpAdapter implements AccountingAdapter {
     } catch {
       return refused('INVALID_RESPONSE', 'the response was not JSON');
     }
-  }
-
-  // Checked on the raw body, before JSON.parse: the point is to refuse the allocation, not
-  // to measure it after it happened.
-  private checkListBodySize(
-    text: string,
-    resource: 'product' | 'customer',
-  ): Result<never> | null {
-    if (text.length <= readListBodyMaxBytes()) {
-      return null;
-    }
-
-    return refused(
-      'REMOTE_DATASET_TOO_LARGE',
-      `the vendor answered ${text.length} bytes for the ${resource} list, above the ${readListBodyMaxBytes()} byte ceiling`,
-    );
   }
 
   // Asan answers writes with a bare integer, which proxies and older gateways sometimes
@@ -425,12 +510,6 @@ export class AsanHttpAdapter implements AccountingAdapter {
       );
     }
 
-    const oversized = this.checkListBodySize(result.value.text, 'product');
-
-    if (oversized !== null) {
-      return oversized;
-    }
-
     const parsed = this.parseJson(result.value.text);
 
     if (!parsed.ok) {
@@ -476,12 +555,6 @@ export class AsanHttpAdapter implements AccountingAdapter {
         'INVALID_RESPONSE',
         `the vendor answered HTTP ${result.value.status} for the customer list`,
       );
-    }
-
-    const oversized = this.checkListBodySize(result.value.text, 'customer');
-
-    if (oversized !== null) {
-      return oversized;
     }
 
     const parsed = this.parseJson(result.value.text);

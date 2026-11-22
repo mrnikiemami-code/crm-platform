@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>طرح ب — پنل پنج‌بخشی با ریل پایدار</title>
+<style>
+  :root{
+    --bg:#fff; --bg2:#fcfcfc; --bg3:#f1f1f1;
+    --fg:#333; --fg2:#666; --fg3:#999;
+    --line:#ebebeb; --line2:#e0e0e0;
+    --blue:#3b5bd4; --blue-soft:#eef1fc; --green:#2b7048; --orange:#8a4a12; --red:#b5473f;
+    --r:6px;
+    font-family:"Vazirmatn","IRANSans","Segoe UI",Inter,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg2);color:var(--fg)}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+  .shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh;max-width:1180px;margin:0 auto;background:var(--bg2)}
+
+  /* persistent rail (right side in RTL) */
+  .rail{border-inline-start:1px solid var(--line);background:var(--bg);padding:18px 12px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+  .rail .brand{font-weight:700;font-size:15px;margin:0 8px 4px}
+  .rail .brand span{display:block;font-weight:400;font-size:12px;color:var(--fg2);margin-top:2px}
+  .rail nav{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+  .rail a{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--fg);font-size:13px;padding:9px 10px;border-radius:var(--r);border:1px solid transparent}
+  .rail a .ic{width:18px;text-align:center;color:var(--fg2)}
+  .rail a[aria-current="page"]{background:var(--blue-soft);border-color:#cfd8f7;color:#22348f;font-weight:600}
+  .rail a[aria-current="page"] .ic{color:#22348f}
+  .rail .count{margin-inline-start:auto;font-size:12px;background:var(--bg3);color:var(--fg2);border-radius:999px;padding:1px 7px}
+  .rail .foot{margin-top:auto;border-top:1px solid var(--line);padding-top:10px}
+  .rail .foot a{color:var(--fg2);font-size:12px}
+
+  main{padding:18px 22px 40px;min-width:0}
+  .crumbs{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--fg2);margin-bottom:10px;flex-wrap:wrap}
+  .crumbs a{color:var(--fg2)}
+  .crumbs [aria-current]{color:var(--fg)}
+  .head{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px}
+  .head h1{font-size:19px;margin:0 0 3px}
+  .head p{margin:0;font-size:13px;color:var(--fg2)}
+  .head .act{display:flex;gap:8px;align-items:center}
+
+  .panel{display:none}
+  .panel.on{display:block}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  .tile{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:12px}
+  .tile span{font-size:12px;color:var(--fg2)}
+  .tile b{display:block;font-size:19px;margin:4px 0 2px}
+  .tile small{font-size:12px;color:var(--fg2)}
+  .tile.ok{border-inline-start:3px solid var(--green)}
+  .tile.warn{border-inline-start:3px solid var(--orange)}
+  .tile.bad{border-inline-start:3px solid var(--red)}
+
+  .next{border:1px solid #cfd8f7;background:var(--blue-soft);border-radius:var(--r);padding:14px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:14px}
+  .next p{margin:0;font-size:13px}
+  .box{border:1px solid var(--line);background:var(--bg);border-radius:var(--r);padding:14px;margin-top:14px}
+  .box h2{font-size:14px;margin:0 0 2px}
+  .box .lead{font-size:12px;color:var(--fg2);margin:0 0 10px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .grow{flex:1 1 220px;min-width:0}
+
+  button{font:inherit;font-size:13px;border:1px solid var(--line2);background:var(--bg);color:var(--fg);border-radius:var(--r);padding:8px 12px;cursor:pointer}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  button.quiet{border:0;background:none;color:var(--blue);padding:4px 2px}
+  label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--fg2);flex:1 1 190px}
+  input,select{font:inherit;font-size:13px;padding:8px;border:1px solid var(--line2);border-radius:var(--r);background:var(--bg);color:var(--fg);width:100%}
+  input[dir="ltr"]{text-align:left}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:right;vertical-align:top}
+  th{font-size:12px;color:var(--fg2);font-weight:500}
+  .tag{display:inline-block;border-radius:999px;padding:2px 8px;font-size:12px;background:var(--bg3);color:var(--fg2)}
+  .tag.ok{background:#e8f4ec;color:var(--green)}
+  .tag.warn{background:#fdf1e3;color:var(--orange)}
+  .tag.bad{background:#fbeae9;color:var(--red)}
+  details{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-top:12px;background:var(--bg)}
+  summary{cursor:pointer;font-size:12px;color:var(--fg2)}
+  .help{font-size:12px;color:var(--fg2);margin:8px 0 0}
+  .pager{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--fg2)}
+  .subbar{display:flex;gap:8px;align-items:center;border:1px solid var(--line);background:var(--bg3);border-radius:var(--r);padding:8px 10px;margin-bottom:12px;font-size:13px}
+  .subbar .back{display:inline-flex;gap:4px;align-items:center;border:0;background:none;color:var(--blue);cursor:pointer;font-size:13px;padding:2px}
+  .stickyact{position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 0;display:flex;gap:8px;justify-content:flex-start;margin-top:12px}
+
+  /* mobile: rail becomes a bottom bar in the thumb zone */
+  @media (max-width:760px){
+    .shell{grid-template-columns:1fr}
+    .rail{position:fixed;inset:auto 0 0 0;height:auto;flex-direction:row;padding:6px;border-inline-start:0;border-top:1px solid var(--line);z-index:9;justify-content:space-between}
+    .rail .brand,.rail .foot{display:none}
+    .rail nav{flex-direction:row;margin:0;width:100%;justify-content:space-between}
+    .rail a{flex-direction:column;gap:2px;font-size:12px;padding:6px 8px;flex:1;text-align:center}
+    .rail .count{display:none}
+    main{padding:14px 12px 84px}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="rail">
+    <p class="brand">حسابداری<span>فروشگاه مرکزی</span></p>
+    <nav aria-label="بخش‌های حسابداری">
+      <a href="#" data-section="overview" aria-current="page"><span class="ic">◧</span> نمای کلی</a>
+      <a href="#" data-section="connections"><span class="ic">⇄</span> اتصال‌ها <span class="count">۲</span></a>
+      <a href="#" data-section="products"><span class="ic">▤</span> کالاها</a>
+      <a href="#" data-section="customers"><span class="ic">☺</span> مشتریان</a>
+      <a href="#" data-section="documents"><span class="ic">▦</span> اسناد</a>
+    </nav>
+    <div class="foot"><a href="#">بازگشت به پیش‌فاکتورها</a></div>
+  </aside>
+
+  <main>
+    <nav class="crumbs" aria-label="مسیر">
+      <a href="#">CRM</a><span>›</span><a href="#">تنظیمات</a><span>›</span>
+      <span>حسابداری</span><span>›</span><span aria-current="page" id="crumb-here">نمای کلی</span>
+    </nav>
+
+    <div class="head">
+      <div>
+        <h1 id="title">نمای کلی</h1>
+        <p id="lead">وضعیت اتصال، تازگی اطلاعات و اقدام بعدی.</p>
+      </div>
+      <div class="act" id="headact"></div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <section class="panel on" id="p-overview" aria-labelledby="title">
+      <div class="grid">
+        <div class="tile ok"><span>وضعیت اتصال</span><b>آماده</b><small>اتصال آزمایشی نسخه</small></div>
+        <div class="tile"><span>آخرین به‌روزرسانی</span><b>۴ دقیقه پیش</b><small>۳۳ کالا، ۲۲ مشتری</small></div>
+        <div class="tile warn"><span>کالاهای وصل‌نشده</span><b>۷</b><small>در حسابداری هست، در CRM نه</small></div>
+        <div class="tile warn"><span>مشتریان وصل‌نشده</span><b>۳</b><small>نیازمند انتخاب مشتری CRM</small></div>
+      </div>
+      <div class="next">
+        <p><strong>اقدام بعدی:</strong> ۷ کالا هنوز به کالای CRM وصل نشده‌اند.</p>
+        <button class="primary" data-go="products">بررسی کالاها</button>
+      </div>
+      <details>
+        <summary>جزئیات فنی</summary>
+        <p class="help">نوع خواندن: بدون صفحه‌بندی (snapshot) — ۳۳ ردیف از ۳۳ ردیف، وضعیت همگام‌سازی: کامل. سقف مجاز این اتصال ۲۰٬۰۰۰ ردیف است.</p>
+      </details>
+    </section>
+
+    <!-- CONNECTIONS: list -->
+    <section class="panel" id="p-connections" aria-labelledby="title">
+      <div class="box" style="margin-top:0">
+        <h2>فهرست اتصال‌ها</h2>
+        <p class="lead">یک اتصال را انتخاب کنید یا اتصال تازه بسازید.</p>
+        <label class="fld" style="margin-bottom:10px">جست‌وجو در اتصال‌ها
+          <input type="search" placeholder="نام اتصال یا نرم‌افزار" />
+        </label>
+        <table>
+          <thead><tr><th>اتصال</th><th>نرم‌افزار</th><th>آخرین آزمایش</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>اتصال آزمایشی نسخه</td><td>حسابداری آزمایشی</td><td><span class="tag ok">موفق</span></td><td><button class="quiet" data-form="1">ویرایش</button></td></tr>
+            <tr><td>آسان — فروشگاه مرکزی</td><td>آسان</td><td><span class="tag warn">آزمایش نشده</span></td><td><button class="quiet" data-form="1">ویرایش</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CONNECTIONS: form sub-view -->
+    <section class="panel" id="p-connection-form" aria-labelledby="title">
+      <div class="subbar">
+        <button class="back" data-go="connections">→ بازگشت به فهرست اتصال‌ها</button>
+        <span class="help" style="margin:0">در حال ویرایش: اتصال آزمایشی نسخه</span>
+      </div>
+      <div class="box" style="margin-top:0">
+        <h2>تنظیم اتصال</h2>
+        <p class="lead">فقط سه چیز لازم است: نام، آدرس سرویس و واحد پول.</p>
+        <div class="row">
+          <label class="fld">نرم‌افزار حسابداری
+            <select><option>حسابداری آزمایشی</option><option>آسان</option></select>
+          </label>
+          <label class="fld">نام اتصال<input value="اتصال آزمایشی نسخه" /></label>
+          <label class="fld">آدرس سرویس<input dir="ltr" value="https://accounting.example.ir/api" /></label>
+          <label class="fld">واحد پول<select><option>تومان</option><option>ریال</option></select></label>
+        </div>
+        <details>
+          <summary>جزئیات فنی (کدهای ویژه، نگاشت مالیات، شناسهٔ کاربر مقصد)</summary>
+          <p class="help">هر خط یک اتصال «کد سیاست مالیات CRM = کد مالیات مقصد». تا وقتی این نگاشت خالی است، سند دارای مالیات ارسال نمی‌شود.</p>
+        </details>
+        <div class="stickyact">
+          <button class="primary">ذخیرهٔ تنظیمات</button>
+          <button>آزمایش اتصال</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="panel" id="p-products" aria-labelledby="title">
+      <div class="box" style="margin-top:0">
+        <h2>کالاهای نرم‌افزار حسابداری</h2>
+        <p class="lead">هر کالا را به کالای CRM وصل کنید. یک صفحه در هر بار.</p>
+        <div class="row">
+          <label class="fld grow">جست‌وجو در کالاها<input type="search" placeholder="نام یا کد کالا" /></label>
+          <button class="primary">جست‌وجو</button>
+        </div>
+        <table style="margin-top:12px">
+          <thead><tr><th>کد</th><th>نام</th><th>قیمت</th><th>کالای CRM</th><th>وضعیت</th></tr></thead>
+          <tbody>
+            <tr><td>1001</td><td>کالای ۱</td><td>۱٬۰۰۰٬۰۰۰</td><td>کالای ۱</td><td><span class="tag ok">وصل‌شده</span></td></tr>
+            <tr><td>2004</td><td>کالای ۲</td><td>۱٬۲۰۰٬۰۰۰</td><td>—</td><td><span class="tag bad">کد تکراری</span></td></tr>
+            <tr><td>5001</td><td>کالای بدون قیمت</td><td>—</td><td>—</td><td><span class="tag warn">نیازمند بررسی</span></td></tr>
+          </tbody>
+        </table>
+        <div class="pager"><span>صفحهٔ ۱ — ۳۳ مورد</span><span><button>قبلی</button> <button>بعدی</button></span></div>
+        <details>
+          <summary>جزئیات فنی</summary>
+          <p class="help">این مقصد امکان صفحه‌بندی ندارد؛ کل فهرست یک‌بار خوانده و در فضای کاری ذخیره می‌شود. سقف: ۲۰٬۰۰۰ ردیف برای همگام‌سازی کامل، ۱۰۰٬۰۰۰ ردیف سقف قطعی. بالاتر از آن، خواندن با خطای صریح متوقف می‌شود.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- CUSTOMERS -->
+    <section class="panel" id="p-customers" aria-labelledby="title">
+      <div class="box" style="margin-top:0">
+        <h2>مشتریان نرم‌افزار حسابداری</h2>
+        <p class="lead">برای هر مشتری، مشتری CRM را خودتان انتخاب می‌کنید.</p>
+        <div class="row">
+          <label class="fld grow">جست‌وجو در مشتریان<input type="search" placeholder="نام، کد ملی یا شناسه" /></label>
+          <button class="primary">جست‌وجو</button>
+        </div>
+        <table style="margin-top:12px">
+          <thead><tr><th>مشتری در حسابداری</th><th>شناسه</th><th>مشتری CRM</th><th>وضعیت</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>شرکت نمونه</td><td>101</td><td>شرکت نمونه</td><td><span class="tag ok">وصل‌شده</span></td><td>—</td></tr>
+            <tr><td>مشتری ۲ <br><span class="help" style="margin:0">کد ملی تکراری</span></td><td>102</td><td>انتخاب نشده</td><td><span class="tag warn">نیازمند انتخاب</span></td><td><button class="quiet">انتخاب مشتری</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section class="panel" id="p-documents" aria-labelledby="title">
+      <div class="box" style="margin-top:0">
+        <h2>آمادگی ارسال سند</h2>
+        <p class="lead">در این نسخه هیچ سندی به حسابداری ارسال نمی‌شود.</p>
+        <div class="grid">
+          <div class="tile ok"><span>ارسال به حسابداری</span><b>غیرفعال</b><small>کلید عملیاتی خاموش است</small></div>
+          <div class="tile warn"><span>اتصال کدهای مالیات</span><b>۰</b><small>سند دارای مالیات ارسال نمی‌شود</small></div>
+          <div class="tile ok"><span>عملیات ناتمام</span><b>۰</b><small>همه‌چیز پایان یافته</small></div>
+        </div>
+        <h2 style="margin-top:16px">تاریخچهٔ عملیات</h2>
+        <p class="help">هنوز عملیاتی در این اتصال ثبت نشده است.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  var meta = {
+    overview:      {t:'نمای کلی', lead:'وضعیت اتصال، تازگی اطلاعات و اقدام بعدی.', act:''},
+    connections:   {t:'اتصال‌ها', lead:'نرم‌افزاری که این فضای کاری با آن کار می‌کند.', act:'<button class="primary" data-form="1">+ اتصال جدید</button>'},
+    'connection-form': {t:'ویرایش اتصال', lead:'نام، آدرس و واحد پول.', act:''},
+    products:      {t:'کالاها و خدمات', lead:'تطبیق کالاهای حسابداری با کالای CRM.', act:'<button>خواندن دوباره</button>'},
+    customers:     {t:'مشتریان', lead:'تطبیق مشتریان حسابداری با مشتری CRM.', act:'<button>خواندن دوباره</button>'},
+    documents:     {t:'اسناد و سوابق', lead:'آمادگی ارسال سند و تاریخچهٔ عملیات.', act:'<button>به‌روزرسانی سوابق</button>'}
+  };
+
+  function show(id){
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('on', p.id === 'p-' + id); });
+    var m = meta[id] || meta.overview;
+    document.getElementById('title').textContent = m.t;
+    document.getElementById('lead').textContent = m.lead;
+    document.getElementById('headact').innerHTML = m.act;
+    document.getElementById('crumb-here').textContent = m.t;
+    var railId = (id === 'connection-form') ? 'connections' : id;
+    document.querySelectorAll('.rail a').forEach(function(a){
+      if (a.dataset.section === railId) { a.setAttribute('aria-current','page'); }
+      else { a.removeAttribute('aria-current'); }
+    });
+    window.scrollTo({top:0});
+  }
+
+  document.addEventListener('click', function(e){
+    var go = e.target.closest('[data-go]');
+    if (go) { e.preventDefault(); show(go.dataset.go); return; }
+    var rail = e.target.closest('.rail a');
+    if (rail) { e.preventDefault(); show(rail.dataset.section); return; }
+    var form = e.target.closest('[data-form]');
+    if (form) { e.preventDefault(); show('connection-form'); return; }
+  });
+</script>
+</body>
+</html>
