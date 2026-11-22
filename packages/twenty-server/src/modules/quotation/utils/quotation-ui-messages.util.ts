@@ -43,6 +43,17 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     'تغییر تنظیمات مالیات فقط برای مدیر فضای کاری مجاز است.',
   TAX_POLICY_WRITE_FORBIDDEN:
     'سیاست مالیات فقط از صفحهٔ تنظیمات مالیات قابل تغییر است.',
+  ACCOUNTING_SETTINGS_FORBIDDEN:
+    'تغییر تنظیمات حسابداری فقط برای مدیر فضای کاری یا هویت برنامهٔ مجاز انجام می‌شود.',
+  ACCOUNTING_CONNECTION_WRITE_FORBIDDEN:
+    'اتصال حسابداری فقط از صفحهٔ تنظیمات حسابداری قابل تغییر است.',
+  ACCOUNTING_CONNECTION_NOT_FOUND: 'اتصال حسابداری انتخاب‌شده یافت نشد.',
+  ACCOUNTING_ADAPTER_UNAVAILABLE:
+    'برای این نرم‌افزار آداپتور عملیاتی فعال نیست؛ اتصال آمادهٔ ارسال محسوب نمی‌شود.',
+  ACCOUNTING_CURRENCY_UNCONFIRMED:
+    'واحد پول تأیید نشده است؛ ارسال سند مالی تا تعیین ریال یا تومان مسدود است.',
+  ACCOUNTING_DISPATCH_LOCKED:
+    'ارسال سند مالی به مقصد در این نسخه غیرفعال است.',
   PERSISTENCE_FAILED: 'ذخیره پیش‌فاکتور انجام نشد.',
   INVALID_INPUT: 'درخواست نامعتبر است.',
   AUTH_REQUIRED: 'برای این عملیات باید وارد حساب کاربری شوید.',

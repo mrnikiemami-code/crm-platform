@@ -57,6 +57,8 @@ const buildController = ({
     {} as never,
     { saveDraft: saveDraft ?? jest.fn() } as never,
     taxPolicyAuthorityService as never,
+    { resolveSettingsAuthority: jest.fn(async () => authority) } as never,
+    {} as never,
   );
 
   return { controller, taxPolicyAuthorityService };

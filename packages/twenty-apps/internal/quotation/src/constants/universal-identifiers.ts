@@ -412,3 +412,18 @@ export const TAX_POLICY_SETTINGS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'cf90d325-8207-58fb-b1bd-32e7ea768f4a';
 export const TAX_POLICIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '8520069f-3d4f-5b37-85fa-7d170dd67038';
+
+// The workspace accounting settings surface. Same reason as the tax page above: the
+// fork hides Settings → Applications, so an independently reachable page with a sidebar
+// entry is the only way an administrator can manage the destination. Ids are derived
+// from this app's namespace like every other app-owned id; they are not invented.
+export const ACCOUNTING_SETTINGS_PAGE_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  '49d3194d-d3c5-5d11-b4bb-46f4c0534469';
+export const ACCOUNTING_SETTINGS_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER =
+  '8d4356f5-95ef-54ef-91a6-12e955e4c9df';
+export const ACCOUNTING_SETTINGS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  '53855f4a-537f-5cd5-b9b3-24b1cd796b17';
+export const ACCOUNTING_SETTINGS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER =
+  'f6a99bbb-dfa3-5b73-a4ac-a6e9fb342a51';
+export const ACCOUNTING_SETTINGS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
+  '9e0fb635-4a2b-5df8-bc5b-3af21062167c';

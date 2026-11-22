@@ -121,7 +121,9 @@ const main = async () => {
     name: 'آسان (بدون سرور) 006',
     adapterId: 'asan',
     settings: {
-      baseUrl: 'http://127.0.0.1:9/',
+      // A public, unreachable host: the loopback address the first version used is now
+      // refused by the server's private-network policy, which is the intended gate.
+      baseUrl: 'https://asan-006.invalid/',
       remoteUserId: '7',
       defaultStorageId: '1',
       moneyUnit: 'UNCONFIRMED',

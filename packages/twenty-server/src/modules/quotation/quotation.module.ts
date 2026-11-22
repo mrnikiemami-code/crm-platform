@@ -12,6 +12,7 @@ import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pd
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
+import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-po
     QuotationShareService,
     QuotationDraftPersistenceService,
     TaxPolicyAuthorityService,
+    AccountingConnectionAuthorityService,
   ],
 })
 export class QuotationModule {}

@@ -21,6 +21,10 @@ import {
 } from 'src/data/accounting-queries';
 import { type GraphqlValue } from 'src/data/graphql-literal';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
+import {
+  callAccountingSettingsAction,
+  type AccountingSettingsApiOutcome,
+} from 'src/data/accounting-settings-api';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 import { type AccountingAdapter } from 'src/domain/accounting/adapter-contract';
 
@@ -397,4 +401,172 @@ export const connectionFailureMessage = (error: unknown): string => {
   }
 
   return 'ارتباط با سرور برقرار نشد.';
+};
+
+// ---------------------------------------------------------------------------
+// The settings write, decided at the server boundary.
+//
+// The public GraphQL mutations on `accountingConnection` are closed, and a logic
+// function's own token is the app's: writing with it would let any member's panel
+// change a workspace-wide destination. The save therefore travels to the REST route
+// with the CALLER's bearer, where the workspace role is resolved, and the caller
+// reads back what the server stored.
+
+export type AccountingSettingsDependencies = {
+  authorizationHeader?: string | null;
+};
+
+const parseServerConnectionView = (
+  value: unknown,
+): AccountingConnectionRecord | null => {
+  const row = asRecord(value);
+  const id = readString(row?.recordId);
+
+  if (id === '') {
+    return null;
+  }
+
+  return {
+    id,
+    name: readString(row?.name),
+    adapterId: readString(row?.adapterId),
+    adapterVersion: readString(row?.adapterVersion) || null,
+    isActive: readBoolean(row?.isActive, true),
+    settings: connectionSettingsFromRecord(row),
+    capabilities: row?.capabilities ?? null,
+    healthState: readString(row?.healthState) || 'UNKNOWN',
+    lastHealthCheckAt: readString(row?.lastHealthCheckAt) || null,
+    lastHealthMessage: readString(row?.lastHealthMessage) || null,
+    verificationState: readString(row?.verificationState) || 'LIVE_UNVERIFIED',
+  };
+};
+
+const readServerConnections = (
+  data: Record<string, unknown>,
+): AccountingConnectionRecord[] => {
+  const rows = Array.isArray(data.connections) ? data.connections : [];
+
+  return rows
+    .map(parseServerConnectionView)
+    .filter((row): row is AccountingConnectionRecord => row !== null);
+};
+
+const refusedOutcome = (
+  outcome: Extract<AccountingSettingsApiOutcome, { kind: 'REFUSED' }>,
+): Result<never> => refused(outcome.code, outcome.message);
+
+// Whether this person may change the destination at all. A refusal is the answer, never
+// an invitation to try the write and see.
+export const readAccountingSettingsAuthority = async (
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<Result<boolean>> => {
+  const outcome = await callAccountingSettingsAction({
+    body: { action: 'accounting-settings-authority' },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  return accepted(outcome.data.canManage === true);
+};
+
+export const loadConnectionsThroughServer = async (
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<Result<AccountingConnectionRecord[]>> => {
+  const outcome = await callAccountingSettingsAction({
+    body: { action: 'accounting-connection-list' },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  return accepted(readServerConnections(outcome.data));
+};
+
+export const saveConnectionThroughServer = async (
+  input: SaveConnectionInput,
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<SaveConnectionResult> => {
+  const name = input.name.trim();
+  const descriptor = findAdapterDescriptor(input.adapterId.trim());
+
+  if (name === '') {
+    return refused('INVALID_INPUT', 'نام اتصال را وارد کنید');
+  }
+
+  if (descriptor === null) {
+    return refused('ADAPTER_UNKNOWN', 'نرم‌افزار انتخاب‌شده آداپتور عملیاتی ندارد');
+  }
+
+  const settings = parseConnectionSettings(input.settings);
+
+  if (!settings.ok) {
+    return settings;
+  }
+
+  const adapter = createAccountingAdapter({
+    adapterId: descriptor.id,
+    settings: settings.value,
+    allowInsecureTransport: settings.value.transportApproved,
+  });
+
+  if (!adapter.ok) {
+    return adapter;
+  }
+
+  const outcome = await callAccountingSettingsAction({
+    body: {
+      action: 'accounting-connection-save',
+      recordId: input.id ?? null,
+      name,
+      adapterId: descriptor.id,
+      settings: settings.value,
+      capabilities: adapter.value.capabilities,
+    },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  const connections = readServerConnections(outcome.data);
+  const saved =
+    connections.find((connection) => connection.id === input.id) ??
+    connections.find(
+      (connection) =>
+        connection.adapterId === descriptor.id && connection.name === name,
+    ) ??
+    null;
+
+  if (saved === null) {
+    return refused('QUERY_ERROR', 'the saved connection could not be read back');
+  }
+
+  return accepted({ connection: saved, adapter: descriptor });
+};
+
+// The probe itself stays in the adapter (one implementation, GET only). Only its answer
+// is written, and only after the server has accepted this caller as an operator.
+export const persistHealthThroughServer = async (
+  connectionId: string,
+  result: TestConnectionResult,
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<Result<true>> => {
+  const outcome = await callAccountingSettingsAction({
+    body: {
+      action: 'accounting-connection-health',
+      recordId: connectionId,
+      healthState: result.healthState,
+      message: `${result.message} (${result.detail})`,
+      checkedAt: result.checkedAt,
+    },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  return outcome.kind === 'REFUSED' ? refusedOutcome(outcome) : accepted(true);
 };

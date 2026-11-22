@@ -13,10 +13,11 @@ import { connectionFailureMessage } from 'src/services/accounting-connection.ser
 import {
   buildAdapter,
   describeSecretStatus,
-  loadConnections,
-  persistHealth,
+  loadConnectionsThroughServer,
+  persistHealthThroughServer,
+  readAccountingSettingsAuthority,
   resolveConnection,
-  saveConnection,
+  saveConnectionThroughServer,
   testConnection,
 } from 'src/services/accounting-connection.service';
 import {
@@ -35,6 +36,19 @@ const readFlags = () => ({
     process.env.ACCOUNTING_DOCUMENT_EXPORT_ENABLED === 'true',
 });
 
+// The caller's own bearer token, forwarded to the server boundary. The workspace role is
+// decided there; this route never infers a privilege from a missing header, and never
+// substitutes the app token for a caller header the server rejected.
+const readCallerAuthorization = (
+  headers: Record<string, string | undefined>,
+): string | null => {
+  const authorization = headers.authorization;
+
+  return typeof authorization === 'string' && authorization.trim() !== ''
+    ? authorization
+    : null;
+};
+
 const handler = async (event: RoutePayload<unknown>) => {
   const body = readBody(event);
   const action = readString(body.action);
@@ -44,14 +58,27 @@ const handler = async (event: RoutePayload<unknown>) => {
   }
 
   const secrets = readRouteSecrets();
+  const authorizationHeader = readCallerAuthorization(event.headers);
 
   try {
     if (action === 'list') {
-      const connections = await loadConnections();
+      // The list is read through the same boundary that decides who may change it, so
+      // the page learns `canManage` and the rows from one authoritative answer.
+      const connections = await loadConnectionsThroughServer({
+        authorizationHeader,
+      });
+
+      if (!connections.ok) {
+        return failure(connections.refusal.code, connections.refusal.detail);
+      }
+
+      const authority = await readAccountingSettingsAuthority({
+        authorizationHeader,
+      });
 
       return {
         success: true,
-        connections: connections.map((connection) => ({
+        connections: connections.value.map((connection) => ({
           ...connection,
           capabilityRows: describeCapabilities(
             findAdapterDescriptor(connection.adapterId) ?? {
@@ -62,21 +89,26 @@ const handler = async (event: RoutePayload<unknown>) => {
         adapters: ADAPTER_DESCRIPTORS,
         credentials: describeSecretStatus(secrets),
         flags: readFlags(),
+        canManage: authority.ok ? authority.value : false,
       };
     }
 
     if (action === 'save') {
-      const saved = await saveConnection({
-        id: readString(body.id) || null,
-        name: readString(body.name),
-        adapterId: readString(body.adapterId),
-        settings: asRecord(body.settings),
-      });
+      const saved = await saveConnectionThroughServer(
+        {
+          id: readString(body.id) || null,
+          name: readString(body.name),
+          adapterId: readString(body.adapterId),
+          settings: asRecord(body.settings),
+        },
+        { authorizationHeader },
+      );
 
       if (!saved.ok) {
         return failure(
           saved.refusal.code,
-          persianAccountingMessage(saved.refusal.code),
+          persianAccountingMessage(saved.refusal.code) ||
+            saved.refusal.detail,
         );
       }
 
@@ -88,10 +120,29 @@ const handler = async (event: RoutePayload<unknown>) => {
         },
         adapters: ADAPTER_DESCRIPTORS,
         credentials: describeSecretStatus(secrets),
+        flags: readFlags(),
+        canManage: true,
       };
     }
 
     if (action === 'test') {
+      // A probe emits network traffic and records its answer, so it is an operator
+      // action, not a read. Refused before a single request leaves the workspace.
+      const authority = await readAccountingSettingsAuthority({
+        authorizationHeader,
+      });
+
+      if (!authority.ok) {
+        return failure(authority.refusal.code, authority.refusal.detail);
+      }
+
+      if (!authority.value) {
+        return failure(
+          'ACCOUNTING_SETTINGS_FORBIDDEN',
+          persianAccountingMessage('ACCOUNTING_SETTINGS_FORBIDDEN'),
+        );
+      }
+
       const connectionId = readString(body.connectionId);
       const resolved = await resolveConnection({ connectionId });
 
@@ -122,7 +173,17 @@ const handler = async (event: RoutePayload<unknown>) => {
         );
       }
 
-      await persistHealth(resolved.value.id, health.value);
+      // The probe is read-only by contract; only its result is stored, and through the
+      // same guarded boundary as a settings save.
+      const persisted = await persistHealthThroughServer(
+        resolved.value.id,
+        health.value,
+        { authorizationHeader },
+      );
+
+      if (!persisted.ok) {
+        return failure(persisted.refusal.code, persisted.refusal.detail);
+      }
 
       const adapter = buildAdapter(resolved.value, secrets);
       const transportIsSecure =
@@ -169,5 +230,8 @@ export default defineLogicFunction({
     path: '/quotation/accounting-connection',
     httpMethod: 'POST',
     isAuthRequired: true,
+    // The server boundary checks the human caller's workspace role, so the route must
+    // hand the caller's own authorization header over.
+    forwardedRequestHeaders: ['authorization'],
   },
 });

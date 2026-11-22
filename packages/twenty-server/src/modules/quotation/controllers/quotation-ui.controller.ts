@@ -16,12 +16,15 @@ import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
+import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
 import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
+import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 import { type TaxPolicyMutationOutcome } from 'src/modules/quotation/types/tax-policy.type';
+import { type AccountingConnectionOutcome } from 'src/modules/quotation/types/accounting-connection.type';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
 
 type QuotationUiActionBody = {
@@ -39,6 +42,13 @@ type QuotationUiActionBody = {
   isActive?: unknown;
   isDefault?: unknown;
   isExempt?: unknown;
+  connectionId?: unknown;
+  adapterId?: unknown;
+  settings?: unknown;
+  capabilities?: unknown;
+  healthState?: unknown;
+  checkedAt?: unknown;
+  message?: unknown;
 };
 
 const ALLOWED_ACTIONS = new Set([
@@ -54,6 +64,10 @@ const ALLOWED_ACTIONS = new Set([
   'tax-policy-save',
   'tax-policy-set-default',
   'tax-policy-deactivate',
+  'accounting-settings-authority',
+  'accounting-connection-list',
+  'accounting-connection-save',
+  'accounting-connection-health',
 ]);
 
 const TAX_POLICY_MUTATING_ACTIONS = new Set([
@@ -80,6 +94,8 @@ export class QuotationUiController {
     private readonly quotationShareService: QuotationShareService,
     private readonly quotationDraftPersistenceService: QuotationDraftPersistenceService,
     private readonly taxPolicyAuthorityService: TaxPolicyAuthorityService,
+    private readonly quotationPermissionService: QuotationPermissionService,
+    private readonly accountingConnectionAuthorityService: AccountingConnectionAuthorityService,
   ) {}
 
   @Post('actions')
@@ -101,6 +117,17 @@ export class QuotationUiController {
 
     if (action.startsWith('tax-policy-')) {
       return this.handleTaxPolicyAction({ action, body, authContext });
+    }
+
+    // Read-only authority probe for the standalone settings page. It answers whether the
+    // current caller may edit the accounting destination at all; the page hides the form
+    // on a refusal, and every write route re-checks on its own.
+    if (action === 'accounting-settings-authority') {
+      return this.handleAccountingSettingsAuthority(authContext);
+    }
+
+    if (action.startsWith('accounting-connection-')) {
+      return this.handleAccountingConnectionAction({ action, body, authContext });
     }
 
     // A new draft has no id yet, so this action cannot sit behind the shared
@@ -375,5 +402,110 @@ export class QuotationUiController {
     return action === 'tax-policy-set-default'
       ? this.taxPolicyAuthorityService.setDefaultPolicy(recordId, authContext)
       : this.taxPolicyAuthorityService.deactivatePolicy(recordId, authContext);
+  }
+
+  // The accounting surface separates two questions: "may this caller see the
+  // destination?" (any member) and "may this caller change it?" (settings authority
+  // only). This probe answers the second one so the page does not paint a form that
+  // the server would reject, and returns the authority so the UI can explain why.
+  private async handleAccountingSettingsAuthority(
+    authContext: WorkspaceAuthContext,
+  ): Promise<unknown> {
+    try {
+      const authority =
+        await this.quotationPermissionService.resolveSettingsAuthority(
+          authContext,
+          'accountingConnection',
+        );
+
+      return {
+        success: true,
+        canManage: authority !== null,
+        authority,
+      };
+    } catch (error) {
+      return this.quotationUiService.toPersianFailure(error);
+    }
+  }
+
+  // The settings write for the accounting destination. A read is open to any member;
+  // save and health persist re-decide the workspace role inside the service, so hiding
+  // the form on the page is presentation, never the gate.
+  private async handleAccountingConnectionAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<unknown> {
+    try {
+      if (action === 'accounting-connection-list') {
+        return this.describeAccountingOutcome(
+          await this.accountingConnectionAuthorityService.listConnections(
+            authContext,
+          ),
+          authContext,
+        );
+      }
+
+      if (action === 'accounting-connection-save') {
+        return this.describeAccountingOutcome(
+          await this.accountingConnectionAuthorityService.saveConnection(
+            {
+              recordId: readText(body.recordId) || readText(body.connectionId) || null,
+              name: readText(body.name),
+              adapterId: readText(body.adapterId),
+              settings: body.settings,
+              capabilities: body.capabilities,
+            },
+            authContext,
+          ),
+          authContext,
+        );
+      }
+
+      return this.describeAccountingOutcome(
+        await this.accountingConnectionAuthorityService.persistHealth(
+          {
+            recordId: readText(body.recordId) || readText(body.connectionId),
+            healthState: readText(body.healthState),
+            message: readText(body.message),
+            checkedAt: readText(body.checkedAt),
+          },
+          authContext,
+        ),
+        authContext,
+      );
+    } catch (error) {
+      return this.quotationUiService.toPersianFailure(error);
+    }
+  }
+
+  private async describeAccountingOutcome(
+    outcome: AccountingConnectionOutcome,
+    authContext: WorkspaceAuthContext,
+  ): Promise<unknown> {
+    if (outcome.kind !== 'OK') {
+      return {
+        success: false,
+        code: outcome.code,
+        message: outcome.message,
+      };
+    }
+
+    const authority =
+      await this.accountingConnectionAuthorityService.resolveAuthority(
+        authContext,
+      );
+
+    return {
+      success: true,
+      canManage: authority !== null,
+      authority,
+      connections: outcome.connections,
+      message: outcome.message,
+    };
   }
 }

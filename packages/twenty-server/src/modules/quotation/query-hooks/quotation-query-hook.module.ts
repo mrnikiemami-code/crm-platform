@@ -1,6 +1,17 @@
 import { Module } from '@nestjs/common';
 
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
+import { AccountingConnectionCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-create-many.pre-query.hook';
+import { AccountingConnectionCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-create-one.pre-query.hook';
+import { AccountingConnectionDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-delete-many.pre-query.hook';
+import { AccountingConnectionDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-delete-one.pre-query.hook';
+import { AccountingConnectionDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-destroy-many.pre-query.hook';
+import { AccountingConnectionDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-destroy-one.pre-query.hook';
+import { AccountingConnectionMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-merge-many.pre-query.hook';
+import { AccountingConnectionRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-restore-many.pre-query.hook';
+import { AccountingConnectionRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-restore-one.pre-query.hook';
+import { AccountingConnectionUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-update-many.pre-query.hook';
+import { AccountingConnectionUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-update-one.pre-query.hook';
 import { QuotationDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-delete-many.pre-query.hook';
 import { QuotationDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-delete-one.pre-query.hook';
 import { QuotationDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-destroy-many.pre-query.hook';
@@ -41,6 +52,7 @@ import { QuotationNumberService } from 'src/modules/quotation/services/quotation
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { QuotationRevisionService } from 'src/modules/quotation/services/quotation-revision.service';
 import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/services/quotation-revision-write-guard.service';
+import { AccountingConnectionWriteGuardService } from 'src/modules/quotation/services/accounting-connection-write-guard.service';
 import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-policy-write-guard.service';
 
 @Module({
@@ -51,6 +63,7 @@ import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-p
     QuotationRevisionService,
     QuotationImmutabilityService,
     QuotationRevisionWriteGuardService,
+    AccountingConnectionWriteGuardService,
     TaxPolicyWriteGuardService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
@@ -87,6 +100,17 @@ import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-p
     TaxPolicyRestoreOnePreQueryHook,
     TaxPolicyRestoreManyPreQueryHook,
     TaxPolicyMergeManyPreQueryHook,
+    AccountingConnectionCreateOnePreQueryHook,
+    AccountingConnectionCreateManyPreQueryHook,
+    AccountingConnectionUpdateOnePreQueryHook,
+    AccountingConnectionUpdateManyPreQueryHook,
+    AccountingConnectionDeleteOnePreQueryHook,
+    AccountingConnectionDeleteManyPreQueryHook,
+    AccountingConnectionDestroyOnePreQueryHook,
+    AccountingConnectionDestroyManyPreQueryHook,
+    AccountingConnectionRestoreOnePreQueryHook,
+    AccountingConnectionRestoreManyPreQueryHook,
+    AccountingConnectionMergeManyPreQueryHook,
   ],
   exports: [
     QuotationPermissionService,

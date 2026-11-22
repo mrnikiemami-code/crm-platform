@@ -174,7 +174,11 @@ const handler = async (event: RoutePayload<unknown>) => {
     if (action === 'operations') {
       return {
         success: true,
-        operations: await loadOperations(connectionId),
+        operations: await loadOperations(
+          connectionId,
+          {},
+          readString(body.quotationId) || readString(body.internalEntityId) || undefined,
+        ),
       };
     }
 

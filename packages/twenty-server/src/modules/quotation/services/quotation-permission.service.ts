@@ -83,20 +83,27 @@ export class QuotationPermissionService {
   //
   // An application token is not trusted for being an application: any workspace app
   // can present one. It qualifies only when either
-  //   1. it is the application that owns `taxPolicy` (the quotation app that defines
-  //      this object in the workspace), or
+  //   1. it is the application that owns the settings object (the quotation app that
+  //      defines `taxPolicy` / `accountingConnection` in the workspace), or
   //   2. its platform default role carries `canUpdateAllSettings`.
   // The identity in (1) comes from the object metadata the platform already stores,
   // and (2) is the same role capability users and API keys are held to.
+  //
+  // `objectNameSingular` names WHICH settings surface is being authorized: owning the
+  // tax catalog must not also qualify an app to rewrite the accounting destination.
   async resolveSettingsAuthority(
     authContext: WorkspaceAuthContext,
+    objectNameSingular: string = 'taxPolicy',
   ): Promise<TaxSettingsAuthority | null> {
     if (authContext.type === 'system') {
       return 'SYSTEM';
     }
 
     if (authContext.type === 'application') {
-      return this.resolveApplicationSettingsAuthority(authContext);
+      return this.resolveApplicationSettingsAuthority(
+        authContext,
+        objectNameSingular,
+      );
     }
 
     if (authContext.type === 'pendingActivationUser') {
@@ -125,6 +132,7 @@ export class QuotationPermissionService {
 
   private async resolveApplicationSettingsAuthority(
     authContext: Extract<WorkspaceAuthContext, { type: 'application' }>,
+    objectNameSingular: string,
   ): Promise<TaxSettingsAuthority | null> {
     const { flatObjectMetadataMaps, flatRoleMaps } =
       await this.workspaceCacheService.getOrRecompute(authContext.workspace.id, [
@@ -132,15 +140,15 @@ export class QuotationPermissionService {
         'flatRoleMaps',
       ]);
 
-    const taxPolicyObjectMetadata = Object.values(
+    const settingsObjectMetadata = Object.values(
       flatObjectMetadataMaps.byUniversalIdentifier,
     ).find(
       (objectMetadata) =>
         isDefined(objectMetadata) &&
-        objectMetadata.nameSingular === 'taxPolicy',
+        objectMetadata.nameSingular === objectNameSingular,
     );
     const owningApplicationUniversalIdentifier =
-      taxPolicyObjectMetadata?.applicationUniversalIdentifier;
+      settingsObjectMetadata?.applicationUniversalIdentifier;
 
     if (
       isDefined(owningApplicationUniversalIdentifier) &&

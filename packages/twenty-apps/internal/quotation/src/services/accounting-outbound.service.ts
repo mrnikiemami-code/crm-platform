@@ -101,9 +101,17 @@ export const parseOperations = (
 export const loadOperations = async (
   connectionId: string,
   dependencies: OutboundDependencies = {},
+  internalEntityId?: string,
 ): Promise<OperationSnapshot[]> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(buildAccountingOperationsQuery({ connectionId }));
+  const data = await execute(
+    buildAccountingOperationsQuery({
+      connectionId,
+      ...(internalEntityId === undefined || internalEntityId.trim() === ''
+        ? {}
+        : { internalEntityId }),
+    }),
+  );
 
   return parseOperations(data);
 };
