@@ -13,7 +13,7 @@ import { QuotationPermissionService } from 'src/modules/quotation/services/quota
 import {
   type AccountingConnectionOutcome,
   type AccountingConnectionView,
-  type AccountingHealthInput,
+  type AccountingHealthView,
   type SaveAccountingConnectionInput,
   type WorkspaceAccountingConnectionRow,
 } from 'src/modules/quotation/types/accounting-connection.type';
@@ -23,6 +23,9 @@ import {
   parseAccountingConnectionSettings,
   type AccountingConnectionSettings,
 } from 'src/modules/quotation/utils/accounting-connection-settings.util';
+import { accountingAdapterContract } from 'src/modules/quotation/utils/accounting-adapter-contract.util';
+import { readPrivateDestinationAllowlist } from 'src/modules/quotation/utils/accounting-destination-policy.util';
+import { AccountingDestinationProbeService } from 'src/modules/quotation/services/accounting-destination-probe.service';
 import { type TaxSettingsAuthority } from 'src/modules/quotation/types/tax-policy.type';
 
 const CONNECTION_COLUMNS = {
@@ -43,8 +46,6 @@ const CONNECTION_COLUMNS = {
   lastHealthMessage: true,
   verificationState: true,
 } as const;
-
-const HEALTH_STATES = ['UNKNOWN', 'OK', 'FAILED'] as const;
 
 const refused = (
   code: string,
@@ -145,6 +146,7 @@ export class AccountingConnectionAuthorityService {
   constructor(
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     private readonly quotationPermissionService: QuotationPermissionService,
+    private readonly destinationProbe: AccountingDestinationProbeService,
   ) {}
 
   // `null` means "this caller did not prove settings authority". Nothing here falls
@@ -201,10 +203,23 @@ export class AccountingConnectionAuthorityService {
       );
     }
 
-    const settings = parseAccountingConnectionSettings(input.settings);
+    const settings = parseAccountingConnectionSettings(input.settings, {
+      privateDestinationAllowlist: readPrivateDestinationAllowlist(),
+    });
 
     if (!settings.ok) {
       return refused(settings.code, settings.message);
+    }
+
+    // Capabilities come from the adapter contract, never from the request: an authorized
+    // caller must not be able to rewrite what the destination can do just by saving.
+    const contract = accountingAdapterContract(adapterId);
+
+    if (contract === null) {
+      return refused(
+        'ADAPTER_UNKNOWN',
+        'نرم‌افزار انتخاب‌شده آداپتور عملیاتی ندارد',
+      );
     }
 
     const actor = this.actorFor(authContext);
@@ -233,21 +248,18 @@ export class AccountingConnectionAuthorityService {
         const values = {
           name,
           adapterId,
+          adapterVersion: contract.contractVersion,
+          capabilities: contract.capabilities,
           ...accountingConnectionColumnsFromSettings(settings.value),
           // A live adapter has still not answered: only a real read from the vendor
           // turns "unverified" into "verified", never a save.
-          verificationState: adapterId === 'mock' ? 'MOCK' : 'LIVE_UNVERIFIED',
+          verificationState: contract.isLive ? 'LIVE_UNVERIFIED' : 'MOCK',
         };
 
         if (existing === null) {
           await repository.insert({
             ...values,
             isActive: true,
-            capabilities:
-              asRecord(input.capabilities) ?? {
-                adapterId,
-                declaredBy: 'settings-save',
-              },
             createdBy: actor,
             updatedBy: actor,
           } as never);
@@ -273,10 +285,12 @@ export class AccountingConnectionAuthorityService {
     );
   }
 
-  // A health record is evidence, not configuration: the probe itself runs in the app
-  // where the one adapter implementation lives, and only its answer is stored here.
-  async persistHealth(
-    input: AccountingHealthInput,
+  // A health record is evidence, not configuration. The probe runs here, in the trusted
+  // process, against an address that is resolved and validated for this request; only its
+  // result is stored. The caller supplies neither a state, a time nor a message, so a
+  // forged "OK" cannot exist.
+  async testConnection(
+    recordId: string,
     authContext: WorkspaceAuthContext,
   ): Promise<AccountingConnectionOutcome> {
     const authority = await this.resolveAuthority(authContext);
@@ -288,61 +302,86 @@ export class AccountingConnectionAuthorityService {
       );
     }
 
-    if (!(HEALTH_STATES as readonly string[]).includes(input.healthState)) {
-      return refused('INVALID_INPUT', 'وضعیت سلامت اتصال نامعتبر است');
+    const id = recordId.trim();
+
+    if (id === '') {
+      return refused('INVALID_INPUT', 'اتصال حسابداری را انتخاب کنید');
     }
 
-    const checkedAt = new Date(input.checkedAt);
+    return this.inWorkspace(authContext, async () => {
+      const repository = this.repository();
+      const existing = await repository.findOne({
+        where: { id },
+        select: CONNECTION_COLUMNS,
+      });
 
-    if (Number.isNaN(checkedAt.getTime())) {
-      return refused('INVALID_INPUT', 'زمان آزمایش اتصال نامعتبر است');
-    }
-
-    const actor = this.actorFor(authContext);
-
-    return this.inWorkspace(authContext, () =>
-      this.runInTransaction(async (scope) => {
-        const repository = scope.getRepository<WorkspaceAccountingConnectionRow>(
-          'accountingConnection',
-          { shouldBypassPermissionChecks: true },
+      if (existing === null) {
+        return refused(
+          'ACCOUNTING_CONNECTION_NOT_FOUND',
+          'اتصال حسابداری انتخاب‌شده پیدا نشد',
         );
-        const existing = await repository.findOne({
-          where: { id: input.recordId },
-          select: CONNECTION_COLUMNS,
-        });
+      }
 
-        if (existing === null) {
-          return refused(
-            'ACCOUNTING_CONNECTION_NOT_FOUND',
-            'اتصال حسابداری انتخاب‌شده پیدا نشد',
+      const contract = accountingAdapterContract(readText(existing.adapterId));
+
+      if (contract === null) {
+        return refused(
+          'ADAPTER_UNKNOWN',
+          'نرم‌افزار اتصال آداپتور عملیاتی ندارد',
+        );
+      }
+
+      const probe = await this.destinationProbe.probe({
+        adapterId: readText(existing.adapterId),
+        isLive: contract.isLive,
+        healthProbe: contract.healthProbe,
+        baseUrl: readText(existing.baseUrl),
+        transportApproved: existing.transportApproved === true,
+        allowlist: readPrivateDestinationAllowlist(),
+      });
+
+      // A live vendor is not "verified" because it answered a read: nothing here proves
+      // an accepted write or a mapped document, so the state stays LIVE_UNVERIFIED.
+      const verificationState = contract.isLive ? 'LIVE_UNVERIFIED' : 'MOCK';
+      const message =
+        probe.healthState === 'OK'
+          ? 'آزمایش اتصال انجام شد؛ ارسال مالی همچنان غیرفعال است'
+          : 'آزمایش اتصال ناموفق بود؛ هیچ سندی به مقصد ارسال نشد';
+      const health: AccountingHealthView = {
+        healthState: probe.healthState,
+        message,
+        detail: probe.detail,
+        checkedAt: probe.checkedAt,
+        latencyMs: probe.latencyMs,
+      };
+      const actor = this.actorFor(authContext);
+
+      await this.runInTransaction(async (scope) => {
+        const transactionalRepository =
+          scope.getRepository<WorkspaceAccountingConnectionRow>(
+            'accountingConnection',
+            { shouldBypassPermissionChecks: true },
           );
-        }
 
-        // Verification is derived from what the record can prove, never accepted from
-        // the caller: the app's own probe may report a mock destination as MOCK, and a
-        // real vendor address stays LIVE_UNVERIFIED until an independent read-only
-        // validation exists. A member with settings authority cannot mint LIVE_VERIFIED.
-        const verificationState =
-          readText(existing.adapterId) === 'mock' ? 'MOCK' : 'LIVE_UNVERIFIED';
-
-        await repository.update(
+        await transactionalRepository.update(
           { id: existing.id },
           {
-            healthState: input.healthState,
-            lastHealthMessage: input.message.slice(0, 2_000),
-            lastHealthCheckAt: checkedAt.toISOString(),
+            healthState: probe.healthState,
+            lastHealthMessage: probe.detail.slice(0, 2_000),
+            lastHealthCheckAt: probe.checkedAt,
             verificationState,
             updatedBy: actor,
           } as never,
         );
+      });
 
-        return {
-          kind: 'OK' as const,
-          connections: await this.findAll(repository),
-          message: 'نتیجهٔ آزمایش اتصال ثبت شد؛ هیچ سندی به مقصد ارسال نشد',
-        };
-      }),
-    );
+      return {
+        kind: 'OK' as const,
+        connections: await this.findAll(repository),
+        message,
+        health,
+      };
+    });
   }
 
   private inWorkspace<T>(

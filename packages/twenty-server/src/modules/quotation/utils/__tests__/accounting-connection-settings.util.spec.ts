@@ -80,13 +80,51 @@ describe('parseAccountingConnectionSettings', () => {
       ok: false,
       code: 'CONNECTION_PRIVATE_NETWORK_NOT_APPROVED',
     });
+  });
 
+  it('does not let transport approval alone unlock the internal network', () => {
     expect(
       parseAccountingConnectionSettings({
         baseUrl: 'http://192.168.1.10:8080',
         transportApproved: true,
       }),
+    ).toMatchObject({
+      ok: false,
+      code: 'CONNECTION_DESTINATION_NOT_ALLOWLISTED',
+    });
+
+    expect(
+      parseAccountingConnectionSettings(
+        {
+          baseUrl: 'http://192.168.1.10:8080',
+          transportApproved: true,
+        },
+        {
+          privateDestinationAllowlist: [
+            { host: '192.168.1.10', port: 8080 },
+          ],
+        },
+      ),
     ).toMatchObject({ ok: true });
+  });
+
+  it('never stores the cloud metadata address, even when allowlisted', () => {
+    expect(
+      parseAccountingConnectionSettings(
+        {
+          baseUrl: 'http://169.254.169.254/latest',
+          transportApproved: true,
+        },
+        {
+          privateDestinationAllowlist: [
+            { host: '169.254.169.254', port: null },
+          ],
+        },
+      ),
+    ).toMatchObject({
+      ok: false,
+      code: 'CONNECTION_DESTINATION_BLOCKED',
+    });
   });
 
   it('refuses a non-numeric vendor user id or warehouse id', () => {

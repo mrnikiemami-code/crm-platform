@@ -142,6 +142,7 @@ const createLimitedApiKey = async (adminToken) => {
   // the id over; this script only mints the token for that already-cached principal.
   const providedId = process.env.CRM129_LIMITED_API_KEY_ID ?? null;
   let id = providedId;
+  const ownsPrincipal = providedId === null;
 
   if (id === null) {
     const created = await gql(
@@ -171,6 +172,7 @@ const createLimitedApiKey = async (adminToken) => {
   return {
     id,
     token: generated.body?.data?.generateApiKeyToken?.token ?? null,
+    ownsPrincipal,
   };
 };
 
@@ -253,6 +255,11 @@ const mutationMatrix = (targetId) => [
     name: 'restoreMany',
     query: `mutation($id:UUID!){ restoreAccountingConnections(filter:{ id:{ eq:$id } }) { id } }`,
     variables: { id: targetId },
+  },
+  {
+    name: 'mergeMany',
+    query: `mutation($ids:[UUID!]!,$index:Int!){ mergeAccountingConnections(ids:$ids, conflictPriorityIndex:$index) { id } }`,
+    variables: { ids: [targetId], index: 0 },
   },
 ];
 
@@ -436,9 +443,9 @@ const run = async () => {
         }),
       },
       {
-        path: 'rest-health',
+        path: 'rest-test',
         response: await rest({
-          action: 'accounting-connection-health',
+          action: 'accounting-connection-test',
           token: actor.token,
           body: {
             recordId: probe.recordId,
@@ -487,6 +494,7 @@ const run = async () => {
     { id: 'admin-api-key', token: apiKey },
     { id: 'limited-api-key', token: limitedApiKey.token },
     { id: 'unrelated-app', token: unrelatedAppToken },
+    { id: 'owning-app', token: quotationAppToken },
   ];
   for (const actor of refusalActors) {
     const before = await connectionFingerprint();
@@ -509,18 +517,19 @@ const run = async () => {
     }
     const after = await connectionFingerprint();
     record(
-      `S3.${actor.id} all 10 GraphQL writes refused`,
+      `S3.${actor.id} all 11 GraphQL writes refused`,
       outcomes.every((outcome) => outcome.ok) && before.digest === after.digest,
       outcomes.map((outcome) => `${outcome.name}:${outcome.code}`).join(' ') +
-        ` guard=${outcomes.filter((outcome) => outcome.guard).length}/10 digestSame=${before.digest === after.digest}`,
+        ` guard=${outcomes.filter((outcome) => outcome.guard).length}/11 digestSame=${before.digest === after.digest}`,
     );
   }
 
   // S4 — SSRF, transport and adapter policy at the save boundary.
   const unsafeSaves = [
-    { id: 'loopback', settings: mockSettings({ baseUrl: 'http://127.0.0.1:9' }), code: 'CONNECTION_PRIVATE_NETWORK_NOT_APPROVED' },
-    { id: 'metadata-ip', settings: mockSettings({ baseUrl: 'http://169.254.169.254/latest' }), code: 'CONNECTION_PRIVATE_NETWORK_NOT_APPROVED' },
+    { id: 'loopback', settings: mockSettings({ baseUrl: 'http://127.0.0.1:9' }), code: 'CONNECTION_DESTINATION_BLOCKED' },
+    { id: 'metadata-ip', settings: mockSettings({ baseUrl: 'http://169.254.169.254/latest' }), code: 'CONNECTION_DESTINATION_BLOCKED' },
     { id: 'lan', settings: mockSettings({ baseUrl: 'http://192.168.4.85:6080' }), code: 'CONNECTION_PRIVATE_NETWORK_NOT_APPROVED' },
+    { id: 'lan-approved', settings: mockSettings({ baseUrl: 'http://192.168.4.85:6080', transportApproved: true }), code: 'CONNECTION_DESTINATION_NOT_ALLOWLISTED' },
     { id: 'ftp-scheme', settings: mockSettings({ baseUrl: 'ftp://mock.invalid' }), code: 'CONNECTION_BASE_URL_INVALID' },
     { id: 'credentials', settings: mockSettings({ baseUrl: 'https://user:pass@mock.invalid' }), code: 'CONNECTION_BASE_URL_HAS_CREDENTIALS' },
     { id: 'query-string', settings: mockSettings({ baseUrl: 'https://mock.invalid/?x=1' }), code: 'CONNECTION_BASE_URL_INVALID' },
@@ -555,17 +564,18 @@ const run = async () => {
     `digestSame=${unsafeBefore.digest === unsafeAfter.digest}`,
   );
 
-  // S5 — a health write is evidence, not a claim: LIVE_VERIFIED cannot be minted.
+  // S5 — the probe is server-executed evidence. A payload cannot choose the state, and
+  // the retired health action cannot write anything at all.
   const beforeOps = await db.query(
     `select count(*)::int as total from "${schema}"."_accountingSyncOperation"`,
   );
   const forgedHealth = await rest({
-    action: 'accounting-connection-health',
+    action: 'accounting-connection-test',
     token: adminToken,
     body: {
       recordId: probe.recordId,
-      healthState: 'OK',
-      message: 'پروب بازبینی ۰۱۰',
+      healthState: 'FAILED',
+      message: 'HACK-010-FORGED',
       checkedAt: new Date().toISOString(),
       verificationState: 'LIVE_VERIFIED',
     },
@@ -576,17 +586,87 @@ const run = async () => {
   const afterOps = await db.query(
     `select count(*)::int as total from "${schema}"."_accountingSyncOperation"`,
   );
+  const { rows: storedMessageRows } = await db.query(
+    `select "lastHealthMessage" from "${schema}"."${connectionTable}" where id = $1`,
+    [probe.recordId],
+  );
   record(
-    'S5.1 health evidence cannot claim LIVE_VERIFIED and writes no operation',
+    'S5.1 the probe result comes from the server, not from the posted payload',
     forgedHealth.body.success === true &&
+      forgedHealth.body.health?.healthState === 'OK' &&
       probeAfterHealth?.verificationState === 'MOCK' &&
       probeAfterHealth?.healthState === 'OK' &&
+      !String(storedMessageRows[0]?.lastHealthMessage ?? '').includes('HACK-010-FORGED') &&
       beforeOps.rows[0].total === afterOps.rows[0].total,
-    `verification=${probeAfterHealth?.verificationState} health=${probeAfterHealth?.healthState} ops=${beforeOps.rows[0].total}->${afterOps.rows[0].total}`,
+    `health=${forgedHealth.body.health?.healthState} verification=${probeAfterHealth?.verificationState} storedMessage=${storedMessageRows[0]?.lastHealthMessage} ops=${beforeOps.rows[0].total}->${afterOps.rows[0].total}`,
   );
 
-  // S6 — an Asan destination stays LIVE_UNVERIFIED even after a failed probe. Any probe
-  // left behind by an earlier run is soft-deleted first so the check is repeatable.
+  // S5.1 is allowed to persist trusted probe health, so the retired-action baseline is
+  // taken after it. Comparing against the pre-probe fingerprint would blame the retired
+  // action for the legitimate probe write.
+  const beforeRetiredRow = await connectionFingerprint();
+  const retiredHealth = await rest({
+    action: 'accounting-connection-health',
+    token: adminToken,
+    body: {
+      recordId: probe.recordId,
+      healthState: 'OK',
+      message: 'HACK-010',
+      checkedAt: new Date().toISOString(),
+      verificationState: 'LIVE_VERIFIED',
+    },
+  });
+  const afterRetiredRow = await connectionFingerprint();
+  record(
+    'S5.2 the retired health action writes nothing',
+    retiredHealth.body.success === false &&
+      retiredHealth.body.code === 'INVALID_INPUT' &&
+      beforeRetiredRow.digest === afterRetiredRow.digest,
+    `code=${retiredHealth.body.code ?? retiredHealth.status} digestSame=${beforeRetiredRow.digest === afterRetiredRow.digest}`,
+  );
+
+  // S5.3 — capabilities are derived server-side. A save that claims the Asan destination
+  // cannot register pro-formas must not change the stored contract.
+  const forgedCapabilities = await rest({
+    action: 'accounting-connection-save',
+    token: adminToken,
+    body: {
+      recordId: probe.recordId,
+      name: PROBE_NAME,
+      adapterId: 'asan',
+      settings: mockSettings({ baseUrl: 'https://asan-capabilities.invalid', remoteUserId: '7' }),
+      capabilities: { documents: { createProforma: false } },
+    },
+  });
+  const { rows: capabilityRows } = await db.query(
+    `select capabilities->'documents'->>'createProforma' as create_proforma,
+            capabilities->'items'->>'updateFields' as update_fields
+       from "${schema}"."${connectionTable}" where id = $1`,
+    [probe.recordId],
+  );
+  record(
+    'S5.3 forged capabilities are ignored and the adapter contract is stored',
+    forgedCapabilities.body.success === true &&
+      capabilityRows[0]?.create_proforma === 'true' &&
+      capabilityRows[0]?.update_fields === 'PRICE_ONLY',
+    `createProforma=${capabilityRows[0]?.create_proforma} updateFields=${capabilityRows[0]?.update_fields}`,
+  );
+
+  // Restore the mock probe row so the page still shows a mock destination in UAT.
+  await rest({
+    action: 'accounting-connection-save',
+    token: adminToken,
+    body: {
+      recordId: probe.recordId,
+      name: PROBE_NAME,
+      adapterId: 'mock',
+      settings: mockSettings(),
+    },
+  });
+
+  // S6 — an Asan destination stays LIVE_UNVERIFIED even after a server probe. The name
+  // does not resolve, so no vendor is contacted. Any probe left behind by an earlier
+  // run is soft-deleted first so the check is repeatable.
   await db.query(
     `update "${schema}"."${connectionTable}" set "deletedAt" = now() where name = $1 and "deletedAt" is null`,
     ['آسان (بدون سرور) ۰۱۰'],
@@ -605,26 +685,22 @@ const run = async () => {
     (connection) => connection.name === 'آسان (بدون سرور) ۰۱۰',
   );
   const asanHealth = await rest({
-    action: 'accounting-connection-health',
+    action: 'accounting-connection-test',
     token: adminToken,
-    body: {
-      recordId: asanProbe.recordId,
-      healthState: 'FAILED',
-      message: 'میزبان آسان پاسخ نداد',
-      checkedAt: new Date().toISOString(),
-      verificationState: 'LIVE_VERIFIED',
-    },
+    body: { recordId: asanProbe.recordId },
   });
   const asanReloaded = (asanHealth.body.connections ?? []).find(
     (connection) => connection.recordId === asanProbe.recordId,
   );
   record(
-    'S6.1 Asan remains LIVE_UNVERIFIED after a probe, whatever the caller claims',
+    'S6.1 Asan remains LIVE_UNVERIFIED after a server probe',
     asanSaved.body.success === true &&
       asanProbe?.verificationState === 'LIVE_UNVERIFIED' &&
+      asanHealth.body.success === true &&
+      asanHealth.body.health?.healthState === 'FAILED' &&
       asanReloaded?.verificationState === 'LIVE_UNVERIFIED' &&
       asanReloaded?.healthState === 'FAILED',
-    `saved=${asanProbe?.verificationState} afterProbe=${asanReloaded?.verificationState} health=${asanReloaded?.healthState}`,
+    `saved=${asanProbe?.verificationState} probe=${asanHealth.body.health?.healthState} afterProbe=${asanReloaded?.verificationState} health=${asanReloaded?.healthState}`,
   );
 
   // S7 — outbound transfer stays disabled; the money unit gate is proven where it lives.
@@ -758,7 +834,7 @@ const run = async () => {
       [asanProbe.recordId],
     );
   }
-  if (limitedApiKey.id) {
+  if (limitedApiKey.id && limitedApiKey.ownsPrincipal) {
     await gql(
       'metadata',
       adminToken,

@@ -16,8 +16,7 @@ import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
-import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
-import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
+import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
@@ -45,10 +44,6 @@ type QuotationUiActionBody = {
   connectionId?: unknown;
   adapterId?: unknown;
   settings?: unknown;
-  capabilities?: unknown;
-  healthState?: unknown;
-  checkedAt?: unknown;
-  message?: unknown;
 };
 
 const ALLOWED_ACTIONS = new Set([
@@ -67,7 +62,7 @@ const ALLOWED_ACTIONS = new Set([
   'accounting-settings-authority',
   'accounting-connection-list',
   'accounting-connection-save',
-  'accounting-connection-health',
+  'accounting-connection-test',
 ]);
 
 const TAX_POLICY_MUTATING_ACTIONS = new Set([
@@ -458,7 +453,6 @@ export class QuotationUiController {
               name: readText(body.name),
               adapterId: readText(body.adapterId),
               settings: body.settings,
-              capabilities: body.capabilities,
             },
             authContext,
           ),
@@ -466,14 +460,11 @@ export class QuotationUiController {
         );
       }
 
+      // The probe runs on the server. No `healthState`, message or timestamp is read from
+      // the request, so an authorized caller cannot post a green result.
       return this.describeAccountingOutcome(
-        await this.accountingConnectionAuthorityService.persistHealth(
-          {
-            recordId: readText(body.recordId) || readText(body.connectionId),
-            healthState: readText(body.healthState),
-            message: readText(body.message),
-            checkedAt: readText(body.checkedAt),
-          },
+        await this.accountingConnectionAuthorityService.testConnection(
+          readText(body.recordId) || readText(body.connectionId),
           authContext,
         ),
         authContext,
@@ -505,6 +496,7 @@ export class QuotationUiController {
       canManage: authority !== null,
       authority,
       connections: outcome.connections,
+      ...(outcome.health === undefined ? {} : { health: outcome.health }),
       message: outcome.message,
     };
   }

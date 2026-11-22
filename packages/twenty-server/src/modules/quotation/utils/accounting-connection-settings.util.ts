@@ -5,9 +5,13 @@
 // what the worker will later call, so it is checked for transport and for the private
 // networks a member must not be able to point the CRM at.
 
-const ACCOUNTING_MONEY_UNITS = ['UNCONFIRMED', 'RIAL', 'TOMAN'] as const;
+import { accountingAdapterContract } from 'src/modules/quotation/utils/accounting-adapter-contract.util';
+import {
+  checkStorableDestination,
+  type AllowlistEntry,
+} from 'src/modules/quotation/utils/accounting-destination-policy.util';
 
-const ACCOUNTING_ADAPTER_IDS = ['mock', 'asan'] as const;
+const ACCOUNTING_MONEY_UNITS = ['UNCONFIRMED', 'RIAL', 'TOMAN'] as const;
 
 export type AccountingMoneyUnit = (typeof ACCOUNTING_MONEY_UNITS)[number];
 
@@ -61,44 +65,7 @@ const readBoolean = (value: unknown, fallback: boolean): boolean =>
   typeof value === 'boolean' ? value : fallback;
 
 export const isKnownAccountingAdapterId = (value: string): boolean =>
-  (ACCOUNTING_ADAPTER_IDS as readonly string[]).includes(value);
-
-// A host literal that names the machine itself or a network behind it. Resolving DNS
-// here would make validation depend on the resolver's answer at save time, which is not
-// the answer the worker gets later; literal ranges are the part that can be decided now.
-const isPrivateNetworkHost = (hostname: string): boolean => {
-  const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
-
-  if (host === 'localhost' || host.endsWith('.localhost')) {
-    return true;
-  }
-
-  if (host === '::1' || host === '::' || host.startsWith('fd') || host.startsWith('fc')) {
-    return true;
-  }
-
-  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-
-  if (ipv4 === null) {
-    return false;
-  }
-
-  const [first, second] = [Number(ipv4[1]), Number(ipv4[2])];
-
-  if (first === 127 || first === 10 || first === 0) {
-    return true;
-  }
-
-  if (first === 169 && second === 254) {
-    return true;
-  }
-
-  if (first === 192 && second === 168) {
-    return true;
-  }
-
-  return first === 172 && second >= 16 && second <= 31;
-};
+  accountingAdapterContract(value) !== null;
 
 // A vendor address is typed by a person, so it is validated rather than trusted: it must
 // be absolute and credential-free, because a password inside the URL ends up in a log
@@ -188,6 +155,7 @@ const normalizeMoneyUnit = (value: unknown): AccountingMoneyUnit =>
 // configuration, so a field the operator cleared must clear, not linger.
 export const parseAccountingConnectionSettings = (
   input: unknown,
+  options: { privateDestinationAllowlist?: readonly AllowlistEntry[] } = {},
 ): ConnectionSettingResult<AccountingConnectionSettings> => {
   const raw = asRecord(input);
   const baseUrl = parseAccountingBaseUrl(readString(raw.baseUrl));
@@ -197,16 +165,23 @@ export const parseAccountingConnectionSettings = (
   }
 
   const transportApproved = readBoolean(raw.transportApproved, false);
-  const hostname = new URL(baseUrl.value).hostname;
+  const parsedUrl = new URL(baseUrl.value);
+  const hostname = parsedUrl.hostname;
+  const port =
+    parsedUrl.port === '' ? null : Number.parseInt(parsedUrl.port, 10);
 
-  // A destination inside the private network is reachable only after a person approved
-  // the transport. Otherwise a settings save would be a way to aim the worker at an
-  // internal address it can reach and the member cannot.
-  if (isPrivateNetworkHost(hostname) && !transportApproved) {
-    return refused(
-      'CONNECTION_PRIVATE_NETWORK_NOT_APPROVED',
-      'آدرس سرویس در شبکهٔ داخلی است؛ برای این مقصد تأیید انتقال امن لازم است',
-    );
+  // `transportApproved` says "an insecure transport may carry a write"; it is not an
+  // egress permission. A private destination additionally needs an operator allowlist
+  // entry, so approving the tunnel cannot silently grant the whole internal network.
+  const destination = checkStorableDestination({
+    hostname,
+    port,
+    transportApproved,
+    allowlist: options.privateDestinationAllowlist ?? [],
+  });
+
+  if (!destination.ok) {
+    return refused(destination.code, destination.message);
   }
 
   const remoteUserId = parseNumericSetting(

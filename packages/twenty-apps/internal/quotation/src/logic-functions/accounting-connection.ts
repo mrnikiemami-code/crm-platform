@@ -14,11 +14,10 @@ import {
   buildAdapter,
   describeSecretStatus,
   loadConnectionsThroughServer,
-  persistHealthThroughServer,
   readAccountingSettingsAuthority,
   resolveConnection,
   saveConnectionThroughServer,
-  testConnection,
+  testConnectionThroughServer,
 } from 'src/services/accounting-connection.service';
 import {
   appNotInstalled,
@@ -153,8 +152,10 @@ const handler = async (event: RoutePayload<unknown>) => {
         );
       }
 
-      // Testing an unsaved adapter id would build a different vendor than the one stored,
-      // so the stored record is always the source of the adapter choice.
+      // Testing an unsaved adapter id would judge a different vendor than the one stored,
+      // so the stored record is always the source of the adapter choice — for its label
+      // and transport description. The probe itself is executed by the server, which
+      // validates the destination at connection time and records the evidence.
       const descriptor = findAdapterDescriptor(resolved.value.adapterId);
 
       if (descriptor === null) {
@@ -164,25 +165,12 @@ const handler = async (event: RoutePayload<unknown>) => {
         );
       }
 
-      const health = await testConnection(resolved.value, secrets);
+      const tested = await testConnectionThroughServer(resolved.value.id, {
+        authorizationHeader,
+      });
 
-      if (!health.ok) {
-        return failure(
-          health.refusal.code,
-          persianAccountingMessage(health.refusal.code),
-        );
-      }
-
-      // The probe is read-only by contract; only its result is stored, and through the
-      // same guarded boundary as a settings save.
-      const persisted = await persistHealthThroughServer(
-        resolved.value.id,
-        health.value,
-        { authorizationHeader },
-      );
-
-      if (!persisted.ok) {
-        return failure(persisted.refusal.code, persisted.refusal.detail);
+      if (!tested.ok) {
+        return failure(tested.refusal.code, tested.refusal.detail);
       }
 
       const adapter = buildAdapter(resolved.value, secrets);
@@ -195,12 +183,12 @@ const handler = async (event: RoutePayload<unknown>) => {
       return {
         success: true,
         connectionId: resolved.value.id,
-        healthState: health.value.healthState,
-        message: health.value.message,
-        detail: health.value.detail,
-        latencyMs: health.value.latencyMs,
-        checkedAt: health.value.checkedAt,
-        verificationState: health.value.verificationState,
+        healthState: tested.value.healthState,
+        message: tested.value.message,
+        detail: tested.value.detail,
+        latencyMs: tested.value.latencyMs,
+        checkedAt: tested.value.checkedAt,
+        verificationState: tested.value.verificationState,
         transportIsSecure,
         isLive: descriptor.isLive,
         declaredCapabilities: adapter.ok

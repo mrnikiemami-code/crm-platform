@@ -40,14 +40,16 @@ export type SaveAccountingConnectionInput = {
   name: string;
   adapterId: string;
   settings: unknown;
-  capabilities?: unknown;
 };
 
-export type AccountingHealthInput = {
-  recordId: string;
+// What the trusted probe proved, as the page displays it. No field here is read from a
+// request: the server produced all of them.
+export type AccountingHealthView = {
   healthState: string;
   message: string;
+  detail: string;
   checkedAt: string;
+  latencyMs: number;
 };
 
 export type AccountingConnectionOutcome =
@@ -55,5 +57,6 @@ export type AccountingConnectionOutcome =
       kind: 'OK';
       connections: AccountingConnectionView[];
       message: string;
+      health?: AccountingHealthView;
     }
   | { kind: 'REFUSED'; code: string; message: string };

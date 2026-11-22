@@ -43,17 +43,6 @@ export const buildAccountingConnectionsQuery = ({
   return `query AccountingConnections { accountingConnections(${filter}first: 50) { edges { node { ${CONNECTION_FIELDS} } } } }`;
 };
 
-export const buildCreateAccountingConnectionMutation = (
-  data: Record<string, GraphqlValue>,
-): string =>
-  `mutation CreateAccountingConnection { createAccountingConnection(data: ${toGraphqlLiteral(data)}) { ${CONNECTION_FIELDS} } }`;
-
-export const buildUpdateAccountingConnectionMutation = (
-  id: string,
-  data: Record<string, GraphqlValue>,
-): string =>
-  `mutation UpdateAccountingConnection { updateAccountingConnection(id: ${toGraphqlLiteral(id)}, data: ${toGraphqlLiteral(data)}) { ${CONNECTION_FIELDS} } }`;
-
 export const buildAccountingItemLinksQuery = ({
   connectionId,
   limit = 200,

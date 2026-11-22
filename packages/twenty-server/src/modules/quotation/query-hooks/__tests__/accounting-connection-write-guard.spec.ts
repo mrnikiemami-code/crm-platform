@@ -15,7 +15,6 @@ import { AccountingConnectionRestoreOnePreQueryHook } from 'src/modules/quotatio
 import { AccountingConnectionUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-update-many.pre-query.hook';
 import { AccountingConnectionUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-update-one.pre-query.hook';
 import { AccountingConnectionWriteGuardService } from 'src/modules/quotation/services/accounting-connection-write-guard.service';
-import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 
 type AccountingHookConstructor = new (
   writeGuardService: AccountingConnectionWriteGuardService,
@@ -39,11 +38,9 @@ const ACCOUNTING_CONNECTION_HOOKS: AccountingHookConstructor[] = [
 ];
 
 const guardWithAuthority = (
-  authority: 'APPLICATION' | 'SYSTEM' | 'SETTINGS_ROLE' | null,
+  _authority: 'APPLICATION' | 'SYSTEM' | 'SETTINGS_ROLE' | null,
 ): AccountingConnectionWriteGuardService =>
-  new AccountingConnectionWriteGuardService({
-    resolveSettingsAuthority: async () => authority,
-  } as unknown as QuotationPermissionService);
+  new AccountingConnectionWriteGuardService();
 
 describe.each(ACCOUNTING_CONNECTION_HOOKS)('%p', (HookConstructor) => {
   it('refuses an ordinary member before it reaches the database', async () => {
@@ -67,24 +64,28 @@ describe.each(ACCOUNTING_CONNECTION_HOOKS)('%p', (HookConstructor) => {
     ).rejects.toBeInstanceOf(QuotationQueryValidationException);
   });
 
-  it('admits the owning application', async () => {
+  it('refuses the owning application: an app token is not a bypass', async () => {
     const hook = new HookConstructor(guardWithAuthority('APPLICATION'));
 
     await expect(
       hook.execute({ type: 'application' } as never, 'accountingConnection', {
         id: 'connection-1',
       } as never),
-    ).resolves.toBeDefined();
+    ).rejects.toMatchObject({
+      code: QuotationQueryValidationExceptionCode.FORBIDDEN,
+    });
   });
 
-  it('admits the platform runtime', async () => {
+  it('refuses the platform runtime: installation never writes this record', async () => {
     const hook = new HookConstructor(guardWithAuthority('SYSTEM'));
 
     await expect(
       hook.execute({ type: 'system' } as never, 'accountingConnection', {
         id: 'connection-1',
       } as never),
-    ).resolves.toBeDefined();
+    ).rejects.toMatchObject({
+      code: QuotationQueryValidationExceptionCode.FORBIDDEN,
+    });
   });
 });
 

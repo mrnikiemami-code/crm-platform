@@ -5,43 +5,26 @@ import {
   QuotationQueryValidationException,
   QuotationQueryValidationExceptionCode,
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
-import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 
-// The connection record has exactly one writer: the quotation app's connection service,
-// which validates the adapter, the address and the amount unit before anything is stored.
+// The connection record has exactly one writer: `AccountingConnectionAuthorityService`.
 //
-// WHY THE PUBLIC MUTATIONS ARE CLOSED: `accountingConnection` is a normal workspace
-// object, so the platform generates create/update/delete/destroy/restore/merge for it.
-// Those mutations would let a caller store an arbitrary base URL, flip the connection
-// back to a "verified" state, or point the workspace at a destination whose adapter does
-// not exist — none of which the settings surface allows. Writes therefore reach the
-// record only through the app identity that owns the object, while a person's save goes
-// through the settings route, where the workspace role is decided.
+// WHY EVERY PRINCIPAL IS CLOSED, INCLUDING THE OWNING APP: `accountingConnection` is a
+// normal workspace object, so the platform generates create/update/delete/destroy/restore/
+// merge for it. A write through those mutations skips the adapter contract, the transport
+// policy and the settings-role decision; letting the owning application through would make
+// the "one writer" claim false, because any member's front component can borrow the app's
+// identity. The app therefore writes through the REST settings route too, where the
+// person's workspace role is resolved.
 //
-// The refusal names the allowed route, because "forbidden" without a next step is not an
-// operator message.
+// WHY THE PLATFORM RUNTIME IS CLOSED: nothing in installation or metadata sync writes
+// connection records; the only system caller would be a future one, and it must make the
+// same policy decision instead of bypassing it.
 @Injectable()
 export class AccountingConnectionWriteGuardService {
-  constructor(
-    private readonly quotationPermissionService: QuotationPermissionService,
-  ) {}
-
   async assertMachineWriter(
-    authContext: WorkspaceAuthContext,
+    _authContext: WorkspaceAuthContext,
     operation: string,
   ): Promise<void> {
-    const authority = await this.quotationPermissionService.resolveSettingsAuthority(
-      authContext,
-      'accountingConnection',
-    );
-
-    // Only the owning application (the agent that builds and validates the record) and
-    // the platform itself may write. A user or API key — however privileged — is turned
-    // away: a direct write skips the adapter contract and the transport policy.
-    if (authority === 'APPLICATION' || authority === 'SYSTEM') {
-      return;
-    }
-
     throw new QuotationQueryValidationException(
       `ACCOUNTING_CONNECTION_WRITE_FORBIDDEN: ${operation} on accountingConnection is not an API operation; the accounting destination changes only through the accounting-settings action`,
       QuotationQueryValidationExceptionCode.FORBIDDEN,

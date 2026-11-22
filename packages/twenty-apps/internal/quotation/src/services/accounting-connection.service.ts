@@ -1,7 +1,5 @@
 import {
-  ACCOUNTING_ADAPTER_CONTRACT_VERSION,
   type ConnectionSettings,
-  type ConnectionVerificationState,
 } from 'src/domain/accounting/adapter-contract';
 import {
   ADAPTER_DESCRIPTORS,
@@ -16,10 +14,7 @@ import {
 } from 'src/domain/accounting/connection-settings';
 import {
   buildAccountingConnectionsQuery,
-  buildCreateAccountingConnectionMutation,
-  buildUpdateAccountingConnectionMutation,
 } from 'src/data/accounting-queries';
-import { type GraphqlValue } from 'src/data/graphql-literal';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import {
   callAccountingSettingsAction,
@@ -196,170 +191,9 @@ export type SaveConnectionResult = Result<{
   adapter: AdapterDescriptor;
 }>;
 
-const verificationFor = (
-  descriptor: AdapterDescriptor,
-): ConnectionVerificationState =>
-  descriptor.isLive ? 'LIVE_UNVERIFIED' : 'MOCK';
-
-export const saveConnection = async (
-  input: SaveConnectionInput,
-  dependencies: ConnectionDependencies = {},
-): Promise<SaveConnectionResult> => {
-  const execute = dependencies.execute ?? executeRecordGraphql;
-  const name = input.name.trim();
-  const descriptor = findAdapterDescriptor(input.adapterId.trim());
-
-  if (name === '') {
-    return refused('INVALID_INPUT', 'a connection needs a name');
-  }
-
-  if (descriptor === null) {
-    return refused('ADAPTER_UNKNOWN', 'the selected accounting adapter is unknown');
-  }
-
-  const settings = parseConnectionSettings(input.settings);
-
-  if (!settings.ok) {
-    return settings;
-  }
-
-  const adapter = createAccountingAdapter({
-    adapterId: descriptor.id,
-    settings: settings.value,
-    allowInsecureTransport: settings.value.transportApproved,
-  });
-
-  if (!adapter.ok) {
-    return adapter;
-  }
-
-  const fields = {
-    name,
-    adapterId: descriptor.id,
-    adapterVersion: ACCOUNTING_ADAPTER_CONTRACT_VERSION,
-    capabilities: adapter.value.capabilities as unknown as Record<
-      string,
-      GraphqlValue
-    >,
-    baseUrl: settings.value.baseUrl,
-    remoteUserId: settings.value.remoteUserId,
-    defaultStorageId: settings.value.defaultStorageId,
-    moneyUnit: settings.value.moneyUnit,
-    transportApproved: settings.value.transportApproved,
-    specialCodes: {
-      ...settings.value.specialCodes,
-      // An empty object is not a writable GraphQL literal; omitting the key means
-      // "no mapping", which is exactly the same decision.
-      ...(Object.keys(settings.value.taxPolicyMappings).length === 0
-        ? {}
-        : { taxPolicyMappings: settings.value.taxPolicyMappings }),
-    } as unknown as Record<string, GraphqlValue>,
-    verificationState: verificationFor(descriptor),
-  };
-
-  // A newly configured connection has not answered yet, so a previously verified state must
-  // not survive a settings change. Anything that could alter the address or the credentials
-  // goes back to "unverified" instead of inheriting an old green check.
-  const data = await execute(
-    input.id === undefined || input.id === null || input.id.trim() === ''
-      ? buildCreateAccountingConnectionMutation(fields)
-      : buildUpdateAccountingConnectionMutation(input.id.trim(), {
-          ...fields,
-          healthState: 'UNKNOWN',
-          lastHealthMessage: 'تنظیمات اتصال تغییر کرد؛ آزمایش اتصال دوباره لازم است.',
-        }),
-  );
-
-  const node = asRecord(
-    input.id === undefined || input.id === null || input.id.trim() === ''
-      ? data.createAccountingConnection
-      : data.updateAccountingConnection,
-  );
-
-  if (node === null) {
-    return refused('QUERY_ERROR', 'the connection was not saved');
-  }
-
-  const connection = parseConnectionRecord(node);
-
-  if (connection === null) {
-    return refused('QUERY_ERROR', 'the saved connection could not be read back');
-  }
-
-  return accepted({ connection, adapter: descriptor });
-};
-
-export type TestConnectionResult = {
-  healthState: 'OK' | 'FAILED';
-  message: string;
-  verificationState: ConnectionVerificationState;
-  latencyMs: number;
-  detail: string;
-  checkedAt: string;
-};
-
-export const testConnection = async (
-  record: AccountingConnectionRecord,
-  secrets: AdapterSecrets,
-  { now = () => new Date() }: { now?: () => Date } = {},
-): Promise<Result<TestConnectionResult>> => {
-  const adapter = buildAdapter(record, secrets);
-
-  if (!adapter.ok) {
-    return adapter;
-  }
-
-  const health = await adapter.value.testConnection();
-
-  if (!health.ok) {
-    return health;
-  }
-
-  const checkedAt = health.value.checkedAt || now().toISOString();
-
-  if (health.value.kind === 'REACHABLE') {
-    return accepted({
-      healthState: 'OK',
-      message:
-        'نرم‌افزار حسابداری به درخواست آزمایشی پاسخ داد. برای ارسال واقعی، تأیید انتقال امن و واحد مبلغ لازم است.',
-      verificationState: adapter.value.isLive
-        ? 'LIVE_VERIFIED'
-        : 'MOCK',
-      latencyMs: health.value.latencyMs,
-      detail: health.value.detail,
-      checkedAt,
-    });
-  }
-
-  return accepted({
-    healthState: 'FAILED',
-    message:
-      health.value.code === 'TIMEOUT'
-        ? 'نرم‌افزار حسابداری در زمان مجاز پاسخ نداد؛ آدرس و دسترسی شبکه را بررسی کنید.'
-        : 'ارتباط با نرم‌افزار حسابداری برقرار نشد؛ آدرس سرویس و تونل امن را بررسی کنید.',
-    verificationState: 'LIVE_UNVERIFIED',
-    latencyMs: health.value.latencyMs,
-    detail: health.value.detail,
-    checkedAt,
-  });
-};
-
-export const persistHealth = async (
-  connectionId: string,
-  result: TestConnectionResult,
-  dependencies: ConnectionDependencies = {},
-): Promise<void> => {
-  const execute = dependencies.execute ?? executeRecordGraphql;
-
-  await execute(
-    buildUpdateAccountingConnectionMutation(connectionId, {
-      healthState: result.healthState,
-      lastHealthMessage: `${result.message} (${result.detail})`,
-      lastHealthCheckAt: result.checkedAt,
-      verificationState: result.verificationState,
-    }),
-  );
-};
+// The record is written only through the settings route; there is deliberately no
+// GraphQL write helper here, because the public mutations are closed and the app identity
+// must not be usable as a bypass.
 
 export type ConnectionPanelView = {
   connection: AccountingConnectionRecord;
@@ -508,16 +342,8 @@ export const saveConnectionThroughServer = async (
     return settings;
   }
 
-  const adapter = createAccountingAdapter({
-    adapterId: descriptor.id,
-    settings: settings.value,
-    allowInsecureTransport: settings.value.transportApproved,
-  });
-
-  if (!adapter.ok) {
-    return adapter;
-  }
-
+  // No `capabilities` field is sent: the server derives them from the adapter contract,
+  // and a body-supplied object would be ignored anyway.
   const outcome = await callAccountingSettingsAction({
     body: {
       action: 'accounting-connection-save',
@@ -525,7 +351,6 @@ export const saveConnectionThroughServer = async (
       name,
       adapterId: descriptor.id,
       settings: settings.value,
-      capabilities: adapter.value.capabilities,
     },
     authorizationHeader: dependencies.authorizationHeader ?? null,
   });
@@ -550,23 +375,52 @@ export const saveConnectionThroughServer = async (
   return accepted({ connection: saved, adapter: descriptor });
 };
 
-// The probe itself stays in the adapter (one implementation, GET only). Only its answer
-// is written, and only after the server has accepted this caller as an operator.
-export const persistHealthThroughServer = async (
+// The probe runs on the server against the address it validates for this request; this
+// route only asks for it and reads back the stored evidence. No health state, message or
+// timestamp is sent, so a caller cannot post a green result.
+export type ConnectionTestOutcome = {
+  healthState: string;
+  message: string;
+  detail: string;
+  verificationState: string;
+  latencyMs: number;
+  checkedAt: string;
+  connection: AccountingConnectionRecord;
+};
+
+export const testConnectionThroughServer = async (
   connectionId: string,
-  result: TestConnectionResult,
   dependencies: AccountingSettingsDependencies = {},
-): Promise<Result<true>> => {
+): Promise<Result<ConnectionTestOutcome>> => {
   const outcome = await callAccountingSettingsAction({
     body: {
-      action: 'accounting-connection-health',
+      action: 'accounting-connection-test',
       recordId: connectionId,
-      healthState: result.healthState,
-      message: `${result.message} (${result.detail})`,
-      checkedAt: result.checkedAt,
     },
     authorizationHeader: dependencies.authorizationHeader ?? null,
   });
 
-  return outcome.kind === 'REFUSED' ? refusedOutcome(outcome) : accepted(true);
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  const connections = readServerConnections(outcome.data);
+  const connection =
+    connections.find((row) => row.id === connectionId) ?? null;
+  const health = asRecord(outcome.data.health);
+
+  if (connection === null || health === null) {
+    return refused('QUERY_ERROR', 'the test result could not be read back');
+  }
+
+  return accepted({
+    healthState: readString(health.healthState) || 'FAILED',
+    message: readString(health.message),
+    detail: readString(health.detail),
+    verificationState: connection.verificationState,
+    latencyMs:
+      typeof health.latencyMs === 'number' ? health.latencyMs : 0,
+    checkedAt: readString(health.checkedAt),
+    connection,
+  });
 };

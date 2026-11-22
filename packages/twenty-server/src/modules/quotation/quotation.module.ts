@@ -13,6 +13,7 @@ import { QuotationShareService } from 'src/modules/quotation/services/quotation-
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
+import { AccountingDestinationProbeService } from 'src/modules/quotation/services/accounting-destination-probe.service';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AccountingConnectionAuthorityService } from 'src/modules/quotation/serv
     QuotationShareService,
     QuotationDraftPersistenceService,
     TaxPolicyAuthorityService,
+    AccountingDestinationProbeService,
     AccountingConnectionAuthorityService,
   ],
 })
