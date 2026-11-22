@@ -1,5 +1,14 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ARCHITECT GATE — ACCOUNTING-013 FINAL UX 0.1.30 (2026-11-23; DEV TECH ACCEPT / USER_UAT OPEN)
+
+- **Source-reviewed** latest branch HEAD `4f5629cc658019e482f8dbb765a308026818396d`, 3 commits ahead of `c464117c557db2a40de933b4c02d0d7ce6a300fb` (feature `bfe2b035ac`, docs `e3a250f8ec`, accessibility `4f5629cc65`). Changes scoped to accounting business UI, mapping/Asan budget checks, design reports/prototypes, tests, package version and recovery.
+- **Architect judgment:** **DEV TECHNICALLY ACCEPTABLE FOR USER_UAT**, not user visual approval, production, or full-scale unpaged API acceptance. In code, `accounting-settings-panel.tsx` maintains five sections, persistent desktop rail/mobile bottom nav, `aria-current`, visited section state with display-toggle, inner-view back navigation and preserved connection form drafts. `accounting-business-ui.tsx` supplies named nav / user-readable detail collapse. Paged mapping now fails closed with `ADAPTER_CONTRACT_INCOMPLETE` when declared reader is missing. Asan `readBoundedResponseText` checks content-length and reader bytes and aborts over budget: **bounded streaming receipt, not incremental JSON parsing**; up to configured body size is accumulated then decoded/parsed. Fallback non-streaming runtime buffers before byte check; never imply universal streaming.
+- **Design tooling evidence:** Superdesign login BLOCKED (account auth required), no AI render; A/B HTML prototypes manually authored. Local Impeccable CLI detect results and before/after audit present; no claim the plugin itself generated UI. Worker-reported 501/501 Vitest, tsgo clean, DOM desktop/mobile 390px, 0 overflow, accessibility improvements and app 0.1.30 on Dev :3002; architect did NOT rerun browser/dev, and physical keyboard / forced INCOMPLETE Dev display remain not independently proven.
+- **Business-scale caveat remains:** REMOTE_UNPAGED Asan full-list path limited to soft 20k preview and hard 100k refusal; **not full millions-row remote sync**, and no live Asan/Sepidar validation. Must not silently lift ceilings or claim this closed. No accounting outbound or financial posting authorized.
+- **Next:** user visually tests `http://localhost:3002/page/20c28688-fc16-42f8-a231-9d5735d1b2c2`; collect concrete UX issues only. Do not run another design task merely to satisfy inaccessible Superdesign; do not close USER_UAT before user's decision. No :6080, Worker or payment changes.
+
+
 ## ARCHITECT REVIEW — ACCOUNTING-013 SCALING DELIVERY (2026-11-22; CONDITIONAL / UX UAT PENDING)
 
 - **Verified commit chain:** `970c4c187f40b8ccfda95d8860c76765b4d9c75f` -> feature `d0ddb06927` -> recovery `c30fe5dffab4e60064cdb36374dd786dc1e24401` on `feat/crm-129-quotation`; compare shows accounting UI sections, read-strategy adapter contract, remote snapshot storage/service, paging and scale tests. No actual local Dev browser execution by architect, only worker-reported tests.
