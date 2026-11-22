@@ -387,7 +387,10 @@ export const AccountingCatalogSection = ({
       {page !== null ? (
         <>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ ...styles.table, minWidth: '720px' }}>
+            <table
+              aria-label="کالاهای نرم‌افزار حسابداری"
+              style={{ ...styles.table, minWidth: '720px' }}
+            >
               <thead>
                 <tr>
                   <th style={styles.cell}>انتخاب</th>

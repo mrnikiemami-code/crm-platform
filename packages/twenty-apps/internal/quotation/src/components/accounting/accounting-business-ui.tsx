@@ -15,6 +15,10 @@ import { sharedStyles as styles } from 'src/components/accounting/accounting-sha
 
 export type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
+// A tag is 11–12px, so its text needs the full 4.5:1, not the large-text 3:1. The tinted
+// background makes the raw brand hue too light to read (measured 3.2:1 for warning and
+// 3.9:1 for success on the panel's own surfaces), so the foreground is darkened against
+// black while the hue stays the same. Same reason the active rail label is deepened below.
 const TONE_STYLES: Record<Tone, CSSProperties> = {
   neutral: {
     background: 'var(--t-background-secondary)',
@@ -22,19 +26,19 @@ const TONE_STYLES: Record<Tone, CSSProperties> = {
   },
   success: {
     background: 'color-mix(in srgb, var(--t-color-green) 14%, transparent)',
-    color: 'color-mix(in srgb, var(--t-color-green) 72%, var(--t-font-color-primary))',
+    color: 'color-mix(in srgb, var(--t-color-green) 55%, black)',
   },
   warning: {
     background: 'color-mix(in srgb, var(--t-color-orange) 16%, transparent)',
-    color: 'color-mix(in srgb, var(--t-color-orange) 72%, var(--t-font-color-primary))',
+    color: 'color-mix(in srgb, var(--t-color-orange) 55%, black)',
   },
   danger: {
     background: 'color-mix(in srgb, var(--t-color-red) 14%, transparent)',
-    color: 'color-mix(in srgb, var(--t-color-red) 70%, var(--t-font-color-primary))',
+    color: 'color-mix(in srgb, var(--t-color-red) 58%, black)',
   },
   info: {
     background: 'color-mix(in srgb, var(--t-color-blue) 12%, transparent)',
-    color: 'color-mix(in srgb, var(--t-color-blue) 78%, var(--t-font-color-primary))',
+    color: 'color-mix(in srgb, var(--t-color-blue) 62%, black)',
   },
 };
 
@@ -50,7 +54,8 @@ export const Badge = ({
       ...TONE_STYLES[tone],
       borderRadius: '999px',
       padding: '2px 10px',
-      fontSize: 'var(--t-font-size-xs)',
+      // 12px rather than the 11px xs token: these words are the reason a row is blocked.
+      fontSize: 'var(--t-font-size-sm)',
       fontWeight: 'var(--t-font-weight-medium)',
       whiteSpace: 'nowrap',
       display: 'inline-block',
@@ -205,7 +210,9 @@ export const SectionNav = ({
             cursor: 'pointer',
             fontFamily: 'inherit',
             fontSize: 'var(--t-font-size-sm)',
-            color: active ? 'var(--t-color-blue)' : 'var(--t-font-color-primary)',
+            color: active
+              ? 'color-mix(in srgb, var(--t-color-blue) 80%, black)'
+              : 'var(--t-font-color-primary)',
             background: active
               ? 'color-mix(in srgb, var(--t-color-blue) 10%, transparent)'
               : 'transparent',
@@ -273,7 +280,8 @@ export const Breadcrumbs = ({
         fontFamily: 'inherit',
       }}
     >
-      ← CRM
+      <span aria-hidden="true">← </span>
+      CRM
     </button>
     <span aria-hidden="true">›</span>
     <span>تنظیمات</span>
@@ -326,7 +334,8 @@ export const SubViewBar = ({
         fontSize: 'var(--t-font-size-sm)',
       }}
     >
-      {`→ ${backLabel}`}
+      <span aria-hidden="true">→ </span>
+      {backLabel}
     </button>
     <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{label}</span>
   </div>
@@ -467,7 +476,6 @@ export const PrimaryButton = ({
       ...styles.button,
       ...styles.buttonPrimary,
       ...(disabled ? styles.buttonDisabled : {}),
-      minHeight: '38px',
     }}
   >
     {label}
@@ -492,7 +500,6 @@ export const SecondaryButton = ({
     style={{
       ...styles.button,
       ...(disabled ? styles.buttonDisabled : {}),
-      minHeight: '38px',
     }}
   >
     {label}
@@ -567,7 +574,6 @@ export const Pager = ({
           style={{
             ...styles.button,
             ...(busy || !hasPreviousPage ? styles.buttonDisabled : {}),
-            minHeight: '36px',
           }}
           disabled={busy || !hasPreviousPage}
           onClick={onPrevious}
@@ -579,7 +585,6 @@ export const Pager = ({
           style={{
             ...styles.button,
             ...(busy || !hasNextPage ? styles.buttonDisabled : {}),
-            minHeight: '36px',
           }}
           disabled={busy || !hasNextPage}
           onClick={onNext}
@@ -634,10 +639,10 @@ export const LimitNotice = ({
 
   if (truncated) {
     return (
-      <InlineAlert tone="warning" title="این نرم‌افزار امکان صفحه‌بندی ندارد">
+      <InlineAlert tone="warning" title="همهٔ فهرست نمایش داده نمی‌شود">
         {`${taken.toLocaleString('fa-IR')} ردیف اول${
           declaredTotal === null ? '' : ` از ${declaredTotal.toLocaleString('fa-IR')} ردیف`
-        } خوانده شد (سقف این نسخه ${limit.toLocaleString('fa-IR')} ردیف است). ردیف‌های بعدی در این نسخه نمایش داده نمی‌شوند؛ برای دیدن آن‌ها از جست‌وجو استفاده کنید یا دامنهٔ دریافت را در حسابداری محدود کنید.`}
+        } خوانده شد. این نرم‌افزار فهرست را یک‌جا می‌فرستد و این نسخه تا ${limit.toLocaleString('fa-IR')} ردیف را نگه می‌دارد؛ بقیهٔ ردیف‌ها نمایش داده نمی‌شوند. برای پیدا کردن یک کالای خاص از جست‌وجو استفاده کنید.`}
       </InlineAlert>
     );
   }
@@ -645,8 +650,8 @@ export const LimitNotice = ({
   if (vendorCannotPage) {
     return (
       <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', margin: 0 }}>
-        این نرم‌افزار امکان صفحه‌بندی ندارد؛ فهرست یک‌بار خوانده و در همین برنامه صفحه‌بندی
-        می‌شود.
+        این نرم‌افزار فهرست را یک‌بار و یک‌جا می‌فرستد؛ جابه‌جایی بین صفحه‌ها در همین برنامه
+        انجام می‌شود.
       </p>
     );
   }

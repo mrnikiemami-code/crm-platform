@@ -384,7 +384,10 @@ export const AccountingCustomerSection = ({
       {page !== null ? (
         <>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ ...styles.table, minWidth: '680px' }}>
+            <table
+              aria-label="مشتریان نرم‌افزار حسابداری"
+              style={{ ...styles.table, minWidth: '680px' }}
+            >
               <thead>
                 <tr>
                   <th style={styles.cell}>مشتری در حسابداری</th>

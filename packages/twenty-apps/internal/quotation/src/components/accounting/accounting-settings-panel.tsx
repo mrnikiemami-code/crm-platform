@@ -506,12 +506,21 @@ export const AccountingSettingsPanel = () => {
           express. Everything else stays inline, next to the markup it belongs to. */}
       <style>{`
         .acct-root { --acct-gap: var(--t-spacing-3); }
+        /* Visually hidden, still read: the section change is announced without moving focus
+           off the rail button the person just pressed. */
+        .acct-sr-only {
+          position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+          overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+        }
         .acct-root :focus-visible {
           outline: 2px solid var(--t-color-blue);
           outline-offset: 2px;
           border-radius: var(--t-border-radius-sm);
         }
         .acct-crumb { min-height: 36px; }
+        /* A floor the components can share: 38px for a pointer, 44px for a thumb below.
+           Inline min-heights are gone so this rule is the only source of the size. */
+        .acct-root button, .acct-root input, .acct-root select { min-height: 38px; }
         .acct-crumb:hover { background: color-mix(in srgb, var(--t-color-blue) 10%, transparent); }
         .acct-body { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--acct-gap); align-items: start; }
         .acct-rail { position: sticky; top: 0; display: flex; flex-direction: column; gap: var(--acct-gap); }
@@ -523,6 +532,15 @@ export const AccountingSettingsPanel = () => {
           .acct-main { order: 1; }
           .acct-root { padding-bottom: 0; }
           .acct-crumb { min-height: 44px; font-size: var(--t-font-size-sm); }
+          /* 44px is the thumb floor. Inputs, filters and the details toggle used to come out
+             at 24–38px on a phone; the sizes are set here rather than per component so a new
+             control cannot be added below the floor. Checkboxes stay a checkbox, just bigger. */
+          .acct-root button,
+          .acct-root input:not([type="checkbox"]):not([type="radio"]),
+          .acct-root select,
+          .acct-root summary { min-height: 44px; }
+          .acct-root input[type="checkbox"],
+          .acct-root input[type="radio"] { width: 20px; height: 20px; }
           /* The panel body is its own scroll container and an ancestor uses
              will-change: transform, which anchors a fixed element to that ancestor rather
              than the viewport. Sticky, as the last child of the scroller, is what actually
@@ -544,6 +562,11 @@ export const AccountingSettingsPanel = () => {
       `}</style>
 
       <header style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {/* The rail marks aria-current, but a screen reader gets no confirmation that the
+            view under it changed: this is that confirmation, and it does not move focus. */}
+        <p className="acct-sr-only" role="status" aria-live="polite">
+          {`بخش «${breadcrumbLabel}» نمایش داده می‌شود.`}
+        </p>
         <Breadcrumbs sectionLabel={breadcrumbLabel} onBackToCrm={backToCrm} />
         <div
           style={{

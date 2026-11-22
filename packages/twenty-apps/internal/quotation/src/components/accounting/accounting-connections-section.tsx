@@ -140,7 +140,10 @@ export const AccountingConnectionsSection = ({
         ) : (
           <Card>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ ...styles.table, minWidth: '560px' }}>
+              <table
+                aria-label="اتصال‌های حسابداری"
+                style={{ ...styles.table, minWidth: '560px' }}
+              >
                 <thead>
                   <tr>
                     <th style={styles.cell}>اتصال</th>

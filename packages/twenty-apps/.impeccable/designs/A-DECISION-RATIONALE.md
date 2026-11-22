@@ -6,11 +6,14 @@
   (skill script in the plugin cache) produced `_detect.json` from the first run and
   `_detect-after-fix.json` from the second; the summary is `IMPECCABLE-AUDIT.txt`.
 - **Superdesign:** installed (`0.14.0`) but **BLOCKED**. `superdesign list-models`
-  exits 4 with `API Error: Not authenticated. Run 'superdesign login' first.` There is
-  no cloud session in this environment, so no Superdesign render was produced and no
-  claim of one is made. The two prototypes below were authored directly as static HTML
-  and then put through the Impeccable checks; the same decisions were re-validated in a
-  real browser DOM on the Dev build.
+  exits 4 with `API Error: Not authenticated. Run 'superdesign login' first.` A second
+  attempt (`superdesign login`, device code `VAAU-1071`) opened
+  `https://superdesign.dev/auth/cli?code=VAAU-1071`, which redirected to
+  `https://superdesign.dev/auth/login?redirect=%2Fauth%2Fcli%3Fcode%3DVAAU-1071` — an
+  email/Google sign-in. There is no account session in this environment, so no
+  Superdesign render was produced and no claim of one is made. The two prototypes below
+  were authored directly as static HTML and then put through the Impeccable checks; the
+  same decisions were re-validated in a real browser DOM on the Dev build.
 
 ## Options
 

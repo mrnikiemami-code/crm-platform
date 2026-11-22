@@ -490,7 +490,7 @@ export const CapabilityTable = ({ connection }: { connection: ConnectionRecord }
       قابلیت‌ها پس از ذخیرهٔ اتصال و بارگذاری مجدد نمایش داده می‌شوند.
     </p>
   ) : (
-    <table style={sharedStyles.table}>
+    <table aria-label="قابلیت‌های این اتصال" style={sharedStyles.table}>
       <thead>
         <tr>
           <th style={sharedStyles.cell}>قابلیت</th>
@@ -535,7 +535,7 @@ export const DocumentPreviewPanel = ({
         preview.outboundEnabled ? 'فعال' : 'خاموش (همین نسخه)'
       } — ثبت سند مالی: ${preview.documentExportEnabled ? 'فعال' : 'خاموش'}`}
     </p>
-    <table style={sharedStyles.table}>
+    <table aria-label="بررسی‌های آمادگی سند" style={sharedStyles.table}>
       <thead>
         <tr>
           <th style={sharedStyles.cell}>بررسی</th>
@@ -555,7 +555,7 @@ export const DocumentPreviewPanel = ({
     </table>
 
     <p style={sharedStyles.subtitle}>نگاشت ردیف‌های سند</p>
-    <table style={sharedStyles.table}>
+    <table aria-label="نگاشت ردیف‌های سند" style={sharedStyles.table}>
       <thead>
         <tr>
           <th style={sharedStyles.cell}>شرح</th>
@@ -602,7 +602,7 @@ export const DocumentPreviewPanel = ({
             preview.document.FactorNumber
           })`}
         </p>
-        <table style={sharedStyles.table}>
+        <table aria-label="ردیف‌های سند حسابداری" style={sharedStyles.table}>
           <thead>
             <tr>
               <th style={sharedStyles.cell}>کد کالا</th>
@@ -639,7 +639,7 @@ export const OperationTable = ({ operations }: { operations: OperationRow[] }) =
   operations.length === 0 ? (
     <p style={sharedStyles.meta}>عملیاتی ثبت نشده است.</p>
   ) : (
-    <table style={sharedStyles.table}>
+    <table aria-label="سوابق عملیات حسابداری" style={sharedStyles.table}>
       <thead>
         <tr>
           <th style={sharedStyles.cell}>نوع</th>
