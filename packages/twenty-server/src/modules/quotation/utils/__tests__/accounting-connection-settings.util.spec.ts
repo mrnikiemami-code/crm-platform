@@ -74,11 +74,28 @@ describe('parseAccountingConnectionSettings', () => {
   it('refuses a private-network destination until the transport is approved', () => {
     expect(
       parseAccountingConnectionSettings({
-        baseUrl: 'http://127.0.0.1:8080',
+        baseUrl: 'http://10.1.2.3:8080',
       }),
     ).toMatchObject({
       ok: false,
       code: 'CONNECTION_PRIVATE_NETWORK_NOT_APPROVED',
+    });
+
+    expect(
+      parseAccountingConnectionSettings(
+        {
+          baseUrl: 'http://127.0.0.1:8080',
+          transportApproved: true,
+        },
+        {
+          privateDestinationAllowlist: [
+            { host: '127.0.0.1', port: 8080 },
+          ],
+        },
+      ),
+    ).toMatchObject({
+      ok: false,
+      code: 'CONNECTION_DESTINATION_BLOCKED',
     });
   });
 
