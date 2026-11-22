@@ -1,5 +1,6 @@
 import {
   buildAccountingItemLinksQuery,
+  buildAccountingPartyCandidatesQuery,
   buildAccountingPartyLinksQuery,
   buildAccountingCatalogItemsQuery,
   buildCreateAccountingItemLinkMutation,
@@ -22,6 +23,7 @@ import {
   planPartyImport,
   resolveItemApplyPlan,
   type CrmItemSummary,
+  type CrmPartyCandidate,
   type CrmPartySummary,
   type ExistingItemLink,
   type ExistingPartyLink,
@@ -135,14 +137,66 @@ const loadCrmItems = async (
       return [];
     }
 
+    const prices = Array.isArray(asRecord(node.prices)?.edges)
+      ? (asRecord(node.prices)?.edges as unknown[]).flatMap((edge) => {
+          const price = asRecord(asRecord(edge)?.node);
+          const amount = readString(price?.unitPriceExact);
+
+          return amount === ''
+            ? []
+            : [
+                {
+                  amount,
+                  isDefault: asRecord(price?.priceList)?.isDefault === true,
+                },
+              ];
+        })
+      : [];
+    const chosen = prices.find((price) => price.isDefault) ?? prices[0];
+
     return [
       {
         id,
         name: readString(node.name),
         sku: readString(node.sku) || null,
+        priceMicros: chosen?.amount ?? null,
       },
     ];
   });
+};
+
+// A person's full name is stored as two fields; the candidate list is displayed, never used
+// to match, so a joined label is enough.
+const loadCrmPartyCandidates = async (
+  dependencies: ImportDependencies,
+): Promise<CrmPartyCandidate[]> => {
+  const execute = dependencies.execute ?? executeRecordGraphql;
+  const data = await execute(buildAccountingPartyCandidatesQuery());
+
+  const people = readRows(data, 'people').flatMap((node) => {
+    const id = readString(node.id);
+    const name = asRecord(node.name);
+    const fullName = `${readString(name?.firstName)} ${readString(name?.lastName)}`.trim();
+
+    return id === ''
+      ? []
+      : [{ id, name: fullName || id, partyType: 'PERSON' as const }];
+  });
+  const companies = readRows(data, 'companies').flatMap((node) => {
+    const id = readString(node.id);
+
+    return id === ''
+      ? []
+      : [
+          {
+            id,
+            name: readString(node.name) || id,
+            partyType: 'COMPANY' as const,
+          },
+        ];
+  });
+
+  return [...people, ...companies];
 };
 
 export const previewItemImport = async (
@@ -336,13 +390,19 @@ export const previewPartyImport = async (
   }
 
   const links = await loadPartyLinks(connectionId, dependencies);
+  const candidates = await loadCrmPartyCandidates(dependencies);
   // A CRM party's national code is not a standard CRM field, so no automatic candidate is
   // proposed. The preview still reports duplicates inside the vendor and every already-linked
   // customer; linking a new one requires choosing a CRM record explicitly.
   const crmParties: CrmPartySummary[] = [];
 
   return accepted(
-    planPartyImport({ remoteParties: remote.value, links, crmParties }),
+    planPartyImport({
+      remoteParties: remote.value,
+      links,
+      crmParties,
+      crmCandidates: candidates,
+    }),
   );
 };
 

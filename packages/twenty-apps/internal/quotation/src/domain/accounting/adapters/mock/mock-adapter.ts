@@ -10,6 +10,7 @@ import {
   type RemotePartyInput,
   type RemoteProformaInput,
 } from 'src/domain/accounting/adapter-contract';
+import { MOCK_CATALOG_ITEMS, MOCK_PARTIES } from 'src/domain/accounting/adapters/mock/mock-dataset';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // A deterministic adapter used by tests and by a workspace that wants to exercise the
@@ -24,53 +25,9 @@ export type MockAdapterConfig = {
   now?: () => Date;
 };
 
-const DEFAULT_ITEMS: RemoteCatalogItem[] = [
-  {
-    externalItemId: '1001',
-    code: '1001',
-    name: 'کابل شبکه CAT6',
-    secondaryName: null,
-    sellPriceUnits: 450_000,
-    salesPriceUnits: [],
-    stock: 12,
-    remoteVersion: 'mock-cat6-v1',
-    isActive: true,
-  },
-  {
-    externalItemId: '1002',
-    code: '1002',
-    name: 'خدمت نصب و راه‌اندازی',
-    secondaryName: null,
-    sellPriceUnits: 2_000_000,
-    salesPriceUnits: [],
-    stock: null,
-    remoteVersion: 'mock-install-v1',
-    isActive: true,
-  },
-  // Two records sharing a name is the duplicate case the preview must surface.
-  {
-    externalItemId: '1003',
-    code: '1003',
-    name: 'کابل شبکه CAT6',
-    secondaryName: null,
-    sellPriceUnits: 470_000,
-    salesPriceUnits: [],
-    stock: 4,
-    remoteVersion: 'mock-cat6-v2',
-    isActive: true,
-  },
-];
+const DEFAULT_ITEMS: RemoteCatalogItem[] = MOCK_CATALOG_ITEMS;
 
-const DEFAULT_PARTIES: RemoteParty[] = [
-  {
-    externalPartyId: '101',
-    code: '101',
-    fullName: 'شرکت نمونهٔ آزمون',
-    mobile: '09120000000',
-    nationalCode: '10101010101',
-    remoteVersion: 'mock-party-1',
-  },
-];
+const DEFAULT_PARTIES: RemoteParty[] = MOCK_PARTIES;
 
 export class MockAccountingAdapter implements AccountingAdapter {
   readonly id = 'mock' as const;

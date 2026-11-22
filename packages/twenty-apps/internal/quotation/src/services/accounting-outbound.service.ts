@@ -18,6 +18,10 @@ import {
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { mapRevisionToAsanFactor } from 'src/domain/accounting/adapters/asan/asan-factor';
 import {
+  type QuotationDocumentPreview,
+  buildQuotationDocumentPreview,
+} from 'src/domain/accounting/document-preview';
+import {
   planItemPush,
   planQuotationExport,
   type ItemPushDecision,
@@ -689,6 +693,7 @@ export type QuotationExportPreview = {
   quotationStatus: string;
   revisionVersion: number | null;
   lineItemIds: { lineId: string; itemId: string | null }[];
+  documentPreview: QuotationDocumentPreview;
 };
 
 export const previewQuotationExport = async (
@@ -739,6 +744,16 @@ export const previewQuotationExport = async (
       : (partyLinks.find(
           (node) => readString(node.internalPartyId) === internalPartyId,
         ) ?? null);
+  const customerExternalId =
+    customerLink === null ? null : readString(customerLink.externalPartyId) || null;
+
+  const lineLinks = context.value.lineItemIds.map((line) => ({
+    lineId: line.lineId,
+    externalItemId:
+      line.itemId === null
+        ? null
+        : (linkByInternalItemId.get(line.itemId) ?? null),
+  }));
 
   const decision = planQuotationExport({
     connectionId,
@@ -746,13 +761,7 @@ export const previewQuotationExport = async (
     revision: context.value.revision,
     customerExternalId:
       customerLink === null ? null : readString(customerLink.externalPartyId),
-    lineLinks: context.value.lineItemIds.map((line) => ({
-      lineId: line.lineId,
-      externalItemId:
-        line.itemId === null
-          ? null
-          : (linkByInternalItemId.get(line.itemId) ?? null),
-    })),
+    lineLinks,
     capabilities: adapter.capabilities,
     settings,
     outboundEnabled: flags.outboundEnabled,
@@ -762,11 +771,26 @@ export const previewQuotationExport = async (
     reconciled: flags.reconciled,
   });
 
+  const documentPreview = buildQuotationDocumentPreview({
+    revision: context.value.revision?.snapshot ?? null,
+    quotationStatus: context.value.quotation.status,
+    quotationName: context.value.quotation.name,
+    settings,
+    capabilities: adapter.capabilities,
+    flags: {
+      outboundEnabled: flags.outboundEnabled,
+      documentExportEnabled: flags.documentExportEnabled,
+    },
+    customerExternalId,
+    lineLinks,
+  });
+
   return accepted({
     decision,
     quotationStatus: context.value.quotation.status,
     revisionVersion: context.value.revision?.version ?? null,
     lineItemIds: context.value.lineItemIds,
+    documentPreview,
   });
 };
 

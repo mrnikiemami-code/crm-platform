@@ -164,6 +164,49 @@ describe('item import preview', () => {
     );
     expect(preview.rows.every((row) => row.decision === 'CREATE')).toBe(true);
   });
+
+  it('shows the exact CRM/destination price difference for a linked item', () => {
+    const preview = planItemImport({
+      remoteItems: [item({ externalItemId: '1001', code: 'SKU-1' })],
+      links: [link({ linkId: 'l1', externalItemId: '1001', internalItemId: 'crm-1' })],
+      crmItems: [
+        {
+          id: 'crm-1',
+          name: 'کالای من',
+          sku: 'SKU-1',
+          priceMicros: '900000',
+        },
+      ],
+      moneyUnit: 'RIAL',
+    });
+
+    expect(preview.rows[0]).toMatchObject({
+      decision: 'IN_SYNC',
+      crmPriceMicros: '900000',
+    });
+    // Signed destination-minus-CRM, in exact fixed-point text.
+    expect(Number(preview.rows[0].priceDifferenceMicros)).toBe(-899000);
+  });
+
+  it('flags non-numeric ids, inactive items and missing prices before linking', () => {
+    const preview = planItemImport({
+      remoteItems: [
+        item({ externalItemId: 'X-901', code: 'X-901' }),
+        item({ externalItemId: '7001', code: '7001', isActive: false }),
+        item({ externalItemId: '5001', code: '5001', sellPriceUnits: null }),
+      ],
+      links: [],
+      crmItems: [],
+      moneyUnit: 'RIAL',
+    });
+
+    expect(preview.rows.map((row) => row.warnings)).toEqual([
+      ['REMOTE_ID_NOT_NUMERIC'],
+      ['REMOTE_ITEM_INACTIVE'],
+      ['REMOTE_PRICE_MISSING'],
+    ]);
+    expect(preview.rows[2].priceMicros).toBeNull();
+  });
 });
 
 describe('item apply plan', () => {

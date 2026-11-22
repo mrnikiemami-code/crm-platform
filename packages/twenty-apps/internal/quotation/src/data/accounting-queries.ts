@@ -177,7 +177,28 @@ export const buildUpdateAccountingOperationMutation = (
 export const buildAccountingCatalogItemsQuery = (limit = 500): string =>
   `query AccountingCatalogItems {
     catalogItems(first: ${limit}) {
-      edges { node { id name sku } }
+      edges {
+        node {
+          id
+          name
+          sku
+          prices(first: 20) {
+            edges { node { unitPriceExact priceList { id isDefault } } }
+          }
+        }
+      }
+    }
+  }`;
+
+// The CRM records a destination customer may be attached to. Both types travel in one
+// answer because the preview shows them as one choice; the vendor has no such distinction.
+export const buildAccountingPartyCandidatesQuery = (limit = 200): string =>
+  `query AccountingPartyCandidates {
+    people(first: ${limit}) {
+      edges { node { id name { firstName lastName } } }
+    }
+    companies(first: ${limit}) {
+      edges { node { id name } }
     }
   }`;
 

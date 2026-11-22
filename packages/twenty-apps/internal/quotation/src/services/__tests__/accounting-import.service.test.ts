@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { MockAccountingAdapter } from 'src/domain/accounting/adapters/mock/mock-adapter';
+import { MOCK_CATALOG_ITEMS } from 'src/domain/accounting/adapters/mock/mock-dataset';
 import { planItemImport, planPartyImport } from 'src/domain/accounting/import-plan';
 import {
   applyItemImport,
@@ -87,9 +88,26 @@ describe('item import preview', () => {
     );
 
     expect(preview.ok).toBe(true);
-    expect(preview.ok && preview.value.totalRemoteItems).toBe(3);
-    expect(preview.ok && preview.value.summary.CREATE).toBe(2);
-    expect(preview.ok && preview.value.summary.LINK_SUGGESTED).toBe(1);
+
+    if (!preview.ok) {
+      return;
+    }
+
+    // The mock dataset is the repeatable UAT fixture: every catalog shape the screens must
+    // explain (duplicate code, non-numeric id, inactive item) is present in it.
+    expect(preview.value.totalRemoteItems).toBe(MOCK_CATALOG_ITEMS.length);
+    expect(preview.value.summary.CREATE).toBeGreaterThan(0);
+    expect(preview.value.summary.DUPLICATE_REMOTE_CODE).toBeGreaterThan(0);
+    expect(
+      preview.value.rows.some((row) =>
+        row.warnings.includes('REMOTE_ID_NOT_NUMERIC'),
+      ),
+    ).toBe(true);
+    expect(
+      preview.value.rows.some((row) =>
+        row.warnings.includes('REMOTE_ITEM_INACTIVE'),
+      ),
+    ).toBe(true);
     expect(execute.mock.calls.every(([query]) => !/mutation/.test(query))).toBe(true);
   });
 
@@ -324,10 +342,26 @@ describe('party import', () => {
     );
 
     expect(preview.ok).toBe(true);
-    expect(preview.ok && preview.value.rows[0]).toMatchObject({
+
+    if (!preview.ok) {
+      return;
+    }
+
+    // Two parties share vendor id 101, so neither may be linked implicitly.
+    expect(preview.value.rows[0]).toMatchObject({
       externalPartyId: '101',
-      decision: 'NEEDS_CRM_RECORD',
+      decision: 'DUPLICATE_REMOTE_CODE',
     });
+    // And at least one unambiguous remote party still waits for a person to choose a CRM
+    // record rather than being matched by name.
+    expect(
+      preview.value.rows.some((row) => row.decision === 'NEEDS_CRM_RECORD'),
+    ).toBe(true);
+    expect(
+      preview.value.rows.some((row) =>
+        row.warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE'),
+      ),
+    ).toBe(true);
   });
 
   it('creates a link for an explicit CRM party and refuses to duplicate it', async () => {

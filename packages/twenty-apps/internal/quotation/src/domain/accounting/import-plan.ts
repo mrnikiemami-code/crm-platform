@@ -4,7 +4,7 @@ import {
   type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
 import { asanUnitsToCrmMicros } from 'src/domain/accounting/adapters/asan/asan-money-unit';
-import { formatMicrosExact } from 'src/domain/money/micros';
+import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
 
 // The preview is a PLAN, not an import. A person looks at it, confirms what to bring in, and
 // only the confirmed rows are applied. The rules below exist to make the dangerous cases
@@ -28,6 +28,9 @@ export type CrmItemSummary = {
   id: string;
   name: string;
   sku: string | null;
+  // The item's current default price, as exact micros text. Reported next to the destination
+  // price so a person sees the difference BEFORE linking; it is display evidence, not a write.
+  priceMicros?: string | null;
 };
 
 export type CrmPartySummary = {
@@ -36,11 +39,23 @@ export type CrmPartySummary = {
   nationalCode: string | null;
 };
 
+// A CRM record a person may attach a destination customer to. The type travels with the
+// candidate because the vendor has no person/company entity: the CRM is the only place the
+// distinction is recorded.
+export type CrmPartyCandidate = {
+  id: string;
+  name: string;
+  partyType: 'PERSON' | 'COMPANY';
+};
+
 export type ImportWarning =
   | 'DUPLICATE_REMOTE_NAME'
   | 'DUPLICATE_REMOTE_NATIONAL_CODE'
   | 'PRICE_UNIT_UNCONFIRMED'
-  | 'NO_CRM_CANDIDATE';
+  | 'NO_CRM_CANDIDATE'
+  | 'REMOTE_ID_NOT_NUMERIC'
+  | 'REMOTE_ITEM_INACTIVE'
+  | 'REMOTE_PRICE_MISSING';
 
 export type ItemImportDecision =
   | 'CREATE'
@@ -66,6 +81,11 @@ export type ItemImportRow = {
   priceMicros: string | null;
   priceUnits: number | null;
   planPrice: string;
+  // The linked/suggested CRM item's own price and the signed difference to the destination
+  // price. `null` means "not comparable" (no candidate, no price on either side) and is shown
+  // as such rather than as zero.
+  crmPriceMicros: string | null;
+  priceDifferenceMicros: string | null;
   warnings: ImportWarning[];
 };
 
@@ -125,11 +145,47 @@ export const planItemImport = ({
     remoteItems.map((item) => normalizeName(item.name)),
   );
 
+  const crmPriceById = new Map(
+    crmItems.flatMap((crmItem) =>
+      crmItem.priceMicros === undefined || crmItem.priceMicros === null
+        ? []
+        : ([[crmItem.id, crmItem.priceMicros]] as const),
+    ),
+  );
+
+  // Signed difference, in the same exact representation as a stored amount. A comparison
+  // that cannot be made exactly returns null instead of a rounded hint.
+  const priceDifference = (
+    destinationPriceMicros: string | null,
+    crmPriceMicros: string | null,
+  ): string | null => {
+    if (destinationPriceMicros === null || crmPriceMicros === null) {
+      return null;
+    }
+
+    const destination = parseMicrosExact(destinationPriceMicros);
+    const crm = parseMicrosExact(crmPriceMicros);
+
+    return destination.ok && crm.ok
+      ? formatMicrosExact(destination.value - crm.value)
+      : null;
+  };
+
   const rows: ItemImportRow[] = remoteItems.map((item) => {
     const warnings: ImportWarning[] = [];
 
     if ((remoteNameCounts.get(normalizeName(item.name)) ?? 0) > 1) {
       warnings.push('DUPLICATE_REMOTE_NAME');
+    }
+
+    // A vendor product code has to be a positive integer to become a document line; a
+    // non-numeric identifier can be previewed but never sent, so it is said here.
+    if (!/^\d+$/.test(item.externalItemId) || Number(item.externalItemId) <= 0) {
+      warnings.push('REMOTE_ID_NOT_NUMERIC');
+    }
+
+    if (!item.isActive) {
+      warnings.push('REMOTE_ITEM_INACTIVE');
     }
 
     const price =
@@ -141,6 +197,10 @@ export const planItemImport = ({
       warnings.push('PRICE_UNIT_UNCONFIRMED');
     }
 
+    if (item.sellPriceUnits === null) {
+      warnings.push('REMOTE_PRICE_MISSING');
+    }
+
     const priceMicros = price?.ok === true ? formatMicrosExact(price.value) : null;
     const planPrice =
       priceMicros !== null
@@ -148,6 +208,18 @@ export const planItemImport = ({
         : 'قیمت بدون تأیید واحد قابل تبدیل نیست';
 
     const existingLink = linkByExternalId.get(item.externalItemId) ?? null;
+    const skuMatches = itemsBySku.get(item.code) ?? [];
+    const comparableInternalItemId =
+      existingLink !== null
+        ? existingLink.internalItemId
+        : skuMatches.length === 1
+          ? skuMatches[0].id
+          : null;
+    const crmPriceMicros =
+      comparableInternalItemId === null
+        ? null
+        : (crmPriceById.get(comparableInternalItemId) ?? null);
+    const priceDifferenceMicros = priceDifference(priceMicros, crmPriceMicros);
 
     if ((remoteCodeCounts.get(item.code) ?? 0) > 1) {
       return {
@@ -162,6 +234,8 @@ export const planItemImport = ({
         priceMicros,
         priceUnits: item.sellPriceUnits,
         planPrice,
+        crmPriceMicros: null,
+        priceDifferenceMicros: null,
         warnings,
       };
     }
@@ -183,11 +257,11 @@ export const planItemImport = ({
         priceMicros,
         priceUnits: item.sellPriceUnits,
         planPrice,
+        crmPriceMicros,
+        priceDifferenceMicros,
         warnings,
       };
     }
-
-    const skuMatches = itemsBySku.get(item.code) ?? [];
 
     if (skuMatches.length === 1) {
       return {
@@ -202,6 +276,8 @@ export const planItemImport = ({
         priceMicros,
         priceUnits: item.sellPriceUnits,
         planPrice,
+        crmPriceMicros,
+        priceDifferenceMicros,
         warnings,
       };
     }
@@ -219,13 +295,15 @@ export const planItemImport = ({
         priceMicros,
         priceUnits: item.sellPriceUnits,
         planPrice,
+        crmPriceMicros: null,
+        priceDifferenceMicros: null,
         warnings,
       };
     }
 
     return {
       externalItemId: item.externalItemId,
-        remoteVersion: item.remoteVersion,
+      remoteVersion: item.remoteVersion,
       code: item.code,
       name: item.name,
       secondaryName: item.secondaryName,
@@ -235,6 +313,8 @@ export const planItemImport = ({
       priceMicros,
       priceUnits: item.sellPriceUnits,
       planPrice,
+      crmPriceMicros: null,
+      priceDifferenceMicros: null,
       warnings,
     };
   });
@@ -429,16 +509,21 @@ export type PartyImportPreview = {
   rows: PartyImportRow[];
   summary: Record<PartyImportDecision, number>;
   totalRemoteParties: number;
+  // CRM records a person can choose from. Empty is valid (and is what the current CRM
+  // exposes), but the list travels with the preview so the UI never invents a candidate.
+  crmCandidates: CrmPartyCandidate[];
 };
 
 export const planPartyImport = ({
   remoteParties,
   links,
   crmParties,
+  crmCandidates = [],
 }: {
   remoteParties: RemoteParty[];
   links: ExistingPartyLink[];
   crmParties: CrmPartySummary[];
+  crmCandidates?: CrmPartyCandidate[];
 }): PartyImportPreview => {
   const linkByExternalId = new Map<string, ExistingPartyLink>();
 
@@ -478,6 +563,12 @@ export const planPartyImport = ({
 
     if (nationalCode !== '' && (remoteNationalCounts.get(nationalCode) ?? 0) > 1) {
       warnings.push('DUPLICATE_REMOTE_NATIONAL_CODE');
+    }
+
+    // A document needs the vendor's numeric customer id, so a non-numeric destination
+    // identifier is flagged before anyone tries to issue a quotation.
+    if (!/^\d+$/.test(party.externalPartyId) || Number(party.externalPartyId) <= 0) {
+      warnings.push('REMOTE_ID_NOT_NUMERIC');
     }
 
     if ((remoteCodeCounts.get(party.externalPartyId) ?? 0) > 1) {
@@ -563,5 +654,10 @@ export const planPartyImport = ({
     summary[row.decision] += 1;
   }
 
-  return { rows, summary, totalRemoteParties: remoteParties.length };
+  return {
+    rows,
+    summary,
+    totalRemoteParties: remoteParties.length,
+    crmCandidates,
+  };
 };

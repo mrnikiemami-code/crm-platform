@@ -7,9 +7,11 @@ import {
   callAppRoute,
 } from 'src/components/quotation-api';
 import {
+  type DocumentPreview,
   type OperationRow,
   type PanelData,
   ConnectionStatus,
+  DocumentPreviewPanel,
   OperationTable,
   VERIFICATION_LABELS,
   asRecord,
@@ -37,6 +39,8 @@ export const AccountingConnectionPanel = () => {
     kind: string;
     detail: string;
   } | null>(null);
+  const [documentPreview, setDocumentPreview] =
+    useState<DocumentPreview | null>(null);
   const [operations, setOperations] = useState<OperationRow[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
@@ -80,6 +84,7 @@ export const AccountingConnectionPanel = () => {
     }
 
     setBusy(true);
+    setDocumentPreview(null);
 
     try {
       const response = await callAppRoute(ACCOUNTING_OUTBOUND_ROUTE, {
@@ -99,7 +104,8 @@ export const AccountingConnectionPanel = () => {
         return;
       }
 
-      const decision = asRecord(asRecord(response.data.preview)?.decision);
+      const previewRecord = asRecord(response.data.preview);
+      const decision = asRecord(previewRecord?.decision);
 
       if (decision === null) {
         setReadiness({
@@ -108,6 +114,14 @@ export const AccountingConnectionPanel = () => {
         });
         return;
       }
+
+      const previewDocument = asRecord(previewRecord?.documentPreview);
+
+      setDocumentPreview(
+        previewDocument !== null && Array.isArray(previewDocument.checks)
+          ? (previewDocument as unknown as DocumentPreview)
+          : null,
+      );
 
       setReadiness({
         kind: readString(decision.kind),
@@ -247,6 +261,10 @@ export const AccountingConnectionPanel = () => {
                 {readiness.detail ? ` — ${readiness.detail}` : ''}
                 {` — وضعیت: ${readiness.kind}`}
               </p>
+            ) : null}
+
+            {documentPreview !== null ? (
+              <DocumentPreviewPanel preview={documentPreview} />
             ) : null}
 
             <button

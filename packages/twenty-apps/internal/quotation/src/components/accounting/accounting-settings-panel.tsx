@@ -18,7 +18,9 @@ import {
   ConnectionStatus,
   EMPTY_FORM,
   Field,
+  HEALTH_LABELS,
   ItemPreviewTable,
+  OPERATION_STATE_LABELS,
   OperationTable,
   PartyPreviewTable,
   SEPIDAR_UNAVAILABLE,
@@ -32,6 +34,7 @@ import {
   toForm,
 } from 'src/components/accounting/accounting-shared';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
+import { MOCK_OPERATION_HISTORY_SAMPLES } from 'src/domain/accounting/adapters/mock/mock-dataset';
 
 // The workspace accounting settings page. It owns the connection — which vendor, which
 // address, which unit — and nothing about a particular quotation. Whether the visitor may
@@ -310,6 +313,16 @@ export const AccountingSettingsPanel = () => {
     }
   };
 
+  // A new destination starts empty. Saving it is the same authority-checked route as an
+  // edit, so "create" is not a second write path.
+  const startNewConnection = () => {
+    setForm({ ...EMPTY_FORM, name: 'اتصال آزمایشی جدید', adapterId: 'mock' });
+    setTestResult(null);
+    setItemPreview(null);
+    setPartyPreview(null);
+    setOperations([]);
+  };
+
   const connection =
     data?.connections.find((entry) => entry.id === activeConnectionId) ?? null;
   const descriptor =
@@ -392,6 +405,13 @@ export const AccountingSettingsPanel = () => {
               » است: قابلیت‌ها از مستندات استخراج شده‌اند و تا پاسخ سرور واقعی،
               نتیجهٔ همگام‌سازی اثبات‌شده نیست.
             </p>
+            {descriptor.isLive ? (
+              <p style={styles.warning}>
+                این آداپتور برای آزمایش کامل نیازمند اتصال واقعی به سرور مقصد
+                است؛ با اطلاعات آزمایشی فقط خطاهای اتصال و نگاشت قابل مشاهده‌اند
+                و هیچ موفقیت ساختگی نمایش داده نمی‌شود.
+              </p>
+            ) : null}
             <ul style={{ ...styles.meta, margin: 0, paddingInlineStart: '1rem' }}>
               {descriptor.limitations.map((limitation) => (
                 <li key={limitation}>{limitation}</li>
@@ -401,32 +421,44 @@ export const AccountingSettingsPanel = () => {
         ) : null}
       </div>
 
-      {data.connections.length > 1 ? (
-        <div style={styles.section}>
-          <p style={styles.subtitle}>اتصال‌های ثبت‌شده</p>
-          <div style={styles.row}>
-            {data.connections.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                style={{
-                  ...styles.button,
-                  ...(entry.id === activeConnectionId ? styles.buttonPrimary : {}),
-                }}
-                onClick={() => {
-                  setForm(toForm(entry));
-                  setTestResult(null);
-                  setItemPreview(null);
-                  setPartyPreview(null);
-                  setOperations([]);
-                }}
-              >
-                {entry.name}
-              </button>
-            ))}
-          </div>
+      <div style={styles.section}>
+        <p style={styles.subtitle}>اتصال‌های ثبت‌شده</p>
+        <div style={styles.row}>
+          {data.connections.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              style={{
+                ...styles.button,
+                ...(entry.id === activeConnectionId ? styles.buttonPrimary : {}),
+              }}
+              onClick={() => {
+                setForm(toForm(entry));
+                setTestResult(null);
+                setItemPreview(null);
+                setPartyPreview(null);
+                setOperations([]);
+              }}
+            >
+              {`${entry.name} — ${entry.adapterId === 'mock' ? 'آزمایشی' : 'آسان'} — ${
+                HEALTH_LABELS[entry.healthState] ?? entry.healthState
+              }`}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={!canManage}
+            style={{ ...styles.button, ...(canManage ? {} : styles.buttonDisabled) }}
+            onClick={startNewConnection}
+          >
+            + اتصال آزمایشی جدید
+          </button>
         </div>
-      ) : null}
+        <p style={styles.meta}>
+          ساخت اتصال جدید از همین فرم و با تغییر نام ذخیره می‌شود؛ هیچ رکوردی حذف
+          نمی‌شود.
+        </p>
+      </div>
 
       <div style={styles.section}>
         <p style={styles.subtitle}>تنظیم اتصال</p>
@@ -704,6 +736,42 @@ export const AccountingSettingsPanel = () => {
           <PartyPreviewTable preview={partyPreview} />
         ) : null}
       </div>
+
+      {form.adapterId === 'mock' ? (
+        <div style={styles.section}>
+          <p style={styles.subtitle}>تاریخچهٔ نمایشی عملیات (ثبت نمی‌شود)</p>
+          <p style={styles.meta}>
+            این ردیف‌ها از دادهٔ ثابت آداپتور آزمایشی می‌آیند و در پایگاه داده نوشته
+            نمی‌شوند؛ برای تمرین خواندن نتیجهٔ موفق، ناموفق و نیازمند اقدام دستی.
+          </p>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.cell}>وضعیت</th>
+                <th style={styles.cell}>نوع</th>
+                <th style={styles.cell}>مرجع</th>
+                <th style={styles.cell}>تلاش</th>
+                <th style={styles.cell}>پیام</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MOCK_OPERATION_HISTORY_SAMPLES.map((sample) => (
+                <tr key={`${sample.kind}:${sample.reference}`}>
+                  <td style={styles.cell}>
+                    {OPERATION_STATE_LABELS[sample.state] ?? sample.state}
+                  </td>
+                  <td style={styles.cell}>{sample.kind}</td>
+                  <td style={{ ...styles.cell, direction: 'ltr' }}>
+                    {sample.reference}
+                  </td>
+                  <td style={styles.cell}>{sample.attempts}</td>
+                  <td style={styles.cell}>{sample.message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       <div style={styles.section}>
         <div style={styles.row}>
