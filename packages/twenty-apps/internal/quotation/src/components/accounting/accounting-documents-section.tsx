@@ -17,6 +17,7 @@ import {
   type OperationRow,
   OPERATION_STATE_LABELS,
   OperationTable,
+  TAX_MODE_NEEDS_CODE,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
 
@@ -51,9 +52,12 @@ export const AccountingDocumentsSection = ({
   outboundEnabled,
   documentExportEnabled,
   taxMappingCount,
+  taxHandling,
   onReload,
   onGoToConnections,
   onGoToCatalog,
+  onFixMoney,
+  onFixTax,
   onTestConnection,
 }: {
   connection: ConnectionRecord | null;
@@ -63,9 +67,12 @@ export const AccountingDocumentsSection = ({
   outboundEnabled: boolean;
   documentExportEnabled: boolean;
   taxMappingCount: number;
+  taxHandling: string;
   onReload: () => void;
   onGoToConnections?: () => void;
   onGoToCatalog?: () => void;
+  onFixMoney?: () => void;
+  onFixTax?: () => void;
   onTestConnection?: () => void;
 }) => {
   const [onlyUnfinished, setOnlyUnfinished] = useState(false);
@@ -78,6 +85,17 @@ export const AccountingDocumentsSection = ({
   const visible = onlyUnfinished ? unfinished : operations;
   const outboundDisabled = !outboundEnabled && !documentExportEnabled;
 
+  // The tax item is about the CONTRACT, not about a code: a rate/amount destination has no
+  // code to map, so marking it "missing" would send someone to a field that must not exist.
+  const taxNeedsCode = TAX_MODE_NEEDS_CODE(taxHandling);
+  const taxReady = taxHandling === 'UNSUPPORTED' ? false : !taxNeedsCode || taxMappingCount > 0;
+  const taxLabel =
+    taxHandling === 'UNSUPPORTED'
+      ? 'این مقصد امکان ثبت مالیات را ندارد'
+      : taxNeedsCode
+        ? 'کدهای مالیات این اتصال به مقصد متصل شده‌اند'
+        : 'مالیات از سیاست مالیات CRM خوانده می‌شود (بدون کد مقصد)';
+
   const readiness: ReadinessItem[] = [
     {
       ok: connection !== null,
@@ -87,8 +105,15 @@ export const AccountingDocumentsSection = ({
         : { fix: { label: 'رفتن به اتصال‌ها', onClick: onGoToConnections } }),
     },
     {
-      ok: connection?.healthState === 'OK',
-      label: 'آخرین آزمایش اتصال موفق بوده است',
+      ok:
+        connection !== null &&
+        connection.healthState === 'OK' &&
+        (connection.verificationState === 'MOCK' ||
+          connection.verificationState === 'LIVE_VERIFIED'),
+      label:
+        connection?.verificationState === 'MOCK'
+          ? 'آزمایش شبیه‌سازی‌شده (Mock) موفق بوده است — نه اتصال واقعی'
+          : 'آخرین آزمایش اتصال واقعی موفق بوده است',
       ...(onTestConnection !== undefined
         ? { fix: { label: 'آزمایش اتصال', onClick: onTestConnection } }
         : onGoToConnections === undefined
@@ -98,16 +123,20 @@ export const AccountingDocumentsSection = ({
     {
       ok: connection?.settings.moneyUnit !== 'UNCONFIRMED',
       label: 'واحد پول (ریال یا تومان) تأیید شده است',
-      ...(onGoToConnections === undefined
-        ? {}
-        : { fix: { label: 'تعیین واحد پول', onClick: onGoToConnections } }),
+      ...(onFixMoney === undefined
+        ? onGoToConnections === undefined
+          ? {}
+          : { fix: { label: 'تعیین واحد پول', onClick: onGoToConnections } }
+        : { fix: { label: 'تعیین واحد پول', onClick: onFixMoney } }),
     },
     {
-      ok: taxMappingCount > 0,
-      label: 'کدهای مالیات به مقصد متصل شده‌اند',
-      ...(onGoToConnections === undefined
-        ? {}
-        : { fix: { label: 'تنظیم کدهای مالیات', onClick: onGoToConnections } }),
+      ok: taxReady,
+      label: taxLabel,
+      ...(onFixTax === undefined
+        ? onGoToConnections === undefined
+          ? {}
+          : { fix: { label: 'تنظیم مالیات حسابداری', onClick: onGoToConnections } }
+        : { fix: { label: 'تنظیم مالیات حسابداری', onClick: onFixTax } }),
     },
     {
       ok: !outboundDisabled,
@@ -163,10 +192,26 @@ export const AccountingDocumentsSection = ({
           tone={documentExportEnabled ? 'danger' : 'success'}
         />
         <StatCard
-          label="اتصال کدهای مالیات"
-          value={taxMappingCount.toLocaleString('fa-IR')}
-          hint={taxMappingCount === 0 ? 'سند دارای مالیات ارسال نمی‌شود' : undefined}
-          tone={taxMappingCount === 0 ? 'warning' : 'success'}
+          label={taxNeedsCode ? 'اتصال کدهای مالیات' : 'قرارداد مالیات'}
+          value={
+            taxNeedsCode
+              ? taxMappingCount.toLocaleString('fa-IR')
+              : taxHandling === 'UNSUPPORTED'
+                ? 'بدون پشتیبانی'
+                : 'نرخ/مبلغ از CRM'
+          }
+          hint={
+            taxNeedsCode && taxMappingCount === 0
+              ? 'سند دارای مالیات ارسال نمی‌شود'
+              : undefined
+          }
+          tone={
+            taxHandling === 'UNSUPPORTED'
+              ? 'danger'
+              : taxNeedsCode && taxMappingCount === 0
+                ? 'warning'
+                : 'success'
+          }
         />
         <StatCard
           label="عملیات ناتمام"

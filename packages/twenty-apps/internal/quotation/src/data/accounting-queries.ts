@@ -14,6 +14,7 @@ const CONNECTION_FIELDS = `
   moneyUnit
   transportApproved
   specialCodes
+  financialSettings
   healthState
   lastHealthCheckAt
   lastHealthMessage

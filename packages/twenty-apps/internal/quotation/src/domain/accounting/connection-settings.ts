@@ -4,6 +4,11 @@ import {
   type AccountingMoneyUnit,
   type ConnectionSettings,
 } from 'src/domain/accounting/adapter-contract';
+import {
+  DEFAULT_FINANCIAL_SETTINGS,
+  financialSettingsFromRecord,
+  parseFinancialSettings,
+} from 'src/domain/accounting/financial-contract';
 
 // What a connection record may carry. Only NON-SECRET configuration lives here: the record
 // is readable through the API, appears in exports and is copied into backups, so a token in
@@ -17,6 +22,7 @@ export const DEFAULT_CONNECTION_SETTINGS: ConnectionSettings = {
   transportApproved: false,
   specialCodes: { discount: false, duty: false, tax: false },
   taxPolicyMappings: {},
+  financial: DEFAULT_FINANCIAL_SETTINGS,
 };
 
 const asRecord = (value: unknown): Record<string, unknown> =>
@@ -140,6 +146,7 @@ const parseNumericSetting = (
 // stores, so the field is never a silent empty string the server would have to guess about.
 export const parseConnectionSettings = (
   input: unknown,
+  options: { adapterId?: string } = {},
 ): Result<ConnectionSettings> => {
   const raw = asRecord(input);
   const baseUrl = parseBaseUrl(readString(raw.baseUrl));
@@ -169,6 +176,13 @@ export const parseConnectionSettings = (
   }
 
   const specialCodes = asRecord(raw.specialCodes);
+  const financial = parseFinancialSettings(raw.financial, {
+    adapterId: options.adapterId ?? '',
+  });
+
+  if (!financial.ok) {
+    return financial;
+  }
 
   return accepted({
     baseUrl: baseUrl.value,
@@ -182,6 +196,7 @@ export const parseConnectionSettings = (
       tax: readBoolean(specialCodes.tax, false),
     },
     taxPolicyMappings: readTaxPolicyMappings(raw, specialCodes),
+    financial: financial.value,
   });
 };
 
@@ -207,6 +222,9 @@ export const connectionSettingsFromRecord = (
       tax: readBoolean(specialCodes.tax, false),
     },
     taxPolicyMappings: readTaxPolicyMappings(raw, specialCodes),
+    // The server view and the raw record spell this block the same way on purpose; reading
+    // both means the panel works against either without a second parser.
+    financial: financialSettingsFromRecord(raw.financial ?? raw.financialSettings),
   };
 };
 

@@ -174,6 +174,41 @@ describe('parseAccountingConnectionSettings', () => {
       });
     }
   });
+
+  // The settings page sends the codes at the top level of its settings object. Reading only
+  // the nested copy made a typed code vanish on save, so a code-mapping destination was
+  // reported as unmapped forever.
+  it('stores a tax code sent at the top level of the settings object', () => {
+    const parsed = parseAccountingConnectionSettings({
+      baseUrl: 'https://asan.example.ir',
+      taxPolicyMappings: { IR_VAT_9: 'TAX-01' },
+    });
+
+    expect(parsed.ok).toBe(true);
+
+    if (parsed.ok) {
+      expect(parsed.value.specialCodes.taxPolicyMappings).toEqual({
+        IR_VAT_9: 'TAX-01',
+      });
+    }
+  });
+
+  it('lets the top-level tax code win over the legacy nested copy', () => {
+    const parsed = parseAccountingConnectionSettings({
+      baseUrl: 'https://asan.example.ir',
+      specialCodes: { taxPolicyMappings: { IR_VAT_9: 'OLD-9' } },
+      taxPolicyMappings: { IR_VAT_9: 'TAX-01', IR_VAT_10: 'TAX-02' },
+    });
+
+    expect(parsed.ok).toBe(true);
+
+    if (parsed.ok) {
+      expect(parsed.value.specialCodes.taxPolicyMappings).toEqual({
+        IR_VAT_9: 'TAX-01',
+        IR_VAT_10: 'TAX-02',
+      });
+    }
+  });
 });
 
 describe('accountingConnectionColumnsFromSettings', () => {

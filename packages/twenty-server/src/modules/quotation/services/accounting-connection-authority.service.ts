@@ -41,6 +41,7 @@ const CONNECTION_COLUMNS = {
   moneyUnit: true,
   transportApproved: true,
   specialCodes: true,
+  financialSettings: true,
   healthState: true,
   lastHealthCheckAt: true,
   lastHealthMessage: true,
@@ -98,6 +99,41 @@ const readSpecialCodes = (
 const readMoneyUnit = (value: string | null): AccountingConnectionSettings['moneyUnit'] =>
   value === 'RIAL' || value === 'TOMAN' ? value : 'UNCONFIRMED';
 
+const readFinancialSettings = (
+  value: unknown,
+): AccountingConnectionSettings['financial'] => {
+  const raw = asRecord(value) ?? {};
+  const baseCurrency =
+    typeof raw.baseCurrency === 'string' && /^[A-Z]{3}$/.test(raw.baseCurrency)
+      ? raw.baseCurrency
+      : 'IRR';
+  const conversionRate =
+    typeof raw.conversionRate === 'string' &&
+    /^(0|[1-9]\d*)(\.\d{1,6})?$/.test(raw.conversionRate) &&
+    Number(raw.conversionRate) > 0
+      ? raw.conversionRate
+      : '';
+  const rawMappings = asRecord(raw.currencyMappings) ?? {};
+  const currencyMappings = Object.fromEntries(
+    Object.entries(rawMappings).flatMap(([key, entry]) =>
+      typeof entry === 'string' && entry.trim() !== ''
+        ? [[key.trim(), entry.trim()]]
+        : [],
+    ),
+  );
+  const profile = raw.mockProfile;
+
+  return {
+    baseCurrency,
+    currencyMappings,
+    conversionRate,
+    mockProfile:
+      profile === 'CODED' || profile === 'AMOUNT' || profile === 'NO_TAX'
+        ? profile
+        : 'SIMPLE',
+  };
+};
+
 const toView = (row: WorkspaceAccountingConnectionRow): AccountingConnectionView => ({
   recordId: row.id,
   name: readText(row.name) || readText(row.adapterId),
@@ -111,6 +147,7 @@ const toView = (row: WorkspaceAccountingConnectionRow): AccountingConnectionView
     moneyUnit: readMoneyUnit(row.moneyUnit),
     transportApproved: row.transportApproved === true,
     specialCodes: readSpecialCodes(row.specialCodes),
+    financial: readFinancialSettings(row.financialSettings),
   },
   capabilities: row.capabilities ?? null,
   healthState: readText(row.healthState) || 'UNKNOWN',
@@ -205,6 +242,7 @@ export class AccountingConnectionAuthorityService {
 
     const settings = parseAccountingConnectionSettings(input.settings, {
       privateDestinationAllowlist: readPrivateDestinationAllowlist(),
+      adapterId,
     });
 
     if (!settings.ok) {
@@ -212,8 +250,11 @@ export class AccountingConnectionAuthorityService {
     }
 
     // Capabilities come from the adapter contract, never from the request: an authorized
-    // caller must not be able to rewrite what the destination can do just by saving.
-    const contract = accountingAdapterContract(adapterId);
+    // caller must not be able to rewrite what the destination can do just by saving. A mock
+    // may name one of the closed test profiles, and the profile is expanded here.
+    const contract = accountingAdapterContract(adapterId, {
+      mockProfile: settings.value.financial.mockProfile,
+    });
 
     if (contract === null) {
       return refused(
@@ -343,9 +384,13 @@ export class AccountingConnectionAuthorityService {
       // A live vendor is not "verified" because it answered a read: nothing here proves
       // an accepted write or a mapped document, so the state stays LIVE_UNVERIFIED.
       const verificationState = contract.isLive ? 'LIVE_UNVERIFIED' : 'MOCK';
+      // A mock's success is a simulated success. Saying "connection established" would
+      // report a network event that never happened.
       const message =
         probe.healthState === 'OK'
-          ? 'آزمایش اتصال انجام شد؛ ارسال مالی همچنان غیرفعال است'
+          ? contract.isLive
+            ? 'پاسخ سرور حسابداری دریافت شد؛ ارسال مالی همچنان غیرفعال است و اتصال واقعی تأیید نشده است'
+            : 'آزمایش شبیه‌سازی‌شده موفق بود؛ هیچ تماس واقعی با نرم‌افزار حسابداری انجام نشد'
           : 'آزمایش اتصال ناموفق بود؛ هیچ سندی به مقصد ارسال نشد';
       const health: AccountingHealthView = {
         healthState: probe.healthState,

@@ -1,4 +1,5 @@
 import { type AdapterCapabilities } from 'src/domain/accounting/capabilities';
+import { type FinancialSettings } from 'src/domain/accounting/financial-contract';
 import { type Result } from 'src/domain/shared/result';
 
 // The contract every accounting vendor is wired through. The CRM never calls a vendor
@@ -63,7 +64,13 @@ export type ConnectionSettings = {
   // Deliberately a mapping and not an identity: the CRM's policies and the vendor's
   // fiscal codes are decided by different people, and assuming they match would post
   // the wrong tax. A rate with no mapping is refused rather than sent unmapped.
+  // Only read when the adapter declares a code-based tax contract; a rate/amount
+  // destination never gets a code it does not read.
   taxPolicyMappings: Record<string, string>;
+  // Currency base and code mapping, plus the test-only mock profile. Optional because a
+  // record written before this block existed must still open; a missing block reads as the
+  // conservative default, never as "no requirements".
+  financial?: FinancialSettings;
 };
 
 export type RemoteCatalogItem = {

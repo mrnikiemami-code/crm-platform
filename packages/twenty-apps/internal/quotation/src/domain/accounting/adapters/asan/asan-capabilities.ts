@@ -65,6 +65,21 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
   // Asan needs discount, duty and tax as SEPARATE lines carrying the pre-existing item
   // codes 999123 / 999140 / 999141 with Count = 0 — they are not fields on a normal line.
   requiresSpecialItemCodes: true,
+  // Asan documents tax as a separate special-item line whose ProductID identifies the tax
+  // row (999141 by default) and whose `Price` is the tax amount with `Count = 0`. So the
+  // destination needs BOTH a code for the row and the amount — it has no rate field and no
+  // plain tax field on a normal line.
+  //
+  // Three identifiers are deliberately kept apart, because treating one as another posts the
+  // wrong tax: the CRM tax POLICY code (IR_VAT_9), the vendor's special ITEM code that makes
+  // a row a tax row (999141), and the RATE stored on the policy (9%). The connection maps
+  // policy -> vendor item code; the rate never leaves the CRM's own tax domain.
+  taxHandling: 'TAX_CODE_AND_AMOUNT',
+  // The guide shows integer amounts with no currency parameter anywhere in
+  // RegisterPishFactor. The installation books in one currency, so asking for a currency
+  // code would be inventing a field Asan does not read.
+  currencyHandling: 'SINGLE_CURRENCY',
+  baseCurrency: 'IRR',
   // The guide documents `ProductsNew/AllProducts` and `CustomersNew/AllCustomers` with NO
   // input parameters, and `LastProducts`/`LastCustomers` accept only `Count` — "the last N".
   // There is no offset, page number or cursor anywhere in the guide, so there is no page 2 to

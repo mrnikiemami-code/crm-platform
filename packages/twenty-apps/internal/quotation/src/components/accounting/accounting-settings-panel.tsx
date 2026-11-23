@@ -5,6 +5,7 @@ import {
   ACCOUNTING_CONNECTION_ROUTE,
   ACCOUNTING_IMPORT_ROUTE,
   ACCOUNTING_OUTBOUND_ROUTE,
+  TAX_POLICIES_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
 import {
@@ -24,15 +25,20 @@ import {
   type FormState,
   type OperationRow,
   type PanelData,
+  CONNECTION_HEALTH_LABELS,
   EMPTY_FORM,
-  HEALTH_LABELS,
   asRecord,
+  connectionHealthState,
+  parseKeyValueLines,
   parsePanelData,
   parseTaxPolicyMappingsText,
   readRows,
   readString,
+  readTaxPolicies,
+  resolveFinancialModes,
   sharedStyles as styles,
   toForm,
+  type TaxPolicyView,
 } from 'src/components/accounting/accounting-shared';
 import {
   parseItemMappingPage,
@@ -62,6 +68,21 @@ type SectionId = 'overview' | 'connections' | 'catalog' | 'customers' | 'documen
 const MOCK_SERVICE_ADDRESS = 'http://mock.invalid';
 
 const ACCOUNTING_GUIDE_STORAGE_KEY = 'quotation:accounting:section';
+
+// Which destination the workspace panel is *talking about*, kept apart from the edit draft.
+// Persisted in the browser so a refresh on a slow connection does not silently move the
+// active rows in every section back to some other destination.
+const ACCOUNTING_CONNECTION_STORAGE_KEY = 'quotation:accounting:connection';
+
+const readStoredConnectionId = (): string | null => {
+  try {
+    const stored = window.localStorage.getItem(ACCOUNTING_CONNECTION_STORAGE_KEY);
+
+    return stored === null || stored.trim() === '' ? null : stored;
+  } catch {
+    return null;
+  }
+};
 
 const SECTION_COPY: Record<SectionId, { label: string; description: string }> = {
   overview: {
@@ -104,6 +125,19 @@ export const AccountingSettingsPanel = () => {
   // Which inner view the connections section shows. The list is the destination the rail
   // points at; the form is one step deeper and always carries a way back to the list.
   const [connectionView, setConnectionView] = useState<'list' | 'form'>('list');
+  // The sub-section a deep link asked for («تعیین واحد پول» / «تنظیم مالیات حسابداری»).
+  const [connectionFocus, setConnectionFocus] = useState<'money' | 'tax' | null>(null);
+  // The selected destination is the state every section reads. Editing it is a different,
+  // deliberately separate action; opening the form must not change the selection and
+  // selecting must not open the form.
+  //
+  // Initialized from storage, not written to it, so the remembered destination is present
+  // before the first load resolves: an effect that cleared storage while the selection was
+  // still null would erase the choice on every reload.
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
+    readStoredConnectionId,
+  );
+  const [policies, setPolicies] = useState<TaxPolicyView[]>([]);
   // The customers section owns its picker state; it reports the inner view label here so the
   // breadcrumb and title can name it without lifting the picker out of the section.
   const [customerView, setCustomerView] = useState<string | null>(null);
@@ -120,7 +154,7 @@ export const AccountingSettingsPanel = () => {
   const [snapshot, setSnapshot] = useState<SnapshotView | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const activeConnectionId = form.id;
+  const activeConnectionId = selectedConnectionId;
 
   const loadPanel = useCallback(async () => {
     setLoadError(null);
@@ -144,8 +178,31 @@ export const AccountingSettingsPanel = () => {
 
       setData(parsed);
 
-      // The first load picks the first connection; later loads must not overwrite the one
-      // the person is working on.
+      // The stored selection survives a refresh as long as that connection still exists;
+      // otherwise the first connection is selected. Selecting is never decided by the form
+      // draft, so an unsaved new connection cannot silently change the active destination.
+      setSelectedConnectionId((current) => {
+        if (
+          current !== null &&
+          parsed.connections.some((entry) => entry.id === current)
+        ) {
+          return current;
+        }
+
+        const stored = readStoredConnectionId();
+
+        if (
+          stored !== null &&
+          parsed.connections.some((entry) => entry.id === stored)
+        ) {
+          return stored;
+        }
+
+        return parsed.connections[0]?.id ?? null;
+      });
+
+      // The edit draft follows the record it belongs to; a draft that was never saved stays
+      // exactly as the person left it.
       setForm((current) => {
         if (current.id !== null) {
           const refreshed = parsed.connections.find(
@@ -155,9 +212,13 @@ export const AccountingSettingsPanel = () => {
           return refreshed === undefined ? current : toForm(refreshed);
         }
 
-        return parsed.connections.length > 0
-          ? toForm(parsed.connections[0])
-          : current;
+        const stored = readStoredConnectionId();
+        const initial =
+          parsed.connections.find((entry) => entry.id === stored) ??
+          parsed.connections[0] ??
+          null;
+
+        return initial === null ? current : toForm(initial);
       });
     } catch {
       setLoadError('ارتباط با سرور برقرار نشد. اتصال شبکه را بررسی و دوباره تلاش کنید.');
@@ -167,6 +228,48 @@ export const AccountingSettingsPanel = () => {
   useEffect(() => {
     void loadPanel();
   }, [loadPanel]);
+
+  useEffect(() => {
+    try {
+      if (selectedConnectionId === null) {
+        window.localStorage.removeItem(ACCOUNTING_CONNECTION_STORAGE_KEY);
+        return;
+      }
+
+      window.localStorage.setItem(
+        ACCOUNTING_CONNECTION_STORAGE_KEY,
+        selectedConnectionId,
+      );
+    } catch {
+      // Storage can be unavailable in a sandboxed host; the selection still works for this
+      // visit, it just will not survive a reload.
+    }
+  }, [selectedConnectionId]);
+
+  // Tax policies are needed by the tax section in every capability mode: a code-mode
+  // destination maps each policy, a rate/amount destination shows the rates it will receive.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPolicies = async () => {
+      try {
+        const response = await callAppRoute(TAX_POLICIES_ROUTE, { action: 'list' });
+
+        if (!cancelled && response.ok && response.data.success === true) {
+          setPolicies(readTaxPolicies(response.data.policies));
+        }
+      } catch {
+        // A policy list that cannot be read leaves the mapping editor in manual-entry mode;
+        // it must not block the rest of the panel.
+      }
+    };
+
+    void loadPolicies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // The overview is the first screen, so it cannot wait for the catalog and customer panels
   // to be opened before it knows how much work is outstanding. One row is asked for; only
@@ -292,6 +395,19 @@ export const AccountingSettingsPanel = () => {
           taxPolicyMappings: parseTaxPolicyMappingsText(
             form.taxPolicyMappingsText,
           ),
+          // Only the destination's own declared contract reads these. Storing them on every
+          // connection keeps a switch of test profile from silently erasing what was typed.
+          // The mock profile is a statement about capabilities, so it is sent only to the
+          // mock: the server refuses it on a live adapter, and a live save must not fail
+          // because of a field nobody reads.
+          financial: {
+            baseCurrency: form.baseCurrency,
+            currencyMappings: parseKeyValueLines(form.currencyMappingsText),
+            conversionRate: form.conversionRate,
+            ...(form.adapterId === 'mock'
+              ? { mockProfile: form.mockProfile }
+              : {}),
+          },
         },
       });
 
@@ -309,7 +425,12 @@ export const AccountingSettingsPanel = () => {
       const saved = asRecord(response.data.connection);
 
       if (saved !== null) {
-        setForm(toForm(saved as unknown as ConnectionRecord));
+        const savedRecord = saved as unknown as ConnectionRecord;
+        setForm(toForm(savedRecord));
+        // Saving a new connection also makes it the active destination: otherwise the
+        // person lands on a list where the record they just filled in is not the one the
+        // rest of the CRM is using.
+        setSelectedConnectionId(savedRecord.id);
       }
 
       setTestResult(null);
@@ -329,7 +450,11 @@ export const AccountingSettingsPanel = () => {
   };
 
   const test = async () => {
-    if (busy || activeConnectionId === null) {
+    // Testing judges the record that is stored, so an unsaved draft tests the record it was
+    // opened from; a brand-new draft has nothing to probe yet.
+    const testConnectionId = form.id ?? selectedConnectionId;
+
+    if (busy || testConnectionId === null) {
       await enqueueSnackbar({
         message: 'ابتدا تنظیمات اتصال را ذخیره کنید، سپس آزمایش کنید.',
         variant: 'info',
@@ -342,7 +467,7 @@ export const AccountingSettingsPanel = () => {
     try {
       const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
         action: 'test',
-        connectionId: activeConnectionId,
+        connectionId: testConnectionId,
       });
 
       if (!response.ok || response.data.success !== true) {
@@ -435,6 +560,43 @@ export const AccountingSettingsPanel = () => {
     setForm({ ...EMPTY_FORM, name: 'اتصال آزمایشی جدید', adapterId: 'mock' });
     setTestResult(null);
     setOperations([]);
+    setConnectionFocus(null);
+    goTo('connections');
+    setConnectionView('form');
+  };
+
+  // Opening the form is an edit; it never changes which destination the workspace uses.
+  const editConnection = (entry: ConnectionRecord) => {
+    setForm(toForm(entry));
+    setTestResult(null);
+    setOperations([]);
+    setConnectionFocus(null);
+    goTo('connections');
+    setConnectionView('form');
+  };
+
+  // Selecting changes the active destination across every section and deliberately does not
+  // open the form. The draft of another connection (if any) is left untouched.
+  const selectConnection = (entry: ConnectionRecord) => {
+    setSelectedConnectionId(entry.id);
+    setTestResult(null);
+  };
+
+  // Deep links from the documents readiness list: open the SELECTED connection at the exact
+  // sub-section that fixes the item, instead of dumping the person somewhere in the panel.
+  const openSelectedAt = (focus: 'money' | 'tax') => {
+    const target =
+      data?.connections.find((entry) => entry.id === selectedConnectionId) ??
+      null;
+
+    if (target === null) {
+      startNewConnection();
+      return;
+    }
+
+    setForm(toForm(target));
+    setTestResult(null);
+    setConnectionFocus(focus);
     goTo('connections');
     setConnectionView('form');
   };
@@ -474,11 +636,32 @@ export const AccountingSettingsPanel = () => {
 
   const connection =
     data.connections.find((entry) => entry.id === activeConnectionId) ?? null;
+  // Every section names the same destination, so the label and the readiness counts come
+  // from the SELECTED record, never from an unsaved edit draft.
+  const connectionMoneyUnit =
+    connection?.settings.moneyUnit ??
+    (form.id === null ? form.moneyUnit : 'UNCONFIRMED');
   const moneyUnitLabel =
-    form.moneyUnit === 'TOMAN' ? 'تومان' : form.moneyUnit === 'RIAL' ? 'ریال' : '';
+    connectionMoneyUnit === 'TOMAN'
+      ? 'تومان'
+      : connectionMoneyUnit === 'RIAL'
+        ? 'ریال'
+        : '';
   const taxMappingCount = Object.keys(
-    parseTaxPolicyMappingsText(form.taxPolicyMappingsText),
+    connection?.settings.taxPolicyMappings ?? {},
   ).length;
+  const connectionHealth =
+    connection === null ? null : connectionHealthState(connection);
+  const formModes = resolveFinancialModes({
+    adapterId: form.adapterId,
+    adapters: data.adapters,
+    financial: {
+      baseCurrency: form.baseCurrency,
+      currencyMappings: parseKeyValueLines(form.currencyMappingsText),
+      conversionRate: form.conversionRate,
+      mockProfile: form.mockProfile,
+    },
+  });
 
   const sections: SectionDescriptor[] = SECTION_ORDER.map((id) => ({
     id,
@@ -590,20 +773,20 @@ export const AccountingSettingsPanel = () => {
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             <Badge
               tone={
-                connection === null
+                connectionHealth === null
                   ? 'warning'
-                  : connection.healthState === 'OK'
+                  : connectionHealth === 'LIVE_VERIFIED'
                     ? 'success'
-                    : connection.healthState === 'FAILED'
+                    : connectionHealth === 'FAILED'
                       ? 'danger'
-                      : 'neutral'
+                      : connectionHealth === 'INCOMPLETE'
+                        ? 'warning'
+                        : 'neutral'
               }
             >
-              {connection === null
+              {connection === null || connectionHealth === null
                 ? 'اتصالی انتخاب نشده'
-                : `${connection.name} — ${
-                    HEALTH_LABELS[connection.healthState] ?? connection.healthState
-                  }`}
+                : `${connection.name} — ${CONNECTION_HEALTH_LABELS[connectionHealth]}`}
             </Badge>
           </div>
         </div>
@@ -658,18 +841,20 @@ export const AccountingSettingsPanel = () => {
               <AccountingConnectionsSection
                 data={data}
                 form={form}
+                modes={formModes}
+                policies={policies}
                 canManage={data.canManage}
                 busy={busy}
-                activeConnectionId={activeConnectionId}
+                selectedConnectionId={selectedConnectionId}
                 testResult={testResult}
                 view={connectionView}
-                onOpenList={() => setConnectionView('list')}
-                onSelect={(entry) => {
-                  setForm(toForm(entry));
-                  setTestResult(null);
-                  setOperations([]);
-                  setConnectionView('form');
+                focus={connectionFocus}
+                onOpenList={() => {
+                  setConnectionView('list');
+                  setConnectionFocus(null);
                 }}
+                onSelectConnection={selectConnection}
+                onEditConnection={editConnection}
                 onChange={setForm}
                 onSave={() => void save()}
                 onTest={() => void test()}
@@ -712,9 +897,16 @@ export const AccountingSettingsPanel = () => {
                 outboundEnabled={data.flags.outboundEnabled}
                 documentExportEnabled={data.flags.documentExportEnabled}
                 taxMappingCount={taxMappingCount}
+                taxHandling={resolveFinancialModes({
+                  adapterId: connection?.adapterId ?? 'mock',
+                  adapters: data.adapters,
+                  financial: connection?.settings.financial,
+                }).taxHandling}
                 onReload={() => void loadOperations()}
                 onGoToConnections={() => goTo('connections')}
                 onGoToCatalog={() => goTo('catalog')}
+                onFixMoney={() => openSelectedAt('money')}
+                onFixTax={() => openSelectedAt('tax')}
                 onTestConnection={() => void test()}
               />
             ) : null}

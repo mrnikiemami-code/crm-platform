@@ -15,6 +15,7 @@ export type WorkspaceAccountingConnectionRow = {
   moneyUnit: string | null;
   transportApproved: boolean | null;
   specialCodes: unknown;
+  financialSettings: unknown;
   healthState: string | null;
   lastHealthCheckAt: string | null;
   lastHealthMessage: string | null;

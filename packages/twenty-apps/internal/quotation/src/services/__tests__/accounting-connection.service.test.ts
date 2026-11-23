@@ -1,14 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { callAccountingSettingsAction } from 'src/data/accounting-settings-api';
 import {
   buildAdapter,
   describeSecretStatus,
   loadConnections,
+  loadConnectionsThroughServer,
   parseConnectionRecord,
   readAdapterSecrets,
   resolveConnection,
   type AccountingConnectionRecord,
 } from 'src/services/accounting-connection.service';
+import { DEFAULT_FINANCIAL_SETTINGS } from 'src/domain/accounting/financial-contract';
+
+vi.mock('src/data/accounting-settings-api', () => ({
+  callAccountingSettingsAction: vi.fn(),
+}));
 
 const node = (overrides: Record<string, unknown> = {}) => ({
   id: 'conn-1',
@@ -49,6 +56,7 @@ describe('connection record parsing', () => {
         transportApproved: true,
         specialCodes: { discount: true, duty: false, tax: true },
         taxPolicyMappings: {},
+        financial: DEFAULT_FINANCIAL_SETTINGS,
       },
       capabilities: null,
       healthState: 'OK',
@@ -106,6 +114,65 @@ describe('connection listing and resolution', () => {
       ok: false,
       refusal: { code: 'CONNECTION_NOT_FOUND' },
     });
+  });
+
+  // A regression guard, not a shape preference: the server hands the settings back in a
+  // nested node, and reading the envelope instead made a saved unit, address and mock
+  // profile come back as defaults, so the page looked like nothing had persisted.
+  it('reads the saved settings from the nested node the server returns', async () => {
+    vi.mocked(callAccountingSettingsAction).mockResolvedValueOnce({
+      kind: 'OK',
+      data: {
+        connections: [
+          {
+            recordId: 'conn-server',
+            name: 'UAT کدی',
+            adapterId: 'mock',
+            isActive: true,
+            settings: {
+              baseUrl: 'mock://local',
+              remoteUserId: '',
+              defaultStorageId: '',
+              moneyUnit: 'TOMAN',
+              transportApproved: false,
+              specialCodes: {
+                discount: false,
+                duty: false,
+                tax: false,
+                taxPolicyMappings: { IR_VAT_9: 'TAX-01' },
+              },
+              financial: {
+                baseCurrency: 'IRR',
+                currencyMappings: { IRR: '1' },
+                conversionRate: '',
+                mockProfile: 'CODED',
+              },
+            },
+            healthState: 'UNKNOWN',
+            verificationState: 'MOCK',
+          },
+        ],
+      },
+    });
+
+    const loaded = await loadConnectionsThroughServer({
+      authorizationHeader: 'Bearer caller',
+    });
+
+    expect(loaded.ok).toBe(true);
+
+    if (loaded.ok) {
+      expect(loaded.value[0].settings).toMatchObject({
+        baseUrl: 'mock://local',
+        moneyUnit: 'TOMAN',
+        taxPolicyMappings: { IR_VAT_9: 'TAX-01' },
+        financial: {
+          baseCurrency: 'IRR',
+          currencyMappings: { IRR: '1' },
+          mockProfile: 'CODED',
+        },
+      });
+    }
   });
 });
 

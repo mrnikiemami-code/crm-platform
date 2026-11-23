@@ -184,6 +184,16 @@ export default defineObject({
       isNullable: true,
     },
     {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.financialSettings,
+      type: FieldType.RAW_JSON,
+      name: 'financialSettings',
+      label: 'Financial settings',
+      description:
+        'Currency base and mapping, conversion rate, and the test-only mock profile. Only the fields the destination declared are read; an absent block means the conservative default, never "no requirements".',
+      icon: 'IconCurrencyDollar',
+      isNullable: true,
+    },
+    {
       universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.healthState,
       type: FieldType.SELECT,
       name: 'healthState',

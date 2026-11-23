@@ -8,6 +8,7 @@ import {
   parseBaseUrl,
   parseConnectionSettings,
 } from 'src/domain/accounting/connection-settings';
+import { DEFAULT_FINANCIAL_SETTINGS } from 'src/domain/accounting/financial-contract';
 
 describe('base url', () => {
   it('accepts an absolute http address and strips a trailing slash', () => {
@@ -62,6 +63,7 @@ describe('connection settings', () => {
     transportApproved: true,
     specialCodes: { discount: true, duty: false, tax: true },
     taxPolicyMappings: {},
+    financial: DEFAULT_FINANCIAL_SETTINGS,
   };
 
   it('parses a complete non-secret configuration', () => {

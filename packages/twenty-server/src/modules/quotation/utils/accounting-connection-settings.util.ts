@@ -15,6 +15,25 @@ const ACCOUNTING_MONEY_UNITS = ['UNCONFIRMED', 'RIAL', 'TOMAN'] as const;
 
 export type AccountingMoneyUnit = (typeof ACCOUNTING_MONEY_UNITS)[number];
 
+// The closed set of destination contracts the mock adapter can stand in for. Because this is
+// a list, a caller cannot describe a capability that does not exist: they may only name one
+// of these profiles, and the server expands it into the capabilities it stores.
+export const MOCK_PROFILES = ['SIMPLE', 'CODED', 'AMOUNT', 'NO_TAX'] as const;
+
+export type MockProfile = (typeof MOCK_PROFILES)[number];
+
+const CURRENCY_CODE_PATTERN = /^[A-Z]{3}$/;
+const CONVERSION_RATE_PATTERN = /^(0|[1-9]\d*)(\.\d{1,6})?$/;
+const MAX_CURRENCY_MAPPINGS = 40;
+const MAX_CURRENCY_VALUE_LENGTH = 32;
+
+export type AccountingFinancialSettings = {
+  baseCurrency: string;
+  currencyMappings: Record<string, string>;
+  conversionRate: string;
+  mockProfile: MockProfile;
+};
+
 export type AccountingConnectionSettings = {
   baseUrl: string;
   remoteUserId: string;
@@ -27,6 +46,7 @@ export type AccountingConnectionSettings = {
     tax: boolean;
     taxPolicyMappings?: Record<string, string>;
   };
+  financial: AccountingFinancialSettings;
 };
 
 export type ConnectionSettingRefusal = {
@@ -147,15 +167,111 @@ const parseTaxPolicyMappings = (value: unknown): Record<string, string> => {
 
 const normalizeMoneyUnit = (value: unknown): AccountingMoneyUnit =>
   typeof value === 'string' &&
-  (ACCOUNTING_MONEY_UNITS as readonly string[]).includes(value)
+    (ACCOUNTING_MONEY_UNITS as readonly string[]).includes(value)
     ? (value as AccountingMoneyUnit)
     : 'UNCONFIRMED';
+
+const isMockProfile = (value: unknown): value is MockProfile =>
+  typeof value === 'string' && (MOCK_PROFILES as readonly string[]).includes(value);
+
+const parseFinancialSettings = (
+  value: unknown,
+  adapterId: string,
+): ConnectionSettingResult<AccountingFinancialSettings> => {
+  const raw = asRecord(value);
+  const baseCurrency = readString(raw.baseCurrency).toUpperCase();
+
+  if (baseCurrency !== '' && !CURRENCY_CODE_PATTERN.test(baseCurrency)) {
+    return refused(
+      'CURRENCY_BASE_INVALID',
+      'ارز پایه باید یک کد سه‌حرفی مانند IRR باشد',
+    );
+  }
+
+  const mappings: Record<string, string> = {};
+  const rawMappings = asRecord(raw.currencyMappings);
+
+  for (const [key, entry] of Object.entries(rawMappings)) {
+    const code = key.trim().toUpperCase();
+    const vendorValue = readString(entry);
+
+    if (vendorValue === '') {
+      continue;
+    }
+
+    if (!CURRENCY_CODE_PATTERN.test(code)) {
+      return refused(
+        'CURRENCY_CODE_INVALID',
+        'کد ارز CRM باید سه‌حرفی و با حروف بزرگ باشد',
+      );
+    }
+
+    if (vendorValue.length > MAX_CURRENCY_VALUE_LENGTH) {
+      return refused(
+        'CURRENCY_CODE_INVALID',
+        'کد یا نام ارز مقصد بیش از حد بلند است',
+      );
+    }
+
+    if (Object.keys(mappings).length >= MAX_CURRENCY_MAPPINGS) {
+      return refused(
+        'CURRENCY_CODE_INVALID',
+        'تعداد نگاشت‌های ارز بیش از حد مجاز است',
+      );
+    }
+
+    mappings[code] = vendorValue;
+  }
+
+  const conversionRate = readString(raw.conversionRate);
+
+  if (
+    conversionRate !== '' &&
+    (!CONVERSION_RATE_PATTERN.test(conversionRate) ||
+      Number(conversionRate) <= 0)
+  ) {
+    return refused(
+      'CURRENCY_RATE_INVALID',
+      'نرخ تبدیل باید عددی مثبت و دقیق با حداکثر شش رقم اعشار باشد',
+    );
+  }
+
+  // A test profile is only meaningful for the mock adapter. Refusing it for a live adapter
+  // stops a caller from describing a capability the real vendor never declared.
+  const profile = raw.mockProfile;
+
+  if (adapterId !== 'mock' && profile !== undefined && profile !== '') {
+    return refused(
+      'MOCK_PROFILE_NOT_ALLOWED',
+      'حالت آزمایشی فقط برای اتصال آزمایشی قابل انتخاب است',
+    );
+  }
+
+  if (
+    adapterId === 'mock' &&
+    profile !== undefined &&
+    profile !== '' &&
+    !isMockProfile(profile)
+  ) {
+    return refused('MOCK_PROFILE_UNKNOWN', 'حالت آزمایشی انتخاب‌شده وجود ندارد');
+  }
+
+  return accepted({
+    baseCurrency,
+    currencyMappings: mappings,
+    conversionRate,
+    mockProfile: isMockProfile(profile) ? profile : 'SIMPLE',
+  });
+};
 
 // The whole settings object, not a patch: a save replaces the destination's
 // configuration, so a field the operator cleared must clear, not linger.
 export const parseAccountingConnectionSettings = (
   input: unknown,
-  options: { privateDestinationAllowlist?: readonly AllowlistEntry[] } = {},
+  options: {
+    privateDestinationAllowlist?: readonly AllowlistEntry[];
+    adapterId?: string;
+  } = {},
 ): ConnectionSettingResult<AccountingConnectionSettings> => {
   const raw = asRecord(input);
   const baseUrl = parseAccountingBaseUrl(readString(raw.baseUrl));
@@ -205,6 +321,22 @@ export const parseAccountingConnectionSettings = (
   }
 
   const specialCodes = asRecord(raw.specialCodes);
+  // The settings page sends the tax codes at the top level of the settings object, while
+  // records written before this field moved kept them inside `specialCodes`. Reading both
+  // means a code typed today is stored instead of silently dropped, and an older record
+  // still saves without losing what it already had.
+  const taxPolicyMappings = {
+    ...parseTaxPolicyMappings(specialCodes.taxPolicyMappings),
+    ...parseTaxPolicyMappings(raw.taxPolicyMappings),
+  };
+  const financial = parseFinancialSettings(
+    raw.financial,
+    options.adapterId ?? '',
+  );
+
+  if (!financial.ok) {
+    return financial;
+  }
 
   return accepted({
     baseUrl: baseUrl.value,
@@ -216,15 +348,11 @@ export const parseAccountingConnectionSettings = (
       discount: readBoolean(specialCodes.discount, false),
       duty: readBoolean(specialCodes.duty, false),
       tax: readBoolean(specialCodes.tax, false),
-      ...(Object.keys(parseTaxPolicyMappings(specialCodes.taxPolicyMappings))
-        .length === 0
+      ...(Object.keys(taxPolicyMappings).length === 0
         ? {}
-        : {
-            taxPolicyMappings: parseTaxPolicyMappings(
-              specialCodes.taxPolicyMappings,
-            ),
-          }),
+        : { taxPolicyMappings }),
     },
+    financial: financial.value,
   });
 };
 
@@ -239,6 +367,7 @@ export const accountingConnectionColumnsFromSettings = (
   moneyUnit: settings.moneyUnit,
   transportApproved: settings.transportApproved,
   specialCodes: settings.specialCodes,
+  financialSettings: settings.financial,
   // A changed address or unit makes any earlier green check meaningless.
   healthState: 'UNKNOWN',
   lastHealthMessage: 'تنظیمات اتصال تغییر کرد؛ آزمایش اتصال دوباره لازم است.',

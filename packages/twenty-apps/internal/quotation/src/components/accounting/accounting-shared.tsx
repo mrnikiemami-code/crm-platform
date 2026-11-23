@@ -23,6 +23,28 @@ export type AdapterDescriptor = {
   readiness: string;
   summary: string;
   limitations: string[];
+  // Present for an adapter that declares one financial contract. A mock declares `null`
+  // because its contract comes from the profile stored on the connection.
+  taxHandling?: string | null;
+  currencyHandling?: string | null;
+  baseCurrency?: string;
+  requiresSpecialItemCodes?: boolean;
+  testProfiles?: {
+    id: string;
+    label: string;
+    summary: string;
+    taxHandling: string;
+    currencyHandling: string;
+    baseCurrency?: string;
+    requiresSpecialItemCodes?: boolean;
+  }[];
+};
+
+export type ConnectionFinancialSettings = {
+  baseCurrency: string;
+  currencyMappings: Record<string, string>;
+  conversionRate: string;
+  mockProfile: string;
 };
 
 export type ConnectionSettings = {
@@ -33,6 +55,7 @@ export type ConnectionSettings = {
   transportApproved: boolean;
   specialCodes: { discount: boolean; duty: boolean; tax: boolean };
   taxPolicyMappings?: Record<string, string>;
+  financial?: ConnectionFinancialSettings;
 };
 
 export type ConnectionRecord = {
@@ -128,6 +151,13 @@ export type FormState = {
   // `CODE=VENDOR_CODE`, one per line. The CRM policy code is not the vendor's
   // fiscal code; an operator states the mapping explicitly.
   taxPolicyMappingsText: string;
+  // Currency contract of the destination. Under `SINGLE_CURRENCY` only `baseCurrency` is
+  // read; under a code mode only `currencyMappingsText` is read.
+  baseCurrency: string;
+  currencyMappingsText: string;
+  conversionRate: string;
+  // Test-only mock contract. Refused by the server for a live adapter.
+  mockProfile: string;
 };
 
 export const EMPTY_FORM: FormState = {
@@ -143,6 +173,10 @@ export const EMPTY_FORM: FormState = {
   duty: false,
   tax: false,
   taxPolicyMappingsText: '',
+  baseCurrency: 'IRR',
+  currencyMappingsText: '',
+  conversionRate: '',
+  mockProfile: 'SIMPLE',
 };
 
 export const formatTaxPolicyMappingsText = (
@@ -152,9 +186,10 @@ export const formatTaxPolicyMappingsText = (
     .map(([code, vendorCode]) => `${code}=${vendorCode}`)
     .join('\n');
 
-export const parseTaxPolicyMappingsText = (
-  text: string,
-): Record<string, string> => {
+// The same `CODE=VALUE` text shape is used for both mapping editors, so one parser keeps the
+// stored form and the shown form identical. Blank or half-typed lines are dropped rather
+// than stored: a code with no destination value is not a mapping.
+export const parseKeyValueLines = (text: string): Record<string, string> => {
   const mappings: Record<string, string> = {};
 
   for (const line of text.split(/\r?\n/)) {
@@ -175,6 +210,51 @@ export const parseTaxPolicyMappingsText = (
   return mappings;
 };
 
+export const formatKeyValueLines = (
+  mappings: Record<string, string> | undefined,
+): string =>
+  Object.entries(mappings ?? {})
+    .map(([code, vendorCode]) => `${code}=${vendorCode}`)
+    .join('\n');
+
+// Writes one row of a mapping table back into the same text the parser reads, keeping every
+// other row (and any duplicate keys an operator typed) intact.
+export const setMappingRow = (
+  text: string,
+  code: string,
+  vendorValue: string,
+): string => {
+  const next = vendorValue.trim();
+  const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
+  let replaced = false;
+
+  const rewritten = lines.map((line) => {
+    const separatorIndex = line.indexOf('=');
+
+    if (separatorIndex < 0) {
+      return line;
+    }
+
+    if (line.slice(0, separatorIndex).trim() !== code) {
+      return line;
+    }
+
+    replaced = true;
+
+    return next === '' ? '' : `${code}=${next}`;
+  });
+
+  if (!replaced && next !== '') {
+    rewritten.push(`${code}=${next}`);
+  }
+
+  return rewritten.filter((line) => line !== '').join('\n');
+};
+
+export const parseTaxPolicyMappingsText = (
+  text: string,
+): Record<string, string> => parseKeyValueLines(text);
+
 export const DECISION_LABELS: Record<string, string> = {
   CREATE: 'ایجاد در CRM',
   LINK_SUGGESTED: 'پیشنهاد اتصال',
@@ -193,11 +273,180 @@ export const VERIFICATION_LABELS: Record<string, string> = {
   LIVE_VERIFIED: 'فعال و تأییدشده',
 };
 
+// Five honest states, never fewer. A green badge means a real server answered; a mock's
+// success is labelled simulated, and a destination that was configured but never probed says
+// so instead of borrowing the word "connected".
+export const CONNECTION_HEALTH_STATES = [
+  'MOCK',
+  'CONFIGURED_NOT_TESTED',
+  'LIVE_VERIFIED',
+  'FAILED',
+  'INCOMPLETE',
+] as const;
+
+export type ConnectionHealthState = (typeof CONNECTION_HEALTH_STATES)[number];
+
+export const CONNECTION_HEALTH_LABELS: Record<ConnectionHealthState, string> = {
+  MOCK: 'آزمایشی — Mock',
+  CONFIGURED_NOT_TESTED: 'تنظیم‌شده، بررسی‌نشده',
+  LIVE_VERIFIED: 'اتصال واقعی تأییدشده',
+  FAILED: 'ارتباط برقرار نشد',
+  INCOMPLETE: 'تنظیمات ناقص',
+};
+
+export const isLiveConnectionConfigured = (
+  settings: ConnectionSettings,
+): boolean =>
+  settings.baseUrl.trim() !== '' && settings.moneyUnit !== 'UNCONFIRMED';
+
+export const connectionHealthState = (
+  connection: Pick<
+    ConnectionRecord,
+    'adapterId' | 'healthState' | 'verificationState' | 'settings'
+  >,
+): ConnectionHealthState => {
+  if (connection.adapterId === 'mock' || connection.verificationState === 'MOCK') {
+    return 'MOCK';
+  }
+
+  if (!isLiveConnectionConfigured(connection.settings)) {
+    return 'INCOMPLETE';
+  }
+
+  if (connection.healthState === 'FAILED') {
+    return 'FAILED';
+  }
+
+  if (
+    connection.healthState === 'OK' &&
+    connection.verificationState === 'LIVE_VERIFIED'
+  ) {
+    return 'LIVE_VERIFIED';
+  }
+
+  return 'CONFIGURED_NOT_TESTED';
+};
+
 export const HEALTH_LABELS: Record<string, string> = {
   UNKNOWN: 'آزمایش نشده',
   OK: 'پاسخ داد',
   FAILED: 'بی‌پاسخ',
 };
+
+// What the destination reads, resolved from the server-provided descriptor. The screen must
+// never decide this itself: a UI that guessed "this vendor takes a rate" would hide the
+// fiscal code the vendor actually needs.
+export type FinancialModes = {
+  taxHandling: string;
+  currencyHandling: string;
+  baseCurrency: string;
+  // Whether this destination identifies tax and discount by pre-existing item-row codes.
+  // A rate/amount destination has no such row, so the panel must not ask for its code.
+  requiresSpecialItemCodes: boolean;
+};
+
+export const resolveFinancialModes = ({
+  adapterId,
+  adapters,
+  financial,
+}: {
+  adapterId: string;
+  adapters: AdapterDescriptor[];
+  financial: ConnectionFinancialSettings | undefined;
+}): FinancialModes => {
+  const descriptor = adapters.find((entry) => entry.id === adapterId) ?? null;
+
+  if (
+    descriptor !== null &&
+    typeof descriptor.taxHandling === 'string' &&
+    typeof descriptor.currencyHandling === 'string'
+  ) {
+    return {
+      taxHandling: descriptor.taxHandling,
+      currencyHandling: descriptor.currencyHandling,
+      baseCurrency: descriptor.baseCurrency ?? 'IRR',
+      requiresSpecialItemCodes: descriptor.requiresSpecialItemCodes === true,
+    };
+  }
+
+  const profile =
+    descriptor?.testProfiles?.find(
+      (entry) => entry.id === (financial?.mockProfile ?? ''),
+    ) ??
+    descriptor?.testProfiles?.[0] ??
+    null;
+
+  if (profile !== null && profile !== undefined) {
+    return {
+      taxHandling: profile.taxHandling,
+      currencyHandling: profile.currencyHandling,
+      baseCurrency: profile.baseCurrency ?? 'IRR',
+      requiresSpecialItemCodes: profile.requiresSpecialItemCodes === true,
+    };
+  }
+
+  // Nothing declared: the same fail-closed reading the domain uses.
+  return {
+    taxHandling: 'UNSUPPORTED',
+    currencyHandling: 'SINGLE_CURRENCY',
+    baseCurrency: 'IRR',
+    requiresSpecialItemCodes: false,
+  };
+};
+
+export const TAX_MODE_NEEDS_CODE = (mode: string): boolean =>
+  mode === 'TAX_CODE' || mode === 'TAX_CODE_AND_AMOUNT';
+
+export const TAX_MODE_LABELS: Record<string, string> = {
+  TAX_RATE: 'فقط نرخ مالیات',
+  TAX_AMOUNT: 'فقط مبلغ مالیات',
+  TAX_CODE: 'فقط کد مالیات',
+  TAX_CODE_AND_AMOUNT: 'کد و مبلغ مالیات',
+  UNSUPPORTED: 'بدون پشتیبانی مالیات',
+};
+
+export const CURRENCY_MODE_LABELS: Record<string, string> = {
+  SINGLE_CURRENCY: 'تک‌ارزی، بدون کد ارز',
+  CURRENCY_CODE: 'کد ارز',
+  CURRENCY_NAME: 'نام ارز',
+  CURRENCY_CODE_AND_RATE: 'کد ارز و نرخ تبدیل',
+  UNSUPPORTED: 'قرارداد ارزی نامشخص',
+};
+
+// The CRM's own currency codes. The quotation domain currently issues rial only; the list
+// exists so an operator can state the mapping for a code the destination will see later, and
+// an unknown code can still be added by typing it.
+export const CRM_CURRENCY_CODES = ['IRR', 'USD', 'EUR'] as const;
+
+export type TaxPolicyView = {
+  code: string;
+  name: string;
+  ratePercent: string;
+  isActive: boolean;
+  isDefault: boolean;
+  isExempt: boolean;
+};
+
+export const readTaxPolicies = (value: unknown): TaxPolicyView[] =>
+  readRows(value).flatMap((row) => {
+    const code = readString(row.code);
+    const name = readString(row.name);
+
+    if (code === '') {
+      return [];
+    }
+
+    return [
+      {
+        code,
+        name: name === '' ? code : name,
+        ratePercent: readString(row.ratePercent),
+        isActive: row.isActive !== false,
+        isDefault: row.isDefault === true,
+        isExempt: row.isExempt === true,
+      },
+    ];
+  });
 
 export const OPERATION_STATE_LABELS: Record<string, string> = {
   PENDING: 'در انتظار',
@@ -254,8 +503,9 @@ export const DOCUMENT_CHECK_LABELS: Record<string, string> = {
   CUSTOMER_LINKED: 'نگاشت مشتری به مقصد',
   PROFORMA_CAPABILITY: 'قابلیت ثبت پیش‌فاکتور در مقصد',
   DISCOUNT_CODE_PRESENT: 'کد ویژهٔ تخفیف',
-  TAX_CODE_PRESENT: 'کد ویژهٔ مالیات',
+  TAX_CODE_PRESENT: 'کد ویژهٔ ردیف مالیات',
   TAX_POLICY_MAPPED: 'نگاشت سیاست مالیات به کد مقصد',
+  CURRENCY_MAPPING: 'قرارداد ارز مقصد (ارز پایه یا کد ارز)',
   ALL_LINES_LINKED: 'نگاشت همهٔ ردیف‌ها به کالای مقصد',
 };
 
@@ -272,6 +522,20 @@ export const DOCUMENT_ERROR_LABELS: Record<string, string> = {
   AMOUNT_NOT_WHOLE_UNIT:
     'مبلغ ردیف به واحد صحیح مقصد تبدیل نمی‌شود و گردکردن آن مجاز نیست.',
   TAX_POLICY_NOT_MAPPED: 'سیاست مالیات سند به کد مالیات مقصد نگاشت نشده است.',
+  TAX_UNSUPPORTED:
+    'این مقصد امکان ثبت مالیات را ندارد؛ سند دارای مالیات ارسال نمی‌شود تا مالیات حذف‌شده ثبت نشود.',
+  CURRENCY_UNSUPPORTED:
+    'قرارداد ارزی این مقصد مشخص نیست؛ ارز سند قابل اثبات نیست.',
+  CURRENCY_BASE_UNCONFIRMED:
+    'ارز پایهٔ مقصد تأیید نشده است؛ در تنظیمات اتصال آن را مشخص کنید.',
+  CURRENCY_CODE_MAPPING_REQUIRED:
+    'کد ارز این سند در مقصد تعریف نشده است؛ در تنظیمات اتصال نگاشت ارز را وارد کنید.',
+  CURRENCY_NAME_MAPPING_REQUIRED:
+    'نام ارز این سند در مقصد تعریف نشده است؛ در تنظیمات اتصال آن را وارد کنید.',
+  CURRENCY_RATE_REQUIRED:
+    'نرخ تبدیل معتبر برای این ارز در تنظیمات اتصال ثبت نشده است.',
+  SPECIAL_CODE_NOT_CONFIGURED:
+    'کد ویژهٔ ردیف مالیات یا تخفیف در این اتصال تنظیم نشده است.',
 };
 
 
@@ -318,6 +582,12 @@ export const toForm = (connection: ConnectionRecord): FormState => ({
   taxPolicyMappingsText: formatTaxPolicyMappingsText(
     connection.settings.taxPolicyMappings,
   ),
+  baseCurrency: connection.settings.financial?.baseCurrency ?? 'IRR',
+  currencyMappingsText: formatKeyValueLines(
+    connection.settings.financial?.currencyMappings,
+  ),
+  conversionRate: connection.settings.financial?.conversionRate ?? '',
+  mockProfile: connection.settings.financial?.mockProfile ?? 'SIMPLE',
 });
 
 export const parsePanelData = (data: Record<string, unknown>): PanelData => ({

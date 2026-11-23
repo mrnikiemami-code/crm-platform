@@ -43,6 +43,9 @@ const FULL: AdapterCapabilities = {
   },
   requiresSpecialItemCodes: false,
   transportIsSecure: true,
+  taxHandling: 'TAX_RATE',
+  currencyHandling: 'SINGLE_CURRENCY',
+  baseCurrency: 'IRR',
   readStrategy: 'REMOTE_PAGED',
 };
 

@@ -1,7 +1,17 @@
 import {
   type ConnectionSettings,
 } from 'src/domain/accounting/adapter-contract';
-import { type AdapterCapabilities } from 'src/domain/accounting/capabilities';
+import {
+  type AdapterCapabilities,
+  currencyModeNeedsRate,
+  taxModeNeedsVendorCode,
+} from 'src/domain/accounting/capabilities';
+import {
+  checkFinancialRequirements,
+  CURRENCY_CODE_PATTERN,
+  financialSettingsFromRecord,
+  isConversionRateUsable,
+} from 'src/domain/accounting/financial-contract';
 import {
   type AsanFactorViewModel,
   mapRevisionToAsanFactor,
@@ -103,8 +113,30 @@ export const buildQuotationDocumentPreview = (
   const hasDiscount = amountIsPositive(discountTotal);
   const taxPolicyCode = (revision?.taxPolicy ?? '').trim();
   const taxVendorCode = settings.taxPolicyMappings[taxPolicyCode] ?? '';
-  const taxPolicyMapped =
-    !hasTax || (taxPolicyCode !== '' && taxVendorCode.trim() !== '');
+  const financial = financialSettingsFromRecord(settings.financial);
+  const documentCurrencyCode = (revision?.currencyCode ?? '').trim();
+
+  // What the destination declared decides what has to be true. A rate/amount destination
+  // needs no fiscal code, and a single-currency destination needs no currency code, so the
+  // preview must not mark either of those as missing.
+  const currencyVendorValue = (
+    financial.currencyMappings[documentCurrencyCode] ?? ''
+  ).trim();
+  const currencyReady =
+    capabilities.currencyHandling === 'SINGLE_CURRENCY'
+      ? CURRENCY_CODE_PATTERN.test(financial.baseCurrency)
+      : capabilities.currencyHandling === 'UNSUPPORTED'
+        ? false
+        : currencyVendorValue !== '' &&
+          (!currencyModeNeedsRate(capabilities.currencyHandling) ||
+            documentCurrencyCode === financial.baseCurrency ||
+            isConversionRateUsable(financial.conversionRate));
+
+  const taxReady =
+    !hasTax ||
+    (capabilities.taxHandling !== 'UNSUPPORTED' &&
+      (!taxModeNeedsVendorCode(capabilities.taxHandling) ||
+        (taxPolicyCode !== '' && taxVendorCode.trim() !== '')));
 
   const checks = [
     { code: 'OUTBOUND_ENABLED', ok: flags.outboundEnabled },
@@ -128,8 +160,15 @@ export const buildQuotationDocumentPreview = (
       ok: capabilities.documents.createProforma,
     },
     { code: 'DISCOUNT_CODE_PRESENT', ok: !hasDiscount || settings.specialCodes.discount },
-    { code: 'TAX_CODE_PRESENT', ok: !hasTax || settings.specialCodes.tax },
-    { code: 'TAX_POLICY_MAPPED', ok: taxPolicyMapped },
+    {
+      code: 'TAX_CODE_PRESENT',
+      ok:
+        !hasTax ||
+        !capabilities.requiresSpecialItemCodes ||
+        settings.specialCodes.tax,
+    },
+    { code: 'TAX_POLICY_MAPPED', ok: taxReady },
+    { code: 'CURRENCY_MAPPING', ok: currencyReady },
     {
       code: 'ALL_LINES_LINKED',
       ok:
@@ -184,6 +223,30 @@ export const buildQuotationDocumentPreview = (
       ...base,
       document: null,
       documentError: { code: 'MONEY_UNIT_UNCONFIRMED', detail: '' },
+    };
+  }
+
+  // The same gate the dispatcher uses, so the preview cannot promise a document the send
+  // path would refuse — and cannot refuse one the destination is perfectly able to take.
+  const financialGate = checkFinancialRequirements({
+    capabilities,
+    financial,
+    taxPolicyMappings: settings.taxPolicyMappings,
+    document: {
+      taxPolicyCode,
+      hasTax,
+      currencyCode: documentCurrencyCode,
+    },
+  });
+
+  if (!financialGate.ok) {
+    return {
+      ...base,
+      document: null,
+      documentError: {
+        code: financialGate.refusal.code,
+        detail: financialGate.refusal.detail,
+      },
     };
   }
 

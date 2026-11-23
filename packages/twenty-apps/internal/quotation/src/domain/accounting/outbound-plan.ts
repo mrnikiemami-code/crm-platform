@@ -14,6 +14,10 @@ import {
   type AccountingSyncOperation,
 } from 'src/domain/accounting/sync-operation';
 import { hasRemoteVersionDrifted } from 'src/domain/catalog/item-link';
+import {
+  checkFinancialRequirements,
+  financialSettingsFromRecord,
+} from 'src/domain/accounting/financial-contract';
 import { parseMicrosExact } from 'src/domain/money/micros';
 import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 
@@ -404,6 +408,32 @@ export const planQuotationExport = (
     );
   }
 
+  const snapshot = input.revision.snapshot;
+
+  // One gate for the financial contract of this destination. It answers only what the
+  // adapter declared: a single-currency destination is never asked for a currency code, a
+  // rate/amount tax destination is never asked for a fiscal code, and a destination with no
+  // tax contract refuses a taxed document instead of sending it without its tax.
+  const documentTax = parseMicrosExact(snapshot.totals.taxMicros);
+  const financialGate = checkFinancialRequirements({
+    capabilities: input.capabilities,
+    financial: financialSettingsFromRecord(input.settings.financial),
+    taxPolicyMappings: input.settings.taxPolicyMappings,
+    document: {
+      taxPolicyCode: snapshot.taxPolicy ?? '',
+      hasTax: documentTax.ok && documentTax.value > 0n,
+      currencyCode: input.quotation.currencyCode,
+    },
+  });
+
+  if (!financialGate.ok) {
+    return block(
+      financialGate.refusal.code,
+      financialGate.refusal.detail,
+      operationId,
+    );
+  }
+
   if (input.customerExternalId === null || input.customerExternalId.trim() === '') {
     return block(
       'CUSTOMER_NOT_LINKED',
@@ -419,8 +449,6 @@ export const planQuotationExport = (
       operationId,
     );
   }
-
-  const snapshot = input.revision.snapshot;
 
   if (snapshot.quotationId !== input.quotation.id) {
     return block(
@@ -479,32 +507,19 @@ export const planQuotationExport = (
     );
   }
 
-  if (tax.value > 0n && !input.settings.specialCodes.tax) {
+  // A destination that models tax/discount as pre-existing item codes needs those codes
+  // declared; one that carries tax as a field on a normal line does not. The financial gate
+  // above already decided whether a code or a mapping is required at all.
+  if (
+    input.capabilities.requiresSpecialItemCodes &&
+    tax.value > 0n &&
+    !input.settings.specialCodes.tax
+  ) {
     return block(
       'SPECIAL_CODE_NOT_CONFIGURED',
       'the document carries tax but the vendor tax special code is not configured',
       operationId,
     );
-  }
-
-  // The CRM's policy code and the vendor's fiscal tax code are not the same
-  // identifier, so the document is refused until an operator maps this policy to
-  // the vendor's own code. Exempt (zero-tax) documents need no mapping.
-  if (tax.value > 0n) {
-    const policyCode = (snapshot.taxPolicy ?? '').trim();
-    const vendorTaxCode = input.settings.taxPolicyMappings[policyCode];
-
-    if (
-      policyCode === '' ||
-      vendorTaxCode === undefined ||
-      vendorTaxCode.trim() === ''
-    ) {
-      return block(
-        'TAX_POLICY_NOT_MAPPED',
-        `tax policy "${policyCode}" has no vendor tax code mapping`,
-        operationId,
-      );
-    }
   }
 
   const requiresReconciliationBeforeRetry =

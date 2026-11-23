@@ -7,10 +7,23 @@ import {
 } from 'src/domain/accounting/adapter-contract';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 import {
-  AsanHttpAdapter,
   type AsanFetch,
+  AsanHttpAdapter,
 } from 'src/domain/accounting/adapters/asan/asan-http-adapter';
 import { MockAccountingAdapter } from 'src/domain/accounting/adapters/mock/mock-adapter';
+import {
+  DEFAULT_MOCK_PROFILE,
+  isMockProfile,
+  MOCK_PROFILE_DESCRIPTIONS,
+  MOCK_PROFILES,
+  mockProfileCapabilities,
+} from 'src/domain/accounting/adapters/mock/mock-profiles';
+import {
+  isCurrencyHandlingMode,
+  isTaxHandlingMode,
+  type CurrencyHandlingMode,
+  type TaxHandlingMode,
+} from 'src/domain/accounting/capabilities';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // What the connection panel can offer, and what each choice honestly is. `LIVE_UNVERIFIED`
@@ -29,6 +42,25 @@ export type AdapterDescriptor = {
   readiness: AdapterReadiness;
   summary: string;
   limitations: readonly string[];
+  // What this destination reads for tax and currency, so the panel can render the fields
+  // that exist instead of asking for ones the vendor never reads. `null` for the mock
+  // because a mock connection carries its own profile; a real adapter declares one contract.
+  taxHandling: TaxHandlingMode | null;
+  currencyHandling: CurrencyHandlingMode | null;
+  baseCurrency: string;
+  // Whether tax and discount travel as their own pre-existing item rows. The panel asks for
+  // the row code only when this is true; a vendor with real fields must not be asked.
+  requiresSpecialItemCodes: boolean;
+  // The closed set of destinations this adapter can stand in for. Empty for a real vendor.
+  testProfiles: readonly {
+    id: string;
+    label: string;
+    summary: string;
+    taxHandling: TaxHandlingMode;
+    currencyHandling: CurrencyHandlingMode;
+    baseCurrency?: string;
+    requiresSpecialItemCodes: boolean;
+  }[];
 };
 
 export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
@@ -48,7 +80,14 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
       'آسان شمارهٔ سند را خودش تخصیص می‌دهد و کلید Idempotency ندارد؛ تلاش دوباره پس از خطای نامشخص نیازمند بررسی دستی است.',
       'مستندات آسان انتقال امن یا احراز هویت ندارد؛ تا تأیید تونل، ارسال انجام نمی‌شود.',
       'واحد مبلغ (ریال/تومان) در مستندات مشخص نیست و باید توسط حسابدار تأیید شود.',
+      'مالیات در آسان یک ردیف کد ویژه است: هم کد ردیف مالیات و هم مبلغ آن لازم است؛ نرخ مالیات از سیاست CRM خوانده می‌شود و به آسان فرستاده نمی‌شود.',
+      'آسان کد ارز ندارد و همه مبالغ را به یک ارز ثبت می‌کند؛ کد ارز از کاربر خواسته نمی‌شود.',
     ],
+    taxHandling: ASAN_CAPABILITIES.taxHandling,
+    currencyHandling: ASAN_CAPABILITIES.currencyHandling,
+    baseCurrency: ASAN_CAPABILITIES.baseCurrency,
+    requiresSpecialItemCodes: ASAN_CAPABILITIES.requiresSpecialItemCodes,
+    testProfiles: [],
   },
   {
     id: 'mock',
@@ -64,8 +103,68 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
       'داده‌ها ثابت و در حافظه است؛ نتیجه برای آزمون است، نه حسابداری واقعی.',
       'پاسخ‌های آسان را شبیه‌سازی نمی‌کند؛ قرارداد پاسخ آسان جداگانه آزمون می‌شود.',
     ],
+    taxHandling: null,
+    currencyHandling: null,
+    baseCurrency: '',
+    requiresSpecialItemCodes: ASAN_CAPABILITIES.requiresSpecialItemCodes,
+    testProfiles: MOCK_PROFILES.map((profile) => ({
+      id: profile,
+      label: MOCK_PROFILE_DESCRIPTIONS[profile].label,
+      summary: MOCK_PROFILE_DESCRIPTIONS[profile].summary,
+      taxHandling: MOCK_PROFILE_DESCRIPTIONS[profile].tax,
+      currencyHandling: MOCK_PROFILE_DESCRIPTIONS[profile].currency,
+      baseCurrency:
+        mockProfileCapabilities(profile).baseCurrency,
+      requiresSpecialItemCodes:
+        mockProfileCapabilities(profile).requiresSpecialItemCodes,
+    })),
   },
 ];
+
+// The financial contract a connection actually has. A stored capability wins for a real
+// adapter (it is the evidence of what was configured); a mock reads its profile, because the
+// profile is the thing that decides which contract it stands in for.
+export const financialModesFor = (
+  adapterId: string,
+  options: { profile?: unknown; capabilities?: unknown } = {},
+): { taxHandling: TaxHandlingMode; currencyHandling: CurrencyHandlingMode; baseCurrency: string } => {
+  const stored = options.capabilities;
+
+  if (
+    stored !== null &&
+    typeof stored === 'object' &&
+    isTaxHandlingMode((stored as Record<string, unknown>).taxHandling) &&
+    isCurrencyHandlingMode((stored as Record<string, unknown>).currencyHandling)
+  ) {
+    const record = stored as Record<string, unknown>;
+
+    return {
+      taxHandling: record.taxHandling as TaxHandlingMode,
+      currencyHandling: record.currencyHandling as CurrencyHandlingMode,
+      baseCurrency:
+        typeof record.baseCurrency === 'string' ? record.baseCurrency : '',
+    };
+  }
+
+  if (adapterId === 'mock') {
+    const profile = isMockProfile(options.profile)
+      ? options.profile
+      : DEFAULT_MOCK_PROFILE;
+    const capabilities = mockProfileCapabilities(profile);
+
+    return {
+      taxHandling: capabilities.taxHandling,
+      currencyHandling: capabilities.currencyHandling,
+      baseCurrency: capabilities.baseCurrency,
+    };
+  }
+
+  return {
+    taxHandling: ASAN_CAPABILITIES.taxHandling,
+    currencyHandling: ASAN_CAPABILITIES.currencyHandling,
+    baseCurrency: ASAN_CAPABILITIES.baseCurrency,
+  };
+};
 
 export const findAdapterDescriptor = (
   adapterId: string,
@@ -94,7 +193,12 @@ export const createAccountingAdapter = (
   }
 
   if (input.adapterId === 'mock') {
-    return accepted(input.mock ?? new MockAccountingAdapter());
+    return accepted(
+      input.mock ??
+        new MockAccountingAdapter({
+          profile: input.settings.financial?.mockProfile,
+        }),
+    );
   }
 
   if (input.settings.baseUrl.trim() === '') {
@@ -124,10 +228,26 @@ export const createAccountingAdapter = (
 // the update scope is spelled out because "can update" plus "only prices" is the difference
 // between a published rename and a lie.
 export type CapabilityRow = {
-  area: 'items' | 'parties' | 'documents' | 'transport';
+  area: 'items' | 'parties' | 'documents' | 'financial' | 'transport';
   key: string;
   label: string;
   value: string;
+};
+
+export const TAX_HANDLING_LABELS: Record<TaxHandlingMode, string> = {
+  TAX_RATE: 'فقط نرخ مالیات',
+  TAX_AMOUNT: 'فقط مبلغ مالیات',
+  TAX_CODE: 'فقط کد مالیات',
+  TAX_CODE_AND_AMOUNT: 'کد و مبلغ مالیات',
+  UNSUPPORTED: 'بدون پشتیبانی مالیات',
+};
+
+export const CURRENCY_HANDLING_LABELS: Record<CurrencyHandlingMode, string> = {
+  SINGLE_CURRENCY: 'تک‌ارزی (بدون کد ارز)',
+  CURRENCY_CODE: 'کد ارز',
+  CURRENCY_NAME: 'نام ارز',
+  CURRENCY_CODE_AND_RATE: 'کد ارز و نرخ تبدیل',
+  UNSUPPORTED: 'قرارداد ارزی نامشخص',
 };
 
 export const describeCapabilities = (
@@ -179,6 +299,24 @@ export const describeCapabilities = (
       key: 'readById',
       label: 'خواندن سند با شناسه',
       value: yesNo(capabilities.documents.readById),
+    },
+    {
+      area: 'financial',
+      key: 'taxHandling',
+      label: 'قرارداد مالیات مقصد',
+      value: TAX_HANDLING_LABELS[capabilities.taxHandling],
+    },
+    {
+      area: 'financial',
+      key: 'currencyHandling',
+      label: 'قرارداد ارز مقصد',
+      value: CURRENCY_HANDLING_LABELS[capabilities.currencyHandling],
+    },
+    {
+      area: 'financial',
+      key: 'baseCurrency',
+      label: 'ارز پایهٔ مقصد',
+      value: capabilities.baseCurrency === '' ? 'کد ارز لازم است' : capabilities.baseCurrency,
     },
     {
       area: 'transport',

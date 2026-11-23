@@ -172,6 +172,7 @@ export const ACCOUNTING_CONNECTION_FIELDS = {
   moneyUnit: '3df81b24-6e49-5153-bca4-9d2e5f708114',
   transportApproved: '4e092c35-7f5a-5264-8db5-ae3f60918225',
   specialCodes: '5f1a3d46-806b-5375-9ec6-bf4071a29336',
+  financialSettings: '7137790e-fa08-4287-b6d5-39840552779f',
   healthState: '602b4e57-917c-5486-8fd7-c05182b3a447',
   lastHealthMessage: '713c5f68-a28d-5597-9ae8-d16293c4b558',
   verificationState: '824d6079-b39e-56a8-8bf9-e273a4d5c669',

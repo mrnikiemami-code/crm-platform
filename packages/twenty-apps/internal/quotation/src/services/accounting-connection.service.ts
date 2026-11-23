@@ -266,7 +266,11 @@ const parseServerConnectionView = (
     adapterId: readString(row?.adapterId),
     adapterVersion: readString(row?.adapterVersion) || null,
     isActive: readBoolean(row?.isActive, true),
-    settings: connectionSettingsFromRecord(row),
+    // The server view nests the settings under `settings`; the reader below expects them on
+    // the record it is given, so it gets that node rather than the envelope. Handing it the
+    // envelope made every save read back as "unit unconfirmed, no address, default profile",
+    // which looked like the settings never persisted.
+    settings: connectionSettingsFromRecord(asRecord(row?.settings) ?? row),
     capabilities: row?.capabilities ?? null,
     healthState: readString(row?.healthState) || 'UNKNOWN',
     lastHealthCheckAt: readString(row?.lastHealthCheckAt) || null,
@@ -336,7 +340,9 @@ export const saveConnectionThroughServer = async (
     return refused('ADAPTER_UNKNOWN', 'نرم‌افزار انتخاب‌شده آداپتور عملیاتی ندارد');
   }
 
-  const settings = parseConnectionSettings(input.settings);
+  const settings = parseConnectionSettings(input.settings, {
+    adapterId: descriptor.id,
+  });
 
   if (!settings.ok) {
     return settings;

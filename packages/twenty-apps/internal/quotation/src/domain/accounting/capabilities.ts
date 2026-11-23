@@ -90,10 +90,82 @@ export type AdapterCapabilities = {
   // Whether the vendor needs pre-existing special item codes (a discount line, a tax line)
   // rather than accepting tax and discount as fields on a normal line.
   requiresSpecialItemCodes: boolean;
+  // What the destination's documented contract can carry for tax and for currency. Declared
+  // per adapter, never read from a caller: a panel that could claim "this vendor takes a
+  // rate" would silently drop the fiscal code the vendor actually needs.
+  taxHandling: TaxHandlingMode;
+  currencyHandling: CurrencyHandlingMode;
+  // The currency the destination books in when `currencyHandling` is `SINGLE_CURRENCY`.
+  // Empty for adapters that take a code; there is nothing to declare.
+  baseCurrency: string;
   // Whether the transport itself provides confidentiality. False means the connector needs
   // an approved tunnel, because credentials would otherwise cross a network in clear text.
   transportIsSecure: boolean;
 };
+
+// How a destination wants tax expressed. These are five different contracts, not a
+// preference: a vendor that takes a rate has no field for a fiscal code, and a vendor that
+// takes a code will post the wrong tax if a rate is sent in its place.
+//
+//   TAX_RATE             the destination expects a percentage and computes the amount itself
+//   TAX_AMOUNT           the destination expects the already-computed tax amount
+//   TAX_CODE             the destination expects its own fiscal tax code and no amount
+//   TAX_CODE_AND_AMOUNT  the destination needs both the code and the amount
+//   UNSUPPORTED          the documented contract cannot carry this document's tax at all
+export const TAX_HANDLING_MODES = [
+  'TAX_RATE',
+  'TAX_AMOUNT',
+  'TAX_CODE',
+  'TAX_CODE_AND_AMOUNT',
+  'UNSUPPORTED',
+] as const;
+
+export type TaxHandlingMode = (typeof TAX_HANDLING_MODES)[number];
+
+export const isTaxHandlingMode = (value: unknown): value is TaxHandlingMode =>
+  typeof value === 'string' &&
+  (TAX_HANDLING_MODES as readonly string[]).includes(value);
+
+// How a destination wants the document currency expressed. Under `SINGLE_CURRENCY` the
+// destination books everything in one currency and has no field for a code, so asking an
+// accountant to type one would invent a requirement the vendor never had.
+export const CURRENCY_HANDLING_MODES = [
+  'SINGLE_CURRENCY',
+  'CURRENCY_CODE',
+  'CURRENCY_NAME',
+  'CURRENCY_CODE_AND_RATE',
+  'UNSUPPORTED',
+] as const;
+
+export type CurrencyHandlingMode = (typeof CURRENCY_HANDLING_MODES)[number];
+
+export const isCurrencyHandlingMode = (
+  value: unknown,
+): value is CurrencyHandlingMode =>
+  typeof value === 'string' &&
+  (CURRENCY_HANDLING_MODES as readonly string[]).includes(value);
+
+// True when the destination identifies tax by its own code, so a CRM tax policy must be
+// mapped to a vendor code before a taxed document can travel. A rate or amount destination
+// reads the rate/amount from the document and must NOT be forced to invent a code.
+export const taxModeNeedsVendorCode = (mode: TaxHandlingMode): boolean =>
+  mode === 'TAX_CODE' || mode === 'TAX_CODE_AND_AMOUNT';
+
+export const taxModeNeedsAmount = (mode: TaxHandlingMode): boolean =>
+  mode === 'TAX_AMOUNT' || mode === 'TAX_CODE_AND_AMOUNT';
+
+export const taxModeNeedsRate = (mode: TaxHandlingMode): boolean =>
+  mode === 'TAX_RATE';
+
+export const currencyModeNeedsVendorValue = (
+  mode: CurrencyHandlingMode,
+): boolean =>
+  mode === 'CURRENCY_CODE' ||
+  mode === 'CURRENCY_NAME' ||
+  mode === 'CURRENCY_CODE_AND_RATE';
+
+export const currencyModeNeedsRate = (mode: CurrencyHandlingMode): boolean =>
+  mode === 'CURRENCY_CODE_AND_RATE';
 
 export const NO_CAPABILITIES: AdapterCapabilities = {
   items: {
@@ -125,6 +197,12 @@ export const NO_CAPABILITIES: AdapterCapabilities = {
   },
   requiresSpecialItemCodes: true,
   transportIsSecure: false,
+  // An adapter that declares no financial contract cannot receive tax or a currency code.
+  // Fail closed: without a declaration, a taxed document is refused rather than sent
+  // without its tax.
+  taxHandling: 'UNSUPPORTED',
+  currencyHandling: 'SINGLE_CURRENCY',
+  baseCurrency: '',
   // The conservative default: an adapter that declares nothing is ingested through the
   // bounded snapshot path rather than trusted to page.
   readStrategy: 'REMOTE_UNPAGED',

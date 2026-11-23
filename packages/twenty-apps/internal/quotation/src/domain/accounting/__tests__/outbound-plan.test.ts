@@ -41,6 +41,9 @@ const FULL: AdapterCapabilities = {
   },
   requiresSpecialItemCodes: false,
   transportIsSecure: true,
+  taxHandling: 'TAX_RATE',
+  currencyHandling: 'SINGLE_CURRENCY',
+  baseCurrency: 'IRR',
   readStrategy: 'REMOTE_PAGED',
 };
 
@@ -329,10 +332,49 @@ describe('quotation export gate', () => {
     ).toMatchObject({ kind: 'BLOCKED', code: 'MONEY_UNIT_UNCONFIRMED' });
   });
 
-  it('blocks a taxed document whose policy has no vendor tax code', () => {
+  it('does not ask a rate destination for a fiscal code', () => {
     expect(
       planQuotationExport(
         exportInput({ settings: settings({ taxPolicyMappings: {} }) }),
+      ),
+    ).toMatchObject({ kind: 'READY' });
+  });
+
+  it('refuses a taxed document when the destination has no tax contract', () => {
+    expect(
+      planQuotationExport(
+        exportInput({ capabilities: { ...FULL, taxHandling: 'UNSUPPORTED' } }),
+      ),
+    ).toMatchObject({ kind: 'BLOCKED', code: 'TAX_UNSUPPORTED' });
+  });
+
+  it('does not ask a single-currency destination for a currency code', () => {
+    expect(
+      planQuotationExport(
+        exportInput({
+          capabilities: { ...FULL, currencyHandling: 'SINGLE_CURRENCY' },
+          settings: settings({ financial: { ...settings().financial!, currencyMappings: {} } }),
+        }),
+      ),
+    ).toMatchObject({ kind: 'READY' });
+  });
+
+  it('blocks a code-based destination until the document currency is mapped', () => {
+    expect(
+      planQuotationExport(
+        exportInput({ capabilities: { ...FULL, currencyHandling: 'CURRENCY_CODE' } }),
+      ),
+    ).toMatchObject({ kind: 'BLOCKED', code: 'CURRENCY_CODE_MAPPING_REQUIRED' });
+  });
+
+  it('blocks a taxed document whose policy has no vendor tax code', () => {
+    expect(
+      planQuotationExport(
+        exportInput({
+          // A code-based destination is the only one that can miss a fiscal mapping.
+          capabilities: { ...FULL, taxHandling: 'TAX_CODE' },
+          settings: settings({ taxPolicyMappings: {} }),
+        }),
       ),
     ).toMatchObject({ kind: 'BLOCKED', code: 'TAX_POLICY_NOT_MAPPED' });
   });
@@ -341,6 +383,7 @@ describe('quotation export gate', () => {
     expect(
       planQuotationExport(
         exportInput({
+          capabilities: { ...FULL, taxHandling: 'TAX_CODE' },
           settings: settings({ taxPolicyMappings: { TAX_1000: '999142' } }),
         }),
       ),

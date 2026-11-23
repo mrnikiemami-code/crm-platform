@@ -1,4 +1,8 @@
-import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
+import {
+  DEFAULT_MOCK_PROFILE,
+  mockProfileCapabilities,
+  type MockProfile,
+} from 'src/domain/accounting/adapters/mock/mock-profiles';
 import {
   ACCOUNTING_ADAPTER_CONTRACT_VERSION,
   type AccountingAdapter,
@@ -37,6 +41,9 @@ export type MockAdapterConfig = {
   items?: RemoteCatalogItem[];
   parties?: RemoteParty[];
   readStrategy?: RemoteReadStrategy;
+  // Which destination contract this mock stands in for. Defaults to the simple contract so
+  // the default mock never pretends to need a code its "vendor" does not read.
+  profile?: MockProfile;
   // Forces every write to fail so retry and failure paths can be exercised.
   refuseWrites?: boolean;
   now?: () => Date;
@@ -48,8 +55,9 @@ const DEFAULT_PARTIES: RemoteParty[] = MOCK_PARTIES;
 
 const mockCapabilities = (
   readStrategy: RemoteReadStrategy,
+  profile: MockProfile,
 ): AdapterCapabilities => ({
-  ...ASAN_CAPABILITIES,
+  ...mockProfileCapabilities(profile),
   readStrategy,
 });
 
@@ -68,7 +76,10 @@ export class MockAccountingAdapter implements AccountingAdapter {
   constructor(config: MockAdapterConfig = {}) {
     this.items = [...(config.items ?? DEFAULT_ITEMS)];
     this.parties = [...(config.parties ?? DEFAULT_PARTIES)];
-    this.capabilities = mockCapabilities(config.readStrategy ?? 'REMOTE_UNPAGED');
+    this.capabilities = mockCapabilities(
+      config.readStrategy ?? 'REMOTE_UNPAGED',
+      config.profile ?? DEFAULT_MOCK_PROFILE,
+    );
     this.refuseWrites = config.refuseWrites ?? false;
     this.now = config.now ?? (() => new Date());
   }
