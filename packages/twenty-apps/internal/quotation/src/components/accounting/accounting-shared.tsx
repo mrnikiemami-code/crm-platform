@@ -571,6 +571,7 @@ export const DOCUMENT_CHECK_LABELS: Record<string, string> = {
   TAX_CODE_PRESENT: 'کد ویژهٔ ردیف مالیات',
   DUTY_CODE_PRESENT: 'کد ویژهٔ ردیف عوارض',
   TAX_POLICY_MAPPED: 'نگاشت سیاست مالیات به کد مقصد',
+  TAX_CODE_VERIFIED: 'تأیید تطابق کد مالیات با نرخ و ترکیب سیاست',
   DUTY_POLICY_SUPPORTED: 'پشتیبانی مقصد از عوارض',
   CURRENCY_MAPPING: 'قرارداد ارز مقصد (ارز پایه یا کد ارز)',
   ALL_LINES_LINKED: 'نگاشت همهٔ ردیف‌ها به کالای مقصد',
@@ -609,6 +610,10 @@ export const DOCUMENT_ERROR_LABELS: Record<string, string> = {
     'نام ارز این سند در مقصد تعریف نشده است؛ در تنظیمات اتصال آن را وارد کنید.',
   CURRENCY_RATE_REQUIRED:
     'نرخ تبدیل معتبر برای این ارز در تنظیمات اتصال ثبت نشده است.',
+  TAX_CODE_RATE_MISMATCH:
+    'نرخ کل سیاست مالیات سند با نرخی که مقصد برای کد مالیات انتخاب‌شده اعلام کرده یکسان نیست؛ ارسال متوقف شده تا مالیات با نرخ اشتباه ثبت نشود.',
+  TAX_CODE_COMPOSITION_MISMATCH:
+    'جمع نرخ‌ها برابر است اما تفکیک مالیات و عوارض با تعریف مقصد برای کد انتخاب‌شده یکسان نیست؛ ارسال متوقف شده تا سهم مالیات و عوارض جابه‌جا ثبت نشود.',
   SPECIAL_CODE_NOT_CONFIGURED:
     'کد ویژهٔ ردیف مالیات یا تخفیف در این اتصال تنظیم نشده است.',
 };
@@ -616,10 +621,8 @@ export const DOCUMENT_ERROR_LABELS: Record<string, string> = {
 // Non-blocking findings. A warned document can still be sent; the warning says what an
 // accountant should look at first, not what the CRM refuses.
 export const DOCUMENT_WARNING_LABELS: Record<string, string> = {
-  TAX_CODE_RATE_MISMATCH:
-    'نرخ کل سیاست CRM با نرخ اعلام‌شدهٔ کد مالیات مقصد یکسان نیست؛ پیش از ارسال بررسی کنید.',
-  TAX_CODE_COMPOSITION_MISMATCH:
-    'جمع نرخ‌ها برابر است اما تفکیک مالیات و عوارض با تعریف مقصد یکسان نیست؛ پیش از ارسال بررسی کنید.',
+  TAX_CODE_UNVERIFIED:
+    'مقصد کاتالوگ معتبری از کدهای مالیات منتشر نکرده یا این کد در آن نیست؛ تطابق کد با نرخ سیاست تأیید نشده است.',
 };
 
 

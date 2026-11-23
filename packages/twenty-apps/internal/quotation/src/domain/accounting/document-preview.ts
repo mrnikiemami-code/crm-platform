@@ -6,7 +6,7 @@ import {
   currencyModeNeedsRate,
   taxModeNeedsVendorCode,
 } from 'src/domain/accounting/capabilities';
-import { matchTaxPolicyToDestinationCode } from 'src/domain/accounting/tax-code-contract';
+import { taxPolicyProfileFromSnapshot } from 'src/domain/accounting/tax-code-contract';
 import {
   checkFinancialRequirements,
   CURRENCY_CODE_PATTERN,
@@ -150,36 +150,30 @@ export const buildQuotationDocumentPreview = (
     !hasDuty || capabilities.dutyHandling !== 'UNSUPPORTED';
 
   // A code the destination publishes a rate for is compared with the policy actually
-  // sealed in the revision. This is a warning, not a gate: an operator may deliberately
-  // map a policy whose total the destination computes itself, and only the destination
-  // knows the code's legal meaning. When the destination publishes nothing, the match is
-  // simply not claimable, which is not the same as a disagreement.
-  const sealedTaxRate = (revision?.taxRateBasisPoints ?? '').trim();
-  const sealedDutyRate = (revision?.dutyRateBasisPoints ?? '').trim();
-  const warnings: { code: string; detail: string }[] = [];
-  // Basis points are integers, so the total is exact integer addition, never a percentage
-  // recomputed through a float.
-  const basisPoints = (text: string): bigint => (/^\d{1,5}$/.test(text) ? BigInt(text) : BigInt(0));
-  const rateMatch = matchTaxPolicyToDestinationCode({
-    policy: {
-      taxRateBasisPoints: basisPoints(sealedTaxRate).toString(),
-      dutyRateBasisPoints: basisPoints(sealedDutyRate).toString(),
-      totalRateBasisPoints: (
-        basisPoints(sealedTaxRate) + basisPoints(sealedDutyRate)
-      ).toString(),
+  // sealed in the revision, and the FINANCIAL GATE below refuses a disagreement. This
+  // preview calls that same gate, so what it shows cannot differ from what dispatch does.
+  // An unpublished catalog leaves the code unverifiable: that is not a match, and the
+  // preview says so as a warning instead of letting the mapping read as confirmed.
+  const financialGate = checkFinancialRequirements({
+    capabilities,
+    financial,
+    taxPolicyMappings: settings.taxPolicyMappings,
+    document: {
+      taxPolicyCode,
+      hasTax,
+      hasDuty,
+      currencyCode: documentCurrencyCode,
+      taxPolicyRates: taxPolicyProfileFromSnapshot({
+        taxRateBasisPoints: revision?.taxRateBasisPoints ?? null,
+        dutyRateBasisPoints: revision?.dutyRateBasisPoints ?? null,
+      }),
     },
-    destinationCode: taxVendorCode,
-    catalog: capabilities.taxCodeCatalog,
   });
+  const taxCodeMatch = financialGate.ok ? financialGate.value.taxCodeMatch : null;
+  const warnings: { code: string; detail: string }[] = [];
 
-  if (taxPolicyCode !== '' && rateMatch.kind === 'MISMATCH') {
-    warnings.push({
-      code:
-        rateMatch.reason === 'COMPOSITION'
-          ? 'TAX_CODE_COMPOSITION_MISMATCH'
-          : 'TAX_CODE_RATE_MISMATCH',
-      detail: rateMatch.detail,
-    });
+  if (taxCodeMatch?.kind === 'UNVERIFIABLE') {
+    warnings.push({ code: 'TAX_CODE_UNVERIFIED', detail: taxCodeMatch.reason });
   }
 
   const checks = [
@@ -219,6 +213,11 @@ export const buildQuotationDocumentPreview = (
         settings.specialCodes.duty,
     },
     { code: 'TAX_POLICY_MAPPED', ok: taxReady },
+    // Shown only when a destination code is actually in use: a rate/amount destination has
+    // nothing to compare, and a row claiming "verified" there would be a claim no data backs.
+    ...(taxCodeMatch === null
+      ? []
+      : [{ code: 'TAX_CODE_VERIFIED', ok: taxCodeMatch.kind === 'MATCH' }]),
     { code: 'DUTY_POLICY_SUPPORTED', ok: dutyReady },
     { code: 'CURRENCY_MAPPING', ok: currencyReady },
     {
@@ -279,20 +278,8 @@ export const buildQuotationDocumentPreview = (
     };
   }
 
-  // The same gate the dispatcher uses, so the preview cannot promise a document the send
-  // path would refuse — and cannot refuse one the destination is perfectly able to take.
-  const financialGate = checkFinancialRequirements({
-    capabilities,
-    financial,
-    taxPolicyMappings: settings.taxPolicyMappings,
-    document: {
-      taxPolicyCode,
-      hasTax,
-      hasDuty,
-      currencyCode: documentCurrencyCode,
-    },
-  });
-
+  // The gate itself ran before the checks, so a refusal and the "not verified" warning come
+  // from one comparison rather than two that could drift apart.
   if (!financialGate.ok) {
     return {
       ...base,

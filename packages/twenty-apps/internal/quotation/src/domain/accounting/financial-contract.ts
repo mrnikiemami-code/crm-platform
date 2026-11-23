@@ -9,6 +9,11 @@ import {
   isMockProfile,
   type MockProfile,
 } from 'src/domain/accounting/adapters/mock/mock-profiles';
+import {
+  matchTaxPolicyToDestinationCode,
+  type TaxCodeMatch,
+  type TaxPolicyRateProfile,
+} from 'src/domain/accounting/tax-code-contract';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // The financial half of a connection's configuration, decided by what the destination
@@ -213,13 +218,26 @@ export type FinancialGateInput = {
     // this is checked on its own rather than inferred from `hasTax`.
     hasDuty?: boolean;
     currencyCode: string;
+    // The sealed components the document's amounts were computed with, so the mapped code is
+    // compared against the rate this document actually carries. Read from the revision, never
+    // from the connection: the connection maps a policy, it does not decide a rate.
+    taxPolicyRates: TaxPolicyRateProfile;
   };
+};
+
+export type FinancialGateOutcome = {
+  // The destination-code comparison, when this document actually uses a destination code.
+  // `null` means no code is in play, so nothing was compared and nothing can be claimed.
+  taxCodeMatch: TaxCodeMatch | null;
 };
 
 export const checkFinancialRequirements = (
   input: FinancialGateInput,
-): Result<null> => {
+): Result<FinancialGateOutcome> => {
   const { capabilities, financial, document } = input;
+  // Only a destination that reads a code puts one in play; every other destination gets the
+  // rate or the amount and has nothing to compare a catalog entry with.
+  let taxCodeMatch: TaxCodeMatch | null = null;
 
   if (document.hasTax) {
     if (capabilities.taxHandling === 'UNSUPPORTED') {
@@ -240,6 +258,25 @@ export const checkFinancialRequirements = (
         return refused(
           'TAX_POLICY_NOT_MAPPED',
           `tax policy "${policyCode}" has no destination tax code on this connection`,
+        );
+      }
+
+      // A published catalog is the destination's own statement about the code, so a mapping
+      // that disagrees with it is refused here rather than warned about: a code for 10% on a
+      // 9% document books the wrong tax at the destination, silently. An unpublished catalog
+      // stays unverifiable — this says nothing is confirmed, and never claims a match.
+      taxCodeMatch = matchTaxPolicyToDestinationCode({
+        policy: document.taxPolicyRates,
+        destinationCode: vendorTaxCode,
+        catalog: capabilities.taxCodeCatalog,
+      });
+
+      if (taxCodeMatch.kind === 'MISMATCH') {
+        return refused(
+          taxCodeMatch.reason === 'COMPOSITION'
+            ? 'TAX_CODE_COMPOSITION_MISMATCH'
+            : 'TAX_CODE_RATE_MISMATCH',
+          taxCodeMatch.detail,
         );
       }
     }
@@ -285,7 +322,7 @@ export const checkFinancialRequirements = (
       );
     }
 
-    return accepted(null);
+    return accepted({ taxCodeMatch });
   }
 
   const documentCurrency = document.currencyCode.trim().toUpperCase();
@@ -313,5 +350,5 @@ export const checkFinancialRequirements = (
     );
   }
 
-  return accepted(null);
+  return accepted({ taxCodeMatch });
 };

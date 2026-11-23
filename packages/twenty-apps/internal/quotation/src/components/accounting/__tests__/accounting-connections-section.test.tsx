@@ -668,12 +668,12 @@ describe('one tax policy, one destination code', () => {
     expect(second.value).toBe('70');
   });
 
-  it('warns when the code stands for a different total rate', () => {
+  it('warns when the code stands for a different total rate and says sending stops', () => {
     renderSection({ view: 'form', form: codedForm('IR_VAT_9=70') });
 
     expect(
       screen.getByText(
-        'نرخ کل سیاست با نرخ اعلام‌شدهٔ این کد در مقصد یکسان نیست.',
+        'نرخ کل سیاست با نرخ اعلام‌شدهٔ این کد در مقصد یکسان نیست؛ تا اصلاح این نگاشت، ارسال سند متوقف می‌ماند.',
       ),
     ).toBeTruthy();
   });
@@ -695,7 +695,7 @@ describe('one tax policy, one destination code', () => {
 
     expect(
       screen.getByText(
-        'جمع نرخ‌ها برابر است اما ترکیب مالیات و عوارض با تعریف مقصد یکی نیست.',
+        'جمع نرخ‌ها برابر است اما ترکیب مالیات و عوارض با تعریف مقصد یکی نیست؛ تا اصلاح این نگاشت، ارسال سند متوقف می‌ماند.',
       ),
     ).toBeTruthy();
   });

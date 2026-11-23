@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   matchTaxPolicyToDestinationCode,
+  taxPolicyProfileFromSnapshot,
   type TaxCodeContract,
 } from 'src/domain/accounting/tax-code-contract';
 import { mockProfileCapabilities } from 'src/domain/accounting/adapters/mock/mock-profiles';
@@ -119,5 +120,46 @@ describe('the sample catalog is illustrative, never hardcoded in the CRM', () =>
 
     expect(simple.taxCodeCatalog).toBeUndefined();
     expect(coded.taxCodeCatalog?.map((entry) => entry.code)).toEqual(['64', '70']);
+  });
+});
+
+describe('reading the policy a sealed revision carries', () => {
+  it('treats an absent duty component as zero, as pre-duty revisions were sealed', () => {
+    expect(
+      taxPolicyProfileFromSnapshot({ taxRateBasisPoints: '900' }),
+    ).toEqual({
+      taxRateBasisPoints: '900',
+      dutyRateBasisPoints: '0',
+      totalRateBasisPoints: '900',
+    });
+  });
+
+  it('adds the two components exactly, never through a float', () => {
+    expect(
+      taxPolicyProfileFromSnapshot({
+        taxRateBasisPoints: '600',
+        dutyRateBasisPoints: '300',
+      }),
+    ).toEqual({
+      taxRateBasisPoints: '600',
+      dutyRateBasisPoints: '300',
+      totalRateBasisPoints: '900',
+    });
+  });
+
+  it('leaves an unreadable component unreadable instead of calling it zero', () => {
+    const profile = taxPolicyProfileFromSnapshot({
+      taxRateBasisPoints: 'garbage',
+      dutyRateBasisPoints: '300',
+    });
+
+    expect(profile.totalRateBasisPoints).toBe('');
+    expect(
+      matchTaxPolicyToDestinationCode({
+        policy: profile,
+        destinationCode: '64',
+        catalog,
+      }),
+    ).toEqual({ kind: 'UNVERIFIABLE', reason: 'CODE_NOT_LISTED' });
   });
 });

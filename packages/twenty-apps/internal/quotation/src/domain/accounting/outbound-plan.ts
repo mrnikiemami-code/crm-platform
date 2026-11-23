@@ -18,6 +18,7 @@ import {
   checkFinancialRequirements,
   financialSettingsFromRecord,
 } from 'src/domain/accounting/financial-contract';
+import { taxPolicyProfileFromSnapshot } from 'src/domain/accounting/tax-code-contract';
 import { parseMicrosExact } from 'src/domain/money/micros';
 import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 
@@ -425,6 +426,9 @@ export const planQuotationExport = (
       hasTax: documentTax.ok && documentTax.value > 0n,
       hasDuty: documentDuty.ok && documentDuty.value > 0n,
       currencyCode: input.quotation.currencyCode,
+      // The rates this document was actually computed with, so a mapped code is checked
+      // against the sealed rate and not against whatever the policy says today.
+      taxPolicyRates: taxPolicyProfileFromSnapshot(snapshot),
     },
   });
 

@@ -587,4 +587,97 @@ describe('quotation export gate', () => {
       ),
     ).toMatchObject({ kind: 'RETRY', requiresReconciliationBeforeRetry: true });
   });
+
+  // The same control the preview runs. A code that disagrees with the sealed policy is a
+  // refusal at dispatch, not a warning someone can scroll past.
+  describe('destination tax code verification', () => {
+    const coded: AdapterCapabilities = {
+      ...FULL,
+      taxHandling: 'TAX_CODE',
+      dutyHandling: 'DUTY_WITHIN_POLICY',
+    };
+    const ninePercent = (overrides: Partial<QuotationRevisionSnapshot> = {}) =>
+      snapshot({
+        taxRateBasisPoints: '600',
+        dutyRateBasisPoints: '300',
+        ...overrides,
+      });
+
+    it('sends a document whose code matches the sealed rate and split', () => {
+      expect(
+        planQuotationExport(
+          exportInput({
+            capabilities: {
+              ...coded,
+              taxCodeCatalog: [
+                {
+                  code: '64',
+                  label: '۹٪ (۶ + ۳)',
+                  totalRateBasisPoints: '900',
+                  taxRateBasisPoints: '600',
+                  dutyRateBasisPoints: '300',
+                },
+              ],
+            },
+            revision: { version: 2, snapshot: ninePercent() },
+          }),
+        ),
+      ).toMatchObject({ kind: 'READY' });
+    });
+
+    it('blocks a 9% document mapped to a 10% code', () => {
+      expect(
+        planQuotationExport(
+          exportInput({
+            capabilities: {
+              ...coded,
+              taxCodeCatalog: [
+                {
+                  code: '64',
+                  label: '۱۰٪ (۷ + ۳)',
+                  totalRateBasisPoints: '1000',
+                  taxRateBasisPoints: '700',
+                  dutyRateBasisPoints: '300',
+                },
+              ],
+            },
+            revision: { version: 2, snapshot: ninePercent() },
+          }),
+        ),
+      ).toMatchObject({ kind: 'BLOCKED', code: 'TAX_CODE_RATE_MISMATCH' });
+    });
+
+    it('blocks a document whose 6+3 policy is mapped to a 5+4 code', () => {
+      expect(
+        planQuotationExport(
+          exportInput({
+            capabilities: {
+              ...coded,
+              taxCodeCatalog: [
+                {
+                  code: '64',
+                  label: '۹٪ (۵ + ۴)',
+                  totalRateBasisPoints: '900',
+                  taxRateBasisPoints: '500',
+                  dutyRateBasisPoints: '400',
+                },
+              ],
+            },
+            revision: { version: 2, snapshot: ninePercent() },
+          }),
+        ),
+      ).toMatchObject({ kind: 'BLOCKED', code: 'TAX_CODE_COMPOSITION_MISMATCH' });
+    });
+
+    it('still sends when the destination publishes no catalog', () => {
+      expect(
+        planQuotationExport(
+          exportInput({
+            capabilities: coded,
+            revision: { version: 2, snapshot: ninePercent() },
+          }),
+        ),
+      ).toMatchObject({ kind: 'READY' });
+    });
+  });
 });

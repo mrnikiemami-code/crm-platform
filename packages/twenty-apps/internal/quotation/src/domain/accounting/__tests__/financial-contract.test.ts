@@ -15,21 +15,36 @@ import {
   parseFinancialSettings,
 } from 'src/domain/accounting/financial-contract';
 import { mockProfileCapabilities } from 'src/domain/accounting/adapters/mock/mock-profiles';
+import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
+
+// One code the destination publishes: 9% value-added, split 6% tax + 3% duty.
+const NINE_PERCENT_CATALOG: readonly TaxCodeContract[] = [
+  {
+    code: '64',
+    label: '۹٪ (۶ + ۳)',
+    totalRateBasisPoints: '900',
+    taxRateBasisPoints: '600',
+    dutyRateBasisPoints: '300',
+  },
+];
 
 const capabilities = ({
   tax = 'TAX_RATE',
   duty = 'DUTY_RATE',
   currency = 'SINGLE_CURRENCY',
+  catalog,
 }: {
   tax?: TaxHandlingMode;
   duty?: DutyHandlingMode;
   currency?: CurrencyHandlingMode;
+  catalog?: readonly TaxCodeContract[];
 } = {}): AdapterCapabilities => ({
   ...mockProfileCapabilities('SIMPLE'),
   taxHandling: tax,
   dutyHandling: duty,
   currencyHandling: currency,
   baseCurrency: currency === 'SINGLE_CURRENCY' ? 'IRR' : '',
+  ...(catalog === undefined ? {} : { taxCodeCatalog: catalog }),
 });
 
 const gate = ({
@@ -44,6 +59,9 @@ const gate = ({
   baseCurrency = 'IRR',
   mappings = {} as Record<string, string>,
   conversionRate = '',
+  taxRateBasisPoints = '600',
+  dutyRateBasisPoints = '300',
+  catalog,
 }: {
   tax?: TaxHandlingMode;
   duty?: DutyHandlingMode;
@@ -56,9 +74,12 @@ const gate = ({
   baseCurrency?: string;
   mappings?: Record<string, string>;
   conversionRate?: string;
+  taxRateBasisPoints?: string;
+  dutyRateBasisPoints?: string;
+  catalog?: readonly TaxCodeContract[];
 }) =>
   checkFinancialRequirements({
-    capabilities: capabilities({ tax, duty, currency }),
+    capabilities: capabilities({ tax, duty, currency, catalog }),
     financial: {
       ...DEFAULT_FINANCIAL_SETTINGS,
       baseCurrency,
@@ -66,7 +87,19 @@ const gate = ({
       conversionRate,
     },
     taxPolicyMappings,
-    document: { hasTax, hasDuty, taxPolicyCode, currencyCode },
+    document: {
+      hasTax,
+      hasDuty,
+      taxPolicyCode,
+      currencyCode,
+      taxPolicyRates: {
+        taxRateBasisPoints,
+        dutyRateBasisPoints,
+        totalRateBasisPoints: (
+          BigInt(taxRateBasisPoints) + BigInt(dutyRateBasisPoints)
+        ).toString(),
+      },
+    },
   });
 
 describe('tax contract by capability', () => {
@@ -169,6 +202,89 @@ describe('duty contract by capability', () => {
 
   it('lets a duty-free document reach a destination with no duty contract', () => {
     expect(gate({ duty: 'UNSUPPORTED', hasDuty: false }).ok).toBe(true);
+  });
+});
+
+describe('destination tax code verification', () => {
+  const coded = {
+    tax: 'TAX_CODE' as const,
+    duty: 'DUTY_WITHIN_POLICY' as const,
+    hasDuty: true,
+    taxPolicyMappings: { IR_VAT_9: '64' },
+  };
+
+  it('accepts a mapped code whose total and split both match the sealed policy', () => {
+    expect(gate({ ...coded, catalog: NINE_PERCENT_CATALOG })).toEqual({
+      ok: true,
+      value: { taxCodeMatch: { kind: 'MATCH' } },
+    });
+  });
+
+  // A 10% code on a 9% document books 1% too much tax at the destination, so it is refused
+  // rather than merely flagged.
+  it('refuses a 9% document mapped to a 10% code', () => {
+    expect(
+      gate({
+        ...coded,
+        taxPolicyMappings: { IR_VAT_9: '70' },
+        catalog: [
+          {
+            code: '70',
+            label: '۱۰٪ (۷ + ۳)',
+            totalRateBasisPoints: '1000',
+            taxRateBasisPoints: '700',
+            dutyRateBasisPoints: '300',
+          },
+        ],
+      }),
+    ).toMatchObject({
+      ok: false,
+      refusal: { code: 'TAX_CODE_RATE_MISMATCH' },
+    });
+  });
+
+  // 6% + 3% and 5% + 4% both read 9%, so the total agrees while the destination books a
+  // different share as tax. Only the composition catches this.
+  it('refuses a code with the same total but a different tax/duty split', () => {
+    expect(
+      gate({
+        ...coded,
+        taxPolicyMappings: { IR_VAT_9: '92' },
+        catalog: [
+          {
+            code: '92',
+            label: '۹٪ (۵ + ۴)',
+            totalRateBasisPoints: '900',
+            taxRateBasisPoints: '500',
+            dutyRateBasisPoints: '400',
+          },
+        ],
+      }),
+    ).toMatchObject({
+      ok: false,
+      refusal: { code: 'TAX_CODE_COMPOSITION_MISMATCH' },
+    });
+  });
+
+  it('keeps an unverifiable mapping allowed without calling it a match', () => {
+    const outcome = gate(coded);
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok && outcome.value.taxCodeMatch).toEqual({
+      kind: 'UNVERIFIABLE',
+      reason: 'NO_CATALOG',
+    });
+  });
+
+  it('does not compare a code on a rate destination that takes no code', () => {
+    const outcome = gate({
+      tax: 'TAX_RATE',
+      duty: 'DUTY_RATE',
+      catalog: NINE_PERCENT_CATALOG,
+      taxPolicyMappings: { IR_VAT_9: '64' },
+    });
+
+    expect(outcome.ok && outcome.value.taxCodeMatch).toBeNull();
   });
 });
 

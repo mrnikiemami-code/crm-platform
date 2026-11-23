@@ -35,10 +35,37 @@ export type TaxCodeMatch =
       detail: string;
     };
 
+const BASIS_POINTS_PATTERN = /^\d{1,5}$/;
+
 const readBasisPoints = (text: string | undefined): bigint | null => {
   const normalized = (text ?? '').trim();
 
-  return /^\d{1,5}$/.test(normalized) ? BigInt(normalized) : null;
+  return BASIS_POINTS_PATTERN.test(normalized) ? BigInt(normalized) : null;
+};
+
+// The policy a sealed revision carries, in the shape the comparison takes. An ABSENT component
+// is zero duty — that is how every revision issued before policies had duty keeps its meaning —
+// while an unreadable one leaves the total empty, so the matcher reports the mapping as
+// unverifiable instead of comparing a zero the document never contained.
+export const taxPolicyProfileFromSnapshot = (snapshot: {
+  taxRateBasisPoints: string | null;
+  dutyRateBasisPoints?: string | null;
+}): TaxPolicyRateProfile => {
+  const tax = (snapshot.taxRateBasisPoints ?? '').trim();
+  const duty = (snapshot.dutyRateBasisPoints ?? '').trim();
+  const component = (text: string): bigint | null =>
+    text === '' ? BigInt(0) : readBasisPoints(text);
+  const taxPoints = component(tax);
+  const dutyPoints = component(duty);
+
+  return {
+    taxRateBasisPoints: taxPoints === null ? tax : taxPoints.toString(),
+    dutyRateBasisPoints: dutyPoints === null ? duty : dutyPoints.toString(),
+    totalRateBasisPoints:
+      taxPoints === null || dutyPoints === null
+        ? ''
+        : (taxPoints + dutyPoints).toString(),
+  };
 };
 
 // Compares the CRM policy the document carries with the destination code it is mapped to.
