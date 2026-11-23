@@ -17,7 +17,7 @@ export type AccountingAdapterContract = {
   healthProbe: { path: string; query?: Record<string, string> } | null;
 };
 
-const TAX_CODE_AND_AMOUNT = 'TAX_CODE_AND_AMOUNT';
+const TAX_CODE = 'TAX_CODE';
 const SINGLE_CURRENCY = 'SINGLE_CURRENCY';
 
 // Mirrors packages/twenty-apps/internal/quotation/src/domain/accounting/adapters/asan/
@@ -53,9 +53,14 @@ const ASAN_CAPABILITIES = {
     acceptsCallerDocumentNumber: true,
   },
   requiresSpecialItemCodes: true,
-  // Tax travels as a coded special-item row whose Price is the amount, and amounts are
-  // booked in one currency with no currency parameter anywhere in the documented payload.
-  taxHandling: TAX_CODE_AND_AMOUNT,
+  // Tax travels as a special-item row whose Price is the amount. The row's ProductID is the
+  // installation's own pre-existing item code, NOT a per-policy code: Asan reads no CRM
+  // policy id, so the contract is amount-based and the single policy code rule does not
+  // apply to it.
+  taxHandling: 'TAX_AMOUNT',
+  // Duty is its own special-item row (a different row code, same amount mechanism),
+  // declared apart from tax so neither component can stand in for the other.
+  dutyHandling: 'DUTY_AMOUNT',
   currencyHandling: SINGLE_CURRENCY,
   baseCurrency: 'IRR',
   transportIsSecure: false,
@@ -68,25 +73,75 @@ const ASAN_CAPABILITIES = {
 // a contract the app does not implement.
 const MOCK_PROFILE_CAPABILITIES: Record<
   string,
-  { taxHandling: string; currencyHandling: string; baseCurrency: string }
+  {
+    taxHandling: string;
+    dutyHandling: string;
+    currencyHandling: string;
+    baseCurrency: string;
+    taxCodeCatalog?: readonly {
+      code: string;
+      label: string;
+      totalRateBasisPoints: string;
+      taxRateBasisPoints?: string;
+      dutyRateBasisPoints?: string;
+    }[];
+  }
 > = {
   SIMPLE: {
     taxHandling: 'TAX_RATE',
+    dutyHandling: 'DUTY_RATE',
     currencyHandling: SINGLE_CURRENCY,
     baseCurrency: 'IRR',
   },
   CODED: {
-    taxHandling: 'TAX_CODE',
+    // ONE code per policy. The code stands for the whole value-added treatment, so duty has
+    // no field of its own and no second code is ever requested.
+    taxHandling: TAX_CODE,
+    dutyHandling: 'DUTY_WITHIN_POLICY',
     currencyHandling: 'CURRENCY_CODE',
     baseCurrency: '',
+    // Only a destination that publishes its code rates can be checked; the mock publishes
+    // two so the comparison is demonstrable without claiming anything about a real vendor.
+    taxCodeCatalog: [
+      {
+        code: '64',
+        label: 'مالیات ارزش افزوده ۹٪ (۶٪ مالیات + ۳٪ عوارض)',
+        totalRateBasisPoints: '900',
+        taxRateBasisPoints: '600',
+        dutyRateBasisPoints: '300',
+      },
+      {
+        code: '70',
+        label: 'مالیات ارزش افزوده ۱۰٪ (۷٪ مالیات + ۳٪ عوارض)',
+        totalRateBasisPoints: '1000',
+        taxRateBasisPoints: '700',
+        dutyRateBasisPoints: '300',
+      },
+    ],
   },
   AMOUNT: {
     taxHandling: 'TAX_AMOUNT',
+    dutyHandling: 'DUTY_AMOUNT',
+    currencyHandling: SINGLE_CURRENCY,
+    baseCurrency: 'IRR',
+  },
+  // An aggregate contract accepts only tax+duty together; it is a documented destination
+  // shape, not a convenience the CRM may assume for any other vendor.
+  AGGREGATE: {
+    taxHandling: 'TAX_AMOUNT',
+    dutyHandling: 'AGGREGATE',
+    currencyHandling: SINGLE_CURRENCY,
+    baseCurrency: 'IRR',
+  },
+  TAX_ONLY: {
+    taxHandling: 'TAX_RATE',
+    dutyHandling: 'UNSUPPORTED',
     currencyHandling: SINGLE_CURRENCY,
     baseCurrency: 'IRR',
   },
   NO_TAX: {
     taxHandling: 'UNSUPPORTED',
+    dutyHandling: 'UNSUPPORTED',
     currencyHandling: SINGLE_CURRENCY,
     baseCurrency: 'IRR',
   },
@@ -103,9 +158,16 @@ const mockCapabilities = (profile: unknown): Record<string, unknown> => {
 
   return {
     ...ASAN_CAPABILITIES,
+    // A mock destination has no vendor installation, so it declares no special-row codes:
+    // those belong to Asan's documented payload, not to a test profile.
+    requiresSpecialItemCodes: false,
     taxHandling: financial.taxHandling,
+    dutyHandling: financial.dutyHandling,
     currencyHandling: financial.currencyHandling,
     baseCurrency: financial.baseCurrency,
+    ...(financial.taxCodeCatalog === undefined
+      ? {}
+      : { taxCodeCatalog: financial.taxCodeCatalog }),
   } as unknown as Record<string, unknown>;
 };
 

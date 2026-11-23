@@ -178,6 +178,7 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
   const companyId = readNullableId(raw.companyId);
   const taxPolicy = readNullableText(raw.taxPolicy, 64);
   const taxRateBasisPoints = readTaxRateBasisPoints(raw.taxRateBasisPoints);
+  const dutyRateBasisPoints = readTaxRateBasisPoints(raw.dutyRateBasisPoints);
 
   if (
     name === null ||
@@ -186,11 +187,24 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     !/^[A-Z]{3}$/.test(currencyCode) ||
     documentDiscountKind === null ||
     taxRateBasisPoints === undefined ||
+    dutyRateBasisPoints === undefined ||
     !personId.ok ||
     !companyId.ok
   ) {
     return null;
   }
+
+  // An absent duty field is a caller that predates the split, not a zero it asserted.
+  // Leaving it absent keeps a legacy document's stored breakdown exactly as it was; the
+  // totals check still re-derives every line's tax from the declared rates, so a document
+  // whose tax carries duty while declaring no duty is refused there rather than relabelled.
+  const rawDutyExact = raw.dutyExact;
+  const dutyExact =
+    rawDutyExact === undefined
+      ? undefined
+      : typeof rawDutyExact === 'string' && isExactAmountText(rawDutyExact)
+        ? rawDutyExact
+        : null;
 
   const exactFields = [
     raw.documentDiscountInputExact,
@@ -207,6 +221,10 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     return null;
   }
 
+  if (dutyExact === null) {
+    return null;
+  }
+
   return {
     name,
     customerType,
@@ -215,6 +233,7 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     currencyCode,
     taxPolicy,
     taxRateBasisPoints,
+    dutyRateBasisPoints,
     paymentTerms: readNullableText(raw.paymentTerms),
     documentDiscountKind,
     documentDiscountInputExact: raw.documentDiscountInputExact as string,
@@ -223,6 +242,7 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     documentDiscountExact: raw.documentDiscountExact as string,
     netExact: raw.netExact as string,
     taxExact: raw.taxExact as string,
+    ...(dutyExact === undefined ? {} : { dutyExact }),
     roundingExact: raw.roundingExact as string,
     totalExact: raw.totalExact as string,
   };

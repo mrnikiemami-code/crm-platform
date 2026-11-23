@@ -69,6 +69,7 @@ const adapters: AdapterDescriptor[] = [
     summary: 'اتصال به API مستند آسان.',
     limitations: ['مستندات آسان انتقال امن ندارد.'],
     taxHandling: 'TAX_CODE_AND_AMOUNT',
+    dutyHandling: 'DUTY_AMOUNT',
     currencyHandling: 'SINGLE_CURRENCY',
     baseCurrency: 'IRR',
     requiresSpecialItemCodes: true,
@@ -85,42 +86,74 @@ const adapters: AdapterDescriptor[] = [
     summary: 'اتصال آزمایشی.',
     limitations: ['داده‌ها ثابت است.'],
     taxHandling: null,
+    dutyHandling: null,
     currencyHandling: null,
     baseCurrency: '',
     requiresSpecialItemCodes: false,
     testProfiles: [
       {
         id: 'SIMPLE',
-        label: 'ساده: فقط نرخ مالیات و ارز ثابت',
-        summary: 'نرخ مالیات و ارز ثابت.',
+        label: 'ساده: فقط نرخ مالیات و عوارض، ارز ثابت',
+        summary: 'نرخ مالیات و عوارض و ارز ثابت.',
         taxHandling: 'TAX_RATE',
+        dutyHandling: 'DUTY_RATE',
         currencyHandling: 'SINGLE_CURRENCY',
         baseCurrency: 'IRR',
         requiresSpecialItemCodes: false,
       },
       {
         id: 'CODED',
-        label: 'کدمحور: کد مالیات و کد ارز',
-        summary: 'کد مالیات و کد ارز.',
+        label: 'کدمحور: یک کد مالیات برای هر سیاست، کد ارز',
+        summary:
+          'کد مالیات واحد، کد ارز؛ جدول کدهای مقصد ۹٪ و ۱۰٪ را تعریف کرده است.',
         taxHandling: 'TAX_CODE',
+        dutyHandling: 'DUTY_WITHIN_POLICY',
         currencyHandling: 'CURRENCY_CODE',
         baseCurrency: '',
         requiresSpecialItemCodes: true,
+        taxCodeCatalog: [
+          {
+            code: '64',
+            label: 'مالیات ارزش افزوده ۹٪ (۶٪ مالیات + ۳٪ عوارض)',
+            totalRateBasisPoints: '900',
+            taxRateBasisPoints: '600',
+            dutyRateBasisPoints: '300',
+          },
+          {
+            code: '70',
+            label: 'مالیات ارزش افزوده ۱۰٪ (۷٪ مالیات + ۳٪ عوارض)',
+            totalRateBasisPoints: '1000',
+            taxRateBasisPoints: '700',
+            dutyRateBasisPoints: '300',
+          },
+        ],
       },
       {
         id: 'AMOUNT',
-        label: 'مبلغ‌محور: مبلغ مالیات و ارز ثابت',
-        summary: 'مبلغ مالیات.',
+        label: 'مبلغ‌محور: مبلغ مالیات و مبلغ عوارض، ارز ثابت',
+        summary: 'مبلغ مالیات و مبلغ عوارض.',
         taxHandling: 'TAX_AMOUNT',
+        dutyHandling: 'DUTY_AMOUNT',
+        currencyHandling: 'SINGLE_CURRENCY',
+        baseCurrency: 'IRR',
+        requiresSpecialItemCodes: false,
+      },
+      {
+        id: 'AGGREGATE',
+        label: 'تجمیعی: فقط جمع مالیات و عوارض',
+        summary: 'فقط جمع مالیات و عوارض.',
+        taxHandling: 'TAX_AMOUNT',
+        dutyHandling: 'AGGREGATE',
         currencyHandling: 'SINGLE_CURRENCY',
         baseCurrency: 'IRR',
         requiresSpecialItemCodes: false,
       },
       {
         id: 'NO_TAX',
-        label: 'بدون پشتیبانی مالیات',
-        summary: 'بدون مالیات.',
+        label: 'بدون پشتیبانی مالیات و عوارض',
+        summary: 'بدون مالیات و عوارض.',
         taxHandling: 'UNSUPPORTED',
+        dutyHandling: 'UNSUPPORTED',
         currencyHandling: 'SINGLE_CURRENCY',
         baseCurrency: 'IRR',
         requiresSpecialItemCodes: false,
@@ -133,7 +166,12 @@ const policies: TaxPolicyView[] = [
   {
     code: 'IR_VAT_9',
     name: 'مالیات بر ارزش افزوده ۹٪',
-    ratePercent: '۹',
+    ratePercent: '۶',
+    dutyRatePercent: '۳',
+    totalRatePercent: '۹',
+    rateBasisPoints: '600',
+    dutyRateBasisPoints: '300',
+    totalRateBasisPoints: '900',
     isActive: true,
     isDefault: true,
     isExempt: false,
@@ -195,6 +233,9 @@ const formFrom = (record: ConnectionRecord): FormState => ({
   adapterId: record.adapterId,
   baseUrl: record.settings.baseUrl,
   moneyUnit: record.settings.moneyUnit,
+  taxPolicyMappingsText: Object.entries(record.settings.taxPolicyMappings ?? {})
+    .map(([code, destinationCode]) => `${code}=${destinationCode}`)
+    .join('\n'),
   baseCurrency: record.settings.financial?.baseCurrency ?? 'IRR',
   mockProfile: record.settings.financial?.mockProfile ?? 'SIMPLE',
 });
@@ -206,6 +247,7 @@ const renderSection = ({
   view = 'list' as 'list' | 'form',
   focus = null as 'money' | 'tax' | null,
   testResult = null,
+  taxPolicies = policies,
   onSelectConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onEditConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSave = vi.fn<() => void>(),
@@ -217,6 +259,7 @@ const renderSection = ({
   view?: 'list' | 'form';
   focus?: 'money' | 'tax' | null;
   testResult?: { healthState: string; message: string; detail: string } | null;
+  taxPolicies?: TaxPolicyView[];
   onSelectConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onEditConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onSave?: ReturnType<typeof vi.fn<() => void>>;
@@ -239,7 +282,7 @@ const renderSection = ({
       data={data}
       form={form}
       modes={modes}
-      policies={policies}
+      policies={taxPolicies}
       canManage
       busy={false}
       selectedConnectionId={selectedConnectionId}
@@ -422,7 +465,7 @@ describe('the tax form follows the declared contract', () => {
     expect(screen.getByRole('table', { name: 'نرخ سیاست‌های مالیات CRM' })).toBeTruthy();
     expect(
       screen.queryByRole('table', {
-        name: 'نگاشت سیاست مالیات CRM به کد مالیات این اتصال',
+        name: 'نگاشت سیاست مالیات CRM به یک کد مالیات در این اتصال',
       }),
     ).toBeNull();
     expect(screen.queryByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪')).toBeNull();
@@ -435,7 +478,7 @@ describe('the tax form follows the declared contract', () => {
 
     expect(
       screen.getByRole('table', {
-        name: 'نگاشت سیاست مالیات CRM به کد مالیات این اتصال',
+        name: 'نگاشت سیاست مالیات CRM به یک کد مالیات در این اتصال',
       }),
     ).toBeTruthy();
     expect(
@@ -456,7 +499,7 @@ describe('the tax form follows the declared contract', () => {
     ).toBeTruthy();
     expect(
       screen.queryByRole('table', {
-        name: 'نگاشت سیاست مالیات CRM به کد مالیات این اتصال',
+        name: 'نگاشت سیاست مالیات CRM به یک کد مالیات در این اتصال',
       }),
     ).toBeNull();
     expect(screen.queryByRole('table', { name: 'نرخ سیاست‌های مالیات CRM' })).toBeNull();
@@ -467,21 +510,15 @@ describe('the special tax row code', () => {
   it('is asked for only when the destination identifies tax by a row code', () => {
     renderSection({ view: 'form' });
 
-    expect(
-      screen.getByLabelText(
-        'ردیف کد ویژهٔ مالیات در این نصب تعریف شده است (کد ردیف، نه کد سیاست)',
-      ),
-    ).toBeTruthy();
+    expect(screen.getByLabelText('کد ردیف مالیات')).toBeTruthy();
+    expect(screen.getByLabelText('کد ردیف عوارض')).toBeTruthy();
   });
 
   it('is not asked of a rate destination', () => {
     renderSection({ view: 'form', form: formFrom(threeConnections()[2]) });
 
-    expect(
-      screen.queryByLabelText(
-        'ردیف کد ویژهٔ مالیات در این نصب تعریف شده است (کد ردیف، نه کد سیاست)',
-      ),
-    ).toBeNull();
+    expect(screen.queryByLabelText('کد ردیف مالیات')).toBeNull();
+    expect(screen.queryByLabelText('کد ردیف عوارض')).toBeNull();
   });
 });
 
@@ -565,5 +602,174 @@ describe('the result of a probe is reported without borrowing a live claim', () 
       screen.getByText('پاسخ سرور دریافت شد (اتصال واقعی تأیید نشده)'),
     ).toBeTruthy();
     expect(screen.queryByText('اتصال واقعی تأییدشده')).toBeNull();
+  });
+});
+
+describe('one tax policy, one destination code', () => {
+  const codedForm = (mapping: string): FormState => ({
+    ...formFrom(threeConnections()[1]),
+    taxPolicyMappingsText: mapping,
+  });
+
+  it('offers exactly one code field per policy and no duty code field', () => {
+    renderSection({ view: 'form', form: codedForm('') });
+
+    expect(
+      screen.getByRole('table', {
+        name: 'نگاشت سیاست مالیات CRM به یک کد مالیات در این اتصال',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪'),
+    ).toHaveLength(1);
+    expect(screen.queryByLabelText('کد عوارض برای مالیات بر ارزش افزوده ۹٪')).toBeNull();
+    expect(
+      screen.queryByRole('table', { name: 'نگاشت سیاست CRM به کد عوارض این اتصال' }),
+    ).toBeNull();
+  });
+
+  it('shows the total rate and both internal components on the same row', () => {
+    renderSection({ view: 'form', form: codedForm('') });
+
+    expect(screen.getByText('نرخ کل (مالیات + عوارض)')).toBeTruthy();
+    expect(screen.getByText('۹٪ (۶ + ۳)')).toBeTruthy();
+  });
+
+  it('writes the single destination code into the policy mapping', () => {
+    const { onChange } = renderSection({ view: 'form', form: codedForm('') });
+
+    fireEvent.change(
+      screen.getByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪'),
+      { target: { value: '64' } },
+    );
+
+    const last = onChange.mock.calls.at(-1)?.[0] as FormState;
+
+    expect(last.taxPolicyMappingsText).toBe('IR_VAT_9=64');
+    expect(Object.keys(last)).not.toContain('dutyPolicyMappingsText');
+  });
+
+  it('maps the same policy to a different code per connection', () => {
+    renderSection({ view: 'form', form: codedForm('IR_VAT_9=64') });
+
+    const first = screen.getByLabelText(
+      'کد مالیات برای مالیات بر ارزش افزوده ۹٪',
+    ) as HTMLInputElement;
+
+    expect(first.value).toBe('64');
+
+    cleanup();
+    renderSection({ view: 'form', form: codedForm('IR_VAT_9=70') });
+
+    const second = screen.getByLabelText(
+      'کد مالیات برای مالیات بر ارزش افزوده ۹٪',
+    ) as HTMLInputElement;
+
+    expect(second.value).toBe('70');
+  });
+
+  it('warns when the code stands for a different total rate', () => {
+    renderSection({ view: 'form', form: codedForm('IR_VAT_9=70') });
+
+    expect(
+      screen.getByText(
+        'نرخ کل سیاست با نرخ اعلام‌شدهٔ این کد در مقصد یکسان نیست.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('warns when totals match but the tax/duty split does not', () => {
+    renderSection({
+      view: 'form',
+      form: codedForm('IR_VAT_9=64'),
+      taxPolicies: [
+        {
+          ...policies[0],
+          ratePercent: '۴.۵',
+          dutyRatePercent: '۴.۵',
+          rateBasisPoints: '450',
+          dutyRateBasisPoints: '450',
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText(
+        'جمع نرخ‌ها برابر است اما ترکیب مالیات و عوارض با تعریف مقصد یکی نیست.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('does not warn when the code matches both total and split', () => {
+    renderSection({ view: 'form', form: codedForm('IR_VAT_9=64') });
+
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows the CRM duty rate to a rate destination and asks for no code', () => {
+    renderSection({ view: 'form', form: formFrom(threeConnections()[2]) });
+
+    expect(screen.getByText('نرخ عوارضی که به مقصد می‌رسد')).toBeTruthy();
+    expect(screen.queryByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪')).toBeNull();
+  });
+
+  it('says a policy-code destination carries duty inside the one code', () => {
+    renderSection({ view: 'form', form: codedForm('') });
+
+    expect(screen.getByText('یک کد، کل سیاست')).toBeTruthy();
+    expect(screen.getByText('عوارض داخل کد واحد سیاست')).toBeTruthy();
+  });
+
+  it('says an aggregate destination receives only the combined figure', () => {
+    const record = threeConnections()[2];
+
+    renderSection({
+      view: 'form',
+      form: { ...formFrom(record), mockProfile: 'AGGREGATE' },
+    });
+
+    expect(screen.getByText('قرارداد تجمیعی')).toBeTruthy();
+    expect(
+      screen.queryByRole('table', { name: 'نگاشت سیاست CRM به کد عوارض این اتصال' }),
+    ).toBeNull();
+  });
+
+  it('refuses the duty contract when the destination does not support it', () => {
+    renderSection({
+      view: 'form',
+      form: { ...formFrom(threeConnections()[2]), mockProfile: 'NO_TAX' },
+    });
+
+    expect(screen.getByText('عوارض در این مقصد پشتیبانی نمی‌شود')).toBeTruthy();
+    expect(
+      screen.queryByRole('table', { name: 'نگاشت سیاست CRM به کد عوارض این اتصال' }),
+    ).toBeNull();
+  });
+});
+
+describe('probing only ever targets a saved record', () => {
+  it('does not offer a probe for a connection that was never saved', () => {
+    renderSection({
+      view: 'form',
+      form: { ...formFrom(threeConnections()[0]), id: null },
+    });
+
+    const button = screen.getByRole('button', {
+      name: 'آزمایش اتصال ذخیره‌شده',
+    });
+
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      screen.getByText(/این اتصال هنوز ذخیره نشده است/),
+    ).toBeTruthy();
+  });
+
+  it('says unsaved edits are not what the probe checked', () => {
+    renderSection({
+      view: 'form',
+      form: { ...formFrom(threeConnections()[0]), name: 'نام ویرایش‌نشده' },
+    });
+
+    expect(screen.getByText(/تغییرات ذخیر.*آزمایش نمی.*شوند/)).toBeTruthy();
   });
 });

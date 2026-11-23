@@ -20,6 +20,7 @@ import {
   formatJalaliDateFromInstant,
   isSignificantExactAmount,
   resolveCurrencyLabel,
+  subtractExactAmounts,
   toPersianDigits,
 } from 'src/modules/quotation/utils/quotation-pdf-display.util';
 
@@ -33,6 +34,8 @@ type QuotationPdfRow = {
   netExact: string | null;
   taxExact: string | null;
   taxRateBasisPoints: string | null;
+  dutyExact: string | null;
+  dutyRateBasisPoints: string | null;
   roundingExact: string | null;
   totalExact: string | null;
   paymentTerms: string | null;
@@ -126,6 +129,8 @@ export class QuotationPdfService {
           netExact: true,
           taxExact: true,
           taxRateBasisPoints: true,
+          dutyExact: true,
+          dutyRateBasisPoints: true,
           roundingExact: true,
           totalExact: true,
           paymentTerms: true,
@@ -254,6 +259,14 @@ export class QuotationPdfService {
         ? formatExactAmountWithCurrency(value, currencyLabel)
         : undefined;
 
+    // The stored tax is tax + duty. Showing that sum under "مالیات" while also showing
+    // a duty row would count duty twice, so the tax row gets the exact remainder. Both
+    // figures come from stored amounts; nothing is re-derived here.
+    const taxOnlyExact =
+      quotation.dutyExact === null || quotation.dutyExact === undefined
+        ? quotation.taxExact
+        : subtractExactAmounts(quotation.taxExact, quotation.dutyExact);
+
     return {
       title,
       quotationNumber,
@@ -270,9 +283,13 @@ export class QuotationPdfService {
         lineDiscount: formatStored(quotation.lineDiscountExact),
         documentDiscount: formatStored(quotation.documentDiscountExact),
         net: formatStored(quotation.netExact),
-        tax: formatStored(quotation.taxExact),
+        tax: formatStored(taxOnlyExact),
         taxRatePercent:
           formatBasisPointsAsPersianPercent(quotation.taxRateBasisPoints) ??
+          undefined,
+        duty: formatStored(quotation.dutyExact),
+        dutyRatePercent:
+          formatBasisPointsAsPersianPercent(quotation.dutyRateBasisPoints) ??
           undefined,
         rounding: formatStored(quotation.roundingExact),
       },

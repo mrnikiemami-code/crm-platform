@@ -32,6 +32,9 @@ export type AtomicSaveHeaderPayload = {
   // The rate the amounts were computed with, in basis points. Recorded so the
   // server can re-check the tax it is asked to store instead of trusting it.
   taxRateBasisPoints: string | null;
+  // The duty component of the same policy. Kept apart from the tax rate so the
+  // server can re-check each component instead of one combined figure.
+  dutyRateBasisPoints: string | null;
   paymentTerms: string | null;
   documentDiscountKind: 'NONE' | 'RATE' | 'AMOUNT';
   documentDiscountInputExact: string;
@@ -40,6 +43,8 @@ export type AtomicSaveHeaderPayload = {
   documentDiscountExact: string;
   netExact: string;
   taxExact: string;
+  // The duty part of `taxExact`; tax = taxExact - dutyExact.
+  dutyExact: string;
   roundingExact: string;
   totalExact: string;
 };

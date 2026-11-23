@@ -31,6 +31,7 @@ import {
   parseBasisPointsText,
   resolveTaxPolicy,
   selectDefaultTaxPolicy,
+  totalRateBasisPoints,
   type TaxPolicyCatalogEntry,
 } from 'src/domain/money/tax-policy';
 import {
@@ -137,8 +138,13 @@ const readTaxPolicies = (
     const rate = parseBasisPointsText(
       typeof row.rateBasisPoints === 'string' ? row.rateBasisPoints : '',
     );
+    const dutyRate = parseBasisPointsText(
+      typeof row.dutyRateBasisPoints === 'string'
+        ? row.dutyRateBasisPoints
+        : '0',
+    );
 
-    if (code === '' || !rate.ok) {
+    if (code === '' || !rate.ok || !dutyRate.ok) {
       return [];
     }
 
@@ -151,6 +157,7 @@ const readTaxPolicies = (
             ? row.name.trim()
             : code,
         rateBasisPoints: rate.value,
+        dutyRateBasisPoints: dutyRate.value,
         isActive: row.isActive !== false,
         isDefault: row.isDefault === true,
         isExempt: row.isExempt === true,
@@ -160,13 +167,18 @@ const readTaxPolicies = (
   });
 };
 
-// A draft carries the rate it was priced at. Reopening it keeps that rate until the
-// operator chooses another policy; a legacy draft with no stored rate stays
-// unpinned and is never assigned a guessed one.
+// A draft carries the rates it was priced at. Reopening it keeps those rates until the
+// operator chooses another policy; a legacy draft with no stored rate stays unpinned and
+// is never assigned a guessed one.
 const readStoredTaxRate = (
   code: string | null,
   rateBasisPoints: string | null,
-): { code: string; rateBasisPoints: bigint } | null => {
+  dutyRateBasisPoints: string | null,
+): {
+  code: string;
+  rateBasisPoints: bigint;
+  dutyRateBasisPoints: bigint;
+} | null => {
   const normalizedCode = (code ?? '').trim();
 
   if (normalizedCode === '' || rateBasisPoints === null) {
@@ -174,8 +186,17 @@ const readStoredTaxRate = (
   }
 
   const rate = parseBasisPointsText(rateBasisPoints);
+  // Absent duty on a reopened draft means it was priced before duty existed, so it
+  // keeps zero duty instead of adopting today's duty rate.
+  const dutyRate = parseBasisPointsText(dutyRateBasisPoints ?? '0');
 
-  return rate.ok ? { code: normalizedCode, rateBasisPoints: rate.value } : null;
+  return rate.ok && dutyRate.ok
+    ? {
+        code: normalizedCode,
+        rateBasisPoints: rate.value,
+        dutyRateBasisPoints: dutyRate.value,
+      }
+    : null;
 };
 
 const legacyTaxPolicyEntry = (): TaxPolicyCatalogEntry => {
@@ -186,6 +207,7 @@ const legacyTaxPolicyEntry = (): TaxPolicyCatalogEntry => {
     id: DEFAULT_TAX_POLICY_ID,
     label: legacy.ok ? legacy.value.label : LEGACY_TAX_LABEL,
     rateBasisPoints: legacy.ok ? legacy.value.rateBasisPoints : 900n,
+    dutyRateBasisPoints: legacy.ok ? legacy.value.dutyRateBasisPoints : 0n,
     isActive: true,
     isDefault: true,
     isExempt: false,
@@ -320,6 +342,7 @@ export const QuotationDraftForm = () => {
   const [storedTaxRate, setStoredTaxRate] = useState<{
     code: string;
     rateBasisPoints: bigint;
+    dutyRateBasisPoints: bigint;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -425,7 +448,13 @@ export const QuotationDraftForm = () => {
             ? draft.taxPolicy.trim()
             : DEFAULT_TAX_POLICY_ID,
         );
-        setStoredTaxRate(readStoredTaxRate(draft.taxPolicy, draft.taxRateBasisPoints));
+        setStoredTaxRate(
+          readStoredTaxRate(
+            draft.taxPolicy,
+            draft.taxRateBasisPoints,
+            draft.dutyRateBasisPoints,
+          ),
+        );
         setLines(
           draft.lines.map((line) => ({
             clientLineId: line.clientLineId,
@@ -568,10 +597,14 @@ export const QuotationDraftForm = () => {
       return null;
     }
 
-    // The stored rate belongs to the policy it was saved with; adopting a new
-    // policy means adopting that policy's rate.
+    // The stored rates belong to the policy they were saved with; adopting a new
+    // policy means adopting that policy's rates.
     if (storedTaxRate !== null && storedTaxRate.code === taxPolicyCode) {
-      return { ...fromCatalog, rateBasisPoints: storedTaxRate.rateBasisPoints };
+      return {
+        ...fromCatalog,
+        rateBasisPoints: storedTaxRate.rateBasisPoints,
+        dutyRateBasisPoints: storedTaxRate.dutyRateBasisPoints,
+      };
     }
 
     return fromCatalog;
@@ -585,6 +618,7 @@ export const QuotationDraftForm = () => {
             id: selectedTaxPolicy.id,
             label: selectedTaxPolicy.label,
             rateBasisPoints: selectedTaxPolicy.rateBasisPoints,
+            dutyRateBasisPoints: selectedTaxPolicy.dutyRateBasisPoints,
             isExempt: selectedTaxPolicy.isExempt,
           },
     [selectedTaxPolicy],
@@ -595,6 +629,22 @@ export const QuotationDraftForm = () => {
       ? null
       : toPersianDigits(
           formatBasisPointsAsPercent(selectedTaxPolicy.rateBasisPoints),
+        );
+
+  const dutyRateLabel =
+    selectedTaxPolicy === null
+      ? null
+      : toPersianDigits(
+          formatBasisPointsAsPercent(selectedTaxPolicy.dutyRateBasisPoints),
+        );
+
+  const totalRateLabel =
+    selectedTaxPolicy === null
+      ? null
+      : toPersianDigits(
+          formatBasisPointsAsPercent(
+            totalRateBasisPoints(selectedTaxPolicy),
+          ),
         );
 
   const taxPolicyLabel =
@@ -1108,8 +1158,20 @@ export const QuotationDraftForm = () => {
             </label>
             {taxRateLabel !== null ? (
               <div style={styles.label}>
-                نرخ اعمال‌شده
+                مالیات اعمال‌شده
                 <strong style={styles.fieldInput}>{taxRateLabel}٪</strong>
+              </div>
+            ) : null}
+            {dutyRateLabel !== null ? (
+              <div style={styles.label}>
+                عوارض اعمال‌شده
+                <strong style={styles.fieldInput}>{dutyRateLabel}٪</strong>
+              </div>
+            ) : null}
+            {totalRateLabel !== null ? (
+              <div style={styles.label}>
+                جمع نرخ (مالیات + عوارض)
+                <strong style={styles.fieldInput}>{totalRateLabel}٪</strong>
               </div>
             ) : null}
           </div>
@@ -1131,8 +1193,18 @@ export const QuotationDraftForm = () => {
                 <strong>{summaryPlan.displayNet}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>{taxPolicyLabel}</span>
-                <strong>{summaryPlan.displayTax}</strong>
+                <span>
+                  {taxPolicyLabel} — مالیات
+                  {taxRateLabel !== null ? ` (${taxRateLabel}٪)` : ''}
+                </span>
+                <strong>{summaryPlan.displayTaxOnly}</strong>
+              </div>
+              <div style={styles.totalsRow}>
+                <span>
+                  {taxPolicyLabel} — عوارض
+                  {dutyRateLabel !== null ? ` (${dutyRateLabel}٪)` : ''}
+                </span>
+                <strong>{summaryPlan.displayDuty}</strong>
               </div>
               <div style={styles.totalsRow}>
                 <span>جمع کل</span>
@@ -1163,8 +1235,12 @@ export const QuotationDraftForm = () => {
                 <strong>{summaryPlan.displayDocumentDiscount}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>{taxPolicyLabel}</span>
-                <strong>{summaryPlan.displayTax}</strong>
+                <span>{taxPolicyLabel} — مالیات</span>
+                <strong>{summaryPlan.displayTaxOnly}</strong>
+              </div>
+              <div style={styles.totalsRow}>
+                <span>{taxPolicyLabel} — عوارض</span>
+                <strong>{summaryPlan.displayDuty}</strong>
               </div>
               {summaryPlan.totalsExact.roundingExact !== '0.000000' ? (
                 <div style={styles.totalsRow}>

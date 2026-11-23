@@ -114,17 +114,23 @@ export type DraftQuotationPlan = {
   paymentTerms: string | null;
   taxPolicy: string;
   taxRateBasisPoints: string;
+  // The duty component of the same policy, frozen with the document exactly like the
+  // tax rate. `dutyExact` is the duty part of `taxExact` (tax = taxExact - dutyExact).
+  dutyRateBasisPoints: string;
   currencyCode: 'IRR';
   version: number;
   documentDiscountKind: 'NONE' | 'RATE' | 'AMOUNT';
   documentDiscountInputExact: string;
   totalExact: string;
+  dutyExact: string;
   totalsExact: QuotationTotalsExactText;
   displayTotal: string;
   displayGross: string;
   displayLineDiscount: string;
   displayDocumentDiscount: string;
   displayNet: string;
+  displayTaxOnly: string;
+  displayDuty: string;
   displayTax: string;
   displayRounding: string;
   lines: DraftLineRecord[];
@@ -323,6 +329,7 @@ const resolveSelectedTaxPolicy = (
     code: input.taxPolicyDefinition.id,
     label: input.taxPolicyDefinition.label,
     rateBasisPoints: input.taxPolicyDefinition.rateBasisPoints,
+    dutyRateBasisPoints: input.taxPolicyDefinition.dutyRateBasisPoints,
     isExempt: input.taxPolicyDefinition.isExempt,
   });
 };
@@ -409,6 +416,7 @@ export const buildDraftQuotationPlan = (
     preTaxLines: builtPreTax.map((line) => line.preTax),
     documentDiscount: documentDiscount.value,
     taxRateBasisPoints: taxPolicy.value.rateBasisPoints,
+    dutyRateBasisPoints: taxPolicy.value.dutyRateBasisPoints,
   });
 
   if (!finalized.ok) {
@@ -436,6 +444,14 @@ export const buildDraftQuotationPlan = (
     finalized.value.totals.netMicros,
     input.displayMoneyUnit,
   );
+  const displayTaxOnly = displayAmount(
+    finalized.value.totals.taxOnlyMicros,
+    input.displayMoneyUnit,
+  );
+  const displayDuty = displayAmount(
+    finalized.value.totals.dutyMicros,
+    input.displayMoneyUnit,
+  );
   const displayTax = displayAmount(
     finalized.value.totals.taxMicros,
     input.displayMoneyUnit,
@@ -451,6 +467,8 @@ export const buildDraftQuotationPlan = (
     !displayLineDiscount.ok ||
     !displayDocumentDiscount.ok ||
     !displayNet.ok ||
+    !displayTaxOnly.ok ||
+    !displayDuty.ok ||
     !displayTax.ok ||
     !displayRounding.ok
   ) {
@@ -491,17 +509,21 @@ export const buildDraftQuotationPlan = (
     paymentTerms: input.paymentTerms?.trim() ? input.paymentTerms.trim() : null,
     taxPolicy: taxPolicy.value.id,
     taxRateBasisPoints: taxPolicy.value.rateBasisPoints.toString(),
+    dutyRateBasisPoints: taxPolicy.value.dutyRateBasisPoints.toString(),
     currencyCode: 'IRR',
     version: 1,
     documentDiscountKind: documentDiscountMeta.value.kind,
     documentDiscountInputExact: documentDiscountMeta.value.inputExact,
     totalExact: totalsExact.totalExact,
+    dutyExact: totalsExact.dutyExact,
     totalsExact,
     displayTotal: displayTotal.value,
     displayGross: displayGross.value,
     displayLineDiscount: displayLineDiscount.value,
     displayDocumentDiscount: displayDocumentDiscount.value,
     displayNet: displayNet.value,
+    displayTaxOnly: displayTaxOnly.value,
+    displayDuty: displayDuty.value,
     displayTax: displayTax.value,
     displayRounding: displayRounding.value,
     lines,

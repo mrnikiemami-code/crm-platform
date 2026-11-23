@@ -111,6 +111,7 @@ describe('selectDefaultTaxPolicy', () => {
     id,
     label: id,
     rateBasisPoints: 900n,
+    dutyRateBasisPoints: 0n,
     isExempt: false,
     recordId: `record-${id}`,
     isActive: true,

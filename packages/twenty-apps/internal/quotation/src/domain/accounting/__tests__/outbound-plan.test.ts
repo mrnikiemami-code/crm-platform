@@ -42,6 +42,7 @@ const FULL: AdapterCapabilities = {
   requiresSpecialItemCodes: false,
   transportIsSecure: true,
   taxHandling: 'TAX_RATE',
+  dutyHandling: 'DUTY_RATE',
   currencyHandling: 'SINGLE_CURRENCY',
   baseCurrency: 'IRR',
   readStrategy: 'REMOTE_PAGED',
@@ -54,7 +55,7 @@ const settings = (overrides: Partial<ConnectionSettings> = {}): ConnectionSettin
   moneyUnit: 'RIAL',
   transportApproved: true,
   specialCodes: { discount: true, duty: false, tax: true },
-  taxPolicyMappings: { IR_VAT_9: '999141' },
+  taxPolicyMappings: { IR_VAT_9: '64' },
   ...overrides,
 });
 

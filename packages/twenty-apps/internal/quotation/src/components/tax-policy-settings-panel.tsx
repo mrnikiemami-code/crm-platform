@@ -2,17 +2,28 @@ import { type CSSProperties, useCallback, useEffect, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import { TAX_POLICIES_ROUTE, callAppRoute } from 'src/components/quotation-api';
+import { toPersianDigits } from 'src/domain/money/display-format';
+import {
+  formatBasisPointsAsPercent,
+  parsePercentToBasisPoints,
+} from 'src/domain/money/tax-policy';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 // The tax settings panel. It only renders and forwards what the operator typed: the
 // rate is validated, the single default is enforced and "used by quotations" is
 // counted on the server, because a browser cannot be the authority for a tax rate.
+//
+// ONE POLICY, TWO COMPONENTS: tax (مالیات) and duty (عوارض) are two fields of the same
+// row, not two policies. The list shows one line per policy with its total, and the
+// editor shows both components plus the computed total, which is display-only.
 
 type TaxPolicyRow = {
   recordId: string;
   code: string;
   name: string;
   ratePercent: string;
+  dutyRatePercent: string;
+  totalRatePercent: string;
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
@@ -23,6 +34,7 @@ type EditorState = {
   recordId: string | null;
   name: string;
   ratePercentText: string;
+  dutyPercentText: string;
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
@@ -52,6 +64,16 @@ const readRows = (data: Record<string, unknown>): TaxPolicyRow[] => {
           typeof row.ratePercent === 'string'
             ? row.ratePercent
             : String(row.rateBasisPoints ?? ''),
+        // A policy written before duty existed reads as "no duty", which is what its
+        // documents were priced with; the row is still one policy.
+        dutyRatePercent:
+          typeof row.dutyRatePercent === 'string' ? row.dutyRatePercent : '0',
+        totalRatePercent:
+          typeof row.totalRatePercent === 'string'
+            ? row.totalRatePercent
+            : typeof row.ratePercent === 'string'
+              ? row.ratePercent
+              : '',
         isActive: row.isActive !== false,
         isDefault: row.isDefault === true,
         isExempt: row.isExempt === true,
@@ -66,6 +88,7 @@ const emptyEditor = (): EditorState => ({
   recordId: null,
   name: '',
   ratePercentText: '',
+  dutyPercentText: '0',
   isActive: true,
   isDefault: false,
   isExempt: false,
@@ -75,10 +98,30 @@ const editorFor = (row: TaxPolicyRow): EditorState => ({
   recordId: row.recordId,
   name: row.name,
   ratePercentText: row.ratePercent,
+  dutyPercentText: row.dutyRatePercent,
   isActive: row.isActive,
   isDefault: row.isDefault,
   isExempt: row.isExempt,
 });
+
+// The total is computed, never typed: two values that cannot be added are shown as
+// "—" instead of a number the server would refuse anyway.
+const sumPercentText = (taxText: string, dutyText: string): string => {
+  const tax = parsePercentToBasisPoints(taxText);
+  const duty = dutyText.trim() === ''
+    ? { ok: true as const, value: BigInt(0) }
+    : parsePercentToBasisPoints(dutyText);
+
+  if (!tax.ok || !duty.ok) {
+    return '—';
+  }
+
+  return `${toPersianDigits(
+    formatBasisPointsAsPercent(tax.value + duty.value),
+  )}٪`;
+};
+
+const percentLabel = (value: string): string => `${toPersianDigits(value)}٪`;
 
 const FALLBACK_ERROR = 'ذخیرهٔ تنظیمات مالیات انجام نشد؛ دوباره تلاش کنید.';
 
@@ -166,6 +209,7 @@ export const TaxPolicySettingsPanel = () => {
         recordId: editor.recordId,
         name: editor.name,
         ratePercentText: editor.ratePercentText,
+        dutyRatePercentText: editor.dutyPercentText,
         isActive: editor.isActive,
         isDefault: editor.isDefault,
         isExempt: editor.isExempt,
@@ -228,7 +272,13 @@ export const TaxPolicySettingsPanel = () => {
               >
                 <div style={styles.rowMain}>
                   <strong style={styles.rowName}>{row.name}</strong>
-                  <span style={styles.rate}>{row.ratePercent}٪</span>
+                  <span style={styles.rate}>
+                    {percentLabel(row.totalRatePercent)}
+                  </span>
+                  <span style={styles.rateSplit}>
+                    مالیات {percentLabel(row.ratePercent)} + عوارض{' '}
+                    {percentLabel(row.dutyRatePercent)}
+                  </span>
                   <div style={styles.badges}>
                     {row.isDefault ? (
                       <span style={styles.badgeDefault}>پیش‌فرض</span>
@@ -345,7 +395,7 @@ export const TaxPolicySettingsPanel = () => {
               <input
                 style={styles.input}
                 value={editor.ratePercentText}
-                placeholder="۱۰ یا ۱۰٫۵ — صفر یعنی معافیت"
+                placeholder="۶ یا ۶٫۵ — صفر یعنی بدون مالیات"
                 onChange={(event) =>
                   setEditor({
                     ...editor,
@@ -354,6 +404,26 @@ export const TaxPolicySettingsPanel = () => {
                 }
               />
             </label>
+            <label style={styles.label}>
+              درصد عوارض
+              <input
+                style={styles.input}
+                value={editor.dutyPercentText}
+                placeholder="۴ — خالی یا صفر یعنی بدون عوارض"
+                onChange={(event) =>
+                  setEditor({
+                    ...editor,
+                    dutyPercentText: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <div style={styles.totalRow}>
+              <span style={styles.totalLabel}>جمع (مالیات + عوارض)</span>
+              <output style={styles.totalValue}>
+                {sumPercentText(editor.ratePercentText, editor.dutyPercentText)}
+              </output>
+            </div>
             <label style={styles.checkboxRow}>
               <input
                 type="checkbox"
@@ -454,6 +524,19 @@ const styles: Record<string, CSSProperties> = {
   rowMain: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
   rowName: { fontSize: 14 },
   rate: { fontSize: 14, fontWeight: 700, color: '#1d4ed8' },
+  rateSplit: { fontSize: 11, color: '#475569' },
+  totalRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    padding: '8px 10px',
+    border: '1px dashed #cbd5e1',
+    borderRadius: 8,
+    background: '#f8fafc',
+  },
+  totalLabel: { fontSize: 12, color: '#475569' },
+  totalValue: { fontSize: 14, fontWeight: 700, color: '#1d4ed8' },
   badges: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   badge: {
     fontSize: 11,

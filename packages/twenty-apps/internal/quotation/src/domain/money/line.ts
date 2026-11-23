@@ -31,6 +31,9 @@ export type QuotationLineInput = {
   unitPriceMicros: bigint;
   discount: LineDiscount;
   taxRateBasisPoints: bigint;
+  // The duty component of the same policy. Absent means zero, which is how every
+  // document saved before policies could carry duty keeps its exact old numbers.
+  dutyRateBasisPoints?: bigint;
 };
 
 export type QuotationLineAmounts = {
@@ -41,6 +44,11 @@ export type QuotationLineAmounts = {
   netMicros: bigint;
   // Document-discount share allocated to this line (0 when none).
   documentDiscountMicros: bigint;
+  // Tax (مالیات) and duty (عوارض) are computed separately because a destination may
+  // receive one, the other, both, or only their sum. `taxMicros` stays their total so
+  // every existing invariant (`total = net + tax`) keeps holding byte for byte.
+  taxOnlyMicros: bigint;
+  dutyMicros: bigint;
   taxMicros: bigint;
   totalMicros: bigint;
 };
@@ -88,10 +96,15 @@ export const computeLinePreTaxAmounts = (
 export const computeLineAmounts = (
   input: QuotationLineInput,
 ): Result<QuotationLineAmounts> => {
-  if (!isBasisPointsInRange(input.taxRateBasisPoints)) {
+  const dutyRate = input.dutyRateBasisPoints ?? 0n;
+
+  if (
+    !isBasisPointsInRange(input.taxRateBasisPoints) ||
+    !isBasisPointsInRange(dutyRate)
+  ) {
     return refused(
       'TAX_RATE_OUT_OF_RANGE',
-      'a tax rate must be between 0% and 100% in basis points',
+      'a tax or duty rate must be between 0% and 100% in basis points',
     );
   }
 
@@ -102,13 +115,17 @@ export const computeLineAmounts = (
   }
 
   const netMicros = preTax.value.netAfterLineDiscountMicros;
-  const taxMicros = applyBasisPoints(netMicros, input.taxRateBasisPoints);
+  const taxOnlyMicros = applyBasisPoints(netMicros, input.taxRateBasisPoints);
+  const dutyMicros = applyBasisPoints(netMicros, dutyRate);
+  const taxMicros = taxOnlyMicros + dutyMicros;
 
   return accepted({
     grossMicros: preTax.value.grossMicros,
     discountMicros: preTax.value.discountMicros,
     documentDiscountMicros: 0n,
     netMicros,
+    taxOnlyMicros,
+    dutyMicros,
     taxMicros,
     totalMicros: netMicros + taxMicros,
   });

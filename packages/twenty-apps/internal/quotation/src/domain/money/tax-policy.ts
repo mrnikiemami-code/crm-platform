@@ -22,9 +22,21 @@ export type TaxPolicyDefinition = {
   label: string;
   // Basis points: 900 = 9.00%. Integer, because a percentage stored as 0.09 is
   // a float and a float is exactly what the money domain refuses.
+  //
+  // `rateBasisPoints` is the TAX component only. A policy is one decision with two
+  // components — tax (مالیات) and duty (عوارض) — and they are kept apart because a
+  // destination may receive one, the other, both, or only their sum. Storing the sum
+  // as the tax rate would lose which component a document actually carried.
   rateBasisPoints: bigint;
+  dutyRateBasisPoints: bigint;
   isExempt: boolean;
 };
+
+// Tax + duty. This is the rate a destination that accepts one aggregate figure
+// receives; it is never written back as `rateBasisPoints`.
+export const totalRateBasisPoints = (
+  policy: Pick<TaxPolicyDefinition, 'rateBasisPoints' | 'dutyRateBasisPoints'>,
+): bigint => policy.rateBasisPoints + policy.dutyRateBasisPoints;
 
 export const LEGACY_TAX_POLICY_ID = 'IR_VAT_9';
 
@@ -33,6 +45,9 @@ export const LEGACY_TAX_POLICIES: readonly TaxPolicyDefinition[] = [
     id: LEGACY_TAX_POLICY_ID,
     label: 'مالیات بر ارزش افزوده ۹٪',
     rateBasisPoints: 900n,
+    // The legacy rate was a single 9% tax figure with no separate duty, so a sealed
+    // document that names it must keep reading as 9% tax and 0% duty.
+    dutyRateBasisPoints: 0n,
     isExempt: false,
   },
 ];
@@ -77,7 +92,6 @@ export type TaxPolicyCatalogEntry = TaxPolicyDefinition & {
   isDefault: boolean;
   position: number;
 };
-
 // Percent text -> basis points. Two fraction digits of a percent are the limit
 // (10.5% = 1050 bp); a third digit is refused rather than rounded, because a
 // rounded rate is a different rate.
@@ -164,15 +178,18 @@ export const buildTaxPolicyDefinition = ({
   code,
   label,
   rateBasisPoints,
+  dutyRateBasisPoints,
   isExempt,
 }: {
   code: string;
   label: string;
   rateBasisPoints: bigint;
+  dutyRateBasisPoints?: bigint;
   isExempt: boolean;
 }): Result<TaxPolicyDefinition> => {
   const normalizedCode = code.trim();
   const normalizedLabel = label.trim();
+  const dutyRate = dutyRateBasisPoints ?? 0n;
 
   if (normalizedCode === '') {
     return refused('TAX_POLICY_CODE_REQUIRED', 'کد سیاست مالیات الزامی است');
@@ -189,10 +206,23 @@ export const buildTaxPolicyDefinition = ({
     );
   }
 
-  // An exempt policy is a 0% policy and nothing else: a policy that is both
-  // "exempt" and 9% would let an operator claim an exemption the arithmetic does
-  // not reflect.
-  if (isExempt !== (rateBasisPoints === 0n)) {
+  // Each component is a percentage, and so is their sum: two valid components whose
+  // sum exceeds 100% would price a document above its own net.
+  if (
+    !isBasisPointsInRange(dutyRate) ||
+    rateBasisPoints + dutyRate > BigInt(10000)
+  ) {
+    return refused(
+      'DUTY_RATE_OUT_OF_RANGE',
+      'درصد عوارض باید بین ۰ و ۱۰۰ باشد و جمع مالیات و عوارض از ۱۰۰٪ بیشتر نشود',
+    );
+  }
+
+  // An exempt policy carries neither component: a policy that is both "exempt" and
+  // 9% would let an operator claim an exemption the arithmetic does not reflect.
+  const hasNoRate = rateBasisPoints === 0n && dutyRate === 0n;
+
+  if (isExempt !== hasNoRate) {
     return refused(
       'TAX_POLICY_EXEMPTION_MISMATCH',
       isExempt
@@ -205,6 +235,7 @@ export const buildTaxPolicyDefinition = ({
     id: normalizedCode,
     label: normalizedLabel,
     rateBasisPoints,
+    dutyRateBasisPoints: dutyRate,
     isExempt,
   });
 };

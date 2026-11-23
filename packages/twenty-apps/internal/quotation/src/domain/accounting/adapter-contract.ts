@@ -60,12 +60,22 @@ export type ConnectionSettings = {
     duty: boolean;
     tax: boolean;
   };
-  // CRM tax policy code -> the vendor's own tax code, for example IR_VAT_9 -> 999141.
-  // Deliberately a mapping and not an identity: the CRM's policies and the vendor's
-  // fiscal codes are decided by different people, and assuming they match would post
-  // the wrong tax. A rate with no mapping is refused rather than sent unmapped.
-  // Only read when the adapter declares a code-based tax contract; a rate/amount
-  // destination never gets a code it does not read.
+  // The vendor's actual special-row item codes for this installation. A row code identifies
+  // WHICH pre-existing item a non-product amount is posted under (Asan documents 999123 /
+  // 999140 / 999141); it is NOT a CRM tax policy id and NOT the tax rate. Absent entries
+  // fall back to the adapter's documented defaults, and the form asks an operator to confirm
+  // them instead of assuming they exist.
+  specialItemCodes?: {
+    discount?: string;
+    duty?: string;
+    tax?: string;
+  };
+  // CRM tax policy code -> the destination's own tax code, ONE code per policy, for
+  // example IR_VAT_9 -> 64. The destination code represents the WHOLE value-added policy
+  // (tax and duty together); the destination performs its own internal split. There is
+  // deliberately no second, duty-specific mapping: asking for one would demand a fiscal
+  // field the vendor's API does not document. A rate or amount destination reads the
+  // figure from the document and is never asked for a code.
   taxPolicyMappings: Record<string, string>;
   // Currency base and code mapping, plus the test-only mock profile. Optional because a
   // record written before this block existed must still open; a missing block reads as the

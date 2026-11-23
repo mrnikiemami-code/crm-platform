@@ -40,6 +40,7 @@ type QuotationHeaderRow = {
   version: number | null;
   taxPolicy?: string | null;
   taxRateBasisPoints?: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 type QuotationLineIdRow = {
@@ -231,6 +232,7 @@ export class QuotationDraftPersistenceService {
         version: true,
         taxPolicy: true,
         taxRateBasisPoints: true,
+        dutyRateBasisPoints: true,
       },
     });
 
@@ -279,6 +281,7 @@ export class QuotationDraftPersistenceService {
     const storedTaxPolicy: DraftTaxPolicyStored = {
       code: row.taxPolicy ?? null,
       rateBasisPoints: row.taxRateBasisPoints ?? null,
+      dutyRateBasisPoints: row.dutyRateBasisPoints ?? null,
     };
     const taxPolicyRejection = await this.assertTaxPolicyAuthority({
       transactionScope,
@@ -362,6 +365,7 @@ export class QuotationDraftPersistenceService {
               id: true,
               code: true,
               rateBasisPoints: true,
+              dutyRateBasisPoints: true,
               isActive: true,
             },
           });
@@ -384,6 +388,7 @@ export class QuotationDraftPersistenceService {
           : {
               code: (row.code ?? code).trim(),
               rateBasisPoints: (row.rateBasisPoints ?? '').trim(),
+              dutyRateBasisPoints: (row.dutyRateBasisPoints ?? '0').trim(),
               isActive: row.isActive !== false,
             };
     }
@@ -501,6 +506,7 @@ export class QuotationDraftPersistenceService {
       currencyCode: header.currencyCode,
       taxPolicy: header.taxPolicy,
       taxRateBasisPoints: header.taxRateBasisPoints,
+      dutyRateBasisPoints: header.dutyRateBasisPoints ?? null,
       paymentTerms: header.paymentTerms,
       documentDiscountKind: header.documentDiscountKind,
       documentDiscountInputExact: header.documentDiscountInputExact,
@@ -509,6 +515,9 @@ export class QuotationDraftPersistenceService {
       documentDiscountExact: header.documentDiscountExact,
       netExact: header.netExact,
       taxExact: header.taxExact,
+      // Absent duty stays null so a document saved before the split keeps exactly
+      // the breakdown it had; zero is written only when the app declared it.
+      dutyExact: header.dutyExact ?? null,
       roundingExact: header.roundingExact,
       totalExact: header.totalExact,
       customerName,

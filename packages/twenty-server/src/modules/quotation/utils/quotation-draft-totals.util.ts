@@ -134,11 +134,20 @@ export const evaluateQuotationDraftTotals = ({
   // When the app declares the rate it used, the server re-derives every line's
   // tax instead of trusting the amounts it is asked to store. A client cannot
   // lower the tax on a document by sending a smaller taxExact.
+  //
+  // The document's tax is tax + duty, so both declared components are applied to
+  // the line's net. Applying only the tax rate here would reject every document a
+  // policy with a duty component priced correctly.
   if (
     typeof header.taxRateBasisPoints === 'string' &&
     /^\d{1,5}$/.test(header.taxRateBasisPoints)
   ) {
     const rate = BigInt(header.taxRateBasisPoints);
+    const dutyRate =
+      typeof header.dutyRateBasisPoints === 'string' &&
+      /^\d{1,5}$/.test(header.dutyRateBasisPoints)
+        ? BigInt(header.dutyRateBasisPoints)
+        : BigInt(0);
 
     if (rate > BASIS_POINTS_DENOMINATOR) {
       return {
@@ -148,16 +157,46 @@ export const evaluateQuotationDraftTotals = ({
       };
     }
 
+    if (
+      dutyRate > BASIS_POINTS_DENOMINATOR ||
+      rate + dutyRate > BASIS_POINTS_DENOMINATOR
+    ) {
+      return {
+        ok: false,
+        code: 'DUTY_RATE_OUT_OF_RANGE',
+        message:
+          'the declared duty rate is outside 0%..100% or tax plus duty exceeds 100%',
+      };
+    }
+
     for (const [index, line] of lineMicros.entries()) {
       const taxableNet =
         line.grossExact - line.discountExact - line.documentDiscountExact;
-      const expectedTax = applyBasisPoints(taxableNet, rate);
+      const expectedTax =
+        applyBasisPoints(taxableNet, rate) + applyBasisPoints(taxableNet, dutyRate);
 
       if (line.taxExact !== expectedTax) {
         return {
           ok: false,
           code: 'TAX_AMOUNT_MISMATCH',
           message: `lines[${index}].taxExact is not the declared rate applied to its net`,
+        };
+      }
+    }
+
+    // Duty is derived from the document net, exactly the way the app's Money Domain
+    // computed it, so a caller cannot claim a duty figure the declared rate did not
+    // produce. Absent means a caller that predates the split: nothing to check.
+    if (isExactAmountText(header.dutyExact)) {
+      const declaredDuty = parseExactAmountToMicros(
+        header.dutyExact as string,
+      ) as bigint;
+
+      if (declaredDuty !== applyBasisPoints(headerMicros.netExact, dutyRate)) {
+        return {
+          ok: false,
+          code: 'DUTY_AMOUNT_MISMATCH',
+          message: 'header.dutyExact is not the declared duty rate applied to its net',
         };
       }
     }

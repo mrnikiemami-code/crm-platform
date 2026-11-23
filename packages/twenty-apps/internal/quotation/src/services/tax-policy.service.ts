@@ -63,10 +63,13 @@ export const parseTaxPolicyRecord = (
   const recordId = readText(node.id);
   const code = readText(node.code);
   const rate = parseBasisPointsText(readText(node.rateBasisPoints));
+  // A row written before duty existed has no duty column value; it reads as 0%, which
+  // is what its documents were priced with rather than an unreadable policy.
+  const dutyRate = parseBasisPointsText(readText(node.dutyRateBasisPoints) || '0');
 
   // An unreadable row is skipped rather than guessed: a policy whose rate cannot
   // be read cannot be offered as a rate on a document.
-  if (recordId === '' || code === '' || !rate.ok) {
+  if (recordId === '' || code === '' || !rate.ok || !dutyRate.ok) {
     return null;
   }
 
@@ -75,6 +78,7 @@ export const parseTaxPolicyRecord = (
     id: code,
     label: readText(node.name) || code,
     rateBasisPoints: rate.value,
+    dutyRateBasisPoints: dutyRate.value,
     isExempt: readBoolean(node.isExempt, rate.value === BigInt(0)),
     isActive: readBoolean(node.isActive, true),
     isDefault: readBoolean(node.isDefault, false),
@@ -109,6 +113,7 @@ const parseServerPolicy = (
       code: row.code,
       name: row.name,
       rateBasisPoints: row.rateBasisPoints,
+      dutyRateBasisPoints: row.dutyRateBasisPoints,
       isActive: row.isActive,
       isDefault: row.isDefault,
       isExempt: row.isExempt,
@@ -148,6 +153,9 @@ export type SaveTaxPolicyInput = {
   recordId: string | null;
   name: string;
   ratePercentText: string;
+  // Optional so an existing caller that only knows about tax keeps working: an omitted
+  // duty means "no duty", which is what a policy written before duty existed carries.
+  dutyRatePercentText?: string;
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
@@ -163,6 +171,7 @@ export const saveTaxPolicy = (
       recordId: input.recordId,
       name: input.name,
       ratePercentText: input.ratePercentText,
+      dutyRatePercentText: input.dutyRatePercentText ?? '',
       isActive: input.isActive,
       isDefault: input.isDefault,
       isExempt: input.isExempt,

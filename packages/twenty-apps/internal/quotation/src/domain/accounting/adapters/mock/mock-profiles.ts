@@ -1,9 +1,11 @@
 import {
   type AdapterCapabilities,
   type CurrencyHandlingMode,
+  type DutyHandlingMode,
   type TaxHandlingMode,
 } from 'src/domain/accounting/capabilities';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
+import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
 
 // Test-only shapes of a destination. A real vendor declares ONE financial contract, and the
 // CRM has to work with each without imposing the others' requirements. The mock therefore
@@ -13,7 +15,19 @@ import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capa
 //
 // The names are deliberately about the CONTRACT, not about a vendor, so no reader mistakes
 // a profile for a claim about how Asan or Sepidar behaves.
-export const MOCK_PROFILES = ['SIMPLE', 'CODED', 'AMOUNT', 'NO_TAX'] as const;
+//
+// Tax and duty are declared separately because they are two components of one CRM policy:
+// a destination may take a rate for each, an amount for each, one code that means the whole
+// policy, only their combined amount, or nothing at all. There is no "duty code" profile:
+// a code-based destination maps ONE code per policy.
+export const MOCK_PROFILES = [
+  'SIMPLE',
+  'CODED',
+  'AMOUNT',
+  'AGGREGATE',
+  'TAX_ONLY',
+  'NO_TAX',
+] as const;
 
 export type MockProfile = (typeof MOCK_PROFILES)[number];
 
@@ -22,42 +36,87 @@ export const isMockProfile = (value: unknown): value is MockProfile =>
 
 export const DEFAULT_MOCK_PROFILE: MockProfile = 'SIMPLE';
 
+// A destination that identifies the value-added treatment by code publishes the codes it
+// defines. The mock's list is small on purpose: it is enough to show that a mapping is
+// checked against the destination's own rate, that two policies with the same total but a
+// different split are told apart, and that a code this destination does not list is
+// reported as unverifiable rather than accepted.
+const CODED_PROFILE_CATALOG: readonly TaxCodeContract[] = [
+  {
+    code: '64',
+    label: 'مالیات ارزش افزوده ۹٪ (۶٪ مالیات + ۳٪ عوارض)',
+    totalRateBasisPoints: '900',
+    taxRateBasisPoints: '600',
+    dutyRateBasisPoints: '300',
+  },
+  {
+    code: '70',
+    label: 'مالیات ارزش افزوده ۱۰٪ (۷٪ مالیات + ۳٪ عوارض)',
+    totalRateBasisPoints: '1000',
+    taxRateBasisPoints: '700',
+    dutyRateBasisPoints: '300',
+  },
+];
+
 export const MOCK_PROFILE_DESCRIPTIONS: Record<
   MockProfile,
   {
     label: string;
     tax: TaxHandlingMode;
+    duty: DutyHandlingMode;
     currency: CurrencyHandlingMode;
+    taxCodeCatalog?: readonly TaxCodeContract[];
     summary: string;
   }
 > = {
   SIMPLE: {
-    label: 'ساده: فقط نرخ مالیات و ارز ثابت',
+    label: 'ساده: فقط نرخ مالیات و عوارض، ارز ثابت',
     tax: 'TAX_RATE',
+    duty: 'DUTY_RATE',
     currency: 'SINGLE_CURRENCY',
     summary:
-      'نرم‌افزار ساده‌ای که نرخ مالیات را می‌گیرد و همه مبالغ را به یک ارز ثبت می‌کند؛ کد مالیات و کد ارز نمی‌خواهد.',
+      'نرم‌افزار ساده‌ای که نرخ مالیات و نرخ عوارض را جداگانه می‌گیرد و همه مبالغ را به یک ارز ثبت می‌کند؛ کد مالیات و کد ارز نمی‌خواهد.',
   },
   CODED: {
-    label: 'کدمحور: کد مالیات و کد ارز',
+    label: 'کدمحور: یک کد مالیات برای هر سیاست، کد ارز',
     tax: 'TAX_CODE',
+    duty: 'DUTY_WITHIN_POLICY',
     currency: 'CURRENCY_CODE',
+    taxCodeCatalog: CODED_PROFILE_CATALOG,
     summary:
-      'نرم‌افزاری که برای هر سیاست مالیات یک کد ویژه و برای هر ارز یک کد می‌خواهد؛ بدون نگاشت معتبر، سند ارسال نمی‌شود.',
+      'نرم‌افزاری که برای هر سیاست یک کد مالیات واحد می‌خواهد؛ همان کد کل ارزش افزوده (مالیات + عوارض) را نمایندگی می‌کند و مقصد تفکیک را طبق تعریف خودش انجام می‌دهد.',
   },
   AMOUNT: {
-    label: 'مبلغ‌محور: مبلغ مالیات و ارز ثابت',
+    label: 'مبلغ‌محور: مبلغ مالیات و مبلغ عوارض، ارز ثابت',
     tax: 'TAX_AMOUNT',
+    duty: 'DUTY_AMOUNT',
     currency: 'SINGLE_CURRENCY',
     summary:
-      'نرم‌افزاری که مبلغ نهایی مالیات را می‌گیرد و کد مالیات نمی‌خواهد؛ همه مبالغ به یک ارز ثبت می‌شود.',
+      'نرم‌افزاری که مبلغ نهایی مالیات و مبلغ عوارض را جداگانه می‌گیرد و کد نمی‌خواهد؛ همه مبالغ به یک ارز ثبت می‌شود.',
+  },
+  AGGREGATE: {
+    label: 'تجمیعی: فقط جمع مالیات و عوارض',
+    tax: 'TAX_AMOUNT',
+    duty: 'AGGREGATE',
+    currency: 'SINGLE_CURRENCY',
+    summary:
+      'قرارداد صریحی که فقط جمع مالیات و عوارض را در یک فیلد می‌پذیرد؛ تفکیک دو مؤلفه در سند CRM می‌ماند و جمع به مقصد می‌رود.',
+  },
+  TAX_ONLY: {
+    label: 'فقط مالیات؛ بدون قابلیت عوارض',
+    tax: 'TAX_RATE',
+    duty: 'UNSUPPORTED',
+    currency: 'SINGLE_CURRENCY',
+    summary:
+      'نرم‌افزاری که مالیات را می‌پذیرد اما مفهوم عوارض ندارد؛ سیاست دارای عوارض به‌جای حذف بی‌صدا، رد می‌شود.',
   },
   NO_TAX: {
-    label: 'بدون پشتیبانی مالیات',
+    label: 'بدون پشتیبانی مالیات و عوارض',
     tax: 'UNSUPPORTED',
+    duty: 'UNSUPPORTED',
     currency: 'SINGLE_CURRENCY',
     summary:
-      'قرارداد فعلی این مقصد امکان انتقال مالیات را ندارد؛ سند مشمول مالیات به‌جای ارسال بدون مالیات، رد می‌شود.',
+      'قرارداد فعلی این مقصد امکان انتقال مالیات و عوارض را ندارد؛ سند مشمول مالیات به‌جای ارسال بدون مالیات، رد می‌شود.',
   },
 };
 
@@ -69,13 +128,17 @@ export const mockProfileCapabilities = (
   return {
     ...ASAN_CAPABILITIES,
     taxHandling: entry.tax,
+    dutyHandling: entry.duty,
     currencyHandling: entry.currency,
     // A single-currency mock books rial, like a simple Iranian installation. A code-based
     // one has no fixed base and therefore declares none.
     baseCurrency: entry.currency === 'SINGLE_CURRENCY' ? 'IRR' : '',
-    // Only a destination that identifies tax by a code needs a pre-existing tax row. A
-    // destination that reads a rate or an amount has no such row, so the CRM must not ask
-    // its user to confirm one.
-    requiresSpecialItemCodes: entry.tax === 'TAX_CODE',
+    // The documented special-row codes belong to Asan, not to a mock destination. A mock
+    // profile has no vendor installation, so it declares none — and a panel that showed a
+    // row-code field for it would be describing a vendor it does not stand in for.
+    requiresSpecialItemCodes: false,
+    ...(entry.taxCodeCatalog === undefined
+      ? {}
+      : { taxCodeCatalog: entry.taxCodeCatalog }),
   };
 };

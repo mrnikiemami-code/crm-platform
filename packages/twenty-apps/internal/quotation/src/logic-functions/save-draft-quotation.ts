@@ -176,6 +176,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         id: policy.value.id,
         label: policy.value.label,
         rateBasisPoints: policy.value.rateBasisPoints,
+        dutyRateBasisPoints: policy.value.dutyRateBasisPoints,
         isExempt: policy.value.isExempt,
       },
     };

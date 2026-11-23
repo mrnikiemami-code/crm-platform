@@ -116,6 +116,11 @@ export type QuotationPdfSubtotals = {
   // The sealed rate, shown beside the tax amount. Absent on documents issued
   // before configurable policies; the amount is still the stored one.
   taxRatePercent?: string;
+  // Duty is a component of the same policy, so it gets its own row whenever the
+  // document carries it. Hiding it inside the tax total would misstate what the
+  // customer is being asked to pay.
+  duty?: string;
+  dutyRatePercent?: string;
   rounding?: string;
 };
 
@@ -227,6 +232,15 @@ const buildSubtotalRows = (
     });
   }
 
+  if (isNonEmptyString(subtotals.duty)) {
+    rows.push({
+      label: isNonEmptyString(subtotals.dutyRatePercent)
+        ? `عوارض (${subtotals.dutyRatePercent}٪)`
+        : 'عوارض',
+      value: subtotals.duty,
+    });
+  }
+
   if (isNonEmptyString(subtotals.rounding)) {
     rows.push({ label: 'تعدیل گردکردن', value: subtotals.rounding });
   }
@@ -258,7 +272,13 @@ export const buildQuotationPdfDocument = (
   }
 
   if (layout.showTax) {
-    headerChildren.push(tableCell(moneyStyle, 'مالیات', 'hdr-tax'));
+    // A line's tax cell is its tax AND duty (only the document carries the split), so
+    // the column says so whenever the document has a duty component to speak of.
+    const lineTaxLabel = isNonEmptyString(input.subtotals?.duty)
+      ? 'مالیات و عوارض'
+      : 'مالیات';
+
+    headerChildren.push(tableCell(moneyStyle, lineTaxLabel, 'hdr-tax'));
   }
 
   if (layout.showLineTotal) {

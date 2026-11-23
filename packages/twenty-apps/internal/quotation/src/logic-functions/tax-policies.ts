@@ -4,6 +4,7 @@ import { TAX_POLICIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER } from 'src/constants/
 import {
   formatBasisPointsAsPercent,
   selectDefaultTaxPolicy,
+  totalRateBasisPoints,
   type TaxPolicyCatalogEntry,
 } from 'src/domain/money/tax-policy';
 import {
@@ -34,6 +35,13 @@ const describePolicy = (
   name: entry.label,
   rateBasisPoints: entry.rateBasisPoints.toString(),
   ratePercent: formatBasisPointsAsPercent(entry.rateBasisPoints),
+  dutyRateBasisPoints: entry.dutyRateBasisPoints.toString(),
+  dutyRatePercent: formatBasisPointsAsPercent(entry.dutyRateBasisPoints),
+  // The total is what the list shows; it is a sum of the two components and is never
+  // written back as a rate.
+  totalRatePercent: formatBasisPointsAsPercent(
+    totalRateBasisPoints(entry),
+  ),
   isActive: entry.isActive,
   isDefault: entry.isDefault,
   isExempt: entry.isExempt,
@@ -95,6 +103,7 @@ const handler = async (event: RoutePayload<unknown>) => {
           recordId: readOptionalId(body.recordId),
           name: readString(body.name),
           ratePercentText: readString(body.ratePercentText),
+          dutyRatePercentText: readString(body.dutyRatePercentText),
           isActive: readBoolean(body.isActive, true),
           isDefault: body.isDefault === true,
           isExempt: body.isExempt === true,

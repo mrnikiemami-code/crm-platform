@@ -30,6 +30,9 @@ const BASELINE_POLICY = {
   code: 'IR_VAT_9',
   name: 'مالیات بر ارزش افزوده ۹٪',
   rateBasisPoints: BigInt(900),
+  // The legacy 9% was a single tax figure with no separate duty; a workspace that
+  // bootstraps keeps exactly the rate its older documents were sealed with.
+  dutyRateBasisPoints: BigInt(0),
 } as const;
 
 const POLICY_COLUMNS = {
@@ -37,6 +40,7 @@ const POLICY_COLUMNS = {
   code: true,
   name: true,
   rateBasisPoints: true,
+  dutyRateBasisPoints: true,
   isActive: true,
   isDefault: true,
   isExempt: true,
@@ -66,18 +70,33 @@ const normalizeActor = (actor: ActorMetadata): ActorMetadata => {
 const toView = (row: WorkspaceTaxPolicyRow): WorkspaceTaxPolicyView | null => {
   const code = readText(row.code);
   const rateBasisPoints = readText(row.rateBasisPoints);
+  // A row written before the duty column existed reads as 0% duty, which is what
+  // its documents were already priced with.
+  const dutyRateBasisPoints = readText(row.dutyRateBasisPoints) || '0';
 
-  if (code === '' || !/^\d{1,5}$/.test(rateBasisPoints)) {
+  if (
+    code === '' ||
+    !/^\d{1,5}$/.test(rateBasisPoints) ||
+    !/^\d{1,5}$/.test(dutyRateBasisPoints)
+  ) {
     // An unreadable row is not offered as a rate: guessing one would be a price.
     return null;
   }
+
+  const taxBasisPoints = BigInt(rateBasisPoints);
+  const dutyBasisPoints = BigInt(dutyRateBasisPoints);
+  const totalBasisPoints = taxBasisPoints + dutyBasisPoints;
 
   return {
     recordId: row.id,
     code,
     name: readText(row.name) || code,
     rateBasisPoints,
-    ratePercent: formatBasisPointsAsPercent(BigInt(rateBasisPoints)),
+    ratePercent: formatBasisPointsAsPercent(taxBasisPoints),
+    dutyRateBasisPoints,
+    dutyRatePercent: formatBasisPointsAsPercent(dutyBasisPoints),
+    totalRateBasisPoints: totalBasisPoints.toString(),
+    totalRatePercent: formatBasisPointsAsPercent(totalBasisPoints),
     isActive: row.isActive !== false,
     isDefault: row.isDefault === true,
     isExempt: row.isExempt === true,
@@ -128,6 +147,7 @@ export class TaxPolicyAuthorityService {
             code: BASELINE_POLICY.code,
             name: BASELINE_POLICY.name,
             rateBasisPoints: BASELINE_POLICY.rateBasisPoints.toString(),
+            dutyRateBasisPoints: BASELINE_POLICY.dutyRateBasisPoints.toString(),
             isActive: true,
             isDefault: true,
             isExempt: false,
@@ -181,9 +201,35 @@ export class TaxPolicyAuthorityService {
           return refused(rate.code, rate.message);
         }
 
+        // An empty duty field means "no duty", which is a real policy; a typed value
+        // must parse like the tax rate. Both components are checked before storage so a
+        // policy can never be saved with a duty rate the arithmetic would misread.
+        const dutyText = input.dutyRatePercentText.trim();
+        const dutyRate =
+          dutyText === ''
+            ? { ok: true as const, rateBasisPoints: BigInt(0) }
+            : parseTaxRatePercent(dutyText);
+
+        if (!dutyRate.ok) {
+          return refused(dutyRate.code, dutyRate.message);
+        }
+
+        // Each component is a percentage and so is their sum: two valid components
+        // whose sum exceeds 100% would price a document above its own net.
+        if (rate.rateBasisPoints + dutyRate.rateBasisPoints > BigInt(10000)) {
+          return refused(
+            'DUTY_RATE_OUT_OF_RANGE',
+            'جمع مالیات و عوارض از ۱۰۰٪ بیشتر نمی‌شود',
+          );
+        }
+
         // An exempt policy is a 0% policy and nothing else; "exempt at 9%" would
         // claim an exemption the arithmetic does not reflect.
-        if (input.isExempt !== (rate.rateBasisPoints === BigInt(0))) {
+        if (
+          input.isExempt !==
+          (rate.rateBasisPoints === BigInt(0) &&
+            dutyRate.rateBasisPoints === BigInt(0))
+        ) {
           return refused(
             'TAX_POLICY_EXEMPTION_MISMATCH',
             input.isExempt
@@ -244,6 +290,7 @@ export class TaxPolicyAuthorityService {
           code,
           name,
           rateBasisPoints: rate.rateBasisPoints.toString(),
+          dutyRateBasisPoints: dutyRate.rateBasisPoints.toString(),
           isActive: input.isActive,
           isDefault: shouldBeDefault,
           isExempt: input.isExempt,

@@ -235,6 +235,17 @@ export default defineObject({
       isUIEditable: false,
     },
     {
+      universalIdentifier: QUOTATION_FIELDS.dutyRateBasisPoints,
+      type: FieldType.TEXT,
+      name: 'dutyRateBasisPoints',
+      label: 'نرخ عوارض (پایه‌واحد)',
+      description:
+        'بخش عوارض همان سیاست مالیات سند؛ ۴۰۰ یعنی ۴٪. با نرخ مالیات جمع می‌شود ولی جدا ذخیره می‌ماند.',
+      icon: 'IconReceiptTax',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: QUOTATION_FIELDS.paymentTerms,
       type: FieldType.TEXT,
       name: 'paymentTerms',
@@ -323,6 +334,17 @@ export default defineObject({
       description:
         'جمع مالیات ردیف‌ها بر اساس سیاست مالیات سند (بدون تعدیل گردکردن).',
       icon: 'IconPercentage',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      universalIdentifier: QUOTATION_FIELDS.dutyExact,
+      type: FieldType.TEXT,
+      name: 'dutyExact',
+      label: 'عوارض (دقیق، ریال)',
+      description:
+        'بخش عوارض از taxExact؛ برای ارسال جداگانه به مقصدی که عوارض را مستقل می‌خواند.',
+      icon: 'IconReceiptTax',
       isNullable: true,
       isUIEditable: false,
     },

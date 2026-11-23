@@ -209,6 +209,58 @@ describe('parseAccountingConnectionSettings', () => {
       });
     }
   });
+
+  // One policy, one code: the connection stores a single mapping per policy and no
+  // duty-specific entry. The row codes below are a different thing entirely.
+  it('stores one code per policy and never invents a duty mapping', () => {
+    const parsed = parseAccountingConnectionSettings({
+      baseUrl: 'https://asan.example.ir',
+      taxPolicyMappings: { IR_VAT_9: '64' },
+    });
+
+    expect(parsed.ok).toBe(true);
+
+    if (parsed.ok) {
+      const mappings = parsed.value.specialCodes.taxPolicyMappings ?? {};
+
+      expect(Object.keys(mappings)).toEqual(['IR_VAT_9']);
+      expect(mappings.IR_VAT_9).toBe('64');
+    }
+  });
+
+  it('keeps the installation row codes apart from the policy mapping', () => {
+    const parsed = parseAccountingConnectionSettings({
+      baseUrl: 'https://asan.example.ir',
+      taxPolicyMappings: { IR_VAT_9: '64' },
+      specialItemCodes: { discount: '999123', duty: '999140', tax: '999141' },
+    });
+
+    expect(parsed.ok).toBe(true);
+
+    if (parsed.ok) {
+      expect(parsed.value.specialCodes.specialItemCodes).toEqual({
+        discount: '999123',
+        duty: '999140',
+        tax: '999141',
+      });
+      expect(parsed.value.specialCodes.taxPolicyMappings).toEqual({
+        IR_VAT_9: '64',
+      });
+    }
+  });
+
+  it('drops a non-numeric row code rather than storing it as a product id', () => {
+    const parsed = parseAccountingConnectionSettings({
+      baseUrl: 'https://asan.example.ir',
+      specialItemCodes: { tax: 'row-tax' },
+    });
+
+    expect(parsed.ok).toBe(true);
+
+    if (parsed.ok) {
+      expect(parsed.value.specialCodes.specialItemCodes).toBeUndefined();
+    }
+  });
 });
 
 describe('accountingConnectionColumnsFromSettings', () => {

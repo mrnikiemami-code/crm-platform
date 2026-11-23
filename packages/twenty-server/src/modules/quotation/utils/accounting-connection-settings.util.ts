@@ -18,7 +18,14 @@ export type AccountingMoneyUnit = (typeof ACCOUNTING_MONEY_UNITS)[number];
 // The closed set of destination contracts the mock adapter can stand in for. Because this is
 // a list, a caller cannot describe a capability that does not exist: they may only name one
 // of these profiles, and the server expands it into the capabilities it stores.
-export const MOCK_PROFILES = ['SIMPLE', 'CODED', 'AMOUNT', 'NO_TAX'] as const;
+export const MOCK_PROFILES = [
+  'SIMPLE',
+  'CODED',
+  'AMOUNT',
+  'AGGREGATE',
+  'TAX_ONLY',
+  'NO_TAX',
+] as const;
 
 export type MockProfile = (typeof MOCK_PROFILES)[number];
 
@@ -44,6 +51,15 @@ export type AccountingConnectionSettings = {
     discount: boolean;
     duty: boolean;
     tax: boolean;
+    // The installation's own special-row item codes. A row code identifies WHICH row an
+    // amount is posted under; it is not a tax policy id and never a rate.
+    specialItemCodes?: {
+      discount?: string;
+      duty?: string;
+      tax?: string;
+    };
+    // ONE destination code per CRM tax policy. That code stands for the whole value-added
+    // treatment (tax + duty); there is no separate duty mapping.
     taxPolicyMappings?: Record<string, string>;
   };
   financial: AccountingFinancialSettings;
@@ -163,6 +179,27 @@ const parseTaxPolicyMappings = (value: unknown): Record<string, string> => {
   }
 
   return mappings;
+};
+
+// The vendor's special-row item codes are numeric product ids; anything else is refused
+// rather than stored as a product id the vendor would reject at send time.
+const parseSpecialItemCodes = (
+  value: unknown,
+): NonNullable<AccountingConnectionSettings['specialCodes']['specialItemCodes']> => {
+  const raw = asRecord(value);
+  const codes: NonNullable<
+    AccountingConnectionSettings['specialCodes']['specialItemCodes']
+  > = {};
+
+  for (const key of ['discount', 'duty', 'tax'] as const) {
+    const code = readString(raw[key]);
+
+    if (/^\d+$/.test(code)) {
+      codes[key] = code;
+    }
+  }
+
+  return codes;
 };
 
 const normalizeMoneyUnit = (value: unknown): AccountingMoneyUnit =>
@@ -329,6 +366,11 @@ export const parseAccountingConnectionSettings = (
     ...parseTaxPolicyMappings(specialCodes.taxPolicyMappings),
     ...parseTaxPolicyMappings(raw.taxPolicyMappings),
   };
+  // Row codes may arrive nested or at the top level, for the same compatibility reason.
+  const specialItemCodes = {
+    ...parseSpecialItemCodes(specialCodes.specialItemCodes),
+    ...parseSpecialItemCodes(raw.specialItemCodes),
+  };
   const financial = parseFinancialSettings(
     raw.financial,
     options.adapterId ?? '',
@@ -348,6 +390,9 @@ export const parseAccountingConnectionSettings = (
       discount: readBoolean(specialCodes.discount, false),
       duty: readBoolean(specialCodes.duty, false),
       tax: readBoolean(specialCodes.tax, false),
+      ...(Object.keys(specialItemCodes).length === 0
+        ? {}
+        : { specialItemCodes }),
       ...(Object.keys(taxPolicyMappings).length === 0
         ? {}
         : { taxPolicyMappings }),

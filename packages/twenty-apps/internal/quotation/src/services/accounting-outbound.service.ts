@@ -913,21 +913,19 @@ export const executeQuotationExport = async (
     );
   }
 
+  const snapshotPolicyCode = context.value.revision.snapshot.taxPolicy ?? '';
+  const taxVendorCode = settings.taxPolicyMappings[snapshotPolicyCode];
   const factor = mapRevisionToAsanFactor({
     revision: context.value.revision.snapshot,
     customerCode,
     userId,
     productCodeByLineId,
     specialCodesInUse: settings.specialCodes,
-    ...(settings.taxPolicyMappings[context.value.revision.snapshot.taxPolicy] ===
-    undefined
+    ...(settings.specialItemCodes === undefined
       ? {}
-      : {
-          taxVendorCode:
-            settings.taxPolicyMappings[
-              context.value.revision.snapshot.taxPolicy
-            ],
-        }),
+      : { specialItemCodes: settings.specialItemCodes }),
+    dutyHandling: adapter.capabilities.dutyHandling,
+    ...(taxVendorCode === undefined ? {} : { taxVendorCode }),
     description:
       context.value.quotation.name === ''
         ? context.value.quotation.id

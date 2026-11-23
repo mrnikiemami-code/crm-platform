@@ -21,6 +21,9 @@ export type QuotationRevisionLine = {
   quantityScaled: string;
   unitPriceMicros: string;
   discountMicros: string;
+  // Tax and duty for the line, combined. The document-level split is what a
+  // destination is handed; a line's own share stays summed so every stored revision
+  // issued before policies could carry duty keeps its exact old bytes.
   taxMicros: string;
   totalMicros: string;
 };
@@ -35,12 +38,17 @@ export type QuotationRevisionSnapshot = {
   // The exact rate the sealed amounts were computed with, in basis points. Kept in
   // the snapshot so changing the policy's rate later cannot rewrite history.
   taxRateBasisPoints: string | null;
+  // The duty component of the same sealed policy. Zero for every revision issued before
+  // policies could carry duty, which is what keeps those documents' amounts unchanged.
+  dutyRateBasisPoints?: string | null;
   paymentTerms: string | null;
   lines: QuotationRevisionLine[];
   totals: {
     grossMicros: string;
     discountMicros: string;
     netMicros: string;
+    taxOnlyMicros?: string;
+    dutyMicros?: string;
     taxMicros: string;
     totalMicros: string;
   };

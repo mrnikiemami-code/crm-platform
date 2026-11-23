@@ -1,6 +1,10 @@
 import {
   ASAN_SPECIAL_ITEM_CODES,
 } from 'src/domain/accounting/adapters/asan/asan-capabilities';
+import {
+  dutyTravelsInsideTax,
+  type DutyHandlingMode,
+} from 'src/domain/accounting/capabilities';
 import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract';
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { toAsanFactorDate } from 'src/domain/accounting/adapters/asan/jalali';
@@ -115,6 +119,12 @@ export type AsanSpecialCodeAvailability = {
   tax: boolean;
 };
 
+export type AsanSpecialItemCodeOverrides = {
+  discount?: string;
+  duty?: string;
+  tax?: string;
+};
+
 export type AsanMappingInput = {
   revision: QuotationRevisionSnapshot;
   // Asan's numeric identifiers, resolved from the accounting links — never the CRM ids, and
@@ -127,11 +137,23 @@ export type AsanMappingInput = {
   // Which special codes this installation actually has defined. A false entry means the
   // amount is folded into no separate line, which the caller must have decided.
   specialCodesInUse: AsanSpecialCodeAvailability;
+  // The installation's actual special-row item codes, when they differ from the documented
+  // defaults. These identify a ROW, not a tax policy: the connection's policy mapping is a
+  // different table and is never posted as a product id.
+  specialItemCodes?: AsanSpecialItemCodeOverrides;
+  // How the destination carries duty, so the mapper can decide whether duty gets its own
+  // row or travels inside the single tax figure. A destination that has no duty field must
+  // not be handed a duty row it would post as a product.
+  dutyHandling?: DutyHandlingMode;
   // The Asan tax item code this CRM tax policy maps to, resolved from the
   // connection. Absent keeps the documented default for callers that predate
   // configurable policies; the export planner refuses an unmapped taxed document
   // before it can reach this mapper.
   taxVendorCode?: string;
+  // Kept for callers that predate the single-policy-code rule. Duty is no longer mapped to
+  // a policy code; this only supplies the installation's duty row code when one was stored
+  // under the old key.
+  dutyVendorCode?: string;
   description: string;
   storageId?: number;
   // The unit Asan stores amounts in. Absent keeps the legacy rial assumption for callers that
@@ -151,7 +173,6 @@ export const mapRevisionToAsanFactor = (
 
   const details: AsanFactorDetail[] = [];
   let discountTotalMicros = 0n;
-  let taxTotalMicros = 0n;
 
   // The unit is applied at ONE point so a line price and a special-code amount can never be
   // converted by different rules.
@@ -214,8 +235,44 @@ export const mapRevisionToAsanFactor = (
     });
 
     discountTotalMicros += discount.value;
-    taxTotalMicros += tax.value;
   }
+
+  // The split is a document-level fact in the sealed snapshot, so it is read from the
+  // totals rather than re-derived per line: `taxMicros` already includes duty, and
+  // subtracting it is what makes the destination's tax row the tax component only.
+  const documentTax = parseExactToMicros(input.revision.totals.taxMicros);
+
+  if (!documentTax.ok) {
+    return documentTax;
+  }
+
+  const documentDuty = parseExactToMicros(input.revision.totals.dutyMicros ?? '0');
+
+  if (!documentDuty.ok) {
+    return documentDuty;
+  }
+
+  const taxTotalMicros = documentTax.value - documentDuty.value;
+  const dutyTotalMicros = documentDuty.value;
+
+  // A destination with no duty field of its own receives ONE figure that already includes
+  // both components; the destination's own definition of the policy code splits it. Sending
+  // the tax-only part there would drop the duty, which is exactly what must not happen.
+  const dutyTravelsSeparately =
+    input.dutyHandling === undefined ||
+    !dutyTravelsInsideTax(input.dutyHandling);
+  const taxRowMicros = dutyTravelsSeparately
+    ? taxTotalMicros
+    : documentTax.value;
+  const rowCode = (
+    kind: keyof typeof ASAN_SPECIAL_ITEM_CODES,
+  ): string =>
+    (input.specialItemCodes?.[kind] ?? '').trim() ||
+    // A caller that predates the single-policy-code rule stored the row code under the old
+    // policy-mapping key; it is still a row code, so it may supply the default.
+    (kind === 'tax' ? (input.taxVendorCode ?? '').trim() : '') ||
+    (kind === 'duty' ? (input.dutyVendorCode ?? '').trim() : '') ||
+    ASAN_SPECIAL_ITEM_CODES[kind];
 
   // Discount, duty and tax are separate lines with Count = 0 and the amount in Price. They
   // are appended only when the installation defines the code AND the amount is non-zero: a
@@ -227,14 +284,20 @@ export const mapRevisionToAsanFactor = (
     amounts: [
       {
         enabled: input.specialCodesInUse.discount,
-        code: ASAN_SPECIAL_ITEM_CODES.discount,
+        code: rowCode('discount'),
         micros: discountTotalMicros,
         label: 'تخفیف',
       },
       {
+        enabled: input.specialCodesInUse.duty && dutyTravelsSeparately,
+        code: rowCode('duty'),
+        micros: dutyTotalMicros,
+        label: 'عوارض',
+      },
+      {
         enabled: input.specialCodesInUse.tax,
-        code: input.taxVendorCode ?? ASAN_SPECIAL_ITEM_CODES.tax,
-        micros: taxTotalMicros,
+        code: rowCode('tax'),
+        micros: taxRowMicros,
         label: 'مالیات',
       },
     ],

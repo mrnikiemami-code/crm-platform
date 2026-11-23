@@ -73,6 +73,48 @@ export const isSignificantExactAmount = (
   exact.trim() !== '' &&
   exact.trim() !== ZERO_EXACT_AMOUNT;
 
+// Exact subtraction of two stored amounts, in the same six-decimal shape they are
+// stored in. Used where one stored figure is a part of another (duty inside tax):
+// parsing to micros keeps it integer arithmetic, because a float here would change an
+// amount the customer is asked to pay.
+export const subtractExactAmounts = (
+  minuend: string | null | undefined,
+  subtrahend: string | null | undefined,
+): string | null => {
+  const parseMicros = (value: string | null | undefined): bigint | null => {
+    if (!isNonEmptyString(value)) {
+      return BigInt(0);
+    }
+
+    const match = DECIMAL_AMOUNT.exec(value.trim());
+
+    if (match === null) {
+      return null;
+    }
+
+    const fraction = (match[3] ?? '').padEnd(6, '0');
+    const magnitude = BigInt(match[2]) * BigInt(1000000) + BigInt(fraction);
+
+    return match[1] === '-' ? -magnitude : magnitude;
+  };
+
+  const left = parseMicros(minuend);
+  const right = parseMicros(subtrahend);
+
+  if (left === null || right === null) {
+    return null;
+  }
+
+  const difference = left - right;
+  const magnitude = difference < BigInt(0) ? -difference : difference;
+  const integerPart = magnitude / BigInt(1000000);
+  const fractionPart = magnitude % BigInt(1000000);
+
+  return `${difference < BigInt(0) ? '-' : ''}${integerPart.toString()}.${fractionPart
+    .toString()
+    .padStart(6, '0')}`;
+};
+
 // Basis points -> the percent a reader sees: 900 -> "۹", 1050 -> "۱۰٫۵". The
 // stored rate is an integer string because a percentage never travels as a float.
 export const formatBasisPointsAsPersianPercent = (

@@ -108,18 +108,52 @@ describe('connection settings', () => {
     expect(parsed).toEqual({ ok: true, value: { ...valid, remoteUserId: '', defaultStorageId: '' } });
   });
 
-  it('keeps an explicit CRM policy to vendor tax code mapping', () => {
+  it('keeps an explicit CRM policy to one vendor tax code mapping', () => {
+    const parsed = parseConnectionSettings({
+      ...valid,
+      taxPolicyMappings: { IR_VAT_9: '64' },
+    });
+
+    expect(parsed.ok && parsed.value.taxPolicyMappings).toEqual({
+      IR_VAT_9: '64',
+    });
+  });
+
+  it('reads a mapping written under the legacy specialCodes block', () => {
     const parsed = parseConnectionSettings({
       ...valid,
       specialCodes: {
         ...valid.specialCodes,
-        taxPolicyMappings: { IR_VAT_9: '999141' },
+        taxPolicyMappings: { IR_VAT_9: '64' },
       },
     });
 
     expect(parsed.ok && parsed.value.taxPolicyMappings).toEqual({
-      IR_VAT_9: '999141',
+      IR_VAT_9: '64',
     });
+  });
+
+  it('keeps the installation row codes apart from the policy mapping', () => {
+    const parsed = parseConnectionSettings({
+      ...valid,
+      specialItemCodes: { discount: '999123', duty: '999140', tax: '999141' },
+    });
+
+    expect(parsed.ok && parsed.value.taxPolicyMappings).toEqual({});
+    expect(parsed.ok && parsed.value.specialItemCodes).toEqual({
+      discount: '999123',
+      duty: '999140',
+      tax: '999141',
+    });
+  });
+
+  it('drops a non-numeric row code instead of posting it as a product id', () => {
+    const parsed = parseConnectionSettings({
+      ...valid,
+      specialItemCodes: { tax: 'row-tax' },
+    });
+
+    expect(parsed.ok && parsed.value.specialItemCodes).toBeUndefined();
   });
 
   it('reads a pre-existing record with safe defaults instead of failing', () => {

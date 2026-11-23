@@ -51,6 +51,9 @@ export type EditableDraft = {
   // The rate the document was priced at, in basis points. Kept so reopening a
   // draft does not adopt a rate the settings changed after it was saved.
   taxRateBasisPoints: string | null;
+  // The duty component of the same frozen policy. Absent on documents saved before
+  // a policy could carry duty, which are re-priced with zero duty.
+  dutyRateBasisPoints: string | null;
   moneyUnit: MoneyUnit;
   documentDiscountKind: EditableDraftDiscountKind;
   documentDiscountPercentText: string;
@@ -342,6 +345,7 @@ export const parseDraftForEdit = (
     paymentTerms: readText(quotation.paymentTerms),
     taxPolicy: readNullableText(quotation.taxPolicy),
     taxRateBasisPoints: readNullableText(quotation.taxRateBasisPoints),
+    dutyRateBasisPoints: readNullableText(quotation.dutyRateBasisPoints),
     moneyUnit,
     documentDiscountKind: resolvedDocumentDiscountKind,
     documentDiscountPercentText:

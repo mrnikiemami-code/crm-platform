@@ -217,6 +217,15 @@ describe('discount and tax special codes', () => {
         totalMicros: '9810000.000000',
       },
     ],
+    // The special lines read the document totals, so the fixture has to state the same
+    // document an issued revision would: a line figure alone is not the authority.
+    totals: {
+      grossMicros: '10000000.000000',
+      discountMicros: '1000000.000000',
+      netMicros: '9000000.000000',
+      taxMicros: '810000.000000',
+      totalMicros: '9810000.000000',
+    },
   });
 
   it('appends discount and tax as separate Count=0 lines when configured', () => {
@@ -268,6 +277,90 @@ describe('discount and tax special codes', () => {
         (detail) => detail.ProductID === Number(ASAN_SPECIAL_ITEM_CODES.tax),
       ),
     ).toHaveLength(1);
+  });
+
+  // One policy, two internal components. The sealed snapshot keeps tax and duty apart, and
+  // the destination's own contract decides whether it receives them as separate rows or as
+  // the single combined figure its policy code stands for.
+  describe('a 9% policy split into 6% tax and 3% duty', () => {
+    const splitRevision = revision({
+      lines: [
+        {
+          lineId: 'line-1',
+          description: 'خدمت مشاوره',
+          unit: 'ساعت',
+          quantityScaled: '1000000',
+          unitPriceMicros: '1000000.000000',
+          discountMicros: '0.000000',
+          taxMicros: '90000.000000',
+          totalMicros: '1090000.000000',
+        },
+      ],
+      totals: {
+        grossMicros: '1000000.000000',
+        discountMicros: '0.000000',
+        netMicros: '1000000.000000',
+        taxMicros: '90000.000000',
+        dutyMicros: '30000.000000',
+        totalMicros: '1090000.000000',
+      },
+    });
+
+    const specialsOf = (input: Partial<AsanMappingInput>) => {
+      const factor = unwrap(
+        mapRevisionToAsanFactor(
+          mappingInput({
+            revision: splitRevision,
+            specialCodesInUse: { discount: false, duty: true, tax: true },
+            ...input,
+          }),
+        ),
+      );
+
+      return factor.FactorDetails.filter((detail) => detail.Count === 0);
+    };
+
+    it('sends duty and tax as two rows with their own amounts', () => {
+      const specials = specialsOf({ dutyHandling: 'DUTY_AMOUNT' });
+
+      expect(specials.map((detail) => detail.ProductID)).toEqual([
+        Number(ASAN_SPECIAL_ITEM_CODES.duty),
+        Number(ASAN_SPECIAL_ITEM_CODES.tax),
+      ]);
+      expect(specials.map((detail) => detail.Price)).toEqual([30_000, 60_000]);
+    });
+
+    it('keeps the product line free of both components', () => {
+      const factor = unwrap(
+        mapRevisionToAsanFactor(
+          mappingInput({
+            revision: splitRevision,
+            specialCodesInUse: { discount: false, duty: true, tax: true },
+            dutyHandling: 'DUTY_AMOUNT',
+          }),
+        ),
+      );
+
+      expect(factor.FactorDetails[0].Price).toBe(1_000_000);
+    });
+
+    it('sends one tax row carrying the whole policy when that is the contract', () => {
+      const specials = specialsOf({ dutyHandling: 'DUTY_WITHIN_POLICY' });
+
+      expect(specials.map((detail) => detail.ProductID)).toEqual([
+        Number(ASAN_SPECIAL_ITEM_CODES.tax),
+      ]);
+      expect(specials[0].Price).toBe(90_000);
+    });
+
+    it('uses the row codes this installation numbered, not a hardcoded default', () => {
+      const specials = specialsOf({
+        dutyHandling: 'DUTY_AMOUNT',
+        specialItemCodes: { duty: '880002', tax: '880001' },
+      });
+
+      expect(specials.map((detail) => detail.ProductID)).toEqual([880002, 880001]);
+    });
   });
 
   it('uses the documented special codes', () => {

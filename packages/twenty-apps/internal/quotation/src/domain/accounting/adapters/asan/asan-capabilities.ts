@@ -62,19 +62,24 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
     // is the one an accountant reconciles against, so this adapter always sends 0.
     acceptsCallerDocumentNumber: true,
   },
-  // Asan needs discount, duty and tax as SEPARATE lines carrying the pre-existing item
+  // Asan needs discount, duty and tax as SEPARATE rows carrying the pre-existing item
   // codes 999123 / 999140 / 999141 with Count = 0 — they are not fields on a normal line.
   requiresSpecialItemCodes: true,
-  // Asan documents tax as a separate special-item line whose ProductID identifies the tax
-  // row (999141 by default) and whose `Price` is the tax amount with `Count = 0`. So the
-  // destination needs BOTH a code for the row and the amount — it has no rate field and no
-  // plain tax field on a normal line.
+  // Asan documents tax as a separate special-item row whose ProductID is the row's own
+  // pre-existing item code and whose `Price` is the tax amount with `Count = 0`. So the
+  // destination needs the AMOUNT; it has no rate field and no plain tax field on a normal
+  // line. The row code is an installation constant (`specialItemCodes.tax`, default
+  // 999141), NOT a per-policy code: Asan does not read a CRM policy id anywhere.
   //
   // Three identifiers are deliberately kept apart, because treating one as another posts the
   // wrong tax: the CRM tax POLICY code (IR_VAT_9), the vendor's special ITEM code that makes
-  // a row a tax row (999141), and the RATE stored on the policy (9%). The connection maps
-  // policy -> vendor item code; the rate never leaves the CRM's own tax domain.
-  taxHandling: 'TAX_CODE_AND_AMOUNT',
+  // a row a tax row (999141), and the RATE stored on the policy (9%). The rate never leaves
+  // the CRM's own tax domain, and the row code belongs to the installation, not the policy.
+  taxHandling: 'TAX_AMOUNT',
+  // Duty travels the same way but is a DIFFERENT row: the guide's duty special item code
+  // and its amount, with Count = 0. It is not the tax row and not the tax rate, so it is
+  // declared as its own amount-based contract.
+  dutyHandling: 'DUTY_AMOUNT',
   // The guide shows integer amounts with no currency parameter anywhere in
   // RegisterPishFactor. The installation books in one currency, so asking for a currency
   // code would be inventing a field Asan does not read.
@@ -93,7 +98,9 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
 
 // The pre-existing item codes Asan uses for non-product amounts. They must exist in the
 // installation before any document that uses them is registered, which is why sending them
-// is gated on configuration rather than on a guess.
+// is gated on configuration rather than on a guess. These are ROW identity codes, not CRM
+// policy ids and not tax rates; an installation that numbered them differently overrides
+// them per connection (`specialItemCodes`).
 export const ASAN_SPECIAL_ITEM_CODES = {
   discount: '999123',
   duty: '999140',

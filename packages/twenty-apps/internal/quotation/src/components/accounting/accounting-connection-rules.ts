@@ -34,10 +34,19 @@ export type ConnectionFormFields = {
   currencyCodeTable: boolean;
   currencyNameTable: boolean;
   conversionRate: boolean;
+  // The ONE destination code each policy maps to.
   taxCodeTable: boolean;
   taxRateTable: boolean;
-  specialTaxRowCode: boolean;
+  // The installation's special-row item codes (a row identity, not a policy code). Shown
+  // only for a destination that posts non-product amounts as their own rows.
+  specialRowCodes: boolean;
   taxUnsupported: boolean;
+  // Duty is its own contract, so its fields are decided on their own. A destination that
+  // takes a tax rate may take a duty amount, carry duty inside the policy code, or nothing.
+  dutyRateTable: boolean;
+  dutyWithinPolicy: boolean;
+  dutyAggregate: boolean;
+  dutyUnsupported: boolean;
   currencyUnsupported: boolean;
 };
 
@@ -59,9 +68,21 @@ export const connectionFormFields = (
     // A rate/amount destination reads the figure from the CRM policy or the sealed
     // document, so the panel shows those figures rather than asking for a mapping.
     taxRateTable: !needsCode && modes.taxHandling !== 'UNSUPPORTED',
-    specialTaxRowCode:
-      modes.requiresSpecialItemCodes && modes.taxHandling !== 'UNSUPPORTED',
+    specialRowCodes:
+      modes.requiresSpecialItemCodes &&
+      (modes.taxHandling !== 'UNSUPPORTED' ||
+        modes.dutyHandling === 'DUTY_AMOUNT' ||
+        modes.dutyHandling === 'DUTY_RATE'),
     taxUnsupported: modes.taxHandling === 'UNSUPPORTED',
+    dutyRateTable:
+      modes.dutyHandling === 'DUTY_RATE' || modes.dutyHandling === 'DUTY_AMOUNT',
+    // The single policy code already means tax + duty; the screen says so instead of
+    // offering a duty field the destination would never read.
+    dutyWithinPolicy: modes.dutyHandling === 'DUTY_WITHIN_POLICY',
+    // An aggregate destination receives tax+duty in one field, so it is told so instead of
+    // being shown a rate table it would never read.
+    dutyAggregate: modes.dutyHandling === 'AGGREGATE',
+    dutyUnsupported: modes.dutyHandling === 'UNSUPPORTED',
     currencyUnsupported: modes.currencyHandling === 'UNSUPPORTED',
   };
 };

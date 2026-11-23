@@ -1,3 +1,5 @@
+import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
+
 // What an accounting adapter can actually do, in three groups. The grouping is not
 // cosmetic: item writes, party writes and document writes have different failure costs, so
 // a caller must be able to ask about one without the others being implied.
@@ -95,6 +97,15 @@ export type AdapterCapabilities = {
   // rate" would silently drop the fiscal code the vendor actually needs.
   taxHandling: TaxHandlingMode;
   currencyHandling: CurrencyHandlingMode;
+  // What the destination's contract can carry for duty, declared separately because
+  // "tax" and "duty" are two components of one policy, not two names for one field.
+  dutyHandling: DutyHandlingMode;
+  // The destination's own tax codes and the rates they stand for, when it publishes them.
+  // This is what a policy-to-code mapping is verified against: a single code represents the
+  // whole value-added treatment, so its total rate and (when published) its internal
+  // composition must agree with the CRM policy. Absent means the destination does not
+  // publish a catalog, and a mapping is reported as unverifiable rather than wrong.
+  taxCodeCatalog?: readonly TaxCodeContract[];
   // The currency the destination books in when `currencyHandling` is `SINGLE_CURRENCY`.
   // Empty for adapters that take a code; there is nothing to declare.
   baseCurrency: string;
@@ -126,6 +137,38 @@ export const isTaxHandlingMode = (value: unknown): value is TaxHandlingMode =>
   typeof value === 'string' &&
   (TAX_HANDLING_MODES as readonly string[]).includes(value);
 
+// How a destination wants DUTY (عوارض) expressed. A policy carries tax and duty as
+// two components of one decision, but a destination may have a field for only one of
+// them, a single field for their sum, or a single tax code that already means the whole
+// value-added treatment. Declaring this separately from `taxHandling` is what stops one
+// component being silently dropped:
+//
+//   DUTY_RATE             a separate duty percentage field
+//   DUTY_AMOUNT           a separate duty amount field or row
+//   DUTY_WITHIN_POLICY    no duty field at all: the ONE mapped tax code represents the whole
+//                         policy (tax + duty) and the destination performs the split from its
+//                         own definition of that code. Valid only when the destination
+//                         documents such a code; the CRM keeps its own split untouched.
+//   AGGREGATE             only the tax+duty total, with no code at all
+//   UNSUPPORTED           no way to carry duty; a document with duty is refused
+//
+// There is deliberately NO "duty code" mode: a destination that identifies the value-added
+// treatment by code identifies the WHOLE policy with ONE code, and asking an operator for a
+// second code the vendor's API does not document would invent a fiscal field.
+export const DUTY_HANDLING_MODES = [
+  'DUTY_RATE',
+  'DUTY_AMOUNT',
+  'DUTY_WITHIN_POLICY',
+  'AGGREGATE',
+  'UNSUPPORTED',
+] as const;
+
+export type DutyHandlingMode = (typeof DUTY_HANDLING_MODES)[number];
+
+export const isDutyHandlingMode = (value: unknown): value is DutyHandlingMode =>
+  typeof value === 'string' &&
+  (DUTY_HANDLING_MODES as readonly string[]).includes(value);
+
 // How a destination wants the document currency expressed. Under `SINGLE_CURRENCY` the
 // destination books everything in one currency and has no field for a code, so asking an
 // accountant to type one would invent a requirement the vendor never had.
@@ -156,6 +199,18 @@ export const taxModeNeedsAmount = (mode: TaxHandlingMode): boolean =>
 
 export const taxModeNeedsRate = (mode: TaxHandlingMode): boolean =>
   mode === 'TAX_RATE';
+
+export const dutyModeNeedsAmount = (mode: DutyHandlingMode): boolean =>
+  mode === 'DUTY_AMOUNT';
+
+export const dutyModeNeedsRate = (mode: DutyHandlingMode): boolean =>
+  mode === 'DUTY_RATE';
+
+// True when the destination has no duty figure of its own: the combined tax+duty amount (or
+// the single policy code that implies it) is what it receives. The CRM still computes and
+// seals both components; this only decides what crosses the wire.
+export const dutyTravelsInsideTax = (mode: DutyHandlingMode): boolean =>
+  mode === 'DUTY_WITHIN_POLICY' || mode === 'AGGREGATE';
 
 export const currencyModeNeedsVendorValue = (
   mode: CurrencyHandlingMode,
@@ -202,6 +257,9 @@ export const NO_CAPABILITIES: AdapterCapabilities = {
   // without its tax.
   taxHandling: 'UNSUPPORTED',
   currencyHandling: 'SINGLE_CURRENCY',
+  // No duty contract means a document carrying duty is refused rather than sent with
+  // the duty folded into tax, which would change what the destination records.
+  dutyHandling: 'UNSUPPORTED',
   baseCurrency: '',
   // The conservative default: an adapter that declares nothing is ingested through the
   // bounded snapshot path rather than trusted to page.

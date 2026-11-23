@@ -11,12 +11,16 @@ import { parseExactAmountToMicros } from 'src/modules/quotation/utils/quotation-
 export type DraftTaxPolicyChoice = {
   code: string;
   rateBasisPoints: string;
+  // The duty component of the same policy. Absent reads as 0%, which is what every
+  // policy written before duty existed carried.
+  dutyRateBasisPoints?: string | null;
   isActive: boolean;
 };
 
 export type DraftTaxPolicyStored = {
   code: string | null;
   rateBasisPoints: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 export type DraftTaxPolicyDecision =
@@ -51,6 +55,9 @@ export const evaluateDraftTaxPolicy = ({
 }): DraftTaxPolicyDecision => {
   const code = (header.taxPolicy ?? '').trim();
   const declaredRate = readRate(header.taxRateBasisPoints);
+  // An absent duty rate means zero duty, not an unknown rate: a caller that predates
+  // the split declared a policy whose duty component did not exist yet.
+  const declaredDutyRate = readRate(header.dutyRateBasisPoints ?? '0');
   const declaredTaxMicros = parseExactAmountToMicros(header.taxExact);
 
   if (declaredTaxMicros === null) {
@@ -66,6 +73,13 @@ export const evaluateDraftTaxPolicy = ({
       return refused(
         'TAX_POLICY_REQUIRED',
         'نرخ مالیات بدون سیاست مالیات معتبر نیست',
+      );
+    }
+
+    if (header.dutyRateBasisPoints !== null && header.dutyRateBasisPoints !== undefined) {
+      return refused(
+        'TAX_POLICY_REQUIRED',
+        'نرخ عوارض بدون سیاست مالیات معتبر نیست',
       );
     }
 
@@ -98,11 +112,19 @@ export const evaluateDraftTaxPolicy = ({
     );
   }
 
-  if (declaredRate > BASIS_POINTS_MAX) {
+  if (declaredDutyRate === null) {
+    return refused(
+      'DUTY_RATE_INVALID',
+      'نرخ عوارض اعمال‌شده خوانده نشد',
+    );
+  }
+
+  if (declaredRate > BASIS_POINTS_MAX || declaredDutyRate > BASIS_POINTS_MAX) {
     return refused('TAX_RATE_OUT_OF_RANGE', 'درصد مالیات باید بین ۰ و ۱۰۰ باشد');
   }
 
   const policyRate = readRate(policy.rateBasisPoints);
+  const policyDutyRate = readRate(policy.dutyRateBasisPoints ?? '0');
 
   if (policyRate === null) {
     return refused(
@@ -111,16 +133,31 @@ export const evaluateDraftTaxPolicy = ({
     );
   }
 
-  if (declaredRate === policyRate) {
+  if (policyDutyRate === null) {
+    return refused(
+      'TAX_POLICY_UNREADABLE',
+      'نرخ عوارض ذخیره‌شدهٔ سیاست مالیات خوانده نشد',
+    );
+  }
+
+  if (declaredRate === policyRate && declaredDutyRate === policyDutyRate) {
     return { ok: true };
   }
 
-  // On update only: the server itself wrote the stored rate once, so re-saving a
+  // On update only: the server itself wrote the stored rates once, so re-saving a
   // draft after a settings edit keeps the price it was quoted at instead of being
   // silently repriced. This still cannot introduce a rate the server never approved.
   const storedRate = storedSamePolicy ? readRate(stored?.rateBasisPoints ?? null) : null;
+  const storedDutyRate = storedSamePolicy
+    ? readRate(stored?.dutyRateBasisPoints ?? '0')
+    : null;
 
-  if (storedRate !== null && declaredRate === storedRate) {
+  if (
+    storedRate !== null &&
+    storedDutyRate !== null &&
+    declaredRate === storedRate &&
+    declaredDutyRate === storedDutyRate
+  ) {
     return { ok: true };
   }
 

@@ -27,6 +27,7 @@ const amountsFor = (input: {
   unitPriceMicros: bigint;
   discount?: LineDiscount;
   taxRateBasisPoints?: bigint;
+  dutyRateBasisPoints?: bigint;
 }): QuotationLineAmounts =>
   unwrap(
     computeLineAmounts({
@@ -34,6 +35,9 @@ const amountsFor = (input: {
       unitPriceMicros: input.unitPriceMicros,
       discount: input.discount ?? { kind: 'NONE' },
       taxRateBasisPoints: input.taxRateBasisPoints ?? 0n,
+      ...(input.dutyRateBasisPoints === undefined
+        ? {}
+        : { dutyRateBasisPoints: input.dutyRateBasisPoints }),
     }),
   );
 
@@ -100,6 +104,39 @@ describe('line amounts', () => {
 
     expect(amounts.totalMicros).toBe(amounts.netMicros + amounts.taxMicros);
     expect(amounts.netMicros).toBe(amounts.grossMicros - amounts.discountMicros);
+  });
+
+  // One policy, two internal components: 9% VAT is 6% tax + 3% duty in the CRM. The two are
+  // computed and kept apart so a destination can receive them separately, while the combined
+  // figure stays the sum of the parts.
+  it('splits a 9% policy into its 6% tax and 3% duty components', () => {
+    const amounts = amountsFor({
+      quantityScaled: 1_000_000n,
+      unitPriceMicros: 1_000_000_000_000n,
+      taxRateBasisPoints: 600n,
+      dutyRateBasisPoints: 300n,
+    });
+
+    expect(amounts.netMicros).toBe(1_000_000_000_000n);
+    expect(amounts.taxOnlyMicros).toBe(60_000_000_000n);
+    expect(amounts.dutyMicros).toBe(30_000_000_000n);
+    expect(amounts.taxMicros).toBe(90_000_000_000n);
+    expect(amounts.taxMicros).toBe(amounts.taxOnlyMicros + amounts.dutyMicros);
+    expect(amounts.totalMicros).toBe(
+      amounts.netMicros + amounts.taxOnlyMicros + amounts.dutyMicros,
+    );
+  });
+
+  it('reads a policy with no duty component exactly as before duty existed', () => {
+    const legacy = amountsFor({
+      quantityScaled: 1_000_000n,
+      unitPriceMicros: 1_000_000_000_000n,
+      taxRateBasisPoints: 900n,
+    });
+
+    expect(legacy.dutyMicros).toBe(0n);
+    expect(legacy.taxOnlyMicros).toBe(legacy.taxMicros);
+    expect(legacy.taxMicros).toBe(90_000_000_000n);
   });
 });
 

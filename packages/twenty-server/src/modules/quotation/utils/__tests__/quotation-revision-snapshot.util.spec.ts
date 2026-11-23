@@ -54,12 +54,14 @@ const header: QuotationRevisionHeaderRow = {
   currencyCode: 'IRR',
   taxPolicy: 'VAT_9',
   taxRateBasisPoints: '900',
+  dutyRateBasisPoints: null,
   paymentTerms: null,
   grossExact: '1000.000000',
   lineDiscountExact: '100.000000',
   documentDiscountExact: '0.000000',
   netExact: '900.000000',
   taxExact: '81.000000',
+  dutyExact: '0.000000',
   roundingExact: '0.000000',
   totalExact: '981.000000',
   personId: null,
@@ -130,6 +132,70 @@ describe('quotation revision snapshot', () => {
 
     if (built.ok) {
       expect(built.snapshot.totals.discountMicros).toBe('100000000');
+    }
+  });
+
+  // One policy, two components: the sealed tax stays the combined figure every payable
+  // invariant is expressed in, and the split is recorded beside it.
+  it('seals tax and duty separately while keeping tax their sum', () => {
+    const built = build({
+      header: {
+        taxRateBasisPoints: '600',
+        dutyRateBasisPoints: '300',
+        taxExact: '81.000000',
+        dutyExact: '27.000000',
+      },
+    });
+
+    expect(built.ok).toBe(true);
+
+    if (built.ok) {
+      expect(built.snapshot.totals.taxOnlyMicros).toBe('54000000');
+      expect(built.snapshot.totals.dutyMicros).toBe('27000000');
+      expect(built.snapshot.totals.taxMicros).toBe('81000000');
+      expect(built.snapshot.dutyRateBasisPoints).toBe('300');
+    }
+  });
+
+  it('does not add duty keys to a revision sealed without duty', () => {
+    const built = build();
+
+    expect(built.ok).toBe(true);
+
+    if (built.ok) {
+      expect('dutyRateBasisPoints' in built.snapshot).toBe(false);
+      expect('dutyMicros' in built.snapshot.totals).toBe(false);
+      expect('taxOnlyMicros' in built.snapshot.totals).toBe(false);
+    }
+  });
+
+  it('refuses duty that is larger than the tax it is part of', () => {
+    const built = build({
+      header: {
+        taxRateBasisPoints: '600',
+        dutyRateBasisPoints: '900',
+        taxExact: '81.000000',
+        dutyExact: '121.000000',
+      },
+    });
+
+    expect(built.ok).toBe(false);
+
+    if (!built.ok) {
+      expect(built.code).toBe('TOTALS_INCONSISTENT');
+    }
+  });
+
+  it('refuses a duty-bearing revision with no sealed duty rate', () => {
+    const built = build({
+      header: { dutyExact: '27.000000' },
+    });
+
+    expect(built.ok).toBe(false);
+
+    if (!built.ok) {
+      expect(built.code).toBe('TOTALS_INCONSISTENT');
+      expect(built.detail).toBe('header carries duty but no duty rate was sealed');
     }
   });
 

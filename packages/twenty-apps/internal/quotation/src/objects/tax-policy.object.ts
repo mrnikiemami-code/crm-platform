@@ -71,6 +71,18 @@ export default defineObject({
       defaultValue: "'0'",
     },
     {
+      universalIdentifier: TAX_POLICY_FIELDS.dutyRateBasisPoints,
+      type: FieldType.TEXT,
+      name: 'dutyRateBasisPoints',
+      label: 'نرخ عوارض (پایه‌واحد)',
+      description:
+        'بخش عوارض همان سیاست؛ ۴۰۰ یعنی ۴٪. مالیات و عوارض دو مؤلفهٔ یک سیاست‌اند، نه دو سیاست.',
+      icon: 'IconReceiptTax',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: "'0'",
+    },
+    {
       universalIdentifier: TAX_POLICY_FIELDS.isDefault,
       type: FieldType.BOOLEAN,
       name: 'isDefault',

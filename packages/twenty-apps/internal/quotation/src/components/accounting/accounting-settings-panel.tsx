@@ -371,6 +371,18 @@ export const AccountingSettingsPanel = () => {
     const selectedAdapter =
       data?.adapters.find((entry) => entry.id === form.adapterId) ?? null;
     const needsServiceAddress = selectedAdapter?.isLive === true;
+    // Resolved from what the server declared for this adapter/profile, so a row-code block
+    // the form is not showing is not silently sent either.
+    const savingModes = resolveFinancialModes({
+      adapterId: form.adapterId,
+      adapters: data?.adapters ?? [],
+      financial: {
+        baseCurrency: form.baseCurrency,
+        currencyMappings: parseKeyValueLines(form.currencyMappingsText),
+        conversionRate: form.conversionRate,
+        mockProfile: form.mockProfile,
+      },
+    });
 
     try {
       const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
@@ -395,6 +407,24 @@ export const AccountingSettingsPanel = () => {
           taxPolicyMappings: parseTaxPolicyMappingsText(
             form.taxPolicyMappingsText,
           ),
+          // The installation's row codes. Sent only when the destination posts non-product
+          // amounts as their own rows; a mock has no such rows, and sending them would look
+          // like a claim about an installation that does not exist.
+          ...(savingModes.requiresSpecialItemCodes
+            ? {
+                specialItemCodes: {
+                  ...(form.specialDiscountCode.trim() === ''
+                    ? {}
+                    : { discount: form.specialDiscountCode.trim() }),
+                  ...(form.specialDutyCode.trim() === ''
+                    ? {}
+                    : { duty: form.specialDutyCode.trim() }),
+                  ...(form.specialTaxCode.trim() === ''
+                    ? {}
+                    : { tax: form.specialTaxCode.trim() }),
+                },
+              }
+            : {}),
           // Only the destination's own declared contract reads these. Storing them on every
           // connection keeps a switch of test profile from silently erasing what was typed.
           // The mock profile is a statement about capabilities, so it is sent only to the
@@ -449,14 +479,17 @@ export const AccountingSettingsPanel = () => {
     }
   };
 
-  const test = async () => {
-    // Testing judges the record that is stored, so an unsaved draft tests the record it was
-    // opened from; a brand-new draft has nothing to probe yet.
-    const testConnectionId = form.id ?? selectedConnectionId;
+  const test = async (targetConnectionId: string | null) => {
+    // Testing judges a STORED record: the server dials the address it has, with the settings
+    // it has. A brand-new draft has no record to probe, and falling back to whichever
+    // connection happens to be selected would report one record's result as another's.
+    if (busy) {
+      return;
+    }
 
-    if (busy || testConnectionId === null) {
+    if (targetConnectionId === null) {
       await enqueueSnackbar({
-        message: 'ابتدا تنظیمات اتصال را ذخیره کنید، سپس آزمایش کنید.',
+        message: 'این اتصال ذخیره نشده است؛ ابتدا ذخیره کنید، سپس آزمایش بزنید.',
         variant: 'info',
       });
       return;
@@ -467,7 +500,7 @@ export const AccountingSettingsPanel = () => {
     try {
       const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
         action: 'test',
-        connectionId: testConnectionId,
+        connectionId: targetConnectionId,
       });
 
       if (!response.ok || response.data.success !== true) {
@@ -831,7 +864,7 @@ export const AccountingSettingsPanel = () => {
                 pendingItems={pendingItems}
                 pendingCustomers={pendingCustomers}
                 onGoTo={(id) => goTo(id as SectionId)}
-                onTestConnection={() => void test()}
+                onTestConnection={() => void test(activeConnectionId)}
               />
             ) : null}
           </div>
@@ -857,7 +890,7 @@ export const AccountingSettingsPanel = () => {
                 onEditConnection={editConnection}
                 onChange={setForm}
                 onSave={() => void save()}
-                onTest={() => void test()}
+                onTest={() => void test(form.id)}
                 onStartNew={startNewConnection}
               />
             ) : null}
@@ -907,7 +940,7 @@ export const AccountingSettingsPanel = () => {
                 onGoToCatalog={() => goTo('catalog')}
                 onFixMoney={() => openSelectedAt('money')}
                 onFixTax={() => openSelectedAt('tax')}
-                onTestConnection={() => void test()}
+                onTestConnection={() => void test(activeConnectionId)}
               />
             ) : null}
           </div>

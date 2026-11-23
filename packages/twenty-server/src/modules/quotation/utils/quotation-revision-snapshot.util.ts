@@ -31,12 +31,17 @@ export type QuotationRevisionSnapshot = {
   customerRef: string;
   taxPolicy: string;
   taxRateBasisPoints: string | null;
+  // Absent on revisions sealed before duty existed. Those documents must keep hashing
+  // to the bytes they were sealed with, so a duty-free snapshot never gains the field.
+  dutyRateBasisPoints?: string | null;
   paymentTerms: string | null;
   lines: QuotationRevisionLine[];
   totals: {
     grossMicros: string;
     discountMicros: string;
     netMicros: string;
+    taxOnlyMicros?: string;
+    dutyMicros?: string;
     taxMicros: string;
     totalMicros: string;
   };
@@ -49,12 +54,14 @@ export type QuotationRevisionHeaderRow = {
   currencyCode: string | null;
   taxPolicy: string | null;
   taxRateBasisPoints: string | null;
+  dutyRateBasisPoints: string | null;
   paymentTerms: string | null;
   grossExact: string | null;
   lineDiscountExact: string | null;
   documentDiscountExact: string | null;
   netExact: string | null;
   taxExact: string | null;
+  dutyExact: string | null;
   roundingExact: string | null;
   totalExact: string | null;
   personId: string | null;
@@ -136,6 +143,12 @@ export const buildQuotationRevisionSnapshot = ({
   const taxRateBasisPoints = /^\d{1,5}$/.test(declaredTaxRate)
     ? declaredTaxRate
     : null;
+  // Same rule for duty: a document sealed before duty existed records no duty rate
+  // and is never given one retroactively.
+  const declaredDutyRate = (header.dutyRateBasisPoints ?? '').trim();
+  const dutyRateBasisPoints = /^\d{1,5}$/.test(declaredDutyRate)
+    ? declaredDutyRate
+    : null;
 
   if (quotationNumber === '') {
     return {
@@ -162,7 +175,6 @@ export const buildQuotationRevisionSnapshot = ({
     rounding: microsOf(header.roundingExact),
     total: microsOf(header.totalExact),
   };
-
   const unreadableHeaderKey = Object.entries(headerAmounts).find(
     ([, value]) => value === null,
   )?.[0];
@@ -241,6 +253,22 @@ export const buildQuotationRevisionSnapshot = ({
   const headerRounding = headerAmounts.rounding as bigint;
   const headerTotal = headerAmounts.total as bigint;
 
+  // Duty is the part of the stored tax that belongs to the duty component. A document
+  // saved before the split has no duty field and seals with zero, which is exactly what
+  // its stored tax already meant.
+  const headerDutyText = (header.dutyExact ?? '').trim();
+  const headerDuty = headerDutyText === '' ? BigInt(0) : microsOf(headerDutyText);
+
+  if (headerDuty === null) {
+    return {
+      ok: false,
+      code: 'AMOUNT_NOT_A_DECIMAL',
+      detail: 'header dutyExact is not an exact decimal',
+    };
+  }
+
+  const headerTaxOnly = headerTax - headerDuty;
+
   const consistencyChecks: { ok: boolean; detail: string }[] = [
     {
       ok:
@@ -272,6 +300,17 @@ export const buildQuotationRevisionSnapshot = ({
       ok: lineTotal === headerNet + headerTax,
       detail: 'line totals do not add up to header net plus tax',
     },
+    {
+      // The components must be the tax they came from, in the right direction: a
+      // negative tax-only share or a duty larger than the tax would seal a split no
+      // destination could post consistently.
+      ok: headerDuty >= BigInt(0) && headerTaxOnly >= BigInt(0),
+      detail: 'header duty is not a part of header tax',
+    },
+    {
+      ok: headerDuty === BigInt(0) || dutyRateBasisPoints !== null,
+      detail: 'header carries duty but no duty rate was sealed',
+    },
   ];
 
   const failing = consistencyChecks.find((check) => !check.ok);
@@ -294,6 +333,9 @@ export const buildQuotationRevisionSnapshot = ({
       customerRef: (header.companyId ?? header.personId ?? '').trim(),
       taxPolicy: (header.taxPolicy ?? '').trim(),
       taxRateBasisPoints,
+      // Emitted only when a duty rate was actually declared: a duty-free revision must
+      // canonicalize to the same bytes it was sealed with before the split existed.
+      ...(dutyRateBasisPoints === null ? {} : { dutyRateBasisPoints }),
       paymentTerms:
         (header.paymentTerms ?? '').trim() === ''
           ? null
@@ -306,6 +348,14 @@ export const buildQuotationRevisionSnapshot = ({
           headerLineDiscount + headerDocumentDiscount
         ).toString(),
         netMicros: headerNet.toString(),
+        // Same rule as the rate: a zero duty share is not restated, so revisions sealed
+        // before the split keep their original hash instead of being reinterpreted.
+        ...(headerDuty === BigInt(0)
+          ? {}
+          : {
+              taxOnlyMicros: headerTaxOnly.toString(),
+              dutyMicros: headerDuty.toString(),
+            }),
         taxMicros: headerTax.toString(),
         totalMicros: headerTotal.toString(),
       },

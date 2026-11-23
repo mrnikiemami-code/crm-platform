@@ -137,6 +137,7 @@ describe('QuotationUiController tax settings boundary', () => {
         recordId: null,
         name: 'مالیات ۹٪',
         ratePercentText: '۹',
+        dutyRatePercentText: '',
         isActive: true,
         isDefault: true,
         isExempt: false,

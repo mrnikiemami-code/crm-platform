@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type AdapterCapabilities,
   type CurrencyHandlingMode,
+  type DutyHandlingMode,
   type TaxHandlingMode,
 } from 'src/domain/accounting/capabilities';
 import {
@@ -17,21 +18,26 @@ import { mockProfileCapabilities } from 'src/domain/accounting/adapters/mock/moc
 
 const capabilities = ({
   tax = 'TAX_RATE',
+  duty = 'DUTY_RATE',
   currency = 'SINGLE_CURRENCY',
 }: {
   tax?: TaxHandlingMode;
+  duty?: DutyHandlingMode;
   currency?: CurrencyHandlingMode;
 } = {}): AdapterCapabilities => ({
   ...mockProfileCapabilities('SIMPLE'),
   taxHandling: tax,
+  dutyHandling: duty,
   currencyHandling: currency,
   baseCurrency: currency === 'SINGLE_CURRENCY' ? 'IRR' : '',
 });
 
 const gate = ({
   tax = 'TAX_RATE',
+  duty = 'DUTY_RATE',
   currency = 'SINGLE_CURRENCY',
   hasTax = true,
+  hasDuty = false,
   taxPolicyCode = 'IR_VAT_9',
   currencyCode = 'IRR',
   taxPolicyMappings = {} as Record<string, string>,
@@ -40,8 +46,10 @@ const gate = ({
   conversionRate = '',
 }: {
   tax?: TaxHandlingMode;
+  duty?: DutyHandlingMode;
   currency?: CurrencyHandlingMode;
   hasTax?: boolean;
+  hasDuty?: boolean;
   taxPolicyCode?: string;
   currencyCode?: string;
   taxPolicyMappings?: Record<string, string>;
@@ -50,7 +58,7 @@ const gate = ({
   conversionRate?: string;
 }) =>
   checkFinancialRequirements({
-    capabilities: capabilities({ tax, currency }),
+    capabilities: capabilities({ tax, duty, currency }),
     financial: {
       ...DEFAULT_FINANCIAL_SETTINGS,
       baseCurrency,
@@ -58,7 +66,7 @@ const gate = ({
       conversionRate,
     },
     taxPolicyMappings,
-    document: { hasTax, taxPolicyCode, currencyCode },
+    document: { hasTax, hasDuty, taxPolicyCode, currencyCode },
   });
 
 describe('tax contract by capability', () => {
@@ -113,6 +121,57 @@ describe('tax contract by capability', () => {
   });
 });
 
+describe('duty contract by capability', () => {
+  it('carries duty inside the single policy code with no second mapping', () => {
+    expect(
+      gate({
+        tax: 'TAX_CODE',
+        duty: 'DUTY_WITHIN_POLICY',
+        hasDuty: true,
+        taxPolicyMappings: { IR_VAT_9: '64' },
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('needs no duty-specific mapping beyond the one policy code', () => {
+    // The connection carries exactly one entry for the policy; a second entry for duty
+    // would be the field this contract forbids.
+    const mappings = { IR_VAT_9: '64' };
+
+    expect(
+      gate({
+        tax: 'TAX_CODE',
+        duty: 'DUTY_WITHIN_POLICY',
+        hasDuty: true,
+        taxPolicyMappings: mappings,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('still refuses a code destination whose policy is not mapped', () => {
+    expect(
+      gate({ tax: 'TAX_CODE', duty: 'DUTY_WITHIN_POLICY', hasDuty: true }),
+    ).toMatchObject({ ok: false, refusal: { code: 'TAX_POLICY_NOT_MAPPED' } });
+  });
+
+  it('sends duty as its own amount to an amount destination', () => {
+    expect(gate({ tax: 'TAX_AMOUNT', duty: 'DUTY_AMOUNT', hasDuty: true }).ok).toBe(
+      true,
+    );
+  });
+
+  it('refuses a duty-bearing document when the destination has no duty contract', () => {
+    expect(gate({ duty: 'UNSUPPORTED', hasDuty: true })).toMatchObject({
+      ok: false,
+      refusal: { code: 'DUTY_UNSUPPORTED' },
+    });
+  });
+
+  it('lets a duty-free document reach a destination with no duty contract', () => {
+    expect(gate({ duty: 'UNSUPPORTED', hasDuty: false }).ok).toBe(true);
+  });
+});
+
 describe('currency contract by capability', () => {
   it('sends a rial document to a single-currency destination with no currency code', () => {
     expect(gate({ currency: 'SINGLE_CURRENCY' }).ok).toBe(true);
@@ -123,6 +182,14 @@ describe('currency contract by capability', () => {
       ok: false,
       refusal: { code: 'CURRENCY_BASE_UNCONFIRMED' },
     });
+  });
+
+  // F1: one single-currency destination books one currency. A document in another currency
+  // has no rate field under this contract, so it is refused instead of quietly converted.
+  it('refuses a document whose currency is not the single currency it books', () => {
+    expect(
+      gate({ currency: 'SINGLE_CURRENCY', baseCurrency: 'USD', currencyCode: 'IRR' }),
+    ).toMatchObject({ ok: false, refusal: { code: 'CURRENCY_BASE_MISMATCH' } });
   });
 
   it('refuses a code destination without a mapping for the document currency', () => {

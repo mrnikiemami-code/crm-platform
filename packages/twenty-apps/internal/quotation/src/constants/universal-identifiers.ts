@@ -75,6 +75,9 @@ export const QUOTATION_FIELDS = {
   // The rate the stored tax was computed with. Frozen with the document so a
   // later settings change cannot make a stored amount unexplainable.
   taxRateBasisPoints: 'fc24bf2c-1fd2-5228-bb1c-9fe4450996d5',
+  // The duty component of that same frozen policy. Zero for every document saved
+  // before a policy could carry duty, so its stored tax keeps its old meaning.
+  dutyRateBasisPoints: '1a3b5c7d-8e9f-5a1b-9c2d-3e4f5a6b7c8d',
   paymentTerms: 'cf04f6e1-8c8a-5097-9e1e-8139bfdfcb96',
   expiresAt: 'c32e9743-fd46-58ce-a4fa-9833a1e871ad',
   totalExact: '30552386-2860-5833-9731-0082e6e1ed16',
@@ -85,6 +88,9 @@ export const QUOTATION_FIELDS = {
   documentDiscountExact: 'c9e603d4-1f51-5c3a-ad48-607182930415',
   netExact: 'daf714e5-2062-5d4b-be59-718293041526',
   taxExact: 'eb0825f6-3173-5e5c-8f6a-829304152637',
+  // The duty part of taxExact, stored separately so a destination receives the
+  // component it declared instead of one combined figure. tax = taxExact - dutyExact.
+  dutyExact: '2b4c6d8e-9fa0-5b2c-8d3e-4f5a6b7c8d9e',
   // Independent whole-rial payable adjustment; never folded into taxExact.
   roundingExact: '01920588-313c-536a-b432-13ffc6fd57c5',
   documentDiscountKind: 'fc193607-4284-5f6d-907b-930415263748',
@@ -390,6 +396,9 @@ export const TAX_POLICY_FIELDS = {
   name: '2ee75ed2-95da-55fc-b065-effce219240b',
   code: '6a158a02-5cb2-52a0-b5fc-b8e1bd7f25b6',
   rateBasisPoints: '978bc29a-6dc7-52b6-9710-1f466696cead',
+  // The duty (عوارض) part of the same policy. One policy row carries both
+  // components; the total rate is their sum and is never stored on its own.
+  dutyRateBasisPoints: '3c5d7e9f-a0b1-5c3d-9e4f-5a6b7c8d9e0f',
   isDefault: 'c56c91eb-166a-583b-a518-3a5f207b2dc7',
   isActive: '6544a8f9-7dca-5d94-a89f-6198e390f912',
   isExempt: '9fab9fe7-53f3-5c4f-a705-1e2a273dfa9a',

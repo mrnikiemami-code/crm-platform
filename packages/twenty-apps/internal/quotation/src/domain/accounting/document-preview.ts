@@ -6,6 +6,7 @@ import {
   currencyModeNeedsRate,
   taxModeNeedsVendorCode,
 } from 'src/domain/accounting/capabilities';
+import { matchTaxPolicyToDestinationCode } from 'src/domain/accounting/tax-code-contract';
 import {
   checkFinancialRequirements,
   CURRENCY_CODE_PATTERN,
@@ -38,6 +39,9 @@ export type DocumentPreviewLine = {
 
 export type QuotationDocumentPreview = {
   checks: { code: string; ok: boolean }[];
+  // Things a person should know before sending that do not, on their own, block a document.
+  // Kept apart from `checks` so a warning never reads as a missing requirement.
+  warnings: { code: string; detail: string }[];
   document: AsanFactorViewModel | null;
   documentError: { code: string; detail: string } | null;
   moneyUnit: string;
@@ -108,8 +112,12 @@ export const buildQuotationDocumentPreview = (
       ? null
       : toVendorId(settings.defaultStorageId);
   const taxTotal = revision?.totals.taxMicros ?? '0';
+  const dutyTotal = revision?.totals.dutyMicros ?? '0';
   const discountTotal = revision?.totals.discountMicros ?? '0';
   const hasTax = amountIsPositive(taxTotal);
+  // `taxMicros` already includes duty, so a duty-only policy still has tax to carry; the
+  // duty flag exists to judge the DUTY contract, not to imply tax is absent.
+  const hasDuty = amountIsPositive(dutyTotal);
   const hasDiscount = amountIsPositive(discountTotal);
   const taxPolicyCode = (revision?.taxPolicy ?? '').trim();
   const taxVendorCode = settings.taxPolicyMappings[taxPolicyCode] ?? '';
@@ -137,6 +145,42 @@ export const buildQuotationDocumentPreview = (
     (capabilities.taxHandling !== 'UNSUPPORTED' &&
       (!taxModeNeedsVendorCode(capabilities.taxHandling) ||
         (taxPolicyCode !== '' && taxVendorCode.trim() !== '')));
+
+  const dutyReady =
+    !hasDuty || capabilities.dutyHandling !== 'UNSUPPORTED';
+
+  // A code the destination publishes a rate for is compared with the policy actually
+  // sealed in the revision. This is a warning, not a gate: an operator may deliberately
+  // map a policy whose total the destination computes itself, and only the destination
+  // knows the code's legal meaning. When the destination publishes nothing, the match is
+  // simply not claimable, which is not the same as a disagreement.
+  const sealedTaxRate = (revision?.taxRateBasisPoints ?? '').trim();
+  const sealedDutyRate = (revision?.dutyRateBasisPoints ?? '').trim();
+  const warnings: { code: string; detail: string }[] = [];
+  // Basis points are integers, so the total is exact integer addition, never a percentage
+  // recomputed through a float.
+  const basisPoints = (text: string): bigint => (/^\d{1,5}$/.test(text) ? BigInt(text) : BigInt(0));
+  const rateMatch = matchTaxPolicyToDestinationCode({
+    policy: {
+      taxRateBasisPoints: basisPoints(sealedTaxRate).toString(),
+      dutyRateBasisPoints: basisPoints(sealedDutyRate).toString(),
+      totalRateBasisPoints: (
+        basisPoints(sealedTaxRate) + basisPoints(sealedDutyRate)
+      ).toString(),
+    },
+    destinationCode: taxVendorCode,
+    catalog: capabilities.taxCodeCatalog,
+  });
+
+  if (taxPolicyCode !== '' && rateMatch.kind === 'MISMATCH') {
+    warnings.push({
+      code:
+        rateMatch.reason === 'COMPOSITION'
+          ? 'TAX_CODE_COMPOSITION_MISMATCH'
+          : 'TAX_CODE_RATE_MISMATCH',
+      detail: rateMatch.detail,
+    });
+  }
 
   const checks = [
     { code: 'OUTBOUND_ENABLED', ok: flags.outboundEnabled },
@@ -167,7 +211,15 @@ export const buildQuotationDocumentPreview = (
         !capabilities.requiresSpecialItemCodes ||
         settings.specialCodes.tax,
     },
+    {
+      code: 'DUTY_CODE_PRESENT',
+      ok:
+        !hasDuty ||
+        !capabilities.requiresSpecialItemCodes ||
+        settings.specialCodes.duty,
+    },
     { code: 'TAX_POLICY_MAPPED', ok: taxReady },
+    { code: 'DUTY_POLICY_SUPPORTED', ok: dutyReady },
     { code: 'CURRENCY_MAPPING', ok: currencyReady },
     {
       code: 'ALL_LINES_LINKED',
@@ -179,6 +231,7 @@ export const buildQuotationDocumentPreview = (
 
   const base = {
     checks,
+    warnings,
     moneyUnit: settings.moneyUnit,
     customerExternalId: input.customerExternalId,
     lines: lineRows,
@@ -235,6 +288,7 @@ export const buildQuotationDocumentPreview = (
     document: {
       taxPolicyCode,
       hasTax,
+      hasDuty,
       currencyCode: documentCurrencyCode,
     },
   });
@@ -278,6 +332,10 @@ export const buildQuotationDocumentPreview = (
     userId,
     productCodeByLineId,
     specialCodesInUse: settings.specialCodes,
+    ...(settings.specialItemCodes === undefined
+      ? {}
+      : { specialItemCodes: settings.specialItemCodes }),
+    dutyHandling: capabilities.dutyHandling,
     ...(taxVendorCode.trim() === '' ? {} : { taxVendorCode }),
     description: input.quotationName === '' ? revision.quotationNumber : input.quotationName,
     ...(storageId === null ? {} : { storageId }),

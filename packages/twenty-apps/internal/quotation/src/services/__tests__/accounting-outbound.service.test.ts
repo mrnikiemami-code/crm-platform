@@ -24,7 +24,7 @@ const settings = (overrides: Partial<ConnectionSettings> = {}): ConnectionSettin
   moneyUnit: 'RIAL',
   transportApproved: true,
   specialCodes: { discount: true, duty: false, tax: true },
-  taxPolicyMappings: { IR_VAT_9: '999141' },
+  taxPolicyMappings: { IR_VAT_9: '64' },
   ...overrides,
 });
 

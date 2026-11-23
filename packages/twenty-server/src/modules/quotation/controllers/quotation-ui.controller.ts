@@ -38,6 +38,7 @@ type QuotationUiActionBody = {
   recordId?: unknown;
   name?: unknown;
   ratePercentText?: unknown;
+  dutyRatePercentText?: unknown;
   isActive?: unknown;
   isDefault?: unknown;
   isExempt?: unknown;
@@ -376,6 +377,7 @@ export class QuotationUiController {
           recordId: readText(body.recordId) || null,
           name: readText(body.name),
           ratePercentText: readText(body.ratePercentText),
+          dutyRatePercentText: readText(body.dutyRatePercentText),
           isActive: readBoolean(body.isActive, true),
           isDefault: body.isDefault === true,
           isExempt: body.isExempt === true,

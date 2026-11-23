@@ -37,8 +37,8 @@ const readBoolean = (value: unknown, fallback: boolean): boolean =>
   typeof value === 'boolean' ? value : fallback;
 
 // A mapping entry is only kept when both sides are usable: a blank vendor code is
-// indistinguishable from "not mapped" and must not authorize a tax line.
-const parseTaxPolicyMappings = (
+// indistinguishable from "not mapped" and must not authorize a tax or duty line.
+const parseCodeMappings = (
   value: unknown,
 ): Record<string, string> => {
   const raw = asRecord(value);
@@ -63,9 +63,31 @@ const readTaxPolicyMappings = (
   raw: Record<string, unknown>,
   specialCodes: Record<string, unknown>,
 ): Record<string, string> => ({
-  ...parseTaxPolicyMappings(specialCodes.taxPolicyMappings),
-  ...parseTaxPolicyMappings(raw.taxPolicyMappings),
+  ...parseCodeMappings(specialCodes.taxPolicyMappings),
+  ...parseCodeMappings(raw.taxPolicyMappings),
 });
+
+// The vendor's own special-row item codes for this installation. A row code is not a tax
+// policy id: it says which pre-existing item a non-product amount is posted under. Only
+// numeric codes are read, and an absent value stays absent so the adapter's documented
+// default applies rather than an empty string being posted as a product id.
+const readSpecialItemCodes = (
+  raw: Record<string, unknown>,
+  specialCodes: Record<string, unknown>,
+): ConnectionSettings['specialItemCodes'] => {
+  const merged = { ...asRecord(specialCodes.specialItemCodes), ...asRecord(raw.specialItemCodes) };
+  const codes: NonNullable<ConnectionSettings['specialItemCodes']> = {};
+
+  for (const key of ['discount', 'duty', 'tax'] as const) {
+    const value = readString(merged[key]);
+
+    if (/^\d+$/.test(value)) {
+      codes[key] = value;
+    }
+  }
+
+  return Object.keys(codes).length === 0 ? undefined : codes;
+};
 
 export const normalizeMoneyUnit = (value: unknown): AccountingMoneyUnit =>
   typeof value === 'string' &&
@@ -176,6 +198,7 @@ export const parseConnectionSettings = (
   }
 
   const specialCodes = asRecord(raw.specialCodes);
+  const specialItemCodes = readSpecialItemCodes(raw, specialCodes);
   const financial = parseFinancialSettings(raw.financial, {
     adapterId: options.adapterId ?? '',
   });
@@ -195,6 +218,7 @@ export const parseConnectionSettings = (
       duty: readBoolean(specialCodes.duty, false),
       tax: readBoolean(specialCodes.tax, false),
     },
+    ...(specialItemCodes === undefined ? {} : { specialItemCodes }),
     taxPolicyMappings: readTaxPolicyMappings(raw, specialCodes),
     financial: financial.value,
   });
@@ -207,6 +231,7 @@ export const connectionSettingsFromRecord = (
 ): ConnectionSettings => {
   const raw = asRecord(record);
   const specialCodes = asRecord(raw.specialCodes);
+  const specialItemCodes = readSpecialItemCodes(raw, specialCodes);
   const baseUrl = readString(raw.baseUrl);
   const parsedUrl = baseUrl === '' ? null : parseBaseUrl(baseUrl);
 
@@ -221,6 +246,7 @@ export const connectionSettingsFromRecord = (
       duty: readBoolean(specialCodes.duty, false),
       tax: readBoolean(specialCodes.tax, false),
     },
+    ...(specialItemCodes === undefined ? {} : { specialItemCodes }),
     taxPolicyMappings: readTaxPolicyMappings(raw, specialCodes),
     // The server view and the raw record spell this block the same way on purpose; reading
     // both means the panel works against either without a second parser.

@@ -202,6 +202,39 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     );
   });
 
+  // The payable invariant is expressed on the combined figure: the split policy (6% tax +
+  // 3% duty) must not change what the customer owes, only how the destination books it.
+  it('splits a 9% policy into 6% tax and 3% duty without changing the payable', () => {
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 1_000_000n * MICROS_PER_UNIT,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'NONE' },
+        taxRateBasisPoints: 600n,
+        dutyRateBasisPoints: 300n,
+      }),
+    );
+
+    expect(finalized.totals.taxOnlyMicros).toBe(60_000n * MICROS_PER_UNIT);
+    expect(finalized.totals.dutyMicros).toBe(30_000n * MICROS_PER_UNIT);
+    expect(finalized.totals.taxMicros).toBe(90_000n * MICROS_PER_UNIT);
+    expect(finalized.totals.taxMicros).toBe(
+      finalized.totals.taxOnlyMicros + finalized.totals.dutyMicros,
+    );
+    expect(finalized.totals.totalMicros).toBe(
+      finalized.totals.netMicros +
+        finalized.totals.taxMicros +
+        finalized.totals.roundingMicros,
+    );
+  });
+
   it('combines percent line discount with percent document discount', () => {
     const line = unwrap(
       computeLinePreTaxAmounts({

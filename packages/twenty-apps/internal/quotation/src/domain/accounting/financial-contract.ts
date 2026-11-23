@@ -201,12 +201,17 @@ export const parseFinancialSettings = (
 export type FinancialGateInput = {
   capabilities: AdapterCapabilities;
   financial: FinancialSettings;
-  // CRM tax policy code -> the destination's own tax code, from this connection only.
+  // CRM tax policy code -> the destination's own tax code, from this connection only. ONE
+  // code per policy: the destination code represents the whole value-added treatment, so
+  // there is no separate duty mapping to satisfy.
   taxPolicyMappings: Record<string, string>;
   document: {
     // The CRM tax policy the document carries, and whether it carries any tax at all.
     taxPolicyCode: string;
     hasTax: boolean;
+    // Whether the document carries any duty. A duty-only policy is a real policy, so
+    // this is checked on its own rather than inferred from `hasTax`.
+    hasDuty?: boolean;
     currencyCode: string;
   };
 };
@@ -240,6 +245,19 @@ export const checkFinancialRequirements = (
     }
   }
 
+  // Duty is a component of the same policy. A destination that documents no way to carry it
+  // at all refuses the document instead of folding duty into tax, which would misstate both
+  // figures. A destination that carries duty inside the single policy code needs no second
+  // mapping: that code IS the whole policy.
+  if (document.hasDuty === true) {
+    if (capabilities.dutyHandling === 'UNSUPPORTED') {
+      return refused(
+        'DUTY_UNSUPPORTED',
+        'this destination cannot carry duty under its documented contract',
+      );
+    }
+  }
+
   if (capabilities.currencyHandling === 'UNSUPPORTED') {
     return refused(
       'CURRENCY_UNSUPPORTED',
@@ -252,6 +270,18 @@ export const checkFinancialRequirements = (
       return refused(
         'CURRENCY_BASE_UNCONFIRMED',
         'the base currency of this destination is not confirmed',
+      );
+    }
+
+    // The document is booked in the destination's own currency or not at all. A
+    // document in another currency would need a rate this contract has no field for,
+    // and inventing one changes what the customer owes.
+    const documentCurrency = document.currencyCode.trim().toUpperCase();
+
+    if (documentCurrency !== financial.baseCurrency) {
+      return refused(
+        'CURRENCY_BASE_MISMATCH',
+        `the document is in ${documentCurrency || 'an unknown currency'} but this connection books every amount in ${financial.baseCurrency}`,
       );
     }
 

@@ -415,6 +415,7 @@ export const planQuotationExport = (
   // rate/amount tax destination is never asked for a fiscal code, and a destination with no
   // tax contract refuses a taxed document instead of sending it without its tax.
   const documentTax = parseMicrosExact(snapshot.totals.taxMicros);
+  const documentDuty = parseMicrosExact(snapshot.totals.dutyMicros ?? '0');
   const financialGate = checkFinancialRequirements({
     capabilities: input.capabilities,
     financial: financialSettingsFromRecord(input.settings.financial),
@@ -422,6 +423,7 @@ export const planQuotationExport = (
     document: {
       taxPolicyCode: snapshot.taxPolicy ?? '',
       hasTax: documentTax.ok && documentTax.value > 0n,
+      hasDuty: documentDuty.ok && documentDuty.value > 0n,
       currencyCode: input.quotation.currencyCode,
     },
   });
@@ -518,6 +520,28 @@ export const planQuotationExport = (
     return block(
       'SPECIAL_CODE_NOT_CONFIGURED',
       'the document carries tax but the vendor tax special code is not configured',
+      operationId,
+    );
+  }
+
+  // Duty travels as its own pre-existing row on a destination that models components that
+  // way. It is checked against its own flag so a destination that has the tax row but not
+  // the duty row is refused rather than posting duty as tax. A destination that carries
+  // duty inside the single policy code (or as an aggregate amount) has no duty row at all,
+  // so asking for its code would invent a fiscal row the vendor never reads.
+  const duty = parseMicrosExact(snapshot.totals.dutyMicros ?? '0');
+
+  if (
+    input.capabilities.requiresSpecialItemCodes &&
+    input.capabilities.dutyHandling !== 'AGGREGATE' &&
+    input.capabilities.dutyHandling !== 'DUTY_WITHIN_POLICY' &&
+    duty.ok &&
+    duty.value > 0n &&
+    !input.settings.specialCodes.duty
+  ) {
+    return block(
+      'SPECIAL_CODE_NOT_CONFIGURED',
+      'the document carries duty but the vendor duty special code is not configured',
       operationId,
     );
   }

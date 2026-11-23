@@ -13,6 +13,14 @@ export type CapabilityRow = {
   value: string;
 };
 
+export type TaxCodeContractView = {
+  code: string;
+  label: string;
+  totalRateBasisPoints: string;
+  taxRateBasisPoints?: string;
+  dutyRateBasisPoints?: string;
+};
+
 export type AdapterDescriptor = {
   id: string;
   label: string;
@@ -26,17 +34,24 @@ export type AdapterDescriptor = {
   // Present for an adapter that declares one financial contract. A mock declares `null`
   // because its contract comes from the profile stored on the connection.
   taxHandling?: string | null;
+  // Duty is declared apart from tax: a destination may carry one component, both, only
+  // their sum, or carry duty inside the single tax code it already requires.
+  dutyHandling?: string | null;
   currencyHandling?: string | null;
   baseCurrency?: string;
   requiresSpecialItemCodes?: boolean;
+  // The destination's own tax codes and the rates they stand for, when it publishes them.
+  taxCodeCatalog?: TaxCodeContractView[];
   testProfiles?: {
     id: string;
     label: string;
     summary: string;
     taxHandling: string;
+    dutyHandling: string;
     currencyHandling: string;
     baseCurrency?: string;
     requiresSpecialItemCodes?: boolean;
+    taxCodeCatalog?: TaxCodeContractView[];
   }[];
 };
 
@@ -54,6 +69,12 @@ export type ConnectionSettings = {
   moneyUnit: string;
   transportApproved: boolean;
   specialCodes: { discount: boolean; duty: boolean; tax: boolean };
+  // The installation's own special-row item codes (Asan's 999123 / 999140 / 999141, or
+  // whatever this installation numbered them). A row code identifies WHICH row an amount is
+  // posted under; it is not a tax policy id and never a rate.
+  specialItemCodes?: { discount?: string; duty?: string; tax?: string };
+  // CRM tax policy -> ONE destination code for that policy. The destination code represents
+  // the whole value-added treatment, so there is no duty-specific mapping.
   taxPolicyMappings?: Record<string, string>;
   financial?: ConnectionFinancialSettings;
 };
@@ -148,9 +169,15 @@ export type FormState = {
   discount: boolean;
   duty: boolean;
   tax: boolean;
-  // `CODE=VENDOR_CODE`, one per line. The CRM policy code is not the vendor's
-  // fiscal code; an operator states the mapping explicitly.
+  // `CODE=VENDOR_CODE`, one per line. The CRM policy code is not the vendor's fiscal code;
+  // an operator states the mapping explicitly. ONE destination code per policy: that code
+  // stands for the whole value-added treatment, including duty.
   taxPolicyMappingsText: string;
+  // The installation's special-row item codes. Separate from the policy mapping above
+  // because a row code says WHICH row an amount is posted under, not which policy it is.
+  specialDiscountCode: string;
+  specialDutyCode: string;
+  specialTaxCode: string;
   // Currency contract of the destination. Under `SINGLE_CURRENCY` only `baseCurrency` is
   // read; under a code mode only `currencyMappingsText` is read.
   baseCurrency: string;
@@ -173,6 +200,9 @@ export const EMPTY_FORM: FormState = {
   duty: false,
   tax: false,
   taxPolicyMappingsText: '',
+  specialDiscountCode: '',
+  specialDutyCode: '',
+  specialTaxCode: '',
   baseCurrency: 'IRR',
   currencyMappingsText: '',
   conversionRate: '',
@@ -338,11 +368,15 @@ export const HEALTH_LABELS: Record<string, string> = {
 // fiscal code the vendor actually needs.
 export type FinancialModes = {
   taxHandling: string;
+  // How the destination wants duty expressed, declared separately from tax. A destination
+  // that declares nothing reads as UNSUPPORTED rather than inheriting the tax contract.
+  dutyHandling: string;
   currencyHandling: string;
   baseCurrency: string;
-  // Whether this destination identifies tax and discount by pre-existing item-row codes.
-  // A rate/amount destination has no such row, so the panel must not ask for its code.
+  // Whether this destination identifies a non-product amount by a pre-existing item-row
+  // code. A rate/amount destination has no such row, so the panel must not ask for its code.
   requiresSpecialItemCodes: boolean;
+  taxCodeCatalog?: TaxCodeContractView[];
 };
 
 export const resolveFinancialModes = ({
@@ -363,9 +397,13 @@ export const resolveFinancialModes = ({
   ) {
     return {
       taxHandling: descriptor.taxHandling,
+      dutyHandling: descriptor.dutyHandling ?? 'UNSUPPORTED',
       currencyHandling: descriptor.currencyHandling,
       baseCurrency: descriptor.baseCurrency ?? 'IRR',
       requiresSpecialItemCodes: descriptor.requiresSpecialItemCodes === true,
+      ...(descriptor.taxCodeCatalog === undefined
+        ? {}
+        : { taxCodeCatalog: descriptor.taxCodeCatalog }),
     };
   }
 
@@ -379,15 +417,20 @@ export const resolveFinancialModes = ({
   if (profile !== null && profile !== undefined) {
     return {
       taxHandling: profile.taxHandling,
+      dutyHandling: profile.dutyHandling ?? 'UNSUPPORTED',
       currencyHandling: profile.currencyHandling,
       baseCurrency: profile.baseCurrency ?? 'IRR',
       requiresSpecialItemCodes: profile.requiresSpecialItemCodes === true,
+      ...(profile.taxCodeCatalog === undefined
+        ? {}
+        : { taxCodeCatalog: profile.taxCodeCatalog }),
     };
   }
 
   // Nothing declared: the same fail-closed reading the domain uses.
   return {
     taxHandling: 'UNSUPPORTED',
+    dutyHandling: 'UNSUPPORTED',
     currencyHandling: 'SINGLE_CURRENCY',
     baseCurrency: 'IRR',
     requiresSpecialItemCodes: false,
@@ -400,9 +443,17 @@ export const TAX_MODE_NEEDS_CODE = (mode: string): boolean =>
 export const TAX_MODE_LABELS: Record<string, string> = {
   TAX_RATE: 'فقط نرخ مالیات',
   TAX_AMOUNT: 'فقط مبلغ مالیات',
-  TAX_CODE: 'فقط کد مالیات',
+  TAX_CODE: 'یک کد مالیات برای هر سیاست',
   TAX_CODE_AND_AMOUNT: 'کد و مبلغ مالیات',
   UNSUPPORTED: 'بدون پشتیبانی مالیات',
+};
+
+export const DUTY_MODE_LABELS: Record<string, string> = {
+  DUTY_RATE: 'فقط نرخ عوارض',
+  DUTY_AMOUNT: 'فقط مبلغ عوارض',
+  DUTY_WITHIN_POLICY: 'عوارض داخل کد واحد سیاست',
+  AGGREGATE: 'فقط جمع مالیات و عوارض',
+  UNSUPPORTED: 'بدون پشتیبانی عوارض',
 };
 
 export const CURRENCY_MODE_LABELS: Record<string, string> = {
@@ -422,6 +473,15 @@ export type TaxPolicyView = {
   code: string;
   name: string;
   ratePercent: string;
+  // The second component of the same policy. Absent on a policy written before duty
+  // existed; the mapping screens read it as 0% rather than making the row unusable.
+  dutyRatePercent: string;
+  totalRatePercent: string;
+  // Exact basis points, so a destination code can be checked without re-parsing a
+  // localized percentage string.
+  rateBasisPoints: string;
+  dutyRateBasisPoints: string;
+  totalRateBasisPoints: string;
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
@@ -441,6 +501,11 @@ export const readTaxPolicies = (value: unknown): TaxPolicyView[] =>
         code,
         name: name === '' ? code : name,
         ratePercent: readString(row.ratePercent),
+        dutyRatePercent: readString(row.dutyRatePercent),
+        totalRatePercent: readString(row.totalRatePercent),
+        rateBasisPoints: readString(row.rateBasisPoints),
+        dutyRateBasisPoints: readString(row.dutyRateBasisPoints),
+        totalRateBasisPoints: readString(row.totalRateBasisPoints),
         isActive: row.isActive !== false,
         isDefault: row.isDefault === true,
         isExempt: row.isExempt === true,
@@ -504,7 +569,9 @@ export const DOCUMENT_CHECK_LABELS: Record<string, string> = {
   PROFORMA_CAPABILITY: 'قابلیت ثبت پیش‌فاکتور در مقصد',
   DISCOUNT_CODE_PRESENT: 'کد ویژهٔ تخفیف',
   TAX_CODE_PRESENT: 'کد ویژهٔ ردیف مالیات',
+  DUTY_CODE_PRESENT: 'کد ویژهٔ ردیف عوارض',
   TAX_POLICY_MAPPED: 'نگاشت سیاست مالیات به کد مقصد',
+  DUTY_POLICY_SUPPORTED: 'پشتیبانی مقصد از عوارض',
   CURRENCY_MAPPING: 'قرارداد ارز مقصد (ارز پایه یا کد ارز)',
   ALL_LINES_LINKED: 'نگاشت همهٔ ردیف‌ها به کالای مقصد',
 };
@@ -524,6 +591,14 @@ export const DOCUMENT_ERROR_LABELS: Record<string, string> = {
   TAX_POLICY_NOT_MAPPED: 'سیاست مالیات سند به کد مالیات مقصد نگاشت نشده است.',
   TAX_UNSUPPORTED:
     'این مقصد امکان ثبت مالیات را ندارد؛ سند دارای مالیات ارسال نمی‌شود تا مالیات حذف‌شده ثبت نشود.',
+  DUTY_UNSUPPORTED:
+    'این مقصد امکان ثبت عوارض را ندارد؛ سند دارای عوارض ارسال نمی‌شود تا عوارض حذف‌شده ثبت نشود.',
+  DUTY_CODE_NOT_MAPPED:
+    'کد عوارض جداگانه در این نسخه پشتیبانی نمی‌شود؛ کد واحد سیاست کل ارزش افزوده را نمایندگی می‌کند.',
+  DUTY_AGGREGATE_ONLY:
+    'این مقصد فقط جمع مالیات و عوارض را در یک فیلد می‌پذیرد و تفکیک دو مؤلفه را در سند ممکن نمی‌کند.',
+  DUTY_RATE_NOT_ACCEPTED:
+    'این مقصد نرخ عوارض را نمی‌گیرد؛ مبلغ عوارض باید از سند خوانده شود.',
   CURRENCY_UNSUPPORTED:
     'قرارداد ارزی این مقصد مشخص نیست؛ ارز سند قابل اثبات نیست.',
   CURRENCY_BASE_UNCONFIRMED:
@@ -536,6 +611,15 @@ export const DOCUMENT_ERROR_LABELS: Record<string, string> = {
     'نرخ تبدیل معتبر برای این ارز در تنظیمات اتصال ثبت نشده است.',
   SPECIAL_CODE_NOT_CONFIGURED:
     'کد ویژهٔ ردیف مالیات یا تخفیف در این اتصال تنظیم نشده است.',
+};
+
+// Non-blocking findings. A warned document can still be sent; the warning says what an
+// accountant should look at first, not what the CRM refuses.
+export const DOCUMENT_WARNING_LABELS: Record<string, string> = {
+  TAX_CODE_RATE_MISMATCH:
+    'نرخ کل سیاست CRM با نرخ اعلام‌شدهٔ کد مالیات مقصد یکسان نیست؛ پیش از ارسال بررسی کنید.',
+  TAX_CODE_COMPOSITION_MISMATCH:
+    'جمع نرخ‌ها برابر است اما تفکیک مالیات و عوارض با تعریف مقصد یکسان نیست؛ پیش از ارسال بررسی کنید.',
 };
 
 
@@ -582,6 +666,9 @@ export const toForm = (connection: ConnectionRecord): FormState => ({
   taxPolicyMappingsText: formatTaxPolicyMappingsText(
     connection.settings.taxPolicyMappings,
   ),
+  specialDiscountCode: connection.settings.specialItemCodes?.discount ?? '',
+  specialDutyCode: connection.settings.specialItemCodes?.duty ?? '',
+  specialTaxCode: connection.settings.specialItemCodes?.tax ?? '',
   baseCurrency: connection.settings.financial?.baseCurrency ?? 'IRR',
   currencyMappingsText: formatKeyValueLines(
     connection.settings.financial?.currencyMappings,
@@ -824,8 +911,17 @@ export const DocumentPreviewPanel = ({
       </tbody>
     </table>
 
-    <p style={sharedStyles.subtitle}>نگاشت ردیف‌های سند</p>
-    <table aria-label="نگاشت ردیف‌های سند" style={sharedStyles.table}>
+    {preview.warnings.length === 0 ? null : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {preview.warnings.map((warning) => (
+          <p key={warning.code} style={sharedStyles.warning}>
+            {DOCUMENT_WARNING_LABELS[warning.code] ?? warning.detail}
+          </p>
+        ))}
+      </div>
+    )}
+
+    <p style={sharedStyles.subtitle}>نگاشت ردیف‌های سند</p>    <table aria-label="نگاشت ردیف‌های سند" style={sharedStyles.table}>
       <thead>
         <tr>
           <th style={sharedStyles.cell}>شرح</th>

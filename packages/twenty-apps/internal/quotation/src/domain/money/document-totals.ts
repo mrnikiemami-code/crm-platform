@@ -34,6 +34,11 @@ export type QuotationDocumentTotals = {
   // Alias kept for callers that still read `discountMicros` as "all discounts".
   discountMicros: bigint;
   netMicros: bigint;
+  // Tax and duty computed separately, summed into `taxMicros`. The split exists so
+  // a destination that needs only one component receives the right figure; the total
+  // is what every existing payable invariant is expressed in.
+  taxOnlyMicros: bigint;
+  dutyMicros: bigint;
   taxMicros: bigint;
   totalMicros: bigint;
   roundingMicros: bigint;
@@ -45,6 +50,8 @@ export type QuotationTotalsExactText = {
   documentDiscountExact: string;
   discountExact: string;
   netExact: string;
+  taxOnlyExact: string;
+  dutyExact: string;
   taxExact: string;
   totalExact: string;
   roundingExact: string;
@@ -54,10 +61,12 @@ export const finalizeLinesWithDocumentDiscount = ({
   preTaxLines,
   documentDiscount,
   taxRateBasisPoints,
+  dutyRateBasisPoints,
 }: {
   preTaxLines: QuotationLinePreTaxAmounts[];
   documentDiscount: LineDiscount;
   taxRateBasisPoints: bigint;
+  dutyRateBasisPoints?: bigint;
 }): Result<{ lines: QuotationLineAmounts[]; totals: QuotationDocumentTotals }> => {
   if (preTaxLines.length === 0) {
     return refused(
@@ -89,17 +98,22 @@ export const finalizeLinesWithDocumentDiscount = ({
     return sharesResult;
   }
 
+  const dutyRate = dutyRateBasisPoints ?? 0n;
   const lines: QuotationLineAmounts[] = preTaxLines.map((preTax, index) => {
     const documentDiscountMicros = sharesResult.value[index];
     const netMicros =
       preTax.netAfterLineDiscountMicros - documentDiscountMicros;
-    const taxMicros = applyBasisPoints(netMicros, taxRateBasisPoints);
+    const taxOnlyMicros = applyBasisPoints(netMicros, taxRateBasisPoints);
+    const dutyMicros = applyBasisPoints(netMicros, dutyRate);
+    const taxMicros = taxOnlyMicros + dutyMicros;
 
     return {
       grossMicros: preTax.grossMicros,
       discountMicros: preTax.discountMicros,
       documentDiscountMicros,
       netMicros,
+      taxOnlyMicros,
+      dutyMicros,
       taxMicros,
       // Line total is pre-rounding; document payable adds roundingExact.
       totalMicros: netMicros + taxMicros,
@@ -121,6 +135,15 @@ export const finalizeLinesWithDocumentDiscount = ({
     return refused(
       'TOTALS_INCONSISTENT',
       'net total does not equal gross minus all discounts',
+    );
+  }
+
+  // The two components must be the total, or a destination that receives "tax" and
+  // one that receives "duty" would together charge more than the payable reflects.
+  if (totals.taxMicros !== totals.taxOnlyMicros + totals.dutyMicros) {
+    return refused(
+      'TOTALS_INCONSISTENT',
+      'tax total does not equal tax plus duty',
     );
   }
 
@@ -160,6 +183,8 @@ const sumLineBuckets = (
         line.discountMicros +
         line.documentDiscountMicros,
       netMicros: accumulator.netMicros + line.netMicros,
+      taxOnlyMicros: accumulator.taxOnlyMicros + line.taxOnlyMicros,
+      dutyMicros: accumulator.dutyMicros + line.dutyMicros,
       taxMicros: accumulator.taxMicros + line.taxMicros,
       totalMicros: accumulator.totalMicros + line.totalMicros,
       roundingMicros: 0n,
@@ -170,6 +195,8 @@ const sumLineBuckets = (
       documentDiscountMicros: 0n,
       discountMicros: 0n,
       netMicros: 0n,
+      taxOnlyMicros: 0n,
+      dutyMicros: 0n,
       taxMicros: 0n,
       totalMicros: 0n,
       roundingMicros: 0n,
@@ -191,9 +218,13 @@ export const computeDocumentTotals = (
     );
   }
 
+  // A caller that predates the duty split supplies only `taxMicros`; it is read as
+  // "all tax, no duty" so the sum invariant above still holds.
   const normalized = lines.map((line) => ({
     ...line,
     documentDiscountMicros: line.documentDiscountMicros ?? 0n,
+    taxOnlyMicros: line.taxOnlyMicros ?? line.taxMicros,
+    dutyMicros: line.dutyMicros ?? 0n,
   }));
 
   const totals = sumLineBuckets(normalized);
@@ -223,6 +254,8 @@ export const formatTotalsExact = (
   documentDiscountExact: formatMicrosExact(totals.documentDiscountMicros),
   discountExact: formatMicrosExact(totals.discountMicros),
   netExact: formatMicrosExact(totals.netMicros),
+  taxOnlyExact: formatMicrosExact(totals.taxOnlyMicros),
+  dutyExact: formatMicrosExact(totals.dutyMicros),
   taxExact: formatMicrosExact(totals.taxMicros),
   totalExact: formatMicrosExact(totals.totalMicros),
   roundingExact: formatMicrosExact(totals.roundingMicros),
@@ -237,6 +270,10 @@ export const readTotalsExact = (
     documentDiscountMicros: parseMicrosExact(text.documentDiscountExact),
     discountMicros: parseMicrosExact(text.discountExact),
     netMicros: parseMicrosExact(text.netExact),
+    taxOnlyMicros: parseMicrosExact(
+      text.taxOnlyExact ?? text.taxExact,
+    ),
+    dutyMicros: parseMicrosExact(text.dutyExact ?? '0'),
     taxMicros: parseMicrosExact(text.taxExact),
     totalMicros: parseMicrosExact(text.totalExact),
     roundingMicros: parseMicrosExact(text.roundingExact),
@@ -259,11 +296,20 @@ export const readTotalsExact = (
     discountMicros: (parsed.discountMicros as { ok: true; value: bigint })
       .value,
     netMicros: (parsed.netMicros as { ok: true; value: bigint }).value,
+    taxOnlyMicros: (parsed.taxOnlyMicros as { ok: true; value: bigint }).value,
+    dutyMicros: (parsed.dutyMicros as { ok: true; value: bigint }).value,
     taxMicros: (parsed.taxMicros as { ok: true; value: bigint }).value,
     totalMicros: (parsed.totalMicros as { ok: true; value: bigint }).value,
     roundingMicros: (parsed.roundingMicros as { ok: true; value: bigint })
       .value,
   };
+
+  if (totals.taxMicros !== totals.taxOnlyMicros + totals.dutyMicros) {
+    return refused(
+      'TOTALS_INCONSISTENT',
+      'tax total does not equal tax plus duty',
+    );
+  }
 
   if (
     totals.totalMicros !==

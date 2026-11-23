@@ -24,18 +24,23 @@ import {
   type FinancialModes,
   type PanelData,
   SEPIDAR_UNAVAILABLE,
+  DUTY_MODE_LABELS,
   TAX_MODE_LABELS,
+  type TaxCodeContractView,
   type TaxPolicyView,
   parseKeyValueLines,
   parseTaxPolicyMappingsText,
   setMappingRow,
   sharedStyles as styles,
+  toForm,
 } from 'src/components/accounting/accounting-shared';
 import {
   connectionFormFields,
   orderConnections,
   validateConnectionForm,
 } from 'src/components/accounting/accounting-connection-rules';
+import { matchTaxPolicyToDestinationCode } from 'src/domain/accounting/tax-code-contract';
+import { ASAN_SPECIAL_ITEM_CODES as ASAN_DOCUMENTED_ROW_CODES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 
 // Connections: a list a person can scan, and one form that opens as an inner view.
 //
@@ -73,11 +78,24 @@ const TAX_MODE_HELP: Record<string, string> = {
   TAX_AMOUNT:
     'این مقصد مبلغ مالیات را می‌گیرد. مبلغ در CRM محاسبه و در نسخهٔ قطعی‌شدهٔ سند ذخیره می‌شود؛ کد مالیات لازم نیست.',
   TAX_CODE:
-    'این مقصد برای هر سیاست مالیات یک کد ویژه می‌خواهد. هر سیاست CRM را به کد همان اتصال نگاشت کنید؛ بدون نگاشت، سند دارای مالیات ارسال نمی‌شود.',
+    'این مقصد برای هر سیاست مالیات یک کد واحد می‌خواهد؛ همان کد کل ارزش افزوده (مالیات و عوارض) را نمایندگی می‌کند و مقصد تفکیک را طبق تعریف خودش انجام می‌دهد. اگر مقصد نرخ کد را منتشر کرده باشد، نرخ و ترکیب سیاست با آن مقایسه می‌شود.',
   TAX_CODE_AND_AMOUNT:
-    'این مقصد هم کد ردیف مالیات و هم مبلغ آن را می‌خواهد. کد سیاست CRM را به کد این اتصال نگاشت کنید؛ مبلغ از سند خوانده می‌شود.',
+    'این مقصد هم کد واحد سیاست و هم مبلغ را می‌خواهد. کد، کل ارزش افزوده را نمایندگی می‌کند و مبلغ از نسخهٔ قطعی‌شدهٔ سند خوانده می‌شود.',
   UNSUPPORTED:
     'قرارداد فعلی این مقصد امکان انتقال مالیات را ندارد. سند مشمول مالیات به‌جای ارسال بدون مالیات، متوقف می‌شود.',
+};
+
+const DUTY_MODE_HELP: Record<string, string> = {
+  DUTY_RATE:
+    'این مقصد نرخ عوارض را جدا از مالیات می‌گیرد. نرخ از همان سیاست CRM خوانده می‌شود و کد عوارض لازم نیست.',
+  DUTY_AMOUNT:
+    'این مقصد مبلغ عوارض را جدا از مالیات می‌گیرد؛ مبلغ از نسخهٔ قطعی‌شدهٔ سند خوانده می‌شود و کد لازم نیست.',
+  DUTY_WITHIN_POLICY:
+    'مقصد هیچ فیلد عوارضی ندارد و کد واحد مالیات، کل ارزش افزوده را نمایندگی می‌کند. تفکیک مالیات و عوارض در سند CRM حفظ می‌شود و مقصد آن را طبق تعریف خودش ثبت می‌کند؛ کد دوم خواسته نمی‌شود.',
+  AGGREGATE:
+    'این مقصد فقط جمع مالیات و عوارض را در یک فیلد می‌پذیرد. تفکیک دو مؤلفه در سند CRM می‌ماند و جمع به مقصد می‌رود.',
+  UNSUPPORTED:
+    'قرارداد فعلی این مقصد امکان انتقال عوارض را ندارد. سند دارای عوارض به‌جای ارسال بدون عوارض، متوقف می‌شود.',
 };
 
 export const AccountingConnectionsSection = ({
@@ -153,6 +171,14 @@ export const AccountingConnectionsSection = ({
     data.connections.find((entry) => entry.id === form.id) ?? null;
   const fields = connectionFormFields(modes);
   const taxPolicies = policies.filter((policy) => policy.isActive);
+
+  // A draft that differs from the stored record cannot be the thing a probe checks: the
+  // server dials the SAVED address with the SAVED settings. Saying so up front is what stops
+  // a green result being read as approval of unsaved edits.
+  const draftDiffersFromSaved =
+    savedConnection !== null &&
+    JSON.stringify(toForm(savedConnection)) !== JSON.stringify(form);
+  const canTestSavedRecord = form.id !== null;
 
   const issues = validateConnectionForm({
     form,
@@ -620,32 +646,97 @@ export const AccountingConnectionsSection = ({
             </InlineAlert>
           ) : fields.taxCodeTable ? (
             <TaxMappingTable
-              label={`کد مالیات این اتصال برای هر سیاست CRM`}
+              label="کد مالیات این اتصال برای هر سیاست CRM"
               policies={taxPolicies}
               text={form.taxPolicyMappingsText}
+              catalog={modes.taxCodeCatalog}
               canManage={canManage}
               onChange={(next) => onChange({ ...form, taxPolicyMappingsText: next })}
             />
           ) : (
             <PolicyRateTable policies={taxPolicies} />
           )}
-
-          {fields.specialTaxRowCode ? (
-            <label style={{ ...styles.label, display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <input
-                type="checkbox"
-                checked={form.tax}
-                disabled={!canManage}
-                onChange={(event) => onChange({ ...form, tax: event.target.checked })}
-              />
-              {/* Three different things share the word «کد» here, so the label names the
-                  one this box is about: the pre-existing tax row in the vendor, not the CRM
-                  policy and not its rate. */}
-              ردیف کد ویژهٔ مالیات در این نصب تعریف شده است (کد ردیف، نه کد سیاست)
-            </label>
-          ) : null}
         </Card>
       </div>
+
+      <Card>
+        <div
+          style={{
+            display: 'flex',
+            gap: '6px',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+          }}
+        >
+          <p style={styles.subtitle}>۵. عوارض</p>
+          <Badge tone={fields.dutyUnsupported ? 'danger' : 'neutral'}>
+            {DUTY_MODE_LABELS[modes.dutyHandling] ?? modes.dutyHandling}
+          </Badge>
+        </div>
+        <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
+          {DUTY_MODE_HELP[modes.dutyHandling] ?? ''}
+        </p>
+
+        {fields.dutyUnsupported ? (
+          <InlineAlert tone="danger" title="عوارض در این مقصد پشتیبانی نمی‌شود">
+            سند دارای عوارض ارسال نمی‌شود؛ حذف بی‌صدای عوارض ممنوع است.
+          </InlineAlert>
+        ) : fields.dutyWithinPolicy ? (
+          <InlineAlert tone="info" title="یک کد، کل سیاست">
+            این مقصد کد عوارض جداگانه ندارد. همان یک کد مالیاتِ بخش قبل، مالیات و عوارض
+            را با هم نمایندگی می‌کند؛ در CRM هر دو مؤلفه جدا محاسبه و در سند قطعی
+            نگهداری می‌شوند.
+          </InlineAlert>
+        ) : fields.dutyAggregate ? (
+          <InlineAlert tone="info" title="قرارداد تجمیعی">
+            این مقصد فقط جمع مالیات و عوارض را در یک فیلد می‌پذیرد؛ تفکیک دو مؤلفه در سند
+            CRM حفظ می‌شود. این حالت فقط چون خود مقصد آن را اعلام کرده مجاز است.
+          </InlineAlert>
+        ) : (
+          <PolicyRateTable policies={taxPolicies} showDuty />
+        )}
+      </Card>
+
+      {fields.specialRowCodes ? (
+        <Card>
+          <p style={styles.subtitle}>۶. کدهای ویژهٔ ردیف در نصب مقصد</p>
+          <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
+            این کدها مشخص می‌کنند مبلغ غیرکالایی زیر کدام «ردیف» موجود در نصب مقصد ثبت
+            شود. کد ردیف با کد سیاست CRM و با نرخ مالیات یکی نیست. هر کد را از تنظیمات
+            معتبر همین نصب بردارید؛ مقدار پیشنهادی فقط پیش‌فرض مستند است.
+          </p>
+          <div style={styles.row}>
+            <SpecialRowCodeField
+              label="تخفیف"
+              enabled={form.discount}
+              code={form.specialDiscountCode}
+              placeholder={ASAN_DOCUMENTED_ROW_CODES.discount}
+              canManage={canManage}
+              onToggle={(checked) => onChange({ ...form, discount: checked })}
+              onChange={(value) => onChange({ ...form, specialDiscountCode: value })}
+            />
+            <SpecialRowCodeField
+              label="عوارض"
+              enabled={form.duty}
+              code={form.specialDutyCode}
+              placeholder={ASAN_DOCUMENTED_ROW_CODES.duty}
+              canManage={canManage}
+              onToggle={(checked) => onChange({ ...form, duty: checked })}
+              onChange={(value) => onChange({ ...form, specialDutyCode: value })}
+            />
+            <SpecialRowCodeField
+              label="مالیات"
+              enabled={form.tax}
+              code={form.specialTaxCode}
+              placeholder={ASAN_DOCUMENTED_ROW_CODES.tax}
+              canManage={canManage}
+              onToggle={(checked) => onChange({ ...form, tax: checked })}
+              onChange={(value) => onChange({ ...form, specialTaxCode: value })}
+            />
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <div style={{ display: 'flex', gap: 'var(--t-spacing-2)', flexWrap: 'wrap' }}>
@@ -663,11 +754,23 @@ export const AccountingConnectionsSection = ({
             disabled={busy || !canManage}
           />
           <SecondaryButton
-            label={busy ? 'در حال اجرا…' : 'آزمایش اتصال'}
+            label={busy ? 'در حال اجرا…' : 'آزمایش اتصال ذخیره‌شده'}
             onClick={onTest}
-            disabled={busy || (form.id === null && selectedConnectionId === null)}
+            disabled={busy || !canTestSavedRecord || !canManage}
           />
         </div>
+
+        {!canTestSavedRecord ? (
+          <p style={styles.meta}>
+            این اتصال هنوز ذخیره نشده است. آزمایش فقط اتصال ذخیره‌شده را بررسی می‌کند؛
+            ابتدا ذخیره کنید، سپس آزمایش بزنید.
+          </p>
+        ) : draftDiffersFromSaved ? (
+          <InlineAlert tone="warning" title="تغییرات ذخیرهنشده آزمایش نمی‌شوند">
+            آزمایش دقیقاً همان اتصال ذخیره‌شده را هدف می‌گیرد. تغییراتی که هنوز ذخیره
+            نکرده‌اید در نتیجهٔ آزمایش لحاظ نمی‌شوند.
+          </InlineAlert>
+        ) : null}
 
         {testResult === null ? null : (
           <InlineAlert
@@ -743,26 +846,6 @@ export const AccountingConnectionsSection = ({
               }
             />{' '}
             انتقال امن (TLS/تونل) تأیید شد
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={form.discount}
-              disabled={!canManage}
-              onChange={(event) =>
-                onChange({ ...form, discount: event.target.checked })
-              }
-            />{' '}
-            کد ویژهٔ تخفیف تنظیم شده است
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={form.duty}
-              disabled={!canManage}
-              onChange={(event) => onChange({ ...form, duty: event.target.checked })}
-            />{' '}
-            کد ویژهٔ عوارض
           </label>
         </div>
 
@@ -877,12 +960,14 @@ const TaxMappingTable = ({
   label,
   policies,
   text,
+  catalog,
   canManage,
   onChange,
 }: {
   label: string;
   policies: TaxPolicyView[];
   text: string;
+  catalog: TaxCodeContractView[] | undefined;
   canManage: boolean;
   onChange: (text: string) => void;
 }) => {
@@ -893,7 +978,7 @@ const TaxMappingTable = ({
       <>
         <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
           سیاست مالیات فعالی خوانده نشد. کدها را دستی وارد کنید؛ هر خط «کد سیاست CRM = کد
-          مقصد».
+          واحد مقصد».
         </p>
         <textarea
           aria-label={label}
@@ -901,7 +986,7 @@ const TaxMappingTable = ({
           rows={3}
           value={text}
           disabled={!canManage}
-          placeholder={'IR_VAT_9=999141'}
+          placeholder={'IR_VAT_9=64'}
           onChange={(event) => onChange(event.target.value)}
         />
       </>
@@ -909,56 +994,133 @@ const TaxMappingTable = ({
   }
 
   return (
-    <table
-      aria-label="نگاشت سیاست مالیات CRM به کد مالیات این اتصال"
-      style={{ ...styles.table, minWidth: '420px' }}
-    >
-      <thead>
-        <tr>
-          <th style={styles.cell}>سیاست مالیات CRM</th>
-          <th style={styles.cell}>نرخ</th>
-          <th style={styles.cell}>کد مالیات این اتصال</th>
-        </tr>
-      </thead>
-      <tbody>
-        {policies.map((policy) => (
-          <tr key={policy.code}>
-            <td style={styles.cell}>
-              <span style={{ display: 'block' }}>{policy.name}</span>
-              <span
-                style={{
-                  ...styles.meta,
-                  display: 'block',
-                  fontSize: 'var(--t-font-size-xs)',
-                  direction: 'ltr',
-                  textAlign: 'right',
-                }}
-              >
-                {policy.code}
-              </span>
-            </td>
-            <td style={styles.cell}>
-              {policy.isExempt ? 'معاف' : `${policy.ratePercent}٪`}
-            </td>
-            <td style={styles.cell}>
-              <input
-                aria-label={`کد مالیات برای ${policy.name}`}
-                style={{ ...styles.input, width: '100%' }}
-                value={mappings[policy.code] ?? ''}
-                disabled={!canManage}
-                onChange={(event) =>
-                  onChange(setMappingRow(text, policy.code, event.target.value))
-                }
-              />
-            </td>
+    <>
+      <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
+        برای هر سیاست فقط یک کد وارد کنید؛ همان کد کل ارزش افزوده (مالیات + عوارض) را در
+        مقصد نمایندگی می‌کند. کد عوارض جداگانه‌ای وجود ندارد.
+      </p>
+      <table
+        aria-label="نگاشت سیاست مالیات CRM به یک کد مالیات در این اتصال"
+        style={{ ...styles.table, minWidth: '520px' }}
+      >
+        <thead>
+          <tr>
+            <th style={styles.cell}>سیاست مالیات CRM</th>
+            <th style={styles.cell}>نرخ کل (مالیات + عوارض)</th>
+            <th style={styles.cell}>کد مالیات در حسابداری</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {policies.map((policy) => {
+            const destinationCode = mappings[policy.code] ?? '';
+            const match = matchTaxPolicyToDestinationCode({
+              policy: {
+                taxRateBasisPoints: policy.rateBasisPoints,
+                dutyRateBasisPoints: policy.dutyRateBasisPoints,
+                totalRateBasisPoints: policy.totalRateBasisPoints,
+              },
+              destinationCode,
+              catalog,
+            });
+
+            return (
+              <tr key={policy.code}>
+                <td style={styles.cell}>
+                  <span style={{ display: 'block' }}>{policy.name}</span>
+                  <span
+                    style={{
+                      ...styles.meta,
+                      display: 'block',
+                      fontSize: 'var(--t-font-size-xs)',
+                      direction: 'ltr',
+                      textAlign: 'right',
+                    }}
+                  >
+                    {policy.code}
+                  </span>
+                </td>
+                <td style={styles.cell}>
+                  {policy.isExempt
+                    ? 'معاف'
+                    : `${policy.totalRatePercent || policy.ratePercent}٪ (${policy.ratePercent} + ${policy.dutyRatePercent || '0'})`}
+                </td>
+                <td style={styles.cell}>
+                  <input
+                    aria-label={`کد مالیات برای ${policy.name}`}
+                    style={{ ...styles.input, width: '100%' }}
+                    value={destinationCode}
+                    disabled={!canManage}
+                    inputMode="numeric"
+                    onChange={(event) =>
+                      onChange(setMappingRow(text, policy.code, event.target.value))
+                    }
+                  />
+                  {destinationCode.trim() !== '' && match.kind === 'MISMATCH' ? (
+                    <span role="alert" style={styles.error}>
+                      {match.reason === 'COMPOSITION'
+                        ? 'جمع نرخ‌ها برابر است اما ترکیب مالیات و عوارض با تعریف مقصد یکی نیست.'
+                        : 'نرخ کل سیاست با نرخ اعلام‌شدهٔ این کد در مقصد یکسان نیست.'}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </>
   );
 };
 
-const PolicyRateTable = ({ policies }: { policies: TaxPolicyView[] }) => {
+// The installation's own special-row item codes. A row code is what makes an amount a
+// discount/duty/tax row; it is not a policy id and not a rate, which is why it lives in its
+// own block instead of inside the mapping table.
+const SpecialRowCodeField = ({
+  label,
+  enabled,
+  code,
+  placeholder,
+  canManage,
+  onToggle,
+  onChange,
+}: {
+  label: string;
+  enabled: boolean;
+  code: string;
+  placeholder: string;
+  canManage: boolean;
+  onToggle: (checked: boolean) => void;
+  onChange: (value: string) => void;
+}) => (
+  <div style={{ ...styles.field, gap: '4px' }}>
+    <label style={{ ...styles.label, display: 'flex', gap: '6px', alignItems: 'center' }}>
+      <input
+        type="checkbox"
+        checked={enabled}
+        disabled={!canManage}
+        onChange={(event) => onToggle(event.target.checked)}
+      />
+      {label}
+    </label>
+    <input
+      aria-label={`کد ردیف ${label}`}
+      style={{ ...styles.input, direction: 'ltr', textAlign: 'left' }}
+      value={code}
+      placeholder={placeholder}
+      disabled={!canManage}
+      inputMode="numeric"
+      onChange={(event) => onChange(event.target.value)}
+    />
+  </div>
+);
+
+const PolicyRateTable = ({
+  policies,
+  showDuty = false,
+}: {
+  policies: TaxPolicyView[];
+  showDuty?: boolean;
+}) => {
   if (policies.length === 0) {
     return (
       <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
@@ -969,11 +1131,18 @@ const PolicyRateTable = ({ policies }: { policies: TaxPolicyView[] }) => {
   }
 
   return (
-    <table aria-label="نرخ سیاست‌های مالیات CRM" style={{ ...styles.table, minWidth: '360px' }}>
+    <table
+      aria-label={
+        showDuty ? 'نرخ عوارض سیاست‌های CRM' : 'نرخ سیاست‌های مالیات CRM'
+      }
+      style={{ ...styles.table, minWidth: '360px' }}
+    >
       <thead>
         <tr>
           <th style={styles.cell}>سیاست مالیات CRM</th>
-          <th style={styles.cell}>نرخی که به مقصد می‌رسد</th>
+          <th style={styles.cell}>
+            {showDuty ? 'نرخ عوارضی که به مقصد می‌رسد' : 'نرخی که به مقصد می‌رسد'}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -981,7 +1150,11 @@ const PolicyRateTable = ({ policies }: { policies: TaxPolicyView[] }) => {
           <tr key={policy.code}>
             <td style={styles.cell}>{policy.name}</td>
             <td style={styles.cell}>
-              {policy.isExempt ? 'معاف از مالیات' : `${policy.ratePercent}٪`}
+              {policy.isExempt
+                ? 'معاف از مالیات'
+                : showDuty
+                  ? `${policy.dutyRatePercent || '0'}٪`
+                  : `${policy.ratePercent}٪`}
             </td>
           </tr>
         ))}

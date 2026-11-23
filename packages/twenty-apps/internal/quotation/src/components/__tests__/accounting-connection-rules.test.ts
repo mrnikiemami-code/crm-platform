@@ -12,6 +12,7 @@ import {
 
 const modes = (overrides: Partial<FinancialModes> = {}): FinancialModes => ({
   taxHandling: 'TAX_RATE',
+  dutyHandling: 'DUTY_RATE',
   currencyHandling: 'SINGLE_CURRENCY',
   baseCurrency: 'IRR',
   requiresSpecialItemCodes: false,
@@ -118,21 +119,88 @@ describe('fields rendered for each capability', () => {
     expect(fields.taxUnsupported).toBe(true);
     expect(fields.taxCodeTable).toBe(false);
     expect(fields.taxRateTable).toBe(false);
-    expect(fields.specialTaxRowCode).toBe(false);
+    expect(fields.specialRowCodes).toBe(false);
   });
 
-  it('asks for the special tax row code only when the destination has one', () => {
+  it('asks for the installation row codes only when the destination posts such rows', () => {
     expect(
       connectionFormFields(
-        modes({ taxHandling: 'TAX_CODE', requiresSpecialItemCodes: true }),
-      ).specialTaxRowCode,
+        modes({ taxHandling: 'TAX_AMOUNT', requiresSpecialItemCodes: true }),
+      ).specialRowCodes,
     ).toBe(true);
 
     expect(
       connectionFormFields(
         modes({ taxHandling: 'TAX_RATE', requiresSpecialItemCodes: false }),
-      ).specialTaxRowCode,
+      ).specialRowCodes,
     ).toBe(false);
+  });
+
+  it('never asks for a second code table for duty', () => {
+    // A code-based destination maps ONE code per policy; there is no duty-code field to
+    // render for any contract.
+    const fields = connectionFormFields(
+      modes({ taxHandling: 'TAX_CODE', dutyHandling: 'DUTY_WITHIN_POLICY' }),
+    );
+
+    expect(fields.taxCodeTable).toBe(true);
+    expect(fields.dutyWithinPolicy).toBe(true);
+    expect(fields.dutyRateTable).toBe(false);
+    expect(fields).not.toHaveProperty('dutyCodeTable');
+  });
+});
+
+describe('duty fields rendered for each duty contract', () => {
+  it('shows a duty rate table, and no code table, to a rate destination', () => {
+    const fields = connectionFormFields(modes({ dutyHandling: 'DUTY_RATE' }));
+
+    expect(fields.dutyRateTable).toBe(true);
+    expect(fields.dutyUnsupported).toBe(false);
+    expect(fields.dutyWithinPolicy).toBe(false);
+  });
+
+  it('shows a duty amount destination the rate table it reads the amount under', () => {
+    const fields = connectionFormFields(modes({ dutyHandling: 'DUTY_AMOUNT' }));
+
+    expect(fields.dutyRateTable).toBe(true);
+    expect(fields.dutyWithinPolicy).toBe(false);
+  });
+
+  it('explains that one policy code covers duty instead of asking for a duty code', () => {
+    const fields = connectionFormFields(
+      modes({ dutyHandling: 'DUTY_WITHIN_POLICY' }),
+    );
+
+    expect(fields.dutyWithinPolicy).toBe(true);
+    expect(fields.dutyRateTable).toBe(false);
+    expect(fields.dutyAggregate).toBe(false);
+    expect(fields).not.toHaveProperty('dutyCodeTable');
+  });
+
+  it('tells an aggregate destination about the combined field instead of a rate', () => {
+    const fields = connectionFormFields(modes({ dutyHandling: 'AGGREGATE' }));
+
+    expect(fields.dutyAggregate).toBe(true);
+    expect(fields.dutyRateTable).toBe(false);
+    expect(fields.dutyWithinPolicy).toBe(false);
+  });
+
+  it('marks duty unsupported without offering any duty field', () => {
+    const fields = connectionFormFields(modes({ dutyHandling: 'UNSUPPORTED' }));
+
+    expect(fields.dutyUnsupported).toBe(true);
+    expect(fields.dutyRateTable).toBe(false);
+    expect(fields.dutyWithinPolicy).toBe(false);
+    expect(fields.specialRowCodes).toBe(false);
+  });
+
+  it('keeps the duty contract independent of the tax contract', () => {
+    const fields = connectionFormFields(
+      modes({ taxHandling: 'TAX_RATE', dutyHandling: 'DUTY_AMOUNT' }),
+    );
+
+    expect(fields.taxCodeTable).toBe(false);
+    expect(fields.dutyRateTable).toBe(true);
   });
 });
 

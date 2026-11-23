@@ -14,7 +14,8 @@ const settings = (
   moneyUnit: 'RIAL',
   transportApproved: true,
   specialCodes: { discount: true, duty: false, tax: true },
-  taxPolicyMappings: { IR_VAT_9: '999141' },
+  taxPolicyMappings: {},
+  specialItemCodes: { discount: '999123', duty: '999140', tax: '999141' },
   ...overrides,
 });
 

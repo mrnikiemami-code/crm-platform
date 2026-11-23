@@ -77,11 +77,24 @@ const readSpecialCodes = (
 ): AccountingConnectionSettings['specialCodes'] => {
   const raw = asRecord(value) ?? {};
   const mappings = asRecord(raw.taxPolicyMappings) ?? {};
+  const rawRowCodes = asRecord(raw.specialItemCodes) ?? {};
+  const specialItemCodes = Object.fromEntries(
+    Object.entries(rawRowCodes).flatMap(([key, entry]) =>
+      (key === 'discount' || key === 'duty' || key === 'tax') &&
+      typeof entry === 'string' &&
+      /^\d+$/.test(entry.trim())
+        ? [[key, entry.trim()]]
+        : [],
+    ),
+  );
 
   return {
     discount: raw.discount === true,
     duty: raw.duty === true,
     tax: raw.tax === true,
+    ...(Object.keys(specialItemCodes).length === 0
+      ? {}
+      : { specialItemCodes }),
     ...(Object.keys(mappings).length === 0
       ? {}
       : {
@@ -128,7 +141,12 @@ const readFinancialSettings = (
     currencyMappings,
     conversionRate,
     mockProfile:
-      profile === 'CODED' || profile === 'AMOUNT' || profile === 'NO_TAX'
+      profile === 'CODED' ||
+      profile === 'AMOUNT' ||
+      profile === 'AGGREGATE' ||
+      profile === 'TAX_ONLY' ||
+      profile === 'NO_TAX' ||
+      profile === 'SIMPLE'
         ? profile
         : 'SIMPLE',
   };

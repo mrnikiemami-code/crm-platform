@@ -46,6 +46,9 @@ export type QuotationDraftSaveHeader = {
   // Basis points the app computed the tax with (900 = 9%). Stored with the
   // document so a later settings change cannot re-interpret old amounts.
   taxRateBasisPoints: string | null;
+  // The duty component of the same policy. Zero for documents saved before a
+  // policy could carry duty.
+  dutyRateBasisPoints?: string | null;
   paymentTerms: string | null;
   documentDiscountKind: QuotationDraftDiscountKind;
   documentDiscountInputExact: string;
@@ -54,6 +57,9 @@ export type QuotationDraftSaveHeader = {
   documentDiscountExact: string;
   netExact: string;
   taxExact: string;
+  // The duty part of `taxExact`. Optional only for callers that predate the
+  // split; a present value is validated against `dutyRateBasisPoints`.
+  dutyExact?: string;
   roundingExact: string;
   totalExact: string;
 };

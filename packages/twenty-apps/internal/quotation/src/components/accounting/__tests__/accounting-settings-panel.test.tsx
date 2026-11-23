@@ -294,7 +294,14 @@ describe('deep links from the readiness list', () => {
 
   it('opens the selected connection at its tax section', async () => {
     render(<AccountingSettingsPanel />);
-    await openConnections();
+    const table = await openConnections();
+
+    // A code-based destination with no mapping yet is the one this button fixes.
+    fireEvent.click(
+      within(rowFor(table, 'conn-3')).getByRole('button', {
+        name: 'انتخاب این اتصال',
+      }),
+    );
 
     const documentsButton = screen
       .getAllByRole('button', { name: /اسناد/ })
@@ -309,7 +316,7 @@ describe('deep links from the readiness list', () => {
     fireEvent.click(fixTax);
 
     expect(
-      await screen.findByText('در حال ویرایش: آسان کارخانه'),
+      await screen.findByText('در حال ویرایش: آزمایشی کدمحور'),
     ).toBeTruthy();
     expect(document.querySelector('[data-form-section="tax"]')).not.toBeNull();
   });

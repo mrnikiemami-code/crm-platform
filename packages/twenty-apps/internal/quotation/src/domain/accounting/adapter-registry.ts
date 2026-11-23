@@ -20,10 +20,13 @@ import {
 } from 'src/domain/accounting/adapters/mock/mock-profiles';
 import {
   isCurrencyHandlingMode,
+  isDutyHandlingMode,
   isTaxHandlingMode,
   type CurrencyHandlingMode,
+  type DutyHandlingMode,
   type TaxHandlingMode,
 } from 'src/domain/accounting/capabilities';
+import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // What the connection panel can offer, and what each choice honestly is. `LIVE_UNVERIFIED`
@@ -46,20 +49,28 @@ export type AdapterDescriptor = {
   // that exist instead of asking for ones the vendor never reads. `null` for the mock
   // because a mock connection carries its own profile; a real adapter declares one contract.
   taxHandling: TaxHandlingMode | null;
+  // Duty is declared apart from tax for the same reason the policy keeps them apart: a
+  // destination may have a field for one component, both, or only their sum.
+  dutyHandling: DutyHandlingMode | null;
   currencyHandling: CurrencyHandlingMode | null;
   baseCurrency: string;
   // Whether tax and discount travel as their own pre-existing item rows. The panel asks for
   // the row code only when this is true; a vendor with real fields must not be asked.
   requiresSpecialItemCodes: boolean;
+  // The destination's own tax codes and the rates they stand for, when it publishes them.
+  // A mapping is checked against this; absent means the match cannot be verified.
+  taxCodeCatalog?: readonly TaxCodeContract[];
   // The closed set of destinations this adapter can stand in for. Empty for a real vendor.
   testProfiles: readonly {
     id: string;
     label: string;
     summary: string;
     taxHandling: TaxHandlingMode;
+    dutyHandling: DutyHandlingMode;
     currencyHandling: CurrencyHandlingMode;
     baseCurrency?: string;
     requiresSpecialItemCodes: boolean;
+    taxCodeCatalog?: readonly TaxCodeContract[];
   }[];
 };
 
@@ -82,8 +93,10 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
       'واحد مبلغ (ریال/تومان) در مستندات مشخص نیست و باید توسط حسابدار تأیید شود.',
       'مالیات در آسان یک ردیف کد ویژه است: هم کد ردیف مالیات و هم مبلغ آن لازم است؛ نرخ مالیات از سیاست CRM خوانده می‌شود و به آسان فرستاده نمی‌شود.',
       'آسان کد ارز ندارد و همه مبالغ را به یک ارز ثبت می‌کند؛ کد ارز از کاربر خواسته نمی‌شود.',
+      'کد ردیف مالیات و عوارض در آسان به‌شمارهٔ نصب بستگی دارد، نه به سیاست CRM؛ کد هر ردیف در تنظیمات اتصال تأیید می‌شود.',
     ],
     taxHandling: ASAN_CAPABILITIES.taxHandling,
+    dutyHandling: ASAN_CAPABILITIES.dutyHandling,
     currencyHandling: ASAN_CAPABILITIES.currencyHandling,
     baseCurrency: ASAN_CAPABILITIES.baseCurrency,
     requiresSpecialItemCodes: ASAN_CAPABILITIES.requiresSpecialItemCodes,
@@ -104,6 +117,7 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
       'پاسخ‌های آسان را شبیه‌سازی نمی‌کند؛ قرارداد پاسخ آسان جداگانه آزمون می‌شود.',
     ],
     taxHandling: null,
+    dutyHandling: null,
     currencyHandling: null,
     baseCurrency: '',
     requiresSpecialItemCodes: ASAN_CAPABILITIES.requiresSpecialItemCodes,
@@ -112,11 +126,18 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
       label: MOCK_PROFILE_DESCRIPTIONS[profile].label,
       summary: MOCK_PROFILE_DESCRIPTIONS[profile].summary,
       taxHandling: MOCK_PROFILE_DESCRIPTIONS[profile].tax,
+      dutyHandling: MOCK_PROFILE_DESCRIPTIONS[profile].duty,
       currencyHandling: MOCK_PROFILE_DESCRIPTIONS[profile].currency,
       baseCurrency:
         mockProfileCapabilities(profile).baseCurrency,
       requiresSpecialItemCodes:
         mockProfileCapabilities(profile).requiresSpecialItemCodes,
+      ...(MOCK_PROFILE_DESCRIPTIONS[profile].taxCodeCatalog === undefined
+        ? {}
+        : {
+            taxCodeCatalog:
+              MOCK_PROFILE_DESCRIPTIONS[profile].taxCodeCatalog as readonly TaxCodeContract[],
+          }),
     })),
   },
 ];
@@ -127,7 +148,13 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
 export const financialModesFor = (
   adapterId: string,
   options: { profile?: unknown; capabilities?: unknown } = {},
-): { taxHandling: TaxHandlingMode; currencyHandling: CurrencyHandlingMode; baseCurrency: string } => {
+): {
+  taxHandling: TaxHandlingMode;
+  dutyHandling: DutyHandlingMode;
+  currencyHandling: CurrencyHandlingMode;
+  baseCurrency: string;
+  taxCodeCatalog?: readonly TaxCodeContract[];
+} => {
   const stored = options.capabilities;
 
   if (
@@ -140,9 +167,19 @@ export const financialModesFor = (
 
     return {
       taxHandling: record.taxHandling as TaxHandlingMode,
+      // A capability snapshot stored before duty existed declares no duty contract. Read it
+      // as UNSUPPORTED instead of assuming the adapter's current one: a document that
+      // carries duty must be refused for that stored contract, not sent with the duty
+      // folded into tax.
+      dutyHandling: isDutyHandlingMode(record.dutyHandling)
+        ? record.dutyHandling
+        : 'UNSUPPORTED',
       currencyHandling: record.currencyHandling as CurrencyHandlingMode,
       baseCurrency:
         typeof record.baseCurrency === 'string' ? record.baseCurrency : '',
+      ...(Array.isArray(record.taxCodeCatalog)
+        ? { taxCodeCatalog: record.taxCodeCatalog as readonly TaxCodeContract[] }
+        : {}),
     };
   }
 
@@ -154,13 +191,18 @@ export const financialModesFor = (
 
     return {
       taxHandling: capabilities.taxHandling,
+      dutyHandling: capabilities.dutyHandling,
       currencyHandling: capabilities.currencyHandling,
       baseCurrency: capabilities.baseCurrency,
+      ...(capabilities.taxCodeCatalog === undefined
+        ? {}
+        : { taxCodeCatalog: capabilities.taxCodeCatalog }),
     };
   }
 
   return {
     taxHandling: ASAN_CAPABILITIES.taxHandling,
+    dutyHandling: ASAN_CAPABILITIES.dutyHandling,
     currencyHandling: ASAN_CAPABILITIES.currencyHandling,
     baseCurrency: ASAN_CAPABILITIES.baseCurrency,
   };
@@ -242,6 +284,14 @@ export const TAX_HANDLING_LABELS: Record<TaxHandlingMode, string> = {
   UNSUPPORTED: 'بدون پشتیبانی مالیات',
 };
 
+export const DUTY_HANDLING_LABELS: Record<DutyHandlingMode, string> = {
+  DUTY_RATE: 'فقط نرخ عوارض',
+  DUTY_AMOUNT: 'فقط مبلغ عوارض',
+  DUTY_WITHIN_POLICY: 'داخل کد واحد سیاست در مقصد',
+  AGGREGATE: 'فقط جمع مالیات و عوارض',
+  UNSUPPORTED: 'بدون پشتیبانی عوارض',
+};
+
 export const CURRENCY_HANDLING_LABELS: Record<CurrencyHandlingMode, string> = {
   SINGLE_CURRENCY: 'تک‌ارزی (بدون کد ارز)',
   CURRENCY_CODE: 'کد ارز',
@@ -305,6 +355,12 @@ export const describeCapabilities = (
       key: 'taxHandling',
       label: 'قرارداد مالیات مقصد',
       value: TAX_HANDLING_LABELS[capabilities.taxHandling],
+    },
+    {
+      area: 'financial',
+      key: 'dutyHandling',
+      label: 'قرارداد عوارض مقصد',
+      value: DUTY_HANDLING_LABELS[capabilities.dutyHandling],
     },
     {
       area: 'financial',
