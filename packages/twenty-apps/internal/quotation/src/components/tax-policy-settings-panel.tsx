@@ -125,18 +125,58 @@ const percentLabel = (value: string): string => `${toPersianDigits(value)}٪`;
 
 const FALLBACK_ERROR = 'ذخیرهٔ تنظیمات مالیات انجام نشد؛ دوباره تلاش کنید.';
 
+// The same two parsers the server uses, run here first so a bad rate is reported under
+// the input that holds it instead of as one generic message at the top of the page.
+const rateFieldIssue = (text: string): string | null => {
+  const parsed = parsePercentToBasisPoints(text);
+
+  return parsed.ok ? null : parsed.refusal.detail;
+};
+
+const dutyFieldIssue = (text: string): string | null => {
+  if (text.trim() === '') {
+    return null;
+  }
+
+  const parsed = parsePercentToBasisPoints(text);
+
+  return parsed.ok ? null : parsed.refusal.detail;
+};
+
+const combinedIssue = (taxText: string, dutyText: string): string | null => {
+  const tax = parsePercentToBasisPoints(taxText);
+  const duty = dutyText.trim() === ''
+    ? { ok: true as const, value: BigInt(0) }
+    : parsePercentToBasisPoints(dutyText);
+
+  if (!tax.ok || !duty.ok) {
+    return null;
+  }
+
+  return tax.value + duty.value > BigInt(10000)
+    ? 'جمع مالیات و عوارض از ۱۰۰٪ بیشتر نمی‌شود'
+    : null;
+};
+
 export const TaxPolicySettingsPanel = () => {
   const [rows, setRows] = useState<TaxPolicyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [editorError, setEditorError] = useState<string | null>(null);
+
+  const updateEditor = useCallback((next: EditorState | null) => {
+    setEditor(next);
+    setEditorError(null);
+  }, []);
 
   const applyResponse = useCallback(
-    (data: Record<string, unknown>, fallbackMessage: string) => {
+    (data: Record<string, unknown>, fallbackMessage: string): string | null => {
       if (data.success !== true) {
-        setError(toPersianUiMessage(data.message, FALLBACK_ERROR));
-        return false;
+        const message = toPersianUiMessage(data.message, FALLBACK_ERROR);
+        setError(message);
+        return message;
       }
 
       setRows(readRows(data));
@@ -146,7 +186,7 @@ export const TaxPolicySettingsPanel = () => {
         variant: 'success',
       });
 
-      return true;
+      return null;
     },
     [],
   );
@@ -178,10 +218,12 @@ export const TaxPolicySettingsPanel = () => {
     void load();
   }, [load]);
 
+  // `null` means the action persisted. A failure is returned as its real message so the
+  // caller can show it beside the fields the operator is editing, not only at the top.
   const runAction = async (
     body: Record<string, unknown>,
     fallbackMessage: string,
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     setBusy(true);
 
     try {
@@ -192,7 +234,7 @@ export const TaxPolicySettingsPanel = () => {
       console.error('tax-policy-settings: action failed', actionFailure);
       setError('ارتباط با سرور برقرار نشد');
 
-      return false;
+      return 'ارتباط با سرور برقرار نشد';
     } finally {
       setBusy(false);
     }
@@ -203,7 +245,17 @@ export const TaxPolicySettingsPanel = () => {
       return;
     }
 
-    const saved = await runAction(
+    const issue =
+      rateFieldIssue(editor.ratePercentText) ??
+      dutyFieldIssue(editor.dutyPercentText) ??
+      combinedIssue(editor.ratePercentText, editor.dutyPercentText);
+
+    if (issue !== null) {
+      setEditorError(issue);
+      return;
+    }
+
+    const failure = await runAction(
       {
         action: 'save',
         recordId: editor.recordId,
@@ -217,29 +269,45 @@ export const TaxPolicySettingsPanel = () => {
       'سیاست مالیات ذخیره شد',
     );
 
-    if (saved) {
+    if (failure === null) {
       setEditor(null);
+      setEditorError(null);
+      return;
     }
+
+    setEditorError(failure);
   };
 
   const onSetDefault = async (row: TaxPolicyRow) => {
-    await runAction(
+    const failure = await runAction(
       { action: 'set-default', recordId: row.recordId },
       'سیاست پیش‌فرض تغییر کرد',
     );
+
+    if (failure !== null) {
+      setError(failure);
+    }
   };
 
   const onDeactivate = async (row: TaxPolicyRow) => {
-    await runAction(
+    const failure = await runAction(
       { action: 'deactivate', recordId: row.recordId },
       'سیاست مالیات غیرفعال شد',
     );
+
+    if (failure !== null) {
+      setError(failure);
+    }
   };
 
   // The initial 9% policy is created only here, by an explicit admin action. It is
   // idempotent on the server, so a second press cannot create a duplicate.
   const onBootstrap = async () => {
-    await runAction({ action: 'bootstrap' }, 'سیاست پایه آماده شد');
+    const failure = await runAction({ action: 'bootstrap' }, 'سیاست پایه آماده شد');
+
+    if (failure !== null) {
+      setError(failure);
+    }
   };
 
   const editorStyle: CSSProperties = editor === null ? styles.hidden : styles.editor;
@@ -301,7 +369,7 @@ export const TaxPolicySettingsPanel = () => {
                     type="button"
                     style={styles.secondaryButton}
                     disabled={busy}
-                    onClick={() => setEditor(editorFor(row))}
+                    onClick={() => updateEditor(editorFor(row))}
                   >
                     ویرایش
                   </button>
@@ -329,7 +397,7 @@ export const TaxPolicySettingsPanel = () => {
                       type="button"
                       style={styles.linkButton}
                       disabled={busy}
-                      onClick={() => setEditor(editorFor(row))}
+                      onClick={() => updateEditor(editorFor(row))}
                     >
                       فعال‌سازی
                     </button>
@@ -355,7 +423,7 @@ export const TaxPolicySettingsPanel = () => {
             type="button"
             style={styles.secondaryButton}
             disabled={busy}
-            onClick={() => setEditor(emptyEditor())}
+            onClick={() => updateEditor(emptyEditor())}
           >
             افزودن سیاست مالیات
           </button>
@@ -367,7 +435,7 @@ export const TaxPolicySettingsPanel = () => {
           type="button"
           style={styles.secondaryButton}
           disabled={busy}
-          onClick={() => setEditor(emptyEditor())}
+          onClick={() => updateEditor(emptyEditor())}
         >
           افزودن سیاست مالیات
         </button>
@@ -386,7 +454,7 @@ export const TaxPolicySettingsPanel = () => {
                 value={editor.name}
                 placeholder="مثلاً مالیات بر ارزش افزوده ۱۰٪"
                 onChange={(event) =>
-                  setEditor({ ...editor, name: event.target.value })
+                  updateEditor({ ...editor, name: event.target.value })
                 }
               />
             </label>
@@ -395,28 +463,42 @@ export const TaxPolicySettingsPanel = () => {
               <input
                 style={styles.input}
                 value={editor.ratePercentText}
+                inputMode="decimal"
+                aria-invalid={rateFieldIssue(editor.ratePercentText) !== null}
                 placeholder="۶ یا ۶٫۵ — صفر یعنی بدون مالیات"
                 onChange={(event) =>
-                  setEditor({
+                  updateEditor({
                     ...editor,
                     ratePercentText: event.target.value,
                   })
                 }
               />
+              {rateFieldIssue(editor.ratePercentText) === null ? null : (
+                <span role="alert" style={styles.error}>
+                  {rateFieldIssue(editor.ratePercentText)}
+                </span>
+              )}
             </label>
             <label style={styles.label}>
               درصد عوارض
               <input
                 style={styles.input}
                 value={editor.dutyPercentText}
+                inputMode="decimal"
+                aria-invalid={dutyFieldIssue(editor.dutyPercentText) !== null}
                 placeholder="۴ — خالی یا صفر یعنی بدون عوارض"
                 onChange={(event) =>
-                  setEditor({
+                  updateEditor({
                     ...editor,
                     dutyPercentText: event.target.value,
                   })
                 }
               />
+              {dutyFieldIssue(editor.dutyPercentText) === null ? null : (
+                <span role="alert" style={styles.error}>
+                  {dutyFieldIssue(editor.dutyPercentText)}
+                </span>
+              )}
             </label>
             <div style={styles.totalRow}>
               <span style={styles.totalLabel}>جمع (مالیات + عوارض)</span>
@@ -424,12 +506,17 @@ export const TaxPolicySettingsPanel = () => {
                 {sumPercentText(editor.ratePercentText, editor.dutyPercentText)}
               </output>
             </div>
+            {combinedIssue(editor.ratePercentText, editor.dutyPercentText) === null ? null : (
+              <span role="alert" style={styles.error}>
+                {combinedIssue(editor.ratePercentText, editor.dutyPercentText)}
+              </span>
+            )}
             <label style={styles.checkboxRow}>
               <input
                 type="checkbox"
                 checked={editor.isActive}
                 onChange={(event) =>
-                  setEditor({ ...editor, isActive: event.target.checked })
+                  updateEditor({ ...editor, isActive: event.target.checked })
                 }
               />
               فعال (در پیش‌فاکتور جدید قابل انتخاب)
@@ -439,7 +526,7 @@ export const TaxPolicySettingsPanel = () => {
                 type="checkbox"
                 checked={editor.isExempt}
                 onChange={(event) =>
-                  setEditor({ ...editor, isExempt: event.target.checked })
+                  updateEditor({ ...editor, isExempt: event.target.checked })
                 }
               />
               معاف از مالیات (فقط با نرخ صفر)
@@ -449,11 +536,16 @@ export const TaxPolicySettingsPanel = () => {
                 type="checkbox"
                 checked={editor.isDefault}
                 onChange={(event) =>
-                  setEditor({ ...editor, isDefault: event.target.checked })
+                  updateEditor({ ...editor, isDefault: event.target.checked })
                 }
               />
               سیاست پیش‌فرض
             </label>
+            {editorError === null ? null : (
+              <p role="alert" style={styles.error}>
+                {editorError}
+              </p>
+            )}
             <div style={styles.actions}>
               <button
                 type="button"
@@ -467,7 +559,7 @@ export const TaxPolicySettingsPanel = () => {
                 type="button"
                 style={styles.secondaryButton}
                 disabled={busy}
-                onClick={() => setEditor(null)}
+                onClick={() => updateEditor(null)}
               >
                 انصراف
               </button>

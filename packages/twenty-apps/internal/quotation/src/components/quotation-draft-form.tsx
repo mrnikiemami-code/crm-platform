@@ -1,4 +1,10 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   closeSidePanel,
   enqueueSnackbar,
@@ -30,7 +36,7 @@ import {
   formatBasisPointsAsPercent,
   parseBasisPointsText,
   resolveTaxPolicy,
-  selectDefaultTaxPolicy,
+  selectInitialTaxPolicyCode,
   totalRateBasisPoints,
   type TaxPolicyCatalogEntry,
 } from 'src/domain/money/tax-policy';
@@ -347,6 +353,9 @@ export const QuotationDraftForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
+  // A NEW draft starts from the workspace default, but an operator's own choice in the
+  // select always wins: the catalog can arrive after they already picked a policy.
+  const taxPolicyChosenByOperator = useRef(false);
 
   // The rate is workspace data, so the form reads it instead of embedding one. A
   // failure here leaves the legacy 9% baseline in place; it must not block a save
@@ -371,10 +380,16 @@ export const QuotationDraftForm = () => {
         }
 
         setTaxPolicies(rows);
+
+        // An existing draft keeps the policy it was saved with (hydrated below); a new
+        // draft must take the flagged default. Matching "the current code still exists"
+        // was wrong: the legacy 9% row usually exists, so the default was never applied.
         setTaxPolicyCode((current) =>
-          rows.some((row) => row.id === current)
-            ? current
-            : (selectDefaultTaxPolicy(rows)?.id ?? current),
+          selectInitialTaxPolicyCode({
+            entries: rows,
+            currentCode: current,
+            keepCurrent: isRecordEdit || taxPolicyChosenByOperator.current,
+          }),
         );
       } catch (loadFailure) {
         // The save route validates the policy on the server; this panel only
@@ -391,7 +406,7 @@ export const QuotationDraftForm = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isRecordEdit]);
 
   useEffect(() => {
     if (!isRecordEdit) {
@@ -1138,6 +1153,7 @@ export const QuotationDraftForm = () => {
                 value={taxPolicyCode}
                 disabled={isFormLocked}
                 onChange={(event) => {
+                  taxPolicyChosenByOperator.current = true;
                   setTaxPolicyCode(event.target.value);
                   setStoredTaxRate(null);
                 }}

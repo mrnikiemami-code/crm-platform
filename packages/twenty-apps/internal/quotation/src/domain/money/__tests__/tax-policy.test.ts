@@ -5,6 +5,7 @@ import {
   formatBasisPointsAsPercent,
   parsePercentToBasisPoints,
   selectDefaultTaxPolicy,
+  selectInitialTaxPolicyCode,
   type TaxPolicyCatalogEntry,
 } from 'src/domain/money/tax-policy';
 
@@ -136,5 +137,40 @@ describe('selectDefaultTaxPolicy', () => {
     ]);
 
     expect(selected?.id).toBe('B');
+  });
+
+  // The defect this guards: a new draft kept the legacy IR_VAT_9 merely because that row
+  // still existed, so changing the default policy in settings never reached the form.
+  it('starts a new draft from the default even when the legacy policy row exists', () => {
+    const code = selectInitialTaxPolicyCode({
+      entries: [
+        entry('IR_VAT_9', { position: 0 }),
+        entry('TAX_1000', { isDefault: true, position: 1 }),
+      ],
+      currentCode: 'IR_VAT_9',
+      keepCurrent: false,
+    });
+
+    expect(code).toBe('TAX_1000');
+  });
+
+  it('keeps the stored policy of an existing draft', () => {
+    const code = selectInitialTaxPolicyCode({
+      entries: [entry('TAX_1000', { isDefault: true })],
+      currentCode: 'IR_VAT_9',
+      keepCurrent: true,
+    });
+
+    expect(code).toBe('IR_VAT_9');
+  });
+
+  it('falls back to the legacy policy when the catalog is empty', () => {
+    expect(
+      selectInitialTaxPolicyCode({
+        entries: [],
+        currentCode: 'IR_VAT_9',
+        keepCurrent: false,
+      }),
+    ).toBe('IR_VAT_9');
   });
 });

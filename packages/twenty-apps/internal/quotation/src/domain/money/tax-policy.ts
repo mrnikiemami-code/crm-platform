@@ -252,6 +252,26 @@ export const selectDefaultTaxPolicy = (
   return flagged ?? active[0] ?? null;
 };
 
+// The policy a NEW draft starts with. `keepCurrent` covers the two cases where the
+// catalog must not move the selection: an existing draft keeps the policy it was saved
+// with, and an operator who already picked one in the select is not overridden when the
+// async catalog finally arrives.
+export const selectInitialTaxPolicyCode = ({
+  entries,
+  currentCode,
+  keepCurrent,
+}: {
+  entries: readonly TaxPolicyCatalogEntry[];
+  currentCode: string;
+  keepCurrent: boolean;
+}): string => {
+  if (keepCurrent) {
+    return currentCode;
+  }
+
+  return selectDefaultTaxPolicy(entries)?.id ?? DEFAULT_TAX_POLICY_ID;
+};
+
 export const resolveTaxPolicyFromCatalog = (
   policyId: string | null | undefined,
   entries: readonly TaxPolicyCatalogEntry[],

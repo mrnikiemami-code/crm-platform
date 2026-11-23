@@ -888,7 +888,12 @@ export const AccountingSettingsPanel = () => {
                 }}
                 onSelectConnection={selectConnection}
                 onEditConnection={editConnection}
-                onChange={setForm}
+                onChange={(next) => {
+                  // A previous probe's verdict belongs to the saved values; editing the
+                  // draft makes it stale, so it is cleared instead of lingering.
+                  setTestResult(null);
+                  setForm(next);
+                }}
                 onSave={() => void save()}
                 onTest={() => void test(form.id)}
                 onStartNew={startNewConnection}
