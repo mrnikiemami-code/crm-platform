@@ -14,6 +14,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const config = JSON.parse(
   fs.readFileSync(path.join(os.homedir(), '.twenty', 'config.json'), 'utf8'),
@@ -28,8 +29,7 @@ if (!apiBase.includes('localhost:3002')) {
 }
 
 const DATABASE_URL =
-  process.env.CRM129_DATABASE_URL ??
-  'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/dev-verify-crm129-read-strategy-013.cjs');
 
 const db = new Client({ connectionString: DATABASE_URL });
 const results = [];

@@ -10,6 +10,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const config = JSON.parse(
   fs.readFileSync(path.join(os.homedir(), '.twenty', 'config.json'), 'utf8'),
@@ -18,8 +19,7 @@ const remote = config.remotes['dev-crm129'];
 const apiBase = String(remote.apiUrl).replace(/\/$/, '');
 const apiKey = remote.apiKey;
 const DATABASE_URL =
-  process.env.CRM129_DATABASE_URL ??
-  'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/dev-verify-crm129-tax-closure-009.cjs');
 const QUOTATION_APPLICATION_ID = '50a8667b-39cc-4e1c-ae3b-dab5ec41d117';
 const UNRELATED_APPLICATION_ID = '00cced48-b80b-4781-a72d-861ab37ece86';
 const QUOTATION_APPLICATION_UNIVERSAL_IDENTIFIER =

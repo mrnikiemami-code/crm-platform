@@ -1,0 +1,394 @@
+﻿draft 41dea32c-f4e4-41d5-b5e9-41dc4045ef71 · "Tax Policy Panel (Redesign)" · v1 · 21708 bytes
+<!DOCTYPE html><html lang="fa" dir="rtl"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تنظیمات مالیات و عوارض - CRM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Vazirmatn', 'sans-serif'],
+          },
+          colors: {
+            t: {
+              bg: '#ffffff',
+              surface: '#fcfcfc',
+              row: '#f1f1f1',
+              border: '#d6d6d6',
+              primary: '#333333',
+              secondary: '#666666',
+              accent: '#4c6ef5',
+              danger: '#d3453f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Vazirmatn', sans-serif; }
+    .persian-digits { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body class="bg-neutral-100">
+  <!-- Root Container -->
+  <div class="min-h-screen bg-neutral-100 py-12 px-4 flex flex-col items-center gap-16" data-sd-id="1">
+
+    <!-- ==========================================
+         DESKTOP VIEW (1024px+)
+         ========================================== -->
+    <div class="w-full max-w-[1024px] bg-t-bg border border-t-border rounded-lg shadow-sm overflow-hidden" data-sd-id="2">
+      
+      <!-- Header -->
+      <header class="flex items-start justify-between p-6 border-b border-t-border bg-t-surface" data-sd-id="3">
+        <div data-sd-id="4">
+          <h1 class="text-xl font-bold text-t-primary mb-1" data-sd-id="5">مالیات و عوارض</h1>
+          <p class="text-sm text-t-secondary max-w-2xl" data-sd-id="6">
+            سیاست پیش‌فرض برای شروع هر پیش‌فاکتور جدید استفاده می‌شود؛ اسناد صادرشده نرخ خود را حفظ می‌کنند.
+          </p>
+        </div>
+        <button class="h-8 px-4 bg-t-primary text-white text-sm font-medium rounded-md hover:bg-black transition-colors flex items-center gap-2" data-sd-id="7">
+          <iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon>
+          افزودن سیاست
+        </button>
+      </header>
+
+      <!-- List Area -->
+      <div class="p-6 flex flex-col gap-4" data-sd-id="8">
+
+        <!-- Row 1: Active Default -->
+        <div class="flex items-center justify-between p-4 border border-t-border rounded-md bg-t-surface" data-sd-id="9">
+          <!-- Identity & Metrics -->
+          <div class="flex items-center gap-8" data-sd-id="10">
+            <div class="min-w-[200px]" data-sd-id="11">
+              <div class="flex items-center gap-2 mb-1" data-sd-id="12">
+                <h3 class="text-base font-semibold text-t-primary" data-sd-id="13">مالیات بر ارزش افزوده (استاندارد)</h3>
+                <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full" data-sd-id="14">پیش‌فرض</span>
+              </div>
+              <p class="text-xs text-t-secondary persian-digits flex items-center gap-1" data-sd-id="15">
+                <iconify-icon icon="lucide:file-text" class="text-[14px]"></iconify-icon>
+                در ۱۲۸ سند استفاده شده
+              </p>
+            </div>
+
+            <!-- Isolated Metrics -->
+            <div class="flex items-center gap-6 border-r border-t-border pr-6" data-sd-id="16">
+              <div class="flex flex-col items-start" data-sd-id="17">
+                <span class="text-xs text-t-secondary mb-1" data-sd-id="18">جمع کل</span>
+                <span class="text-lg font-bold text-t-accent persian-digits" data-sd-id="19">۹٪</span>
+              </div>
+              <div class="text-t-secondary text-sm flex gap-3 persian-digits bg-t-row px-3 py-1.5 rounded-md" data-sd-id="20">
+                <span data-sd-id="21">مالیات: ۶٪</span>
+                <span class="text-t-border" data-sd-id="22">|</span>
+                <span data-sd-id="23">عوارض: ۳٪</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bounded Actions -->
+          <div class="flex items-center gap-2" data-sd-id="24">
+            <button class="h-8 px-3 border border-t-border text-t-primary text-sm font-medium rounded-md hover:bg-t-row transition-colors" data-sd-id="25">
+              ویرایش
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 2: Active Non-Default (Used) -->
+        <div class="flex items-center justify-between p-4 border border-t-border rounded-md bg-t-surface" data-sd-id="26">
+          <div class="flex items-center gap-8" data-sd-id="27">
+            <div class="min-w-[200px]" data-sd-id="28">
+              <div class="flex items-center gap-2 mb-1" data-sd-id="29">
+                <h3 class="text-base font-semibold text-t-primary" data-sd-id="30">کالاهای خاص (پزشکی)</h3>
+              </div>
+              <p class="text-xs text-t-secondary persian-digits flex items-center gap-1" data-sd-id="31">
+                <iconify-icon icon="lucide:file-text" class="text-[14px]"></iconify-icon>
+                در ۴۲ سند استفاده شده
+              </p>
+            </div>
+
+            <div class="flex items-center gap-6 border-r border-t-border pr-6" data-sd-id="32">
+              <div class="flex flex-col items-start" data-sd-id="33">
+                <span class="text-xs text-t-secondary mb-1" data-sd-id="34">جمع کل</span>
+                <span class="text-lg font-bold text-t-accent persian-digits" data-sd-id="35">۴٪</span>
+              </div>
+              <div class="text-t-secondary text-sm flex gap-3 persian-digits bg-t-row px-3 py-1.5 rounded-md" data-sd-id="36">
+                <span data-sd-id="37">مالیات: ۴٪</span>
+                <span class="text-t-border" data-sd-id="38">|</span>
+                <span data-sd-id="39">عوارض: ۰٪</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2" data-sd-id="40">
+            <button class="h-8 px-3 border border-t-border text-t-primary text-sm font-medium rounded-md hover:bg-t-row transition-colors" data-sd-id="41">
+              پیش‌فرض
+            </button>
+            <button class="h-8 px-3 border border-t-border text-t-primary text-sm font-medium rounded-md hover:bg-t-row transition-colors" data-sd-id="42">
+              ویرایش
+            </button>
+            <button class="h-8 px-3 border border-t-danger text-t-danger text-sm font-medium rounded-md hover:bg-red-50 transition-colors" data-sd-id="43">
+              غیرفعال‌سازی
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 3: Active Unused (Can Delete) - INLINE EDITOR STATE -->
+        <div class="p-5 border-2 border-t-accent rounded-md bg-white shadow-sm" data-sd-id="44">
+          <div class="flex items-center justify-between mb-4 pb-4 border-b border-t-border" data-sd-id="45">
+            <h3 class="text-base font-semibold text-t-primary flex items-center gap-2" data-sd-id="46">
+              <iconify-icon icon="lucide:edit-3" class="text-t-accent"></iconify-icon>
+              ویرایش سیاست
+            </h3>
+            <div class="flex items-center gap-2" data-sd-id="47">
+              <button class="h-8 px-4 border border-t-border text-t-primary text-sm font-medium rounded-md hover:bg-t-row transition-colors" data-sd-id="48">
+                انصراف
+              </button>
+              <button class="h-8 px-4 bg-t-primary text-white text-sm font-medium rounded-md hover:bg-black transition-colors" data-sd-id="49">
+                ذخیره تغییرات
+              </button>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-4 gap-6" data-sd-id="50">
+            <div class="col-span-2" data-sd-id="51">
+              <label class="block text-xs text-t-secondary mb-1.5" data-sd-id="52">نام سیاست</label>
+              <input type="text" value="صادراتی (معاف)" class="w-full h-8 px-3 border border-t-border rounded-md text-sm focus:outline-none focus:border-t-accent" data-sd-id="53">
+            </div>
+            <div data-sd-id="54">
+              <label class="block text-xs text-t-secondary mb-1.5" data-sd-id="55">مالیات (٪)</label>
+              <input type="text" value="۰" class="w-full h-8 px-3 border border-t-border rounded-md text-sm persian-digits focus:outline-none focus:border-t-accent" data-sd-id="56">
+            </div>
+            <div data-sd-id="57">
+              <label class="block text-xs text-t-secondary mb-1.5" data-sd-id="58">عوارض (٪)</label>
+              <input type="text" value="۰" class="w-full h-8 px-3 border border-t-border rounded-md text-sm persian-digits focus:outline-none focus:border-t-accent" data-sd-id="59">
+            </div>
+          </div>
+          
+          <div class="mt-4 flex items-center justify-between bg-t-surface p-3 rounded-md border border-t-border" data-sd-id="60">
+             <p class="text-sm text-t-secondary persian-digits" data-sd-id="61">
+                <iconify-icon icon="lucide:info" class="inline align-text-bottom text-t-secondary mr-1"></iconify-icon>
+                در ۰ سند استفاده شده - قابل حذف
+              </p>
+              <div class="flex items-center gap-4" data-sd-id="62">
+                <span class="text-sm text-t-secondary" data-sd-id="63">جمع محاسباتی:</span>
+                <span class="text-lg font-bold text-t-accent persian-digits" data-sd-id="64">۰٪</span>
+              </div>
+          </div>
+        </div>
+
+        <!-- Row 4: Inactive -->
+        <div class="flex items-center justify-between p-4 border border-t-border rounded-md bg-t-surface opacity-80 grayscale" data-sd-id="65">
+          <div class="flex items-center gap-8" data-sd-id="66">
+            <div class="min-w-[200px]" data-sd-id="67">
+              <div class="flex items-center gap-2 mb-1" data-sd-id="68">
+                <h3 class="text-base font-semibold text-t-secondary" data-sd-id="69">نرخ قدیم (۱۴۰۱)</h3>
+                <span class="px-2 py-0.5 bg-neutral-200 text-neutral-600 text-xs font-medium rounded-full border border-neutral-300" data-sd-id="70">غیرفعال</span>
+              </div>
+              <p class="text-xs text-t-secondary persian-digits flex items-center gap-1" data-sd-id="71">
+                <iconify-icon icon="lucide:file-text" class="text-[14px]"></iconify-icon>
+                در ۸۵ سند استفاده شده
+              </p>
+            </div>
+
+            <div class="flex items-center gap-6 border-r border-t-border pr-6" data-sd-id="72">
+              <div class="flex flex-col items-start" data-sd-id="73">
+                <span class="text-xs text-t-secondary mb-1" data-sd-id="74">جمع کل</span>
+                <span class="text-lg font-bold text-t-secondary persian-digits" data-sd-id="75">۹٪</span>
+              </div>
+              <div class="text-t-secondary text-sm flex gap-3 persian-digits bg-t-row px-3 py-1.5 rounded-md" data-sd-id="76">
+                <span data-sd-id="77">مالیات: ۵٪</span>
+                <span class="text-t-border" data-sd-id="78">|</span>
+                <span data-sd-id="79">عوارض: ۴٪</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2" data-sd-id="80">
+            <button class="h-8 px-3 border border-t-border text-t-primary text-sm font-medium rounded-md hover:bg-white hover:grayscale-0 transition-all" data-sd-id="81">
+              فعال‌سازی
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- Divider -->
+    <div class="w-full max-w-[1024px] flex items-center justify-center gap-4" data-sd-id="82">
+      <div class="h-px bg-neutral-300 flex-1" data-sd-id="83"></div>
+      <span class="text-neutral-400 text-sm font-medium tracking-widest uppercase" data-sd-id="84">Mobile View (390px)</span>
+      <div class="h-px bg-neutral-300 flex-1" data-sd-id="85"></div>
+    </div>
+
+
+    <!-- ==========================================
+         MOBILE VIEW (390px)
+         ========================================== -->
+    <div class="w-[390px] bg-t-bg border border-t-border shadow-md overflow-hidden relative" data-sd-id="86">
+      
+      <!-- Mobile Header -->
+      <header class="p-4 border-b border-t-border bg-t-surface sticky top-0 z-10" data-sd-id="87">
+        <div class="flex items-center justify-between mb-2" data-sd-id="88">
+          <h1 class="text-lg font-bold text-t-primary" data-sd-id="89">مالیات و عوارض</h1>
+          <button class="h-8 w-8 flex items-center justify-center bg-t-primary text-white rounded-md" data-sd-id="90">
+            <iconify-icon icon="lucide:plus"></iconify-icon>
+          </button>
+        </div>
+        <p class="text-xs text-t-secondary leading-relaxed" data-sd-id="91">
+          سیاست پیش‌فرض برای شروع هر پیش‌فاکتور جدید استفاده می‌شود؛ اسناد صادرشده نرخ خود را حفظ می‌کنند.
+        </p>
+      </header>
+
+      <!-- Mobile List -->
+      <div class="p-3 flex flex-col gap-3 overflow-y-auto max-h-[700px]" data-sd-id="92">
+
+        <!-- Mobile Row 1: Active Default -->
+        <div class="p-3 border border-t-border rounded-md bg-t-surface flex flex-col gap-3" data-sd-id="93">
+          <div class="flex items-start justify-between" data-sd-id="94">
+            <div data-sd-id="95">
+              <div class="flex items-center gap-2 mb-1" data-sd-id="96">
+                <h3 class="text-sm font-semibold text-t-primary" data-sd-id="97">مالیات بر ارزش افزوده (استاندارد)</h3>
+              </div>
+              <p class="text-xs text-t-secondary persian-digits" data-sd-id="98">
+                در ۱۲۸ سند استفاده شده
+              </p>
+            </div>
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-medium rounded-full shrink-0" data-sd-id="99">پیش‌فرض</span>
+          </div>
+
+          <div class="bg-t-row rounded p-2 flex items-center justify-between" data-sd-id="100">
+            <div class="flex items-center gap-2 text-xs text-t-secondary persian-digits" data-sd-id="101">
+              <span data-sd-id="102">م: ۶٪</span>
+              <span class="text-t-border" data-sd-id="103">|</span>
+              <span data-sd-id="104">ع: ۳٪</span>
+            </div>
+            <div class="flex items-center gap-1.5" data-sd-id="105">
+              <span class="text-[10px] text-t-secondary uppercase" data-sd-id="106">جمع:</span>
+              <span class="text-base font-bold text-t-accent persian-digits" data-sd-id="107">۹٪</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1" data-sd-id="108">
+            <button class="flex-1 h-8 border border-t-border text-t-primary text-xs font-medium rounded-md active:bg-t-row" data-sd-id="109">
+              ویرایش
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Row 2: Active Non-Default (Used) -->
+        <div class="p-3 border border-t-border rounded-md bg-t-surface flex flex-col gap-3" data-sd-id="110">
+          <div class="flex items-start justify-between" data-sd-id="111">
+            <div data-sd-id="112">
+              <h3 class="text-sm font-semibold text-t-primary mb-1" data-sd-id="113">کالاهای خاص (پزشکی)</h3>
+              <p class="text-xs text-t-secondary persian-digits" data-sd-id="114">
+                در ۴۲ سند استفاده شده
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-t-row rounded p-2 flex items-center justify-between" data-sd-id="115">
+            <div class="flex items-center gap-2 text-xs text-t-secondary persian-digits" data-sd-id="116">
+              <span data-sd-id="117">م: ۴٪</span>
+              <span class="text-t-border" data-sd-id="118">|</span>
+              <span data-sd-id="119">ع: ۰٪</span>
+            </div>
+            <div class="flex items-center gap-1.5" data-sd-id="120">
+              <span class="text-[10px] text-t-secondary uppercase" data-sd-id="121">جمع:</span>
+              <span class="text-base font-bold text-t-accent persian-digits" data-sd-id="122">۴٪</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1" data-sd-id="123">
+             <button class="h-8 border border-t-border text-t-primary text-xs font-medium rounded-md active:bg-t-row" data-sd-id="124">
+              پیش‌فرض
+            </button>
+            <button class="h-8 border border-t-border text-t-primary text-xs font-medium rounded-md active:bg-t-row" data-sd-id="125">
+              ویرایش
+            </button>
+            <button class="col-span-2 h-8 border border-t-danger text-t-danger text-xs font-medium rounded-md active:bg-red-50" data-sd-id="126">
+              غیرفعال‌سازی
+            </button>
+          </div>
+        </div>
+        
+         <!-- Mobile Row 3: Active Unused (Inline Editor) -->
+        <div class="p-3 border-2 border-t-accent rounded-md bg-white shadow-sm flex flex-col gap-3" data-sd-id="127">
+          <h3 class="text-sm font-semibold text-t-primary flex items-center gap-1.5" data-sd-id="128">
+             <iconify-icon icon="lucide:edit-3" class="text-t-accent text-sm"></iconify-icon>
+             ویرایش سیاست
+          </h3>
+          
+          <div class="flex flex-col gap-3" data-sd-id="129">
+             <div data-sd-id="130">
+                <label class="block text-[11px] text-t-secondary mb-1" data-sd-id="131">نام سیاست</label>
+                <input type="text" value="صادراتی (معاف)" class="w-full h-8 px-2 border border-t-border rounded-md text-sm" data-sd-id="132">
+             </div>
+             <div class="flex gap-2" data-sd-id="133">
+               <div class="flex-1" data-sd-id="134">
+                  <label class="block text-[11px] text-t-secondary mb-1" data-sd-id="135">مالیات (٪)</label>
+                  <input type="text" value="۰" class="w-full h-8 px-2 border border-t-border rounded-md text-sm persian-digits" data-sd-id="136">
+               </div>
+               <div class="flex-1" data-sd-id="137">
+                  <label class="block text-[11px] text-t-secondary mb-1" data-sd-id="138">عوارض (٪)</label>
+                  <input type="text" value="۰" class="w-full h-8 px-2 border border-t-border rounded-md text-sm persian-digits" data-sd-id="139">
+               </div>
+             </div>
+          </div>
+          
+          <div class="bg-t-surface border border-t-border rounded p-2 flex items-center justify-between" data-sd-id="140">
+            <span class="text-xs text-t-secondary" data-sd-id="141">جمع محاسباتی:</span>
+            <span class="text-base font-bold text-t-accent persian-digits" data-sd-id="142">۰٪</span>
+          </div>
+          
+          <div class="flex items-center gap-2 pt-1" data-sd-id="143">
+             <button class="flex-1 h-8 border border-t-border text-t-primary text-xs font-medium rounded-md active:bg-t-row" data-sd-id="144">
+              انصراف
+            </button>
+            <button class="flex-1 h-8 bg-t-primary text-white text-xs font-medium rounded-md active:bg-black" data-sd-id="145">
+              ذخیره
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Row 4: Inactive -->
+        <div class="p-3 border border-t-border rounded-md bg-t-surface flex flex-col gap-3 opacity-80 grayscale" data-sd-id="146">
+          <div class="flex items-start justify-between" data-sd-id="147">
+            <div data-sd-id="148">
+              <h3 class="text-sm font-semibold text-t-secondary mb-1" data-sd-id="149">نرخ قدیم (۱۴۰۱)</h3>
+              <p class="text-xs text-t-secondary persian-digits" data-sd-id="150">
+                در ۸۵ سند استفاده شده
+              </p>
+            </div>
+            <span class="px-2 py-0.5 bg-neutral-200 text-neutral-600 border border-neutral-300 text-[10px] font-medium rounded-full shrink-0" data-sd-id="151">غیرفعال</span>
+          </div>
+
+          <div class="bg-t-row rounded p-2 flex items-center justify-between" data-sd-id="152">
+            <div class="flex items-center gap-2 text-xs text-t-secondary persian-digits" data-sd-id="153">
+              <span data-sd-id="154">م: ۵٪</span>
+              <span class="text-t-border" data-sd-id="155">|</span>
+              <span data-sd-id="156">ع: ۴٪</span>
+            </div>
+            <div class="flex items-center gap-1.5" data-sd-id="157">
+              <span class="text-[10px] text-t-secondary uppercase" data-sd-id="158">جمع:</span>
+              <span class="text-base font-bold text-t-secondary persian-digits" data-sd-id="159">۹٪</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1" data-sd-id="160">
+            <button class="flex-1 h-8 border border-t-border text-t-primary text-xs font-medium rounded-md active:bg-white active:grayscale-0" data-sd-id="161">
+              فعال‌سازی
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</body></html>

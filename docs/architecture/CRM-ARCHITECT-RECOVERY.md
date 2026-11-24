@@ -1,5 +1,66 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## EXECUTED — CRM-129-TAX-PANEL-016 FINAL CLOSURE (2026-11-24; DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** / DESIGN_GATE **BLOCKED — designer credits**)
+
+Working point: branch `feat/crm-129-quotation`, HEAD `497eb5a39e` at start. Nothing outside the tax panel, its tests, the UAT scripts and `docs/design/crm-129-tax-panel-016/` was touched.
+
+### Gate board
+
+| Gate | Status | Basis |
+|---|---|---|
+| `DATA_INTEGRITY_GATE` | **PASS** | `dev-verify-crm129-tax-uat-015.cjs` → **17/17**, `SUMMARY 17/17 passed`, 985 ms, three consecutive runs; 672 app tests; 293 server quotation tests |
+| `SECURITY_GATE` | **PASS for source**, **rotation pending architect authorization** | no credential literal remains in any tracked script; 10 files at HEAD did carry it and are now scrubbed in the working tree; history not rewritten |
+| `DESIGN_GATE` | **BLOCKED** | designer executed and its revised frames implemented, but the Impeccable critique raised findings that contradict the designer's own specification and the platform refuses further designer turns: `insufficient_credits` |
+
+### S0 — repository state recorded before any change
+
+Twelve tracked files modified (`package.json` → `0.1.39`, the panel, its test, nine verification scripts) and the `docs/design/crm-129-tax-panel-016/` artifacts added untracked. No unrelated file was reverted or rewritten. The credential scrub was applied by a one-off script that printed file names and counts only; it was deleted after use rather than committed, since a committed file-rewriter is a footgun and the scrub is fully visible in the diff.
+
+### S1 — designer actually executed; the second round is refused by the platform
+
+- Diagnosis draft `971bcdae-827c-458f-a799-311780c6b9c5` and revised design `41dea32c-f4e4-41d5-b5e9-41dc4045ef71`, both `gemini-3.1-pro`, recorded in `docs/design/crm-129-tax-panel-016/`. The designer named the concept **Action-Isolated Row** and authored five non-negotiable criteria; `DESIGN-DECISION.md` records them verbatim plus the one gap it could not close.
+- The shipped `0.1.39` panel is that specification: 32 px bounded controls, accent total, `#f1f1f1` formula chip, usage count under the name, inline replacement editor, 390 px stack.
+- **Impeccable critique ran** as two isolated assessments (design review; detector + structural evidence) — `docs/design/crm-129-tax-panel-016/IMPECCABLE-REPORT.md`. Detector `impeccable` 4.10.0 returned `[]` on the `.tsx`, and its own stderr says that path is regex-only and an **undercount**, so the report declares that degradation and compensates by computing the contrast of all 13 painted colour pairs itself.
+- Findings that contradict the designer's own committed values were returned to the designer as one revision request. The platform refused:
+
+  ```json
+  { "error": "Team has insufficient credits", "code": "insufficient_credits",
+    "upgrade_url": "https://superdesign.dev/teams/d35be7fa-00e0-41a4-a8c4-620c04284560/billing?gate=api_credits" }
+  ```
+
+  This is the second platform refusal in this task for the same cause. **No designer-authored revision of those findings exists, and none was fabricated.** The three findings that do not need designer arbitration are listed separately in the Impeccable report.
+
+### S3 — the S5-15c race: root cause is the harness, and the backend contract is sound
+
+- **Backend is correct, and that is checked rather than assumed.** `quotation-tax-policy-lock.util.ts` takes one advisory lock as the first statement of both transactions, keyed `quotation-tax-policy:${transactionScope.workspaceId}` — shared for a draft save, exclusive for a policy mutation. A draft save therefore cannot have the policy row change between its policy read and its commit, and the two paths take row locks only after it, so no lock-order inversion exists.
+- **Two harness defects produced 15/17; neither was a backend race.**
+  1. *The blocker blocked nothing.* The script resolved `workspaceId` from `~/.twenty/config.json` (`remotes['dev-crm129']?.workspaceId ?? null`) and never checked it against the schema it inspects. A null or foreign value makes the advisory key one no server ever takes, so the "blocker" held a lock nobody contended for.
+  2. *No ordering existed at all.* The old test issued the delete and let a real draft save race it, separated by `sleep()`. Whichever won was timing, so the same build could pass or fail on machine load — a test that cannot state which order it exercised cannot prove either behaviour.
+- **Repair, deterministic and asserted.** The workspace is now read from the access token's own `workspaceId` claim and cross-checked against `core.workspace."databaseSchema"`, throwing on mismatch rather than testing another tenant. Ordering is produced at the DB level on the very same shared lock a draft save takes first: a writer holds the transaction and the lock, the delete is issued, `pg_locks` is polled for `not granted` on that exact key until the delete is **observed** queued, the quoting document is inserted and committed, and only then can the delete run. A queue that never forms fails the assertion instead of being slept past. Four orders are asserted: document before delete; document commits while the delete waits (`TAX_POLICY_IN_USE`, policy kept); document removed and the same delete then allowed; delete before document (`TAX_POLICY_UNKNOWN` for the removed code). The pre-order draft in step (a) keeps the final refusal from passing vacuously on a malformed body.
+- **Result:** `17/17`, including `cleanup`, at 985 ms — the race is proven, not timed. `S5-13` still shows the live-quotation and revision digests unchanged across the settings mutations.
+
+### S4 — the credential is out of the source; it is still in the history
+
+- The literal PostgreSQL credential appeared in **10 tracked scripts at HEAD** and in **6 commits** on this branch, and the branch is pushed to `origin`. Deleting it from the working tree does not remove it from the objects or the remote.
+- All ten now call `requireDatabaseUrl()` from the new `scripts/db-connection.cjs`, which reads `CRM129_DATABASE_URL`, else `CRM129_DB_PASSWORD` / `PGPASSWORD` (with optional `CRM129_DB_HOST/PORT/USER/NAME`, then `PG*`), and **exits 2 with a safe message when none is present**. It never prints the value it returns; the only string it composes with the password is returned, never logged.
+- Verified: zero credential-bearing URL or password literal in the working tree; all ten scripts migrated.
+- **Exposure assessment:** a staff Postgres role for the local dev database, readable by anyone with read access to this branch's history — which includes the remote. Rotation is a shared-resource change: other local services, the Dev `:3002` stack and any parallel session using the same role would break if it were rotated mid-run. **Rotation is therefore left to the architect**, as is any history rewrite; no force-push was performed and none is proposed here.
+- No new secret was written to code, docs, commits or this report.
+
+### S5 — nothing else moved
+
+Money domain, tax/duty formula, default-policy and historical-rate semantics, revision/snapshot, PDF, accounting adapter, currency and tax-code mapping, permission and workspace isolation, and every other Twenty module are untouched. The diff is the panel, its test, `package.json`, the nine scripts, `db-connection.cjs` and the design documents.
+
+### S6 — regressions
+
+`npx vitest run` in `packages/twenty-apps/internal/quotation` → 54 files passed, **672 passed** (3 skipped). `npx jest …/modules/quotation` → 26 suites, **293 passed**.
+
+### S7 — what the architect must decide
+
+1. **Designer credit top-up** (or an explicit waiver of designer arbitration) before the five designer-owned findings in the Impeccable report can be closed. Until then `DESIGN_GATE` is not PASS.
+2. **Credential rotation**, with the consumers of that role identified first. Nothing was rotated.
+3. Whether the four contract-level findings (focus management, unsaved-edit loss, 44 px mobile targets, load retry) may be implemented without a further designer turn. They are separated out precisely because they are not designer choices — except the visual shape of an unsaved-changes prompt, which is.
+
 ## DESIGN HANDOFF — USER_REJECTED TAX-PANEL-016 / DESIGNER REASSIGNMENT (2026-11-24; ASSIGNMENT REGISTERED / NOT EXECUTED)
 
 - User rejected TAX-PANEL-016 after Superdesign A/B hybrid because its visible action labels were visually indistinguishable from normal text. Source `tax-policy-settings-panel.tsx` uses transparent 28px ghost controls despite the recorded B-inspired visible-action decision. This is a **designer-to-implementation fidelity process failure**, not proof of Superdesign incapacity nor authorization for architect-authored CSS fixes.

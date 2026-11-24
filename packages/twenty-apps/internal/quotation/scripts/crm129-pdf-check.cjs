@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const config = JSON.parse(
   fs.readFileSync(path.join(os.homedir(), '.twenty', 'config.json'), 'utf8'),
@@ -13,7 +14,7 @@ const schema = 'workspace_aemygqnvl0yhlv0fg3qwjt525';
 
 (async () => {
   const db = new Client({
-    connectionString: 'postgres://postgres:563162150m8084M@localhost:5432/default',
+    connectionString: requireDatabaseUrl('scripts/crm129-pdf-check.cjs'),
   });
   await db.connect();
   const sealed = await db.query(

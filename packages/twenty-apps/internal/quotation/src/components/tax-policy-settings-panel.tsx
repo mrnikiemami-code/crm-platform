@@ -401,47 +401,181 @@ export const TaxPolicySettingsPanel = () => {
       ? null
       : dutyFieldIssue(editor.dutyPercentText);
 
-  const editorStyle: CSSProperties =
-    editor === null ? styles.hidden : styles.editor;
-
   const combinedFieldIssue =
     editor === null
       ? null
       : combinedIssue(editor.ratePercentText, editor.dutyPercentText);
 
-  // Only the absence of an action needs explaining; a footnote under every row is the
-  // kind of repetition that makes an operator stop reading them.
-  const rowHint = (row: TaxPolicyRow): string | null => {
-    if (row.isDefault) {
-      return 'پیش‌فرض فعلی است؛ برای تغییر، ابتدا پیش‌فرض دیگری انتخاب کنید.';
-    }
-
-    return row.isActive && row.quotationCount > 0
-      ? `در ${toPersianDigits(String(row.quotationCount))} سند استفاده شده است؛ به‌جای حذف، غیرفعال می‌شود.`
-      : null;
-  };
-
   const actionStyle = (base: CSSProperties): CSSProperties =>
     busy ? { ...base, opacity: 0.5, cursor: 'not-allowed' } : base;
 
+  // The designer's row is a card whose metrics answer one question ("what does this
+  // policy cost") and whose actions are physically separated from those numbers. The
+  // usage count is contextual, so it sits under the name instead of competing with the
+  // rates as a fourth figure.
+  const usageLine = (row: TaxPolicyRow): string =>
+    row.quotationCount === 0
+      ? 'در هیچ سندی استفاده نشده'
+      : `در ${toPersianDigits(String(row.quotationCount))} سند استفاده شده`;
+
+  const totalOf = (row: TaxPolicyRow): string => percentLabel(row.totalRatePercent);
+
+  const renderEditor = (current: EditorState) => {
+    const editingRow =
+      current.recordId === null
+        ? null
+        : (rows.find((row) => row.recordId === current.recordId) ?? null);
+
+    return (
+      <>
+        <div style={styles.editorHeader}>
+          <h3 style={styles.editorTitle}>
+            {current.recordId === null ? 'سیاست مالیات جدید' : 'ویرایش سیاست'}
+          </h3>
+          <div style={styles.editorHeaderActions}>
+            <button
+              type="button"
+              className="tax-btn"
+              style={actionStyle(styles.actionButton)}
+              disabled={busy}
+              onClick={() => updateEditor(null)}
+            >
+              انصراف
+            </button>
+            <button
+              type="button"
+              className="tax-btn"
+              style={actionStyle(styles.primaryButton)}
+              disabled={busy}
+              onClick={() => void onSave()}
+            >
+              {busy ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
+            </button>
+          </div>
+        </div>
+
+        <div style={styles.fields}>
+          <label style={{ ...styles.label, ...styles.fieldWide }}>
+            نام سیاست
+            <input
+              style={styles.input}
+              value={current.name}
+              aria-invalid={editorError === null ? 'false' : 'true'}
+              aria-describedby={
+                editorError === null ? undefined : 'tax-policy-editor-error'
+              }
+              placeholder="مثلاً مالیات بر ارزش افزوده ۱۰٪"
+              onChange={(event) =>
+                updateEditor({ ...current, name: event.target.value })
+              }
+            />
+          </label>
+          <label style={styles.label}>
+            مالیات (٪)
+            <input
+              style={
+                rateDisplayIssue === null ? styles.input : styles.inputInvalid
+              }
+              value={current.ratePercentText}
+              inputMode="decimal"
+              aria-invalid={rateDisplayIssue !== null}
+              placeholder="۶٫۵"
+              onChange={(event) =>
+                updateEditor({
+                  ...current,
+                  ratePercentText: event.target.value,
+                })
+              }
+            />
+            {rateDisplayIssue === null ? null : (
+              <span role="alert" style={styles.fieldError}>
+                {rateDisplayIssue}
+              </span>
+            )}
+          </label>
+          <label style={styles.label}>
+            عوارض (٪)
+            <input
+              style={
+                dutyDisplayIssue === null ? styles.input : styles.inputInvalid
+              }
+              value={current.dutyPercentText}
+              inputMode="decimal"
+              aria-invalid={dutyDisplayIssue !== null}
+              placeholder="۰"
+              onChange={(event) =>
+                updateEditor({
+                  ...current,
+                  dutyPercentText: event.target.value,
+                })
+              }
+            />
+            {dutyDisplayIssue === null ? null : (
+              <span role="alert" style={styles.fieldError}>
+                {dutyDisplayIssue}
+              </span>
+            )}
+          </label>
+        </div>
+
+        {/* The footer carries the two facts the operator needs while typing: whether
+            this rate is still safely deletable, and what the two rates add up to. */}
+        <div style={styles.editorFooter}>
+          <p style={styles.editorFooterInfo}>
+            {editingRow === null
+              ? 'در هیچ سندی استفاده نشده'
+              : usageLine(editingRow)}
+          </p>
+          <div style={styles.editorTotalBlock}>
+            <span style={styles.totalLabel}>جمع محاسباتی:</span>
+            <output style={styles.totalValueLg}>
+              {sumPercentText(current.ratePercentText, current.dutyPercentText)}
+            </output>
+          </div>
+        </div>
+
+        <p style={styles.meta}>هر دو نرخ صفر یعنی معاف از مالیات.</p>
+        {combinedFieldIssue === null ? null : (
+          <span role="alert" style={styles.fieldError}>
+            {combinedFieldIssue}
+          </span>
+        )}
+        {editorError === null ? null : (
+          <p id="tax-policy-editor-error" role="alert" style={styles.fieldError}>
+            {editorError}
+          </p>
+        )}
+      </>
+    );
+  };
+
+  const editingRowId = editor?.recordId ?? null;
+
   return (
     <div style={styles.root} dir="rtl">
+      <style>{PANEL_CSS}</style>
+
       <header style={styles.header}>
         <div style={styles.headerText}>
           <h2 style={styles.title}>مالیات و عوارض</h2>
           <p style={styles.subtitle}>
-            سیاست پیش‌فرض شروع هر پیش‌فاکتور جدید است؛ اسناد صادرشده نرخ خود را
-            نگه می‌دارند.
+            سیاست پیش‌فرض برای شروع هر پیش‌فاکتور جدید استفاده می‌شود؛ اسناد
+            صادرشده نرخ خود را حفظ می‌کنند.
           </p>
         </div>
         {rows.length === 0 ? null : (
           <button
             type="button"
-            style={actionStyle(styles.primaryButton)}
+            className="tax-add tax-btn"
+            aria-label="افزودن سیاست"
+            style={actionStyle(styles.addButton)}
             disabled={busy}
             onClick={() => updateEditor(emptyEditor())}
           >
-            افزودن سیاست
+            <span aria-hidden="true" style={styles.addButtonPlus}>
+              +
+            </span>
+            <span className="tax-add-label">افزودن سیاست</span>
           </button>
         )}
       </header>
@@ -460,6 +594,7 @@ export const TaxPolicySettingsPanel = () => {
           <div style={styles.emptyActions}>
             <button
               type="button"
+              className="tax-btn"
               style={actionStyle(styles.primaryButton)}
               disabled={busy}
               onClick={() => void onBootstrap()}
@@ -468,7 +603,8 @@ export const TaxPolicySettingsPanel = () => {
             </button>
             <button
               type="button"
-              style={actionStyle(styles.secondaryButton)}
+              className="tax-btn"
+              style={actionStyle(styles.actionButton)}
               disabled={busy}
               onClick={() => updateEditor(emptyEditor())}
             >
@@ -478,9 +614,24 @@ export const TaxPolicySettingsPanel = () => {
         </section>
       ) : (
         <ul style={styles.list} aria-busy={busy}>
-          {rows.map((row, index) => {
+          {editor !== null && editor.recordId === null ? (
+            <li key="new-policy" className="tax-editor">
+              {renderEditor(editor)}
+            </li>
+          ) : null}
+
+          {rows.map((row) => {
             const isConfirming = confirmingDeleteId === row.recordId;
-            const hint = rowHint(row);
+
+            // The editor takes the row's place, so the operator edits the policy they
+            // are looking at instead of scrolling to a detached form.
+            if (editor !== null && editingRowId === row.recordId) {
+              return (
+                <li key={`${row.recordId}:editor`} className="tax-editor">
+                  {renderEditor(editor)}
+                </li>
+              );
+            }
 
             return (
               <li
@@ -488,73 +639,72 @@ export const TaxPolicySettingsPanel = () => {
                 // a row that flips its default flag is remounted so the badge and the
                 // actions beside it can never show two different states.
                 key={`${row.recordId}:${row.isDefault ? 'default' : 'standard'}`}
-                style={{
-                  ...(row.isActive
-                    ? row.isDefault
-                      ? styles.rowDefault
-                      : styles.row
-                    : styles.rowInactive),
-                  ...(index === 0 ? null : styles.rowDivider),
-                }}
+                className={row.isActive ? 'tax-row' : 'tax-row tax-row-inactive'}
               >
-                <div style={styles.identity}>
-                  <h3
-                    style={row.isActive ? styles.rowName : styles.rowNameMuted}
-                  >
-                    {row.name}
-                  </h3>
-                  <div style={styles.badges}>
-                    {row.isDefault ? (
-                      <span style={styles.badgeDefault}>پیش‌فرض</span>
-                    ) : null}
-                    {row.isActive ? null : (
-                      <span style={styles.badgeOff}>غیرفعال</span>
-                    )}
+                <div className="tax-row-main" style={styles.rowMain}>
+                  <div style={styles.identity}>
+                    <div style={styles.nameLine}>
+                      <h3
+                        style={
+                          row.isActive ? styles.rowName : styles.rowNameMuted
+                        }
+                      >
+                        {row.name}
+                      </h3>
+                      {row.isDefault ? (
+                        <span style={styles.badgeDefault}>پیش‌فرض</span>
+                      ) : null}
+                      {row.isActive ? null : (
+                        <span style={styles.badgeOff}>غیرفعال</span>
+                      )}
+                    </div>
+                    <p style={styles.usage}>{usageLine(row)}</p>
+                  </div>
+
+                  <div className="tax-metrics" style={styles.metrics}>
+                    <div style={styles.totalBlock}>
+                      <span style={styles.metricLabel}>جمع کل</span>
+                      <span
+                        className="tax-total"
+                        style={
+                          row.isActive
+                            ? styles.totalValue
+                            : styles.totalValueMuted
+                        }
+                      >
+                        {totalOf(row)}
+                      </span>
+                    </div>
+                    <div style={styles.formulaChip}>
+                      <span className="tax-formula-full">
+                        مالیات: {percentLabel(row.ratePercent)}
+                      </span>
+                      <span className="tax-formula-short">
+                        م: {percentLabel(row.ratePercent)}
+                      </span>
+                      <span style={styles.formulaDivider} aria-hidden="true">
+                        |
+                      </span>
+                      <span className="tax-formula-full">
+                        عوارض: {percentLabel(row.dutyRatePercent)}
+                      </span>
+                      <span className="tax-formula-short">
+                        ع: {percentLabel(row.dutyRatePercent)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div style={styles.metrics}>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>مالیات</span>
-                    <span style={styles.metricValue}>
-                      {percentLabel(row.ratePercent)}
-                    </span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>عوارض</span>
-                    <span style={styles.metricValue}>
-                      {percentLabel(row.dutyRatePercent)}
-                    </span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>جمع</span>
-                    <span
-                      style={
-                        row.isActive
-                          ? styles.metricValueTotal
-                          : styles.metricValueMuted
-                      }
-                    >
-                      {percentLabel(row.totalRatePercent)}
-                    </span>
-                  </div>
-                  <div style={styles.metric}>
-                    <span style={styles.metricLabel}>اسناد</span>
-                    <span style={styles.metricValue}>
-                      {toPersianDigits(String(row.quotationCount))}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={styles.rowActions}>
+                <div className="tax-row-actions" style={styles.rowActions}>
                   {isConfirming ? (
                     <>
-                      <span style={styles.confirmText}>
+                      <span className="tax-confirm-text" style={styles.confirmText}>
                         «{row.name}» حذف شود؟
                       </span>
                       <button
                         type="button"
-                        style={actionStyle(styles.dangerButton)}
+                        className="tax-btn tax-btn-danger-solid"
+                        style={actionStyle(styles.dangerSolidButton)}
                         disabled={busy}
                         onClick={() => void onDelete(row)}
                       >
@@ -562,7 +712,8 @@ export const TaxPolicySettingsPanel = () => {
                       </button>
                       <button
                         type="button"
-                        style={actionStyle(styles.ghostButton)}
+                        className="tax-btn"
+                        style={actionStyle(styles.actionButton)}
                         disabled={busy}
                         onClick={() => setConfirmingDeleteId(null)}
                       >
@@ -571,63 +722,67 @@ export const TaxPolicySettingsPanel = () => {
                     </>
                   ) : (
                     <>
+                      {row.isActive && !row.isDefault ? (
+                        <button
+                          type="button"
+                          className="tax-btn"
+                          style={actionStyle(styles.actionButton)}
+                          disabled={busy}
+                          onClick={() => void onSetDefault(row)}
+                        >
+                          پیش‌فرض
+                        </button>
+                      ) : null}
                       <button
                         type="button"
-                        style={actionStyle(styles.ghostButton)}
+                        className="tax-btn"
+                        style={actionStyle(styles.actionButton)}
                         disabled={busy}
                         onClick={() => updateEditor(editorFor(row))}
                       >
                         ویرایش
                       </button>
-                      {row.isActive && !row.isDefault ? (
+                      {row.isActive &&
+                      !row.isDefault &&
+                      row.quotationCount > 0 ? (
                         <button
                           type="button"
-                          style={actionStyle(styles.ghostButton)}
-                          disabled={busy}
-                          onClick={() => void onSetDefault(row)}
-                        >
-                          انتخاب پیش‌فرض
-                        </button>
-                      ) : null}
-                      {row.isActive && !row.isDefault ? (
-                        <button
-                          type="button"
-                          style={actionStyle(styles.ghostButton)}
+                          className="tax-btn tax-btn-danger"
+                          style={actionStyle(styles.dangerButton)}
                           disabled={busy}
                           onClick={() => void onDeactivate(row)}
                         >
-                          غیرفعال
+                          غیرفعال‌سازی
                         </button>
                       ) : null}
-                      {row.isActive ? null : (
-                        <button
-                          type="button"
-                          style={actionStyle(styles.ghostButton)}
-                          disabled={busy}
-                          onClick={() => void onActivate(row)}
-                        >
-                          فعال‌سازی
-                        </button>
-                      )}
                       {row.isActive &&
                       !row.isDefault &&
                       row.quotationCount === 0 ? (
                         <button
                           type="button"
-                          style={actionStyle(styles.ghostDanger)}
+                          className="tax-btn tax-btn-danger"
+                          style={actionStyle(styles.dangerButton)}
                           disabled={busy}
                           onClick={() => void onDelete(row)}
                         >
                           حذف
                         </button>
                       ) : null}
+                      {row.isActive ? null : (
+                        <button
+                          type="button"
+                          className="tax-btn"
+                          style={actionStyle(styles.actionButton)}
+                          disabled={busy}
+                          onClick={() => void onActivate(row)}
+                        >
+                          فعال‌سازی
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
 
-                {hint === null || isConfirming ? null : (
-                  <p style={styles.rowHint}>{hint}</p>
-                )}
                 {rowIssue?.recordId === row.recordId ? (
                   <p role="alert" style={styles.rowError}>
                     {rowIssue.message}
@@ -639,132 +794,122 @@ export const TaxPolicySettingsPanel = () => {
         </ul>
       )}
 
-      <section style={editorStyle}>
-        {editor === null ? null : (
-          <>
-            <h3 style={styles.sectionTitle}>
-              {editor.recordId === null
-                ? 'سیاست مالیات جدید'
-                : 'ویرایش سیاست مالیات'}
-            </h3>
-            <div style={styles.fields}>
-              <label style={styles.label}>
-                نام سیاست
-                <input
-                  style={styles.input}
-                  value={editor.name}
-                  aria-invalid={editorError === null ? 'false' : 'true'}
-                  aria-describedby={
-                    editorError === null ? undefined : 'tax-policy-editor-error'
-                  }
-                  placeholder="مثلاً مالیات بر ارزش افزوده ۱۰٪"
-                  onChange={(event) =>
-                    updateEditor({ ...editor, name: event.target.value })
-                  }
-                />
-              </label>
-              <label style={styles.label}>
-                درصد مالیات
-                <input
-                  style={
-                    rateDisplayIssue === null
-                      ? styles.input
-                      : styles.inputInvalid
-                  }
-                  value={editor.ratePercentText}
-                  inputMode="decimal"
-                  aria-invalid={rateDisplayIssue !== null}
-                  placeholder="۶٫۵"
-                  onChange={(event) =>
-                    updateEditor({
-                      ...editor,
-                      ratePercentText: event.target.value,
-                    })
-                  }
-                />
-                {rateDisplayIssue === null ? null : (
-                  <span role="alert" style={styles.fieldError}>
-                    {rateDisplayIssue}
-                  </span>
-                )}
-              </label>
-              <label style={styles.label}>
-                درصد عوارض
-                <input
-                  style={
-                    dutyDisplayIssue === null
-                      ? styles.input
-                      : styles.inputInvalid
-                  }
-                  value={editor.dutyPercentText}
-                  inputMode="decimal"
-                  aria-invalid={dutyDisplayIssue !== null}
-                  placeholder="۰"
-                  onChange={(event) =>
-                    updateEditor({
-                      ...editor,
-                      dutyPercentText: event.target.value,
-                    })
-                  }
-                />
-                {dutyDisplayIssue === null ? null : (
-                  <span role="alert" style={styles.fieldError}>
-                    {dutyDisplayIssue}
-                  </span>
-                )}
-              </label>
-            </div>
-            <div style={styles.totalRow}>
-              <span style={styles.totalLabel}>جمع (مالیات + عوارض)</span>
-              <output style={styles.totalValue}>
-                {sumPercentText(editor.ratePercentText, editor.dutyPercentText)}
-              </output>
-            </div>
-            <p style={styles.meta}>هر دو نرخ صفر یعنی معاف از مالیات.</p>
-            {combinedFieldIssue === null ? null : (
-              <span role="alert" style={styles.fieldError}>
-                {combinedFieldIssue}
-              </span>
-            )}
-            {editorError === null ? null : (
-              <p id="tax-policy-editor-error" role="alert" style={styles.fieldError}>
-                {editorError}
-              </p>
-            )}
-            <div style={styles.actions}>
-              <button
-                type="button"
-                style={actionStyle(styles.primaryButton)}
-                disabled={busy}
-                onClick={() => void onSave()}
-              >
-                {busy ? 'در حال ذخیره…' : 'ذخیره سیاست'}
-              </button>
-              <button
-                type="button"
-                style={actionStyle(styles.secondaryButton)}
-                disabled={busy}
-                onClick={() => updateEditor(null)}
-              >
-                انصراف
-              </button>
-            </div>
-          </>
-        )}
-      </section>
+      {editor !== null && editor.recordId !== null && editingRowId === null ? (
+        <section className="tax-editor" style={styles.editor}>
+          {renderEditor(editor)}
+        </section>
+      ) : null}
     </div>
   );
 };
 
-// Twenty's list surface: hairline dividers, one accent for the computed total, and a
-// single tinted row for the active default. No per-row card, no shadow, no strikethrough
-// on an inactive policy — an inactive rate is paused, not void.
+// Designer-owned interaction rules that inline styles cannot express: hover and focus
+// feedback, the 767 px stacking, and the two label lengths. Everything else is inline so
+// the computed presentation stays readable next to the markup it belongs to.
+const PANEL_CSS = `
+.tax-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  background: #fcfcfc;
+}
+.tax-row-inactive { opacity: 0.8; filter: grayscale(1); }
+.tax-row-main {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.tax-metrics {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-inline-start: 1px solid #d6d6d6;
+  padding-inline-start: 24px;
+}
+.tax-row-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tax-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 2px solid #4c6ef5;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+.tax-btn {
+  height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+.tax-btn:hover:not(:disabled) { background: #f1f1f1; }
+.tax-btn-danger:hover:not(:disabled) { background: #fdf1f0; }
+.tax-btn-danger-solid:hover:not(:disabled) { background: #b83833; }
+.tax-btn:focus-visible {
+  outline: 2px solid #4c6ef5;
+  outline-offset: 1px;
+}
+.tax-btn:disabled { cursor: not-allowed; }
+.tax-add { height: 32px; padding: 0 16px; }
+.tax-add:hover:not(:disabled) { background: #000000; }
+.tax-formula-short { display: none; }
+.tax-btn-primary:hover:not(:disabled) { background: #000000; }
+@media (max-width: 767px) {
+  .tax-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+  .tax-row-main { flex-direction: column; align-items: stretch; gap: 12px; }
+  .tax-metrics {
+    justify-content: space-between;
+    border-inline-start: none;
+    padding-inline-start: 8px;
+    padding-inline-end: 8px;
+    padding-block: 8px;
+    border-radius: 6px;
+    background: #f1f1f1;
+    gap: 12px;
+  }
+  .tax-row-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .tax-row-actions > .tax-btn { width: 100%; }
+  .tax-confirm-text { grid-column: 1 / -1; }
+  .tax-formula-full { display: none; }
+  .tax-formula-short { display: inline; }
+  .tax-add { width: 32px; padding: 0; }
+  .tax-add-label { display: none; }
+}
+`;
+
+// Twenty's list surface: one hairline border per policy card, the computed total as the
+// only accent, and actions that are unmistakably controls. An inactive rate is paused,
+// not void: it stays readable, greyed and explicitly badged.
 const styles: Record<string, CSSProperties> = {
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 14,
-    padding: 20,
+    gap: 16,
     fontFamily: 'inherit',
     color: '#333333',
     background: '#ffffff',
@@ -775,177 +920,276 @@ const styles: Record<string, CSSProperties> = {
     flexWrap: 'wrap',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 12,
-    paddingBottom: 12,
-    borderBottom: '1px solid #f1f1f1',
+    gap: 16,
+    padding: '24px',
+    borderBottom: '1px solid #d6d6d6',
+    background: '#fcfcfc',
   },
   headerText: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 3,
-    flex: '1 1 240px',
+    gap: 4,
+    flex: '1 1 320px',
     minWidth: 0,
   },
-  title: { margin: 0, fontSize: 18, fontWeight: 600, lineHeight: 1.45 },
-  subtitle: { margin: 0, fontSize: 12, color: '#666666', lineHeight: 1.7 },
+  title: { margin: 0, fontSize: 20, fontWeight: 700, lineHeight: 1.45 },
+  subtitle: {
+    margin: 0,
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 1.8,
+    maxWidth: 640,
+  },
+  addButton: {
+    height: 32,
+    padding: '0 16px',
+    borderRadius: 8,
+    border: '1px solid transparent',
+    background: '#333333',
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    flex: '0 0 auto',
+    whiteSpace: 'nowrap',
+  },
+  addButtonPlus: { fontSize: 16, lineHeight: 1 },
+  pageError: {
+    margin: 0,
+    padding: '8px 12px',
+    borderRadius: 8,
+    background: '#fdecea',
+    color: '#d3453f',
+    fontSize: 13,
+    lineHeight: 1.8,
+  },
   list: {
     display: 'flex',
     flexDirection: 'column',
+    gap: 16,
     margin: 0,
-    padding: 0,
+    padding: '24px',
     listStyle: 'none',
-    border: '1px solid #f1f1f1',
-    borderRadius: 8,
-    overflow: 'hidden',
   },
-  row: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: '8px 16px',
-    padding: '10px 14px',
-    background: '#ffffff',
-  },
-  rowDefault: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: '8px 16px',
-    padding: '10px 14px',
-    background: '#f5f7ff',
-    boxShadow: 'inset -3px 0 0 0 #4c6ef5',
-  },
-  rowInactive: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: '8px 16px',
-    padding: '10px 14px',
-    background: '#fcfcfc',
-  },
-  rowDivider: { borderTop: '1px solid #f1f1f1' },
-  identity: {
+  rowMain: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
-    flex: '1 1 190px',
+    gap: 32,
+    flex: '1 1 320px',
     minWidth: 0,
   },
+  identity: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 200 },
+  nameLine: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   rowName: {
     margin: 0,
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: 600,
     color: '#333333',
     overflowWrap: 'anywhere',
   },
   rowNameMuted: {
     margin: 0,
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: 600,
     color: '#666666',
     overflowWrap: 'anywhere',
   },
-  badges: { display: 'flex', flexWrap: 'wrap', gap: 4 },
   badgeDefault: {
-    fontSize: 11,
-    lineHeight: 1.7,
-    color: '#14532d',
-    background: '#dcfce7',
+    fontSize: 12,
+    lineHeight: 1.8,
+    fontWeight: 500,
+    color: '#1e40af',
+    background: '#dbeafe',
     borderRadius: 999,
     padding: '0 8px',
     whiteSpace: 'nowrap',
   },
   badgeOff: {
-    fontSize: 11,
-    lineHeight: 1.7,
-    color: '#7f1d1d',
-    background: '#fee2e2',
+    fontSize: 12,
+    lineHeight: 1.8,
+    fontWeight: 500,
+    color: '#525252',
+    background: '#e5e5e5',
+    border: '1px solid #d4d4d4',
     borderRadius: 999,
     padding: '0 8px',
     whiteSpace: 'nowrap',
   },
+  usage: {
+    margin: 0,
+    fontSize: 12,
+    color: '#666666',
+    lineHeight: 1.8,
+    fontVariantNumeric: 'tabular-nums',
+  },
   metrics: {
     display: 'flex',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: '4px 18px',
+    gap: 24,
+    borderInlineStart: '1px solid #d6d6d6',
+    paddingInlineStart: 24,
   },
-  metric: { display: 'flex', flexDirection: 'column', minWidth: 44 },
-  metricLabel: { fontSize: 10, color: '#8a8a8a', lineHeight: 1.6 },
-  metricValue: {
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#333333',
-    lineHeight: 1.5,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  metricValueTotal: {
-    fontSize: 13,
+  totalBlock: { display: 'flex', flexDirection: 'column', gap: 2 },
+  metricLabel: { fontSize: 12, color: '#666666', lineHeight: 1.8 },
+  totalValue: {
+    fontSize: 18,
     fontWeight: 700,
-    color: '#3b5bdb',
+    color: '#4c6ef5',
     lineHeight: 1.5,
     fontVariantNumeric: 'tabular-nums',
   },
-  metricValueMuted: {
-    fontSize: 13,
+  totalValueMuted: {
+    fontSize: 18,
     fontWeight: 700,
-    color: '#8a8a8a',
+    color: '#666666',
     lineHeight: 1.5,
     fontVariantNumeric: 'tabular-nums',
   },
+  formulaChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '6px 12px',
+    borderRadius: 8,
+    background: '#f1f1f1',
+    fontSize: 14,
+    color: '#666666',
+    fontVariantNumeric: 'tabular-nums',
+    whiteSpace: 'nowrap',
+  },
+  formulaDivider: { color: '#d6d6d6' },
   rowActions: {
     display: 'flex',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 2,
-    marginInlineStart: 'auto',
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  rowHint: {
-    flexBasis: '100%',
-    margin: 0,
-    fontSize: 11,
-    color: '#666666',
-    lineHeight: 1.7,
+  confirmText: {
+    fontSize: 13,
+    color: '#d3453f',
+    lineHeight: 1.8,
   },
   rowError: {
     flexBasis: '100%',
     margin: 0,
     fontSize: 12,
-    color: '#b42318',
-    lineHeight: 1.7,
+    color: '#d3453f',
+    lineHeight: 1.8,
+  },
+  actionButton: {
+    height: 32,
+    padding: '0 12px',
+    borderRadius: 8,
+    border: '1px solid #d6d6d6',
+    background: 'transparent',
+    color: '#333333',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  dangerButton: {
+    height: 32,
+    padding: '0 12px',
+    borderRadius: 8,
+    border: '1px solid #d3453f',
+    background: 'transparent',
+    color: '#d3453f',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  dangerSolidButton: {
+    height: 32,
+    padding: '0 12px',
+    borderRadius: 8,
+    border: '1px solid #d3453f',
+    background: '#d3453f',
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  primaryButton: {
+    height: 32,
+    padding: '0 16px',
+    borderRadius: 8,
+    border: '1px solid transparent',
+    background: '#333333',
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  secondaryButton: {
+    height: 32,
+    padding: '0 12px',
+    borderRadius: 8,
+    border: '1px solid #d6d6d6',
+    background: 'transparent',
+    color: '#333333',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   },
   empty: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 12,
+    margin: '24px',
     padding: 16,
     border: '1px dashed #d6d6d6',
     borderRadius: 8,
     background: '#fcfcfc',
   },
-  emptyText: { margin: 0, fontSize: 13, color: '#333333' },
+  emptyText: { margin: 0, fontSize: 14, color: '#333333' },
   emptyActions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   editor: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 12,
-    padding: 16,
-    border: '1px solid #ebebeb',
+    gap: 16,
+    padding: 20,
+    border: '2px solid #4c6ef5',
     borderRadius: 8,
-    background: '#fcfcfc',
+    background: '#ffffff',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)',
   },
-  hidden: { display: 'none' },
-  sectionTitle: { margin: 0, fontSize: 14, fontWeight: 600 },
+  editorHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingBottom: 16,
+    borderBottom: '1px solid #d6d6d6',
+  },
+  editorTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#333333',
+  },
+  editorHeaderActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   fields: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-    gap: 12,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: 16,
   },
+  fieldWide: { gridColumn: 'span 2' },
   label: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 4,
+    gap: 6,
     fontSize: 12,
     color: '#666666',
   },
@@ -953,108 +1197,51 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
     boxSizing: 'border-box',
     height: 32,
-    padding: '0 10px',
+    padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d6d6d6',
-    fontSize: 13,
+    fontSize: 14,
     color: '#333333',
     background: '#ffffff',
+    fontFamily: 'inherit',
   },
   inputInvalid: {
     width: '100%',
     boxSizing: 'border-box',
     height: 32,
-    padding: '0 10px',
-    borderRadius: 8,
-    border: '1px solid #e0a3a1',
-    fontSize: 13,
-    color: '#333333',
-    background: '#ffffff',
-  },
-  totalRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    padding: '8px 10px',
-    borderRadius: 6,
-    background: '#f4f4f4',
-  },
-  totalLabel: { fontSize: 12, color: '#666666' },
-  totalValue: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: '#3b5bdb',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  meta: { margin: 0, fontSize: 11, color: '#666666', lineHeight: 1.7 },
-  fieldError: { margin: 0, fontSize: 12, color: '#b42318', lineHeight: 1.6 },
-  pageError: {
-    margin: 0,
-    padding: '8px 10px',
-    borderRadius: 6,
-    background: '#fdecea',
-    color: '#b42318',
-    fontSize: 12,
-    lineHeight: 1.7,
-  },
-  actions: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'flex-end',
-  },
-  primaryButton: {
-    height: 32,
-    padding: '0 14px',
-    borderRadius: 8,
-    border: '1px solid transparent',
-    background: '#333333',
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer',
-  },
-  secondaryButton: {
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
-    border: '1px solid #d6d6d6',
-    background: '#ffffff',
+    border: '1px solid #d3453f',
+    fontSize: 14,
     color: '#333333',
-    fontSize: 13,
-    cursor: 'pointer',
+    background: '#ffffff',
+    fontFamily: 'inherit',
   },
-  dangerButton: {
-    height: 28,
-    padding: '0 10px',
-    borderRadius: 6,
-    border: '1px solid transparent',
-    background: '#b42318',
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 500,
-    cursor: 'pointer',
+  fieldError: { margin: 0, fontSize: 12, color: '#d3453f', lineHeight: 1.7 },
+  editorFooter: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: 12,
+    borderRadius: 8,
+    border: '1px solid #d6d6d6',
+    background: '#fcfcfc',
   },
-  ghostButton: {
-    height: 28,
-    padding: '0 8px',
-    borderRadius: 6,
-    border: '1px solid transparent',
-    background: 'transparent',
-    color: '#4c4c4c',
-    fontSize: 12,
-    cursor: 'pointer',
+  editorFooterInfo: {
+    margin: 0,
+    fontSize: 14,
+    color: '#666666',
+    lineHeight: 1.8,
   },
-  ghostDanger: {
-    height: 28,
-    padding: '0 8px',
-    borderRadius: 6,
-    border: '1px solid transparent',
-    background: 'transparent',
-    color: '#b42318',
-    fontSize: 12,
-    cursor: 'pointer',
+  editorTotalBlock: { display: 'flex', alignItems: 'center', gap: 16 },
+  totalLabel: { fontSize: 14, color: '#666666' },
+  totalValueLg: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: '#4c6ef5',
+    fontVariantNumeric: 'tabular-nums',
   },
-  confirmText: { fontSize: 12, color: '#b42318', whiteSpace: 'nowrap' },
+  meta: { margin: 0, fontSize: 12, color: '#666666', lineHeight: 1.8 },
 };

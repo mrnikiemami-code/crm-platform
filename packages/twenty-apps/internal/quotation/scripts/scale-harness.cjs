@@ -18,10 +18,11 @@
  *   SCALE_ITEMS      default 100000
  */
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const ADMIN_URL =
   process.env.PG_DATABASE_URL ||
-  'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/scale-harness.cjs');
 const SCALE_DB = 'twenty_scale_crm129_013';
 const CUSTOMERS = Number.parseInt(process.env.SCALE_CUSTOMERS ?? '1000000', 10);
 const ITEMS = Number.parseInt(process.env.SCALE_ITEMS ?? '100000', 10);

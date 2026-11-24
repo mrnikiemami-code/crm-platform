@@ -1,0 +1,192 @@
+﻿draft 971bcdae-827c-458f-a799-311780c6b9c5 · "Diagnosis: CRM-129 Tax Policy Panel" · v1 · 14102 bytes
+<!DOCTYPE html><html lang="fa" dir="rtl"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnosis: CRM-129 Tax Policy Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&amp;display=swap" rel="stylesheet">
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    body {
+      font-family: 'Satoshi', system-ui, -apple-system, sans-serif;
+      background-color: #fcfcfc;
+    }
+    /* RTL specific overrides for Persian */
+    .persian-num {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-[#fcfcfc] text-[#333333] flex justify-center p-6 md:p-12" dir="rtl" data-sd-id="1">
+    <div class="w-full max-w-4xl bg-[#ffffff] border border-[#d6d6d6] rounded-lg shadow-sm overflow-hidden flex flex-col" data-sd-id="2">
+      
+      <!-- Header -->
+      <header class="px-8 py-6 border-b border-[#d6d6d6] flex items-start justify-between bg-[#ffffff]" data-sd-id="3">
+        <div class="max-w-2xl" data-sd-id="4">
+          <h1 class="text-[24px] font-bold text-[#333333] mb-2" data-sd-id="5">CRM-129: Tax Policy Panel Audit &amp; Recommendation</h1>
+          <p class="text-[14px] text-[#d3453f] font-medium px-2 py-1 bg-[#fee2e2] rounded-md inline-block mb-3" data-sd-id="6">Verdict: Rejected. Actions are camouflaged among text; critical hierarchy is inverted.</p>
+          <p class="text-[13px] text-[#666666] leading-relaxed" data-sd-id="7">
+            The shipped component failed because it relied purely on proximity and text styling to distinguish interactive elements from data labels. In a dense, multi-metric financial table, this creates cognitive overload. The operator cannot safely perform destructive or structural changes (like deleting or setting defaults) when the hit areas are invisible.
+          </p>
+        </div>
+      </header>
+
+      <!-- Body -->
+      <div class="p-8 flex flex-col gap-10 bg-[#ffffff]" data-sd-id="8">
+
+        <!-- Section 1: Findings -->
+        <section data-sd-id="9">
+          <h2 class="text-[18px] font-bold text-[#333333] mb-4 border-b border-[#f1f1f1] pb-2 flex items-center gap-2" data-sd-id="10">
+            <iconify-icon icon="lucide:search" class="text-[#666666]"></iconify-icon> Critical Findings
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6" data-sd-id="11">
+            <div class="bg-[#fcfcfc] p-4 rounded-md border border-[#f1f1f1]" data-sd-id="12">
+              <h3 class="text-[14px] font-bold text-[#d3453f] flex items-center gap-1 mb-2" data-sd-id="13">
+                <iconify-icon icon="lucide:alert-triangle"></iconify-icon> Action Camouflage
+              </h3>
+              <p class="text-[13px] text-[#666666] mb-2" data-sd-id="14"><strong>Symptom:</strong> "Buttons and text cannot be told apart."</p>
+              <p class="text-[12px] text-[#666666] leading-relaxed" data-sd-id="15">
+                The shipped `ghostButton` uses transparent backgrounds and identical text styling to data labels. Actions like "ویرایش" (Edit) and "حذف" (Delete) look like plain text. In RTL, placing actions rightward without strong container boundaries blends them into the preceding metrics.
+              </p>
+            </div>
+            <div class="bg-[#fcfcfc] p-4 rounded-md border border-[#f1f1f1]" data-sd-id="16">
+               <h3 class="text-[14px] font-bold text-[#4c6ef5] flex items-center gap-1 mb-2" data-sd-id="17">
+                <iconify-icon icon="lucide:layout-list"></iconify-icon> Hierarchy Inversion
+              </h3>
+              <p class="text-[13px] text-[#666666] mb-2" data-sd-id="18"><strong>Symptom:</strong> "Cannot tell what to click."</p>
+              <p class="text-[12px] text-[#666666] leading-relaxed" data-sd-id="19">
+                All row actions are treated equally. "ویرایش" (Edit) is a primary row action, while "حذف" (Delete) is conditional and high-risk. They sit adjacent with identical visual weight. The primary call-to-action (Add Policy) is disconnected from the list it manipulates.
+              </p>
+            </div>
+             <div class="bg-[#fcfcfc] p-4 rounded-md border border-[#f1f1f1]" data-sd-id="20">
+               <h3 class="text-[14px] font-bold text-[#333333] flex items-center gap-1 mb-2" data-sd-id="21">
+                <iconify-icon icon="lucide:percent"></iconify-icon> Metric Density &amp; RTL
+              </h3>
+              <p class="text-[13px] text-[#666666] mb-2" data-sd-id="22"><strong>Symptom:</strong> "Page is cluttered."</p>
+              <p class="text-[12px] text-[#666666] leading-relaxed" data-sd-id="23">
+                Four numbers (Tax, Duty, Total, Document Count) compete for attention. RTL reading order puts the crucial "Total" in the middle of a scan path, while document count (contextual) is given equal prominence. Percentage symbols and decimal alignments are inconsistent.
+              </p>
+            </div>
+            <div class="bg-[#fcfcfc] p-4 rounded-md border border-[#f1f1f1]" data-sd-id="24">
+               <h3 class="text-[14px] font-bold text-[#333333] flex items-center gap-1 mb-2" data-sd-id="25">
+                <iconify-icon icon="lucide:eye"></iconify-icon> State Recognisability
+              </h3>
+              <p class="text-[13px] text-[#666666] mb-2" data-sd-id="26"><strong>Symptom:</strong> "Status is hard to read at a glance."</p>
+              <p class="text-[12px] text-[#666666] leading-relaxed" data-sd-id="27">
+                Relying solely on `opacity: 0.72` for inactive states is insufficient. The visual difference between an active unused policy and an inactive unused policy is subtle. The "Default" badge is the only clear status indicator.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 2: Recommendation -->
+        <section data-sd-id="28">
+           <h2 class="text-[18px] font-bold text-[#333333] mb-4 border-b border-[#f1f1f1] pb-2 flex items-center gap-2" data-sd-id="29">
+            <iconify-icon icon="lucide:compass" class="text-[#666666]"></iconify-icon> Recommended Direction: The Action-Isolated Row
+          </h2>
+          <p class="text-[13px] text-[#666666] mb-6 max-w-3xl leading-relaxed" data-sd-id="30">
+            Abandon the grid and the dense table. Adopt a <strong>Structured List</strong> where data and actions are physically isolated. Metrics are collapsed into a primary reading (Total) with sub-components (Tax + Duty) secondary. Actions are moved to a distinct, bounded action zone, utilising Twenty's solid buttons for clear affordance.
+          </p>
+
+          <!-- Schematic -->
+          <div class="bg-[#fcfcfc] border border-[#d6d6d6] rounded-lg p-6 mb-6" data-sd-id="31">
+            <p class="text-[11px] uppercase tracking-wider text-[#666666] mb-4 font-semibold" data-sd-id="32">Schematic Annotation (Active, Non-Default Row)</p>
+            
+            <div class="border border-[#d6d6d6] rounded-md bg-[#ffffff] p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden" data-sd-id="33">
+               <!-- Left: Identity & Metrics -->
+               <div class="flex flex-col gap-2 w-full md:w-auto" data-sd-id="34">
+                 <div class="flex items-center gap-3" data-sd-id="35">
+                   <h4 class="text-[14px] font-bold text-[#333333] m-0" data-sd-id="36">مالیات ویژه (۹٪)</h4>
+                   <span class="px-2 py-0.5 bg-[#f1f1f1] text-[#666666] text-[11px] rounded-sm" data-sd-id="37">در ۱۲۸ سند</span>
+                 </div>
+                 <div class="flex items-center gap-4 text-[12px]" data-sd-id="38">
+                   <div class="flex flex-col" data-sd-id="39">
+                     <span class="text-[#666666] text-[10px]" data-sd-id="40">جمع کل</span>
+                     <strong class="text-[#4c6ef5] text-[14px] persian-num">۹٪</strong>
+                   </div>
+                   <div class="h-6 w-px bg-[#d6d6d6]" data-sd-id="41"></div>
+                   <div class="flex items-center gap-2 text-[#666666]" data-sd-id="42">
+                     <span data-sd-id="43">مالیات: <span class="persian-num" data-sd-id="44">۶٪</span></span>
+                     <span data-sd-id="45">+</span>
+                     <span data-sd-id="46">عوارض: <span class="persian-num" data-sd-id="47">۳٪</span></span>
+                   </div>
+                 </div>
+               </div>
+
+               <!-- Right: Isolated Action Zone -->
+               <div class="flex items-center gap-2 w-full md:w-auto justify-end pt-4 md:pt-0 border-t border-[#f1f1f1] md:border-t-0 mt-2 md:mt-0" data-sd-id="48">
+                  <button class="h-8 px-3 rounded text-[12px] bg-[#ffffff] border border-[#d6d6d6] text-[#333333] hover:bg-[#f1f1f1] transition-colors flex items-center gap-1" data-sd-id="49">
+                    <iconify-icon icon="lucide:pencil"></iconify-icon> ویرایش
+                  </button>
+                  <button class="h-8 px-3 rounded text-[12px] bg-[#ffffff] border border-[#d6d6d6] text-[#333333] hover:bg-[#f1f1f1] transition-colors flex items-center gap-1" data-sd-id="50">
+                     <iconify-icon icon="lucide:check-circle"></iconify-icon> پیش‌فرض
+                  </button>
+                  <button class="h-8 px-3 rounded text-[12px] bg-[#ffffff] border border-transparent text-[#d3453f] hover:bg-[#fee2e2] transition-colors flex items-center gap-1" data-sd-id="51">
+                    غیرفعال
+                  </button>
+               </div>
+            </div>
+
+            <!-- Annotations -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 border-t border-[#f1f1f1] pt-4" data-sd-id="52">
+              <div data-sd-id="53">
+                <h5 class="text-[12px] font-bold text-[#333333]" data-sd-id="54">1. Data Consolidation</h5>
+                <p class="text-[11px] text-[#666666]" data-sd-id="55">Total rate leads the hierarchy. Tax and duty are demoted to a formula string. Document count is moved to a contextual badge next to the name.</p>
+              </div>
+              <div data-sd-id="56">
+                <h5 class="text-[12px] font-bold text-[#333333]" data-sd-id="57">2. Action Isolation</h5>
+                <p class="text-[11px] text-[#666666]" data-sd-id="58">Actions are right-aligned (in RTL, left-aligned on screen) in a distinct cluster. Buttons use `border-[#d6d6d6]` to create unmistakable hit areas.</p>
+              </div>
+              <div data-sd-id="59">
+                <h5 class="text-[12px] font-bold text-[#333333]" data-sd-id="60">3. State Clarity</h5>
+                <p class="text-[11px] text-[#666666]" data-sd-id="61">Inactive rows use greyscale text and a specific "Inactive" badge, not just opacity. Destructive actions use `#d3453f` but avoid solid backgrounds unless confirming.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 3: Acceptance Criteria -->
+        <section data-sd-id="62">
+          <h2 class="text-[18px] font-bold text-[#333333] mb-4 border-b border-[#f1f1f1] pb-2 flex items-center gap-2" data-sd-id="63">
+            <iconify-icon icon="lucide:check-square" class="text-[#666666]"></iconify-icon> Non-Negotiable Acceptance Criteria
+          </h2>
+          <ul class="space-y-3" data-sd-id="64">
+            <li class="flex items-start gap-2" data-sd-id="65">
+              <iconify-icon icon="lucide:check" class="text-[#4c6ef5] mt-0.5"></iconify-icon>
+              <div class="text-[13px]" data-sd-id="66">
+                <strong class="text-[#333333]">Action Affordance:</strong> Every clickable action (Edit, Default, Toggle State, Delete, Save, Cancel) MUST possess a visible bounding box (border or solid background). Text-only links are prohibited.
+              </div>
+            </li>
+             <li class="flex items-start gap-2" data-sd-id="67">
+              <iconify-icon icon="lucide:check" class="text-[#4c6ef5] mt-0.5"></iconify-icon>
+              <div class="text-[13px]" data-sd-id="68">
+                <strong class="text-[#333333]">Metric Reading Order (RTL):</strong> The primary metric (Total Percent) MUST appear visually separated from the calculation (Tax + Duty) to prevent misreading. The total must use accent colour `#4c6ef5`.
+              </div>
+            </li>
+            <li class="flex items-start gap-2" data-sd-id="69">
+              <iconify-icon icon="lucide:check" class="text-[#4c6ef5] mt-0.5"></iconify-icon>
+              <div class="text-[13px]" data-sd-id="70">
+                <strong class="text-[#333333]">Mobile View (390px):</strong> The layout MUST switch to a vertically stacked card structure below `md:` breakpoint. Actions must wrap below data without requiring horizontal scroll. Minimum tap target 32px height.
+              </div>
+            </li>
+            <li class="flex items-start gap-2" data-sd-id="71">
+              <iconify-icon icon="lucide:check" class="text-[#4c6ef5] mt-0.5"></iconify-icon>
+              <div class="text-[13px]" data-sd-id="72">
+                <strong class="text-[#333333]">Destructive Safety:</strong> Delete and Deactivate actions MUST use the Danger token (`#d3453f`). Secondary/Utility actions (Edit, Default) MUST use Default (`#333333`).
+              </div>
+            </li>
+            <li class="flex items-start gap-2" data-sd-id="73">
+              <iconify-icon icon="lucide:check" class="text-[#4c6ef5] mt-0.5"></iconify-icon>
+              <div class="text-[13px]" data-sd-id="74">
+                <strong class="text-[#333333]">Editor Proximity:</strong> The "Add Policy" or "Edit" state MUST replace the row inline, replacing the data view with input fields, ensuring the operator does not lose context.
+              </div>
+            </li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+</body></html>

@@ -10,6 +10,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const config = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.twenty', 'config.json'), 'utf8'));
 const remote = config.remotes['dev-crm129'];
@@ -17,7 +18,7 @@ const apiBase = String(remote.apiUrl).replace(/\/$/, '');
 const adminToken = remote.apiKey;
 const schema = 'workspace_aemygqnvl0yhlv0fg3qwjt525';
 const DATABASE_URL =
-  process.env.CRM129_DATABASE_URL ?? 'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/dev-verify-crm129-tax-008-gate2.cjs');
 
 const db = new Client({ connectionString: DATABASE_URL });
 const results = [];

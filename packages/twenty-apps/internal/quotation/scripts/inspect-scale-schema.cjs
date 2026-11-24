@@ -1,8 +1,9 @@
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const connectionString =
   process.env.PG_DATABASE_URL ||
-  'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/inspect-scale-schema.cjs');
 
 (async () => {
   const client = new Client({ connectionString });

@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const config = JSON.parse(
   fs.readFileSync(path.join(os.homedir(), '.twenty', 'config.json'), 'utf8'),
@@ -24,8 +25,7 @@ if (!apiBase.includes('localhost:3002')) {
 }
 
 const DATABASE_URL =
-  process.env.CRM129_DATABASE_URL ??
-  'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/dev-verify-crm129-accounting-mock-uat-012.cjs');
 const EXPECTED_APP_VERSION = '0.1.25';
 const ACCOUNTING_PAGE_UNIVERSAL_IDENTIFIER =
   '8d4356f5-95ef-54ef-91a6-12e955e4c9df';

@@ -12,6 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { Client } = require('pg');
+const { requireDatabaseUrl } = require('./db-connection.cjs');
 
 const mode = (process.argv.find((arg) => arg.startsWith('--mode=')) ?? '').split('=')[1] || 'guard';
 const tokenArgument = (process.argv.find((arg) => arg.startsWith('--token=')) ?? '').slice(
@@ -34,8 +35,7 @@ const adminToken = remote.apiKey;
 // is not an admin, instead of demoting the only admin role in the workspace.
 const callerToken = tokenArgument.trim() !== '' ? tokenArgument.trim() : adminToken;
 const DATABASE_URL =
-  process.env.CRM129_DATABASE_URL ??
-  'postgres://postgres:563162150m8084M@localhost:5432/default';
+  requireDatabaseUrl('scripts/dev-verify-crm129-tax-008-gate1.cjs');
 
 const results = [];
 const record = (id, ok, detail) => {
