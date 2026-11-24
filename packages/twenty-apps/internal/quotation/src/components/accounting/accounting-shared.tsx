@@ -85,6 +85,7 @@ export type ConnectionRecord = {
   adapterId: string;
   adapterVersion: string | null;
   isActive: boolean;
+  isDefault: boolean;
   settings: ConnectionSettings;
   healthState: string;
   lastHealthCheckAt: string | null;
@@ -681,9 +682,22 @@ export const toForm = (connection: ConnectionRecord): FormState => ({
 });
 
 export const parsePanelData = (data: Record<string, unknown>): PanelData => ({
-  connections: readRows(data.connections).map(
-    (node) => node as unknown as ConnectionRecord,
-  ),
+  connections: readRows(data.connections).flatMap((node) => {
+    const id = readString(node.id) || readString(node.recordId);
+
+    if (id === '') {
+      return [];
+    }
+
+    return [
+      {
+        ...(node as unknown as ConnectionRecord),
+        id,
+        isActive: node.isActive !== false,
+        isDefault: node.isDefault === true,
+      },
+    ];
+  }),
   adapters: readRows(data.adapters).map(
     (node) => node as unknown as AdapterDescriptor,
   ),

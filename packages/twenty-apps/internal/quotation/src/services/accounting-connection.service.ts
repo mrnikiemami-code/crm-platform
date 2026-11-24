@@ -22,6 +22,7 @@ import {
 } from 'src/data/accounting-settings-api';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 import { type AccountingAdapter } from 'src/domain/accounting/adapter-contract';
+import { resolveAccountingDestination } from 'src/domain/accounting/resolve-destination';
 
 export type AccountingConnectionRecord = {
   id: string;
@@ -29,6 +30,7 @@ export type AccountingConnectionRecord = {
   adapterId: string;
   adapterVersion: string | null;
   isActive: boolean;
+  isDefault: boolean;
   settings: ConnectionSettings;
   capabilities: unknown;
   healthState: string;
@@ -90,6 +92,7 @@ export const parseConnectionRecord = (
     adapterId: readString(node.adapterId),
     adapterVersion: readString(node.adapterVersion) || null,
     isActive: readBoolean(node.isActive, true),
+    isDefault: node.isDefault === true,
     settings: connectionSettingsFromRecord(node),
     capabilities: node.capabilities ?? null,
     healthState: readString(node.healthState) || 'UNKNOWN',
@@ -110,13 +113,6 @@ export const loadConnections = async (
     .filter((record): record is AccountingConnectionRecord => record !== null);
 };
 
-const activeConnection = (
-  connections: AccountingConnectionRecord[],
-): AccountingConnectionRecord | null =>
-  connections.find((connection) => connection.isActive) ??
-  connections[0] ??
-  null;
-
 export const resolveConnection = async (
   {
     connectionId,
@@ -126,23 +122,28 @@ export const resolveConnection = async (
   dependencies: ConnectionDependencies = {},
 ): Promise<Result<AccountingConnectionRecord>> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(
-    buildAccountingConnectionsQuery(
-      connectionId === undefined || connectionId === null || connectionId === ''
-        ? {}
-        : { connectionId },
-    ),
-  );
+  // Always load the full set when resolving the workspace default: a filtered single-id
+  // query cannot see whether another row is the default, and "first active" is forbidden.
+  const data = await execute(buildAccountingConnectionsQuery({}));
 
   const connections = readRows(data, 'accountingConnections')
     .map(parseConnectionRecord)
     .filter((record): record is AccountingConnectionRecord => record !== null);
 
+  const resolved = resolveAccountingDestination({ connections, connectionId });
+
+  if (resolved.kind === 'REFUSED') {
+    return refused(
+      resolved.code,
+      resolved.code === 'ACCOUNTING_DESTINATION_REQUIRED'
+        ? 'no workspace default accounting destination is configured'
+        : 'no accounting connection is configured',
+    );
+  }
+
   const selected =
-    connectionId === undefined || connectionId === null || connectionId === ''
-      ? activeConnection(connections)
-      : (connections.find((connection) => connection.id === connectionId) ??
-        null);
+    connections.find((connection) => connection.id === resolved.connectionId) ??
+    null;
 
   if (selected === null) {
     return refused('CONNECTION_NOT_FOUND', 'no accounting connection is configured');
@@ -266,6 +267,7 @@ const parseServerConnectionView = (
     adapterId: readString(row?.adapterId),
     adapterVersion: readString(row?.adapterVersion) || null,
     isActive: readBoolean(row?.isActive, true),
+    isDefault: row?.isDefault === true,
     // The server view nests the settings under `settings`; the reader below expects them on
     // the record it is given, so it gets that node rather than the envelope. Handing it the
     // envelope made every save read back as "unit unconfirmed, no address, default profile",
@@ -392,6 +394,25 @@ export type ConnectionTestOutcome = {
   latencyMs: number;
   checkedAt: string;
   connection: AccountingConnectionRecord;
+};
+
+export const setDefaultConnectionThroughServer = async (
+  connectionId: string,
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<Result<AccountingConnectionRecord[]>> => {
+  const outcome = await callAccountingSettingsAction({
+    body: {
+      action: 'accounting-connection-set-default',
+      recordId: connectionId,
+    },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  return accepted(readServerConnections(outcome.data));
 };
 
 export const testConnectionThroughServer = async (

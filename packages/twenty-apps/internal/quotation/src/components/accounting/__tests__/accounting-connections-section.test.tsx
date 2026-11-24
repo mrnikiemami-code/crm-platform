@@ -49,6 +49,7 @@ const connection = (
   adapterId: 'asan',
   adapterVersion: '2026-11-1',
   isActive: true,
+  isDefault: false,
   settings: settings(),
   healthState: 'OK',
   lastHealthCheckAt: '2026-11-21T08:00:00.000Z',
@@ -249,6 +250,7 @@ const renderSection = ({
   testResult = null,
   taxPolicies = policies,
   onSelectConnection = vi.fn<(connection: ConnectionRecord) => void>(),
+  onSetWorkspaceDefault = vi.fn<(connection: ConnectionRecord) => void>(),
   onEditConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSave = vi.fn<() => void>(),
   onChange = vi.fn<(form: FormState) => void>(),
@@ -261,6 +263,9 @@ const renderSection = ({
   testResult?: { healthState: string; message: string; detail: string } | null;
   taxPolicies?: TaxPolicyView[];
   onSelectConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
+  onSetWorkspaceDefault?: ReturnType<
+    typeof vi.fn<(connection: ConnectionRecord) => void>
+  >;
   onEditConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onSave?: ReturnType<typeof vi.fn<() => void>>;
   onChange?: ReturnType<typeof vi.fn<(form: FormState) => void>>;
@@ -291,6 +296,7 @@ const renderSection = ({
       focus={focus}
       onOpenList={vi.fn()}
       onSelectConnection={onSelectConnection}
+      onSetWorkspaceDefault={onSetWorkspaceDefault}
       onEditConnection={onEditConnection}
       onChange={onChange}
       onSave={onSave}
@@ -299,7 +305,13 @@ const renderSection = ({
     />,
   );
 
-  return { onSelectConnection, onEditConnection, onSave, onChange };
+  return {
+    onSelectConnection,
+    onSetWorkspaceDefault,
+    onEditConnection,
+    onSave,
+    onChange,
+  };
 };
 
 const tableRows = (): HTMLElement[] =>
@@ -322,15 +334,14 @@ describe('choosing between several connections', () => {
 
     expect(first.getAttribute('data-connection-id')).toBe('conn-2');
     expect(first.getAttribute('data-selected')).toBe('true');
-    // The badge and the disabled action both say the row is the selected one.
-    expect(within(first).getAllByText('اتصال انتخاب‌شده').length).toBeGreaterThan(0);
+    // The badge and the disabled action both say the row is the temporary view.
+    expect(within(first).getAllByText('نمای موقت').length).toBeGreaterThan(0);
+    expect(within(first).getByRole('button', { name: 'نمای موقت فعال' })).toBeTruthy();
     expect(rest.map((row) => row.getAttribute('data-connection-id'))).toEqual([
       'conn-1',
       'conn-3',
     ]);
-    expect(rest.some((row) => within(row).queryByText('اتصال انتخاب‌شده'))).toBe(
-      false,
-    );
+    expect(rest.some((row) => within(row).queryByText('نمای موقت'))).toBe(false);
   });
 
   it('marks only one row, even when the server returned another active record', () => {
@@ -344,8 +355,9 @@ describe('choosing between several connections', () => {
     expect(marked[0].getAttribute('data-connection-id')).toBe('conn-3');
   });
 
-  it('selects a connection without opening its edit form', () => {
-    const { onSelectConnection, onEditConnection } = renderSection();
+  it('selects a temporary working connection without opening its edit form', () => {
+    const { onSelectConnection, onEditConnection, onSetWorkspaceDefault } =
+      renderSection();
 
     const row = within(
       screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
@@ -354,12 +366,35 @@ describe('choosing between several connections', () => {
       .find((entry) => entry.getAttribute('data-connection-id') === 'conn-2');
 
     fireEvent.click(
-      within(row as HTMLElement).getByRole('button', { name: 'انتخاب این اتصال' }),
+      within(row as HTMLElement).getByRole('button', {
+        name: 'انتخاب نمای موقت',
+      }),
     );
 
     expect(onSelectConnection).toHaveBeenCalledTimes(1);
     expect(onSelectConnection.mock.calls[0][0].id).toBe('conn-2');
     expect(onEditConnection).not.toHaveBeenCalled();
+    expect(onSetWorkspaceDefault).not.toHaveBeenCalled();
+  });
+
+  it('sets the workspace default without changing temporary selection alone', () => {
+    const { onSelectConnection, onSetWorkspaceDefault } = renderSection();
+
+    const row = within(
+      screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
+    )
+      .getAllByRole('row')
+      .find((entry) => entry.getAttribute('data-connection-id') === 'conn-2');
+
+    fireEvent.click(
+      within(row as HTMLElement).getByRole('button', {
+        name: 'تنظیم به‌عنوان پیش‌فرض',
+      }),
+    );
+
+    expect(onSetWorkspaceDefault).toHaveBeenCalledTimes(1);
+    expect(onSetWorkspaceDefault.mock.calls[0][0].id).toBe('conn-2');
+    expect(onSelectConnection).not.toHaveBeenCalled();
   });
 
   it('opens the edit form without changing the selection', () => {
@@ -373,13 +408,32 @@ describe('choosing between several connections', () => {
     expect(onSelectConnection).not.toHaveBeenCalled();
   });
 
-  it('does not offer selection on the row already selected', () => {
+  it('does not offer temporary selection on the row already selected', () => {
     renderSection({ selectedConnectionId: 'conn-1' });
 
-    const buttons = screen.getAllByRole('button', { name: 'اتصال انتخاب‌شده' });
+    const buttons = screen.getAllByRole('button', { name: 'نمای موقت فعال' });
 
     expect(buttons).toHaveLength(1);
     expect((buttons[0] as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows the workspace-default badge and disables promoting that row again', () => {
+    renderSection({
+      connections: [
+        connection({ id: 'conn-1', isDefault: true }),
+        connection({ id: 'conn-2', name: 'دوم' }),
+      ],
+      selectedConnectionId: 'conn-2',
+    });
+
+    expect(screen.getAllByText('پیش‌فرض فضای کاری').length).toBeGreaterThan(0);
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'پیش‌فرض فضای کاری',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 
   it('labels a mock destination as simulated, never as a real connection', () => {

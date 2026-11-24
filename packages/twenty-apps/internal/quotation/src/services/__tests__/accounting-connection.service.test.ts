@@ -48,6 +48,7 @@ describe('connection record parsing', () => {
       adapterId: 'asan',
       adapterVersion: '2026-11-1',
       isActive: true,
+      isDefault: false,
       settings: {
         baseUrl: 'https://accounting.example',
         remoteUserId: '7',
@@ -85,9 +86,12 @@ describe('connection listing and resolution', () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
-  it('resolves the active connection when no id is named', async () => {
+  it('resolves the workspace default when no id is named', async () => {
     const execute = vi.fn(async () =>
-      edges(node({ id: 'conn-1', isActive: false }), node({ id: 'conn-2', isActive: true })),
+      edges(
+        node({ id: 'conn-1', isActive: true }),
+        node({ id: 'conn-2', isActive: true, isDefault: true }),
+      ),
     );
 
     const resolved = await resolveConnection({}, { execute });
@@ -95,12 +99,30 @@ describe('connection listing and resolution', () => {
     expect(resolved.ok && resolved.value.id).toBe('conn-2');
   });
 
+  it('refuses when no workspace default exists instead of picking the first active row', async () => {
+    const resolved = await resolveConnection(
+      {},
+      {
+        execute: async () =>
+          edges(
+            node({ id: 'conn-1', isActive: true }),
+            node({ id: 'conn-2', isActive: true }),
+          ),
+      },
+    );
+
+    expect(resolved).toMatchObject({
+      ok: false,
+      refusal: { code: 'ACCOUNTING_DESTINATION_REQUIRED' },
+    });
+  });
+
   it('refuses when nothing is configured instead of returning an empty object', async () => {
     const resolved = await resolveConnection({}, { execute: async () => edges() });
 
     expect(resolved).toMatchObject({
       ok: false,
-      refusal: { code: 'CONNECTION_NOT_FOUND' },
+      refusal: { code: 'ACCOUNTING_DESTINATION_REQUIRED' },
     });
   });
 
@@ -210,6 +232,7 @@ describe('credentials', () => {
       adapterId: 'asan',
       adapterVersion: null,
       isActive: true,
+      isDefault: false,
       settings: {
         baseUrl: '',
         remoteUserId: '',

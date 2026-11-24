@@ -171,6 +171,8 @@ export const ACCOUNTING_CONNECTION_FIELDS = {
   adapterVersion: '4b43f20f-f1a6-5176-b531-6b8cd8aa09fd',
   capabilities: '00247aaa-1647-59e2-9d8b-184d16263f7c',
   isActive: '5a2511cb-f67f-531b-91ef-1bb871a927c4',
+  // Workspace-level default destination; at most one active row may be true.
+  isDefault: '03f6b497-56e1-5a40-bf1b-418fec79a2d7',
   lastHealthCheckAt: '3100cdfc-79d2-5cfa-be34-4313b9b8a8cf',
   baseUrl: '0ac5e8f1-3b16-5e20-8f71-6a9b2c4d5e01',
   remoteUserId: '1bd6f902-4c27-5f31-9a82-7b0c3d5e6f12',

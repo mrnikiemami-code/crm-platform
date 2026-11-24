@@ -21,12 +21,14 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
   adapterVersion: '2026-11-1',
   capabilities: null,
   isActive: true,
+  isDefault: false,
   baseUrl: 'https://asan.example.ir',
   remoteUserId: '7',
   defaultStorageId: '1',
   moneyUnit: 'RIAL',
   transportApproved: false,
   specialCodes: {},
+  financialSettings: {},
   healthState: 'UNKNOWN',
   lastHealthCheckAt: null,
   lastHealthMessage: null,
@@ -37,19 +39,24 @@ const storedRow = (overrides: Record<string, unknown> = {}) => ({
 const buildService = ({
   authority,
   row = storedRow(),
+  rows,
   probe,
 }: {
   authority: TaxSettingsAuthority | null;
   row?: Record<string, unknown> | null;
+  rows?: Record<string, unknown>[];
   probe?: jest.Mock;
 }) => {
   const update = jest.fn();
   const insert = jest.fn();
+  const listed = rows ?? (row === null ? [] : [row]);
   const repository = {
-    findOne: jest.fn(async () => row),
+    findOne: jest.fn(async ({ where }: { where: { id: string } }) =>
+      listed.find((entry) => entry.id === where.id) ?? null,
+    ),
     update,
     insert,
-    find: jest.fn(async () => (row === null ? [] : [row])),
+    find: jest.fn(async () => listed),
   };
   const probeMock =
     probe ??
@@ -63,10 +70,15 @@ const buildService = ({
   const executeInWorkspaceContext = jest.fn(async (work: () => Promise<unknown>) =>
     work(),
   );
+  const executeRawQuery = jest.fn(async () => undefined);
   const getRepository = jest.fn(() => repository);
   const runInWorkspaceTransaction = jest.fn(
     async (work: (scope: unknown) => Promise<unknown>) =>
-      work({ getRepository: () => repository }),
+      work({
+        getRepository: () => repository,
+        executeRawQuery,
+        workspaceId: 'workspace-1',
+      }),
   );
 
   const service = new AccountingConnectionAuthorityService(
@@ -88,6 +100,7 @@ const buildService = ({
     getRepository,
     runInWorkspaceTransaction,
     executeInWorkspaceContext,
+    executeRawQuery,
   };
 };
 
@@ -315,5 +328,113 @@ describe('AccountingConnectionAuthorityService', () => {
       code: 'CONNECTION_DESTINATION_NOT_ALLOWLISTED',
     });
     expect(runInWorkspaceTransaction).not.toHaveBeenCalled();
+  });
+
+  it('refuses set-default without settings authority', async () => {
+    const { service, executeRawQuery, update } = buildService({
+      authority: null,
+      rows: [storedRow({ id: 'a' }), storedRow({ id: 'b' })],
+    });
+
+    const outcome = await service.setDefaultConnection('a', userAuthContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_SETTINGS_FORBIDDEN',
+    });
+    expect(executeRawQuery).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('sets A as the only workspace default then moves the default to B', async () => {
+    const rows = [
+      storedRow({ id: 'a', name: 'A', isDefault: false }),
+      storedRow({ id: 'b', name: 'B', isDefault: false }),
+    ];
+    const { service, update, executeRawQuery } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows,
+    });
+
+    const first = await service.setDefaultConnection('a', userAuthContext);
+
+    expect(first).toMatchObject({ kind: 'OK' });
+    expect(executeRawQuery).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1))',
+      ['quotation-accounting-connection:workspace-1'],
+    );
+    expect(update).toHaveBeenCalledWith(
+      { id: 'a' },
+      expect.objectContaining({ isDefault: true }),
+    );
+
+    rows[0] = { ...rows[0], isDefault: true };
+    update.mockClear();
+
+    const second = await service.setDefaultConnection('b', userAuthContext);
+
+    expect(second).toMatchObject({ kind: 'OK' });
+    expect(update).toHaveBeenCalledWith(
+      { id: 'a' },
+      expect.objectContaining({ isDefault: false }),
+    );
+    expect(update).toHaveBeenCalledWith(
+      { id: 'b' },
+      expect.objectContaining({ isDefault: true }),
+    );
+  });
+
+  it('refuses to promote an inactive connection to workspace default', async () => {
+    const { service, update } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [storedRow({ id: 'inactive', isActive: false })],
+    });
+
+    const outcome = await service.setDefaultConnection(
+      'inactive',
+      userAuthContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_CONNECTION_DEFAULT_MUST_BE_ACTIVE',
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('refuses a connection id that is not in this workspace', async () => {
+    const { service, update } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [storedRow({ id: 'local-only' })],
+    });
+
+    const outcome = await service.setDefaultConnection(
+      'foreign-workspace-row',
+      userAuthContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_CONNECTION_NOT_FOUND',
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('inserts new connections with isDefault false so old data is not auto-promoted', async () => {
+    const { service, insert } = buildService({ authority: 'SETTINGS_ROLE' });
+
+    await service.saveConnection(
+      {
+        recordId: null,
+        name: 'آسان',
+        adapterId: 'asan',
+        settings: { baseUrl: 'https://asan.example.ir' },
+      },
+      userAuthContext,
+    );
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ isDefault: false, isActive: true }),
+    );
   });
 });

@@ -65,6 +65,7 @@ const ALLOWED_ACTIONS = new Set([
   'accounting-connection-list',
   'accounting-connection-save',
   'accounting-connection-test',
+  'accounting-connection-set-default',
 ]);
 
 const TAX_POLICY_MUTATING_ACTIONS = new Set([
@@ -469,15 +470,44 @@ export class QuotationUiController {
         );
       }
 
-      // The probe runs on the server. No `healthState`, message or timestamp is read from
-      // the request, so an authorized caller cannot post a green result.
-      return this.describeAccountingOutcome(
-        await this.accountingConnectionAuthorityService.testConnection(
-          readText(body.recordId) || readText(body.connectionId),
+      if (action === 'accounting-connection-set-default') {
+        const recordId =
+          readText(body.recordId) || readText(body.connectionId);
+
+        if (recordId === '') {
+          return {
+            success: false,
+            code: 'INVALID_INPUT',
+            message: 'اتصال حسابداری را انتخاب کنید',
+          };
+        }
+
+        return this.describeAccountingOutcome(
+          await this.accountingConnectionAuthorityService.setDefaultConnection(
+            recordId,
+            authContext,
+          ),
           authContext,
-        ),
-        authContext,
-      );
+        );
+      }
+
+      if (action === 'accounting-connection-test') {
+        // The probe runs on the server. No `healthState`, message or timestamp is read from
+        // the request, so an authorized caller cannot post a green result.
+        return this.describeAccountingOutcome(
+          await this.accountingConnectionAuthorityService.testConnection(
+            readText(body.recordId) || readText(body.connectionId),
+            authContext,
+          ),
+          authContext,
+        );
+      }
+
+      return {
+        success: false,
+        code: 'INVALID_INPUT',
+        message: 'عملیات اتصال حسابداری ناشناخته است',
+      };
     } catch (error) {
       return this.quotationUiService.toPersianFailure(error);
     }

@@ -9,6 +9,13 @@ const PERSIAN_MESSAGES: Record<string, string> = {
   QUERY_ERROR: 'خواندن یا نوشتن اطلاعات حسابداری انجام نشد.',
 
   CONNECTION_NOT_FOUND: 'اتصال حسابداری پیدا نشد.',
+  ACCOUNTING_CONNECTION_NOT_FOUND: 'اتصال حسابداری پیدا نشد.',
+  ACCOUNTING_DESTINATION_REQUIRED:
+    'مقصد پیش‌فرض حسابداری برای این فضای کاری تعیین نشده است؛ ابتدا در تنظیمات حسابداری یک اتصال را به‌عنوان پیش‌فرض انتخاب کنید.',
+  ACCOUNTING_CONNECTION_DEFAULT_MUST_BE_ACTIVE:
+    'اتصال غیرفعال را نمی‌توان به‌عنوان پیش‌فرض فضای کاری تنظیم کرد.',
+  ACCOUNTING_SETTINGS_FORBIDDEN:
+    'تغییر تنظیمات حسابداری برای این کاربر مجاز نیست.',
   CONNECTION_INACTIVE: 'این اتصال حسابداری غیرفعال است و عملیات جدید نمی‌پذیرد.',
   CONNECTION_BASE_URL_REQUIRED: 'آدرس سرویس نرم‌افزار حسابداری را وارد کنید.',
   CONNECTION_BASE_URL_INVALID:

@@ -29,7 +29,7 @@ import {
 import { AccountingSettingsPanel } from 'src/components/accounting/accounting-settings-panel';
 import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
 
-const CONNECTION_STORAGE_KEY = 'quotation:accounting:connection';
+const CONNECTION_STORAGE_KEY = 'quotation:accounting:working-connection';
 
 const storedSettings = (overrides: Record<string, unknown> = {}) => ({
   baseUrl: 'https://accounting.example',
@@ -55,6 +55,7 @@ const connections = () => [
     adapterId: 'asan',
     adapterVersion: '2026-11-1',
     isActive: true,
+    isDefault: true,
     settings: storedSettings(),
     healthState: 'OK',
     lastHealthCheckAt: '2026-11-21T08:00:00.000Z',
@@ -67,6 +68,7 @@ const connections = () => [
     adapterId: 'mock',
     adapterVersion: '2026-11-1',
     isActive: false,
+    isDefault: false,
     settings: storedSettings({ baseUrl: 'http://mock.invalid', moneyUnit: 'UNCONFIRMED' }),
     healthState: 'UNKNOWN',
     lastHealthCheckAt: null,
@@ -79,6 +81,7 @@ const connections = () => [
     adapterId: 'mock',
     adapterVersion: '2026-11-1',
     isActive: false,
+    isDefault: false,
     settings: storedSettings({
       baseUrl: 'http://mock.invalid',
       financial: {
@@ -165,19 +168,22 @@ afterEach(() => {
 });
 
 describe('the selected destination is the one every section talks about', () => {
-  it('starts on the record the server marked active', async () => {
+  it('starts on the workspace default and names it separately from temporary view', async () => {
     render(<AccountingSettingsPanel />);
 
-    expect(await screen.findByText(/آسان کارخانه — اتصال واقعی تأییدشده/)).toBeTruthy();
+    expect(
+      await screen.findByText(/پیش‌فرض فضای کاری: آسان کارخانه/),
+    ).toBeTruthy();
+    expect(screen.getByText(/نمای موقت: آسان کارخانه — /)).toBeTruthy();
   });
 
-  it('keeps the selected connection first and marked after choosing another', async () => {
+  it('keeps the temporary connection first and marked after choosing another', async () => {
     render(<AccountingSettingsPanel />);
     const table = await openConnections();
 
     fireEvent.click(
       within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'انتخاب این اتصال',
+        name: 'انتخاب نمای موقت',
       }),
     );
 
@@ -187,20 +193,21 @@ describe('the selected destination is the one every section talks about', () => 
 
     expect(rows[1].getAttribute('data-connection-id')).toBe('conn-3');
     expect(rows[1].getAttribute('data-selected')).toBe('true');
-    expect(screen.getByText(/آزمایشی کدمحور — /)).toBeTruthy();
+    expect(screen.getByText(/نمای موقت: آزمایشی کدمحور — /)).toBeTruthy();
+    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
   });
 
-  it('selects without opening the edit form', async () => {
+  it('selects a temporary view without opening the edit form', async () => {
     render(<AccountingSettingsPanel />);
     const table = await openConnections();
 
     fireEvent.click(
       within(rowFor(table, 'conn-2')).getByRole('button', {
-        name: 'انتخاب این اتصال',
+        name: 'انتخاب نمای موقت',
       }),
     );
 
-    expect(screen.getByText(/آزمایشی ساده — /)).toBeTruthy();
+    expect(screen.getByText(/نمای موقت: آزمایشی ساده — /)).toBeTruthy();
     expect(screen.queryByText(/در حال ویرایش/)).toBeNull();
     expect(screen.getByRole('heading', { name: 'اتصال‌ها' })).toBeTruthy();
   });
@@ -216,17 +223,17 @@ describe('the selected destination is the one every section talks about', () => 
     );
 
     expect(await screen.findByText('در حال ویرایش: آزمایشی کدمحور')).toBeTruthy();
-    // The header still names the destination every other section uses.
-    expect(screen.getByText(/آسان کارخانه — /)).toBeTruthy();
+    // Temporary view stays on the workspace default until the operator opts in.
+    expect(screen.getByText(/نمای موقت: آسان کارخانه — /)).toBeTruthy();
   });
 
-  it('remembers the selection across a reload', async () => {
+  it('remembers the temporary selection across a reload without changing the default', async () => {
     render(<AccountingSettingsPanel />);
     const table = await openConnections();
 
     fireEvent.click(
       within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'انتخاب این اتصال',
+        name: 'انتخاب نمای موقت',
       }),
     );
 
@@ -235,7 +242,8 @@ describe('the selected destination is the one every section talks about', () => 
     cleanup();
     render(<AccountingSettingsPanel />);
 
-    expect(await screen.findByText(/آزمایشی کدمحور — /)).toBeTruthy();
+    expect(await screen.findByText(/نمای موقت: آزمایشی کدمحور — /)).toBeTruthy();
+    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
 
     const reloaded = await openConnections();
     const rows = within(reloaded).getAllByRole('row');
@@ -249,7 +257,7 @@ describe('the selected destination is the one every section talks about', () => 
 
     fireEvent.click(
       within(rowFor(table, 'conn-2')).getByRole('button', {
-        name: 'انتخاب این اتصال',
+        name: 'انتخاب نمای موقت',
       }),
     );
 
@@ -260,7 +268,7 @@ describe('the selected destination is the one every section talks about', () => 
     fireEvent.click(overviewButton as HTMLElement);
 
     expect(await screen.findByRole('heading', { name: 'نمای کلی' })).toBeTruthy();
-    expect(screen.getByText(/آزمایشی ساده — /)).toBeTruthy();
+    expect(screen.getByText(/نمای موقت: آزمایشی ساده — /)).toBeTruthy();
   });
 });
 
@@ -272,7 +280,7 @@ describe('deep links from the readiness list', () => {
     // A destination whose money unit is not confirmed is the one this button fixes.
     fireEvent.click(
       within(rowFor(table, 'conn-2')).getByRole('button', {
-        name: 'انتخاب این اتصال',
+        name: 'انتخاب نمای موقت',
       }),
     );
 
@@ -299,7 +307,7 @@ describe('deep links from the readiness list', () => {
     // A code-based destination with no mapping yet is the one this button fixes.
     fireEvent.click(
       within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'انتخاب این اتصال',
+        name: 'انتخاب نمای موقت',
       }),
     );
 

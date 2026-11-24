@@ -8,6 +8,7 @@ const CONNECTION_FIELDS = `
   adapterId
   adapterVersion
   isActive
+  isDefault
   baseUrl
   remoteUserId
   defaultStorageId

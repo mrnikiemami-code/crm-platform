@@ -9,6 +9,7 @@ export type WorkspaceAccountingConnectionRow = {
   adapterVersion: string | null;
   capabilities: unknown;
   isActive: boolean | null;
+  isDefault: boolean | null;
   baseUrl: string | null;
   remoteUserId: string | null;
   defaultStorageId: string | null;
@@ -28,6 +29,7 @@ export type AccountingConnectionView = {
   adapterId: string;
   adapterVersion: string | null;
   isActive: boolean;
+  isDefault: boolean;
   settings: AccountingConnectionSettings;
   capabilities: unknown;
   healthState: string;

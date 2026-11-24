@@ -90,6 +90,18 @@ export default defineObject({
       defaultValue: true,
     },
     {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.isDefault,
+      type: FieldType.BOOLEAN,
+      name: 'isDefault',
+      label: 'Workspace default',
+      description:
+        'At most one active connection is the workspace default destination. Existing rows stay false until an authorized set-default; temporary UI selection is separate.',
+      icon: 'IconStar',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: false,
+    },
+    {
       universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.lastHealthCheckAt,
       type: FieldType.DATE_TIME,
       name: 'lastHealthCheckAt',

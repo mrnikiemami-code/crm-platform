@@ -45,6 +45,7 @@ import {
   parsePartyMappingPage,
   type SnapshotView,
 } from 'src/components/accounting/accounting-mapping-types';
+import { resolveTemporaryWorkingConnectionId } from 'src/domain/accounting/resolve-destination';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 type SectionId = 'overview' | 'connections' | 'catalog' | 'customers' | 'documents';
@@ -69,10 +70,10 @@ const MOCK_SERVICE_ADDRESS = 'http://mock.invalid';
 
 const ACCOUNTING_GUIDE_STORAGE_KEY = 'quotation:accounting:section';
 
-// Which destination the workspace panel is *talking about*, kept apart from the edit draft.
-// Persisted in the browser so a refresh on a slow connection does not silently move the
-// active rows in every section back to some other destination.
-const ACCOUNTING_CONNECTION_STORAGE_KEY = 'quotation:accounting:connection';
+// Temporary working context for this browser only — not the workspace default destination.
+// Workspace default lives on the server (`isDefault`). This key only remembers which row
+// the operator is inspecting for catalog/customers while staying on the page.
+const ACCOUNTING_CONNECTION_STORAGE_KEY = 'quotation:accounting:working-connection';
 
 const readStoredConnectionId = (): string | null => {
   try {
@@ -178,28 +179,14 @@ export const AccountingSettingsPanel = () => {
 
       setData(parsed);
 
-      // The stored selection survives a refresh as long as that connection still exists;
-      // otherwise the first connection is selected. Selecting is never decided by the form
-      // draft, so an unsaved new connection cannot silently change the active destination.
-      setSelectedConnectionId((current) => {
-        if (
-          current !== null &&
-          parsed.connections.some((entry) => entry.id === current)
-        ) {
-          return current;
-        }
-
-        const stored = readStoredConnectionId();
-
-        if (
-          stored !== null &&
-          parsed.connections.some((entry) => entry.id === stored)
-        ) {
-          return stored;
-        }
-
-        return parsed.connections[0]?.id ?? null;
-      });
+      // Temporary working context: remembered id if still present, else workspace default,
+      // else null. Never invents a destination from row order.
+      setSelectedConnectionId((current) =>
+        resolveTemporaryWorkingConnectionId({
+          connections: parsed.connections,
+          rememberedConnectionId: current ?? readStoredConnectionId(),
+        }),
+      );
 
       // The edit draft follows the record it belongs to; a draft that was never saved stays
       // exactly as the person left it.
@@ -212,11 +199,12 @@ export const AccountingSettingsPanel = () => {
           return refreshed === undefined ? current : toForm(refreshed);
         }
 
-        const stored = readStoredConnectionId();
+        const workingId = resolveTemporaryWorkingConnectionId({
+          connections: parsed.connections,
+          rememberedConnectionId: readStoredConnectionId(),
+        });
         const initial =
-          parsed.connections.find((entry) => entry.id === stored) ??
-          parsed.connections[0] ??
-          null;
+          parsed.connections.find((entry) => entry.id === workingId) ?? null;
 
         return initial === null ? current : toForm(initial);
       });
@@ -608,11 +596,49 @@ export const AccountingSettingsPanel = () => {
     setConnectionView('form');
   };
 
-  // Selecting changes the active destination across every section and deliberately does not
-  // open the form. The draft of another connection (if any) is left untouched.
+  // Temporary working context only — does not change the workspace default destination.
   const selectConnection = (entry: ConnectionRecord) => {
     setSelectedConnectionId(entry.id);
     setTestResult(null);
+  };
+
+  const setWorkspaceDefault = async (entry: ConnectionRecord) => {
+    if (busy || !data?.canManage) {
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+        action: 'set-default',
+        connectionId: entry.id,
+      });
+
+      if (!response.ok || response.data.success !== true) {
+        await enqueueSnackbar({
+          message: toPersianUiMessage(
+            readString(response.data.message),
+            'تعیین مقصد پیش‌فرض انجام نشد.',
+          ),
+          variant: 'error',
+        });
+        return;
+      }
+
+      await enqueueSnackbar({
+        message: 'مقصد پیش‌فرض فضای کاری به‌روز شد.',
+        variant: 'success',
+      });
+      await loadPanel();
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   // Deep links from the documents readiness list: open the SELECTED connection at the exact
@@ -669,6 +695,8 @@ export const AccountingSettingsPanel = () => {
 
   const connection =
     data.connections.find((entry) => entry.id === activeConnectionId) ?? null;
+  const workspaceDefaultConnection =
+    data.connections.find((entry) => entry.isDefault && entry.isActive) ?? null;
   // Every section names the same destination, so the label and the readiness counts come
   // from the SELECTED record, never from an unsaved edit draft.
   const connectionMoneyUnit =
@@ -805,6 +833,13 @@ export const AccountingSettingsPanel = () => {
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             <Badge
+              tone={workspaceDefaultConnection === null ? 'warning' : 'success'}
+            >
+              {workspaceDefaultConnection === null
+                ? 'نیازمند انتخاب مقصد پیش‌فرض'
+                : `پیش‌فرض فضای کاری: ${workspaceDefaultConnection.name}`}
+            </Badge>
+            <Badge
               tone={
                 connectionHealth === null
                   ? 'warning'
@@ -818,8 +853,8 @@ export const AccountingSettingsPanel = () => {
               }
             >
               {connection === null || connectionHealth === null
-                ? 'اتصالی انتخاب نشده'
-                : `${connection.name} — ${CONNECTION_HEALTH_LABELS[connectionHealth]}`}
+                ? 'نمای موقت: اتصالی انتخاب نشده'
+                : `نمای موقت: ${connection.name} — ${CONNECTION_HEALTH_LABELS[connectionHealth]}`}
             </Badge>
           </div>
         </div>
@@ -887,6 +922,7 @@ export const AccountingSettingsPanel = () => {
                   setConnectionFocus(null);
                 }}
                 onSelectConnection={selectConnection}
+                onSetWorkspaceDefault={(entry) => void setWorkspaceDefault(entry)}
                 onEditConnection={editConnection}
                 onChange={(next) => {
                   // A previous probe's verdict belongs to the saved values; editing the

@@ -1,6 +1,45 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-UI-DESIGN-SKILLS-PILOT-017 (2026-11-24; **REVISION 02 PREVIEW** → `STOP_FOR_USER_APPROVAL`)
+## CURRENT — CRM-129-ACCOUNTING-DEFAULT-020 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
+
+Workspace default accounting destination contract (P0-1 from ACCOUNTING-AUDIT-019).
+
+### Architect decisions shipped
+
+- At most one **active** workspace default per workspace (`accountingConnection.isDefault`).
+- Temporary UI selection ≠ workspace default (localStorage key renamed to `quotation:accounting:working-connection`).
+- Default is **never** inferred from row order, first-active, or localStorage.
+- Existing rows stay `isDefault=false` until an authorized `set-default` (no auto-migration).
+- Missing valid default → explicit `ACCOUNTING_DESTINATION_REQUIRED` / UI «نیازمند انتخاب مقصد پیش‌فرض».
+
+### Schema / compatibility
+
+- New boolean field `isDefault` on `accountingConnection` (UUID `03f6b497-56e1-5a40-bf1b-418fec79a2d7`), `defaultValue: false`, `isUIEditable: false`.
+- App version **0.1.50** applied to `dev-crm129` (field + viewFields + front components + logic checksums; familiar stale `objectPermission` 16 destroy/recreate).
+- No backfill of defaults; no deletion of connections; sync operations / money / tax / revision / PDF untouched.
+- GraphQL generic writes remain closed; only REST `accounting-connection-set-default` mutates the flag (under `pg_advisory_xact_lock`).
+
+### Shared resolve
+
+- Server: `resolve-accounting-destination.util.ts`
+- App: `domain/accounting/resolve-destination.ts`
+- Consumers: settings shell (temporary working id), connections list badges/actions, quotation accounting tab, `resolveConnection` for outbound/import when no explicit id.
+
+### Evidence
+
+- App vitest (focused): **65 PASS** (resolve + connection service + connections section + settings panel).
+- Server Jest: resolve util + authority service (**23 PASS** including set A→B, inactive refuse, forbidden, foreign id, insert `isDefault:false`, advisory lock).
+- `tsgo --noEmit` clean for quotation app + twenty-server.
+- Dev: app **0.1.50** applied; `dist/modules/quotation` copied into `twenty-server-1` and **only** that container restarted; worker `StartedAt` unchanged; `:3002` health **200**; `:6080` untouched.
+- **No** Asan/Sepidar live call; outbound flags unchanged; **no** LIVE_VERIFIED claim.
+
+### Still owned by architect
+
+- P0-2 connection retire; P0-3 go-live / LIVE_VERIFIED criteria; Sepidar priority.
+- Optional: confirm live UAT of set-default A↔B on `:3002` with two connections (unit evidence already covers the contract).
+
+## PRIOR — CRM-129-UI-DESIGN-SKILLS-PILOT-017 (2026-11-24; **REVISION 02 PREVIEW** → `STOP_FOR_USER_APPROVAL`)
+
 
 Design-only pilot on the «مالیات و عوارض» panel. It does **not** supersede the 016 board
 below: nothing was implemented, deployed or applied to Dev, and the app on `:3002` is still

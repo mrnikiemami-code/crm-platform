@@ -35,19 +35,19 @@ P0-1 Default-connection contract
 
 ### P0-1 — Single workspace “default / active destination” contract
 
-**Why:** Settings uses localStorage; quotation tab uses first `isActive`. Mapping and export can target different connections.
+**Status (020):** **IMPLEMENTED** on `feat/crm-129-quotation` — see `CRM-ARCHITECT-RECOVERY.md` CURRENT 020. Server `isDefault` + `setDefaultConnection` under advisory lock; shared resolve; UI separates temporary view from workspace default; no auto-default for legacy rows.
 
 | | |
 |---|---|
-| **Depends on** | Architect decision: workspace-default field vs selection-only |
-| **Scope** | One authoritative rule; both surfaces consume it; optional `isDefault` on `accountingConnection` **or** documented selection-only with no “پیش‌فرض” language |
+| **Depends on** | Architect decision: workspace-default field vs selection-only — **decided: workspace `isDefault`** |
+| **Scope** | One authoritative rule; both surfaces consume it; `isDefault` on `accountingConnection` |
 | **Out of scope** | Adapter rewrite, Sepidar |
-| **Acceptance** | Given two connections A/B: setting default (or documented selection) makes quotation preview/export resolve the same id as settings catalog/customers; unit + one Dev DOM check; no secret logging |
-| **Architect decision** | **Yes** — pick the model before coding |
+| **Acceptance** | Given two connections A/B: setting default makes quotation preview resolve the same id as workspace default; unit evidence in 020; no secret logging |
+| **Architect decision** | Closed for coding; residual UAT optional |
 
 ### P0-2 — Retire connection without harming history
 
-**Why:** `isActive` exists but no deactivate/delete route; stale destinations stay selectable.
+**Why:** `isActive` exists but no deactivate/delete route; stale destinations stay selectable. Live Dev witness: **۱۹** connection rows (repeated Mock/Asan UAT stubs) with no prune path — selection noise is already operational, not theoretical.
 
 | | |
 |---|---|

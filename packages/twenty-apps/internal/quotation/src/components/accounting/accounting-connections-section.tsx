@@ -46,6 +46,7 @@ export const AccountingConnectionsSection = ({
   focus,
   onOpenList,
   onSelectConnection,
+  onSetWorkspaceDefault,
   onEditConnection,
   onChange,
   onSave,
@@ -64,6 +65,7 @@ export const AccountingConnectionsSection = ({
   focus: 'money' | 'tax' | null;
   onOpenList: () => void;
   onSelectConnection: (connection: ConnectionRecord) => void;
+  onSetWorkspaceDefault: (connection: ConnectionRecord) => void;
   onEditConnection: (connection: ConnectionRecord) => void;
   onChange: (form: FormState) => void;
   onSave: () => void;
@@ -211,11 +213,21 @@ export const AccountingConnectionsSection = ({
                         >
                           {entry.name}
                         </span>
-                        {selected ? (
-                          <span style={{ display: 'inline-block', marginTop: '4px' }}>
-                            <Badge tone="info">اتصال انتخاب‌شده</Badge>
-                          </span>
-                        ) : null}
+                        <span
+                          style={{
+                            display: 'flex',
+                            gap: '4px',
+                            flexWrap: 'wrap',
+                            marginTop: '4px',
+                          }}
+                        >
+                          {entry.isDefault ? (
+                            <Badge tone="success">پیش‌فرض فضای کاری</Badge>
+                          ) : null}
+                          {selected ? (
+                            <Badge tone="info">نمای موقت</Badge>
+                          ) : null}
+                        </span>
                       </td>
                       <td style={styles.cell}>
                         <span style={{ display: 'block' }}>
@@ -252,14 +264,28 @@ export const AccountingConnectionsSection = ({
                         >
                           <SecondaryButton
                             label={
-                              selected ? 'اتصال انتخاب‌شده' : 'انتخاب این اتصال'
+                              selected ? 'نمای موقت فعال' : 'انتخاب نمای موقت'
                             }
-                            disabled={selected || !canManage}
+                            disabled={selected || busy}
                             onClick={() => onSelectConnection(entry)}
                           />
                           <SecondaryButton
+                            label={
+                              entry.isDefault
+                                ? 'پیش‌فرض فضای کاری'
+                                : 'تنظیم به‌عنوان پیش‌فرض'
+                            }
+                            disabled={
+                              busy ||
+                              !canManage ||
+                              entry.isDefault ||
+                              entry.isActive === false
+                            }
+                            onClick={() => onSetWorkspaceDefault(entry)}
+                          />
+                          <SecondaryButton
                             label="ویرایش تنظیمات"
-                            disabled={!canManage}
+                            disabled={!canManage || busy}
                             onClick={() => onEditConnection(entry)}
                           />
                         </div>
@@ -278,8 +304,10 @@ export const AccountingConnectionsSection = ({
             </table>
           </div>
           <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', marginTop: '6px' }}>
-            «انتخاب این اتصال» مقصد فعال همهٔ بخش‌های حسابداری را تغییر می‌دهد و فرم را باز
-            نمی‌کند. برای تغییر نام، آدرس یا تنظیمات مالی، «ویرایش تنظیمات» را بزنید.
+            «نمای موقت» فقط همین صفحه را برای نگاشت کالا و مشتری تغییر می‌دهد و پیش‌فرض فضای
+            کاری را عوض نمی‌کند. «تنظیم به‌عنوان پیش‌فرض» مقصد رسمی Workspace را روی سرور ثبت
+            می‌کند و همان مقصد را پیش‌فاکتور می‌خواند. برای نام، آدرس یا تنظیمات مالی، «ویرایش
+            تنظیمات» را بزنید.
           </p>
         </Card>
       )}

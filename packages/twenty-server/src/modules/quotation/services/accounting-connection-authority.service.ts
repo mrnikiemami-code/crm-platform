@@ -27,6 +27,8 @@ import { accountingAdapterContract } from 'src/modules/quotation/utils/accountin
 import { readPrivateDestinationAllowlist } from 'src/modules/quotation/utils/accounting-destination-policy.util';
 import { AccountingDestinationProbeService } from 'src/modules/quotation/services/accounting-destination-probe.service';
 import { type TaxSettingsAuthority } from 'src/modules/quotation/types/tax-policy.type';
+import { acquireAccountingConnectionExclusiveLock } from 'src/modules/quotation/utils/accounting-connection-lock.util';
+import { isValidWorkspaceDefaultConnection } from 'src/modules/quotation/utils/resolve-accounting-destination.util';
 
 const CONNECTION_COLUMNS = {
   id: true,
@@ -35,6 +37,7 @@ const CONNECTION_COLUMNS = {
   adapterVersion: true,
   capabilities: true,
   isActive: true,
+  isDefault: true,
   baseUrl: true,
   remoteUserId: true,
   defaultStorageId: true,
@@ -158,6 +161,9 @@ const toView = (row: WorkspaceAccountingConnectionRow): AccountingConnectionView
   adapterId: readText(row.adapterId),
   adapterVersion: readText(row.adapterVersion) || null,
   isActive: row.isActive !== false,
+  // Default is opt-in only. A missing/legacy column reads as false so old workspaces never
+  // silently gain a destination from row order.
+  isDefault: row.isDefault === true,
   settings: {
     baseUrl: readText(row.baseUrl),
     remoteUserId: readText(row.remoteUserId),
@@ -319,6 +325,8 @@ export class AccountingConnectionAuthorityService {
           await repository.insert({
             ...values,
             isActive: true,
+            // New rows are never auto-promoted: an authorized set-default must opt in.
+            isDefault: false,
             createdBy: actor,
             updatedBy: actor,
           } as never);
@@ -339,6 +347,71 @@ export class AccountingConnectionAuthorityService {
             existing === null
               ? 'اتصال حسابداری ثبت شد؛ ارسال مالی همچنان غیرفعال است'
               : 'تنظیمات اتصال حسابداری ذخیره شد؛ ارسال مالی همچنان غیرفعال است',
+        };
+      }),
+    );
+  }
+
+  // Exactly one active workspace default. Concurrent callers serialize under the advisory
+  // lock so two set-default requests cannot leave two true flags. Inactive rows are refused;
+  // old workspaces with every row false stay that way until this method runs.
+  async setDefaultConnection(
+    recordId: string,
+    authContext: WorkspaceAuthContext,
+  ): Promise<AccountingConnectionOutcome> {
+    const authority = await this.resolveAuthority(authContext);
+
+    if (authority === null) {
+      return refused(
+        'ACCOUNTING_SETTINGS_FORBIDDEN',
+        'تغییر مقصد پیش‌فرض حسابداری فقط برای مدیر فضای کاری یا هویت برنامهٔ مجاز انجام می‌شود',
+      );
+    }
+
+    const id = recordId.trim();
+
+    if (id === '') {
+      return refused('INVALID_INPUT', 'اتصال حسابداری را انتخاب کنید');
+    }
+
+    const actor = this.actorFor(authContext);
+
+    return this.inWorkspace(authContext, () =>
+      this.runLocked(async (scope) => {
+        const repository = scope.getRepository<WorkspaceAccountingConnectionRow>(
+          'accountingConnection',
+          { shouldBypassPermissionChecks: true },
+        );
+        const rows = await this.findAll(repository);
+        const chosen = rows.find((row) => row.recordId === id);
+
+        if (chosen === undefined) {
+          return refused(
+            'ACCOUNTING_CONNECTION_NOT_FOUND',
+            'اتصال حسابداری انتخاب‌شده پیدا نشد',
+          );
+        }
+
+        if (chosen.isActive !== true) {
+          return refused(
+            'ACCOUNTING_CONNECTION_DEFAULT_MUST_BE_ACTIVE',
+            'اتصال غیرفعال را نمی‌توان به‌عنوان پیش‌فرض فضای کاری تنظیم کرد',
+          );
+        }
+
+        await this.clearDefaults(repository, rows, id, actor);
+        await repository.update(
+          { id },
+          { isDefault: true, updatedBy: actor } as never,
+        );
+        const repaired = await this.enforceSingleActiveDefault(repository, actor);
+
+        return {
+          kind: 'OK' as const,
+          connections: await this.findAll(repository),
+          message: repaired
+            ? 'مقصد پیش‌فرض تغییر کرد؛ وضعیت ناسازگار به یک پیش‌فرض فعال واحد بازگردانده شد'
+            : 'مقصد پیش‌فرض فضای کاری تغییر کرد',
         };
       }),
     );
@@ -462,6 +535,16 @@ export class AccountingConnectionAuthorityService {
     );
   }
 
+  private runLocked<T>(
+    work: (scope: WorkspaceTransactionScope) => Promise<T>,
+  ): Promise<T> {
+    return this.workspaceOrmManager.runInWorkspaceTransaction(async (scope) => {
+      await acquireAccountingConnectionExclusiveLock(scope);
+
+      return work(scope);
+    });
+  }
+
   private repository(): WorkspaceRepository<WorkspaceAccountingConnectionRow> {
     return this.workspaceOrmManager.getRepository<WorkspaceAccountingConnectionRow>(
       'accountingConnection',
@@ -478,6 +561,68 @@ export class AccountingConnectionAuthorityService {
     });
 
     return rows.map(toView);
+  }
+
+  private async clearDefaults(
+    repository: WorkspaceRepository<WorkspaceAccountingConnectionRow>,
+    rows: AccountingConnectionView[],
+    keepRecordId: string,
+    actor: ActorMetadata,
+  ): Promise<void> {
+    for (const row of rows) {
+      if (row.isDefault && row.recordId !== keepRecordId) {
+        await repository.update(
+          { id: row.recordId },
+          { isDefault: false, updatedBy: actor } as never,
+        );
+      }
+    }
+  }
+
+  // Repairs corruption (two defaults, or an inactive default) without inventing a default
+  // when none exists. Returning true means a repair write happened.
+  private async enforceSingleActiveDefault(
+    repository: WorkspaceRepository<WorkspaceAccountingConnectionRow>,
+    actor: ActorMetadata,
+  ): Promise<boolean> {
+    const rows = await this.findAll(repository);
+    const validDefaults = rows.filter((row) =>
+      isValidWorkspaceDefaultConnection({
+        recordId: row.recordId,
+        isActive: row.isActive,
+        isDefault: row.isDefault,
+      }),
+    );
+    let repaired = false;
+
+    for (const row of rows) {
+      if (row.isDefault && row.isActive !== true) {
+        await repository.update(
+          { id: row.recordId },
+          { isDefault: false, updatedBy: actor } as never,
+        );
+        repaired = true;
+      }
+    }
+
+    if (validDefaults.length <= 1) {
+      return repaired;
+    }
+
+    const keepId = validDefaults[0].recordId;
+
+    for (const row of validDefaults.slice(1)) {
+      await repository.update(
+        { id: row.recordId },
+        { isDefault: false, updatedBy: actor } as never,
+      );
+      repaired = true;
+    }
+
+    // keepId is already true; silence unused if the slice emptied nothing else.
+    void keepId;
+
+    return repaired;
   }
 
   private actorFor(authContext: WorkspaceAuthContext): ActorMetadata {

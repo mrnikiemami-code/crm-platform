@@ -20,12 +20,16 @@ import {
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
+import { findValidWorkspaceDefaultConnection } from 'src/domain/accounting/resolve-destination';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 // The accounting tab of ONE quotation. It answers "can this document travel, and what is
 // in the way" — never "which vendor and address does the workspace use". Those belong to
 // the standalone settings page, and duplicating that form here would let two surfaces
 // disagree about the same destination.
+//
+// Destination resolution matches settings: only the workspace default (`isDefault` +
+// active). Temporary settings selection and row order are never consulted here.
 //
 // Dispatch itself stays off in this slice: the preview is shown, the send button is not
 // offered, and the reason is written on the panel rather than hidden.
@@ -45,9 +49,9 @@ export const AccountingConnectionPanel = () => {
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
   const connection =
-    data?.connections.find((entry) => entry.isActive) ??
-    data?.connections[0] ??
-    null;
+    data === null
+      ? null
+      : findValidWorkspaceDefaultConnection(data.connections);
   const activeConnectionId = connection?.id ?? null;
 
   const loadPanel = useCallback(async () => {
@@ -197,16 +201,17 @@ export const AccountingConnectionPanel = () => {
       </p>
 
       <div style={styles.section}>
-        <p style={styles.subtitle}>اتصال حسابداری انتخاب‌شده</p>
+        <p style={styles.subtitle}>مقصد پیش‌فرض حسابداری فضای کاری</p>
         {connection === null ? (
           <p style={styles.warning}>
-            هنوز اتصال حسابداری تنظیم نشده است؛ ابتدا از صفحهٔ «تنظیمات حسابداری»
-            یک اتصال بسازید.
+            نیازمند انتخاب مقصد پیش‌فرض: هنوز هیچ اتصال فعالی به‌عنوان پیش‌فرض فضای
+            کاری ثبت نشده است. از صفحهٔ «تنظیمات حسابداری» یک اتصال را «تنظیم به‌عنوان
+            پیش‌فرض» کنید. ترتیب ردیف‌ها یا انتخاب موقت در مرورگر مقصد را تعیین نمی‌کند.
           </p>
         ) : (
           <>
             <p style={styles.meta}>
-              {connection.name} — {connection.adapterId} —{' '}
+              {connection.name} — {connection.adapterId} — پیش‌فرض فضای کاری —{' '}
               {VERIFICATION_LABELS[connection.verificationState] ??
                 connection.verificationState}
             </p>
