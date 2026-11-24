@@ -1,5 +1,33 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — CRM-129-UI-DESIGN-SKILLS-PILOT-017 (2026-11-24; **DESIGN PROPOSAL ONLY** → `STOP_FOR_USER_APPROVAL`)
+
+Design-only pilot on the «مالیات و عوارض» panel. It does **not** supersede the 016 board
+below: nothing was implemented, deployed or applied to Dev, and the app on `:3002` is still
+`0.1.47`.
+
+- **Branch / base:** `feat/crm-129-quotation` @ `b23e35e927` (`origin/feat/crm-129-quotation`).
+- **Working tree:** only `docs/design/crm-129-ui-pilot-017/`. No file under
+  `packages/twenty-apps/` was modified; no backend, money-domain, tax-policy, revision,
+  PDF, adapter, permission or DB change; no worker restart; `:6080` untouched.
+- **Skills installed (free, no account, no credits):**
+  - `ui-ux-pro-max` (`ui-ux-pro-max-cli` 2.15.0) → `C:\Users\User\.cursor\skills\ui-ux-pro-max\`
+  - `design-taste-frontend` (tasteskill 2.5.1) → `C:\Users\User\.agents\skills\design-taste-frontend\`
+  - Superdesign removed from scope; Taste Skill installed but **deliberately unused** (S4 fallback only).
+- **Designer #1 used for real:** four `uipro` invocations (`ux` and `style` domains plus
+  `--design-system --persist`); raw artifacts kept in
+  `docs/design/crm-129-ui-pilot-017/ui-ux-pro-max/evidence/`. Its landing-pattern palette
+  (`#0F172A` / `#22C55E` / Fira) was **rejected against the product contract** and the
+  rejection is recorded, not silently applied.
+- **Deliverable:** `docs/design/crm-129-ui-pilot-017/ui-ux-pro-max/index.html` — standalone
+  Persian RTL preview (desktop / 390 px / dark) with fixed column tracks, in-row editor,
+  action hierarchy, two-step delete and all five panel states. Evidence date 2026-11-24.
+- **Diagnosis on record:** 10 measured defects (`DIAGNOSIS.md`), including per-row grid
+  tracks of `332/274/347` vs `441/255/257` (rates shifting up to 90 px between rows) and the
+  390 px clip `clientWidth 59 / scrollWidth 68` on «غیرفعال‌سازی».
+- **Awaiting:** user decision. Approve → Design of Record, implementation only after an
+  explicit go-ahead. Reject → only then activate Taste Skill for an independent alternative.
+
 ## EXECUTED — CRM-129-TAX-PANEL-016 FINAL CLOSURE (2026-11-24; DESIGN **PASS** / DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** → `STOP_FOR_ARCHITECT` → `USER_UAT`)
 
 Working point: branch `feat/crm-129-quotation`. Scope stays the tax panel, its tests, UAT scripts and `docs/design/crm-129-tax-panel-016/`. Money domain, PDF, adapter, revision/snapshot and other Twenty modules were not touched.
