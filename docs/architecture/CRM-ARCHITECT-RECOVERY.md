@@ -1,5 +1,14 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## DESIGN HANDOFF — USER_REJECTED TAX-PANEL-016 / DESIGNER REASSIGNMENT (2026-11-24; ASSIGNMENT REGISTERED / NOT EXECUTED)
+
+- User rejected TAX-PANEL-016 after Superdesign A/B hybrid because its visible action labels were visually indistinguishable from normal text. Source `tax-policy-settings-panel.tsx` uses transparent 28px ghost controls despite the recorded B-inspired visible-action decision. This is a **designer-to-implementation fidelity process failure**, not proof of Superdesign incapacity nor authorization for architect-authored CSS fixes.
+- Binding design governance registered in [`docs/design/CRM-DESIGN-TO-IMPLEMENTATION-GATE.md`](../design/CRM-DESIGN-TO-IMPLEMENTATION-GATE.md), commit `ed849a3737a39cfd72434edb079001129276715c`. It requires **fresh designer-led Superdesign critique/iteration**, designer-owned design decisions, Impeccable checks on design AND actual implementation, documented deviations, independent measured fidelity acceptance and user sign-off. Developer must **not** impose architect's visual remedy; Superdesign is asked to diagnose and design anew based on observed failures.
+- **Next handoff to Cursor:** run the designer brief in the gate document on `feat/crm-129-quotation`; keep existing business/financial behavior unchanged, evaluate saved vs served UI, present design artifacts and proofs. This repository documentation does **not** mean Superdesign has been re-invoked or the panel has been re-deployed.
+- **Outstanding security/integrity blockers remain:** dedicated S5-15c concurrency race failed in 016 (15/17), and tracked UAT test script has a plaintext DB credential. They remain separate authorization-gated work, not silently declared fixed by UI redesign.
+- No code/runtime/Dev changes made by this docs-only request.
+
+
 ## ARCHITECT REVIEW — TAX PANEL UI 016 / INTEGRITY AND SECRET GATE (2026-11-24; UI CODE REVIEW PASS / FINAL UAT BLOCKED)
 
 - Reviewed exact remote tip `cc107bbe5abd44df9f91540ebac3d1211c994d25` vs base `6b676c50157875536ef4a542a287451ba5d2d554`. Single 016 commit adds two Superdesign-generated candidate HTML designs, `.superdesign/init` context, tests, and changes only `tax-policy-settings-panel.tsx` in executable source, plus app version 0.1.38 and recovery. No server, money calculation, adapter, schema, PDF, or revision implementation changes in this commit. Actual submitted designs and worker-reported Impeccable comparison satisfy the evidence requirement; user visual acceptance remains pending.
