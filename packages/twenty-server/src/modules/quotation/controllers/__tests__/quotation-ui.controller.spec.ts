@@ -73,6 +73,7 @@ const policy = {
   isActive: true,
   isDefault: true,
   isExempt: false,
+  quotationCount: 0,
 };
 
 describe('QuotationUiController tax settings boundary', () => {
@@ -140,7 +141,6 @@ describe('QuotationUiController tax settings boundary', () => {
         dutyRatePercentText: '',
         isActive: true,
         isDefault: true,
-        isExempt: false,
       },
       userAuthContext,
     );

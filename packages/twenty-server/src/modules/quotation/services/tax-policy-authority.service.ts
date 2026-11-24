@@ -22,6 +22,7 @@ import {
   parseTaxRatePercent,
 } from 'src/modules/quotation/utils/parse-tax-rate-percent.util';
 import { acquireTaxPolicyExclusiveLock } from 'src/modules/quotation/utils/quotation-tax-policy-lock.util';
+import { toPersianDigits } from 'src/modules/quotation/utils/quotation-numbering.util';
 
 // The initial policy of a workspace that has none: the same 9% definition the
 // sealed legacy documents were written with. Created only by the explicit,
@@ -99,7 +100,11 @@ const toView = (row: WorkspaceTaxPolicyRow): WorkspaceTaxPolicyView | null => {
     totalRatePercent: formatBasisPointsAsPercent(totalBasisPoints),
     isActive: row.isActive !== false,
     isDefault: row.isDefault === true,
-    isExempt: row.isExempt === true,
+    // Derived, never read back as a stored flag: "exempt" means both components are
+    // zero, which is the only thing the arithmetic can honour. A stored flag that
+    // disagrees with the rates would describe a price the document does not carry.
+    isExempt: taxBasisPoints === BigInt(0) && dutyBasisPoints === BigInt(0),
+    quotationCount: 0,
   };
 };
 
@@ -139,7 +144,7 @@ export class TaxPolicyAuthorityService {
     return this.inWorkspace(authContext, () =>
       this.runLocked(async (scope) => {
         const repository = this.repository(scope);
-        const existing = await this.findAll(repository);
+        const existing = await this.findAll(repository, this.usageCounter(this.quotationRepository(scope)));
 
         // Idempotent: a workspace that already has any policy is left byte-identical.
         if (existing.length === 0) {
@@ -156,7 +161,7 @@ export class TaxPolicyAuthorityService {
           } as never);
         }
 
-        const policies = await this.findAll(repository);
+        const policies = await this.findAll(repository, this.usageCounter(this.quotationRepository(scope)));
 
         return {
           kind: 'OK',
@@ -179,7 +184,7 @@ export class TaxPolicyAuthorityService {
     return this.inWorkspace(authContext, () =>
       this.runLocked(async (scope) => {
         const repository = this.repository(scope);
-        const rows = await this.findAll(repository);
+        const rows = await this.findAll(repository, this.usageCounter(this.quotationRepository(scope)));
         const existing =
           input.recordId === null
             ? null
@@ -223,20 +228,13 @@ export class TaxPolicyAuthorityService {
           );
         }
 
-        // An exempt policy is a 0% policy and nothing else; "exempt at 9%" would
-        // claim an exemption the arithmetic does not reflect.
-        if (
-          input.isExempt !==
-          (rate.rateBasisPoints === BigInt(0) &&
-            dutyRate.rateBasisPoints === BigInt(0))
-        ) {
-          return refused(
-            'TAX_POLICY_EXEMPTION_MISMATCH',
-            input.isExempt
-              ? 'سیاست معاف باید نرخ صفر داشته باشد'
-              : 'سیاست با نرخ صفر باید معاف علامت بخورد',
-          );
-        }
+        // "Exempt" is not an operator decision any more: it is the arithmetic fact of
+        // both components being zero. Deriving it here means a policy can never claim an
+        // exemption its own rate contradicts. The stored column is kept written for
+        // older readers, but no request value is trusted.
+        const isExempt =
+          rate.rateBasisPoints === BigInt(0) &&
+          dutyRate.rateBasisPoints === BigInt(0);
 
         const wasDefault = existing?.isDefault === true;
 
@@ -293,7 +291,7 @@ export class TaxPolicyAuthorityService {
           dutyRateBasisPoints: dutyRate.rateBasisPoints.toString(),
           isActive: input.isActive,
           isDefault: shouldBeDefault,
-          isExempt: input.isExempt,
+          isExempt,
         };
 
         if (existing === null) {
@@ -315,7 +313,7 @@ export class TaxPolicyAuthorityService {
 
         return {
           kind: 'OK',
-          policies: await this.findAll(repository),
+          policies: await this.findAll(repository, this.usageCounter(this.quotationRepository(scope))),
           message: repaired
             ? 'سیاست مالیات ذخیره شد؛ وضعیت پیش‌فرض ناسازگار بود و به قدیمی‌ترین سیاست فعال بازگردانده شد'
             : 'سیاست مالیات ذخیره شد',
@@ -333,7 +331,7 @@ export class TaxPolicyAuthorityService {
     return this.inWorkspace(authContext, () =>
       this.runLocked(async (scope) => {
         const repository = this.repository(scope);
-        const rows = await this.findAll(repository);
+        const rows = await this.findAll(repository, this.usageCounter(this.quotationRepository(scope)));
         const chosen = rows.find((row) => row.recordId === recordId);
 
         if (chosen === undefined) {
@@ -353,7 +351,7 @@ export class TaxPolicyAuthorityService {
 
         return {
           kind: 'OK',
-          policies: await this.findAll(repository),
+          policies: await this.findAll(repository, this.usageCounter(this.quotationRepository(scope))),
           message: repaired
             ? 'سیاست پیش‌فرض تغییر کرد؛ وضعیت ناسازگار به قدیمی‌ترین سیاست فعال بازگردانده شد'
             : 'سیاست پیش‌فرض تغییر کرد',
@@ -371,7 +369,7 @@ export class TaxPolicyAuthorityService {
     return this.inWorkspace(authContext, () =>
       this.runLocked(async (scope) => {
         const repository = this.repository(scope);
-        const rows = await this.findAll(repository);
+        const rows = await this.findAll(repository, this.usageCounter(this.quotationRepository(scope)));
         const chosen = rows.find((row) => row.recordId === recordId);
 
         if (chosen === undefined) {
@@ -403,13 +401,126 @@ export class TaxPolicyAuthorityService {
 
         return {
           kind: 'OK',
-          policies: await this.findAll(repository),
+          policies: await this.findAll(repository, this.usageCounter(this.quotationRepository(scope))),
           message: repaired
             ? 'سیاست مالیات غیرفعال شد؛ وضعیت پیش‌فرض ناسازگار به قدیمی‌ترین سیاست فعال بازگردانده شد'
             : 'سیاست مالیات غیرفعال شد',
         };
       }),
     );
+  }
+
+  // Removing a policy is only for a row nothing depends on. Two dependencies are
+  // checked inside the same transaction and under the same lock as every other
+  // mutation: a live quotation that names the code (which must stay readable forever)
+  // and an accounting destination that maps the code (which would be left dangling).
+  // A policy that is the default cannot be removed either: the workspace would keep a
+  // rate that no longer exists as its default.
+  async deletePolicy(
+    recordId: string,
+    authContext: WorkspaceAuthContext,
+  ): Promise<TaxPolicyMutationOutcome> {
+    const actor = this.actorFor(authContext);
+
+    return this.inWorkspace(authContext, () =>
+      this.runLocked(async (scope) => {
+        const repository = this.repository(scope);
+        const countUsage = this.usageCounter(this.quotationRepository(scope));
+        const rows = await this.findAll(repository, countUsage);
+        const chosen = rows.find((row) => row.recordId === recordId);
+
+        if (chosen === undefined) {
+          return refused('TAX_POLICY_NOT_FOUND', 'سیاست مالیات پیدا نشد');
+        }
+
+        if (chosen.isDefault) {
+          return refused(
+            'TAX_POLICY_IS_DEFAULT',
+            'این سیاست پیش‌فرض است؛ ابتدا سیاست پیش‌فرض دیگری انتخاب کنید',
+          );
+        }
+
+        if (
+          chosen.isActive &&
+          rows.filter((row) => row.isActive && row.recordId !== recordId).length === 0
+        ) {
+          return refused(
+            'TAX_POLICY_LAST_ACTIVE',
+            'حداقل یک سیاست مالیات فعال لازم است',
+          );
+        }
+
+        if (chosen.quotationCount > 0) {
+          return refused(
+            'TAX_POLICY_IN_USE',
+            `این سیاست در ${toPersianDigits(
+              String(chosen.quotationCount),
+            )} سند استفاده شده است؛ حذف نمی‌شود، فقط غیرفعال می‌شود`,
+          );
+        }
+
+        const mappedDestinations = await this.destinationsMappingCode(
+          scope,
+          chosen.code,
+        );
+
+        if (mappedDestinations.length > 0) {
+          return refused(
+            'TAX_POLICY_MAPPED',
+            `این سیاست در نگاشت اتصال حسابداری «${mappedDestinations.join(
+              '»، «',
+            )}» استفاده شده است؛ ابتدا کد آن را از آن اتصال حذف کنید`,
+          );
+        }
+
+        // Soft delete keeps the audit trail of who introduced the rate while removing
+        // the row from every catalog read, the settings list and the draft selector.
+        await repository.softDelete({ id: recordId } as never);
+        const repaired = await this.enforceSingleActiveDefault(repository, actor);
+
+        return {
+          kind: 'OK',
+          policies: await this.findAll(repository, countUsage),
+          message: repaired
+            ? 'سیاست مالیات حذف شد؛ وضعیت پیش‌فرض ناسازگار به قدیمی‌ترین سیاست فعال بازگردانده شد'
+            : 'سیاست مالیات حذف شد',
+        };
+      }),
+    );
+  }
+
+  // Names of destinations whose stored tax-code mapping still names this policy. The
+  // mapping is a real reference: deleting the policy under it would leave a code that
+  // no catalog can resolve, so the operator removes the mapping first.
+  private async destinationsMappingCode(
+    scope: WorkspaceTransactionScope,
+    code: string,
+  ): Promise<string[]> {
+    const connections = await scope
+      .getRepository<{ id: string; name: string | null; specialCodes: unknown }>(
+        'accountingConnection',
+        { shouldBypassPermissionChecks: true },
+      )
+      .find({ select: { id: true, name: true, specialCodes: true } });
+
+    return connections.flatMap((connection) => {
+      const specialCodes =
+        connection.specialCodes !== null &&
+        typeof connection.specialCodes === 'object' &&
+        !Array.isArray(connection.specialCodes)
+          ? (connection.specialCodes as Record<string, unknown>)
+          : {};
+      const mappings =
+        specialCodes.taxPolicyMappings !== null &&
+        typeof specialCodes.taxPolicyMappings === 'object' &&
+        !Array.isArray(specialCodes.taxPolicyMappings)
+          ? (specialCodes.taxPolicyMappings as Record<string, unknown>)
+          : {};
+
+      return Object.prototype.hasOwnProperty.call(mappings, code)
+        ? [(connection.name ?? '').trim() || connection.id]
+        : [];
+    });
   }
 
   private async readPolicies(
@@ -421,7 +532,14 @@ export class TaxPolicyAuthorityService {
         'taxPolicy',
         { shouldBypassPermissionChecks: true },
       );
-      const policies = await this.findAll(repository);
+      const quotationRepository = this.workspaceOrmManager.getRepository<{
+        id: string;
+        taxPolicy: string | null;
+      }>('quotation', { shouldBypassPermissionChecks: true });
+      const policies = await this.findAll(
+        repository,
+        this.usageCounter(quotationRepository),
+      );
 
       return { kind: 'OK', policies, message };
     });
@@ -454,6 +572,15 @@ export class TaxPolicyAuthorityService {
     return scope.getRepository<WorkspaceTaxPolicyRow>('taxPolicy', {
       shouldBypassPermissionChecks: true,
     });
+  }
+
+  private quotationRepository(
+    scope: WorkspaceTransactionScope,
+  ): WorkspaceRepository<{ id: string; taxPolicy: string | null }> {
+    return scope.getRepository<{ id: string; taxPolicy: string | null }>(
+      'quotation',
+      { shouldBypassPermissionChecks: true },
+    );
   }
 
   // The audit columns are NOT NULL and the ORM does not derive them from the request,
@@ -493,17 +620,41 @@ export class TaxPolicyAuthorityService {
 
   private async findAll(
     repository: WorkspaceRepository<WorkspaceTaxPolicyRow>,
+    countUsage?: (code: string) => Promise<number>,
   ): Promise<WorkspaceTaxPolicyView[]> {
     const rows = await repository.find({
       select: POLICY_COLUMNS,
       order: { createdAt: 'ASC' },
     });
 
-    return rows.flatMap((row) => {
+    const views = rows.flatMap((row) => {
       const view = toView(row);
 
       return view === null ? [] : [view];
     });
+
+    if (countUsage === undefined) {
+      return views;
+    }
+
+    // One count per policy row, on the same read that produces the row: the list, the
+    // draft select and the delete refusal all quote one number.
+    return Promise.all(
+      views.map(async (view) => ({
+        ...view,
+        quotationCount: await countUsage(view.code),
+      })),
+    );
+  }
+
+  // Live quotations that name a policy code. Trashed quotations are excluded on purpose:
+  // their sealed snapshot keeps the rate they were issued with, so they are not a
+  // reference the catalog still has to serve.
+  private usageCounter(
+    quotationRepository: WorkspaceRepository<{ id: string; taxPolicy: string | null }>,
+  ): (code: string) => Promise<number> {
+    return (code) =>
+      quotationRepository.count({ where: { taxPolicy: code } as never });
   }
 
   private async clearDefaults(

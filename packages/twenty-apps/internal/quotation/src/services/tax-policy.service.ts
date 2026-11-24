@@ -79,7 +79,10 @@ export const parseTaxPolicyRecord = (
     label: readText(node.name) || code,
     rateBasisPoints: rate.value,
     dutyRateBasisPoints: dutyRate.value,
-    isExempt: readBoolean(node.isExempt, rate.value === BigInt(0)),
+    isExempt: readBoolean(
+      node.isExempt,
+      rate.value === BigInt(0) && dutyRate.value === BigInt(0),
+    ),
     isActive: readBoolean(node.isActive, true),
     isDefault: readBoolean(node.isDefault, false),
     position,
@@ -158,7 +161,6 @@ export type SaveTaxPolicyInput = {
   dutyRatePercentText?: string;
   isActive: boolean;
   isDefault: boolean;
-  isExempt: boolean;
 };
 
 export const saveTaxPolicy = (
@@ -174,7 +176,6 @@ export const saveTaxPolicy = (
       dutyRatePercentText: input.dutyRatePercentText ?? '',
       isActive: input.isActive,
       isDefault: input.isDefault,
-      isExempt: input.isExempt,
     },
     dependencies,
   );
@@ -193,6 +194,14 @@ export const deactivateTaxPolicy = (
   dependencies: TaxPolicyMutationDependencies = {},
 ): Promise<Result<TaxPolicyCatalogEntry[]>> =>
   runServerAction({ action: 'tax-policy-deactivate', recordId }, dependencies);
+
+// Removes a policy that nothing depends on. The server decides from its own counts and
+// its own mapping check inside the mutation transaction; this call only asks.
+export const deleteTaxPolicy = (
+  recordId: string,
+  dependencies: TaxPolicyMutationDependencies = {},
+): Promise<Result<TaxPolicyCatalogEntry[]>> =>
+  runServerAction({ action: 'tax-policy-delete', recordId }, dependencies);
 
 // The only path that creates the initial policy. Idempotent on the server, shown in
 // the panel only when the catalog is empty.

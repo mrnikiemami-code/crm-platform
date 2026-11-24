@@ -60,6 +60,7 @@ const ALLOWED_ACTIONS = new Set([
   'tax-policy-save',
   'tax-policy-set-default',
   'tax-policy-deactivate',
+  'tax-policy-delete',
   'accounting-settings-authority',
   'accounting-connection-list',
   'accounting-connection-save',
@@ -71,6 +72,7 @@ const TAX_POLICY_MUTATING_ACTIONS = new Set([
   'tax-policy-save',
   'tax-policy-set-default',
   'tax-policy-deactivate',
+  'tax-policy-delete',
 ]);
 
 const readBoolean = (value: unknown, fallback: boolean): boolean =>
@@ -380,7 +382,6 @@ export class QuotationUiController {
           dutyRatePercentText: readText(body.dutyRatePercentText),
           isActive: readBoolean(body.isActive, true),
           isDefault: body.isDefault === true,
-          isExempt: body.isExempt === true,
         },
         authContext,
       );
@@ -396,9 +397,15 @@ export class QuotationUiController {
       });
     }
 
-    return action === 'tax-policy-set-default'
-      ? this.taxPolicyAuthorityService.setDefaultPolicy(recordId, authContext)
-      : this.taxPolicyAuthorityService.deactivatePolicy(recordId, authContext);
+    if (action === 'tax-policy-set-default') {
+      return this.taxPolicyAuthorityService.setDefaultPolicy(recordId, authContext);
+    }
+
+    if (action === 'tax-policy-delete') {
+      return this.taxPolicyAuthorityService.deletePolicy(recordId, authContext);
+    }
+
+    return this.taxPolicyAuthorityService.deactivatePolicy(recordId, authContext);
   }
 
   // The accounting surface separates two questions: "may this caller see the

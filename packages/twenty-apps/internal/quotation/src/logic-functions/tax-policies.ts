@@ -11,6 +11,7 @@ import {
   bootstrapTaxPolicies,
   countQuotationsPerTaxPolicy,
   deactivateTaxPolicy,
+  deleteTaxPolicy,
   loadTaxPolicies,
   saveTaxPolicy,
   setDefaultTaxPolicy,
@@ -106,7 +107,6 @@ const handler = async (event: RoutePayload<unknown>) => {
           dutyRatePercentText: readString(body.dutyRatePercentText),
           isActive: readBoolean(body.isActive, true),
           isDefault: body.isDefault === true,
-          isExempt: body.isExempt === true,
         },
         { authorizationHeader },
       );
@@ -183,6 +183,28 @@ const handler = async (event: RoutePayload<unknown>) => {
         success: true,
         ...describeCatalog(updated.value, await countQuotationsPerTaxPolicy()),
         message: 'سیاست مالیات غیرفعال شد',
+      };
+    }
+
+    if (action === 'delete') {
+      const recordId = readOptionalId(body.recordId);
+
+      if (recordId === null) {
+        return failure('TAX_POLICY_REQUIRED', 'سیاست مالیات را انتخاب کنید');
+      }
+
+      const removed = await deleteTaxPolicy(recordId, {
+        authorizationHeader,
+      });
+
+      if (!removed.ok) {
+        return failure(removed.refusal.code, removed.refusal.detail);
+      }
+
+      return {
+        success: true,
+        ...describeCatalog(removed.value, await countQuotationsPerTaxPolicy()),
+        message: 'سیاست مالیات حذف شد',
       };
     }
 

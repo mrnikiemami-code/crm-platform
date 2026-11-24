@@ -28,28 +28,39 @@ type Repository = {
   find: jest.Mock;
   insert: jest.Mock;
   update: jest.Mock;
+  count: jest.Mock;
+  softDelete: jest.Mock;
 };
 
 const buildRepository = (): Repository => ({
   find: jest.fn(async () => []),
   insert: jest.fn(async () => ({ identifiers: [{ id: 'tp-new' }] })),
   update: jest.fn(async () => ({ affected: 1 })),
+  count: jest.fn(async () => 0),
+  softDelete: jest.fn(async () => ({ affected: 1 })),
 });
 
 const buildService = ({
   repository,
   authority = 'SETTINGS_ROLE',
+  connections,
 }: {
   repository: Repository;
   authority?: string | null;
+  connections?: Repository;
 }) => {
+  const connectionRepository = connections ?? buildRepository();
   const scope = {
     workspaceId: 'workspace-1',
     executeRawQuery: jest.fn(async () => []),
-    getRepository: jest.fn(() => repository),
+    getRepository: jest.fn((objectName: string) =>
+      objectName === 'accountingConnection' ? connectionRepository : repository,
+    ),
   };
   const workspaceOrmManager = {
-    getRepository: jest.fn(() => repository),
+    getRepository: jest.fn((objectName: string) =>
+      objectName === 'accountingConnection' ? connectionRepository : repository,
+    ),
     executeInWorkspaceContext: jest.fn(async (work: () => unknown) => work()),
     runInWorkspaceTransaction: jest.fn(
       async (work: (transactionScope: typeof scope) => unknown) => work(scope),
@@ -67,6 +78,7 @@ const buildService = ({
     scope,
     workspaceOrmManager,
     permissionService,
+    connectionRepository,
   };
 };
 
@@ -244,29 +256,59 @@ describe('TaxPolicyAuthorityService', () => {
     ).rejects.toThrow('write failed');
   });
 
-  it('refuses an exemption flag that disagrees with the rate', async () => {
+  it('derives exemption from the two rates instead of trusting a posted flag', async () => {
     const repository = buildRepository();
-    repository.find.mockResolvedValue([row()]);
+    repository.find
+      .mockResolvedValueOnce([row({ id: 'tp-1', isDefault: true })])
+      .mockResolvedValue([
+        row({ id: 'tp-1', isDefault: true }),
+        row({ id: 'tp-2', code: 'TAX_0', rateBasisPoints: '0' }),
+      ]);
     const { service } = buildService({ repository });
 
     const outcome = await service.savePolicy(
       {
         recordId: null,
         name: 'معاف',
-        ratePercentText: '۹',
+        ratePercentText: '۰',
         dutyRatePercentText: '',
         isActive: true,
         isDefault: false,
-        isExempt: true,
       },
       authContext,
     );
 
-    expect(outcome).toMatchObject({
-      kind: 'REFUSED',
-      code: 'TAX_POLICY_EXEMPTION_MISMATCH',
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(repository.insert.mock.calls[0][0]).toMatchObject({
+      rateBasisPoints: '0',
+      dutyRateBasisPoints: '0',
+      isExempt: true,
     });
-    expect(repository.insert).not.toHaveBeenCalled();
+  });
+
+  it('stores a policy with a positive rate as not exempt', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([row({ id: 'tp-1', isDefault: true })]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.savePolicy(
+      {
+        recordId: null,
+        name: 'مالیات ۵٫۵٪ + عوارض ۲٫۱٪',
+        ratePercentText: '۵٫۵',
+        dutyRatePercentText: '۲٫۱',
+        isActive: true,
+        isDefault: false,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(repository.insert.mock.calls[0][0]).toMatchObject({
+      rateBasisPoints: '550',
+      dutyRateBasisPoints: '210',
+      isExempt: false,
+    });
   });
 
   it('parses a Persian 10.5% rate into 1050 basis points', async () => {
@@ -295,7 +337,6 @@ describe('TaxPolicyAuthorityService', () => {
         dutyRatePercentText: '',
         isActive: true,
         isDefault: false,
-        isExempt: false,
       },
       authContext,
     );
@@ -337,7 +378,6 @@ describe('TaxPolicyAuthorityService', () => {
         dutyRatePercentText: '',
         isActive: true,
         isDefault: true,
-        isExempt: false,
       },
       authContext,
     );
@@ -376,7 +416,6 @@ describe('TaxPolicyAuthorityService', () => {
         dutyRatePercentText: '',
         isActive: true,
         isDefault: false,
-        isExempt: false,
       },
       authContext,
     );
@@ -401,7 +440,6 @@ describe('TaxPolicyAuthorityService', () => {
         dutyRatePercentText: '',
         isActive: false,
         isDefault: false,
-        isExempt: false,
       },
       authContext,
     );
@@ -429,7 +467,6 @@ describe('TaxPolicyAuthorityService', () => {
         dutyRatePercentText: '',
         isActive: true,
         isDefault: false,
-        isExempt: false,
       },
       authContext,
     );
@@ -465,10 +502,90 @@ describe('TaxPolicyAuthorityService', () => {
           dutyRatePercentText: '',
           isActive: true,
           isDefault: false,
-          isExempt: false,
         },
         authContext,
       ),
     ).rejects.toThrow('TAX_POLICY_INVARIANT_VIOLATED');
+  });
+
+  it('refuses to delete a policy that a live quotation names, quoting the count', async () => {
+    const repository = buildRepository();
+    repository.count.mockResolvedValue(8);
+    repository.find.mockResolvedValue([
+      row({ id: 'tp-1', isDefault: true }),
+      row({ id: 'tp-2', code: 'TAX_1000', isActive: false }),
+    ]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.deletePolicy('tp-2', authContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'TAX_POLICY_IN_USE',
+    });
+    expect((outcome as { message: string }).message).toContain('۸ سند');
+    expect(repository.softDelete).not.toHaveBeenCalled();
+  });
+
+  it('refuses to delete the current default before another default is chosen', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([
+      row({ id: 'tp-1', isDefault: true }),
+      row({ id: 'tp-2', code: 'TAX_1000' }),
+    ]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.deletePolicy('tp-1', authContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'TAX_POLICY_IS_DEFAULT',
+    });
+    expect(repository.softDelete).not.toHaveBeenCalled();
+  });
+
+  it('deletes an unused, non-default policy and returns the repaired catalog', async () => {
+    const repository = buildRepository();
+    repository.find
+      .mockResolvedValueOnce([
+        row({ id: 'tp-1', isDefault: true }),
+        row({ id: 'tp-2', code: 'TAX_1050', isActive: false }),
+      ])
+      .mockResolvedValue([row({ id: 'tp-1', isDefault: true })]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.deletePolicy('tp-2', authContext);
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(repository.softDelete).toHaveBeenCalledWith({ id: 'tp-2' });
+    expect((outcome as { message: string }).message).toBe(
+      'سیاست مالیات حذف شد',
+    );
+  });
+
+  it('refuses to delete a policy an accounting destination still maps', async () => {
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([
+      row({ id: 'tp-1', isDefault: true }),
+      row({ id: 'tp-2', code: 'TAX_1000', isActive: false }),
+    ]);
+    const connections = buildRepository();
+    connections.find.mockResolvedValue([
+      {
+        id: 'connection-1',
+        name: 'حساب اصلی',
+        specialCodes: { taxPolicyMappings: { TAX_1000: '64' } },
+      },
+    ]);
+    const { service } = buildService({ repository, connections });
+
+    const outcome = await service.deletePolicy('tp-2', authContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'TAX_POLICY_MAPPED',
+    });
+    expect((outcome as { message: string }).message).toContain('حساب اصلی');
+    expect(repository.softDelete).not.toHaveBeenCalled();
   });
 });

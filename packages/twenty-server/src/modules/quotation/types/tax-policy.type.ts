@@ -31,7 +31,12 @@ export type WorkspaceTaxPolicyView = {
   totalRatePercent: string;
   isActive: boolean;
   isDefault: boolean;
+  // Derived on the server from the two rates being zero: an exemption is the arithmetic
+  // fact of a 0% policy, never a separate choice an operator can tick against a rate.
   isExempt: boolean;
+  // Live quotations that name this policy. Produced by the same read that produces the
+  // row, so the list and the delete refusal cannot disagree.
+  quotationCount: number;
 };
 
 export type TaxPolicyMutationOutcome =
@@ -46,5 +51,4 @@ export type SaveTaxPolicyInput = {
   dutyRatePercentText: string;
   isActive: boolean;
   isDefault: boolean;
-  isExempt: boolean;
 };

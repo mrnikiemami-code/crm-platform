@@ -35,9 +35,9 @@ type EditorState = {
   name: string;
   ratePercentText: string;
   dutyPercentText: string;
+  // Carried through the edit so saving a rate does not silently reactivate a policy;
+  // activation has its own row action.
   isActive: boolean;
-  isDefault: boolean;
-  isExempt: boolean;
 };
 
 const readRows = (data: Record<string, unknown>): TaxPolicyRow[] => {
@@ -90,8 +90,6 @@ const emptyEditor = (): EditorState => ({
   ratePercentText: '',
   dutyPercentText: '0',
   isActive: true,
-  isDefault: false,
-  isExempt: false,
 });
 
 const editorFor = (row: TaxPolicyRow): EditorState => ({
@@ -100,8 +98,6 @@ const editorFor = (row: TaxPolicyRow): EditorState => ({
   ratePercentText: row.ratePercent,
   dutyPercentText: row.dutyRatePercent,
   isActive: row.isActive,
-  isDefault: row.isDefault,
-  isExempt: row.isExempt,
 });
 
 // The total is computed, never typed: two values that cannot be added are shown as
@@ -165,6 +161,15 @@ export const TaxPolicySettingsPanel = () => {
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
+  // A refusal belongs to the row that caused it ("used in 8 documents") and a delete
+  // asks for a second press, so the row the operator acted on is the one that answers.
+  const [rowIssue, setRowIssue] = useState<{
+    recordId: string;
+    message: string;
+  } | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
+    null,
+  );
 
   const updateEditor = useCallback((next: EditorState | null) => {
     setEditor(next);
@@ -263,8 +268,6 @@ export const TaxPolicySettingsPanel = () => {
         ratePercentText: editor.ratePercentText,
         dutyRatePercentText: editor.dutyPercentText,
         isActive: editor.isActive,
-        isDefault: editor.isDefault,
-        isExempt: editor.isExempt,
       },
       'سیاست مالیات ذخیره شد',
     );
@@ -279,24 +282,74 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onSetDefault = async (row: TaxPolicyRow) => {
+    setConfirmingDeleteId(null);
+    setRowIssue(null);
+
     const failure = await runAction(
       { action: 'set-default', recordId: row.recordId },
       'سیاست پیش‌فرض تغییر کرد',
     );
 
     if (failure !== null) {
-      setError(failure);
+      setRowIssue({ recordId: row.recordId, message: failure });
     }
   };
 
   const onDeactivate = async (row: TaxPolicyRow) => {
+    setConfirmingDeleteId(null);
+    setRowIssue(null);
+
     const failure = await runAction(
       { action: 'deactivate', recordId: row.recordId },
       'سیاست مالیات غیرفعال شد',
     );
 
     if (failure !== null) {
-      setError(failure);
+      setRowIssue({ recordId: row.recordId, message: failure });
+    }
+  };
+
+  const onDelete = async (row: TaxPolicyRow) => {
+    setRowIssue(null);
+
+    if (confirmingDeleteId !== row.recordId) {
+      // First press asks; the second press is the confirmed deletion.
+      setConfirmingDeleteId(row.recordId);
+      return;
+    }
+
+    const failure = await runAction(
+      { action: 'delete', recordId: row.recordId },
+      'سیاست مالیات حذف شد',
+    );
+
+    setConfirmingDeleteId(null);
+
+    if (failure !== null) {
+      setRowIssue({ recordId: row.recordId, message: failure });
+    }
+  };
+
+  const onActivate = async (row: TaxPolicyRow) => {
+    setConfirmingDeleteId(null);
+    setRowIssue(null);
+
+    // Reactivation is the same write as an edit, with the flag turned back on; the
+    // server still checks that the catalog keeps one active default.
+    const failure = await runAction(
+      {
+        action: 'save',
+        recordId: row.recordId,
+        name: row.name,
+        ratePercentText: row.ratePercent,
+        dutyRatePercentText: row.dutyRatePercent,
+        isActive: true,
+      },
+      'سیاست مالیات فعال شد',
+    );
+
+    if (failure !== null) {
+      setRowIssue({ recordId: row.recordId, message: failure });
     }
   };
 
@@ -309,6 +362,17 @@ export const TaxPolicySettingsPanel = () => {
       setError(failure);
     }
   };
+
+  // An untouched empty field is not an error yet; the operator has not typed anything
+  // to be wrong about, and a red line under a blank field reads as a page failure.
+  const rateDisplayIssue =
+    editor === null || editor.ratePercentText.trim() === ''
+      ? null
+      : rateFieldIssue(editor.ratePercentText);
+  const dutyDisplayIssue =
+    editor === null || editor.dutyPercentText.trim() === ''
+      ? null
+      : dutyFieldIssue(editor.dutyPercentText);
 
   const editorStyle: CSSProperties = editor === null ? styles.hidden : styles.editor;
 
@@ -351,17 +415,14 @@ export const TaxPolicySettingsPanel = () => {
                     {row.isDefault ? (
                       <span style={styles.badgeDefault}>پیش‌فرض</span>
                     ) : null}
-                    {row.isExempt ? (
-                      <span style={styles.badge}>معاف</span>
-                    ) : null}
                     {row.isActive ? null : (
                       <span style={styles.badgeOff}>غیرفعال</span>
                     )}
-                    {row.quotationCount > 0 ? (
-                      <span style={styles.badge}>
-                        در {row.quotationCount} سند
-                      </span>
-                    ) : null}
+                    <span style={styles.badge}>
+                      {row.quotationCount > 0
+                        ? `در ${toPersianDigits(String(row.quotationCount))} سند`
+                        : 'بدون استفاده'}
+                    </span>
                   </div>
                 </div>
                 <div style={styles.rowActions}>
@@ -373,17 +434,17 @@ export const TaxPolicySettingsPanel = () => {
                   >
                     ویرایش
                   </button>
-                  {row.isDefault || !row.isActive ? null : (
+                  {row.isActive && !row.isDefault ? (
                     <button
                       type="button"
                       style={styles.secondaryButton}
                       disabled={busy}
                       onClick={() => void onSetDefault(row)}
                     >
-                      پیش‌فرض
+                      انتخاب به‌عنوان پیش‌فرض
                     </button>
-                  )}
-                  {row.isActive ? (
+                  ) : null}
+                  {row.isActive && !row.isDefault ? (
                     <button
                       type="button"
                       style={styles.linkButton}
@@ -392,17 +453,60 @@ export const TaxPolicySettingsPanel = () => {
                     >
                       غیرفعال
                     </button>
-                  ) : (
+                  ) : null}
+                  {row.isActive ? null : (
                     <button
                       type="button"
-                      style={styles.linkButton}
+                      style={styles.secondaryButton}
                       disabled={busy}
-                      onClick={() => updateEditor(editorFor(row))}
+                      onClick={() => void onActivate(row)}
                     >
                       فعال‌سازی
                     </button>
                   )}
+                  {row.isDefault || row.quotationCount > 0 ? null : confirmingDeleteId ===
+                    row.recordId ? (
+                    <>
+                      <button
+                        type="button"
+                        style={styles.dangerButton}
+                        disabled={busy}
+                        onClick={() => void onDelete(row)}
+                      >
+                        تأیید حذف
+                      </button>
+                      <button
+                        type="button"
+                        style={styles.secondaryButton}
+                        disabled={busy}
+                        onClick={() => setConfirmingDeleteId(null)}
+                      >
+                        انصراف
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      style={styles.linkButtonNeutral}
+                      disabled={busy}
+                      onClick={() => void onDelete(row)}
+                    >
+                      حذف
+                    </button>
+                  )}
                 </div>
+                <p style={styles.rowExplanation}>
+                  {row.isDefault
+                    ? 'پیش‌فرض فعلی است؛ برای حذف یا غیرفعال‌سازی، ابتدا پیش‌فرض دیگری انتخاب کنید.'
+                    : row.quotationCount > 0
+                      ? `این سیاست در ${toPersianDigits(String(row.quotationCount))} سند استفاده شده است؛ حذف نمی‌شود و فقط غیرفعال می‌شود.`
+                      : 'این سیاست در هیچ سندی استفاده نشده؛ حذف آن مجاز است.'}
+                </p>
+                {rowIssue?.recordId === row.recordId ? (
+                  <p role="alert" style={styles.rowError}>
+                    {rowIssue.message}
+                  </p>
+                ) : null}
               </div>
             ))
           )}
@@ -464,7 +568,7 @@ export const TaxPolicySettingsPanel = () => {
                 style={styles.input}
                 value={editor.ratePercentText}
                 inputMode="decimal"
-                aria-invalid={rateFieldIssue(editor.ratePercentText) !== null}
+                aria-invalid={rateDisplayIssue !== null}
                 placeholder="۶ یا ۶٫۵ — صفر یعنی بدون مالیات"
                 onChange={(event) =>
                   updateEditor({
@@ -473,9 +577,9 @@ export const TaxPolicySettingsPanel = () => {
                   })
                 }
               />
-              {rateFieldIssue(editor.ratePercentText) === null ? null : (
+              {rateDisplayIssue === null ? null : (
                 <span role="alert" style={styles.error}>
-                  {rateFieldIssue(editor.ratePercentText)}
+                  {rateDisplayIssue}
                 </span>
               )}
             </label>
@@ -485,7 +589,7 @@ export const TaxPolicySettingsPanel = () => {
                 style={styles.input}
                 value={editor.dutyPercentText}
                 inputMode="decimal"
-                aria-invalid={dutyFieldIssue(editor.dutyPercentText) !== null}
+                aria-invalid={dutyDisplayIssue !== null}
                 placeholder="۴ — خالی یا صفر یعنی بدون عوارض"
                 onChange={(event) =>
                   updateEditor({
@@ -494,9 +598,9 @@ export const TaxPolicySettingsPanel = () => {
                   })
                 }
               />
-              {dutyFieldIssue(editor.dutyPercentText) === null ? null : (
+              {dutyDisplayIssue === null ? null : (
                 <span role="alert" style={styles.error}>
-                  {dutyFieldIssue(editor.dutyPercentText)}
+                  {dutyDisplayIssue}
                 </span>
               )}
             </label>
@@ -511,36 +615,11 @@ export const TaxPolicySettingsPanel = () => {
                 {combinedIssue(editor.ratePercentText, editor.dutyPercentText)}
               </span>
             )}
-            <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={editor.isActive}
-                onChange={(event) =>
-                  updateEditor({ ...editor, isActive: event.target.checked })
-                }
-              />
-              فعال (در پیش‌فاکتور جدید قابل انتخاب)
-            </label>
-            <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={editor.isExempt}
-                onChange={(event) =>
-                  updateEditor({ ...editor, isExempt: event.target.checked })
-                }
-              />
-              معاف از مالیات (فقط با نرخ صفر)
-            </label>
-            <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={editor.isDefault}
-                onChange={(event) =>
-                  updateEditor({ ...editor, isDefault: event.target.checked })
-                }
-              />
-              سیاست پیش‌فرض
-            </label>
+            <p style={styles.meta}>
+              هر دو نرخ صفر یعنی سیاست معاف؛ معافیت تیک جداگانه ندارد و از همین دو
+              نرخ مشتق می‌شود. سیاست پیش‌فرض از دکمهٔ همان ردیف در فهرست انتخاب
+              می‌شود.
+            </p>
             {editorError === null ? null : (
               <p role="alert" style={styles.error}>
                 {editorError}
@@ -708,5 +787,36 @@ const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
     padding: 0,
     fontSize: 12,
+  },
+  linkButtonNeutral: {
+    background: 'transparent',
+    border: 0,
+    color: '#475569',
+    cursor: 'pointer',
+    padding: 0,
+    fontSize: 12,
+  },
+  dangerButton: {
+    background: '#b42318',
+    color: '#fff',
+    border: 0,
+    borderRadius: 8,
+    padding: '6px 10px',
+    cursor: 'pointer',
+    fontSize: 12,
+  },
+  rowExplanation: {
+    width: '100%',
+    margin: 0,
+    fontSize: 11,
+    color: '#64748b',
+    lineHeight: 1.7,
+  },
+  rowError: {
+    width: '100%',
+    margin: 0,
+    fontSize: 12,
+    color: '#b42318',
+    lineHeight: 1.7,
   },
 };

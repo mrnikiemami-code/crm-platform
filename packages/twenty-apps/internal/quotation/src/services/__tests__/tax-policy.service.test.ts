@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   countQuotationsPerTaxPolicy,
+  deactivateTaxPolicy,
+  deleteTaxPolicy,
   loadTaxPolicies,
   saveTaxPolicy,
   setDefaultTaxPolicy,
@@ -132,7 +134,6 @@ describe('tax-policy.service mutations', () => {
         ratePercentText: '۹',
         isActive: true,
         isDefault: true,
-        isExempt: false,
       },
       { authorizationHeader: 'Bearer caller-token' },
     );
@@ -155,7 +156,6 @@ describe('tax-policy.service mutations', () => {
         ratePercentText: '۹',
         isActive: true,
         isDefault: true,
-        isExempt: false,
       },
       { authorizationHeader: null },
     );
@@ -186,6 +186,54 @@ describe('tax-policy.service mutations', () => {
     });
   });
 
+  it('asks the server to delete a policy and returns the catalog it answered with', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(
+      jsonResponse(200, { success: true, policies: [], defaultCode: null }),
+    );
+
+    const outcome = await deleteTaxPolicy('tp-2', {
+      authorizationHeader: 'Bearer caller-token',
+    });
+
+    expect(outcome.ok).toBe(true);
+    expect(
+      JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body)),
+    ).toMatchObject({ action: 'tax-policy-delete', recordId: 'tp-2' });
+  });
+
+  it('maps a used-policy refusal from the delete to a domain refusal', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      jsonResponse(200, {
+        success: false,
+        code: 'TAX_POLICY_IN_USE',
+        message: 'این سیاست در ۸ سند استفاده شده است',
+      }),
+    );
+
+    const outcome = await deleteTaxPolicy('tp-2', {
+      authorizationHeader: 'Bearer caller-token',
+    });
+
+    expect(outcome).toMatchObject({
+      ok: false,
+      refusal: { code: 'TAX_POLICY_IN_USE' },
+    });
+  });
+
+  it('sends deactivation to its own server action', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(
+      jsonResponse(200, { success: true, policies: [], defaultCode: null }),
+    );
+
+    await deactivateTaxPolicy('tp-2', {
+      authorizationHeader: 'Bearer caller-token',
+    });
+
+    expect(
+      JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body)),
+    ).toMatchObject({ action: 'tax-policy-deactivate', recordId: 'tp-2' });
+  });
+
   it('refuses when the settings route has no credentials at all', async () => {
     delete process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN;
     delete process.env.TWENTY_APP_ACCESS_TOKEN;
@@ -197,7 +245,6 @@ describe('tax-policy.service mutations', () => {
         ratePercentText: '9',
         isActive: true,
         isDefault: false,
-        isExempt: false,
       },
       { authorizationHeader: null },
     );

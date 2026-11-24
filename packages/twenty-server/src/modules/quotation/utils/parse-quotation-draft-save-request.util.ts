@@ -13,6 +13,7 @@ import {
   type QuotationDraftSaveLine,
   type QuotationDraftSaveRequest,
 } from 'src/modules/quotation/types/quotation-draft-save.type';
+import { isExactAmountText } from 'src/modules/quotation/utils/quotation-draft-totals.util';
 
 export type QuotationDraftSaveParseOutcome =
   | { ok: true; value: QuotationDraftSaveRequest }
