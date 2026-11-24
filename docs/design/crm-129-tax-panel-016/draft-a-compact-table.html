@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="fa" dir="rtl"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تنظیمات مالیات و عوارض - Compact Data Table</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background-color: #fcfcfc;
+    }
+    /* Minimalist scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-[#fcfcfc] text-[#333333] flex justify-center p-6 md:p-12" data-sd-id="1">
+    <div class="w-full max-w-5xl bg-white border border-[#ebebeb] rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.04),0_0_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col" data-sd-id="2">
+      
+      <!-- Header -->
+      <header class="px-6 py-5 border-b border-[#ebebeb] flex items-center justify-between bg-white" data-sd-id="3">
+        <div data-sd-id="4">
+          <h2 class="text-[20px] font-semibold text-[#333333] m-0" data-sd-id="5">مالیات و عوارض</h2>
+          <p class="text-[13px] text-[#666666] mt-1 max-w-2xl leading-relaxed" data-sd-id="6">
+            نرخ مالیات از اینجا تعیین می‌شود، نه از کد. سیاست پیش‌فرض شروع پیش‌فاکتور جدید است و اسناد صادرشده نرخ زمان صدور خود را نگه می‌دارند.
+          </p>
+        </div>
+        <button class="flex items-center gap-2 bg-[#333333] hover:bg-[#1a1a1a] text-white px-4 py-2 rounded-md text-[13px] font-medium transition-colors" data-sd-id="7">
+          <iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon>
+          افزودن سیاست
+        </button>
+      </header>
+
+      <!-- Table Container -->
+      <div class="flex-1 overflow-auto" data-sd-id="8">
+        <table class="w-full text-left border-collapse" data-sd-id="9">
+          <thead class="bg-[#fcfcfc] sticky top-0 z-10 border-b border-[#ebebeb]" data-sd-id="10">
+            <tr data-sd-id="11">
+              <th class="py-3 px-6 text-right text-[12px] font-medium text-[#666666] w-[35%]" data-sd-id="12">نام سیاست</th>
+              <th class="py-3 px-4 text-right text-[12px] font-medium text-[#666666] w-[20%]" data-sd-id="13">نرخ کل</th>
+              <th class="py-3 px-4 text-right text-[12px] font-medium text-[#666666] w-[25%]" data-sd-id="14">جزئیات (مالیات + عوارض)</th>
+              <th class="py-3 px-4 text-right text-[12px] font-medium text-[#666666] w-[10%]" data-sd-id="15">وضعیت</th>
+              <th class="py-3 px-6 text-left text-[12px] font-medium text-[#666666] w-[10%]" data-sd-id="16">عملیات</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#f1f1f1]" data-sd-id="17">
+            
+            <!-- Active Row 1 (Default) -->
+            <tr class="hover:bg-[#f1f1f1] transition-colors group" data-sd-id="18">
+              <td class="py-3 px-6 text-right align-middle" data-sd-id="19">
+                <div class="flex items-center gap-3" data-sd-id="20">
+                  <span class="font-medium text-[13px] text-[#333333]" data-sd-id="21">مالیات بر ارزش افزوده ۱۴۰۲</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#dcfce7] text-[#14532d] border border-[#bbf7d0]" data-sd-id="22">پیش‌فرض</span>
+                </div>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="23">
+                <span class="text-[14px] font-bold text-[#4c6ef5]" data-sd-id="24">۹٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="25">
+                <span class="text-[12px] text-[#666666]" data-sd-id="26">۶٪ + ۳٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="27">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-[#f1f1f1] text-[#666666]" data-sd-id="28">در ۱۲۴ سند</span>
+              </td>
+              <td class="py-3 px-6 text-left align-middle" data-sd-id="29">
+                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity" data-sd-id="30">
+                  <button class="p-1.5 text-[#666666] hover:text-[#4c6ef5] hover:bg-[#0047f112] rounded transition-colors" title="ویرایش" data-sd-id="31">
+                    <iconify-icon icon="lucide:pencil" class="text-[16px]"></iconify-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Active Row 2 -->
+            <tr class="hover:bg-[#f1f1f1] transition-colors group" data-sd-id="32">
+              <td class="py-3 px-6 text-right align-middle" data-sd-id="33">
+                <span class="font-medium text-[13px] text-[#333333]" data-sd-id="34">مالیات ویژه مناطق آزاد</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="35">
+                <span class="text-[14px] font-bold text-[#4c6ef5]" data-sd-id="36">۰٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="37">
+                <span class="text-[12px] text-[#666666]" data-sd-id="38">۰٪ + ۰٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="39">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-[#f1f1f1] text-[#666666]" data-sd-id="40">در ۱۲ سند</span>
+              </td>
+              <td class="py-3 px-6 text-left align-middle" data-sd-id="41">
+                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity" data-sd-id="42">
+                  <button class="p-1.5 text-[#666666] hover:text-[#4c6ef5] hover:bg-[#0047f112] rounded transition-colors" title="ویرایش" data-sd-id="43">
+                    <iconify-icon icon="lucide:pencil" class="text-[16px]"></iconify-icon>
+                  </button>
+                  <button class="p-1.5 text-[#666666] hover:text-[#4c6ef5] hover:bg-[#0047f112] rounded transition-colors" title="انتخاب به‌عنوان پیش‌فرض" data-sd-id="44">
+                    <iconify-icon icon="lucide:check-circle" class="text-[16px]"></iconify-icon>
+                  </button>
+                  <button class="p-1.5 text-[#666666] hover:text-[#d3453f] hover:bg-[#f3000d14] rounded transition-colors" title="غیرفعال‌سازی" data-sd-id="45">
+                    <iconify-icon icon="lucide:power-off" class="text-[16px]"></iconify-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Inactive Row -->
+            <tr class="hover:bg-[#f1f1f1] transition-colors group opacity-60 bg-[#fcfcfc]" data-sd-id="46">
+              <td class="py-3 px-6 text-right align-middle" data-sd-id="47">
+                <div class="flex items-center gap-3" data-sd-id="48">
+                  <span class="font-medium text-[13px] text-[#666666] line-through" data-sd-id="49">مالیات بر ارزش افزوده ۱۴۰۱</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#fee2e2] text-[#7f1d1d] border border-[#fecaca]" data-sd-id="50">غیرفعال</span>
+                </div>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="51">
+                <span class="text-[14px] font-bold text-[#666666]" data-sd-id="52">۹٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="53">
+                <span class="text-[12px] text-[#999999]" data-sd-id="54">۶٪ + ۳٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="55">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-[#ebebeb] text-[#999999]" data-sd-id="56">در ۸۵ سند</span>
+              </td>
+              <td class="py-3 px-6 text-left align-middle" data-sd-id="57">
+                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity" data-sd-id="58">
+                   <button class="p-1.5 text-[#666666] hover:text-[#4ca298] hover:bg-[#00a43319] rounded transition-colors" title="فعال‌سازی" data-sd-id="59">
+                    <iconify-icon icon="lucide:power" class="text-[16px]"></iconify-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Unused Row -->
+             <tr class="hover:bg-[#f1f1f1] transition-colors group" data-sd-id="60">
+              <td class="py-3 px-6 text-right align-middle" data-sd-id="61">
+                <span class="font-medium text-[13px] text-[#333333]" data-sd-id="62">تست مالیات جدید</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="63">
+                <span class="text-[14px] font-bold text-[#4c6ef5]" data-sd-id="64">۱۰٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="65">
+                <span class="text-[12px] text-[#666666]" data-sd-id="66">۷٪ + ۳٪</span>
+              </td>
+              <td class="py-3 px-4 text-right align-middle" data-sd-id="67">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-[#f1f1f1] text-[#999999]" data-sd-id="68">بدون استفاده</span>
+              </td>
+              <td class="py-3 px-6 text-left align-middle" data-sd-id="69">
+                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity" data-sd-id="70">
+                  <button class="p-1.5 text-[#666666] hover:text-[#4c6ef5] hover:bg-[#0047f112] rounded transition-colors" title="ویرایش" data-sd-id="71">
+                    <iconify-icon icon="lucide:pencil" class="text-[16px]"></iconify-icon>
+                  </button>
+                   <button class="p-1.5 text-[#666666] hover:text-[#4c6ef5] hover:bg-[#0047f112] rounded transition-colors" title="انتخاب به‌عنوان پیش‌فرض" data-sd-id="72">
+                    <iconify-icon icon="lucide:check-circle" class="text-[16px]"></iconify-icon>
+                  </button>
+                  <button class="p-1.5 text-[#666666] hover:text-[#d3453f] hover:bg-[#f3000d14] rounded transition-colors" title="حذف" data-sd-id="73">
+                    <iconify-icon icon="lucide:trash-2" class="text-[16px]"></iconify-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Inline Editor Mockup (Hidden by default, shown for demonstration) -->
+      <div class="border-t border-[#ebebeb] bg-[#fcfcfc] p-6 hidden" data-sd-id="74">
+        <h3 class="text-[14px] font-semibold text-[#333333] mb-4" data-sd-id="75">ویرایش سیاست مالیات</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" data-sd-id="76">
+          <div data-sd-id="77">
+             <label class="block text-[12px] text-[#666666] mb-1.5" data-sd-id="78">نام سیاست</label>
+             <input type="text" value="تست مالیات جدید" class="w-full h-8 px-3 rounded text-[13px] border border-[#d6d6d6] bg-white focus:outline-none focus:border-[#4c6ef5] focus:ring-1 focus:ring-[#4c6ef5]" data-sd-id="79">
+          </div>
+          <div data-sd-id="80">
+             <label class="block text-[12px] text-[#666666] mb-1.5" data-sd-id="81">درصد مالیات</label>
+             <input type="text" value="۷" dir="ltr" class="w-full h-8 px-3 rounded text-[13px] border border-[#d6d6d6] bg-white focus:outline-none focus:border-[#4c6ef5] focus:ring-1 focus:ring-[#4c6ef5] text-right" data-sd-id="82">
+          </div>
+          <div data-sd-id="83">
+             <label class="block text-[12px] text-[#666666] mb-1.5" data-sd-id="84">درصد عوارض</label>
+             <input type="text" value="۳" dir="ltr" class="w-full h-8 px-3 rounded text-[13px] border border-[#d6d6d6] bg-white focus:outline-none focus:border-[#4c6ef5] focus:ring-1 focus:ring-[#4c6ef5] text-right" data-sd-id="85">
+          </div>
+        </div>
+        <div class="flex items-center justify-between bg-[#f1f1f1] p-3 rounded-md mb-4 border border-[#ebebeb]" data-sd-id="86">
+          <span class="text-[12px] text-[#666666]" data-sd-id="87">جمع (مالیات + عوارض)</span>
+          <span class="text-[14px] font-bold text-[#4c6ef5]" data-sd-id="88">۱۰٪</span>
+        </div>
+        <div class="flex justify-end gap-2" data-sd-id="89">
+          <button class="px-3 py-1.5 rounded text-[12px] border border-[#d6d6d6] bg-white text-[#333333] hover:bg-[#f1f1f1] transition-colors" data-sd-id="90">انصراف</button>
+          <button class="px-3 py-1.5 rounded text-[12px] border border-transparent bg-[#333333] text-white hover:bg-[#1a1a1a] transition-colors" data-sd-id="91">ذخیره سیاست</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body></html>

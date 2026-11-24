@@ -1,0 +1,204 @@
+<!DOCTYPE html><html lang="fa" dir="rtl"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مالیات و عوارض - تنظیمات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+    :root {
+      --font-family: 'Vazirmatn', sans-serif;
+      --bg-primary: #ffffff;
+      --bg-secondary: #fcfcfc;
+      --bg-tertiary: #f1f1f1;
+      --border-strong: #d6d6d6;
+      --border-medium: #ebebeb;
+      --border-light: #f1f1f1;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --accent: #4c6ef5;
+      --accent-text: #2b3a8f;
+    }
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-[#fcfcfc] p-4 md:p-8 flex justify-center" data-sd-id="1">
+    <div class="w-full max-w-5xl flex flex-col gap-6" data-sd-id="2">
+      
+      <!-- Header -->
+      <header class="flex flex-col gap-2" data-sd-id="3">
+        <h2 class="text-xl font-bold text-[#333333] m-0" data-sd-id="4">مالیات و عوارض</h2>
+        <p class="text-xs text-[#666666] leading-relaxed max-w-3xl" data-sd-id="5">
+          نرخ مالیات از اینجا تعیین می‌شود، نه از کد. سیاست پیش‌فرض شروع پیش‌فاکتور جدید است و اسناد صادرشده نرخ زمان صدور خود را نگه می‌دارند.
+        </p>
+      </header>
+
+      <!-- Add Button Area -->
+      <div class="flex justify-end" data-sd-id="6">
+        <button class="bg-white border border-[#d6d6d6] text-[#333333] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#f1f1f1] transition-colors flex items-center gap-2 shadow-sm" data-sd-id="7">
+          <iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon>
+          افزودن سیاست مالیات
+        </button>
+      </div>
+
+      <!-- Grid List -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-4" data-sd-id="8">
+        
+        <!-- Card 1: Default & Active -->
+        <div class="bg-white border border-[#d6d6d6] rounded-2xl p-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow" data-sd-id="9">
+          <div class="flex justify-between items-start" data-sd-id="10">
+            <div class="flex flex-col gap-1" data-sd-id="11">
+              <div class="flex items-center gap-2" data-sd-id="12">
+                <strong class="text-base text-[#333333]">ارزش افزوده ۱۰٪</strong>
+                <span class="bg-[#dcfce7] text-[#14532d] px-2 py-0.5 rounded text-[11px] font-medium" data-sd-id="13">پیش‌فرض</span>
+              </div>
+              <span class="text-[11px] text-[#666666] bg-[#f1f1f1] px-2 py-0.5 rounded self-start" data-sd-id="14">در ۴۲ سند</span>
+            </div>
+            <div class="flex flex-col items-end" data-sd-id="15">
+              <span class="text-lg font-bold text-[#4c6ef5]" data-sd-id="16">۱۰٪</span>
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center bg-[#fcfcfc] border border-[#ebebeb] rounded-lg p-3" data-sd-id="17">
+            <span class="text-xs text-[#666666]" data-sd-id="18">مالیات ۶٪</span>
+            <iconify-icon icon="lucide:plus" class="text-[#999999] text-xs"></iconify-icon>
+            <span class="text-xs text-[#666666]" data-sd-id="19">عوارض ۴٪</span>
+          </div>
+
+          <p class="text-[11px] text-[#666666] leading-relaxed mt-1 flex-1" data-sd-id="20">
+            پیش‌فرض فعلی است؛ برای حذف یا غیرفعال‌سازی، ابتدا پیش‌فرض دیگری انتخاب کنید.
+          </p>
+
+          <div class="flex flex-wrap gap-2 mt-2 pt-4 border-t border-[#ebebeb]" data-sd-id="21">
+            <button class="bg-[#f1f1f1] text-[#333333] px-3 py-1.5 rounded-md text-xs font-medium hover:bg-[#e2e2e2] transition-colors flex-1 text-center" data-sd-id="22">
+              ویرایش
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 2: Active (Used) -->
+        <div class="bg-white border border-[#d6d6d6] rounded-2xl p-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow" data-sd-id="23">
+          <div class="flex justify-between items-start" data-sd-id="24">
+            <div class="flex flex-col gap-1" data-sd-id="25">
+              <div class="flex items-center gap-2" data-sd-id="26">
+                <strong class="text-base text-[#333333]">ارزش افزوده ۹٪ (قدیم)</strong>
+              </div>
+              <span class="text-[11px] text-[#666666] bg-[#f1f1f1] px-2 py-0.5 rounded self-start" data-sd-id="27">در ۱۲۸ سند</span>
+            </div>
+            <div class="flex flex-col items-end" data-sd-id="28">
+              <span class="text-lg font-bold text-[#4c6ef5]" data-sd-id="29">۹٪</span>
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center bg-[#fcfcfc] border border-[#ebebeb] rounded-lg p-3" data-sd-id="30">
+            <span class="text-xs text-[#666666]" data-sd-id="31">مالیات ۶٪</span>
+            <iconify-icon icon="lucide:plus" class="text-[#999999] text-xs"></iconify-icon>
+            <span class="text-xs text-[#666666]" data-sd-id="32">عوارض ۳٪</span>
+          </div>
+
+          <p class="text-[11px] text-[#666666] leading-relaxed mt-1 flex-1" data-sd-id="33">
+            این سیاست در ۱۲۸ سند استفاده شده است؛ حذف نمی‌شود و فقط غیرفعال می‌شود.
+          </p>
+
+          <div class="flex flex-wrap gap-2 mt-2 pt-4 border-t border-[#ebebeb]" data-sd-id="34">
+            <button class="bg-[#f1f1f1] text-[#333333] px-3 py-1.5 rounded-md text-xs font-medium hover:bg-[#e2e2e2] transition-colors flex-1 text-center" data-sd-id="35">
+              ویرایش
+            </button>
+            <button class="bg-white border border-[#d6d6d6] text-[#333333] px-3 py-1.5 rounded-md text-xs font-medium hover:bg-[#f1f1f1] transition-colors flex-1 text-center" data-sd-id="36">
+              انتخاب پیش‌فرض
+            </button>
+            <button class="text-[#d3453f] px-3 py-1.5 rounded-md text-xs font-medium hover:bg-[#f3000d14] transition-colors flex-1 text-center" data-sd-id="37">
+              غیرفعال
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 3: Inactive -->
+        <div class="bg-[#fcfcfc] border border-dashed border-[#d6d6d6] rounded-2xl p-5 flex flex-col gap-4 opacity-80" data-sd-id="38">
+          <div class="flex justify-between items-start" data-sd-id="39">
+            <div class="flex flex-col gap-1" data-sd-id="40">
+              <div class="flex items-center gap-2" data-sd-id="41">
+                <strong class="text-base text-[#666666]">معاف از مالیات</strong>
+                <span class="bg-[#fee2e2] text-[#7f1d1d] px-2 py-0.5 rounded text-[11px] font-medium" data-sd-id="42">غیرفعال</span>
+              </div>
+              <span class="text-[11px] text-[#666666] bg-[#ebebeb] px-2 py-0.5 rounded self-start" data-sd-id="43">بدون استفاده</span>
+            </div>
+            <div class="flex flex-col items-end" data-sd-id="44">
+              <span class="text-lg font-bold text-[#666666]" data-sd-id="45">۰٪</span>
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center bg-[#f1f1f1] border border-[#ebebeb] rounded-lg p-3" data-sd-id="46">
+            <span class="text-xs text-[#999999]" data-sd-id="47">مالیات ۰٪</span>
+            <iconify-icon icon="lucide:plus" class="text-[#999999] text-xs"></iconify-icon>
+            <span class="text-xs text-[#999999]" data-sd-id="48">عوارض ۰٪</span>
+          </div>
+
+          <p class="text-[11px] text-[#999999] leading-relaxed mt-1 flex-1" data-sd-id="49">
+            این سیاست در هیچ سندی استفاده نشده؛ حذف آن مجاز است.
+          </p>
+
+          <div class="flex flex-wrap gap-2 mt-2 pt-4 border-t border-[#ebebeb]" data-sd-id="50">
+            <button class="bg-white border border-[#d6d6d6] text-[#333333] px-3 py-1.5 rounded-md text-xs font-medium hover:bg-[#f1f1f1] transition-colors flex-1 text-center" data-sd-id="51">
+              ویرایش
+            </button>
+            <button class="bg-white border border-[#d6d6d6] text-[#333333] px-3 py-1.5 rounded-md text-xs font-medium hover:bg-[#f1f1f1] transition-colors flex-1 text-center" data-sd-id="52">
+              فعال‌سازی
+            </button>
+            <button class="text-[#666666] hover:text-[#d3453f] px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex-1 text-center" data-sd-id="53">
+              حذف
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Editor (Hidden state simulated below) -->
+      <section class="bg-white border border-[#d6d6d6] rounded-2xl p-6 shadow-sm mt-4 flex flex-col gap-5" data-sd-id="54">
+        <h3 class="m-0 text-base font-bold text-[#333333]" data-sd-id="55">ویرایش سیاست مالیات</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5" data-sd-id="56">
+          <label class="flex flex-col gap-1.5 text-xs text-[#333333] md:col-span-2" data-sd-id="57">
+            نام سیاست
+            <input type="text" value="ارزش افزوده ۱۰٪" class="w-full px-3 py-2 rounded-md border border-[#d6d6d6] text-sm bg-white focus:outline-none focus:border-[#4c6ef5] focus:ring-1 focus:ring-[#4c6ef5] transition-all" dir="rtl" data-sd-id="58">
+          </label>
+          
+          <label class="flex flex-col gap-1.5 text-xs text-[#333333]" data-sd-id="59">
+            درصد مالیات
+            <input type="text" value="۶" class="w-full px-3 py-2 rounded-md border border-[#d6d6d6] text-sm bg-white focus:outline-none focus:border-[#4c6ef5] focus:ring-1 focus:ring-[#4c6ef5] transition-all" dir="ltr" text-right="" data-sd-id="60">
+          </label>
+          
+          <label class="flex flex-col gap-1.5 text-xs text-[#333333]" data-sd-id="61">
+            درصد عوارض
+            <input type="text" value="۴" class="w-full px-3 py-2 rounded-md border border-[#d6d6d6] text-sm bg-white focus:outline-none focus:border-[#4c6ef5] focus:ring-1 focus:ring-[#4c6ef5] transition-all" dir="ltr" text-right="" data-sd-id="62">
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between p-3 border border-dashed border-[#d6d6d6] rounded-lg bg-[#fcfcfc]" data-sd-id="63">
+          <span class="text-xs text-[#666666]" data-sd-id="64">جمع (مالیات + عوارض)</span>
+          <output class="text-base font-bold text-[#4c6ef5]">۱۰٪</output>
+        </div>
+
+        <p class="m-0 text-[11px] text-[#666666] leading-relaxed" data-sd-id="65">
+          هر دو نرخ صفر یعنی سیاست معاف؛ معافیت تیک جداگانه ندارد و از همین دو نرخ مشتق می‌شود. سیاست پیش‌فرض از دکمهٔ همان ردیف در فهرست انتخاب می‌شود.
+        </p>
+
+        <div class="flex justify-end gap-2 pt-2" data-sd-id="66">
+          <button class="bg-[#f1f1f1] text-[#333333] border border-[#d6d6d6] rounded-md px-4 py-2 text-xs font-medium hover:bg-[#ebebeb] transition-colors" data-sd-id="67">
+            انصراف
+          </button>
+          <button class="bg-[#333333] text-white rounded-md px-4 py-2 text-xs font-medium hover:bg-[#1a1a1a] transition-colors" data-sd-id="68">
+            ذخیره سیاست
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</body></html>
