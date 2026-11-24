@@ -1,0 +1,1685 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پیش‌نمایش بازنگری ۲ — مالیات و عوارض (PILOT-017)</title>
+<style>
+/* =========================================================================
+   PILOT-017 / REVISION 02 — «مالیات و عوارض»
+   Same tokens as revision 01 (Twenty --t-*), three things rebuilt:
+     1. the action cell  -> one primary + one overflow menu (option B: one cluster)
+     2. type and ink     -> reading floor raised to 12px, weights re-ranked
+     3. hierarchy        -> one focal number per row, one header block
+   ========================================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --t-color-gray1:  #ffffff;
+  --t-color-gray2:  #fcfcfc;
+  --t-color-gray3:  #f9f9f9;
+  --t-color-gray4:  #f1f1f1;
+  --t-color-gray5:  #ebebeb;
+  --t-color-gray6:  #d6d6d6;
+  --t-color-gray7:  #cccccc;
+  --t-color-gray8:  #b3b3b3;
+  --t-color-gray9:  #999999;
+  --t-color-gray10: #838383;
+  --t-color-gray11: #666666;
+  --t-color-gray12: #333333;
+  --t-color-blue3:  #edf2fe;
+  --t-color-blue9:  #3e63dd;
+  --t-color-blue11: #3a5bc7;
+  --t-color-red3:   #feebec;
+  --t-color-red11:  #ce2c31;
+  --t-color-red12:  #641723;
+  --t-color-amber3: #fff7c2;
+  --t-color-amber11:#ad6200;
+  --t-color-amber12:#4f3422;
+
+  --accent-fill: var(--t-color-blue9);
+  --accent-ink:  var(--t-color-blue9);
+  --page: var(--t-color-gray4);
+  --surface: var(--t-color-gray1);
+  --surface-2: var(--t-color-gray2);
+
+  --font-ui: 'Inter', 'Segoe UI', Tahoma, 'Iranian Sans', sans-serif;
+  --r-sm: 4px;
+  --r: 8px;
+  --sp1: 4px;
+  --sp2: 8px;
+  --sp3: 12px;
+  --sp4: 16px;
+  --sp5: 24px;
+  --sp6: 32px;
+  --ctl: 32px;
+  --dur: 160ms;
+
+  --col-tax: 88px;
+  --col-duty: 88px;
+  --col-total: 112px;
+  --col-usage: 150px;
+  --col-actions: 104px;
+  --col-gap: 16px;
+}
+
+[data-theme="dark"] {
+  --t-color-gray1:  #171717;
+  --t-color-gray2:  #1b1b1b;
+  --t-color-gray3:  #191919;
+  --t-color-gray4:  #1d1d1d;
+  --t-color-gray5:  #222222;
+  --t-color-gray6:  #484848;
+  --t-color-gray7:  #4c4c4c;
+  --t-color-gray8:  #666666;
+  --t-color-gray9:  #818181;
+  --t-color-gray10: #7b7b7b;
+  --t-color-gray11: #b3b3b3;
+  --t-color-gray12: #ebebeb;
+  --t-color-blue3:  #182449;
+  --t-color-blue9:  #3e63dd;
+  --t-color-blue11: #9db1ff;
+  --t-color-red3:   #3b1219;
+  --t-color-red11:  #ff8a88;
+  --t-color-red12:  #ffd1d9;
+  --t-color-amber3: #302008;
+  --t-color-amber11:#ffc916;
+  --t-color-amber12:#ffc916;
+  --accent-ink: var(--t-color-blue11);
+}
+
+html, body { margin: 0; }
+
+body {
+  background: var(--page);
+  color: var(--t-color-gray12);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  /* Persian needs a taller default leading than Latin at the same size. */
+  line-height: 1.9;
+}
+
+/* visually hidden, still in the accessibility tree */
+.vh {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- preview chrome ---------- */
+.chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp3);
+  padding: var(--sp2) var(--sp4);
+  background: var(--t-color-gray1);
+  border-bottom: 1px dashed var(--t-color-gray7);
+  font-size: 12px;
+  color: var(--t-color-gray11);
+}
+.chrome-label { margin: 0; }
+.chrome-label b { color: var(--t-color-gray12); font-weight: 600; }
+.chrome-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp2); }
+.chrome-tools button {
+  height: 26px;
+  padding: 0 var(--sp2);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r-sm);
+  background: var(--t-color-gray1);
+  color: var(--t-color-gray11);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chrome-tools button[aria-pressed="true"] {
+  background: var(--t-color-gray12);
+  border-color: var(--t-color-gray12);
+  color: var(--t-color-gray1);
+}
+.chrome-tools button:hover:not([aria-pressed="true"]) { background: var(--t-color-gray4); }
+.chrome-sep { width: 1px; height: 18px; background: var(--t-color-gray6); }
+
+/* ---------- stage ---------- */
+.stage { padding: var(--sp6) var(--sp5); display: flex; justify-content: center; }
+.app {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  container-type: inline-size;
+  container-name: panel;
+  background: var(--surface);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  padding: var(--sp5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp4);
+}
+.app[data-actions="complete"] { --col-actions: 286px; }
+.stage[data-frame="mobile"] .app { max-width: 390px; padding: var(--sp3); }
+
+/* ---------- one header block ---------- */
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp3) var(--sp5);
+  padding-bottom: var(--sp4);
+  border-bottom: 1px solid var(--t-color-gray6);
+}
+.head-text { min-width: 0; flex: 1 1 320px; }
+.panel-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--t-color-gray12);
+}
+.panel-desc {
+  margin: var(--sp1) 0 0;
+  max-width: 62ch;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.95;
+  color: var(--t-color-gray11);
+}
+.head-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp2);
+  margin: var(--sp3) 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t-color-gray11);
+}
+.head-meta b { font-weight: 700; color: var(--t-color-gray12); font-variant-numeric: tabular-nums; }
+.head-meta .dot { color: var(--t-color-gray8); }
+
+/* ---------- control bar ---------- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp2); }
+.search { flex: 1 1 220px; max-width: 320px; }
+.search input {
+  width: 100%;
+  height: var(--ctl);
+  padding: 0 var(--sp3);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--t-color-gray12);
+  font-family: inherit;
+  font-size: 13px;
+}
+.search input::placeholder { color: var(--t-color-gray10); }
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface-2);
+}
+.segmented button {
+  height: 30px;
+  padding: 0 var(--sp3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--t-color-gray11);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--t-color-gray12);
+  box-shadow: 0 0 0 1px var(--t-color-gray6);
+}
+
+/* ---------- table ---------- */
+.table {
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+.policy-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    var(--col-tax)
+    var(--col-duty)
+    var(--col-total)
+    var(--col-usage)
+    var(--col-actions);
+  align-items: center;
+  column-gap: var(--col-gap);
+}
+.thead {
+  padding: var(--sp2) var(--sp4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--t-color-gray6);
+  border-start-start-radius: 7px;
+  border-start-end-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-gray11);
+}
+.thead .th-num { text-align: start; }
+
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows > li:last-child { border-end-start-radius: 7px; border-end-end-radius: 7px; }
+
+.row {
+  position: relative;
+  padding: var(--sp3) var(--sp4);
+  border-top: 1px solid var(--t-color-gray6);
+  transition: background var(--dur) ease;
+}
+.rows > .row:first-child { border-top: 0; }
+.row:hover { background: var(--surface-2); }
+.row.is-default::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent-fill);
+}
+.row.is-editing { background: var(--surface-2); }
+
+.cell { min-width: 0; position: relative; }
+.cell-num { text-align: start; }
+.num { font-variant-numeric: tabular-nums; }
+.lbl {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.name-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp2); }
+.name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.7;
+  color: var(--t-color-gray12);
+  overflow-wrap: anywhere;
+}
+.is-off .name { color: var(--t-color-gray11); }
+
+/* the addends are context; the total is the payload */
+.rate {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--t-color-gray11);
+}
+.total {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--t-color-gray12);
+}
+.is-off .rate, .is-off .total { color: var(--t-color-gray11); }
+
+/* exemption is a word in the total slot, at the total's weight, plus one dot */
+.exempt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--t-color-amber12);
+}
+.exempt::before {
+  content: "";
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--t-color-amber11);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--sp2);
+  border-radius: 999px;
+  /* 12px is the reading floor for this panel — status text must not shrink below it. */
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.pill-default { color: var(--t-color-blue11); background: var(--t-color-blue3); }
+.pill-off { color: var(--t-color-gray11); background: var(--t-color-gray5); }
+
+.usage { display: flex; flex-direction: column; }
+.usage-count { font-size: 13px; font-weight: 500; line-height: 1.7; color: var(--t-color-gray12); }
+.usage-note { font-size: 12px; font-weight: 400; line-height: 1.8; color: var(--t-color-gray11); }
+.name-usage { display: none; margin: var(--sp1) 0 0; font-size: 12px; color: var(--t-color-gray11); }
+
+/* ---------- actions: A = primary + menu, B = one cluster ---------- */
+.cell-actions { display: flex; align-items: center; gap: var(--sp2); justify-content: flex-start; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--ctl);
+  padding: 0 10px;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--t-color-gray11);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur) ease, border-color var(--dur) ease, color var(--dur) ease;
+}
+.btn:hover:not(:disabled) { background: var(--t-color-gray4); color: var(--t-color-gray12); }
+.btn:focus-visible,
+.search input:focus-visible,
+.field input:focus-visible,
+.segmented button:focus-visible,
+.chrome-tools button:focus-visible,
+.menu-item:focus-visible {
+  outline: 2px solid var(--accent-fill);
+  outline-offset: 1px;
+}
+
+/* the only bounded control in the default variant: the row's one action */
+.btn-edit { border-color: var(--t-color-gray7); color: var(--t-color-gray12); font-weight: 600; }
+.btn-icon { width: var(--ctl); padding: 0; font-size: 16px; letter-spacing: 0; }
+.btn-icon[aria-expanded="true"] {
+  background: var(--t-color-gray4);
+  border-color: var(--t-color-gray7);
+  color: var(--t-color-gray12);
+}
+.btn-primary {
+  background: var(--t-color-gray12);
+  border-color: var(--t-color-gray12);
+  color: var(--t-color-gray1);
+  font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) { background: var(--t-color-gray11); border-color: var(--t-color-gray11); }
+.btn-add { padding: 0 var(--sp4); }
+.btn-solid-danger {
+  background: var(--t-color-red11);
+  border-color: var(--t-color-red11);
+  color: var(--t-color-gray1);
+}
+.btn-solid-danger:hover:not(:disabled) { background: var(--t-color-red12); border-color: var(--t-color-red12); }
+[data-theme="dark"] .btn-solid-danger { color: #21060a; }
+.btn:disabled {
+  background: var(--surface-2);
+  border-color: var(--t-color-gray5);
+  color: var(--t-color-gray9);
+  cursor: not-allowed;
+}
+
+/* variant B — four controls as one object, one border instead of four */
+.action-cluster {
+  display: flex;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface);
+  overflow: hidden;
+}
+.action-cluster .btn {
+  border: 0;
+  border-radius: 0;
+  border-inline-start: 1px solid var(--t-color-gray6);
+  background: transparent;
+  color: var(--t-color-gray11);
+  font-weight: 500;
+}
+/* equal slots: the toggle label changes length between rows, and a shifting
+   delete cell is the same defect this redesign exists to remove */
+.action-cluster [data-act="default"] { min-width: 72px; }
+.action-cluster [data-act="edit"] { min-width: 60px; }
+.action-cluster [data-act="toggle"] { min-width: 92px; }
+.action-cluster [data-act="delete"] { min-width: 48px; }
+/* inside a flat cluster the row's action is carried by ink, not by a border */
+.action-cluster .btn-edit { color: var(--t-color-gray12); font-weight: 600; }
+.action-cluster .btn:first-child { border-inline-start: 0; }
+.action-cluster .btn:hover:not(:disabled) { background: var(--t-color-gray4); }
+.action-cluster .btn-danger { color: var(--t-color-red11); }
+.action-cluster .btn-danger:hover:not(:disabled) { background: var(--t-color-red3); }
+.action-cluster .btn:disabled { background: transparent; color: var(--t-color-gray9); border-color: var(--t-color-gray5); }
+.action-cluster .btn[aria-pressed="true"] { color: var(--t-color-blue11); background: var(--t-color-blue3); font-weight: 600; }
+
+/* ---------- menu ---------- */
+.menu-wrap { position: relative; }
+.menu-label { display: none; }
+.row.menu-open { z-index: 5; }
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  /* the trigger sits at the RTL end of the row, so the panel opens back into the
+     table instead of off the panel's edge */
+  inset-inline-end: 0;
+  z-index: 6;
+  min-width: 260px;
+  padding: var(--sp1);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+.menu[hidden] { display: none; }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp2);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--sp2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--t-color-gray12);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.7;
+  text-align: start;
+  cursor: pointer;
+}
+.menu-item:hover:not(:disabled) { background: var(--t-color-gray4); }
+.menu-item:disabled { color: var(--t-color-gray9); cursor: not-allowed; }
+.menu-item[data-danger="true"] { color: var(--t-color-red11); }
+.menu-item[data-danger="true"]:hover:not(:disabled) { background: var(--t-color-red3); }
+.menu-item[data-danger="true"]:disabled { color: var(--t-color-gray9); }
+.menu-item .mi-mark { width: 14px; flex: 0 0 14px; color: var(--accent-ink); font-size: 12px; }
+.menu-sep { height: 1px; margin: var(--sp1) 0; background: var(--t-color-gray6); }
+.menu-head {
+  margin: 0;
+  padding: var(--sp1) var(--sp2) var(--sp2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-gray11);
+}
+
+/* confirm + notices */
+.confirm {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp2);
+  margin-top: var(--sp3);
+  padding-top: var(--sp3);
+  border-top: 1px dashed var(--t-color-gray6);
+}
+.confirm-text { margin: 0; font-size: 13px; line-height: 1.9; color: var(--t-color-red11); }
+.row-note { grid-column: 1 / -1; margin: var(--sp2) 0 0; font-size: 12px; line-height: 1.9; }
+.row-note[data-kind="notice"] { color: var(--t-color-gray11); }
+.row-note[data-kind="error"] { color: var(--t-color-red11); }
+
+/* editor */
+.editor-row { border-top: 1px solid var(--t-color-gray6); background: var(--surface-2); }
+.rows > .editor-row:first-child { border-top: 0; }
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp3);
+  padding: var(--sp4);
+  box-shadow: inset 0 0 0 2px var(--accent-fill);
+  border-radius: var(--r);
+}
+.editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp2) var(--sp3);
+  padding-bottom: var(--sp3);
+  border-bottom: 1px solid var(--t-color-gray6);
+}
+.editor-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--t-color-gray12); }
+.editor-head-side { display: flex; align-items: center; gap: var(--sp2); }
+.unsaved {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t-color-gray11);
+}
+.unsaved[hidden] { display: none; }
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px 132px 116px;
+  gap: var(--sp3) var(--sp4);
+  align-items: start;
+}
+.field { display: flex; flex-direction: column; gap: var(--sp1); min-width: 0; }
+.field label, .field .label { font-size: 12px; font-weight: 600; color: var(--t-color-gray11); }
+.field input {
+  width: 100%;
+  height: var(--ctl);
+  padding: 0 var(--sp3);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--t-color-gray12);
+  font-family: inherit;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.field input[aria-invalid="true"] { border-color: var(--t-color-red11); }
+.field-total .total-lg {
+  display: flex;
+  align-items: center;
+  height: var(--ctl);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.field-error { margin: 0; font-size: 12px; line-height: 1.9; color: var(--t-color-red11); }
+.field-error[hidden] { display: none; }
+.hint { margin: 0; font-size: 12px; line-height: 1.9; color: var(--t-color-gray11); }
+.editor-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp2) var(--sp4);
+  padding: var(--sp2) var(--sp3);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+.editor-foot p { margin: 0; font-size: 12px; line-height: 1.9; color: var(--t-color-gray11); }
+.editor-foot .sum { font-size: 13px; color: var(--t-color-gray12); }
+.editor-foot .sum b { color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+
+/* empty / loading / error */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp3);
+  padding: var(--sp5);
+  border: 1px dashed var(--t-color-gray7);
+  border-radius: var(--r);
+  background: var(--surface-2);
+}
+.empty h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--t-color-gray12); }
+.empty p { margin: 0; max-width: 60ch; font-size: 13px; line-height: 1.95; color: var(--t-color-gray11); }
+.empty-actions { display: flex; flex-wrap: wrap; gap: var(--sp2); }
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp4);
+  padding: var(--sp3) var(--sp4);
+  border-top: 1px solid var(--t-color-gray6);
+}
+.skeleton-row:first-child { border-top: 0; }
+.bar { height: 10px; border-radius: 999px; background: var(--t-color-gray5); }
+.bar.w1 { width: 38%; }
+.bar.w2 { width: 64px; }
+.bar.w3 { width: 88px; }
+
+.alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp3);
+  padding: var(--sp3);
+  border: 1px solid var(--t-color-red3);
+  border-radius: var(--r);
+  background: var(--t-color-red3);
+}
+.alert p { margin: 0; flex: 1 1 240px; font-size: 13px; line-height: 1.95; color: var(--t-color-red11); }
+
+.no-match { margin: 0; padding: var(--sp5); text-align: center; font-size: 13px; color: var(--t-color-gray11); }
+
+.toast-region {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--sp5);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+}
+.toast-inner {
+  display: inline-flex;
+  align-items: center;
+  max-width: calc(100% - 32px);
+  padding: var(--sp2) var(--sp4);
+  border-radius: var(--r);
+  background: var(--t-color-gray12);
+  color: var(--t-color-gray1);
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+}
+
+/* ---------- responsive ---------- */
+@container panel (max-width: 1100px) {
+  .app { --col-gap: 12px; }
+  .policy-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      var(--col-tax)
+      var(--col-duty)
+      var(--col-total)
+      var(--col-actions);
+  }
+  .cell-usage { display: none; }
+  .name-usage { display: block; }
+  .thead .th-usage { display: none; }
+}
+
+@container panel (max-width: 900px) {
+  .policy-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      var(--col-tax)
+      var(--col-duty)
+      var(--col-total);
+    row-gap: var(--sp2);
+  }
+  .thead { display: none; }
+  .lbl {
+    position: static;
+    width: auto; height: auto;
+    margin: 0;
+    clip: auto;
+    clip-path: none;
+    overflow: visible;
+    white-space: normal;
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--t-color-gray11);
+  }
+  .cell-num { display: flex; flex-direction: column; }
+  .cell-actions {
+    grid-column: 1 / -1;
+    padding-top: var(--sp2);
+    border-top: 1px dashed var(--t-color-gray6);
+  }
+  .confirm { margin-top: var(--sp2); }
+}
+
+@container panel (max-width: 767px) {
+  .table { border: 0; background: transparent; border-radius: 0; }
+
+  .row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp2);
+    padding: var(--sp3);
+    margin-bottom: var(--sp2);
+    border: 1px solid var(--t-color-gray6);
+    border-radius: var(--r);
+    background: var(--surface-2);
+  }
+  .rows > .row:first-child { border-top: 1px solid var(--t-color-gray6); }
+  .rows > li:last-child { border-end-start-radius: var(--r); border-end-end-radius: var(--r); }
+  .row.is-default::before {
+    width: 100%; height: 3px;
+    top: 0; bottom: auto;
+    border-start-start-radius: var(--r);
+    border-start-end-radius: var(--r);
+  }
+
+  .cell { width: 100%; }
+  .row .cell-num { display: none; }
+  .name { font-size: 16px; }
+  .rate-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp2);
+    padding: var(--sp2);
+    border: 1px solid var(--t-color-gray6);
+    border-radius: var(--r);
+    background: var(--surface);
+  }
+  .rate-strip > div { display: flex; flex-direction: column; min-width: 0; }
+  .rate-strip .total { font-size: 18px; }
+
+  .cell-actions { width: 100%; padding-top: var(--sp2); gap: var(--sp2); flex-direction: column; align-items: stretch; }
+  .cell-actions > .btn { flex: 1 1 auto; height: 44px; min-width: 0; padding: 0 var(--sp2); width: 100%; }
+  /* the overflow control becomes a labelled full-width button, and its menu
+     expands in place instead of floating over the card */
+  .menu-wrap { width: 100%; position: static; }
+  .menu-wrap > .btn-icon { width: 100%; height: 44px; font-size: 13px; gap: 6px; }
+  .menu-label { display: inline; }
+  .menu {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    margin-top: var(--sp1);
+    box-shadow: none;
+  }
+  .menu-item { min-height: 44px; font-size: 14px; }
+  /* a phone does not benefit from the "one object" cluster: four separate 44px
+     targets in two rows beat four 80px slivers in one */
+  .app .action-cluster {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp2);
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  .app .action-cluster .btn {
+    min-width: 0;
+    height: 44px;
+    padding: 0 var(--sp1);
+    border: 1px solid var(--t-color-gray6);
+    border-radius: var(--r);
+    background: var(--surface);
+    white-space: normal;
+    line-height: 1.35;
+  }
+  .app .action-cluster .btn:first-child { border-inline-start: 1px solid var(--t-color-gray6); }
+
+  .menu { min-width: 0; width: 100%; inset-inline: 0; }
+  .menu-item { min-height: 44px; font-size: 14px; }
+
+  .editor { padding: var(--sp3); }
+  .editor-grid { grid-template-columns: 1fr 1fr; }
+  .editor-grid .field-name { grid-column: 1 / -1; }
+  .editor-grid .field-total { grid-column: 1 / -1; }
+  .field input { height: 44px; }
+  .field-total .total-lg { height: 44px; }
+  .editor-head-side { width: 100%; }
+  .editor-head-side .btn { flex: 1 1 auto; height: 40px; }
+  .controls { width: 100%; }
+  .search { flex: 1 1 100%; max-width: none; }
+  .search input { height: 40px; }
+  .segmented { width: 100%; }
+  .segmented button { flex: 1 1 auto; height: 40px; }
+  .panel-head .btn-add { width: 100%; height: 44px; }
+  .confirm .btn { flex: 1 1 auto; height: 40px; }
+  .stage { padding: var(--sp3) var(--sp2); }
+}
+
+.rate-strip { display: none; }
+@container panel (max-width: 767px) {
+  .rate-strip { display: grid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="chrome">
+  <p class="chrome-label"><b>PILOT-017 · بازنگری ۲</b> — دکمه‌های عملیاتی، خوانایی متن، سلسله‌مراتب · دادهٔ آزمایشی</p>
+  <div class="chrome-tools" role="group" aria-label="ابزار پیش‌نمایش">
+    <span class="chrome-sep" aria-hidden="true"></span>
+    <button type="button" data-actions="compact" aria-pressed="true">عملیات: ویرایش + منو</button>
+    <button type="button" data-actions="complete" aria-pressed="false">عملیات: چهار دکمه</button>
+    <span class="chrome-sep" aria-hidden="true"></span>
+    <button type="button" data-view="data" aria-pressed="true">داده</button>
+    <button type="button" data-view="empty" aria-pressed="false">خالی</button>
+    <button type="button" data-view="loading" aria-pressed="false">بارگذاری</button>
+    <button type="button" data-view="error" aria-pressed="false">خطا</button>
+    <span class="chrome-sep" aria-hidden="true"></span>
+    <button type="button" data-frame="desktop" aria-pressed="true">دسکتاپ</button>
+    <button type="button" data-frame="mobile" aria-pressed="false">موبایل ۳۹۰</button>
+    <button type="button" id="theme-toggle">تاریک</button>
+  </div>
+</div>
+
+<div class="stage" data-frame="desktop">
+  <div class="app" id="app" data-actions="compact"></div>
+</div>
+
+<div class="toast-region" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var FA = '۰۱۲۳۴۵۶۷۸۹';
+  function toFa(value) { return String(value).replace(/[0-9]/g, function (d) { return FA[+d]; }); }
+  function toEn(value) {
+    return String(value)
+      .replace(/[۰-۹]/g, function (d) { return String(FA.indexOf(d)); })
+      .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
+  }
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+  function fmtPct(value) {
+    var text = (Math.round(value * 10000) / 10000).toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    return toFa(text.replace('.', '٫')) + '٪';
+  }
+  function fmtCount(value) { return toFa(value) + ' سند'; }
+  function parseRate(text) {
+    var t = toEn(text).trim().replace(/٫/g, '.').replace(/\s/g, '');
+    if (t === '') { return { ok: false, msg: 'نرخ را وارد کنید' }; }
+    if (!/^\d+(\.\d{1,4})?$/.test(t)) { return { ok: false, msg: 'فقط عدد، مثلاً ۶٫۵' }; }
+    var value = Number(t);
+    if (value > 100) { return { ok: false, msg: 'نرخ نمی‌تواند از ۱۰۰٪ بیشتر باشد' }; }
+    return { ok: true, value: value };
+  }
+
+  var seed = [
+    { id: 'p2', name: 'مالیات بر ارزش افزوده ۹٪', tax: 6, duty: 3, used: 25, active: true, isDefault: true },
+    { id: 'p1', name: 'مالیات ۹٫۴', tax: 5.1, duty: 4.3, used: 5, active: true, isDefault: false },
+    { id: 'p3', name: 'مالیات ۱۰٪ ۰۰۷', tax: 6, duty: 4, used: 8, active: true, isDefault: false },
+    { id: 'p4', name: 'معاف از مالیات (صادرات)', tax: 0, duty: 0, used: 12, active: true, isDefault: false },
+    { id: 'p5', name: 'مالیات ۷٪ (بازنشسته)', tax: 7, duty: 0, used: 0, active: false, isDefault: false }
+  ];
+
+  var state = {
+    view: 'data',
+    actions: 'compact',
+    policies: seed.map(function (p) { return Object.assign({}, p); }),
+    editing: null,
+    draft: null,
+    baseline: null,
+    errors: {},
+    dirty: false,
+    confirming: null,
+    openMenu: null,
+    notices: {},
+    filter: 'all',
+    query: '',
+    busy: false,
+    focusAfter: null
+  };
+
+  var app = document.getElementById('app');
+  var toastNode = document.getElementById('toast');
+  var toastTimer = null;
+  var menuFocusPending = null;
+
+  function findPolicy(id) {
+    for (var i = 0; i < state.policies.length; i += 1) {
+      if (state.policies[i].id === id) { return state.policies[i]; }
+    }
+    return null;
+  }
+  function isExempt(policy) { return policy.tax === 0 && policy.duty === 0; }
+
+  function visiblePolicies() {
+    var query = toEn(state.query).trim();
+    return state.policies.filter(function (policy) {
+      if (state.filter === 'active' && !policy.active) { return false; }
+      if (state.filter === 'inactive' && policy.active) { return false; }
+      if (query !== '' && toEn(policy.name).indexOf(query) === -1) { return false; }
+      return true;
+    });
+  }
+
+  function usageFor(policy) {
+    var count = policy.used === 0 ? 'بدون استفاده' : fmtCount(policy.used);
+    var note = (policy.used > 0 || policy.isDefault) ? 'حذف‌شدنی نیست' : '';
+    return { count: count, note: note };
+  }
+
+  /* ---------------- render ---------------- */
+  function render() {
+    var policies = state.policies;
+    var defaultCount = policies.filter(function (p) { return p.isDefault; }).length;
+    var docCount = policies.reduce(function (sum, p) { return sum + p.used; }, 0);
+
+    app.setAttribute('data-actions', state.actions);
+    app.innerHTML = [
+      renderHead(),
+      renderControls(),
+      renderBody(visiblePolicies(), policies.length, defaultCount, docCount)
+    ].join('');
+
+    bind();
+    syncToast();
+    if (menuFocusPending !== null) {
+      var first = document.querySelector('[data-menu="' + menuFocusPending + '"] .menu-item:not(:disabled)');
+      if (first !== null) { first.focus(); }
+      menuFocusPending = null;
+    } else if (state.focusAfter !== null) {
+      var target = document.getElementById(state.focusAfter);
+      if (target !== null) { target.focus(); }
+      state.focusAfter = null;
+    }
+  }
+
+  function renderHead() {
+    var showAdd = state.view === 'data' && state.policies.length > 0;
+    return '' +
+      '<div class="panel-head">' +
+        '<div class="head-text">' +
+          '<h1 class="panel-title">مالیات و عوارض</h1>' +
+          '<p class="panel-desc">سیاست پیش‌فرض برای شروع هر پیش‌فاکتور جدید استفاده می‌شود؛ اسناد صادرشده نرخ خود را حفظ می‌کنند.</p>' +
+        '</div>' +
+        (showAdd
+          ? '<button type="button" class="btn btn-primary btn-add" data-act="new">افزودن سیاست</button>'
+          : '') +
+      '</div>';
+  }
+
+  function renderControls() {
+    if (state.view !== 'data') { return ''; }
+    var policies = state.policies;
+    var defaultCount = policies.filter(function (p) { return p.isDefault; }).length;
+    var docCount = policies.reduce(function (sum, p) { return sum + p.used; }, 0);
+    function pressed(value) { return state.filter === value ? 'true' : 'false'; }
+    return '' +
+      '<div class="controls">' +
+        '<p class="head-meta">' +
+          '<span><b>' + toFa(policies.length) + '</b> سیاست</span>' +
+          '<span class="dot" aria-hidden="true">·</span>' +
+          '<span><b>' + toFa(defaultCount) + '</b> پیش‌فرض</span>' +
+          '<span class="dot" aria-hidden="true">·</span>' +
+          '<span><b>' + toFa(docCount) + '</b> سند</span>' +
+        '</p>' +
+        '<span style="flex:1 1 auto"></span>' +
+        '<label class="search">' +
+          '<span class="vh">جستجوی سیاست</span>' +
+          '<input type="search" id="q" value="' + esc(state.query) + '" placeholder="جستجو…" autocomplete="off">' +
+        '</label>' +
+        '<div class="segmented" role="group" aria-label="صافی وضعیت">' +
+          '<button type="button" data-filter="all" aria-pressed="' + pressed('all') + '">همه</button>' +
+          '<button type="button" data-filter="active" aria-pressed="' + pressed('active') + '">فعال</button>' +
+          '<button type="button" data-filter="inactive" aria-pressed="' + pressed('inactive') + '">غیرفعال</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderBody(shown, total, defaultCount, docCount) {
+    if (state.view === 'loading') {
+      return '<div class="table" aria-busy="true">' +
+        '<p class="vh" role="status">در حال خواندن سیاست‌ها…</p>' +
+        skeleton() + skeleton() + skeleton() + '</div>';
+    }
+    if (state.view === 'error') {
+      return '<div class="alert" role="alert">' +
+        '<p>فهرست سیاست‌های مالیات خوانده نشد. تا وقتی این خواندن موفق نشده، نوشتن پیشنهاد نمی‌شود.</p>' +
+        '<button type="button" class="btn" data-act="retry">تلاش مجدد</button>' +
+        '</div>';
+    }
+    if (state.view === 'empty') { return renderEmpty(); }
+
+    var newEditor = state.editing !== null && state.editing.id === null;
+
+    if (shown.length === 0 && !newEditor) {
+      if (total === 0) { return renderEmpty(); }
+      return '<div class="table"><p class="no-match">هیچ سیاستی با این جستجو یا صافی پیدا نشد.</p></div>';
+    }
+
+    var items = [];
+    if (newEditor) { items.push(renderEditor(true)); }
+    shown.forEach(function (policy) {
+      items.push(renderRow(policy));
+      if (state.editing !== null && state.editing.id === policy.id) {
+        items.push(renderEditor(false));
+      }
+    });
+
+    return '' +
+      '<div class="table">' +
+        '<div class="policy-grid thead" aria-hidden="true">' +
+          '<span>سیاست</span>' +
+          '<span class="th-num">مالیات</span>' +
+          '<span class="th-num">عوارض</span>' +
+          '<span class="th-num">نرخ کل</span>' +
+          '<span class="th-usage">استفاده</span>' +
+        '</div>' +
+        '<ul class="rows"' + (state.busy ? ' aria-busy="true"' : '') + '>' + items.join('') + '</ul>' +
+      '</div>';
+  }
+
+  function renderEmpty() {
+    return '' +
+      '<div class="empty">' +
+        '<h2>هنوز سیاست مالیات و عوارضی ثبت نشده است.</h2>' +
+        '<p>سیاست پایه یک بار با نرخ ۹٪ ساخته می‌شود؛ بعد از آن فقط نرخ خودتان اعمال می‌شود.</p>' +
+        '<div class="empty-actions">' +
+          '<button type="button" class="btn btn-primary" data-act="bootstrap">ساخت سیاست پایهٔ ۹٪</button>' +
+          '<button type="button" class="btn" data-act="new">افزودن سیاست</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function skeleton() {
+    return '<div class="skeleton-row">' +
+      '<span class="bar w1" style="flex:1 1 auto"></span>' +
+      '<span class="bar w2"></span><span class="bar w2"></span><span class="bar w3"></span>' +
+      '</div>';
+  }
+
+  function renderRow(policy) {
+    var usage = usageFor(policy);
+    var editing = state.editing !== null && state.editing.id === policy.id;
+    var confirm = state.confirming === policy.id;
+    var notice = state.notices[policy.id];
+    var deletable = !policy.isDefault && policy.used === 0;
+
+    var classes = ['row', 'policy-grid'];
+    if (policy.isDefault) { classes.push('is-default'); }
+    if (!policy.active) { classes.push('is-off'); }
+    if (editing) { classes.push('is-editing'); }
+    if (state.openMenu === policy.id) { classes.push('menu-open'); }
+
+    return '' +
+      '<li class="' + classes.join(' ') + '" data-row="' + policy.id + '">' +
+        '<div class="cell cell-id">' +
+          '<div class="name-line">' +
+            '<h3 class="name">' + esc(policy.name) + '</h3>' +
+            (policy.isDefault ? '<span class="pill pill-default">پیش‌فرض</span>' : '') +
+            (!policy.active ? '<span class="pill pill-off">غیرفعال</span>' : '') +
+          '</div>' +
+          '<p class="name-usage">' + usage.count + (usage.note === '' ? '' : ' · ' + usage.note) + '</p>' +
+        '</div>' +
+
+        '<div class="cell cell-num"><span class="lbl">مالیات</span>' +
+          '<span class="rate num">' + fmtPct(policy.tax) + '</span></div>' +
+        '<div class="cell cell-num"><span class="lbl">عوارض</span>' +
+          '<span class="rate num">' + fmtPct(policy.duty) + '</span></div>' +
+        '<div class="cell cell-num"><span class="lbl">نرخ کل</span>' +
+          (isExempt(policy)
+            ? '<span class="exempt">معاف</span>'
+            : '<span class="total num">' + fmtPct(policy.tax + policy.duty) + '</span>') +
+        '</div>' +
+
+        '<div class="cell cell-usage" id="usage-' + policy.id + '">' +
+          '<span class="usage-count num">' + usage.count + '</span>' +
+          (usage.note === '' ? '' : '<span class="usage-note">' + usage.note + '</span>') +
+        '</div>' +
+
+        renderRateStrip(policy) +
+        renderActions(policy, editing, deletable) +
+
+        (confirm ? renderConfirm(policy) : '') +
+        (notice
+          ? '<p class="row-note" data-kind="' + notice.kind + '" role="' +
+            (notice.kind === 'error' ? 'alert' : 'status') + '">' + esc(notice.message) + '</p>'
+          : '') +
+      '</li>';
+  }
+
+  function actionLabelId(policy) { return 'usage-' + policy.id; }
+
+  function renderActions(policy, editing, deletable) {
+    var editButton = '<button type="button" class="btn btn-edit" id="edit-' + policy.id + '"' +
+      ' data-act="edit" data-id="' + policy.id + '"' +
+      ' aria-expanded="' + (editing ? 'true' : 'false') + '"' +
+      ' aria-controls="editor-' + policy.id + '"' +
+      ' aria-label="ویرایش — ' + esc(policy.name) + '"' +
+      (state.busy ? ' disabled' : '') + '>' + (editing ? 'بستن' : 'ویرایش') + '</button>';
+
+    if (state.actions === 'compact') {
+      return '<div class="cell cell-actions">' + editButton + renderMenu(policy, deletable) + '</div>';
+    }
+
+    return '<div class="cell cell-actions"><div class="action-cluster">' +
+      '<button type="button" class="btn" data-act="default" data-id="' + policy.id + '"' +
+        ' aria-pressed="' + (policy.isDefault ? 'true' : 'false') + '"' +
+        ' aria-label="پیش‌فرض — ' + esc(policy.name) + '"' +
+        (policy.isDefault || !policy.active || state.busy ? ' disabled' : '') + '>پیش‌فرض</button>' +
+      editButton +
+      '<button type="button" class="btn" data-act="toggle" data-id="' + policy.id + '"' +
+        ' aria-label="' + (policy.active ? 'غیرفعال‌سازی' : 'فعال‌سازی') + ' — ' + esc(policy.name) + '"' +
+        (policy.isDefault || state.busy ? ' disabled' : '') +
+        '>' + (policy.active ? 'غیرفعال‌سازی' : 'فعال‌سازی') + '</button>' +
+      '<button type="button" class="btn btn-danger" data-act="delete" data-id="' + policy.id + '"' +
+        ' aria-describedby="' + actionLabelId(policy) + '"' +
+        ' aria-label="حذف — ' + esc(policy.name) + '"' +
+        (deletable && !state.busy ? '' : ' disabled') + '>حذف</button>' +
+      '</div></div>';
+  }
+
+  function hasMenu(policy) { return state.actions === 'compact'; }
+
+  function renderMenu(policy, deletable) {
+    var open = state.openMenu === policy.id;
+    var deleteLabel = deletable
+      ? 'حذف'
+      : (policy.isDefault
+        ? 'حذف — سیاست پیش‌فرض حذف‌شدنی نیست'
+        : 'حذف — در ' + toFa(policy.used) + ' سند استفاده شده است');
+
+    return '' +
+      '<div class="menu-wrap" data-menu="' + policy.id + '">' +
+        '<button type="button" class="btn btn-icon" data-act="menu" data-id="' + policy.id + '"' +
+          ' aria-haspopup="menu" aria-expanded="' + (open ? 'true' : 'false') + '"' +
+          ' aria-label="عملیات بیشتر — ' + esc(policy.name) + '">' +
+          '<span class="menu-label" aria-hidden="true">عملیات بیشتر</span>' +
+          '<span aria-hidden="true">⋯</span>' +
+        '</button>' +
+        '<div class="menu" role="menu" aria-label="عملیات ' + esc(policy.name) + '"' + (open ? '' : ' hidden') + '>' +
+          '<p class="menu-head">' + esc(policy.name) + '</p>' +
+          '<button type="button" class="menu-item" role="menuitem" data-act="default" data-id="' + policy.id + '"' +
+            (policy.isDefault || !policy.active || state.busy ? ' disabled' : '') + '>' +
+            '<span class="mi-mark" aria-hidden="true">' + (policy.isDefault ? '✓' : '') + '</span>' +
+            (policy.isDefault ? 'پیش‌فرض فعلی' : 'پیش‌فرض شود') +
+          '</button>' +
+          '<button type="button" class="menu-item" role="menuitem" data-act="toggle" data-id="' + policy.id + '"' +
+            (policy.isDefault || state.busy ? ' disabled' : '') + '>' +
+            '<span class="mi-mark" aria-hidden="true"></span>' +
+            (policy.active ? 'غیرفعال‌سازی' : 'فعال‌سازی') +
+          '</button>' +
+          '<div class="menu-sep" role="none"></div>' +
+          '<button type="button" class="menu-item" role="menuitem" data-act="delete" data-id="' + policy.id + '"' +
+            ' data-danger="true"' +
+            (deletable && !state.busy ? '' : ' disabled') + '>' +
+            '<span class="mi-mark" aria-hidden="true"></span>' + deleteLabel +
+          '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderRateStrip(policy) {
+    return '<div class="rate-strip">' +
+      '<div><span class="lbl">مالیات</span><span class="rate num">' + fmtPct(policy.tax) + '</span></div>' +
+      '<div><span class="lbl">عوارض</span><span class="rate num">' + fmtPct(policy.duty) + '</span></div>' +
+      '<div><span class="lbl">نرخ کل</span>' +
+        (isExempt(policy)
+          ? '<span class="exempt">معاف</span>'
+          : '<span class="total num">' + fmtPct(policy.tax + policy.duty) + '</span>') +
+      '</div>' +
+      '</div>';
+  }
+
+  function renderConfirm(policy) {
+    return '' +
+      '<div class="confirm">' +
+        '<p class="confirm-text" role="status">«' + esc(policy.name) + '» حذف شود؟ این کار برگشت‌پذیر نیست.</p>' +
+        '<button type="button" class="btn btn-solid-danger" data-act="confirm-delete" data-id="' + policy.id + '"' +
+          (state.busy ? ' disabled' : '') + '>تأیید حذف</button>' +
+        '<button type="button" class="btn" data-act="cancel-delete" data-id="' + policy.id + '">انصراف</button>' +
+      '</div>';
+  }
+
+  function renderEditor(isNew) {
+    var draft = state.draft;
+    var editingPolicy = isNew ? null : findPolicy(state.editing.id);
+    var usage = editingPolicy === null ? null : usageFor(editingPolicy);
+    var errors = state.errors;
+    var sum = draft.tax + draft.duty;
+
+    return '' +
+      '<li class="editor-row" id="editor-' + (isNew ? 'new' : state.editing.id) + '">' +
+        '<form class="editor" novalidate>' +
+          '<div class="editor-head">' +
+            '<h2 class="editor-title">' + (isNew ? 'سیاست مالیات و عوارض جدید' : 'ویرایش سیاست') + '</h2>' +
+            '<div class="editor-head-side">' +
+              '<span class="unsaved" id="ed-unsaved"' + (state.dirty ? '' : ' hidden') + '>ذخیره‌نشده</span>' +
+              '<button type="button" class="btn" data-act="cancel">انصراف</button>' +
+              '<button type="submit" class="btn btn-primary"' + (state.busy ? ' disabled' : '') + '>' +
+                (state.busy ? 'در حال ذخیره…' : 'ذخیره تغییرات') + '</button>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="editor-grid">' +
+            '<div class="field field-name">' +
+              '<label for="f-name">نام سیاست</label>' +
+              '<input id="f-name" value="' + esc(draft.name) + '" placeholder="مثلاً مالیات بر ارزش افزوده"' +
+                ' aria-invalid="' + (errors.name ? 'true' : 'false') + '"' +
+                (errors.name ? ' aria-describedby="e-name"' : '') + '>' +
+              '<p class="field-error" id="e-name" role="alert"' + (errors.name ? '' : ' hidden') + '>' +
+                esc(errors.name || '') + '</p>' +
+            '</div>' +
+            '<div class="field">' +
+              '<label for="f-tax">مالیات (٪)</label>' +
+              '<input id="f-tax" value="' + esc(draft.taxText) + '" inputmode="decimal" placeholder="۶٫۵"' +
+                ' aria-invalid="' + (errors.tax ? 'true' : 'false') + '"' +
+                (errors.tax ? ' aria-describedby="e-tax"' : '') + '>' +
+              '<p class="field-error" id="e-tax" role="alert"' + (errors.tax ? '' : ' hidden') + '>' +
+                esc(errors.tax || '') + '</p>' +
+            '</div>' +
+            '<div class="field">' +
+              '<label for="f-duty">عوارض (٪)</label>' +
+              '<input id="f-duty" value="' + esc(draft.dutyText) + '" inputmode="decimal" placeholder="۰"' +
+                ' aria-invalid="' + (errors.duty ? 'true' : 'false') + '"' +
+                (errors.duty ? ' aria-describedby="e-duty"' : '') + '>' +
+              '<p class="field-error" id="e-duty" role="alert"' + (errors.duty ? '' : ' hidden') + '>' +
+                esc(errors.duty || '') + '</p>' +
+            '</div>' +
+            '<div class="field field-total">' +
+              '<span class="label">نرخ کل</span>' +
+              '<output class="total-lg num" id="ed-total" for="f-tax f-duty">' + fmtPct(sum) + '</output>' +
+            '</div>' +
+          '</div>' +
+
+          '<p class="hint">هر دو نرخ صفر یعنی معاف از مالیات.</p>' +
+
+          '<div class="editor-foot">' +
+            '<p>' + (usage === null ? 'در هیچ سندی استفاده نشده است'
+              : usage.count + (usage.note === '' ? '' : '؛ ' + usage.note)) + '</p>' +
+            '<p class="sum">جمع محاسباتی: <b class="num" id="ed-sum">' + fmtPct(sum) + '</b></p>' +
+          '</div>' +
+
+          '<p class="field-error" id="ed-pair" role="alert"' + (errors.pair ? '' : ' hidden') + '>' +
+            esc(errors.pair || '') + '</p>' +
+          '<p class="field-error" id="ed-form" role="alert"' + (errors.form ? '' : ' hidden') + '>' +
+            esc(errors.form || '') + '</p>' +
+        '</form>' +
+      '</li>';
+  }
+
+  function syncToast() {
+    if (state.toast === null || state.toast === undefined) { toastNode.innerHTML = ''; return; }
+    toastNode.innerHTML = '<span class="toast-inner">' + esc(state.toast.message) + '</span>';
+  }
+
+  /* ---------------- menu ---------------- */
+  function openMenu(id) {
+    state.openMenu = id;
+    var row = app.querySelector('[data-row="' + id + '"]');
+    var wrap = app.querySelector('[data-menu="' + id + '"]');
+    if (row === null || wrap === null) { return; }
+    var trigger = wrap.querySelector('[data-act="menu"]');
+    var menu = wrap.querySelector('.menu');
+    row.classList.add('menu-open');
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.hidden = false;
+    var first = menu.querySelector('.menu-item:not(:disabled)');
+    if (first !== null) { first.focus(); }
+  }
+
+  function closeMenu(returnFocus) {
+    if (state.openMenu === null) { return; }
+    var id = state.openMenu;
+    var wrap = app.querySelector('[data-menu="' + id + '"]');
+    state.openMenu = null;
+    if (wrap === null) { return; }
+    var row = app.querySelector('[data-row="' + id + '"]');
+    if (row !== null) { row.classList.remove('menu-open'); }
+    var trigger = wrap.querySelector('[data-act="menu"]');
+    trigger.setAttribute('aria-expanded', 'false');
+    wrap.querySelector('.menu').hidden = true;
+    if (returnFocus) { trigger.focus(); }
+  }
+
+  function toggleMenu(id) {
+    if (state.openMenu === id) { closeMenu(true); return; }
+    closeMenu(false);
+    openMenu(id);
+  }
+
+  /* ---------------- editor lifecycle ---------------- */
+  function draftFrom(policy) {
+    return {
+      name: policy.name,
+      taxText: String(policy.tax).replace('.', '٫'),
+      dutyText: String(policy.duty).replace('.', '٫'),
+      tax: policy.tax,
+      duty: policy.duty
+    };
+  }
+  function emptyDraft() { return { name: '', taxText: '', dutyText: '۰', tax: 0, duty: 0 }; }
+
+  function openEditor(id) {
+    var policy = findPolicy(id);
+    state.editing = { id: policy.id };
+    state.draft = draftFrom(policy);
+    state.baseline = Object.assign({}, state.draft);
+    state.errors = {};
+    state.dirty = false;
+    state.confirming = null;
+    state.notices = {};
+    state.openMenu = null;
+    state.focusAfter = 'f-name';
+    render();
+  }
+
+  function openNew() {
+    state.editing = { id: null };
+    state.draft = emptyDraft();
+    state.baseline = Object.assign({}, state.draft);
+    state.errors = {};
+    state.dirty = false;
+    state.confirming = null;
+    state.notices = {};
+    state.openMenu = null;
+    state.focusAfter = 'f-name';
+    render();
+  }
+
+  function closeEditor() {
+    var wasEditing = state.editing;
+    state.editing = null;
+    state.draft = null;
+    state.baseline = null;
+    state.errors = {};
+    state.dirty = false;
+    state.focusAfter = wasEditing !== null && wasEditing.id ? 'edit-' + wasEditing.id : null;
+    render();
+  }
+
+  function syncDraft() {
+    var nameInput = document.getElementById('f-name');
+    var taxInput = document.getElementById('f-tax');
+    var dutyInput = document.getElementById('f-duty');
+    if (nameInput === null || taxInput === null || dutyInput === null) { return; }
+
+    state.draft.name = nameInput.value;
+    state.draft.taxText = taxInput.value;
+    state.draft.dutyText = dutyInput.value;
+
+    var taxParsed = parseRate(taxInput.value);
+    var dutyParsed = dutyInput.value.trim() === '' ? { ok: true, value: 0 } : parseRate(dutyInput.value);
+
+    state.draft.tax = taxParsed.ok ? taxParsed.value : 0;
+    state.draft.duty = dutyParsed.ok ? dutyParsed.value : 0;
+
+    var sum = state.draft.tax + state.draft.duty;
+    var totalOut = document.getElementById('ed-total');
+    var sumOut = document.getElementById('ed-sum');
+    var pair = document.getElementById('ed-pair');
+    if (totalOut !== null) { totalOut.textContent = fmtPct(sum); }
+    if (sumOut !== null) { sumOut.textContent = fmtPct(sum); }
+    if (pair !== null) {
+      var over = taxParsed.ok && dutyParsed.ok && sum > 100;
+      pair.hidden = !over;
+      pair.textContent = over ? 'جمع مالیات و عوارض از ۱۰۰٪ بیشتر نمی‌شود' : '';
+    }
+
+    var baseline = state.baseline;
+    if (state.editing.id === null) {
+      state.dirty = nameInput.value !== '' || taxInput.value !== '' || dutyInput.value !== '۰';
+    } else {
+      state.dirty = baseline !== null && (
+        baseline.name !== nameInput.value ||
+        baseline.taxText !== taxInput.value ||
+        baseline.dutyText !== dutyInput.value
+      );
+    }
+    var marker = document.getElementById('ed-unsaved');
+    if (marker !== null) { marker.hidden = !state.dirty; }
+  }
+
+  function validate() {
+    var errors = {};
+    var draft = state.draft;
+    if (draft.name.trim() === '') { errors.name = 'نام سیاست مالیات را وارد کنید'; }
+    var tax = parseRate(draft.taxText);
+    if (!tax.ok) { errors.tax = tax.msg; }
+    if (draft.dutyText.trim() !== '') {
+      var duty = parseRate(draft.dutyText);
+      if (!duty.ok) { errors.duty = duty.msg; }
+    }
+    if (tax.ok) {
+      var dutyValue = draft.dutyText.trim() === '' ? { ok: true, value: 0 } : parseRate(draft.dutyText);
+      if (dutyValue.ok && tax.value + dutyValue.value > 100) {
+        errors.pair = 'جمع مالیات و عوارض از ۱۰۰٪ بیشتر نمی‌شود';
+      }
+    }
+    state.errors = errors;
+    return Object.keys(errors).length === 0;
+  }
+
+  function save() {
+    if (!validate()) {
+      state.focusAfter = state.errors.name ? 'f-name' : (state.errors.tax ? 'f-tax' : 'f-duty');
+      render();
+      return;
+    }
+    state.busy = true;
+    render();
+    window.setTimeout(function () {
+      var draft = state.draft;
+      if (state.editing.id === null) {
+        var policy = {
+          id: 'p' + Date.now(), name: draft.name.trim(), tax: draft.tax, duty: draft.duty,
+          used: 0, active: true, isDefault: false
+        };
+        state.policies.unshift(policy);
+        state.focusAfter = 'edit-' + policy.id;
+      } else {
+        var target = findPolicy(state.editing.id);
+        target.name = draft.name.trim();
+        target.tax = draft.tax;
+        target.duty = draft.duty;
+        state.focusAfter = 'edit-' + target.id;
+      }
+      state.busy = false;
+      state.editing = null;
+      state.draft = null;
+      state.baseline = null;
+      state.errors = {};
+      state.dirty = false;
+      state.toast = { message: 'سیاست مالیات ذخیره شد' };
+      render();
+      armToast();
+    }, 260);
+  }
+
+  function makeDefault(id) {
+    var target = findPolicy(id);
+    if (target === null || !target.active) { return; }
+    state.policies.forEach(function (policy) { policy.isDefault = policy.id === id; });
+    state.confirming = null;
+    state.notices = {};
+    state.openMenu = null;
+    state.toast = { message: 'سیاست پیش‌فرض تغییر کرد' };
+    render();
+    armToast();
+  }
+
+  function toggleActive(id) {
+    var target = findPolicy(id);
+    if (target === null || target.isDefault) { return; }
+    target.active = !target.active;
+    state.confirming = null;
+    state.notices = {};
+    state.openMenu = null;
+    state.toast = { message: target.active ? 'سیاست مالیات فعال شد' : 'سیاست مالیات غیرفعال شد' };
+    render();
+    armToast();
+  }
+
+  function deletePolicy(id) {
+    state.policies = state.policies.filter(function (policy) { return policy.id !== id; });
+    state.confirming = null;
+    state.notices = {};
+    state.openMenu = null;
+    state.toast = { message: 'سیاست مالیات حذف شد' };
+    state.focusAfter = null;
+    render();
+    armToast();
+  }
+
+  function armToast() {
+    if (toastTimer !== null) { window.clearTimeout(toastTimer); }
+    toastTimer = window.setTimeout(function () { state.toast = null; syncToast(); }, 4000);
+  }
+
+  /* ---------------- events ---------------- */
+  function bind() {
+    app.querySelectorAll('[data-act]').forEach(function (node) {
+      node.addEventListener('click', function (event) {
+        var id = node.getAttribute('data-id');
+        switch (node.getAttribute('data-act')) {
+          case 'menu':
+            event.stopPropagation();
+            toggleMenu(id);
+            return;
+          case 'new':
+            if (state.editing !== null && state.dirty) {
+              state.errors = { form: 'تغییرات ذخیره‌نشده دارید؛ ابتدا ذخیره یا انصراف کنید.' };
+              render();
+              return;
+            }
+            openNew();
+            return;
+          case 'edit':
+            if (state.editing !== null && state.editing.id === id) { closeEditor(); return; }
+            if (state.editing !== null && state.dirty) {
+              state.notices = {};
+              state.notices[id] = { kind: 'notice', message: 'تغییرات ذخیره‌نشده دارید؛ ابتدا ذخیره یا انصراف کنید.' };
+              render();
+              return;
+            }
+            openEditor(id);
+            return;
+          case 'default': closeMenu(false); makeDefault(id); return;
+          case 'toggle': closeMenu(false); toggleActive(id); return;
+          case 'delete':
+            closeMenu(false);
+            state.confirming = id;
+            state.notices = {};
+            render();
+            return;
+          case 'confirm-delete': deletePolicy(id); return;
+          case 'cancel-delete': state.confirming = null; render(); return;
+          case 'cancel': closeEditor(); return;
+          case 'bootstrap':
+            state.view = 'data';
+            state.policies = [{
+              id: 'p9', name: 'مالیات بر ارزش افزوده ۹٪', tax: 6, duty: 3,
+              used: 0, active: true, isDefault: true
+            }];
+            state.toast = { message: 'سیاست پایه آماده شد' };
+            state.focusAfter = 'edit-p9';
+            render();
+            armToast();
+            return;
+          case 'retry': state.view = 'data'; render(); return;
+          default: return;
+        }
+      });
+    });
+
+    var form = app.querySelector('form.editor');
+    if (form !== null) {
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (state.busy) { return; }
+        save();
+      });
+      [['f-name', 'e-name'], ['f-tax', 'e-tax'], ['f-duty', 'e-duty']].forEach(function (pair) {
+        var field = document.getElementById(pair[0]);
+        if (field === null) { return; }
+        field.addEventListener('input', function () {
+          var error = document.getElementById(pair[1]);
+          if (error !== null) { error.hidden = true; error.textContent = ''; }
+          field.setAttribute('aria-invalid', 'false');
+          field.removeAttribute('aria-describedby');
+          var formNotice = document.getElementById('ed-form');
+          if (formNotice !== null) { formNotice.hidden = true; }
+          state.errors = {};
+          syncDraft();
+        });
+      });
+    }
+
+    var search = document.getElementById('q');
+    if (search !== null) {
+      search.addEventListener('input', function () {
+        state.query = search.value;
+        var caret = search.selectionStart;
+        render();
+        var next = document.getElementById('q');
+        if (next !== null) { next.focus(); next.setSelectionRange(caret, caret); }
+      });
+    }
+
+    app.querySelectorAll('[data-filter]').forEach(function (node) {
+      node.addEventListener('click', function () {
+        state.filter = node.getAttribute('data-filter');
+        render();
+      });
+    });
+  }
+
+  document.addEventListener('click', function (event) {
+    if (state.openMenu === null) { return; }
+    if (event.target.closest('.menu-wrap') !== null) { return; }
+    closeMenu(false);
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && state.openMenu !== null) {
+      event.preventDefault();
+      closeMenu(true);
+    }
+  });
+
+  /* ---------------- chrome ---------------- */
+  document.querySelectorAll('[data-view]').forEach(function (node) {
+    node.addEventListener('click', function () {
+      state.view = node.getAttribute('data-view');
+      state.editing = null;
+      state.draft = null;
+      state.baseline = null;
+      state.confirming = null;
+      state.notices = {};
+      state.errors = {};
+      state.dirty = false;
+      state.openMenu = null;
+      state.query = '';
+      state.filter = 'all';
+      document.querySelectorAll('[data-view]').forEach(function (other) {
+        other.setAttribute('aria-pressed', other === node ? 'true' : 'false');
+      });
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-actions]').forEach(function (node) {
+    node.addEventListener('click', function () {
+      state.actions = node.getAttribute('data-actions');
+      state.openMenu = null;
+      document.querySelectorAll('[data-actions]').forEach(function (other) {
+        other.setAttribute('aria-pressed', other === node ? 'true' : 'false');
+      });
+      render();
+    });
+  });
+
+  var stage = document.querySelector('.stage');
+  document.querySelectorAll('[data-frame]').forEach(function (node) {
+    node.addEventListener('click', function () {
+      stage.setAttribute('data-frame', node.getAttribute('data-frame'));
+      document.querySelectorAll('[data-frame]').forEach(function (other) {
+        other.setAttribute('aria-pressed', other === node ? 'true' : 'false');
+      });
+    });
+  });
+
+  var themeButton = document.getElementById('theme-toggle');
+  themeButton.addEventListener('click', function () {
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+    themeButton.textContent = dark ? 'تاریک' : 'روشن';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
