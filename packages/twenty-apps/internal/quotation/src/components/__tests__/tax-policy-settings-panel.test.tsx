@@ -500,7 +500,7 @@ describe('tax policy settings panel', () => {
     expect(await screen.findByText('مالیات ۹٪')).toBeTruthy();
   });
 
-  it('gives every row action a 32 px hit area and a visible border, and accents the total', async () => {
+  it('gives every row action a bounded control and keeps the height in the stylesheet', async () => {
     callAppRouteMock.mockResolvedValue(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
@@ -528,10 +528,19 @@ describe('tax policy settings panel', () => {
     expect(rowButtons.length).toBeGreaterThan(0);
 
     for (const button of rowButtons) {
-      expect(button.style.height).toBe('32px');
+      // Height is owned by the stylesheet, not by an inline style, so the 767 px block
+      // can raise it to the product's 44 px floor; an inline height would win there.
+      expect(button.className).toContain('tax-btn');
       expect(button.style.border).toContain('solid');
       expect(button.style.border).not.toContain('transparent');
     }
+
+    const panelCss = document.querySelector('style')?.textContent ?? '';
+    expect(panelCss).toContain('.tax-btn');
+    expect(panelCss).toContain('height: 32px');
+    expect(panelCss).toMatch(
+      /@media \(max-width: 767px\)[\s\S]*\.tax-btn, \.tax-add \{ height: 44px; \}/,
+    );
 
     // The total leads and is the only accented figure in a row.
     const total = within(rowOf('سیاست استفاده‌شده')).getByText('۴٪');

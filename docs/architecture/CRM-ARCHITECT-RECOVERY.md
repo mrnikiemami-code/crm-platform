@@ -1,6 +1,6 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## EXECUTED — CRM-129-TAX-PANEL-016 FINAL CLOSURE (2026-11-24; DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** / DESIGN_GATE **BLOCKED — designer credits**)
+## EXECUTED — CRM-129-TAX-PANEL-016 FINAL CLOSURE (2026-11-24; DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** / DESIGN_GATE **BLOCKED — designer credits, confirmed on the CLI**)
 
 Working point: branch `feat/crm-129-quotation`, HEAD `497eb5a39e` at start. Nothing outside the tax panel, its tests, the UAT scripts and `docs/design/crm-129-tax-panel-016/` was touched.
 
@@ -8,9 +8,9 @@ Working point: branch `feat/crm-129-quotation`, HEAD `497eb5a39e` at start. Noth
 
 | Gate | Status | Basis |
 |---|---|---|
-| `DATA_INTEGRITY_GATE` | **PASS** | `dev-verify-crm129-tax-uat-015.cjs` → **17/17**, `SUMMARY 17/17 passed`, 985 ms, three consecutive runs; 672 app tests; 293 server quotation tests |
-| `SECURITY_GATE` | **PASS for source**, **rotation pending architect authorization** | no credential literal remains in any tracked script; 10 files at HEAD did carry it and are now scrubbed in the working tree; history not rewritten |
-| `DESIGN_GATE` | **BLOCKED** | designer executed and its revised frames implemented, but the Impeccable critique raised findings that contradict the designer's own specification and the platform refuses further designer turns: `insufficient_credits` |
+| `DATA_INTEGRITY_GATE` | **PASS** | `dev-verify-crm129-tax-uat-015.cjs` → **17/17**, `SUMMARY 17/17 passed`, 1337 ms, re-run this turn through the env-only credential path; 672 app tests; 293 server quotation tests |
+| `SECURITY_GATE` | **PASS for source**, **rotation pending architect authorization** | no credential literal remains in any tracked script; the literal is absent from the working tree and from every tracked file at HEAD; 7 commits in history carried it and are not rewritten |
+| `DESIGN_GATE` | **BLOCKED** | designer executed and its revised frames implemented, but the Impeccable critique raised findings that contradict the designer's own specification and the platform refuses further designer turns. Re-confirmed this turn through the CLI itself, not only the MCP wrapper: `You're out of credits, so this generation was blocked`, at two payload sizes, on a model the catalogue lists as `free` |
 
 ### S0 — repository state recorded before any change
 
@@ -55,11 +55,39 @@ Money domain, tax/duty formula, default-policy and historical-rate semantics, re
 
 `npx vitest run` in `packages/twenty-apps/internal/quotation` → 54 files passed, **672 passed** (3 skipped). `npx jest …/modules/quotation` → 26 suites, **293 passed**.
 
+### S8 — third designer attempt, this time through the CLI; what actually shipped
+
+The credit refusal had only ever been observed through the MCP wrapper, so it was re-tested against the CLI directly, which is the surface the Superdesign skill itself documents.
+
+- `npx --yes @superdesign/cli@latest` → `auth: authenticated as team "Personal" (local credentials)`, project `cff68fa9-107a-4e63-882f-2b7c66c121a6` visible, 16 nodes listed. **Authentication is not the blocker.**
+- `list-models` → `gemini-3.1-pro,google,free,Latest Gemini with thinking`. The model the task asks for is on the **free** plan, so an exhausted paid balance should not have blocked it.
+- A revision request was composed as `docs/design/crm-129-tax-panel-016/designer-brief-03-revision.md` — problems and measured evidence only, no remedy, no colour value, no markup, and an explicit instruction to decide the resting action set for the active-unused row rather than return a menu. It was sent with the Twenty token excerpt (`twenty-tokens-excerpt.css`, generated from `theme-light.css`).
+- First attempt, with the component source and the full Impeccable report attached, failed on transport: `✗ API Error: read ECONNRESET`. Second attempt, brief plus tokens only, reached the service and was refused on billing: `✗ You're out of credits, so this generation was blocked.`, then it opened the team billing page in the browser.
+
+So the block is a team balance, not auth, not the model, not the payload, and not the prompt. **No designer revision exists for the five designer-owned findings, and none was invented.** The two artifacts above are committed because they are the honest record of what was asked and what came back.
+
+**What shipped this turn, and why it is not a design decision.** The only visual change is the mobile target floor: `.tax-btn`, `.tax-add` and the editor inputs are 32 px on desktop and 44 px below 767 px. Heights moved out of the inline styles into the panel's own stylesheet because an inline `height` beats a media query — the same 32 px is still painted on desktop, and the rule that changes it cites the product contract. That satisfies both the product brief (44 px) and the designer's own criterion (*at least* 32 px), so it does not overwrite a designer value. Layout properties for `.tax-row-main`, `.tax-metrics`, `.tax-row-actions` and `.tax-fields` moved from inline objects into the existing scoped stylesheet for the same mechanical reason: the 767 px block could not override them where they were.
+
+Everything else the Impeccable report separates out as engineering — focus restoration, an unsaved-edit guard, per-row accessible names, a load retry — was **left unimplemented on purpose**. Each of those needs a visible shape (a prompt, a retry control, a focus ring placement) that belongs to the designer, and inventing it now would repeat the exact violation this task exists to correct. They remain listed, unbuilt, in the Impeccable report.
+
+Deployed state: app **0.1.41**, `Synced پیش‌فاکتور (39 files)`, `Published quotation v0.1.41 to dev-crm129`, `core.application` row reads `پیش‌فاکتور | 0.1.41 | INSTALLED`. The built bundle on disk contains the 767 px block. Nothing on `:6080` was touched and no worker was restarted.
+
+**Served-page measurement after the redeploy** (`http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d`, live DOM, three real policies):
+
+| Viewport | `.tax-btn` heights | Add control | Row heights | Horizontal overflow | Text under 12 px |
+|---|---|---|---|---|---|
+| 1920 px | 32, 32, 32, 32 | 32 px tall | 85, 85, 85 | 0 | 0 |
+| 390 px (emulated) | 44, 44, 44, 44 | 44 × 44 | 311, 208, 311 | 0 | 0 |
+
+The page also loads cleanly at this version — the first tab inspected still held old code and showed the load-failure banner, and a reload cleared it, which is the expected behaviour of a front-component bundle swap rather than a defect. Screenshots kept beside this file: `served-desktop-row-0.1.41.png`, `served-mobile-390-0.1.41.png`.
+
+This is evidence that the deployed screen is coherent and safe to look at. It is **not** a `DESIGN_GATE` pass: the gate also asks whether the served screen matches the designer's decision, and on the five contested points the designer has not spoken.
+
 ### S7 — what the architect must decide
 
-1. **Designer credit top-up** (or an explicit waiver of designer arbitration) before the five designer-owned findings in the Impeccable report can be closed. Until then `DESIGN_GATE` is not PASS.
-2. **Credential rotation**, with the consumers of that role identified first. Nothing was rotated.
-3. Whether the four contract-level findings (focus management, unsaved-edit loss, 44 px mobile targets, load retry) may be implemented without a further designer turn. They are separated out precisely because they are not designer choices — except the visual shape of an unsaved-changes prompt, which is.
+1. **Designer credit top-up** (or an explicit waiver of designer arbitration) before the five designer-owned findings in the Impeccable report can be closed. Until then `DESIGN_GATE` is not PASS. This is the only thing standing between the task and acceptance, and it cannot be bought from inside the repository.
+2. **Credential rotation**, with the consumers of that role identified first. Nothing was rotated, and no history rewrite or force-push is proposed here.
+3. Whether the three remaining contract-level findings (focus management, unsaved-edit loss, load retry) may be implemented without a further designer turn — and if the unsaved-changes prompt and the retry control may take an executor-chosen shape. The 44 px mobile target from that list is **already done**, because it is a floor both the product brief and the designer set.
 
 ## DESIGN HANDOFF — USER_REJECTED TAX-PANEL-016 / DESIGNER REASSIGNMENT (2026-11-24; ASSIGNMENT REGISTERED / NOT EXECUTED)
 

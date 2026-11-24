@@ -10,6 +10,7 @@ such; they are not design decisions.
 |---|---|---|---|
 | Independent diagnosis | `971bcdae-827c-458f-a799-311780c6b9c5` | `gemini-3.1-pro` | `create-design-draft` (`docs/design/crm-129-tax-panel-016/designer-diagnosis-01.html`) |
 | Revised screen design | `41dea32c-f4e4-41d5-b5e9-41dc4045ef71` | `gemini-3.1-pro` | `create-design-draft` (`docs/design/crm-129-tax-panel-016/designer-revised-design.html`) |
+| Revision request after the Impeccable critique | same draft `41dea32c-…`, **no new version** | `gemini-3.1-pro` (plan: free) | `iterate-design-draft --mode replace` — **refused, out of credits**; brief at `designer-brief-03-revision.md` |
 | Project | `cff68fa9-107a-4e63-882f-2b7c66c121a6` | — | same project as drafts A and B |
 
 Earlier drafts in the same project: A `f5faac68-33dc-4a48-ba39-d3a650827a21` (compact
@@ -96,3 +97,43 @@ fields with tax and duty side by side and cancel/save in a row.
 - The shipped per-row footnote is dropped for normal states, following the designer's
   density finding; refusal messages still render in the row that caused them, because
   they are the server's answer to an action the operator actually took.
+
+## Open designer questions — still unanswered, third attempt recorded
+
+The revision request against the Impeccable critique (`designer-brief-03-revision.md`) has
+now been issued three times and has never produced a designer-authored version. The record:
+
+| Attempt | Surface | Result |
+|---|---|---|
+| 1 | MCP `iterate-design-draft` | `insufficient_credits`, remaining `-15.5` |
+| 2 | MCP `iterate-design-draft` | `Team has insufficient credits` |
+| 3 | CLI `iterate-design-draft` | `read ECONNRESET` (payload), then `You're out of credits, so this generation was blocked` |
+
+Attempt 3 is the one that rules out everything except the balance. The CLI preflight read
+`authenticated as team "Personal"`, the project listed all 16 nodes, and `list-models`
+reports `gemini-3.1-pro` on the **free** plan — so the refusal is not auth, not the model,
+not the draft, and not the prompt. A second, smaller payload reached the service and was
+refused on billing, which also rules out size.
+
+**Unanswered by the designer, and therefore not decided:**
+
+1. The accent total (4.22:1) and the danger label (4.36:1) and white-on-danger (4.47:1)
+   all miss the 4.5:1 floor the product sets. The panel already paints a passing danger
+   red. Darker steps exist in Twenty's own ramp (`--t-color-blue10/11`, `red10/11`).
+   Which value does the designer take?
+2. Desktop stays 32 px. Under 767 px the targets are now 44 px, because 44 is also the
+   product contract and the designer's own criterion says *at least* 32 — the floor is
+   satisfied, not overwritten. Confirm this reading.
+3. `جمع کل` reads as a money total to operators, and `م:`/`ع:` at 390 px abbreviate the
+   two words they came to compare. Both are the designer's strings.
+4. An exempt policy (`۰٪`) is visually identical to a policy nobody filled in.
+5. The resting action set for an active, unused, non-default row — the gap carried over
+   from the previous round, still open.
+6. Whether the panel may migrate to `--t-*` tokens, which changes how it looks in dark
+   theme, and is therefore not ours to decide.
+7. The visual shape of an unsaved-changes prompt and of a load retry control. The
+   behaviour is engineering; the shape is not.
+
+Until at least 1, 5 and 7 are answered, this file cannot record a design decision on them
+and `DESIGN_GATE` cannot be reported as PASS.
+

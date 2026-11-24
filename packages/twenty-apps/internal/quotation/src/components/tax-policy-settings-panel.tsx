@@ -454,8 +454,8 @@ export const TaxPolicySettingsPanel = () => {
           </div>
         </div>
 
-        <div style={styles.fields}>
-          <label style={{ ...styles.label, ...styles.fieldWide }}>
+        <div className="tax-fields">
+          <label className="tax-field-wide" style={styles.label}>
             نام سیاست
             <input
               style={styles.input}
@@ -641,7 +641,7 @@ export const TaxPolicySettingsPanel = () => {
                 key={`${row.recordId}:${row.isDefault ? 'default' : 'standard'}`}
                 className={row.isActive ? 'tax-row' : 'tax-row tax-row-inactive'}
               >
-                <div className="tax-row-main" style={styles.rowMain}>
+                <div className="tax-row-main">
                   <div style={styles.identity}>
                     <div style={styles.nameLine}>
                       <h3
@@ -661,7 +661,7 @@ export const TaxPolicySettingsPanel = () => {
                     <p style={styles.usage}>{usageLine(row)}</p>
                   </div>
 
-                  <div className="tax-metrics" style={styles.metrics}>
+                  <div className="tax-metrics">
                     <div style={styles.totalBlock}>
                       <span style={styles.metricLabel}>جمع کل</span>
                       <span
@@ -695,7 +695,7 @@ export const TaxPolicySettingsPanel = () => {
                   </div>
                 </div>
 
-                <div className="tax-row-actions" style={styles.rowActions}>
+                <div className="tax-row-actions">
                   {isConfirming ? (
                     <>
                       <span className="tax-confirm-text" style={styles.confirmText}>
@@ -834,6 +834,15 @@ const PANEL_CSS = `
   padding-inline-start: 24px;
 }
 .tax-row-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tax-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+.tax-field-wide { grid-column: span 2; }
+/* Height lives here, not in the inline styles, so the 767 px block can raise the
+   targets to the 44 px the product contracts for. */
+.tax-fields input { height: 32px; }
 .tax-editor {
   display: flex;
   flex-direction: column;
@@ -877,7 +886,17 @@ const PANEL_CSS = `
     gap: 12px;
     padding: 12px;
   }
-  .tax-row-main { flex-direction: column; align-items: stretch; gap: 12px; }
+  /* flex-basis 320px is a width in the row but becomes a height once the row stacks. */
+  .tax-row-main {
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .tax-fields { grid-template-columns: 1fr 1fr; }
+  .tax-field-wide { grid-column: 1 / -1; }
+  /* The product contract asks for 44px targets on a phone; the designer's floor is 32. */
+  .tax-btn, .tax-add { height: 44px; }
   .tax-metrics {
     justify-content: space-between;
     border-inline-start: none;
@@ -897,8 +916,9 @@ const PANEL_CSS = `
   .tax-confirm-text { grid-column: 1 / -1; }
   .tax-formula-full { display: none; }
   .tax-formula-short { display: inline; }
-  .tax-add { width: 32px; padding: 0; }
+  .tax-add { width: 44px; padding: 0; }
   .tax-add-label { display: none; }
+  .tax-fields input { height: 44px; }
 }
 `;
 
@@ -941,7 +961,6 @@ const styles: Record<string, CSSProperties> = {
     maxWidth: 640,
   },
   addButton: {
-    height: 32,
     padding: '0 16px',
     borderRadius: 8,
     border: '1px solid transparent',
@@ -970,13 +989,6 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     padding: '24px',
     listStyle: 'none',
-  },
-  rowMain: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 32,
-    flex: '1 1 320px',
-    minWidth: 0,
   },
   identity: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 200 },
   nameLine: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -1022,13 +1034,6 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.8,
     fontVariantNumeric: 'tabular-nums',
   },
-  metrics: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 24,
-    borderInlineStart: '1px solid #d6d6d6',
-    paddingInlineStart: 24,
-  },
   totalBlock: { display: 'flex', flexDirection: 'column', gap: 2 },
   metricLabel: { fontSize: 12, color: '#666666', lineHeight: 1.8 },
   totalValue: {
@@ -1058,12 +1063,6 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: 'nowrap',
   },
   formulaDivider: { color: '#d6d6d6' },
-  rowActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
   confirmText: {
     fontSize: 13,
     color: '#d3453f',
@@ -1077,7 +1076,6 @@ const styles: Record<string, CSSProperties> = {
     lineHeight: 1.8,
   },
   actionButton: {
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d6d6d6',
@@ -1089,7 +1087,6 @@ const styles: Record<string, CSSProperties> = {
     fontFamily: 'inherit',
   },
   dangerButton: {
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d3453f',
@@ -1101,7 +1098,6 @@ const styles: Record<string, CSSProperties> = {
     fontFamily: 'inherit',
   },
   dangerSolidButton: {
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d3453f',
@@ -1113,7 +1109,6 @@ const styles: Record<string, CSSProperties> = {
     fontFamily: 'inherit',
   },
   primaryButton: {
-    height: 32,
     padding: '0 16px',
     borderRadius: 8,
     border: '1px solid transparent',
@@ -1125,7 +1120,6 @@ const styles: Record<string, CSSProperties> = {
     fontFamily: 'inherit',
   },
   secondaryButton: {
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d6d6d6',
@@ -1180,12 +1174,6 @@ const styles: Record<string, CSSProperties> = {
     gap: 8,
     flexWrap: 'wrap',
   },
-  fields: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: 16,
-  },
-  fieldWide: { gridColumn: 'span 2' },
   label: {
     display: 'flex',
     flexDirection: 'column',
@@ -1196,7 +1184,6 @@ const styles: Record<string, CSSProperties> = {
   input: {
     width: '100%',
     boxSizing: 'border-box',
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d6d6d6',
@@ -1208,7 +1195,6 @@ const styles: Record<string, CSSProperties> = {
   inputInvalid: {
     width: '100%',
     boxSizing: 'border-box',
-    height: 32,
     padding: '0 12px',
     borderRadius: 8,
     border: '1px solid #d3453f',

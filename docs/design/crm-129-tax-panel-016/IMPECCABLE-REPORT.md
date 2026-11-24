@@ -147,11 +147,31 @@ The request was refused by the platform:
 
 This is the second time this task has been blocked by the same cause; `DESIGN-DECISION.md` records `insufficient_credits` (remaining `-15.5`) on the previous attempt to put the resting action set back to the designer. No designer-authored revision of these findings exists, and none is fabricated in this report.
 
+### Third attempt — through the CLI, and what it eliminates
+
+Because the refusal had only been seen through the MCP wrapper, it was re-tested against
+`npx --yes @superdesign/cli@latest`, the surface the Superdesign skill documents.
+
+- The preflight returned `auth: authenticated as team "Personal" (local credentials)` and
+  listed project `cff68fa9-107a-4e63-882f-2b7c66c121a6` with all 16 nodes, so
+  authentication and the project are intact.
+- `list-models` reports `gemini-3.1-pro,google,free` — the model this task asks for is on
+  the free plan, so an exhausted paid balance should not have been sufficient to block it.
+- A revision request written as problems and evidence only — `designer-brief-03-revision.md`,
+  no remedy, no colour value, no markup, and an explicit instruction to decide the
+  resting action set rather than return a menu — was sent with the token excerpt.
+- Attempt with the component source plus this report attached: `✗ API Error: read
+  ECONNRESET`. Attempt with brief and tokens only: `✗ You're out of credits, so this
+  generation was blocked.`, after which it opened the team billing page.
+
+Four variables are now excluded — auth, model, draft, payload size — leaving a negative
+team balance as the sole cause. It is not something a repository change can clear.
+
 Findings that do **not** require designer arbitration, because they are either engineering behaviour or satisfied by the designer's own floor:
 
 - focus management (P1) — the brief requires keyboard-only operation with visible focus;
 - unsaved-edit protection (P1) — a data-loss guard; its visual shape still needs a decision if it shows a prompt;
-- mobile targets raised to 44px (P1) — 44px satisfies the designer's "at least 32px";
+- mobile targets raised to 44px (P1) — **done this turn.** 44 px satisfies the designer's "at least 32px" and the product contract, so it raises a floor rather than overriding a designer value. Desktop stays at the designer's 32 px;
 - load retry (P2) — the brief's "every screen states the one next action".
 
 Findings that **do** require it: accent and danger values (P2 contrast), «جمع کل» wording and exempt-state copy (P3), add-action placement and default-set weight (P3), token migration (P2), and the confirm prompt's visual shape (P1).
