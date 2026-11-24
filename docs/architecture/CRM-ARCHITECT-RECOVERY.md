@@ -1,5 +1,13 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## ARCHITECT REVIEW — TAX PANEL UI 016 / INTEGRITY AND SECRET GATE (2026-11-24; UI CODE REVIEW PASS / FINAL UAT BLOCKED)
+
+- Reviewed exact remote tip `cc107bbe5abd44df9f91540ebac3d1211c994d25` vs base `6b676c50157875536ef4a542a287451ba5d2d554`. Single 016 commit adds two Superdesign-generated candidate HTML designs, `.superdesign/init` context, tests, and changes only `tax-policy-settings-panel.tsx` in executable source, plus app version 0.1.38 and recovery. No server, money calculation, adapter, schema, PDF, or revision implementation changes in this commit. Actual submitted designs and worker-reported Impeccable comparison satisfy the evidence requirement; user visual acceptance remains pending.
+- **INTEGRITY BLOCKER:** permanent test `packages/twenty-apps/internal/quotation/scripts/dev-verify-crm129-tax-uat-015.cjs`, section S5-15c, holds a shared advisory lock while introducing a quotation then expects concurrent `tax-policy-delete` to refuse. Worker reports **15/17** because the delete **succeeded** (cleanup failed as a derivative). This directly contradicts the claimed race-safe delete contract. Root cause is NOT established by code review. Distinguish test harness timing/connection problems from missing lock or transaction visibility; reproduce deterministically, log exact lock keys, waiting state, transaction order and DB read visibility without exposing secrets. Until 17/17 and independent verification, do not mark accounting/tax integrity fully accepted. **No out-of-scope UI work needed.**
+- **SECURITY BLOCKER:** the same tracked UAT script embeds a **literal PostgreSQL credential** in `new Client({... password: ...})`. Do not repeat or print it in reports. Immediately replace with secure env/secret injection and fail closed if missing; assess whether credential is still active, rotate/revoke through authorized secure process; review repository history/access since this secret has been pushed. Simply deleting from HEAD does not expunge Git history. Do not expose any replacement secret in code, logs, or chat.
+- **Disposition:** tax-panel **visual candidate is ready for user's UI inspection on reportedly deployed Dev app 0.1.38**, but **architect final technical gate is HOLD** for confirmed race and credential exposure. Worker-reported 670 app / 293 server tests do not override the failed dedicated 15/17 integrity suite. Do not change `:6080`, restart main worker, contact live vendor, or perform financial writes. Address blockers as narrow repair with re-run tests, not as another broad redesign.
+
+
 ## DESIGN GATE — TAX POLICY PANEL UI UAT (2026-11-24; REQUESTED, NOT EXECUTED)
 
 **Superseded by the EXECUTED section directly below (app 0.1.38).**
