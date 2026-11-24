@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>مالیات و عوارض — پیش‌نمایش Composer ۰۱۸</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0b1220;
+      --ink-soft: #334155;
+      --muted: #64748b;
+      --line: #d8dee8;
+      --line-strong: #b8c0ce;
+      --paper: #f4f6f9;
+      --surface: #ffffff;
+      --surface-2: #eef2f7;
+      --accent: #0b4f6c;
+      --accent-soft: #d7ebf3;
+      --accent-ink: #07384d;
+      --ok: #0f766e;
+      --ok-soft: #d8f3ef;
+      --warn: #9a3412;
+      --warn-soft: #ffedd5;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --focus: #0ea5e9;
+      --shadow: 0 1px 0 rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+      --radius: 10px;
+      --font: "Vazirmatn", Tahoma, sans-serif;
+      --mono-num: "Vazirmatn", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin-bottom: 10px;
+    }
+    .eyebrow span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .page-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .page-head h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .page-head p {
+      margin: 0;
+      max-width: 46ch;
+      color: var(--ink-soft);
+      font-size: 14px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-weight: 600;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+    .btn:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-ink); }
+    .btn-ghost {
+      background: var(--surface);
+      border-color: var(--line);
+      color: var(--ink);
+    }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
+    .btn-danger {
+      background: var(--surface);
+      border-color: #f1b4b4;
+      color: var(--danger);
+    }
+    .btn-danger:hover:not(:disabled) { background: var(--danger-soft); }
+    .btn-danger-solid {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger-solid:hover:not(:disabled) { background: #991b1b; }
+    .btn-sm { min-height: 34px; padding: 0 10px; font-size: 13px; font-weight: 500; }
+    .btn-icon {
+      width: 34px;
+      padding: 0;
+    }
+
+    .default-banner {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      background: linear-gradient(180deg, #f7fbfd, #eef6fa);
+      border: 1px solid #c9dde7;
+      border-radius: var(--radius);
+    }
+    .default-banner .mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .default-banner strong { display: block; font-size: 15px; }
+    .default-banner .meta { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+    .rate-pill {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono-num);
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent-ink);
+    }
+    .rate-pill small {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 16px;
+      align-items: start;
+    }
+    .workspace.inspector-closed {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .workspace.inspector-closed .inspector { display: none; }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+    .panel-toolbar h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      text-transform: none;
+    }
+    .count {
+      color: var(--muted);
+      font-weight: 500;
+      margin-inline-start: 8px;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table.ledger {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    .ledger th {
+      text-align: right;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fafbfd;
+      white-space: nowrap;
+    }
+    .ledger td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #edf0f5;
+      vertical-align: middle;
+    }
+    .ledger tr:last-child td { border-bottom: 0; }
+    .ledger tbody tr {
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .ledger tbody tr:hover { background: #f8fafc; }
+    .ledger tbody tr.is-selected { background: var(--accent-soft); }
+    .ledger tbody tr.is-inactive { color: var(--muted); }
+    .ledger tbody tr.is-inactive .name { color: var(--muted); }
+
+    .name {
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .code {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      margin-top: 2px;
+    }
+    .num {
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono-num);
+      font-weight: 600;
+      direction: ltr;
+      unicode-bidi: plaintext;
+      text-align: left;
+    }
+    .num.total { color: var(--accent-ink); font-size: 15px; }
+    .num.exempt { color: var(--ok); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .badge-default { background: var(--accent-soft); color: var(--accent-ink); }
+    .badge-active { background: var(--ok-soft); color: var(--ok); }
+    .badge-off { background: var(--surface-2); color: var(--muted); }
+    .usage {
+      font-size: 13px;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+    }
+    .usage strong { color: var(--ink); }
+
+    .row-actions {
+      display: flex;
+      justify-content: flex-start;
+      gap: 6px;
+      opacity: 0.92;
+    }
+
+    .inspector {
+      position: sticky;
+      top: 16px;
+    }
+    .inspector-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .inspector-head h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .inspector-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .inspector-body { padding: 14px 16px 18px; }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-soft);
+    }
+    .field input {
+      min-height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .field input:focus {
+      outline: 2px solid color-mix(in srgb, var(--focus) 55%, white);
+      border-color: var(--focus);
+    }
+    .field .hint { font-size: 12px; color: var(--muted); }
+    .field .error {
+      font-size: 12px;
+      color: var(--danger);
+      font-weight: 500;
+    }
+    .field.is-invalid input {
+      border-color: #f87171;
+      background: #fff8f8;
+    }
+
+    .split-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .computed {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      margin: 4px 0 16px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px dashed var(--line-strong);
+    }
+    .computed span { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .computed strong {
+      font-size: 20px;
+      font-variant-numeric: tabular-nums;
+      font-family: var(--mono-num);
+      color: var(--accent-ink);
+      direction: ltr;
+      unicode-bidi: plaintext;
+    }
+
+    .inspector-foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 4px;
+    }
+    .inspector-foot .grow { margin-inline-start: auto; }
+
+    .confirm {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--danger-soft);
+      border: 1px solid #fecaca;
+    }
+    .confirm p {
+      margin: 0 0 10px;
+      color: #7f1d1d;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .confirm .actions { display: flex; gap: 8px; }
+
+    .footnote {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mobile-cards { display: none; }
+
+    @media (max-width: 960px) {
+      .workspace,
+      .workspace.inspector-closed {
+        grid-template-columns: 1fr;
+      }
+      .inspector { position: static; }
+      .default-banner {
+        grid-template-columns: auto 1fr;
+      }
+      .default-banner .rate-pill { grid-column: 1 / -1; justify-self: start; }
+    }
+
+    @media (max-width: 720px) {
+      .shell { padding: 18px 14px 48px; }
+      .page-head { flex-direction: column; align-items: stretch; }
+      .page-head .btn { width: 100%; min-height: 44px; }
+      .table-wrap { display: none; }
+      .mobile-cards { display: grid; gap: 10px; padding: 12px; }
+      .m-card {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        background: #fff;
+      }
+      .m-card.is-selected { border-color: #8fc0d4; background: #f4fafc; }
+      .m-card.is-inactive { background: #f8fafc; }
+      .m-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .m-rates {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .m-rates div {
+        background: var(--surface-2);
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .m-rates small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 2px;
+      }
+      .m-rates strong {
+        font-variant-numeric: tabular-nums;
+        direction: ltr;
+        unicode-bidi: plaintext;
+      }
+      .m-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .m-actions .btn { min-height: 44px; width: 100%; }
+      .btn-sm { min-height: 44px; }
+      .field input { min-height: 44px; }
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="eyebrow"><span aria-hidden="true"></span> تنظیمات فضای کاری · Composer ۰۱۸</div>
+
+    <header class="page-head">
+      <div>
+        <h1>مالیات و عوارض</h1>
+        <p>
+          نرخ‌هایی که پیش‌فاکتور جدید با آن‌ها شروع می‌شود. هر سیاست یک تصمیم است با دو جزء:
+          مالیات و عوارض. اسناد قبلی نرخ مهرشدهٔ خود را نگه می‌دارند.
+        </p>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-new" aria-controls="inspector">
+        + سیاست جدید
+      </button>
+    </header>
+
+    <section class="default-banner" aria-label="سیاست پیش‌فرض فعال">
+      <div class="mark" aria-hidden="true">٪</div>
+      <div>
+        <strong>پیش‌فرض فعال: مالیات بر ارزش افزوده ۹٪</strong>
+        <div class="meta">پیش‌فاکتور تازه با این سیاست باز می‌شود · کد <span dir="ltr">IR_VAT_9</span></div>
+      </div>
+      <div class="rate-pill" title="جمع مالیات و عوارض">
+        <small>نرخ کل</small>
+        ۹٫۰٪
+      </div>
+    </section>
+
+    <div class="workspace" id="workspace">
+      <section class="panel" aria-labelledby="list-title">
+        <div class="panel-toolbar">
+          <h2 id="list-title">فهرست سیاست‌ها <span class="count" id="count-label">۳ مورد</span></h2>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-refresh">بازخوانی</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="ledger" aria-describedby="list-title">
+            <thead>
+              <tr>
+                <th scope="col">سیاست</th>
+                <th scope="col">مالیات</th>
+                <th scope="col">عوارض</th>
+                <th scope="col">نرخ کل</th>
+                <th scope="col">وضعیت</th>
+                <th scope="col">اسناد</th>
+                <th scope="col"><span class="visually-hidden">عملیات</span></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
+        <div class="mobile-cards" id="mobile-rows" aria-label="فهرست موبایل"></div>
+        <p class="footnote" style="padding: 0 14px 14px;">
+          حذف فقط برای سیاست بدون سند مجاز است. سیاست استفاده‌شده را غیرفعال کنید؛ اسناد تاریخی تغییر نمی‌کنند.
+        </p>
+      </section>
+
+      <aside class="panel inspector" id="inspector" aria-labelledby="inspector-title" hidden>
+        <div class="inspector-head">
+          <div>
+            <h2 id="inspector-title">ویرایش سیاست</h2>
+            <p id="inspector-sub">تغییرات فقط روی پیش‌فاکتورهای جدید اثر می‌گذارد.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm btn-icon" id="btn-close" aria-label="بستن بازرس">×</button>
+        </div>
+        <form class="inspector-body" id="editor" novalidate>
+          <div class="field" id="field-name">
+            <label for="name">نام سیاست</label>
+            <input id="name" name="name" autocomplete="off" required />
+            <div class="error" id="name-error" hidden></div>
+          </div>
+          <div class="split-2">
+            <div class="field" id="field-tax">
+              <label for="tax">مالیات ٪</label>
+              <input id="tax" name="tax" inputmode="decimal" dir="ltr" />
+              <div class="hint">مثلاً ۹ یا ۹٫۵</div>
+            </div>
+            <div class="field" id="field-duty">
+              <label for="duty">عوارض ٪</label>
+              <input id="duty" name="duty" inputmode="decimal" dir="ltr" />
+              <div class="hint">اگر نیست، ۰ بگذارید</div>
+            </div>
+          </div>
+          <div class="computed" aria-live="polite">
+            <span>نرخ کل (جمع خودکار)</span>
+            <strong id="total-out">۰٪</strong>
+          </div>
+          <div class="inspector-foot">
+            <button type="submit" class="btn btn-primary">ذخیره</button>
+            <button type="button" class="btn btn-ghost" id="btn-cancel">انصراف</button>
+            <button type="button" class="btn btn-danger grow" id="btn-delete">حذف</button>
+          </div>
+          <div class="confirm" id="delete-confirm" hidden>
+            <p id="delete-copy">این سیاست حذف شود؟</p>
+            <div class="actions">
+              <button type="button" class="btn btn-danger-solid btn-sm" id="btn-delete-yes">تأیید حذف</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-delete-no">انصراف</button>
+            </div>
+          </div>
+        </form>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const policies = [
+      {
+        id: "1",
+        code: "IR_VAT_9",
+        name: "مالیات بر ارزش افزوده ۹٪",
+        tax: 9,
+        duty: 0,
+        isDefault: true,
+        isActive: true,
+        usage: 5,
+      },
+      {
+        id: "2",
+        code: "IR_VAT_DUTY_11",
+        name: "مالیات ۹٪ + عوارض ۲٪",
+        tax: 9,
+        duty: 2,
+        isDefault: false,
+        isActive: true,
+        usage: 0,
+      },
+      {
+        id: "3",
+        code: "IR_EXEMPT",
+        name: "معاف از مالیات",
+        tax: 0,
+        duty: 0,
+        isDefault: false,
+        isActive: false,
+        usage: 1,
+      },
+    ];
+
+    const toFa = (n) =>
+      String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+
+    const formatRate = (n) => {
+      const text = Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
+      return toFa(text) + "٪";
+    };
+
+    const totalOf = (p) => p.tax + p.duty;
+
+    let selectedId = null;
+    let mode = "closed"; // closed | edit | create
+    let confirmDelete = false;
+
+    const workspace = document.getElementById("workspace");
+    const inspector = document.getElementById("inspector");
+    const rowsEl = document.getElementById("rows");
+    const mobileEl = document.getElementById("mobile-rows");
+
+    const statusBadge = (p) => {
+      if (p.isDefault) return `<span class="badge badge-default">پیش‌فرض</span>`;
+      if (p.isActive) return `<span class="badge badge-active">فعال</span>`;
+      return `<span class="badge badge-off">غیرفعال</span>`;
+    };
+
+    const renderList = () => {
+      document.getElementById("count-label").textContent = toFa(policies.length) + " مورد";
+      rowsEl.innerHTML = policies
+        .map((p) => {
+          const total = totalOf(p);
+          const totalHtml =
+            total === 0
+              ? `<span class="num exempt">معاف</span>`
+              : `<span class="num total">${formatRate(total)}</span>`;
+          const selected = selectedId === p.id ? "is-selected" : "";
+          const inactive = p.isActive ? "" : "is-inactive";
+          const deleteDisabled = p.usage > 0 || p.isDefault;
+          return `
+            <tr class="${selected} ${inactive}" data-id="${p.id}" tabindex="0">
+              <td>
+                <div class="name">${p.name}</div>
+                <div class="code">${p.code}</div>
+              </td>
+              <td><span class="num">${formatRate(p.tax)}</span></td>
+              <td><span class="num">${formatRate(p.duty)}</span></td>
+              <td>${totalHtml}</td>
+              <td>${statusBadge(p)}</td>
+              <td class="usage">${
+                p.usage === 0
+                  ? "بدون سند"
+                  : `<strong>${toFa(p.usage)}</strong> سند`
+              }</td>
+              <td>
+                <div class="row-actions" onclick="event.stopPropagation()">
+                  <button type="button" class="btn btn-ghost btn-sm" data-act="edit" data-id="${p.id}">ویرایش</button>
+                  ${
+                    p.isActive && !p.isDefault
+                      ? `<button type="button" class="btn btn-ghost btn-sm" data-act="default" data-id="${p.id}">پیش‌فرض</button>`
+                      : ""
+                  }
+                  ${
+                    p.isActive
+                      ? `<button type="button" class="btn btn-ghost btn-sm" data-act="deactivate" data-id="${p.id}" ${
+                          p.isDefault ? "disabled title='پیش‌فرض را نمی‌توان غیرفعال کرد'" : ""
+                        }>غیرفعال</button>`
+                      : `<button type="button" class="btn btn-ghost btn-sm" data-act="activate" data-id="${p.id}">فعال</button>`
+                  }
+                  <button type="button" class="btn btn-danger btn-sm" data-act="delete" data-id="${p.id}" ${
+                    deleteDisabled ? "disabled title='به‌دلیل وابستگی قابل حذف نیست'" : ""
+                  }>حذف</button>
+                </div>
+              </td>
+            </tr>`;
+        })
+        .join("");
+
+      mobileEl.innerHTML = policies
+        .map((p) => {
+          const total = totalOf(p);
+          const selected = selectedId === p.id ? "is-selected" : "";
+          const inactive = p.isActive ? "" : "is-inactive";
+          const deleteDisabled = p.usage > 0 || p.isDefault;
+          return `
+            <article class="m-card ${selected} ${inactive}" data-id="${p.id}">
+              <div class="m-top">
+                <div>
+                  <div class="name">${p.name}</div>
+                  <div class="code">${p.code}</div>
+                </div>
+                ${statusBadge(p)}
+              </div>
+              <div class="m-rates">
+                <div><small>مالیات</small><strong>${formatRate(p.tax)}</strong></div>
+                <div><small>عوارض</small><strong>${formatRate(p.duty)}</strong></div>
+                <div><small>نرخ کل</small><strong>${
+                  total === 0 ? "معاف" : formatRate(total)
+                }</strong></div>
+              </div>
+              <div class="usage" style="margin-bottom:10px">${
+                p.usage === 0 ? "بدون سند" : `در ${toFa(p.usage)} سند استفاده شده`
+              }</div>
+              <div class="m-actions">
+                <button type="button" class="btn btn-ghost btn-sm" data-act="edit" data-id="${p.id}">ویرایش</button>
+                <button type="button" class="btn btn-danger btn-sm" data-act="delete" data-id="${p.id}" ${
+                  deleteDisabled ? "disabled" : ""
+                }>حذف</button>
+              </div>
+            </article>`;
+        })
+        .join("");
+    };
+
+    const openInspector = (policy, create = false) => {
+      mode = create ? "create" : "edit";
+      selectedId = create ? null : policy.id;
+      confirmDelete = false;
+      inspector.hidden = false;
+      workspace.classList.remove("inspector-closed");
+      document.getElementById("inspector-title").textContent = create
+        ? "سیاست جدید"
+        : "ویرایش سیاست";
+      document.getElementById("inspector-sub").textContent = create
+        ? "پس از ذخیره، می‌توانید آن را پیش‌فرض کنید."
+        : "تغییرات فقط روی پیش‌فاکتورهای جدید اثر می‌گذارد.";
+      document.getElementById("name").value = create ? "" : policy.name;
+      document.getElementById("tax").value = create ? "0" : String(policy.tax);
+      document.getElementById("duty").value = create ? "0" : String(policy.duty);
+      document.getElementById("delete-confirm").hidden = true;
+      document.getElementById("btn-delete").hidden = create;
+      document.getElementById("btn-delete").disabled =
+        !create && (policy.usage > 0 || policy.isDefault);
+      updateTotal();
+      clearErrors();
+      renderList();
+      document.getElementById("name").focus();
+    };
+
+    const closeInspector = () => {
+      mode = "closed";
+      selectedId = null;
+      confirmDelete = false;
+      inspector.hidden = true;
+      workspace.classList.add("inspector-closed");
+      renderList();
+    };
+
+    const clearErrors = () => {
+      document.getElementById("field-name").classList.remove("is-invalid");
+      const err = document.getElementById("name-error");
+      err.hidden = true;
+      err.textContent = "";
+    };
+
+    const updateTotal = () => {
+      const tax = Number(document.getElementById("tax").value.replace(",", ".")) || 0;
+      const duty = Number(document.getElementById("duty").value.replace(",", ".")) || 0;
+      const sum = tax + duty;
+      document.getElementById("total-out").textContent =
+        sum === 0 ? "معاف" : formatRate(sum);
+    };
+
+    const find = (id) => policies.find((p) => p.id === id);
+
+    document.getElementById("btn-new").addEventListener("click", () => {
+      openInspector(null, true);
+    });
+    document.getElementById("btn-close").addEventListener("click", closeInspector);
+    document.getElementById("btn-cancel").addEventListener("click", closeInspector);
+    document.getElementById("tax").addEventListener("input", updateTotal);
+    document.getElementById("duty").addEventListener("input", updateTotal);
+
+    document.getElementById("editor").addEventListener("submit", (e) => {
+      e.preventDefault();
+      clearErrors();
+      const name = document.getElementById("name").value.trim();
+      if (!name) {
+        document.getElementById("field-name").classList.add("is-invalid");
+        const err = document.getElementById("name-error");
+        err.hidden = false;
+        err.textContent = "نام سیاست را وارد کنید.";
+        document.getElementById("name").focus();
+        return;
+      }
+      // Preview only — no persistence.
+      alert("پیش‌نمایش: ذخیره شبیه‌سازی شد. سورس CRM تغییری نکرده است.");
+      closeInspector();
+    });
+
+    document.getElementById("btn-delete").addEventListener("click", () => {
+      const p = find(selectedId);
+      if (!p || p.usage > 0 || p.isDefault) return;
+      confirmDelete = true;
+      document.getElementById("delete-copy").textContent =
+        `«${p.name}» حذف شود؟ این کار برگشت‌پذیر نیست.`;
+      document.getElementById("delete-confirm").hidden = false;
+    });
+    document.getElementById("btn-delete-no").addEventListener("click", () => {
+      confirmDelete = false;
+      document.getElementById("delete-confirm").hidden = true;
+    });
+    document.getElementById("btn-delete-yes").addEventListener("click", () => {
+      alert("پیش‌نمایش: حذف شبیه‌سازی شد.");
+      closeInspector();
+    });
+
+    const onAct = (act, id) => {
+      const p = find(id);
+      if (!p) return;
+      if (act === "edit") openInspector(p);
+      if (act === "delete") {
+        openInspector(p);
+        document.getElementById("btn-delete").click();
+      }
+      if (act === "default") alert("پیش‌نمایش: تعیین پیش‌فرض شبیه‌سازی شد.");
+      if (act === "deactivate" || act === "activate")
+        alert("پیش‌نمایش: تغییر وضعیت شبیه‌سازی شد.");
+    };
+
+    document.body.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-act]");
+      if (btn) {
+        onAct(btn.getAttribute("data-act"), btn.getAttribute("data-id"));
+        return;
+      }
+      const row = e.target.closest("tr[data-id], .m-card[data-id]");
+      if (row) {
+        const p = find(row.getAttribute("data-id"));
+        if (p) openInspector(p);
+      }
+    });
+
+    rowsEl.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const row = e.target.closest("tr[data-id]");
+      if (!row) return;
+      e.preventDefault();
+      openInspector(find(row.getAttribute("data-id")));
+    });
+
+    workspace.classList.add("inspector-closed");
+    renderList();
+  </script>
+</body>
+</html>

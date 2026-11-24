@@ -1,6 +1,5 @@
 import {
   type CSSProperties,
-  Fragment,
   useCallback,
   useEffect,
   useState,
@@ -18,13 +17,9 @@ import {
 } from 'src/domain/money/tax-policy';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
-// The tax settings panel. It only renders and forwards what the operator typed: the
-// rate is validated, the single default is enforced and "used by quotations" is
-// counted on the server, because a browser cannot be the authority for a tax rate.
-//
-// ONE POLICY, TWO COMPONENTS: tax (مالیات) and duty (عوارض) are two fields of the same
-// row, not two policies. The list shows one line per policy with its total, and the
-// editor shows both components plus the computed total, which is display-only.
+// Ledger + Inspector: the catalog is a comparable table; create/edit lives in one
+// sticky inspector so browsing and writing stay separate surfaces. Tax and duty remain
+// two fields of one policy; the server still owns default uniqueness and delete refusal.
 
 type TaxPolicyRow = {
   recordId: string;
@@ -44,8 +39,6 @@ type EditorState = {
   name: string;
   ratePercentText: string;
   dutyPercentText: string;
-  // Carried through the edit so saving a rate does not silently reactivate a policy;
-  // activation has its own row action.
   isActive: boolean;
 };
 
@@ -73,8 +66,6 @@ const readRows = (data: Record<string, unknown>): TaxPolicyRow[] => {
           typeof row.ratePercent === 'string'
             ? row.ratePercent
             : String(row.rateBasisPoints ?? ''),
-        // A policy written before duty existed reads as "no duty", which is what its
-        // documents were priced with; the row is still one policy.
         dutyRatePercent:
           typeof row.dutyRatePercent === 'string' ? row.dutyRatePercent : '0',
         totalRatePercent:
@@ -109,8 +100,6 @@ const editorFor = (row: TaxPolicyRow): EditorState => ({
   isActive: row.isActive,
 });
 
-// The total is computed, never typed: two values that cannot be added are shown as
-// "—" instead of a number the server would refuse anyway.
 const sumPercentText = (taxText: string, dutyText: string): string => {
   const tax = parsePercentToBasisPoints(taxText);
   const duty =
@@ -122,18 +111,18 @@ const sumPercentText = (taxText: string, dutyText: string): string => {
     return '—';
   }
 
-  return `${toPersianDigits(
-    formatBasisPointsAsPercent(tax.value + duty.value),
-  )}٪`;
+  const total = tax.value + duty.value;
+
+  if (total === BigInt(0)) {
+    return 'معاف';
+  }
+
+  return `${toPersianDigits(formatBasisPointsAsPercent(total))}٪`;
 };
 
-// The same fraction separator the money format uses, so a rate never mixes an ASCII
-// dot into a screen whose placeholder and error copy already use the momayyez.
 const percentLabel = (value: string): string =>
   `${formatExactDecimalForPeople(value)}٪`;
 
-// Display only: a policy name is stored exactly as the operator typed it, but a card
-// that shows Persian digits in its rates must not show Latin digits in its own title.
 const displayPolicyName = (name: string): string => toPersianDigits(name);
 
 const FALLBACK_ERROR = 'ذخیرهٔ تنظیمات مالیات انجام نشد؛ دوباره تلاش کنید.';
@@ -148,8 +137,6 @@ const sameEditor = (left: EditorState, right: EditorState): boolean =>
   left.dutyPercentText === right.dutyPercentText &&
   left.isActive === right.isActive;
 
-// The same two parsers the server uses, run here first so a bad rate is reported under
-// the input that holds it instead of as one generic message at the top of the page.
 const rateFieldIssue = (text: string): string | null => {
   const parsed = parsePercentToBasisPoints(text);
 
@@ -182,22 +169,41 @@ const combinedIssue = (taxText: string, dutyText: string): string | null => {
     : null;
 };
 
+const canDeleteRow = (row: TaxPolicyRow): boolean =>
+  !row.isDefault && row.quotationCount === 0;
+
+const usageShort = (row: TaxPolicyRow): string => {
+  if (row.quotationCount === 0) {
+    return 'بدون سند';
+  }
+
+  return `${toPersianDigits(String(row.quotationCount))} سند`;
+};
+
+const usageLine = (row: TaxPolicyRow): string => {
+  const count =
+    row.quotationCount === 0
+      ? 'در هیچ سندی استفاده نشده است'
+      : `در ${toPersianDigits(String(row.quotationCount))} سند استفاده شده است`;
+
+  if (row.isDefault) {
+    return `${count}؛ سیاست پیش‌فرض غیرفعال یا حذف نمی‌شود.`;
+  }
+
+  return row.quotationCount === 0 ? count : `${count}؛ حذف‌شدنی نیست.`;
+};
+
 export const TaxPolicySettingsPanel = () => {
   const [rows, setRows] = useState<TaxPolicyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
-  // Two kinds of message share the editor's message slot: an instruction (the editor
-  // holds unsaved work) is a status, a save or transport failure is an alert. A name
-  // problem is its own field's, so the name input never answers for a rate error.
   const [editorNotice, setEditorNotice] = useState<{
     kind: 'instruction' | 'failure';
     message: string;
   } | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
-  // A refusal belongs to the row that caused it ("used in 8 documents") and a delete
-  // asks for a second press, so the row the operator acted on is the one that answers.
   const [rowIssue, setRowIssue] = useState<{
     recordId: string;
     kind: 'notice' | 'error';
@@ -206,9 +212,26 @@ export const TaxPolicySettingsPanel = () => {
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
     null,
   );
-  // The editor's opening snapshot, so "has the operator typed anything" is a fact
-  // rather than a guess. Cleared whenever the editor closes.
-  const [editorBaseline, setEditorBaseline] = useState<EditorState | null>(null);
+  const [editorBaseline, setEditorBaseline] = useState<EditorState | null>(
+    null,
+  );
+  // One catalog surface at a time: the ledger and the phone cards must not both sit
+  // in the accessibility tree, or a rotor hears every policy twice.
+  const [compactLayout, setCompactLayout] = useState(false);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const media = window.matchMedia('(max-width: 720px)');
+    const sync = () => setCompactLayout(media.matches);
+
+    sync();
+    media.addEventListener('change', sync);
+
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const updateEditor = useCallback((next: EditorState | null) => {
     setEditor(next);
@@ -216,27 +239,18 @@ export const TaxPolicySettingsPanel = () => {
     setNameError(null);
   }, []);
 
-  // Closing releases every surface the editor owned: its message, the name's error and
-  // a delete confirmation a row may have been left in.
   const closeEditor = () => {
     updateEditor(null);
     setEditorBaseline(null);
     setConfirmingDeleteId(null);
   };
 
-  // Opening another row's editor while this one holds typed numbers would throw them
-  // away, and the other rows' controls stay one click away. The refusal is written on
-  // the row that was pressed, which is where the operator is looking, not in an editor
-  // card further up the list. No dialog: this task needs neither interruption nor
-  // protected focus.
   const openEditor = (next: EditorState | null) => {
     if (next === null) {
       closeEditor();
 
       return;
     }
-
-    setConfirmingDeleteId(null);
 
     if (
       editor !== null &&
@@ -252,6 +266,7 @@ export const TaxPolicySettingsPanel = () => {
       return;
     }
 
+    setConfirmingDeleteId(null);
     setRowIssue(null);
     setEditorBaseline(next);
     updateEditor(next);
@@ -269,17 +284,11 @@ export const TaxPolicySettingsPanel = () => {
       newDefaultRecordId?: string,
     ): string | null => {
       if (data.success !== true) {
-        // The refusal is returned, not painted here: the caller owns the surface it
-        // belongs to (the row that was acted on, or the field being edited), so the
-        // operator never reads the same sentence twice.
         return toPersianUiMessage(data.message, FALLBACK_ERROR);
       }
 
       const nextRows = readRows(data);
 
-      // The payload is read before the demoted row is repainted, so it can still carry
-      // the old default flag next to the new one; the row the operator pressed is the
-      // one this action made default.
       setRows(
         newDefaultRecordId === undefined
           ? nextRows
@@ -327,8 +336,6 @@ export const TaxPolicySettingsPanel = () => {
     void load();
   }, [load]);
 
-  // `null` means the action persisted. A failure is returned as its real message so the
-  // caller can show it beside the fields the operator is editing, not only at the top.
   const runAction = async (
     body: Record<string, unknown>,
     fallbackMessage: string,
@@ -353,13 +360,24 @@ export const TaxPolicySettingsPanel = () => {
     }
   };
 
+  const rateDisplayIssue =
+    editor === null || editor.ratePercentText.trim() === ''
+      ? null
+      : rateFieldIssue(editor.ratePercentText);
+  const dutyDisplayIssue =
+    editor === null || editor.dutyPercentText.trim() === ''
+      ? null
+      : dutyFieldIssue(editor.dutyPercentText);
+  const combinedFieldIssue =
+    editor === null
+      ? null
+      : combinedIssue(editor.ratePercentText, editor.dutyPercentText);
+
   const onSave = async () => {
     if (editor === null) {
       return;
     }
 
-    // The client check runs before the round trip so Enter reports the bad field in
-    // place instead of coming back with a server sentence.
     if (editor.name.trim() === '') {
       setNameError('نام سیاست مالیات را وارد کنید');
       setEditorNotice(null);
@@ -375,9 +393,6 @@ export const TaxPolicySettingsPanel = () => {
       combinedIssue(editor.ratePercentText, editor.dutyPercentText);
 
     if (issue !== null) {
-      // A sentence already painted under the field or below the pair is not repeated in
-      // the editor's message slot; that slot exists for what has no home yet, such as an
-      // untouched empty rate.
       const alreadyPainted =
         rateDisplayIssue === issue ||
         dutyDisplayIssue === issue ||
@@ -440,33 +455,10 @@ export const TaxPolicySettingsPanel = () => {
     }
   };
 
-  const onDelete = async (row: TaxPolicyRow) => {
-    setRowIssue(null);
-
-    if (confirmingDeleteId !== row.recordId) {
-      // First press asks; the second press is the confirmed deletion.
-      setConfirmingDeleteId(row.recordId);
-      return;
-    }
-
-    const failure = await runAction(
-      { action: 'delete', recordId: row.recordId },
-      'سیاست مالیات حذف شد',
-    );
-
-    setConfirmingDeleteId(null);
-
-    if (failure !== null) {
-      setRowIssue({ recordId: row.recordId, kind: 'error', message: failure });
-    }
-  };
-
   const onActivate = async (row: TaxPolicyRow) => {
     setConfirmingDeleteId(null);
     setRowIssue(null);
 
-    // Reactivation is the same write as an edit, with the flag turned back on; the
-    // server still checks that the catalog keeps one active default.
     const failure = await runAction(
       {
         action: 'save',
@@ -484,8 +476,40 @@ export const TaxPolicySettingsPanel = () => {
     }
   };
 
-  // The initial 9% policy is created only here, by an explicit admin action. It is
-  // idempotent on the server, so a second press cannot create a duplicate.
+  const onDelete = async (row: TaxPolicyRow) => {
+    setRowIssue(null);
+
+    if (confirmingDeleteId !== row.recordId) {
+      setConfirmingDeleteId(row.recordId);
+      return;
+    }
+
+    const failure = await runAction(
+      { action: 'delete', recordId: row.recordId },
+      'سیاست مالیات حذف شد',
+    );
+
+    setConfirmingDeleteId(null);
+
+    if (failure !== null) {
+      setRowIssue({ recordId: row.recordId, kind: 'error', message: failure });
+      return;
+    }
+
+    if (editor?.recordId === row.recordId) {
+      closeEditor();
+    }
+  };
+
+  const requestDelete = (row: TaxPolicyRow) => {
+    if (!canDeleteRow(row)) {
+      return;
+    }
+
+    openEditor(editorFor(row));
+    setConfirmingDeleteId(row.recordId);
+  };
+
   const onBootstrap = async () => {
     const failure = await runAction(
       { action: 'bootstrap' },
@@ -497,286 +521,125 @@ export const TaxPolicySettingsPanel = () => {
     }
   };
 
-  // An untouched empty field is not an error yet; the operator has not typed anything
-  // to be wrong about, and a red line under a blank field reads as a page failure.
-  const rateDisplayIssue =
-    editor === null || editor.ratePercentText.trim() === ''
+  const defaultRow = rows.find((row) => row.isDefault && row.isActive) ?? null;
+  const editingRow =
+    editor?.recordId === null
       ? null
-      : rateFieldIssue(editor.ratePercentText);
-  const dutyDisplayIssue =
-    editor === null || editor.dutyPercentText.trim() === ''
-      ? null
-      : dutyFieldIssue(editor.dutyPercentText);
+      : (rows.find((row) => row.recordId === editor?.recordId) ?? null);
 
-  const combinedFieldIssue =
-    editor === null
-      ? null
-      : combinedIssue(editor.ratePercentText, editor.dutyPercentText);
-
-  // The designer's row is a card whose metrics answer one question ("what does this
-  // policy cost") and whose actions are physically separated from those numbers. The
-  // usage count is contextual, so it sits under the name instead of competing with the
-  // rates as a fourth figure — and the sentence that explains a blocked control is that
-  // same visible line, because a description targeted from a disabled button cannot be
-  // reached by keyboard or screen reader.
-  const usageLine = (row: TaxPolicyRow): string => {
-    const count =
-      row.quotationCount === 0
-        ? 'در هیچ سندی استفاده نشده است'
-        : `در ${toPersianDigits(String(row.quotationCount))} سند استفاده شده است`;
-
+  const statusBadge = (row: TaxPolicyRow) => {
     if (row.isDefault) {
-      return `${count}؛ سیاست پیش‌فرض غیرفعال یا حذف نمی‌شود.`;
+      return <span className="tax-badge tax-badge-default">پیش‌فرض</span>;
     }
 
-    return row.quotationCount === 0 ? count : `${count}؛ حذف‌شدنی نیست.`;
+    if (row.isActive) {
+      return <span className="tax-badge tax-badge-active">فعال</span>;
+    }
+
+    return <span className="tax-badge tax-badge-off">غیرفعال</span>;
   };
 
-  const totalOf = (row: TaxPolicyRow): string => percentLabel(row.totalRatePercent);
-
-  const renderEditor = (current: EditorState) => {
-    const editingRow =
-      current.recordId === null
-        ? null
-        : (rows.find((row) => row.recordId === current.recordId) ?? null);
+  const renderRowActions = (row: TaxPolicyRow) => {
+    const nameText = displayPolicyName(row.name);
+    const selected = editor?.recordId === row.recordId;
 
     return (
-      // A real form, so Enter in any field saves. The local issue check runs first and
-      // the browser's own bubble validation is off, because the panel's messages are
-      // written where the field is, not in a UA tooltip.
-      <form
-        className="tax-editor-form"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-
-          if (busy) {
-            return;
+      <div className="tax-row-actions" onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className="tax-btn"
+          aria-label={`ویرایش — ${nameText}`}
+          aria-expanded={selected ? 'true' : 'false'}
+          aria-controls="tax-inspector"
+          disabled={busy}
+          onClick={() =>
+            selected ? closeEditor() : openEditor(editorFor(row))
           }
-
-          void onSave();
-        }}
-      >
-        <div style={styles.editorHeader}>
-          <h3 style={styles.editorTitle}>
-            {current.recordId === null
-              ? 'سیاست مالیات و عوارض جدید'
-              : 'ویرایش سیاست'}
-          </h3>
-          <div style={styles.editorHeaderActions}>
-            {/* The pill sits beside the actions, not inside the heading: a heading that
-                changes its own name with the dirty flag reads as a badge stuck to a
-                button once a screen reader announces it. */}
-            {editorIsDirty ? (
-              <span role="status" style={styles.unsavedMark}>
-                ذخیره‌نشده
-              </span>
-            ) : null}
-            <button
-              type="button"
-              className="tax-btn"
-              disabled={busy}
-              onClick={() => closeEditor()}
-            >
-              انصراف
-            </button>
-            <button
-              type="submit"
-              className="tax-btn tax-btn-primary"
-              disabled={busy}
-            >
-              {busy ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
-            </button>
-          </div>
-        </div>
-
-        <div className="tax-fields">
-          <div className="tax-field-wide" style={styles.field}>
-            <label htmlFor="tax-policy-name" style={styles.label}>
-              نام سیاست
-            </label>
-            <input
-              id="tax-policy-name"
-              style={nameError === null ? styles.input : styles.inputInvalid}
-              value={current.name}
-              aria-invalid={nameError !== null}
-              aria-describedby={
-                nameError === null ? undefined : 'tax-policy-name-error'
-              }
-              placeholder="مثلاً مالیات بر ارزش افزوده"
-              onChange={(event) => {
-                setNameError(null);
-                updateEditor({ ...current, name: event.target.value });
-              }}
-            />
-            {nameError === null ? null : (
-              <span
-                id="tax-policy-name-error"
-                role="alert"
-                style={styles.fieldError}
-              >
-                {nameError}
-              </span>
-            )}
-          </div>
-          {/* Each field owns its message: the error is a sibling of the control and is
-              named by aria-describedby, so it is announced as a description rather than
-              becoming part of the input's own name. */}
-          <div style={styles.field}>
-            <label htmlFor="tax-policy-rate" style={styles.label}>
-              مالیات (٪)
-            </label>
-            <input
-              id="tax-policy-rate"
-              style={
-                rateDisplayIssue === null ? styles.input : styles.inputInvalid
-              }
-              value={current.ratePercentText}
-              inputMode="decimal"
-              aria-invalid={rateDisplayIssue !== null}
-              aria-describedby={
-                rateDisplayIssue === null
-                  ? 'tax-policy-exempt-legend'
-                  : 'tax-policy-rate-error'
-              }
-              placeholder="۶٫۵"
-              onChange={(event) =>
-                updateEditor({
-                  ...current,
-                  ratePercentText: event.target.value,
-                })
-              }
-            />
-            {rateDisplayIssue === null ? null : (
-              <span
-                id="tax-policy-rate-error"
-                role="alert"
-                style={styles.fieldError}
-              >
-                {rateDisplayIssue}
-              </span>
-            )}
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="tax-policy-duty" style={styles.label}>
-              عوارض (٪)
-            </label>
-            <input
-              id="tax-policy-duty"
-              style={
-                dutyDisplayIssue === null ? styles.input : styles.inputInvalid
-              }
-              value={current.dutyPercentText}
-              inputMode="decimal"
-              aria-invalid={dutyDisplayIssue !== null}
-              aria-describedby={
-                dutyDisplayIssue === null
-                  ? 'tax-policy-exempt-legend'
-                  : 'tax-policy-duty-error'
-              }
-              placeholder="۰"
-              onChange={(event) =>
-                updateEditor({
-                  ...current,
-                  dutyPercentText: event.target.value,
-                })
-              }
-            />
-            {dutyDisplayIssue === null ? null : (
-              <span
-                id="tax-policy-duty-error"
-                role="alert"
-                style={styles.fieldError}
-              >
-                {dutyDisplayIssue}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* The exemption rule belongs beside the two fields it explains, not at the
-            bottom of the card under the save actions. */}
-        <p id="tax-policy-exempt-legend" style={styles.meta}>
-          هر دو نرخ صفر یعنی معاف از مالیات.
-        </p>
-
-        {/* The footer carries the two facts the operator needs while typing: whether
-            this rate is still safely deletable, and what the two rates add up to. */}
-        <div style={styles.editorFooter}>
-          <p style={styles.editorFooterInfo}>
-            {editingRow === null
-              ? 'در هیچ سندی استفاده نشده است'
-              : usageLine(editingRow)}
-          </p>
-          <div style={styles.editorTotalBlock}>
-            <span style={styles.totalLabel}>جمع محاسباتی:</span>
-            <output style={styles.totalValueLg}>
-              {sumPercentText(current.ratePercentText, current.dutyPercentText)}
-            </output>
-          </div>
-        </div>
-
-        {/* One message about the pair, and one about the whole editor. A sentence that
-            is already painted under the field it belongs to is never painted twice. */}
-        {combinedFieldIssue === null ? null : (
-          <p role="alert" style={styles.fieldError}>
-            {combinedFieldIssue}
-          </p>
-        )}
-        {editorNotice === null ? null : (
-          <p
-            id="tax-policy-editor-notice"
-            role={editorNotice.kind === 'instruction' ? 'status' : 'alert'}
-            style={
-              editorNotice.kind === 'instruction'
-                ? styles.notice
-                : styles.fieldError
-            }
+        >
+          {selected ? 'بستن' : 'ویرایش'}
+        </button>
+        {row.isActive && !row.isDefault ? (
+          <button
+            type="button"
+            className="tax-btn"
+            aria-label={`پیش‌فرض — ${nameText}`}
+            disabled={busy}
+            onClick={() => void onSetDefault(row)}
           >
-            {editorNotice.message}
-          </p>
+            پیش‌فرض
+          </button>
+        ) : null}
+        {row.isActive ? (
+          <button
+            type="button"
+            className="tax-btn"
+            aria-label={`غیرفعال‌سازی — ${nameText}`}
+            disabled={busy || row.isDefault}
+            title={
+              row.isDefault ? 'پیش‌فرض را نمی‌توان غیرفعال کرد' : undefined
+            }
+            onClick={() => void onDeactivate(row)}
+          >
+            غیرفعال
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="tax-btn"
+            aria-label={`فعال‌سازی — ${nameText}`}
+            disabled={busy}
+            onClick={() => void onActivate(row)}
+          >
+            فعال
+          </button>
         )}
-      </form>
+        <button
+          type="button"
+          className="tax-btn tax-btn-danger"
+          aria-label={`حذف — ${nameText}`}
+          disabled={busy || !canDeleteRow(row)}
+          title={
+            canDeleteRow(row) ? undefined : 'به‌دلیل وابستگی قابل حذف نیست'
+          }
+          onClick={() => requestDelete(row)}
+        >
+          حذف
+        </button>
+      </div>
     );
   };
 
-  const editingRowId = editor?.recordId ?? null;
-
   return (
-    <div style={styles.root} dir="rtl">
+    <div className="tax-root" style={styles.root} dir="rtl">
       <style>{PANEL_CSS}</style>
 
-      <header style={styles.header}>
-        <div style={styles.headerText}>
+      <header className="tax-page-head">
+        <div>
           <h2 style={styles.title}>مالیات و عوارض</h2>
           <p style={styles.subtitle}>
-            سیاست پیش‌فرض برای شروع هر پیش‌فاکتور جدید استفاده می‌شود؛ اسناد
-            صادرشده نرخ خود را حفظ می‌کنند.
+            نرخ‌هایی که پیش‌فاکتور جدید با آن‌ها شروع می‌شود. هر سیاست یک تصمیم
+            است با دو جزء: مالیات و عوارض. اسناد قبلی نرخ مهرشدهٔ خود را نگه
+            می‌دارند.
           </p>
         </div>
         {rows.length === 0 || error !== null ? null : (
           <button
             type="button"
-            className="tax-add tax-btn tax-btn-primary"
-            aria-label="افزودن سیاست"
+            className="tax-btn tax-btn-primary tax-add"
+            aria-label="سیاست جدید"
             disabled={busy}
             onClick={() => openEditor(emptyEditor())}
           >
-            <span aria-hidden="true" style={styles.addButtonPlus}>
-              +
-            </span>
-            <span className="tax-add-label">افزودن سیاست</span>
+            + سیاست جدید
           </button>
         )}
       </header>
 
       {error === null ? null : (
-        <div style={styles.pageErrorRow}>
+        <div className="tax-page-error">
           <p role="alert" style={styles.pageError}>
             {error}
           </p>
-          {/* A failed read used to end with "reopen the page". The one next action is
-              the read itself. */}
           <button
             type="button"
             className="tax-btn"
@@ -794,14 +657,35 @@ export const TaxPolicySettingsPanel = () => {
         </p>
       ) : null}
 
-      {/* A failure is not an empty catalog: the bootstrap action is hidden while the
-          read is broken, so the screen cannot invite a write it has not verified. */}
+      {loading || error !== null || defaultRow === null ? null : (
+        <section className="tax-default-banner" aria-label="سیاست پیش‌فرض فعال">
+          <div className="tax-default-mark" aria-hidden="true">
+            ٪
+          </div>
+          <div>
+            <strong>
+              پیش‌فرض فعال: {displayPolicyName(defaultRow.name)}
+            </strong>
+            <div className="tax-default-meta">
+              پیش‌فاکتور تازه با این سیاست باز می‌شود · کد{' '}
+              <span dir="ltr">{defaultRow.code}</span>
+            </div>
+          </div>
+          <div className="tax-rate-pill">
+            <small>نرخ کل</small>
+            <span>
+              {defaultRow.isExempt ? 'معاف' : percentLabel(defaultRow.totalRatePercent)}
+            </span>
+          </div>
+        </section>
+      )}
+
       {loading ? null : error !== null ? null : rows.length === 0 ? (
-        <section style={styles.empty}>
+        <section className="tax-empty">
           <p style={styles.emptyText}>
             هنوز سیاست مالیات و عوارضی ثبت نشده است.
           </p>
-          <div style={styles.emptyActions}>
+          <div className="tax-empty-actions">
             <button
               type="button"
               className="tax-btn tax-btn-primary"
@@ -816,280 +700,801 @@ export const TaxPolicySettingsPanel = () => {
               disabled={busy}
               onClick={() => openEditor(emptyEditor())}
             >
-              افزودن سیاست
+              سیاست جدید
             </button>
           </div>
         </section>
       ) : (
-        <ul style={styles.list} aria-busy={busy}>
-          {editor !== null && editor.recordId === null ? (
-            <li key="new-policy" id="tax-editor-new" className="tax-editor">
-              {renderEditor(editor)}
-            </li>
-          ) : null}
+        <div
+          className={
+            editor === null
+              ? 'tax-workspace tax-workspace-closed'
+              : 'tax-workspace'
+          }
+        >
+          <section className="tax-panel" aria-labelledby="tax-list-title">
+            <div className="tax-panel-toolbar">
+              <h3 id="tax-list-title" style={styles.listTitle}>
+                فهرست سیاست‌ها
+                <span className="tax-count">
+                  {' '}
+                  {toPersianDigits(String(rows.length))} مورد
+                </span>
+              </h3>
+              <button
+                type="button"
+                className="tax-btn"
+                disabled={busy || loading}
+                onClick={() => void load()}
+              >
+                بازخوانی
+              </button>
+            </div>
 
-          {rows.map((row) => {
-            const isConfirming = confirmingDeleteId === row.recordId;
-            const rowEditorOpen = editor !== null && editingRowId === row.recordId;
-            const nameText = displayPolicyName(row.name);
+            {compactLayout ? (
+              <div className="tax-mobile-cards" aria-label="فهرست موبایل">
+                {rows.map((row) => {
+                  const nameText = displayPolicyName(row.name);
+                  const selected = editor?.recordId === row.recordId;
 
-            // The editor is the row's next sibling, not its replacement: the pressed
-            // `ویرایش` button is never unmounted, so the browser never moves focus to
-            // <body>, and no imperative focus call is needed in the host at all.
-            return (
-              <Fragment key={`${row.recordId}:${row.isDefault ? 'default' : 'standard'}`}>
-                <li
-                  className={row.isActive ? 'tax-row' : 'tax-row tax-row-inactive'}
-                >
-                  <div style={styles.identity}>
-                    <div style={styles.nameLine}>
-                      <h3
-                        style={
-                          row.isActive ? styles.rowName : styles.rowNameMuted
-                        }
-                      >
-                        {nameText}
-                      </h3>
-                      {row.isDefault ? (
-                        <span style={styles.badgeDefault}>پیش‌فرض</span>
-                      ) : null}
-                      {row.isActive ? null : (
-                        <span style={styles.badgeOff}>غیرفعال</span>
-                      )}
-                    </div>
-                    <p style={styles.usage}>{usageLine(row)}</p>
-                  </div>
-
-                  <div className="tax-metrics">
-                    <div style={styles.totalBlock}>
-                      <span style={styles.metricLabel}>نرخ کل</span>
-                      <span
-                        className="tax-total"
-                        style={
-                          row.isActive
-                            ? styles.totalValue
-                            : styles.totalValueMuted
-                        }
-                      >
-                        {row.isExempt ? 'معاف' : totalOf(row)}
-                      </span>
-                    </div>
-                    <div style={styles.formulaChip}>
-                      <span>مالیات: {percentLabel(row.ratePercent)}</span>
-                      <span style={styles.formulaDivider} aria-hidden="true">
-                        ·
-                      </span>
-                      <span>عوارض: {percentLabel(row.dutyRatePercent)}</span>
-                    </div>
-                  </div>
-
-                  <div className="tax-row-actions">
-                    {isConfirming ? (
-                      <div className="tax-confirm">
-                        <span
-                          className="tax-confirm-text"
-                          role="status"
-                          style={styles.confirmText}
-                        >
-                          «{nameText}» حذف شود؟
-                        </span>
-                        <button
-                          type="button"
-                          className="tax-btn tax-btn-danger-solid"
-                          disabled={busy}
-                          onClick={() => void onDelete(row)}
-                        >
-                          تأیید حذف
-                        </button>
-                        <button
-                          type="button"
-                          className="tax-btn"
-                          disabled={busy}
-                          onClick={() => setConfirmingDeleteId(null)}
-                        >
-                          انصراف
-                        </button>
+                  return (
+                    <article
+                      key={`m-${row.recordId}`}
+                      className={[
+                        'tax-m-card',
+                        selected ? 'is-selected' : '',
+                        row.isActive ? '' : 'is-inactive',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      data-record-id={row.recordId}
+                    >
+                      <div className="tax-m-top">
+                        <div>
+                          <div className="tax-name">{nameText}</div>
+                          <div className="tax-code" dir="ltr">
+                            {row.code}
+                          </div>
+                        </div>
+                        {statusBadge(row)}
                       </div>
-                    ) : (
-                      <>
-                        {/* One action set per row; only enablement changes. A control
-                            that vanishes reads as a permission change, and an inactive
-                            policy with no delete forced reactivate-then-delete. */}
-                        <div className="tax-actions-main">
-                          {row.isActive && !row.isDefault ? (
-                            <button
-                              type="button"
-                              className="tax-btn"
-                              aria-label={`پیش‌فرض — ${nameText}`}
-                              disabled={busy || rowEditorOpen}
-                              onClick={() => void onSetDefault(row)}
-                            >
-                              پیش‌فرض
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="tax-btn"
-                            aria-label={`ویرایش — ${nameText}`}
-                            // String, not boolean: the host serialises a true attribute to an
-                            // empty string, which assistive tech does not read as expanded.
-                            aria-expanded={rowEditorOpen ? 'true' : 'false'}
-                            aria-controls={`tax-editor-${row.recordId}`}
-                            // The toggle must stay enabled even while its own editor
-                            // is open: a disabled control the operator just pressed
-                            // blurs itself and drops focus on the document body.
-                            disabled={busy}
-                            onClick={() =>
-                              rowEditorOpen
-                                ? closeEditor()
-                                : openEditor(editorFor(row))
+                      <div className="tax-m-rates">
+                        <div>
+                          <small>مالیات</small>
+                          <strong className="tax-num">
+                            {percentLabel(row.ratePercent)}
+                          </strong>
+                        </div>
+                        <div>
+                          <small>عوارض</small>
+                          <strong className="tax-num">
+                            {percentLabel(row.dutyRatePercent)}
+                          </strong>
+                        </div>
+                        <div>
+                          <small>نرخ کل</small>
+                          <strong
+                            className={
+                              row.isExempt ? 'tax-num tax-exempt' : 'tax-num'
                             }
                           >
-                            {rowEditorOpen ? 'بستن' : 'ویرایش'}
-                          </button>
-                          {row.isActive ? (
-                            <button
-                              type="button"
-                              className="tax-btn"
-                              aria-label={`غیرفعال‌سازی — ${nameText}`}
-                              disabled={busy || row.isDefault || rowEditorOpen}
-                              onClick={() => void onDeactivate(row)}
-                            >
-                              غیرفعال‌سازی
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="tax-btn"
-                              aria-label={`فعال‌سازی — ${nameText}`}
-                              disabled={busy || rowEditorOpen}
-                              onClick={() => void onActivate(row)}
-                            >
-                              فعال‌سازی
-                            </button>
-                          )}
+                            {row.isExempt
+                              ? 'معاف'
+                              : percentLabel(row.totalRatePercent)}
+                          </strong>
                         </div>
-                        {/* Delete is isolated from the three set-and-edit controls and,
-                            on a phone, keeps its own position instead of moving into a
-                            cell that means something else on the card beside it. */}
-                        <div className="tax-actions-danger">
-                          <button
-                            type="button"
-                            className="tax-btn tax-btn-danger"
-                            aria-label={`حذف — ${nameText}`}
-                            disabled={
-                              busy ||
-                              row.isDefault ||
-                              row.quotationCount > 0 ||
-                              rowEditorOpen
+                      </div>
+                      <p className="tax-usage">{usageLine(row)}</p>
+                      {rowIssue?.recordId === row.recordId ? (
+                        <p
+                          role={
+                            rowIssue.kind === 'notice' ? 'status' : 'alert'
+                          }
+                          className={
+                            rowIssue.kind === 'notice'
+                              ? 'tax-row-notice'
+                              : 'tax-row-error'
+                          }
+                        >
+                          {rowIssue.message}
+                        </p>
+                      ) : null}
+                      {renderRowActions(row)}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="tax-table-wrap">
+                <table className="tax-ledger" aria-busy={busy}>
+                  <thead>
+                    <tr>
+                      <th scope="col">سیاست</th>
+                      <th scope="col">مالیات</th>
+                      <th scope="col">عوارض</th>
+                      <th scope="col">نرخ کل</th>
+                      <th scope="col">وضعیت</th>
+                      <th scope="col">اسناد</th>
+                      <th scope="col">
+                        <span className="tax-sr-only">عملیات</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => {
+                      const nameText = displayPolicyName(row.name);
+                      const selected = editor?.recordId === row.recordId;
+
+                      return (
+                        <tr
+                          key={`${row.recordId}:${row.isDefault ? 'd' : 's'}`}
+                          className={[
+                            selected ? 'is-selected' : '',
+                            row.isActive ? '' : 'is-inactive',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          data-record-id={row.recordId}
+                          tabIndex={0}
+                          onClick={() => openEditor(editorFor(row))}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') {
+                              return;
                             }
-                            onClick={() => setConfirmingDeleteId(row.recordId)}
-                          >
-                            حذف
-                          </button>
-                        </div>
-                      </>
+
+                            event.preventDefault();
+                            openEditor(editorFor(row));
+                          }}
+                        >
+                          <td>
+                            <div className="tax-name">{nameText}</div>
+                            <div className="tax-code" dir="ltr">
+                              {row.code}
+                            </div>
+                            {row.quotationCount > 0 || row.isDefault ? (
+                              <p className="tax-usage-detail">
+                                {usageLine(row)}
+                              </p>
+                            ) : null}
+                            {rowIssue?.recordId === row.recordId ? (
+                              <p
+                                role={
+                                  rowIssue.kind === 'notice'
+                                    ? 'status'
+                                    : 'alert'
+                                }
+                                className={
+                                  rowIssue.kind === 'notice'
+                                    ? 'tax-row-notice'
+                                    : 'tax-row-error'
+                                }
+                              >
+                                {rowIssue.message}
+                              </p>
+                            ) : null}
+                          </td>
+                          <td>
+                            <span className="tax-num">
+                              {percentLabel(row.ratePercent)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="tax-num">
+                              {percentLabel(row.dutyRatePercent)}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={
+                                row.isExempt
+                                  ? 'tax-num tax-exempt'
+                                  : 'tax-num tax-total'
+                              }
+                            >
+                              {row.isExempt
+                                ? 'معاف'
+                                : percentLabel(row.totalRatePercent)}
+                            </span>
+                          </td>
+                          <td>{statusBadge(row)}</td>
+                          <td>
+                            <span className="tax-usage">
+                              {usageShort(row)}
+                            </span>
+                          </td>
+                          <td>{renderRowActions(row)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <p className="tax-footnote">
+              حذف فقط برای سیاست بدون سند مجاز است. سیاست استفاده‌شده را غیرفعال
+              کنید؛ اسناد تاریخی تغییر نمی‌کنند.
+            </p>
+          </section>
+
+          {editor === null ? null : (
+            <aside
+              className="tax-panel tax-inspector"
+              id="tax-inspector"
+              aria-labelledby="tax-inspector-title"
+            >
+              <div className="tax-inspector-head">
+                <div>
+                  <h3 id="tax-inspector-title" style={styles.inspectorTitle}>
+                    {editor.recordId === null ? 'سیاست جدید' : 'ویرایش سیاست'}
+                  </h3>
+                  <p className="tax-inspector-sub">
+                    {editor.recordId === null
+                      ? 'پس از ذخیره، می‌توانید آن را پیش‌فرض کنید.'
+                      : 'تغییرات فقط روی پیش‌فاکتورهای جدید اثر می‌گذارد.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="tax-btn"
+                  aria-label="بستن بازرس"
+                  disabled={busy}
+                  onClick={() => closeEditor()}
+                >
+                  ×
+                </button>
+              </div>
+
+              <form
+                className="tax-editor-form"
+                noValidate
+                onSubmit={(event) => {
+                  event.preventDefault();
+
+                  if (!busy) {
+                    void onSave();
+                  }
+                }}
+              >
+                <div
+                  className={
+                    nameError === null ? 'tax-field' : 'tax-field is-invalid'
+                  }
+                >
+                  <label htmlFor="tax-policy-name">نام سیاست</label>
+                  <input
+                    id="tax-policy-name"
+                    value={editor.name}
+                    aria-invalid={nameError !== null}
+                    aria-describedby={
+                      nameError === null ? undefined : 'tax-policy-name-error'
+                    }
+                    placeholder="مثلاً مالیات بر ارزش افزوده"
+                    onChange={(event) => {
+                      setNameError(null);
+                      updateEditor({ ...editor, name: event.target.value });
+                    }}
+                  />
+                  {nameError === null ? null : (
+                    <span
+                      id="tax-policy-name-error"
+                      role="alert"
+                      className="tax-field-error"
+                    >
+                      {nameError}
+                    </span>
+                  )}
+                </div>
+
+                <div className="tax-split-2">
+                  <div
+                    className={
+                      rateDisplayIssue === null
+                        ? 'tax-field'
+                        : 'tax-field is-invalid'
+                    }
+                  >
+                    <label htmlFor="tax-policy-rate">مالیات ٪</label>
+                    <input
+                      id="tax-policy-rate"
+                      value={editor.ratePercentText}
+                      inputMode="decimal"
+                      dir="ltr"
+                      aria-invalid={rateDisplayIssue !== null}
+                      aria-describedby={
+                        rateDisplayIssue === null
+                          ? 'tax-policy-exempt-legend'
+                          : 'tax-policy-rate-error'
+                      }
+                      placeholder="۹"
+                      onChange={(event) =>
+                        updateEditor({
+                          ...editor,
+                          ratePercentText: event.target.value,
+                        })
+                      }
+                    />
+                    {rateDisplayIssue === null ? null : (
+                      <span
+                        id="tax-policy-rate-error"
+                        role="alert"
+                        className="tax-field-error"
+                      >
+                        {rateDisplayIssue}
+                      </span>
                     )}
                   </div>
-
-                  {rowIssue?.recordId === row.recordId ? (
-                    <p
-                      role={rowIssue.kind === 'notice' ? 'status' : 'alert'}
-                      style={
-                        rowIssue.kind === 'notice'
-                          ? styles.rowNotice
-                          : styles.rowError
-                      }
-                    >
-                      {rowIssue.message}
-                    </p>
-                  ) : null}
-                </li>
-
-                {rowEditorOpen ? (
-                  <li
-                    id={`tax-editor-${row.recordId}`}
-                    className="tax-editor"
+                  <div
+                    className={
+                      dutyDisplayIssue === null
+                        ? 'tax-field'
+                        : 'tax-field is-invalid'
+                    }
                   >
-                    {renderEditor(editor)}
-                  </li>
-                ) : null}
-              </Fragment>
-            );
-          })}
-        </ul>
-      )}
+                    <label htmlFor="tax-policy-duty">عوارض ٪</label>
+                    <input
+                      id="tax-policy-duty"
+                      value={editor.dutyPercentText}
+                      inputMode="decimal"
+                      dir="ltr"
+                      aria-invalid={dutyDisplayIssue !== null}
+                      aria-describedby={
+                        dutyDisplayIssue === null
+                          ? 'tax-policy-exempt-legend'
+                          : 'tax-policy-duty-error'
+                      }
+                      placeholder="۰"
+                      onChange={(event) =>
+                        updateEditor({
+                          ...editor,
+                          dutyPercentText: event.target.value,
+                        })
+                      }
+                    />
+                    {dutyDisplayIssue === null ? null : (
+                      <span
+                        id="tax-policy-duty-error"
+                        role="alert"
+                        className="tax-field-error"
+                      >
+                        {dutyDisplayIssue}
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-      {editor !== null && editor.recordId !== null && editingRowId === null ? (
-        <section className="tax-editor" style={styles.editor}>
-          {renderEditor(editor)}
-        </section>
-      ) : null}
+                <p id="tax-policy-exempt-legend" className="tax-hint">
+                  هر دو نرخ صفر یعنی معاف از مالیات.
+                </p>
+
+                <div className="tax-computed" aria-live="polite">
+                  <span>نرخ کل (جمع خودکار)</span>
+                  <strong>
+                    {sumPercentText(
+                      editor.ratePercentText,
+                      editor.dutyPercentText,
+                    )}
+                  </strong>
+                </div>
+
+                {editorIsDirty ? (
+                  <p role="status" className="tax-unsaved">
+                    ذخیره‌نشده
+                  </p>
+                ) : null}
+
+                {combinedFieldIssue === null ? null : (
+                  <p role="alert" className="tax-field-error">
+                    {combinedFieldIssue}
+                  </p>
+                )}
+                {editorNotice === null ? null : (
+                  <p
+                    role={
+                      editorNotice.kind === 'instruction' ? 'status' : 'alert'
+                    }
+                    className={
+                      editorNotice.kind === 'instruction'
+                        ? 'tax-row-notice'
+                        : 'tax-field-error'
+                    }
+                  >
+                    {editorNotice.message}
+                  </p>
+                )}
+
+                <p className="tax-hint">
+                  {editingRow === null
+                    ? 'در هیچ سندی استفاده نشده است'
+                    : usageLine(editingRow)}
+                </p>
+
+                <div className="tax-inspector-foot">
+                  <button
+                    type="submit"
+                    className="tax-btn tax-btn-primary"
+                    disabled={busy}
+                  >
+                    {busy ? 'در حال ذخیره…' : 'ذخیره'}
+                  </button>
+                  <button
+                    type="button"
+                    className="tax-btn"
+                    disabled={busy}
+                    onClick={() => closeEditor()}
+                  >
+                    انصراف
+                  </button>
+                  {editor.recordId === null ? null : (
+                    <button
+                      type="button"
+                      className="tax-btn tax-btn-danger tax-foot-danger"
+                      disabled={
+                        busy || editingRow === null || !canDeleteRow(editingRow)
+                      }
+                      onClick={() => {
+                        if (editingRow !== null) {
+                          void onDelete(editingRow);
+                        }
+                      }}
+                    >
+                      حذف
+                    </button>
+                  )}
+                </div>
+
+                {editingRow !== null &&
+                confirmingDeleteId === editingRow.recordId ? (
+                  <div className="tax-confirm">
+                    <p role="status">
+                      «{displayPolicyName(editingRow.name)}» حذف شود؟ این کار
+                      برگشت‌پذیر نیست.
+                    </p>
+                    <div className="tax-confirm-actions">
+                      <button
+                        type="button"
+                        className="tax-btn tax-btn-danger-solid"
+                        disabled={busy}
+                        onClick={() => void onDelete(editingRow)}
+                      >
+                        تأیید حذف
+                      </button>
+                      <button
+                        type="button"
+                        className="tax-btn"
+                        disabled={busy}
+                        onClick={() => setConfirmingDeleteId(null)}
+                      >
+                        انصراف از حذف
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </form>
+            </aside>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
-// Designer-owned interaction rules that inline styles cannot express: hover and focus
-// feedback, the 767 px stacking, and the two label lengths. Everything else is inline so
-// the computed presentation stays readable next to the markup it belongs to.
 const PANEL_CSS = `
-/* Three slots per row: identity (which takes the slack), the rate pair, the actions.
-   Slack inside the identity column keeps a long policy name beside its number instead
-   of leaving a void that makes the card read as three unrelated islands. */
-.tax-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  column-gap: 32px;
-  row-gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 8px;
-  background: var(--t-color-gray2);
+.tax-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
 }
-/* Paused, not void: the row steps to the page surface instead of being faded, because
-   opacity pushed its own 12–16px labels under the 4.5:1 the product contracts for. */
-.tax-row-inactive { background: var(--t-color-gray1); }
-.tax-metrics {
+.tax-page-error {
   display: flex;
   align-items: center;
-  gap: 24px;
-  border-inline-start: 1px solid var(--t-color-gray6);
-  padding-inline-start: 24px;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
-.tax-row-actions { display: flex; align-items: center; gap: 24px; }
-.tax-actions-main { display: flex; align-items: center; gap: 8px; }
-.tax-actions-danger { display: flex; align-items: center; }
-.tax-confirm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-/* The band only appears under the row it belongs to, and never under a sibling card. */
-.tax-confirm-text { font-size: 13px; }
-.tax-fields {
+.tax-default-banner {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--t-color-blue4);
+  border-radius: 10px;
+  background: var(--t-color-blue2);
 }
-/* Height lives here, not in the inline styles, so the 767 px block can raise the
-   targets to the 44 px the product contracts for. */
-.tax-fields input { height: 32px; }
-/* The form owns the editor's rhythm, and a 1100 px cap keeps the fields from being
-   stretched into a corridor on a wide screen. */
+.tax-default-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--t-color-gray12);
+  color: var(--t-color-gray1);
+  font-weight: 700;
+}
+.tax-default-meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--t-color-gray11);
+}
+.tax-rate-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--t-color-gray6);
+  background: var(--t-color-gray1);
+  font-weight: 700;
+  color: var(--t-color-blue11);
+}
+.tax-rate-pill small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t-color-gray10);
+}
+.tax-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 16px;
+  align-items: start;
+}
+.tax-workspace-closed { grid-template-columns: minmax(0, 1fr); }
+.tax-panel {
+  background: var(--t-color-gray1);
+  border: 1px solid var(--t-color-gray6);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tax-panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--t-color-gray6);
+  background: var(--t-color-gray2);
+}
+.tax-count { color: var(--t-color-gray10); font-weight: 500; }
+.tax-table-wrap { overflow-x: auto; }
+.tax-ledger {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+.tax-ledger th {
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-gray10);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--t-color-gray6);
+  background: var(--t-color-gray2);
+  white-space: nowrap;
+}
+.tax-ledger td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--t-color-gray5);
+  vertical-align: middle;
+}
+.tax-ledger tbody tr { cursor: pointer; }
+.tax-ledger tbody tr:hover { background: var(--t-color-gray2); }
+.tax-ledger tbody tr.is-selected { background: var(--t-color-blue2); }
+.tax-ledger tbody tr.is-inactive .tax-name { color: var(--t-color-gray10); }
+.tax-name { font-weight: 600; color: var(--t-color-gray12); }
+.tax-code {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--t-color-gray10);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.tax-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  direction: ltr;
+  unicode-bidi: plaintext;
+  display: inline-block;
+}
+.tax-total { color: var(--t-color-blue11); font-size: 15px; }
+.tax-exempt { color: var(--t-color-turquoise11); }
+.tax-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tax-badge-default {
+  background: var(--t-color-blue3);
+  color: var(--t-color-blue11);
+}
+.tax-badge-active {
+  background: var(--t-color-turquoise3);
+  color: var(--t-color-turquoise11);
+}
+.tax-badge-off {
+  background: var(--t-color-gray4);
+  color: var(--t-color-gray11);
+}
+.tax-usage { font-size: 13px; color: var(--t-color-gray11); }
+.tax-usage-detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--t-color-gray10);
+}
+.tax-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+}
+.tax-mobile-cards {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.tax-m-card {
+  border: 1px solid var(--t-color-gray6);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--t-color-gray1);
+}
+.tax-m-card.is-selected {
+  border-color: var(--t-color-blue7);
+  background: var(--t-color-blue2);
+}
+.tax-m-card.is-inactive { background: var(--t-color-gray2); }
+.tax-m-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tax-m-rates {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tax-m-rates div {
+  background: var(--t-color-gray3);
+  border-radius: 8px;
+  padding: 8px;
+}
+.tax-m-rates small {
+  display: block;
+  color: var(--t-color-gray10);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+.tax-footnote {
+  margin: 0;
+  padding: 0 14px 14px;
+  font-size: 12px;
+  color: var(--t-color-gray10);
+}
+.tax-inspector { position: sticky; top: 16px; }
+.tax-inspector-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--t-color-gray6);
+}
+.tax-inspector-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--t-color-gray10);
+}
 .tax-editor-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 720px;
+  gap: 12px;
+  padding: 14px 16px 18px;
 }
-.tax-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  border: 2px solid var(--t-color-blue9);
+.tax-field { display: flex; flex-direction: column; gap: 6px; }
+.tax-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-gray11);
+}
+.tax-field input {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--t-color-gray6);
   border-radius: 8px;
   background: var(--t-color-gray1);
+  color: var(--t-color-gray12);
 }
-/* A row control is a control at rest: hairline, label, no fill. Danger is carried by the
-   word, the isolated position and the second press — not by prefilled alarm colour. */
+.tax-field.is-invalid input {
+  border-color: var(--t-color-red8);
+  background: var(--t-color-red2);
+}
+.tax-field input:focus-visible {
+  outline: 2px solid var(--t-color-blue9);
+  outline-offset: 1px;
+}
+.tax-split-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.tax-computed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--t-color-gray6);
+  background: var(--t-color-gray2);
+}
+.tax-computed span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-gray10);
+}
+.tax-computed strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--t-color-blue11);
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+.tax-hint { margin: 0; font-size: 12px; color: var(--t-color-gray10); }
+.tax-unsaved {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-orange11);
+}
+.tax-field-error, .tax-row-error {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t-color-red11);
+}
+.tax-row-notice {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t-color-orange11);
+}
+.tax-inspector-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.tax-foot-danger { margin-inline-start: auto; }
+.tax-confirm {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--t-color-red6);
+  background: var(--t-color-red2);
+}
+.tax-confirm p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t-color-red11);
+}
+.tax-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tax-empty {
+  padding: 24px;
+  border: 1px dashed var(--t-color-gray6);
+  border-radius: 10px;
+  background: var(--t-color-gray1);
+}
+.tax-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .tax-btn {
   height: 32px;
   padding: 0 12px;
@@ -1099,35 +1504,38 @@ const PANEL_CSS = `
   gap: 6px;
   border: 1px solid var(--t-color-gray6);
   border-radius: 8px;
-  background: transparent;
-  color: var(--t-color-gray11);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-}
-.tax-btn:hover:not(:disabled) {
-  background: var(--t-color-gray4);
+  background: var(--t-color-gray1);
   color: var(--t-color-gray12);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
 }
-.tax-btn-danger:hover:not(:disabled) {
-  background: var(--t-color-red3);
-  border-color: var(--t-color-red11);
-  color: var(--t-color-red11);
+.tax-btn:hover:not(:disabled) { background: var(--t-color-gray3); }
+.tax-btn:focus-visible {
+  outline: 2px solid var(--t-color-blue9);
+  outline-offset: 1px;
 }
-.tax-btn-primary,
-.tax-add {
+.tax-btn:disabled {
+  background: var(--t-color-gray2);
+  border-color: var(--t-color-gray5);
+  color: var(--t-color-gray9);
+  cursor: not-allowed;
+}
+.tax-btn-primary {
   background: var(--t-color-gray12);
   border-color: var(--t-color-gray12);
   color: var(--t-color-gray1);
 }
-.tax-btn-primary:hover:not(:disabled),
-.tax-add:hover:not(:disabled) {
+.tax-btn-primary:hover:not(:disabled) {
   background: var(--t-color-gray11);
   border-color: var(--t-color-gray11);
 }
+.tax-btn-danger {
+  border-color: var(--t-color-red7);
+  color: var(--t-color-red11);
+}
+.tax-btn-danger:hover:not(:disabled) { background: var(--t-color-red2); }
 .tax-btn-danger-solid {
   background: var(--t-color-red11);
   border-color: var(--t-color-red11);
@@ -1137,342 +1545,80 @@ const PANEL_CSS = `
   background: var(--t-color-red12);
   border-color: var(--t-color-red12);
 }
-.tax-btn:focus-visible,
-.tax-fields input:focus-visible {
-  outline: 2px solid var(--t-color-blue9);
-  outline-offset: 1px;
+.tax-add { flex: 0 0 auto; white-space: nowrap; }
+.tax-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
-/* Disabled is a state the eye can see: no fill, no hover, a quieter hairline and label,
-   and never the danger red. It is declared after the filled variants so it wins. */
-.tax-btn:disabled {
-  background: var(--t-color-gray2);
-  border-color: var(--t-color-gray5);
-  color: var(--t-color-gray9);
-  cursor: not-allowed;
+@media (max-width: 960px) {
+  .tax-workspace,
+  .tax-workspace-closed { grid-template-columns: 1fr; }
+  .tax-inspector { position: static; }
+  .tax-default-banner { grid-template-columns: auto 1fr; }
+  .tax-rate-pill { grid-column: 1 / -1; justify-self: start; }
 }
-.tax-add { height: 32px; padding: 0 16px; flex: 0 0 auto; }
-@media (max-width: 767px) {
-  .tax-row {
-    grid-template-columns: minmax(0, 1fr);
-    row-gap: 12px;
-    padding: 12px;
-  }
-  .tax-fields { grid-template-columns: 1fr 1fr; }
-  .tax-field-wide { grid-column: 1 / -1; }
-  /* The product contract asks for 44px targets on a phone; the designer's floor is 32. */
-  .tax-btn, .tax-add { height: 44px; }
-  .tax-metrics {
-    justify-content: space-between;
-    border-inline-start: none;
-    border-top: 1px solid var(--t-color-gray6);
-    padding-inline: 0;
-    padding-block: 8px 0;
-    gap: 12px;
-  }
-  /* Three fixed slots in the main group, and delete outside it: a control never moves
-     cell between two adjacent cards, so a thumb aimed at delete cannot hit something
-     else on the card beside it. */
-  .tax-row-actions { gap: 8px; align-items: stretch; }
-  .tax-actions-main {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    flex: 1 1 auto;
-  }
-  .tax-actions-danger { flex: 0 0 auto; margin-inline-start: 8px; }
-  .tax-actions-main > .tax-btn,
-  .tax-actions-danger > .tax-btn { width: 100%; }
-  /* Three equal slots must also hold the longest label in the panel; 12px of side padding
-     made that label bleed into the slot beside it. The 44px height still stands. */
-  .tax-btn { padding: 0 4px; }
-  .tax-confirm { flex-wrap: wrap; }
-  .tax-add { width: 44px; padding: 0; }
-  .tax-add-label { display: none; }
-  .tax-fields input { height: 44px; }
+@media (max-width: 720px) {
+  .tax-page-head { flex-direction: column; align-items: stretch; }
+  .tax-add { width: 100%; height: 44px; }
+  .tax-row-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tax-btn { height: 44px; width: 100%; }
+  .tax-field input { height: 44px; }
 }
 `;
 
-// Twenty's list surface: one hairline border per policy card, the computed total as the
-// only accent, and actions that are unmistakably controls. An inactive rate is paused,
-// not void: it stays readable, greyed and explicitly badged.
 const styles: Record<string, CSSProperties> = {
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
+    gap: 0,
     fontFamily: 'inherit',
     color: 'var(--t-color-gray12)',
-    background: 'var(--t-color-gray1)',
-    minHeight: 0,
+    maxWidth: 1180,
   },
-  header: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 16,
-    padding: '24px',
-    borderBottom: '1px solid var(--t-color-gray6)',
-    background: 'var(--t-color-gray2)',
-  },
-  headerText: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    flex: '1 1 320px',
-    minWidth: 0,
-  },
-  title: { margin: 0, fontSize: 20, fontWeight: 700, lineHeight: 1.45 },
-  subtitle: {
+  title: {
     margin: 0,
+    fontSize: 24,
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+  },
+  subtitle: {
+    margin: '6px 0 0',
+    maxWidth: '46ch',
     fontSize: 14,
     color: 'var(--t-color-gray11)',
-    lineHeight: 1.8,
-    maxWidth: 640,
   },
-  addButtonPlus: { fontSize: 16, lineHeight: 1 },
-  pageErrorRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    margin: '0 24px',
+  listTitle: {
+    margin: 0,
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'var(--t-color-gray11)',
+  },
+  inspectorTitle: {
+    margin: 0,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  meta: {
+    margin: 0,
+    fontSize: 13,
+    color: 'var(--t-color-gray10)',
   },
   pageError: {
     margin: 0,
-    padding: '8px 12px',
-    borderRadius: 8,
-    background: 'var(--t-color-red3)',
-    color: 'var(--t-color-red11)',
     fontSize: 13,
-    lineHeight: 1.8,
-    flex: '1 1 240px',
-  },
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    margin: '0 auto',
-    padding: '24px',
-    width: '100%',
-    maxWidth: 1100,
-    boxSizing: 'border-box',
-    listStyle: 'none',
-  },
-  identity: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  nameLine: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  rowName: {
-    margin: 0,
-    fontSize: 17,
-    fontWeight: 600,
-    color: 'var(--t-color-gray12)',
-    overflowWrap: 'anywhere',
-  },
-  rowNameMuted: {
-    margin: 0,
-    fontSize: 17,
-    fontWeight: 600,
-    color: 'var(--t-color-gray11)',
-    overflowWrap: 'anywhere',
-  },
-  badgeDefault: {
-    fontSize: 12,
-    lineHeight: 1.8,
     fontWeight: 500,
-    color: 'var(--t-color-blue11)',
-    background: 'var(--t-color-blue3)',
-    borderRadius: 999,
-    padding: '0 8px',
-    whiteSpace: 'nowrap',
-  },
-  badgeOff: {
-    fontSize: 12,
-    lineHeight: 1.8,
-    fontWeight: 500,
-    color: 'var(--t-color-gray11)',
-    background: 'var(--t-color-gray5)',
-    border: '1px solid var(--t-color-gray6)',
-    borderRadius: 999,
-    padding: '0 8px',
-    whiteSpace: 'nowrap',
-  },
-  usage: {
-    margin: 0,
-    fontSize: 12,
-    color: 'var(--t-color-gray11)',
-    lineHeight: 1.8,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  totalBlock: { display: 'flex', flexDirection: 'column', gap: 2 },
-  metricLabel: { fontSize: 12, color: 'var(--t-color-gray11)', lineHeight: 1.8 },
-  // The figure no longer outranks the policy it belongs to: colour alone carries the
-  // accent, and the name is a step heavier than the number.
-  totalValue: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: 'var(--t-color-blue9)',
-    lineHeight: 1.5,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  totalValueMuted: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: 'var(--t-color-gray11)',
-    lineHeight: 1.5,
-    fontVariantNumeric: 'tabular-nums',
-  },
-  // A hairline, not a fill: the chip must not compete with the total beside it, and on a
-  // phone it must not disappear into a filled metric band.
-  formulaChip: {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    padding: '6px 12px',
-    borderRadius: 8,
-    border: '1px solid var(--t-color-gray6)',
-    fontSize: 14,
-    color: 'var(--t-color-gray11)',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  formulaDivider: { color: 'var(--t-color-gray6)' },
-  confirmText: {
-    fontSize: 13,
     color: 'var(--t-color-red11)',
-    lineHeight: 1.8,
   },
-  rowError: {
-    gridColumn: '1 / -1',
-    margin: 0,
-    fontSize: 12,
-    color: 'var(--t-color-red11)',
-    lineHeight: 1.8,
-  },
-  // An instruction is not a failure: same slot, quiet ink.
-  rowNotice: {
-    gridColumn: '1 / -1',
-    margin: 0,
-    fontSize: 12,
-    color: 'var(--t-color-gray11)',
-    lineHeight: 1.8,
-  },
-  empty: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 12,
-    margin: '24px',
-    padding: 16,
-    border: '1px dashed var(--t-color-gray6)',
-    borderRadius: 8,
-    background: 'var(--t-color-gray2)',
-  },
-  emptyText: { margin: 0, fontSize: 14, color: 'var(--t-color-gray12)' },
-  emptyActions: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  editor: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    padding: 20,
-    border: '2px solid var(--t-color-blue9)',
-    borderRadius: 8,
-    background: 'var(--t-color-gray1)',
-  },
-  editorHeader: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingBottom: 16,
-    borderBottom: '1px solid var(--t-color-gray6)',
-  },
-  editorTitle: { margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--t-color-gray12)' },
-  // A state, not a control: squared corners and quiet ink keep it from reading as a
-  // third button beside انصراف and ذخیره.
-  unsavedMark: {
-    fontSize: 12,
-    lineHeight: 1.8,
-    fontWeight: 500,
-    color: 'var(--t-color-gray11)',
-    backgroundColor: 'transparent',
-    border: '1px solid var(--t-color-gray6)',
-    borderRadius: 4,
-    padding: '0 6px',
-    whiteSpace: 'nowrap',
-  },
-  editorHeaderActions: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  field: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
-  label: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    fontSize: 12,
-    color: 'var(--t-color-gray11)',
-  },
-  notice: {
-    margin: 0,
-    padding: '8px 12px',
-    borderRadius: 8,
-    border: '1px solid var(--t-color-gray6)',
-    background: 'var(--t-color-gray2)',
-    fontSize: 13,
-    color: 'var(--t-color-gray11)',
-    lineHeight: 1.8,
-  },
-  input: {
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '0 12px',
-    borderRadius: 8,
-    border: '1px solid var(--t-color-gray6)',
-    fontSize: 14,
-    color: 'var(--t-color-gray12)',
-    background: 'var(--t-color-gray1)',
-    fontFamily: 'inherit',
-  },
-  inputInvalid: {
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '0 12px',
-    borderRadius: 8,
-    border: '1px solid var(--t-color-red11)',
-    fontSize: 14,
-    color: 'var(--t-color-gray12)',
-    background: 'var(--t-color-gray1)',
-    fontFamily: 'inherit',
-  },
-  fieldError: { margin: 0, fontSize: 12, color: 'var(--t-color-red11)', lineHeight: 1.7 },
-  editorFooter: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    padding: 12,
-    borderRadius: 8,
-    border: '1px solid var(--t-color-gray6)',
-    background: 'var(--t-color-gray2)',
-  },
-  editorFooterInfo: {
+  emptyText: {
     margin: 0,
     fontSize: 14,
     color: 'var(--t-color-gray11)',
-    lineHeight: 1.8,
   },
-  editorTotalBlock: { display: 'flex', alignItems: 'center', gap: 16 },
-  totalLabel: { fontSize: 14, color: 'var(--t-color-gray11)' },
-  totalValueLg: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: 'var(--t-color-blue9)',
-    fontVariantNumeric: 'tabular-nums',
-  },
-  meta: { margin: 0, fontSize: 12, color: 'var(--t-color-gray11)', lineHeight: 1.8 },
 };
