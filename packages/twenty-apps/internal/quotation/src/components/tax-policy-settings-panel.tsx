@@ -542,9 +542,15 @@ export const TaxPolicySettingsPanel = () => {
   const renderRowActions = (row: TaxPolicyRow) => {
     const nameText = displayPolicyName(row.name);
     const selected = editor?.recordId === row.recordId;
+    // While the inspector is open the ledger is narrower; keep only the two
+    // actions that belong on every row and leave lifecycle controls in the inspector.
+    const showLifecycle = editor === null;
 
     return (
-      <div className="tax-row-actions" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="tax-row-actions"
+        onClick={(event) => event.stopPropagation()}
+      >
         <button
           type="button"
           className="tax-btn"
@@ -558,7 +564,7 @@ export const TaxPolicySettingsPanel = () => {
         >
           {selected ? 'بستن' : 'ویرایش'}
         </button>
-        {row.isActive && !row.isDefault ? (
+        {showLifecycle && row.isActive && !row.isDefault ? (
           <button
             type="button"
             className="tax-btn"
@@ -569,30 +575,32 @@ export const TaxPolicySettingsPanel = () => {
             پیش‌فرض
           </button>
         ) : null}
-        {row.isActive ? (
-          <button
-            type="button"
-            className="tax-btn"
-            aria-label={`غیرفعال‌سازی — ${nameText}`}
-            disabled={busy || row.isDefault}
-            title={
-              row.isDefault ? 'پیش‌فرض را نمی‌توان غیرفعال کرد' : undefined
-            }
-            onClick={() => void onDeactivate(row)}
-          >
-            غیرفعال
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="tax-btn"
-            aria-label={`فعال‌سازی — ${nameText}`}
-            disabled={busy}
-            onClick={() => void onActivate(row)}
-          >
-            فعال
-          </button>
-        )}
+        {showLifecycle ? (
+          row.isActive ? (
+            <button
+              type="button"
+              className="tax-btn"
+              aria-label={`غیرفعال‌سازی — ${nameText}`}
+              disabled={busy || row.isDefault}
+              title={
+                row.isDefault ? 'پیش‌فرض را نمی‌توان غیرفعال کرد' : undefined
+              }
+              onClick={() => void onDeactivate(row)}
+            >
+              غیرفعال
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="tax-btn"
+              aria-label={`فعال‌سازی — ${nameText}`}
+              disabled={busy}
+              onClick={() => void onActivate(row)}
+            >
+              فعال
+            </button>
+          )
+        ) : null}
         <button
           type="button"
           className="tax-btn tax-btn-danger"
@@ -846,16 +854,11 @@ export const TaxPolicySettingsPanel = () => {
                             openEditor(editorFor(row));
                           }}
                         >
-                          <td>
+                          <td className="tax-col-policy">
                             <div className="tax-name">{nameText}</div>
                             <div className="tax-code" dir="ltr">
                               {row.code}
                             </div>
-                            {row.quotationCount > 0 || row.isDefault ? (
-                              <p className="tax-usage-detail">
-                                {usageLine(row)}
-                              </p>
-                            ) : null}
                             {rowIssue?.recordId === row.recordId ? (
                               <p
                                 role={
@@ -873,17 +876,17 @@ export const TaxPolicySettingsPanel = () => {
                               </p>
                             ) : null}
                           </td>
-                          <td>
+                          <td className="tax-col-num">
                             <span className="tax-num">
                               {percentLabel(row.ratePercent)}
                             </span>
                           </td>
-                          <td>
+                          <td className="tax-col-num">
                             <span className="tax-num">
                               {percentLabel(row.dutyRatePercent)}
                             </span>
                           </td>
-                          <td>
+                          <td className="tax-col-num">
                             <span
                               className={
                                 row.isExempt
@@ -896,13 +899,20 @@ export const TaxPolicySettingsPanel = () => {
                                 : percentLabel(row.totalRatePercent)}
                             </span>
                           </td>
-                          <td>{statusBadge(row)}</td>
-                          <td>
+                          <td className="tax-col-status">{statusBadge(row)}</td>
+                          <td className="tax-col-docs">
                             <span className="tax-usage">
                               {usageShort(row)}
                             </span>
+                            {row.quotationCount > 0 || row.isDefault ? (
+                              <p className="tax-usage-detail">
+                                {usageLine(row)}
+                              </p>
+                            ) : null}
                           </td>
-                          <td>{renderRowActions(row)}</td>
+                          <td className="tax-col-actions">
+                            {renderRowActions(row)}
+                          </td>
                         </tr>
                       );
                     })}
@@ -1109,6 +1119,45 @@ export const TaxPolicySettingsPanel = () => {
                     : usageLine(editingRow)}
                 </p>
 
+                {editingRow === null ? null : (
+                  <div className="tax-inspector-lifecycle">
+                    {editingRow.isActive && !editingRow.isDefault ? (
+                      <button
+                        type="button"
+                        className="tax-btn"
+                        disabled={busy}
+                        onClick={() => void onSetDefault(editingRow)}
+                      >
+                        پیش‌فرض
+                      </button>
+                    ) : null}
+                    {editingRow.isActive ? (
+                      <button
+                        type="button"
+                        className="tax-btn"
+                        disabled={busy || editingRow.isDefault}
+                        title={
+                          editingRow.isDefault
+                            ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
+                            : undefined
+                        }
+                        onClick={() => void onDeactivate(editingRow)}
+                      >
+                        غیرفعال
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="tax-btn"
+                        disabled={busy}
+                        onClick={() => void onActivate(editingRow)}
+                      >
+                        فعال
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="tax-inspector-foot">
                   <button
                     type="submit"
@@ -1130,7 +1179,9 @@ export const TaxPolicySettingsPanel = () => {
                       type="button"
                       className="tax-btn tax-btn-danger tax-foot-danger"
                       disabled={
-                        busy || editingRow === null || !canDeleteRow(editingRow)
+                        busy ||
+                        editingRow === null ||
+                        !canDeleteRow(editingRow)
                       }
                       onClick={() => {
                         if (editingRow !== null) {
@@ -1263,28 +1314,43 @@ const PANEL_CSS = `
 .tax-ledger {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  table-layout: fixed;
+  min-width: 980px;
 }
 .tax-ledger th {
   text-align: right;
   font-size: 12px;
   font-weight: 600;
   color: var(--t-color-gray10);
-  padding: 10px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--t-color-gray6);
   background: var(--t-color-gray2);
   white-space: nowrap;
 }
 .tax-ledger td {
-  padding: 12px 14px;
+  padding: 12px;
   border-bottom: 1px solid var(--t-color-gray5);
   vertical-align: middle;
+}
+.tax-col-policy { width: 22%; }
+.tax-col-num { width: 8%; white-space: nowrap; }
+.tax-col-status { width: 10%; white-space: nowrap; }
+.tax-col-docs { width: 16%; }
+.tax-col-actions {
+  width: 28%;
+  white-space: nowrap;
 }
 .tax-ledger tbody tr { cursor: pointer; }
 .tax-ledger tbody tr:hover { background: var(--t-color-gray2); }
 .tax-ledger tbody tr.is-selected { background: var(--t-color-blue2); }
 .tax-ledger tbody tr.is-inactive .tax-name { color: var(--t-color-gray10); }
-.tax-name { font-weight: 600; color: var(--t-color-gray12); }
+.tax-name {
+  font-weight: 600;
+  color: var(--t-color-gray12);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .tax-code {
   margin-top: 2px;
   font-size: 12px;
@@ -1322,17 +1388,28 @@ const PANEL_CSS = `
   background: var(--t-color-gray4);
   color: var(--t-color-gray11);
 }
-.tax-usage { font-size: 13px; color: var(--t-color-gray11); }
+.tax-usage {
+  display: block;
+  font-size: 13px;
+  color: var(--t-color-gray11);
+  white-space: nowrap;
+}
 .tax-usage-detail {
   margin: 4px 0 0;
   font-size: 12px;
+  line-height: 1.35;
   color: var(--t-color-gray10);
 }
 .tax-row-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: flex-start;
   gap: 6px;
+}
+.tax-col-actions .tax-btn {
+  flex: 0 0 auto;
+  padding: 0 10px;
 }
 .tax-mobile-cards {
   display: grid;
@@ -1467,6 +1544,12 @@ const PANEL_CSS = `
   font-size: 12px;
   font-weight: 500;
   color: var(--t-color-orange11);
+}
+.tax-inspector-lifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
 }
 .tax-inspector-foot {
   display: flex;
