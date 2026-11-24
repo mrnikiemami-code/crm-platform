@@ -177,3 +177,96 @@ Findings that do **not** require designer arbitration, because they are either e
 Findings that **do** require it: accent and danger values (P2 contrast), «جمع کل» wording and exempt-state copy (P3), add-action placement and default-set weight (P3), token migration (P2), and the confirm prompt's visual shape (P1).
 
 Until the designer answers, `DESIGN_GATE` cannot be reported as PASS.
+
+---
+
+# Addendum — re-audit of the final implementation (app 0.1.46, 2026-11-24)
+
+The report above measured the source as it stood at 0.1.39: 70 hex literals, an abbreviated
+mobile branch, no unsaved-edit guard, no load retry. The panel has since been re-implemented
+and is served at 0.1.46. This addendum is the assessment of what is now deployed, run again
+as two isolated assessments that did not see each other's output.
+
+Served measurements taken from the live page before either assessment started (desktop
+1920, emulated phone 390 at dsf 2, three real policies):
+
+| Fact | Desktop | Phone 390 |
+|---|---|---|
+| `document.documentElement.scrollWidth` | 1920 (= viewport) | 390 (= viewport) |
+| Row control height | 32 px | 44 px |
+| Add control | 32 px tall, labelled | 44 × 44 px, label hidden |
+| Editor open | — | inputs 237 / 110 / 110 px, still no horizontal scroll |
+| Text nodes under 12 px | 0 | 0 |
+| Row height | 84.59 px | — |
+| `:focus-visible` on a row button | matches, `solid 1.857px` accent | same |
+| Console errors / host crashes during load, editor open, dirty refusal, cancel | none captured | none captured |
+
+Colour source: 0 hex literals and 71 `var(--t-color-*)` references in the component.
+
+## Assessment C — evidence pass (independent subagent; source + served measurements)
+
+Full evidence tables, with line references, are in the subagent's own words and reproduced
+here in condensed form only where a designer ruling depends on them.
+
+| Area | Result |
+|---|---|
+| ARIA | 6 × `role="alert"`, 1 × `role="status"`, 6 × `aria-label` (1 global + 5 per-row), 3 × `aria-describedby`, 3 × `aria-invalid`, 1 × `aria-busy`, 0 × `aria-live`, 0 × `aria-labelledby`, 0 × `aria-pressed` |
+| Semantics | `<header>`, 2 × `<section>` (unnamed), `<ul>` + 3 `<li>`, 1 × `<h2>`, 2 `<h3>` sites, 3 `<label>`, 3 `<input>`, 1 `<output>`; **0** `<form>`, 0 `<fieldset>`, 0 `onSubmit`, 0 `onKeyDown` |
+| Interactive surface | 13 `<button>`, all `type="button"`, all `disabled`-capable, 13 `onClick`, **0** clickable `div`/`span`/`li`, 0 `tabIndex` |
+| Names | 4 unique-per-row names carry the policy name; `تأیید حذف` and `انصراف` repeat identically per row, and `انصراف` also exists in the editor |
+| Tokens | 13 distinct `--t-color-*`, 0 hex, 2 hardcoded `rgba(0,0,0,0.04)` box shadows |
+| Contrast, full-opacity surfaces | body 12.63 / 12.31 : 1; secondary 4.82–5.74 : 1; accent total 5.08 / 5.21 : 1; error on error tint 4.55 : 1; danger label 5.07 : 1; white on solid danger 5.21 : 1 |
+| Contrast, inactive row | `.tax-row-inactive { opacity: 0.8; filter: grayscale(1) }` composites secondary text to **3.23–3.63 : 1** and the accent total to **3.50 : 1** |
+| Boundaries | `gray6` borders on `gray1`/`gray2` are 1.45 / 1.42 : 1 |
+| Type | 6 sizes (12, 13, 14, 16, 18, 20), floor 12 px, all `px` (0 `rem`/`em`); 5 `white-space: nowrap` sites, all short labels or the visually-hidden rule |
+| Focus | exactly one `:focus-visible` rule, on `.tax-btn`; 0 `:focus`/`:focus-within`; inputs rely on the UA ring; save is click-only (no form, no Enter) |
+| Motion / overflow | 0 transitions, 0 animations, 0 viewport units, 1 `position: absolute` (the sr-only pattern); 5 hover rules, **all inert** because every button carries an inline `background` that outranks them |
+| Dead code | `styles.secondaryButton`, `.tax-btn-primary:hover`, and `id={'tax-edit-…'}` emitted but never referenced |
+| Detector | `npx impeccable detect` 4.10.0 → exit 0, empty stdout, stderr states the `.tsx` path is regex-only and an undercount |
+
+Findings raised for a designer ruling:
+
+- **C1 (blocker candidate).** The inactive row's `opacity: 0.8` drags every 12–16 px label on
+  it below the product contract's 4.5 : 1, and it is the only thing that says "inactive"
+  besides the `غیرفعال` pill.
+- **C2.** Hover feedback does not exist on any of the 13 controls: the stylesheet's hover
+  rules are overridden by inline backgrounds. If hover is meant to be an affordance, it is
+  currently absent, not weak.
+- **C3.** The editor is not a `<form>`; `Enter` in the name or rate field does nothing.
+  A keyboard operator must leave the fields and reach `ذخیره تغییرات` by Tab.
+- **C4.** The unsaved-edit refusal is an instruction, not a failure, but it is rendered with
+  `role="alert"`.
+- **C5.** `aria-invalid` on the name input mirrors the shared editor error, so the name field
+  claims to be invalid when the failing field is rate or duty; the rate and duty messages
+  have no `id` and are not named by `aria-describedby`.
+- **C6.** The delete-confirm pair repeats its accessible names in every row, and `انصراف`
+  names two different actions on one screen.
+- **C7.** `styles.secondaryButton`, the `:hover` rule for `.tax-btn-primary`, and an emitted
+  `id` on the edit button are dead.
+- **C8.** The loading line is not announced, and the editor's `<output>` is an undeclared
+  implicit live region that updates on every keystroke.
+
+---
+
+# Addendum — Assessment D closure (app 0.1.47, 2026-11-24)
+
+Findings C1–C8 from Assessment C were returned to the design authority (Impeccable Operate).
+`DESIGN-DECISION.md` D1–D10 are the answers. The panel was rebuilt to those rulings and
+served as `0.1.46`, then polished to `0.1.47`.
+
+Closed against the live Dev page after `0.1.47` apply:
+
+| Finding | Disposition |
+|---|---|
+| C1 inactive contrast | Inactive uses `gray1` surface + explicit `غیرفعال` badge; no `opacity`/`grayscale` composite |
+| C2 hover dead | Styles moved into the scoped stylesheet; hover rules paint |
+| C3 no Enter save | Editor is a native `<form noValidate>`; Enter submits |
+| C4 unsaved as alert | Unsaved refusal is `role="status"`; failures stay `role="alert"` |
+| C5 mis-aimed invalid | Per-field `nameError` / rate / duty with matching `aria-describedby` |
+| C6 ambiguous names | Row actions carry the policy name; confirm controls are scoped to the row |
+| C7 dead styles | Removed |
+| C8 announce / output | Loading announced; total is computed text, not a live `output` |
+
+Late `0.1.47` polish measured on Dev: open-row `aria-expanded="true"` (host emptied boolean
+`true`); at 390 px `غیرفعال‌سازی` no longer clips (`scrollWidth ≤ clientWidth`); no
+horizontal overflow (`scrollWidth === 390`). Panel unit suite **30/30**.

@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import {
   cleanup,
   fireEvent,
@@ -102,10 +102,10 @@ describe('tax policy settings panel', () => {
     const defaultRow = rowOf('مالیات ۱۰٪');
     expect(within(defaultRow).getByText('پیش‌فرض').closest('button')).toBeNull();
     expect(
-      within(defaultRow).queryByRole('button', { name: 'پیش‌فرض' }),
+      within(defaultRow).queryByRole('button', { name: /^پیش‌فرض/ }),
     ).toBeNull();
     expect(
-      screen.getAllByRole('button', { name: 'پیش‌فرض' }),
+      screen.getAllByRole('button', { name: /^پیش‌فرض/ }),
     ).toHaveLength(1);
   });
 
@@ -138,11 +138,11 @@ describe('tax policy settings panel', () => {
 
     // Every figure is labelled and none is an unlabelled pair: the total leads, the two
     // components read as their formula, and the document count is contextual.
-    expect(within(row).getByText('جمع کل')).toBeTruthy();
+    expect(within(row).getByText('نرخ کل')).toBeTruthy();
     expect(within(row).getByText('۱۰٪')).toBeTruthy();
     expect(within(row).getByText('مالیات: ۶٪')).toBeTruthy();
     expect(within(row).getByText('عوارض: ۴٪')).toBeTruthy();
-    expect(within(row).getByText('در ۵ سند استفاده شده')).toBeTruthy();
+    expect(within(row).getByText(/در ۵ سند استفاده شده است/)).toBeTruthy();
   });
 
   it('has no exemption checkbox and states that both rates at zero mean exempt', async () => {
@@ -155,7 +155,7 @@ describe('tax policy settings panel', () => {
     expect(screen.getByText('هر دو نرخ صفر یعنی معاف از مالیات.')).toBeTruthy();
   });
 
-  it('shows the usage count on a used policy instead of a delete it cannot honour', async () => {
+  it('keeps the delete control on a used policy and explains why it is disabled', async () => {
     callAppRouteMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
@@ -171,10 +171,21 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('سیاست استفاده‌شده');
 
-    // The default row and the used row both lack a delete button; the usage line carries
-    // the real count, so the operator never presses a button that must fail.
-    expect(screen.queryAllByRole('button', { name: 'حذف' })).toHaveLength(0);
-    expect(screen.getByText('در ۳ سند استفاده شده')).toBeTruthy();
+    // The control does not vanish and reappear as a different one: it stays where it is
+    // and the same visible line that carries the count carries the reason, because a
+    // description reached from a disabled control is unreachable by keyboard and screen
+    // reader alike.
+    const deleteButton = within(rowOf('سیاست استفاده‌شده')).getByRole('button', {
+      name: /^حذف/,
+    });
+
+    expect((deleteButton as HTMLButtonElement).disabled).toBe(true);
+    expect(deleteButton.getAttribute('aria-describedby')).toBeNull();
+    expect(
+      within(rowOf('سیاست استفاده‌شده')).getByText(
+        'در ۳ سند استفاده شده است؛ حذف‌شدنی نیست.',
+      ),
+    ).toBeTruthy();
   });
 
   it('asks on the first delete press and cancels without touching the server', async () => {
@@ -191,8 +202,8 @@ describe('tax policy settings panel', () => {
 
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('سیاست بی‌استفاده');
-
-    fireEvent.click(screen.getByRole('button', { name: 'حذف' }));
+    fireEvent.click(within(rowOf('سیاست بی‌استفاده')).getByRole('button', { name: /^حذف/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^حذف/ }));
 
     // The first press only asks, naming the policy it would drop.
     expect(screen.getByText('«سیاست بی‌استفاده» حذف شود؟')).toBeTruthy();
@@ -222,8 +233,8 @@ describe('tax policy settings panel', () => {
 
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('سیاست بی‌استفاده');
-
-    fireEvent.click(screen.getByRole('button', { name: 'حذف' }));
+    fireEvent.click(within(rowOf('سیاست بی‌استفاده')).getByRole('button', { name: /^حذف/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^حذف/ }));
     fireEvent.click(screen.getByRole('button', { name: 'تأیید حذف' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('۸ سند');
@@ -257,8 +268,8 @@ describe('tax policy settings panel', () => {
 
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('سیاست آزمایشی');
-
-    fireEvent.click(screen.getByRole('button', { name: 'حذف' }));
+    fireEvent.click(within(rowOf('سیاست آزمایشی')).getByRole('button', { name: /^حذف/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^حذف/ }));
     fireEvent.click(screen.getByRole('button', { name: 'تأیید حذف' }));
 
     await waitForElementToBeRemoved(() => screen.queryByText('سیاست آزمایشی'));
@@ -267,19 +278,28 @@ describe('tax policy settings panel', () => {
     );
   });
 
-  it('offers no deactivation or delete path on the default row', async () => {
+  it('keeps the same action set on the default row and only disables what is refused', async () => {
     await renderPanel();
 
     const row = rowOf('مالیات ۱۰٪');
 
-    // The default policy shows its state as a badge and offers no action that the
-    // server would refuse; the row is not explained by a repeated sentence.
+    // The row still carries the controls; they are disabled with a stated reason rather
+    // than removed, so the operator reads "not allowed here" instead of "permissions
+    // changed".
+    const deactivate = within(row).getByRole('button', {
+      name: /^غیرفعال‌سازی/,
+    }) as HTMLButtonElement;
+    const remove = within(row).getByRole('button', {
+      name: /^حذف/,
+    }) as HTMLButtonElement;
+
+    expect(deactivate.disabled).toBe(true);
+    expect(remove.disabled).toBe(true);
+    expect(within(row).queryByRole('button', { name: /^پیش‌فرض/ })).toBeNull();
+    expect(within(row).getByRole('button', { name: /^ویرایش/ })).toBeTruthy();
     expect(
-      within(row).queryByRole('button', { name: 'غیرفعال‌سازی' }),
-    ).toBeNull();
-    expect(within(row).queryByRole('button', { name: 'حذف' })).toBeNull();
-    expect(within(row).queryByRole('button', { name: 'پیش‌فرض' })).toBeNull();
-    expect(within(row).getByRole('button', { name: 'ویرایش' })).toBeTruthy();
+      within(row).getByText(/سیاست پیش‌فرض غیرفعال یا حذف نمی‌شود/),
+    ).toBeTruthy();
   });
 
   it('sets the default from the row and keeps a single default badge afterwards', async () => {
@@ -309,7 +329,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    fireEvent.click(screen.getByRole('button', { name: 'پیش‌فرض' }));
+    fireEvent.click(screen.getByRole('button', { name: /^پیش‌فرض/ }));
 
     expect(callAppRouteMock).toHaveBeenLastCalledWith(
       '/quotation/tax-policies',
@@ -330,10 +350,10 @@ describe('tax policy settings panel', () => {
     // offers the action.
     expect(within(promoted).getByText('پیش‌فرض').closest('button')).toBeNull();
     expect(
-      within(promoted).queryByRole('button', { name: 'پیش‌فرض' }),
+      within(promoted).queryByRole('button', { name: /^پیش‌فرض/ }),
     ).toBeNull();
     expect(
-      screen.getAllByRole('button', { name: 'پیش‌فرض' }),
+      screen.getAllByRole('button', { name: /^پیش‌فرض/ }),
     ).toHaveLength(1);
   });
 
@@ -359,7 +379,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    fireEvent.click(screen.getByRole('button', { name: 'پیش‌فرض' }));
+    fireEvent.click(screen.getByRole('button', { name: /^پیش‌فرض/ }));
 
     await waitFor(() => {
       if (snackbarMock.mock.calls.length === 0) {
@@ -370,10 +390,10 @@ describe('tax policy settings panel', () => {
     // Even though the payload still flags the demoted row, the pressed row is the only
     // default in the DOM, and the demoted row is the only one offering the action.
     const demoted = rowOf('مالیات ۹٪');
-    expect(within(demoted).getByRole('button', { name: 'پیش‌فرض' })).toBeTruthy();
+    expect(within(demoted).getByRole('button', { name: /^پیش‌فرض/ })).toBeTruthy();
     expect(within(rowOf('مالیات ۱۰٪')).getByText('پیش‌فرض')).toBeTruthy();
     expect(
-      screen.getAllByRole('button', { name: 'پیش‌فرض' }),
+      screen.getAllByRole('button', { name: /^پیش‌فرض/ }),
     ).toHaveLength(1);
   });
 
@@ -428,7 +448,7 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۱۰٪');
 
     const row = rowOf('مالیات ۱۰٪');
-    fireEvent.click(within(row).getByRole('button', { name: 'ویرایش' }));
+    fireEvent.click(within(row).getByRole('button', { name: /^ویرایش/ }));
 
     expect(screen.getByText('ویرایش سیاست')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره تغییرات' }));
@@ -454,6 +474,23 @@ describe('tax policy settings panel', () => {
     );
   });
 
+  it('shows the unsaved mark while the editor differs from the row it opened', async () => {
+    callAppRouteMock.mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]));
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۱۰٪');
+
+    fireEvent.click(within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }));
+
+    expect(screen.queryByText('ذخیره‌نشده')).toBeNull();
+
+    fireEvent.change(screen.getByDisplayValue('مالیات ۱۰٪'), {
+      target: { value: 'مالیات ۱۲٪' },
+    });
+
+    expect(screen.getByText('ذخیره‌نشده')).toBeTruthy();
+  });
+
   it('keeps the editor open with the server message when a save is refused', async () => {
     callAppRouteMock
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
@@ -468,7 +505,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    fireEvent.click(screen.getByRole('button', { name: 'ویرایش' }));
+    fireEvent.click(screen.getByRole('button', { name: /^ویرایش/ }));
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره تغییرات' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain(
@@ -489,7 +526,7 @@ describe('tax policy settings panel', () => {
       });
 
     render(<TaxPolicySettingsPanel />);
-    await screen.findByText('هنوز سیاست مالیاتی ثبت نشده است.');
+    await screen.findByText('هنوز سیاست مالیات و عوارضی ثبت نشده است.');
 
     fireEvent.click(screen.getByRole('button', { name: 'ساخت سیاست پایهٔ ۹٪' }));
 
@@ -528,26 +565,33 @@ describe('tax policy settings panel', () => {
     expect(rowButtons.length).toBeGreaterThan(0);
 
     for (const button of rowButtons) {
-      // Height is owned by the stylesheet, not by an inline style, so the 767 px block
-      // can raise it to the product's 44 px floor; an inline height would win there.
+      // Height and look are owned by the stylesheet, not by an inline style, so both the
+      // 767 px block and the disabled skin can override them; an inline border or
+      // background would pin the enabled look onto a refused control.
       expect(button.className).toContain('tax-btn');
-      expect(button.style.border).toContain('solid');
-      expect(button.style.border).not.toContain('transparent');
+      expect(button.style.border).toBe('');
+      expect(button.style.background).toBe('');
     }
 
     const panelCss = document.querySelector('style')?.textContent ?? '';
-    expect(panelCss).toContain('.tax-btn');
+    expect(panelCss).toContain('.tax-btn {');
     expect(panelCss).toContain('height: 32px');
+    // A refused control is visibly refused, not merely unclickable.
+    expect(panelCss).toContain('.tax-btn:disabled');
+    expect(panelCss).toContain('border-color: var(--t-color-gray5)');
     expect(panelCss).toMatch(
       /@media \(max-width: 767px\)[\s\S]*\.tax-btn, \.tax-add \{ height: 44px; \}/,
     );
 
-    // The total leads and is the only accented figure in a row.
+    // The name outranks the number it labels, and the accent stays on the total alone,
+    // painted from the design token rather than a literal so it follows the shell theme.
     const total = within(rowOf('سیاست استفاده‌شده')).getByText('۴٪');
-    expect(total.style.fontSize).toBe('18px');
-    expect(total.style.fontWeight).toBe('700');
-    expect(total.style.color).toBe('rgb(76, 110, 245)');
-    expect(within(rowOf('سیاست استفاده‌شده')).getByText('جمع کل')).toBeTruthy();
+    expect(total.style.fontSize).toBe('16px');
+    expect(total.style.fontWeight).toBe('600');
+    expect(total.style.color).toBe('var(--t-color-blue9)');
+    expect(within(rowOf('سیاست استفاده‌شده')).getByText('نرخ کل')).toBeTruthy();
+    const name = within(rowOf('سیاست استفاده‌شده')).getByRole('heading');
+    expect(name.style.fontSize).toBe('17px');
   });
 
   it('marks an inactive policy with an explicit badge instead of a faded row alone', async () => {
@@ -570,8 +614,15 @@ describe('tax policy settings panel', () => {
 
     expect(within(row).getByText('غیرفعال')).toBeTruthy();
     expect(row.className).toContain('tax-row-inactive');
-    expect(within(row).getByRole('button', { name: 'فعال‌سازی' })).toBeTruthy();
-    expect(within(row).queryByRole('button', { name: 'حذف' })).toBeNull();
+    expect(within(row).getByRole('button', { name: /^فعال‌سازی/ })).toBeTruthy();
+
+    // An inactive, never-used policy is deletable in one write. Making the operator
+    // reactivate it first put it back in front of new quotations.
+    const remove = within(row).getByRole('button', {
+      name: /^حذف/,
+    }) as HTMLButtonElement;
+
+    expect(remove.disabled).toBe(false);
   });
 
   it('renders rows as list items with a heading, not as an unlabelled table', async () => {
@@ -588,6 +639,278 @@ describe('tax policy settings panel', () => {
     // A screen reader can jump policy to policy: one list, one heading per row.
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByRole('heading', { name: 'مالیات ۹٪' })).toBeTruthy();
+  });
+
+  it('names each row control after the policy it acts on', async () => {
+    callAppRouteMock.mockResolvedValueOnce(
+      catalog([
+        policy({ recordId: 'tp-1', isDefault: true }),
+        policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
+        policy({ recordId: 'tp-3', code: 'TAX_800', name: 'مالیات ۸٪' }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۹٪');
+
+    // Three «ویرایش» entries used to be indistinguishable in a rotor.
+    const edits = screen.getAllByRole('button', { name: /^ویرایش/ });
+
+    expect(edits.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'ویرایش — مالیات ۱۰٪',
+      'ویرایش — مالیات ۹٪',
+      'ویرایش — مالیات ۸٪',
+    ]);
+  });
+
+  it('refuses to replace an editor holding typed numbers and says why', async () => {
+    callAppRouteMock.mockResolvedValueOnce(
+      catalog([
+        policy({ recordId: 'tp-1', isDefault: true }),
+        policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۹٪');
+
+    fireEvent.click(
+      within(rowOf('مالیات ۹٪')).getByRole('button', { name: /^ویرایش/ }),
+    );
+    fireEvent.change(screen.getByLabelText('مالیات (٪)'), {
+      target: { value: '۷' },
+    });
+
+    // A different row's «ویرایش» is one click away; it must not throw the 7% away.
+    fireEvent.click(
+      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+    );
+
+    expect(screen.getByText(/تغییرات ذخیره‌نشده دارید/)).toBeTruthy();
+    expect(
+      (screen.getByLabelText('مالیات (٪)') as HTMLInputElement).value,
+    ).toBe('۷');
+    expect(callAppRouteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the operator discard deliberately, by cancelling', async () => {
+    await renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'افزودن سیاست' }));
+    fireEvent.change(screen.getByLabelText('نام سیاست'), {
+      target: { value: 'نیمه‌کاره' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'انصراف' }));
+
+    expect(screen.queryByLabelText('نام سیاست')).toBeNull();
+  });
+
+  it('offers a retry when the list cannot be read', async () => {
+    callAppRouteMock
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]));
+
+    render(<TaxPolicySettingsPanel />);
+
+    expect(await screen.findByText(/فهرست سیاست‌های مالیات خوانده نشد/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'تلاش مجدد' }));
+
+    expect(await screen.findByText('مالیات ۱۰٪')).toBeTruthy();
+    expect(callAppRouteMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('states an exempt policy in words instead of a zero that reads as unfilled', async () => {
+    callAppRouteMock.mockResolvedValueOnce(
+      catalog([
+        policy({
+          recordId: 'tp-1',
+          name: 'سیاست معاف',
+          ratePercent: '0',
+          dutyRatePercent: '0',
+          totalRatePercent: '0',
+          isExempt: true,
+          isDefault: true,
+        }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('سیاست معاف');
+
+    const row = rowOf('سیاست معاف');
+
+    expect(within(row).getByText('معاف')).toBeTruthy();
+    expect(within(row).queryByText('۰٪')).toBeNull();
+  });
+
+  it('keeps the row mounted and opens the editor as its next card', async () => {
+    callAppRouteMock.mockResolvedValueOnce(
+      catalog([
+        policy({ recordId: 'tp-1', isDefault: true }),
+        policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۹٪');
+
+    const toggle = within(rowOf('مالیات ۹٪')).getByRole('button', {
+      name: /^ویرایش/,
+    });
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(toggle);
+
+    // The pressed button is not unmounted, so the browser never moves focus to <body>;
+    // the editor is the row's sibling and the toggle becomes its closer.
+    const reopened = within(rowOf('مالیات ۹٪')).getByRole('button', {
+      name: /^ویرایش/,
+    });
+
+    expect(reopened.getAttribute('aria-expanded')).toBe('true');
+    expect(reopened.textContent).toBe('بستن');
+    expect(screen.getByLabelText('نام سیاست')).toBeTruthy();
+
+    fireEvent.click(reopened);
+
+    expect(screen.queryByLabelText('نام سیاست')).toBeNull();
+    expect(
+      within(rowOf('مالیات ۹٪'))
+        .getByRole('button', { name: /^ویرایش/ })
+        .getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  it('saves from the keyboard when Enter is pressed in a field', async () => {
+    callAppRouteMock
+      .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          policies: [policy({ recordId: 'tp-1' })],
+          message: 'سیاست مالیات ذخیره شد',
+        },
+      });
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۱۰٪');
+
+    fireEvent.click(
+      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+    );
+
+    // A form, so Enter submits instead of dropping the operator back on a dead field.
+    const nameField = screen.getByLabelText('نام سیاست').closest('form');
+    expect(nameField).not.toBeNull();
+
+    fireEvent.submit(nameField as HTMLFormElement);
+
+    await waitFor(() => {
+      if (callAppRouteMock.mock.calls.length < 2) {
+        throw new Error('the submit has not reached the server yet');
+      }
+    });
+
+    expect(callAppRouteMock).toHaveBeenLastCalledWith(
+      '/quotation/tax-policies',
+      expect.objectContaining({ action: 'save', recordId: 'tp-1' }),
+    );
+  });
+
+  it('puts a missing name on the name field only', async () => {
+    await renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'افزودن سیاست' }));
+    fireEvent.change(screen.getByLabelText('مالیات (٪)'), {
+      target: { value: '۶' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'ذخیره تغییرات' }));
+
+    const nameField = screen.getByLabelText('نام سیاست');
+
+    expect(nameField.getAttribute('aria-invalid')).toBe('true');
+    expect(nameField.getAttribute('aria-describedby')).toBe(
+      'tax-policy-name-error',
+    );
+    expect(screen.getByText('نام سیاست مالیات را وارد کنید')).toBeTruthy();
+    // The rate is valid and must not inherit the name's refusal.
+    expect(screen.getByLabelText('مالیات (٪)').getAttribute('aria-invalid')).toBe(
+      'false',
+    );
+    expect(callAppRouteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the retry and nothing else when the first read fails', async () => {
+    callAppRouteMock.mockRejectedValueOnce(new Error('offline'));
+
+    render(<TaxPolicySettingsPanel />);
+
+    expect(
+      await screen.findByText(/فهرست سیاست‌های مالیات خوانده نشد/),
+    ).toBeTruthy();
+
+    // A failed read is not an empty catalog: no bootstrap action, no empty copy, no
+    // header add that would invite a write the screen has not verified.
+    expect(screen.queryByText(/هنوز سیاست مالیات و عوارضی ثبت نشده/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /ساخت سیاست پایه/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'افزودن سیاست' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'تلاش مجدد' })).toBeTruthy();
+  });
+
+  it('writes the unsaved refusal on the row that was pressed', async () => {
+    callAppRouteMock.mockResolvedValueOnce(
+      catalog([
+        policy({ recordId: 'tp-1', isDefault: true }),
+        policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۹٪');
+
+    fireEvent.click(
+      within(rowOf('مالیات ۹٪')).getByRole('button', { name: /^ویرایش/ }),
+    );
+    fireEvent.change(screen.getByLabelText('مالیات (٪)'), {
+      target: { value: '۷' },
+    });
+    fireEvent.click(
+      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+    );
+
+    // An instruction, not a failure: it is announced as a status, and it lands in the
+    // row that was pressed rather than in an editor card further up the list.
+    const refusal = within(rowOf('مالیات ۱۰٪')).getByRole('status');
+
+    expect(refusal.textContent).toContain('تغییرات ذخیره‌نشده دارید');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByLabelText('مالیات (٪)')).toBeTruthy();
+  });
+
+  it('paints no colour literal, so the panel follows the shell theme', async () => {
+    callAppRouteMock.mockResolvedValueOnce(
+      catalog([
+        policy({ recordId: 'tp-1', isDefault: true }),
+        policy({
+          recordId: 'tp-2',
+          code: 'TAX_1050',
+          name: 'سیاست استفاده‌شده',
+          quotationCount: 2,
+        }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('سیاست استفاده‌شده');
+
+    const markup = document.body.innerHTML;
+    const paint = `${markup}${document.querySelector('style')?.textContent ?? ''}`;
+
+    expect(paint).not.toMatch(/#[0-9a-fA-F]{6}/);
+    expect(paint).toContain('var(--t-color-blue9)');
+    expect(paint).toContain('var(--t-color-red11)');
   });
 });
 

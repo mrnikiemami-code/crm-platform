@@ -1,16 +1,45 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## EXECUTED — CRM-129-TAX-PANEL-016 FINAL CLOSURE (2026-11-24; DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** / DESIGN_GATE **BLOCKED — designer credits, confirmed on the CLI**)
+## EXECUTED — CRM-129-TAX-PANEL-016 FINAL CLOSURE (2026-11-24; DESIGN **PASS** / DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** → `STOP_FOR_ARCHITECT` → `USER_UAT`)
 
-Working point: branch `feat/crm-129-quotation`, HEAD `497eb5a39e` at start. Nothing outside the tax panel, its tests, the UAT scripts and `docs/design/crm-129-tax-panel-016/` was touched.
+Working point: branch `feat/crm-129-quotation`. Scope stays the tax panel, its tests, UAT scripts and `docs/design/crm-129-tax-panel-016/`. Money domain, PDF, adapter, revision/snapshot and other Twenty modules were not touched.
 
 ### Gate board
 
 | Gate | Status | Basis |
 |---|---|---|
+| `DESIGN_GATE` | **PASS** | Architect removed Superdesign (credits exhausted) and authorized Impeccable as design authority. `DESIGN-DECISION.md` records D1–D10; implementation ships those rulings; independent fidelity measured on Dev; panel tests **30/30**. Superdesign artifacts archived under `archive-superdesign/` as history only. |
+| `DATA_INTEGRITY_GATE` | **PASS** | `dev-verify-crm129-tax-uat-015.cjs` → **17/17** this delivery (`SUMMARY 17/17 passed`), including deterministic `S5-15c` (`queued=true`, `TAX_POLICY_IN_USE`, policy kept). Historical quotation/revision digests unchanged (`S5-13`). |
+| `SECURITY_GATE` | **PASS for source**, **rotation pending architect authorization** | No credential literal in tracked scripts; `requireDatabaseUrl()` fails closed (exit 2, safe message, no secret printed). Prior leak remains in Git history — no rewrite / force-push. Rotation deferred to architect. |
+
+### Delivered UI (Dev `:3002`)
+
+- App **پیش‌فاکتور `0.1.47`** applied to `dev-crm129` (front-component checksum update only for «مالیات و عوارض»).
+- Manual UAT URL: `http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d`
+- Designer rulings shipped: token-only colours (`--t-color-*`), `نرخ کل` + exempt `معاف`, stable four-action set with disabled-not-hidden delete, sibling editor (host-safe focus), native `<form>` Enter-to-save, field-linked validation, unsaved-edit refusal, load retry, 32 px desktop / 44 px phone targets.
+- Late polish in `0.1.47`: `aria-expanded` forced to `'true'|'false'` (host emptied boolean `true`), mobile action padding reduced so `غیرفعال‌سازی` no longer clips across the 3-slot grid.
+- Evidence screenshots beside the design folder: `served-desktop-0.1.46.png`, `served-mobile-390-0.1.46.png` (pre-0.1.47 polish; live DOM re-checked after apply).
+
+### What the architect still owns
+
+1. **Credential rotation** for the historically leaked staff Postgres role (consumers first). No history rewrite proposed here.
+2. **USER_UAT** visual sign-off on the Dev page above — technical gates are closed; product acceptance is the user's.
+
+### Prior section below
+
+The following section is the earlier mid-task record when `DESIGN_GATE` was still blocked on Superdesign credits. It is retained as audit trail and is superseded by this board.
+
+## SUPERSEDED MID-TASK — CRM-129-TAX-PANEL-016 (2026-11-24; DATA_INTEGRITY **PASS** / SECURITY **PASS (rotation pending)** / DESIGN_GATE **was BLOCKED — designer credits**)
+
+Working point then: HEAD `497eb5a39e` at start. Nothing outside the tax panel, its tests, the UAT scripts and `docs/design/crm-129-tax-panel-016/` was touched.
+
+### Gate board (historical)
+
+| Gate | Status | Basis |
+|---|---|---|
 | `DATA_INTEGRITY_GATE` | **PASS** | `dev-verify-crm129-tax-uat-015.cjs` → **17/17**, `SUMMARY 17/17 passed`, 1337 ms, re-run this turn through the env-only credential path; 672 app tests; 293 server quotation tests |
 | `SECURITY_GATE` | **PASS for source**, **rotation pending architect authorization** | no credential literal remains in any tracked script; the literal is absent from the working tree and from every tracked file at HEAD; 7 commits in history carried it and are not rewritten |
-| `DESIGN_GATE` | **BLOCKED** | designer executed and its revised frames implemented, but the Impeccable critique raised findings that contradict the designer's own specification and the platform refuses further designer turns. Re-confirmed this turn through the CLI itself, not only the MCP wrapper: `You're out of credits, so this generation was blocked`, at two payload sizes, on a model the catalogue lists as `free` |
+| `DESIGN_GATE` | **was BLOCKED** | designer executed and its revised frames implemented, but the Impeccable critique raised findings that contradict the designer's own specification and the platform refuses further designer turns. Re-confirmed this turn through the CLI itself, not only the MCP wrapper: `You're out of credits, so this generation was blocked`, at two payload sizes, on a model the catalogue lists as `free` |
 
 ### S0 — repository state recorded before any change
 
