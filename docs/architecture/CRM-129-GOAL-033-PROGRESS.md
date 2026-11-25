@@ -19,6 +19,15 @@
 - `tax-policy-settings-panel.test.tsx` — 31 PASS (shared confirm mock, more-menu actions)
 - `confirm-destructive-action.test.ts` — 2 PASS
 
+## Dev apply + browser evidence
+
+- Apply: `quotation@0.1.61` → `dev-crm129` (2 frontComponent checksum updates)
+- HEAD: `3730ef3aab`
+- Page load at ~601px container: **no horizontal overflow**; default banner `پیش‌فرض — …`; Edit + More on each row
+- Create policy «عوارض آزمایشی UX۰۳۳» via Nest `201`
+- Delete → host dialog: title «حذف سیاست مالیات», subtitle with record name, focus on **لغو**, confirm «حذف سیاست» → toast «سیاست مالیات حذف شد», catalog back to 3
+- Currency / rounding tabs load; long phase-1 copy removed; ~44px touch targets under narrow width
+
 ## UAT
 
 http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d  
