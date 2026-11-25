@@ -74,6 +74,16 @@ const buildController = ({
     })),
   };
 
+  const roundingRuleAuthorityService = {
+    resolveAuthority: jest.fn(async () => authority),
+    listRules: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
+    bootstrap: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
+    saveRule: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
+    setDefaultRule: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
+    deactivateRule: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
+    deleteRule: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
+  };
+
   const controller = new QuotationUiController(
     { toPersianFailure: jest.fn(() => ({ success: false, code: 'PERSISTENCE_FAILED' })) } as never,
     {} as never,
@@ -81,6 +91,7 @@ const buildController = ({
     {} as never,
     { saveDraft: saveDraft ?? jest.fn() } as never,
     taxPolicyAuthorityService as never,
+    roundingRuleAuthorityService as never,
     quotationCurrencyAuthorityService as never,
     { resolveSettingsAuthority: jest.fn(async () => authority) } as never,
     {} as never,

@@ -77,6 +77,48 @@ const HEADER_EXACT_KEYS = [
   'totalExact',
 ] as const;
 
+const parsePositiveStepRials = (value: string | null | undefined): bigint | null => {
+  if (value === null || value === undefined || value.trim() === '') {
+    // Legacy documents without a named rule keep whole-rial floor (step 1).
+    return BigInt(1);
+  }
+
+  const trimmed = value.trim();
+
+  if (!/^[1-9]\d{0,17}$/.test(trimmed)) {
+    return null;
+  }
+
+  return BigInt(trimmed);
+};
+
+const floorMicrosToStep = (
+  micros: bigint,
+  stepRials: bigint,
+): { payableMicros: bigint; roundingMicros: bigint } => {
+  const stepMicros = stepRials * FRACTION_SCALE;
+
+  if (micros >= BigInt(0)) {
+    const payableMicros = (micros / stepMicros) * stepMicros;
+
+    return {
+      payableMicros,
+      roundingMicros: payableMicros - micros,
+    };
+  }
+
+  if (micros % stepMicros === BigInt(0)) {
+    return { payableMicros: micros, roundingMicros: BigInt(0) };
+  }
+
+  const payableMicros = (micros / stepMicros - BigInt(1)) * stepMicros;
+
+  return {
+    payableMicros,
+    roundingMicros: payableMicros - micros,
+  };
+};
+
 export const evaluateQuotationDraftTotals = ({
   header,
   lines,
@@ -299,11 +341,64 @@ export const evaluateQuotationDraftTotals = ({
 
   const failing = checks.find((check) => !check.ok);
 
-  return failing === undefined
-    ? { ok: true }
-    : {
+  if (failing !== undefined) {
+    return {
+      ok: false,
+      code: 'TOTALS_INCONSISTENT',
+      message: failing.message,
+    };
+  }
+
+  const stepRials = parsePositiveStepRials(header.roundingStepRials);
+
+  if (stepRials === null) {
+    return {
+      ok: false,
+      code: 'ROUNDING_STEP_INVALID',
+      message: 'مبنای رُند باید عدد صحیح مثبت برحسب ریال باشد',
+    };
+  }
+
+  const rawPayable =
+    headerMicros.netExact + headerMicros.taxExact;
+  const expected = floorMicrosToStep(rawPayable, stepRials);
+
+  if (rawPayable > BigInt(0) && expected.payableMicros === BigInt(0)) {
+    return {
+      ok: false,
+      code: 'PAYABLE_ROUNDED_TO_ZERO',
+      message:
+        'مبلغ پس از رُند کردن صفر می‌شود؛ مبنای کوچک‌تری انتخاب کنید یا مبلغ را افزایش دهید',
+    };
+  }
+
+  if (
+    headerMicros.totalExact !== expected.payableMicros ||
+    headerMicros.roundingExact !== expected.roundingMicros
+  ) {
+    return {
+      ok: false,
+      code: 'ROUNDING_MISMATCH',
+      message: 'مبلغ رُند شده با مبنای انتخاب‌شده هم‌خوان نیست',
+    };
+  }
+
+  const preRoundText = header.preRoundTotalExact;
+
+  if (
+    typeof preRoundText === 'string' &&
+    preRoundText.trim() !== ''
+  ) {
+    const preRoundMicros = parseExactAmountToMicros(preRoundText);
+
+    if (preRoundMicros === null || preRoundMicros !== rawPayable) {
+      return {
         ok: false,
-        code: 'TOTALS_INCONSISTENT',
-        message: failing.message,
+        code: 'PRE_ROUND_MISMATCH',
+        message: 'مبلغ قبل از رُند با خالص به‌علاوه مالیات هم‌خوان نیست',
       };
+    }
+  }
+
+  return { ok: true };
 };

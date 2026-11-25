@@ -11,6 +11,9 @@ import {
 } from 'src/domain/money/micros';
 import { resolveTaxPolicy } from 'src/domain/money/tax-policy';
 
+// Named-step floor is covered in rounding-rule.test.ts; document totals still
+// default to step=1 so WS1–WS4 payable regression stays whole-rial.
+
 const unwrap = <TValue>(
   result: { ok: true; value: TValue } | { ok: false; refusal: { code: string } },
 ): TValue => {
@@ -265,13 +268,12 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     expect(finalized.totals.totalMicros).toBe(882_900n * MICROS_PER_UNIT);
   });
 
-  it('records a positive rounding adjustment without mutating tax', () => {
-    // 1 micros net * 9% bp → tax = 0 (floor via basis points), but use a net
-    // that leaves a fractional payable needing whole-rial floor.
+  it('records a floor rounding adjustment without mutating tax', () => {
+    // 1.5 rial net leaves a fractional payable; floor to whole rial is negative.
     const line = unwrap(
       computeLinePreTaxAmounts({
         quantityScaled: 1_000_000n,
-        unitPriceMicros: 1n,
+        unitPriceMicros: 1_500_000n,
         discount: { kind: 'NONE' },
       }),
     );
@@ -292,6 +294,7 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     const raw = finalized.totals.netMicros + finalized.totals.taxMicros;
     const expectedRounding = roundMicrosToWholeRial(raw) - raw;
 
+    expect(expectedRounding <= 0n).toBe(true);
     expect(finalized.totals.roundingMicros).toBe(expectedRounding);
     expect(finalized.totals.totalMicros).toBe(raw + expectedRounding);
     expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
@@ -445,6 +448,52 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     expect(finalized.totals.taxMicros).toBe(0n);
     expect(finalized.totals.roundingMicros).toBe(0n);
     expect(finalized.totals.totalMicros).toBe(0n);
+  });
+
+  it('applies named step 99 without mutating tax', () => {
+    // Pre-round 11_025 IRR with 0% tax → payable 10_989, reduction 36.
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 11_025n * MICROS_PER_UNIT,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [line],
+        documentDiscount: { kind: 'NONE' },
+        taxRateBasisPoints: 0n,
+        roundingStepRials: 99n,
+      }),
+    );
+
+    expect(finalized.totals.taxMicros).toBe(0n);
+    expect(finalized.totals.totalMicros).toBe(10_989n * MICROS_PER_UNIT);
+    expect(finalized.totals.roundingMicros).toBe(-36n * MICROS_PER_UNIT);
+  });
+
+  it('refuses positive amount that floors to zero under a large step', () => {
+    const line = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 50n * MICROS_PER_UNIT,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    const result = finalizeLinesWithDocumentDiscount({
+      preTaxLines: [line],
+      documentDiscount: { kind: 'NONE' },
+      taxRateBasisPoints: 0n,
+      roundingStepRials: 100n,
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.refusal.code).toBe('PAYABLE_ROUNDED_TO_ZERO');
+    }
   });
 });
 

@@ -265,6 +265,11 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     ...(dutyExact === undefined ? {} : { dutyExact }),
     roundingExact: raw.roundingExact as string,
     totalExact: raw.totalExact as string,
+    roundingRuleCode: readNullableText(raw.roundingRuleCode),
+    roundingRuleName: readNullableText(raw.roundingRuleName),
+    roundingStepRials: readNullableText(raw.roundingStepRials),
+    preRoundTotalExact: readNullableText(raw.preRoundTotalExact),
+    roundingRuleRecordId: readNullableText(raw.roundingRuleRecordId),
   };
 };
 

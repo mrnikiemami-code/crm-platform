@@ -58,6 +58,12 @@ export type EditableDraft = {
   dutyRateBasisPoints: string | null;
   // ISO document currency (IRR in phase 1). Distinct from moneyUnit display scale.
   currencyCode: string | null;
+  // Goal 032: sealed rounding snapshot. Draft reopen keeps these until the
+  // operator explicitly picks another catalog rule.
+  roundingRuleCode: string | null;
+  roundingRuleName: string | null;
+  roundingStepRials: string | null;
+  roundingRuleRecordId: string | null;
   moneyUnit: MoneyUnit;
   documentDiscountKind: EditableDraftDiscountKind;
   documentDiscountPercentText: string;
@@ -354,6 +360,10 @@ export const parseDraftForEdit = (
     taxRateBasisPoints: readNullableText(quotation.taxRateBasisPoints),
     dutyRateBasisPoints: readNullableText(quotation.dutyRateBasisPoints),
     currencyCode: readNullableText(quotation.currencyCode),
+    roundingRuleCode: readNullableText(quotation.roundingRuleCode),
+    roundingRuleName: readNullableText(quotation.roundingRuleName),
+    roundingStepRials: readNullableText(quotation.roundingStepRials),
+    roundingRuleRecordId: readNullableText(quotation.roundingRuleRecordId),
     moneyUnit,
     documentDiscountKind: resolvedDocumentDiscountKind,
     documentDiscountPercentText:

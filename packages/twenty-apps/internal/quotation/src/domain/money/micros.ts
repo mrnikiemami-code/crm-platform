@@ -18,10 +18,8 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // exactly as the numbers order, so a text index still sorts correctly.
 export const MICROS_PER_UNIT = 1_000_000n;
 
-// Document payable: floor toward −∞ to a whole IRR (commercial R10). Line math and
-// tax stay exact; only the final payable uses this. Quotation totals are non-negative
-// today; negative floor is defined explicitly so credit notes cannot silently truncate
-// toward zero if introduced later.
+// Document payable: floor toward −∞ to a whole IRR (step = 1). Prefer
+// floorMicrosToStepRials when a named rule supplies an arbitrary step.
 export const roundMicrosToWholeRial = (micros: bigint): bigint => {
   if (micros >= 0n) {
     return (micros / MICROS_PER_UNIT) * MICROS_PER_UNIT;

@@ -68,6 +68,12 @@ export type QuotationDraftSaveHeader = {
   dutyExact?: string;
   roundingExact: string;
   totalExact: string;
+  // Goal 032 snapshot. Legacy saves omit these; server treats step as 1 IRR.
+  roundingRuleCode?: string | null;
+  roundingRuleName?: string | null;
+  roundingStepRials?: string | null;
+  preRoundTotalExact?: string | null;
+  roundingRuleRecordId?: string | null;
 };
 
 export type QuotationDraftSaveRequest = {

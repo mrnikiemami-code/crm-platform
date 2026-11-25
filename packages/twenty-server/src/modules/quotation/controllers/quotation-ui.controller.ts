@@ -24,7 +24,9 @@ import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { QuotationCurrencyAuthorityService } from 'src/modules/quotation/services/quotation-currency-authority.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
+import { RoundingRuleAuthorityService } from 'src/modules/quotation/services/rounding-rule-authority.service';
 import { type TaxPolicyMutationOutcome } from 'src/modules/quotation/types/tax-policy.type';
+import { type RoundingRuleMutationOutcome } from 'src/modules/quotation/types/rounding-rule.type';
 import { type QuotationCurrencyMutationOutcome } from 'src/modules/quotation/types/quotation-currency.type';
 import { type AccountingConnectionOutcome } from 'src/modules/quotation/types/accounting-connection.type';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
@@ -43,6 +45,7 @@ type QuotationUiActionBody = {
   ratePercentText?: unknown;
   dutyRatePercentText?: unknown;
   accountingCodeText?: unknown;
+  stepRialsText?: unknown;
   isActive?: unknown;
   isDefault?: unknown;
   isExempt?: unknown;
@@ -65,6 +68,12 @@ const ALLOWED_ACTIONS = new Set([
   'tax-policy-set-default',
   'tax-policy-deactivate',
   'tax-policy-delete',
+  'rounding-rule-list',
+  'rounding-rule-bootstrap',
+  'rounding-rule-save',
+  'rounding-rule-set-default',
+  'rounding-rule-deactivate',
+  'rounding-rule-delete',
   'quotation-currency-list',
   'quotation-currency-bootstrap',
   'quotation-currency-save',
@@ -84,6 +93,14 @@ const TAX_POLICY_MUTATING_ACTIONS = new Set([
   'tax-policy-set-default',
   'tax-policy-deactivate',
   'tax-policy-delete',
+]);
+
+const ROUNDING_RULE_MUTATING_ACTIONS = new Set([
+  'rounding-rule-bootstrap',
+  'rounding-rule-save',
+  'rounding-rule-set-default',
+  'rounding-rule-deactivate',
+  'rounding-rule-delete',
 ]);
 
 const QUOTATION_CURRENCY_MUTATING_ACTIONS = new Set([
@@ -109,6 +126,7 @@ export class QuotationUiController {
     private readonly quotationShareService: QuotationShareService,
     private readonly quotationDraftPersistenceService: QuotationDraftPersistenceService,
     private readonly taxPolicyAuthorityService: TaxPolicyAuthorityService,
+    private readonly roundingRuleAuthorityService: RoundingRuleAuthorityService,
     private readonly quotationCurrencyAuthorityService: QuotationCurrencyAuthorityService,
     private readonly quotationPermissionService: QuotationPermissionService,
     private readonly accountingConnectionAuthorityService: AccountingConnectionAuthorityService,
@@ -133,6 +151,10 @@ export class QuotationUiController {
 
     if (action.startsWith('tax-policy-')) {
       return this.handleTaxPolicyAction({ action, body, authContext });
+    }
+
+    if (action.startsWith('rounding-rule-')) {
+      return this.handleRoundingRuleAction({ action, body, authContext });
     }
 
     if (action.startsWith('quotation-currency-')) {
@@ -429,6 +451,117 @@ export class QuotationUiController {
     }
 
     return this.taxPolicyAuthorityService.deactivatePolicy(recordId, authContext);
+  }
+
+  private async handleRoundingRuleAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<unknown> {
+    try {
+      if (ROUNDING_RULE_MUTATING_ACTIONS.has(action)) {
+        const authority =
+          await this.roundingRuleAuthorityService.resolveAuthority(authContext);
+
+        if (authority === null) {
+          return {
+            success: false,
+            code: 'ROUNDING_SETTINGS_FORBIDDEN',
+            message:
+              'تغییر قواعد رُند فقط برای مدیر فضای کاری مجاز است',
+          };
+        }
+      }
+
+      const outcome = await this.runRoundingRuleAction({
+        action,
+        body,
+        authContext,
+      });
+
+      if (outcome.kind !== 'OK') {
+        return {
+          success: false,
+          code: outcome.code,
+          message: outcome.message,
+        };
+      }
+
+      const defaultRule =
+        outcome.rules.find((rule) => rule.isActive && rule.isDefault) ??
+        outcome.rules.find((rule) => rule.isActive) ??
+        null;
+
+      return {
+        success: true,
+        rules: outcome.rules,
+        defaultCode: defaultRule?.code ?? null,
+        message: outcome.message,
+      };
+    } catch (error) {
+      return this.quotationUiService.toPersianFailure(error);
+    }
+  }
+
+  private runRoundingRuleAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<RoundingRuleMutationOutcome> {
+    if (action === 'rounding-rule-list') {
+      return this.roundingRuleAuthorityService.listRules(authContext);
+    }
+
+    if (action === 'rounding-rule-bootstrap') {
+      return this.roundingRuleAuthorityService.bootstrap(authContext);
+    }
+
+    if (action === 'rounding-rule-save') {
+      return this.roundingRuleAuthorityService.saveRule(
+        {
+          recordId: readText(body.recordId) || null,
+          name: readText(body.name),
+          stepRialsText: readText(body.stepRialsText),
+          isActive: readBoolean(body.isActive, true),
+          isDefault: body.isDefault === true,
+        },
+        authContext,
+      );
+    }
+
+    const recordId = readText(body.recordId);
+
+    if (recordId === '') {
+      return Promise.resolve({
+        kind: 'REFUSED',
+        code: 'ROUNDING_RULE_REQUIRED',
+        message: 'قاعده رُند را انتخاب کنید',
+      });
+    }
+
+    if (action === 'rounding-rule-set-default') {
+      return this.roundingRuleAuthorityService.setDefaultRule(
+        recordId,
+        authContext,
+      );
+    }
+
+    if (action === 'rounding-rule-delete') {
+      return this.roundingRuleAuthorityService.deleteRule(recordId, authContext);
+    }
+
+    return this.roundingRuleAuthorityService.deactivateRule(
+      recordId,
+      authContext,
+    );
   }
 
   private async handleQuotationCurrencyAction({

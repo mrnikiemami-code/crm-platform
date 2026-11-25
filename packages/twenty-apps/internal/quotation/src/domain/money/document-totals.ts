@@ -12,19 +12,23 @@ import {
   formatMicrosExact,
   isWholeRialMicros,
   parseMicrosExact,
-  roundMicrosToWholeRial,
 } from 'src/domain/money/micros';
+import {
+  assertPayableNotSilentlyZero,
+  DEFAULT_ROUNDING_STEP_RIALS,
+  floorMicrosToStepRials,
+} from 'src/domain/money/rounding-rule';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Document totals after line discounts, document discount allocation, tax, and
-// whole-rial payable rounding.
+// named-step payable floor (default step = 1 IRR = legacy whole-rial).
 //
 // ORDER (unchanged provisional S1 contract, extended for document discount):
 //   1. line gross → line discount → line net
 //   2. document discount on sum(line nets), allocated with capacity-safe
 //      largest-remainder (see document-discount.ts)
 //   3. tax on (line net − document share) from the tax policy — never mutated
-//   4. payable = floor(sum(line totals)) to whole IRR (toward −∞)
+//   4. payable = floor(sum(line totals) / step) * step  (step in whole IRR)
 //      roundingMicros = payable − (net + tax)  // independent field, not tax
 
 export type QuotationDocumentTotals = {
@@ -68,6 +72,7 @@ export const finalizeLinesWithDocumentDiscount = ({
   taxRateBasisPoints,
   dutyRateBasisPoints,
   lineTaxRates,
+  roundingStepRials = DEFAULT_ROUNDING_STEP_RIALS,
 }: {
   preTaxLines: QuotationLinePreTaxAmounts[];
   documentDiscount: LineDiscount;
@@ -77,6 +82,8 @@ export const finalizeLinesWithDocumentDiscount = ({
   // WS3: optional per-line rates after Hamilton document-discount allocation.
   // Length must match preTaxLines when provided. Missing slots fall back to document rates.
   lineTaxRates?: Array<LineTaxRates | null | undefined>;
+  // Goal 032: named rule step in whole IRR. Omitted → 1 (legacy whole-rial floor).
+  roundingStepRials?: bigint;
 }): Result<{ lines: QuotationLineAmounts[]; totals: QuotationDocumentTotals }> => {
   if (preTaxLines.length === 0) {
     return refused(
@@ -147,13 +154,25 @@ export const finalizeLinesWithDocumentDiscount = ({
 
   const lineTotals = sumLineBuckets(lines);
   const rawPayableMicros = lineTotals.netMicros + lineTotals.taxMicros;
-  const payableMicros = roundMicrosToWholeRial(rawPayableMicros);
-  const roundingMicros = payableMicros - rawPayableMicros;
+  const rounded = floorMicrosToStepRials(rawPayableMicros, roundingStepRials);
+
+  if (!rounded.ok) {
+    return rounded;
+  }
+
+  const payableGuard = assertPayableNotSilentlyZero({
+    rawPayableMicros,
+    payableMicros: rounded.value.payableMicros,
+  });
+
+  if (!payableGuard.ok) {
+    return payableGuard;
+  }
 
   const totals: QuotationDocumentTotals = {
     ...lineTotals,
-    roundingMicros,
-    totalMicros: payableMicros,
+    roundingMicros: rounded.value.roundingMicros,
+    totalMicros: rounded.value.payableMicros,
   };
 
   if (totals.netMicros !== totals.grossMicros - totals.discountMicros) {
@@ -183,6 +202,7 @@ export const finalizeLinesWithDocumentDiscount = ({
     );
   }
 
+  // A step-S floor is always a whole number of rials (S ≥ 1).
   if (!isWholeRialMicros(totals.totalMicros)) {
     return refused(
       'PAYABLE_NOT_WHOLE_RIAL',

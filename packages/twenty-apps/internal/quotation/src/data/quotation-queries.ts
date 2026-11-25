@@ -73,6 +73,11 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
       taxRateBasisPoints
       dutyRateBasisPoints
       currencyCode
+      roundingRuleCode
+      roundingRuleName
+      roundingStepRials
+      roundingRuleRecordId
+      preRoundTotalExact
       documentDiscountKind
       documentDiscountInputExact
       documentDiscountExact

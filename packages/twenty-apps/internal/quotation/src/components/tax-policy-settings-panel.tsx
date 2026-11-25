@@ -8,6 +8,7 @@ import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import { TAX_POLICIES_ROUTE, callAppRoute } from 'src/components/quotation-api';
 import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
+import { RoundingRuleSettingsSection } from 'src/components/rounding-rule-settings-section';
 import {
   formatExactDecimalForPeople,
   toPersianDigits,
@@ -1259,6 +1260,7 @@ export const TaxPolicySettingsPanel = () => {
           )}
         </div>
       )}
+      <RoundingRuleSettingsSection />
       <QuotationCurrencySettingsSection />
     </div>
   );

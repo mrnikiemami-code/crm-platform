@@ -37,6 +37,7 @@ type QuotationPdfRow = {
   dutyExact: string | null;
   dutyRateBasisPoints: string | null;
   roundingExact: string | null;
+  roundingStepRials: string | null;
   totalExact: string | null;
   paymentTerms: string | null;
   currencyCode: string | null;
@@ -132,6 +133,7 @@ export class QuotationPdfService {
           dutyExact: true,
           dutyRateBasisPoints: true,
           roundingExact: true,
+          roundingStepRials: true,
           totalExact: true,
           paymentTerms: true,
           currencyCode: true,
@@ -292,6 +294,9 @@ export class QuotationPdfService {
           formatBasisPointsAsPersianPercent(quotation.dutyRateBasisPoints) ??
           undefined,
         rounding: formatStored(quotation.roundingExact),
+        roundingStepLabel: isNonEmptyString(quotation.roundingStepRials)
+          ? `مبنای ${toPersianDigits(quotation.roundingStepRials)} ریال`
+          : undefined,
       },
       total,
     };

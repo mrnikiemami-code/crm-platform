@@ -102,6 +102,12 @@ export const QUOTATION_FIELDS = {
   dutyExact: '2b4c6d8e-9fa0-5b2c-8d3e-4f5a6b7c8d9e',
   // Independent whole-rial payable adjustment; never folded into taxExact.
   roundingExact: '01920588-313c-536a-b432-13ffc6fd57c5',
+  // Goal 032: immutable snapshot of the named rounding rule at save time.
+  roundingRuleCode: '3b7d5e52-dfb2-5ef0-a0de-9b8ef8ccab63',
+  roundingRuleName: '3d2d730d-348c-5044-8253-3892501b766c',
+  roundingStepRials: '8045c75e-b0b8-5dc8-9323-443576d12af2',
+  preRoundTotalExact: '628dccea-ceb3-5cbe-ba2e-25a909cdd7de',
+  roundingRuleRecordId: '562038fb-0433-5e1a-8780-213bbd9fcc1b',
   documentDiscountKind: 'fc193607-4284-5f6d-907b-930415263748',
   documentDiscountInputExact: '0d2a4718-5395-507e-a18c-a41526374859',
   version: '20b59a68-8057-5acd-bdb4-f3fdc163d246',
@@ -445,6 +451,22 @@ export const PERSON_ACCOUNTING_CODE_FIELD_UNIVERSAL_IDENTIFIER =
   '32280b01-034c-5850-852f-70ea15cb13f0';
 export const COMPANY_ACCOUNTING_CODE_FIELD_UNIVERSAL_IDENTIFIER =
   '741b9dfc-2eda-5aa5-ae92-908ffae0ed6b';
+
+// Named payable rounding rules (Goal 032). Ids are UUID v5 of the app namespace
+// and the entity path — never hand-typed guesses.
+export const ROUNDING_RULE_OBJECT_UNIVERSAL_IDENTIFIER =
+  '98559981-ec09-59f9-9713-75e2d6bdfc9a';
+
+export const ROUNDING_RULE_FIELDS = {
+  name: '40116fd2-63be-5ad3-9a8c-26c3b3029dbd',
+  code: '0986db9f-342b-5fa0-8093-560ea1af4850',
+  stepRials: 'e0fd0906-8653-514a-ac9d-5d06a5ce427f',
+  isDefault: '9755f0d7-40c1-5d47-b0f4-750df895f81f',
+  isActive: '53e8668a-a089-50d3-b1c2-42e2f0d91f2d',
+} as const;
+
+export const ROUNDING_RULES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'dc9b13c1-eda8-5d4f-a2d3-281aeca1a3b0';
 
 export const TAX_POLICY_SETTINGS_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
   '09605adf-c6e9-5f95-98b1-5258c2e633a3';

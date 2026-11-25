@@ -25,6 +25,7 @@ import {
   QUOTATION_CURRENCIES_ROUTE,
   SAVE_DRAFT_ROUTE,
   SEARCH_CUSTOMERS_ROUTE,
+  ROUNDING_RULES_ROUTE,
   TAX_POLICIES_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
@@ -41,6 +42,12 @@ import {
 } from 'src/domain/money/document-currency';
 import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
 import { formatMicrosExact } from 'src/domain/money/micros';
+import {
+  findRoundingRuleByCode,
+  parseStepRialsText,
+  selectDefaultRoundingRule,
+  type RoundingRuleCatalogEntry,
+} from 'src/domain/money/rounding-rule';
 import {
   DEFAULT_TAX_POLICY_ID,
   parseBasisPointsText,
@@ -272,6 +279,43 @@ const legacyTaxPolicyEntry = (): TaxPolicyCatalogEntry => {
   };
 };
 
+const readRoundingRules = (
+  data: Record<string, unknown>,
+): RoundingRuleCatalogEntry[] => {
+  const rules = Array.isArray(data.rules) ? data.rules : [];
+
+  return rules.flatMap((candidate, index) => {
+    if (candidate === null || typeof candidate !== 'object') {
+      return [];
+    }
+
+    const row = candidate as Record<string, unknown>;
+    const code = typeof row.code === 'string' ? row.code.trim() : '';
+    const step = parseStepRialsText(
+      typeof row.stepRials === 'string' ? row.stepRials : '',
+    );
+
+    if (code === '' || !step.ok) {
+      return [];
+    }
+
+    return [
+      {
+        recordId: typeof row.recordId === 'string' ? row.recordId : '',
+        id: code,
+        label:
+          typeof row.name === 'string' && row.name.trim() !== ''
+            ? row.name.trim()
+            : code,
+        stepRials: step.value,
+        isActive: row.isActive !== false,
+        isDefault: row.isDefault === true,
+        position: index,
+      },
+    ];
+  });
+};
+
 // The host already sends `objectNameSingular`, but the SDK release this app is
 // pinned to does not declare it yet; the field is read through a narrow cast so
 // the record identity is not lost until the SDK type catches up.
@@ -425,6 +469,17 @@ export const QuotationDraftForm = () => {
     useState('');
   const [taxPolicies, setTaxPolicies] = useState<TaxPolicyCatalogEntry[]>([]);
   const [taxPolicyCode, setTaxPolicyCode] = useState(DEFAULT_TAX_POLICY_ID);
+  const [roundingRules, setRoundingRules] = useState<
+    RoundingRuleCatalogEntry[]
+  >([]);
+  const [roundingRuleCode, setRoundingRuleCode] = useState<string | null>(null);
+  const [storedRoundingRule, setStoredRoundingRule] = useState<{
+    code: string;
+    name: string;
+    stepRials: bigint;
+    recordId: string | null;
+  } | null>(null);
+  const roundingRuleChosenByOperator = useRef(false);
   const [documentCurrencies, setDocumentCurrencies] = useState<
     DocumentCurrencyOption[]
   >([]);
@@ -512,7 +567,53 @@ export const QuotationDraftForm = () => {
       }
     };
 
+    const loadRoundingRules = async () => {
+      try {
+        const response = await callAppRoute(ROUNDING_RULES_ROUTE, {
+          action: 'list',
+        });
+
+        if (cancelled || response.data.success !== true) {
+          return;
+        }
+
+        let rows = readRoundingRules(response.data);
+
+        if (rows.length === 0) {
+          const bootstrapped = await callAppRoute(ROUNDING_RULES_ROUTE, {
+            action: 'bootstrap',
+          });
+
+          if (cancelled || bootstrapped.data.success !== true) {
+            return;
+          }
+
+          rows = readRoundingRules(bootstrapped.data);
+        }
+
+        if (rows.length === 0) {
+          return;
+        }
+
+        setRoundingRules(rows);
+
+        if (!isRecordEdit && !roundingRuleChosenByOperator.current) {
+          const defaultRule = selectDefaultRoundingRule(rows);
+
+          if (defaultRule !== null) {
+            setRoundingRuleCode(defaultRule.id);
+          }
+        }
+      } catch (loadFailure) {
+        console.error(
+          'quotation-draft-form: rounding rule load failed',
+          loadFailure,
+        );
+      }
+    };
+
     void loadTaxPolicies();
+    void loadRoundingRules();
 
     return () => {
       cancelled = true;
@@ -645,6 +746,37 @@ export const QuotationDraftForm = () => {
             draft.dutyRateBasisPoints,
           ),
         );
+        const storedStep = parseStepRialsText(
+          draft.roundingStepRials ?? '',
+        );
+        if (
+          draft.roundingRuleCode !== null &&
+          draft.roundingRuleCode.trim() !== '' &&
+          storedStep.ok
+        ) {
+          setRoundingRuleCode(draft.roundingRuleCode.trim());
+          setStoredRoundingRule({
+            code: draft.roundingRuleCode.trim(),
+            name:
+              draft.roundingRuleName !== null &&
+              draft.roundingRuleName.trim() !== ''
+                ? draft.roundingRuleName.trim()
+                : draft.roundingRuleCode.trim(),
+            stepRials: storedStep.value,
+            recordId: draft.roundingRuleRecordId,
+          });
+          roundingRuleChosenByOperator.current = true;
+        } else {
+          // Legacy drafts without a snapshot keep whole-rial floor until the
+          // operator explicitly picks a named rule.
+          setRoundingRuleCode('STEP_1');
+          setStoredRoundingRule({
+            code: 'STEP_1',
+            name: 'ریال صحیح',
+            stepRials: 1n,
+            recordId: null,
+          });
+        }
         const headerTaxPolicy =
           draft.taxPolicy !== null && draft.taxPolicy.trim() !== ''
             ? draft.taxPolicy.trim()
@@ -866,6 +998,21 @@ export const QuotationDraftForm = () => {
       ),
     );
 
+    const selectedRounding =
+      findRoundingRuleByCode(roundingRules, roundingRuleCode) ??
+      (storedRoundingRule !== null &&
+      storedRoundingRule.code === roundingRuleCode
+        ? {
+            recordId: storedRoundingRule.recordId ?? '',
+            id: storedRoundingRule.code,
+            label: storedRoundingRule.name,
+            stepRials: storedRoundingRule.stepRials,
+            isActive: true,
+            isDefault: false,
+            position: 0,
+          }
+        : null);
+
     return buildDraftQuotationPreview({
       quotationId: editingQuotationId,
       status: 'DRAFT',
@@ -883,6 +1030,10 @@ export const QuotationDraftForm = () => {
         documentDiscountAmountText,
       ),
       displayMoneyUnit: moneyUnit,
+      roundingRuleCode: selectedRounding?.id ?? roundingRuleCode,
+      roundingRuleName: selectedRounding?.label ?? null,
+      roundingStepRials: selectedRounding?.stepRials ?? 1n,
+      roundingRuleRecordId: selectedRounding?.recordId || null,
       lines: draftLines,
     });
   }, [
@@ -900,6 +1051,9 @@ export const QuotationDraftForm = () => {
     documentDiscountKind,
     documentDiscountPercentText,
     documentDiscountAmountText,
+    roundingRules,
+    roundingRuleCode,
+    storedRoundingRule,
   ]);
 
   const summaryPlan =
@@ -1101,8 +1255,8 @@ export const QuotationDraftForm = () => {
           </h2>
           <p style={styles.hint}>
             {isRecordEdit
-              ? 'اطلاعات همین پیش‌فاکتور بارگذاری شده است. مبلغ نهایی به پایین‌ترین ریال صحیح گرد می‌شود.'
-              : 'کالا و خدمت را از کاتالوگ انتخاب کنید. مبلغ نهایی به پایین‌ترین ریال صحیح گرد می‌شود.'}
+              ? 'اطلاعات همین پیش‌فاکتور بارگذاری شده است. مبلغ نهایی با قاعدهٔ رُند انتخاب‌شده به پایین گرد می‌شود.'
+              : 'کالا و خدمت را از کاتالوگ انتخاب کنید. مبلغ نهایی با قاعدهٔ رُند انتخاب‌شده به پایین گرد می‌شود.'}
           </p>
         </header>
 
@@ -1532,7 +1686,47 @@ export const QuotationDraftForm = () => {
                 <strong>{summaryPlan.displayDuty}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>تعدیل رُند کردن مبلغ</span>
+                <label style={{ display: 'grid', gap: 4, flex: 1 }}>
+                  <span>مبنای رُند کردن</span>
+                  <select
+                    value={roundingRuleCode ?? ''}
+                    onChange={(event) => {
+                      roundingRuleChosenByOperator.current = true;
+                      setRoundingRuleCode(event.target.value || null);
+                    }}
+                    style={styles.input}
+                    disabled={isFormLocked}
+                  >
+                    {storedRoundingRule !== null &&
+                    !roundingRules.some(
+                      (rule) => rule.id === storedRoundingRule.code,
+                    ) ? (
+                      <option value={storedRoundingRule.code}>
+                        {storedRoundingRule.name} (
+                        {formatExactDecimalForPeople(
+                          storedRoundingRule.stepRials.toString(),
+                        )}{' '}
+                        ریال)
+                      </option>
+                    ) : null}
+                    {roundingRules
+                      .filter((rule) => rule.isActive)
+                      .map((rule) => (
+                        <option key={rule.id} value={rule.id}>
+                          {rule.label} (
+                          {formatExactDecimalForPeople(
+                            rule.stepRials.toString(),
+                          )}{' '}
+                          ریال)
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              </div>
+              <div style={styles.totalsRow}>
+                <span>
+                  کسر بابت رُند ({summaryPlan.displayRoundingStepLabel})
+                </span>
                 <strong>{summaryPlan.displayRounding}</strong>
               </div>
               <div style={styles.payable}>

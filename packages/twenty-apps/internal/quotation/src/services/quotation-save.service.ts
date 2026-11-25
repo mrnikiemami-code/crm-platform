@@ -87,6 +87,11 @@ export const buildDraftQuotationWritePayload = (
       taxExact: plan.totalsExact.taxExact,
       roundingExact: plan.totalsExact.roundingExact,
       totalExact: plan.totalExact,
+      roundingRuleCode: plan.roundingRuleCode,
+      roundingRuleName: plan.roundingRuleName,
+      roundingStepRials: plan.roundingStepRials,
+      preRoundTotalExact: plan.preRoundTotalExact,
+      roundingRuleRecordId: plan.roundingRuleRecordId,
       version: plan.version,
     },
     lines: plan.lines.map((line) => ({
@@ -138,6 +143,11 @@ export const buildDraftQuotationSaveRequest = (
     dutyExact: plan.dutyExact,
     roundingExact: plan.totalsExact.roundingExact,
     totalExact: plan.totalExact,
+    roundingRuleCode: plan.roundingRuleCode,
+    roundingRuleName: plan.roundingRuleName,
+    roundingStepRials: plan.roundingStepRials,
+    preRoundTotalExact: plan.preRoundTotalExact,
+    roundingRuleRecordId: plan.roundingRuleRecordId,
   },
   lines: plan.lines.map((line) => ({
     name: line.name,

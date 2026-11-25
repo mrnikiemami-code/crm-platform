@@ -47,8 +47,14 @@ export type QuotationRevisionSnapshot = {
     taxOnlyMicros?: string;
     dutyMicros?: string;
     taxMicros: string;
+    roundingMicros?: string;
+    preRoundTotalMicros?: string;
     totalMicros: string;
   };
+  // Goal 032: present only when the draft stored a named rounding snapshot.
+  roundingRuleCode?: string;
+  roundingRuleName?: string;
+  roundingStepRials?: string;
   issuedAt: string;
 };
 
@@ -67,6 +73,10 @@ export type QuotationRevisionHeaderRow = {
   taxExact: string | null;
   dutyExact: string | null;
   roundingExact: string | null;
+  roundingRuleCode?: string | null;
+  roundingRuleName?: string | null;
+  roundingStepRials?: string | null;
+  preRoundTotalExact?: string | null;
   totalExact: string | null;
   personId: string | null;
   companyId: string | null;
@@ -379,8 +389,25 @@ export const buildQuotationRevisionSnapshot = ({
               dutyMicros: headerDuty.toString(),
             }),
         taxMicros: headerTax.toString(),
+        ...(headerRounding === BigInt(0)
+          ? {}
+          : { roundingMicros: headerRounding.toString() }),
+        ...((header.preRoundTotalExact ?? '').trim() === ''
+          ? {}
+          : {
+              preRoundTotalMicros: (
+                headerNet + headerTax
+              ).toString(),
+            }),
         totalMicros: headerTotal.toString(),
       },
+      ...((header.roundingRuleCode ?? '').trim() === ''
+        ? {}
+        : {
+            roundingRuleCode: (header.roundingRuleCode as string).trim(),
+            roundingRuleName: (header.roundingRuleName ?? '').trim(),
+            roundingStepRials: (header.roundingStepRials ?? '').trim(),
+          }),
       issuedAt: issuedAt.toISOString(),
     },
   };

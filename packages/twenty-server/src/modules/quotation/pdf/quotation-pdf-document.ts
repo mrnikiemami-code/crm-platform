@@ -122,6 +122,7 @@ export type QuotationPdfSubtotals = {
   duty?: string;
   dutyRatePercent?: string;
   rounding?: string;
+  roundingStepLabel?: string;
 };
 
 export type QuotationPdfInput = {
@@ -242,7 +243,11 @@ const buildSubtotalRows = (
   }
 
   if (isNonEmptyString(subtotals.rounding)) {
-    rows.push({ label: 'تعدیل گردکردن', value: subtotals.rounding });
+    const roundingLabel = isNonEmptyString(subtotals.roundingStepLabel)
+      ? `کسر بابت رُند (${subtotals.roundingStepLabel})`
+      : 'کسر بابت رُند کردن';
+
+    rows.push({ label: roundingLabel, value: subtotals.rounding });
   }
 
   return rows;

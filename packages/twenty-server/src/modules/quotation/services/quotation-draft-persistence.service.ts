@@ -927,6 +927,11 @@ export class QuotationDraftPersistenceService {
       dutyExact: header.dutyExact ?? null,
       roundingExact: header.roundingExact,
       totalExact: header.totalExact,
+      roundingRuleCode: header.roundingRuleCode ?? null,
+      roundingRuleName: header.roundingRuleName ?? null,
+      roundingStepRials: header.roundingStepRials ?? null,
+      preRoundTotalExact: header.preRoundTotalExact ?? null,
+      roundingRuleRecordId: header.roundingRuleRecordId ?? null,
       customerName,
       totalDisplay: formatExactAmountWithCurrency(
         header.totalExact,

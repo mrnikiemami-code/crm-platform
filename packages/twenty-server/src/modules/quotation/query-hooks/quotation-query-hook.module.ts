@@ -66,6 +66,18 @@ import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/servic
 import { AccountingConnectionWriteGuardService } from 'src/modules/quotation/services/accounting-connection-write-guard.service';
 import { QuotationCurrencyWriteGuardService } from 'src/modules/quotation/services/quotation-currency-write-guard.service';
 import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-policy-write-guard.service';
+import { RoundingRuleWriteGuardService } from 'src/modules/quotation/services/rounding-rule-write-guard.service';
+import { RoundingRuleCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-create-many.pre-query.hook';
+import { RoundingRuleCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-create-one.pre-query.hook';
+import { RoundingRuleDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-delete-many.pre-query.hook';
+import { RoundingRuleDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-delete-one.pre-query.hook';
+import { RoundingRuleDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-destroy-many.pre-query.hook';
+import { RoundingRuleDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-destroy-one.pre-query.hook';
+import { RoundingRuleMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-merge-many.pre-query.hook';
+import { RoundingRuleRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-restore-many.pre-query.hook';
+import { RoundingRuleRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-restore-one.pre-query.hook';
+import { RoundingRuleUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-update-many.pre-query.hook';
+import { RoundingRuleUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-update-one.pre-query.hook';
 
 @Module({
   imports: [WorkspaceCacheModule],
@@ -78,6 +90,7 @@ import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-p
     AccountingConnectionWriteGuardService,
     TaxPolicyWriteGuardService,
     QuotationCurrencyWriteGuardService,
+    RoundingRuleWriteGuardService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
     QuotationDeleteOnePreQueryHook,
@@ -124,6 +137,17 @@ import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-p
     QuotationCurrencyRestoreOnePreQueryHook,
     QuotationCurrencyRestoreManyPreQueryHook,
     QuotationCurrencyMergeManyPreQueryHook,
+    RoundingRuleCreateOnePreQueryHook,
+    RoundingRuleCreateManyPreQueryHook,
+    RoundingRuleUpdateOnePreQueryHook,
+    RoundingRuleUpdateManyPreQueryHook,
+    RoundingRuleDeleteOnePreQueryHook,
+    RoundingRuleDeleteManyPreQueryHook,
+    RoundingRuleDestroyOnePreQueryHook,
+    RoundingRuleDestroyManyPreQueryHook,
+    RoundingRuleRestoreOnePreQueryHook,
+    RoundingRuleRestoreManyPreQueryHook,
+    RoundingRuleMergeManyPreQueryHook,
     AccountingConnectionCreateOnePreQueryHook,
     AccountingConnectionCreateManyPreQueryHook,
     AccountingConnectionUpdateOnePreQueryHook,

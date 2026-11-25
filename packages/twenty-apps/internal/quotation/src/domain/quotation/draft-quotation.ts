@@ -46,7 +46,7 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 //   line: gross → line discount → net
 //   document: discount on sum(nets), capacity-safe Hamilton allocation
 //   tax: on (net − document share), rate from resolved tax policy (not free-typed %)
-//   payable: floor(sum(line totals)) to whole IRR; roundingExact = payable − (net + tax)
+//   payable: floor(sum(line totals)/step)*step; roundingExact = payable − (net + tax)
 
 export type DraftDiscountInput =
   | { kind: 'NONE' }
@@ -89,6 +89,11 @@ export type DraftQuotationInput = {
   // ISO document currency (catalog). Distinct from displayMoneyUnit (IRR/TOMAN scale).
   currencyCode?: string | null;
   displayMoneyUnit: MoneyUnit;
+  // Goal 032: named rounding rule snapshot fields. Omitted → step 1 (legacy).
+  roundingRuleCode?: string | null;
+  roundingRuleName?: string | null;
+  roundingStepRials?: bigint | null;
+  roundingRuleRecordId?: string | null;
   lines: DraftLineInput[];
 };
 
@@ -151,6 +156,12 @@ export type DraftQuotationPlan = {
   displayDuty: string;
   displayTax: string;
   displayRounding: string;
+  roundingRuleCode: string;
+  roundingRuleName: string;
+  roundingStepRials: string;
+  roundingRuleRecordId: string | null;
+  preRoundTotalExact: string;
+  displayRoundingStepLabel: string;
   lines: DraftLineRecord[];
 };
 
@@ -486,6 +497,11 @@ export const buildDraftQuotationPlan = (
     linePolicies.push(linePolicy.value);
   }
 
+  const roundingStepRials =
+    input.roundingStepRials !== null && input.roundingStepRials !== undefined
+      ? input.roundingStepRials
+      : 1n;
+
   const finalized = finalizeLinesWithDocumentDiscount({
     preTaxLines: builtPreTax.map((line) => line.preTax),
     documentDiscount: documentDiscount.value,
@@ -495,6 +511,7 @@ export const buildDraftQuotationPlan = (
       taxRateBasisPoints: policy.rateBasisPoints,
       dutyRateBasisPoints: policy.dutyRateBasisPoints,
     })),
+    roundingStepRials,
   });
 
   if (!finalized.ok) {
@@ -502,6 +519,20 @@ export const buildDraftQuotationPlan = (
   }
 
   const totalsExact = formatTotalsExact(finalized.value.totals);
+  const preRoundTotalExact = formatMicrosExact(
+    finalized.value.totals.netMicros + finalized.value.totals.taxMicros,
+  );
+  const roundingRuleCode =
+    input.roundingRuleCode?.trim() ||
+    (roundingStepRials === 1n ? 'STEP_1' : `STEP_${roundingStepRials.toString()}`);
+  const roundingRuleName =
+    input.roundingRuleName?.trim() ||
+    (roundingStepRials === 1n
+      ? 'ریال صحیح'
+      : `مبنای ${roundingStepRials.toString()} ریال`);
+  const displayRoundingStepLabel = `مبنای ${formatExactDecimalForPeople(
+    roundingStepRials.toString(),
+  )} ریال`;
   const displayTotal = displayAmount(
     finalized.value.totals.totalMicros,
     input.displayMoneyUnit,
@@ -609,6 +640,14 @@ export const buildDraftQuotationPlan = (
     displayDuty: displayDuty.value,
     displayTax: displayTax.value,
     displayRounding: displayRounding.value,
+    roundingRuleCode,
+    roundingRuleName,
+    roundingStepRials: roundingStepRials.toString(),
+    roundingRuleRecordId: input.roundingRuleRecordId?.trim()
+      ? input.roundingRuleRecordId.trim()
+      : null,
+    preRoundTotalExact,
+    displayRoundingStepLabel,
     lines,
   });
 };
