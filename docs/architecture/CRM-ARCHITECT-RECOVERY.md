@@ -2,9 +2,9 @@
 
 ## CURRENT — GOAL 031 UX COMPLETION → STOP_FOR_USER_UAT (2026-11-25)
 
-**Branch:** `feat/crm-129-quotation`. **Goal 031 base:** `a0cdbf78d0`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 031 is a child UX completion of the same real form — not a parallel architecture.
+**Branch:** `feat/crm-129-quotation`. **Goal 031 base:** `a0cdbf78d0`. **HEAD:** `883ac59517`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 031 is a child UX completion of the same real form — not a parallel architecture.
 
-**Dev target:** `quotation@0.1.57` on `:3002` after Goal 031 apply (was `0.1.56`). Schema WS1–WS4 already applied (DEV-APPLY-030) — **do not re-run**. Intranet `:6080` + worker untouched.
+**Dev target:** `quotation@0.1.57` on `:3002` (applied). Schema WS1–WS4 already applied (DEV-APPLY-030) — **do not re-run**. Intranet `:6080` + worker untouched.
 
 **UX pack:** حقیقی/حقوقی, paginated customer picker (≤100/page), currency + display unit clarity, per-line tax amounts, single summary, RTL/mobile, `position`↔`sortOrder` on Nest line write. Detail: [`CRM-129-GOAL-031-PROGRESS.md`](./CRM-129-GOAL-031-PROGRESS.md).
 
