@@ -1,6 +1,20 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 031 UX COMPLETION → STOP_FOR_USER_UAT (2026-11-25)
+## CURRENT — GOAL 023/031: USER-DEFINED NAMED PAYABLE ROUNDING RULES (2026-11-25)
+
+**User request and architect decision:** Extend **existing** CRM-129 quotation settings and form with a small configurable catalog of **named rounding-to-step rules**, including arbitrary positive integer rial amounts (e.g. title `رند ویژه`, step `99` IRR), not only presets `10,100,1000,10000,100000,1000000`. One active workspace default must exist. Quotation operator can choose a named rule on the same existing form; the selected rule's **immutable step/name/id snapshot**, pre-round payable, signed adjustment, and final payable must be persisted and sealed in quotation revision/PDF, so later rule edits do not reprice historical quotations.
+
+**Exact arithmetic:** Given unrounded positive amount in bigint **micros of IRR** and selected integer-rial step S>0, payableMicros = floor(unroundedMicros/(S*1000000n))*(S*1000000n). AdjustmentMicros = payableMicros - unroundedMicros (never positive). E.g. S=99 and pre-round 11025 IRR yields 10989 IRR, reduction 36 IRR. S=100 with 10025 yields 10000 and reduction 25. S=1000 with 218035 yields 218000, reduction 35. This replaces/extends the *final payable rounding*, not tax, duty or Hamilton allocations. If pre-round positive but rounded payable zero, fail closed with clear Persian validation, not silently free quotation. For zero amounts, follow existing explicit zero-document policy. Store exact micros adjustment, not only rounded rial, preserving sub-rial components; display may format reasonably but persisted arithmetic must reconcile.
+
+**Settings UI:** concise Persian control under existing quotation/financial settings; list/add/edit/deactivate named rules, unique validated names and step; default choice; controlled access/tenant scoping, no duplicate entries, no unrestricted client mutation. Keep presets available as seeded, editable catalog records as appropriate; no requirement that step be a power of ten. Preserve a usable default through bootstrap and protections against deleting/deactivating default/used rules. Rules should be snapshotted on quotation and may be edited for future drafts without retroactively touching sealed revisions. Do not invent new accounting connector mappings.
+
+**UX:** same quotation form, one clearly labeled picker near final financial summary (`روش رُند کردن` or `مبنای رُند کردن`), showing name and step in IRR, inherited workspace default at draft creation. Distinguish display in toman/rial from underlying **rial** step. Show `کسر بابت رُند کردن` and final payable. No new design prototype, no duplicate total sections. Mobile RTL must work.
+
+**Architecture execution:** follow current Goal 023 Financial Contract and Goal 031 UI; perform narrow Money Domain change after exact pre-tax/tax/duty total, wire client draft, backend recomputation/validation, schema+universal identifiers, save/reopen, revision/PDF and API, seeded settings/default, tests and controlled Dev apply subject to existing preflight. Reuse workspace-permission safeguards, version claims, advisory lock disciplines and sealed immutability. Test arbitrary 99/100/1000, fractional microrials, negative/noninteger/oversized steps, concurrency/default changes, invalid client total tampering, historical revisions and save/reopen; no real accounting send, :6080 changes or main worker restart. If this would modify approved Money Domain contracts beyond final rounding, stop at architect boundary rather than changing quietly.
+
+**Execution status:** SPEC DECISION RECORDED ONLY, **NOT CODE IMPLEMENTED OR DEV APPLIED**; coding bridge unavailable at this checkpoint. Do not mark USER_ACCEPTED or Goal COMPLETE. Next: execute in existing single CRM coding session, not video session; verify report and real Dev form.
+
+## PRIOR CHECKPOINT — GOAL 031 UX COMPLETION → STOP_FOR_USER_UAT (2026-11-25)
 
 **Branch:** `feat/crm-129-quotation`. **Goal 031 base:** `a0cdbf78d0`. **HEAD:** `883ac59517`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 031 is a child UX completion of the same real form — not a parallel architecture.
 
