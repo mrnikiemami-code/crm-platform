@@ -1,6 +1,21 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 034 LIVE VISUAL REDESIGN → STOP_FOR_USER_UAT (2026-11-26)
+## CURRENT — GOAL 034 SOURCE REVIEW / USER UAT GATE (2026-11-25)
+
+**Product HEAD audited:** `90a88b5871`, app reported `quotation@0.1.63` on Dev :3002. **Goal 023 ACTIVE**; Goal 034 `TECHNICALLY_VERIFIED / STOP_FOR_USER_UAT`, **NOT USER_ACCEPTED**. Exact current page: http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. Onlook evaluated but not adopted; direct React/Twenty used. No duplicate app or Next migration. See [Goal 034 progress](./CRM-129-GOAL-034-PROGRESS.md).
+
+**Source-audited positives:** diff from `6610b4fb429e` touches only quotation app frontend, small shared UI components/tests, version and docs; **not** financial schema, Money Domain, Nest financial authority, PDF, historical revision logic. Tax and rounding create/edit now use shared `SettingsDialog` instead of side inspector; tax ledger retained full width. Host shared delete confirm, no manual `راه‌اندازی ریال` button in currency UI, compact tabs, and menus present. Browser and 35 unit PASS are worker-reported, not independently rerun.
+
+**Architecture/UX gaps before unconditional acceptance:**
+- `SettingsDialog` uses in-tree fixed overlay after `createPortal` was not mounting in host; this is pragmatic but its true host stacking/clipping behavior on 320/360/390 and nested panel widths requires real browser verification. It has Escape/initial-focus/focus-return, **but no full Tab/Shift+Tab focus trap or background inertness** even though `aria-modal=true`; must implement via shared existing host semantics or proper focus containment; ensure overlay cannot leave focus behind.
+- `runDestructiveConfirm` uses **module-global boolean** guard covering ONLY the host confirm dialog promise; it releases before the subsequent deletion network request completes. This also inadvertently serializes unrelated independent components/workspaces in same module instance. Prefer scoped `useRef`/operation lifecycle single-flight spanning confirm+mutation, with cleanup in `finally`, and test rapid confirm→delete duplicate trigger.
+- `RowActionsMenu` uses in-tree position:fixed and initial `getBoundingClientRect`; no scroll/resize reposition or dismissal, no ArrowUp/ArrowDown/Home/End keyboard management despite `role=menu`, and no Escape/focus evidence in real browser for long/last-row menus. Prefer native/shared Twenty popover if compatible; otherwise fix within shared component, including mobile nested scroll/resize.
+- `SettingsDialog` registers document keydown effect depending on `onClose` identity; re-render may repeatedly restore focus and refocus first control. Stabilize callback/one-time focus capture where appropriate.
+- Front only source modifications prove no new direct financial domain diff; they do NOT establish security, permissions, PDF, data persistence or complete 320–1440 browser regression PASS independently. Require user visual UAT; no merge or WS5–WS7 start until accepted.
+
+**Next:** user opens REAL current page, tests modal create/edit, tax delete confirmation, currency code save, rounding dialog and 320/360 mobile. If apparent behavior meets user standard, finish these bounded architecture/accessibility gaps in same CRM coding session and perform regression/browser tests before final Goal 034 `USER_ACCEPTED`; do not redesign again. No :6080, primary worker restart, schema/financial rewrite, real vendor send, force push.
+
+## PRIOR CHECKPOINT — GOAL 034 LIVE VISUAL REDESIGN → STOP_FOR_USER_UAT (2026-11-26)
 
 **Parent:** CRM-129-GOAL-023 (ACTIVE / NOT COMPLETE). Goal 033 UX **not user-accepted** → superseded by 034. **Branch:** `feat/crm-129-quotation`. **App:** `quotation@0.1.63` on Dev `:3002`. Final Gate **`STOP_FOR_USER_UAT`**.
 
