@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** WS1 implementation evidence (awaiting architect accept)
+**Board updated:** WS1-R1 IRR authority fix + WS7-A design preview (awaiting gates)
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -19,14 +19,14 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 |---|---|---|
 | WS0 Goal registration | `ARCHITECT_ACCEPTED` (planning) | `cdb890b3f5` |
 | EXECUTION-024 C1–C7 + board + WS1 preflight | `ARCHITECT_ACCEPTED` | `6bc3f558b9` + WS1-OPEN |
-| WS1 Reference accounting codes | `TECHNICALLY_VERIFIED` | See CP-WS1 below; needs `ARCHITECT_ACCEPTED` before WS2 |
+| WS1 Reference accounting codes | `TECHNICALLY_VERIFIED` | CP-WS1 + **CP-WS1-R1**; needs `ARCHITECT_ACCEPTED` before WS2 / Dev Apply |
 | WS2 Snapshot + code lock | `NOT_STARTED` | Needs WS1 architect accept + lock enforcement |
 | WS3 Per-line tax | `NOT_STARTED` | |
 | WS4 Document currency phase 1 | `NOT_STARTED` | Catalog exists; picker/IRR refuse in WS4 |
 | WS5 Settings ownership | `NOT_STARTED` | |
 | WS6 Mock/Asan shared UI | `NOT_STARTED` | |
-| WS7-A Design frames | `NOT_STARTED` | Not started this turn |
-| WS7-B Implement Design of Record | `NOT_STARTED` | |
+| WS7-A Design frames | `IN_PROGRESS` | Preview under `docs/design/crm-129-goal-023-ws7a/`; `STOP_FOR_USER_DESIGN_APPROVAL` |
+| WS7-B Implement Design of Record | `NOT_STARTED` | Blocked until user design approval |
 | Goal 023 close | `NOT_STARTED` | **ACTIVE / NOT COMPLETE** |
 
 ---
@@ -50,7 +50,19 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 
 ## Checkpoint log
 
-### CP-WS1 — Implementation (this delivery)
+### CP-WS1-R1 — IRR bootstrap / default authority (this delivery)
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC5 phase-1 IRR operational default hardened |
+| **2. Financial contract?** | C2: bootstrap inserts IRR even if catalog non-empty; save/`setDefault` refuse non-IRR default; `enforceSingleActiveDefault` never auto-promotes non-IRR |
+| **3. Real tests run?** | Jest `quotation-currency-authority.service.spec.ts` — **8 PASS** (empty seed; missing-IRR with USD present; restore IRR default; refuse save/setDefault non-IRR; accountingCode; create forbidden; ORM isolation) |
+| **4. Still incomplete?** | No Dev Apply; WS1 still needs `ARCHITECT_ACCEPTED`; WS2–WS7 product work |
+| **5. Next allowed step?** | Architect accept WS1; user review WS7-A preview (no WS7-B until approved) |
+
+**Safety:** Advisory currency lock + financial contracts unchanged; Outbound/worker/`6080` untouched.
+
+### CP-WS1 — Implementation (prior delivery)
 
 | Question | Answer |
 |---|---|

@@ -70,7 +70,7 @@ const buildService = ({
 };
 
 describe('QuotationCurrencyAuthorityService', () => {
-  it('bootstraps IRR once and leaves an existing catalog untouched', async () => {
+  it('bootstraps IRR once and leaves an existing IRR catalog untouched', async () => {
     const repository = buildRepository();
     const { service, scope } = buildService({ repository });
 
@@ -90,11 +90,82 @@ describe('QuotationCurrencyAuthorityService', () => {
 
     repository.find.mockResolvedValue([row()]);
     repository.insert.mockClear();
+    repository.update.mockClear();
 
     const second = await service.bootstrap(authContext);
 
     expect(second).toMatchObject({ kind: 'OK' });
     expect(repository.insert).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('bootstraps IRR when the catalog is non-empty but IRR is missing', async () => {
+    const usd = row({
+      id: 'cur-usd',
+      code: 'USD',
+      name: 'دلار آمریکا',
+      isDefault: true,
+      accountingCode: 'GL-USD',
+    });
+    const repository = buildRepository();
+    const { service } = buildService({ repository });
+
+    repository.find
+      .mockResolvedValueOnce([usd])
+      .mockResolvedValue([
+        usd,
+        row({ id: 'cur-irr', isDefault: true }),
+      ]);
+
+    const outcome = await service.bootstrap(authContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'OK',
+      message: 'ارز پایهٔ ریال ساخته شد',
+    });
+    expect(repository.update).toHaveBeenCalledWith(
+      { id: 'cur-usd' },
+      expect.objectContaining({ isDefault: false }),
+    );
+    expect(repository.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'IRR',
+        isActive: true,
+        isDefault: true,
+      }),
+    );
+  });
+
+  it('restores IRR as the operational default when another currency is marked default', async () => {
+    const irr = row({ isDefault: false });
+    const usd = row({
+      id: 'cur-usd',
+      code: 'USD',
+      name: 'دلار آمریکا',
+      isDefault: true,
+    });
+    const repository = buildRepository();
+    const { service } = buildService({ repository });
+
+    repository.find
+      .mockResolvedValueOnce([irr, usd])
+      .mockResolvedValue([
+        row({ isDefault: true }),
+        { ...usd, isDefault: false },
+      ]);
+
+    const outcome = await service.bootstrap(authContext);
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(repository.insert).not.toHaveBeenCalled();
+    expect(repository.update).toHaveBeenCalledWith(
+      { id: 'cur-usd' },
+      expect.objectContaining({ isDefault: false }),
+    );
+    expect(repository.update).toHaveBeenCalledWith(
+      { id: 'cur-1' },
+      expect.objectContaining({ isActive: true, isDefault: true }),
+    );
   });
 
   it('saves an optional accounting code on an existing currency', async () => {
@@ -142,6 +213,55 @@ describe('QuotationCurrencyAuthorityService', () => {
       kind: 'REFUSED',
       code: 'QUOTATION_CURRENCY_CREATE_FORBIDDEN',
     });
+  });
+
+  it('refuses saving a non-IRR currency as the operational default', async () => {
+    const usd = row({
+      id: 'cur-usd',
+      code: 'USD',
+      name: 'دلار آمریکا',
+      isDefault: false,
+    });
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([row(), usd]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.saveCurrency(
+      {
+        recordId: 'cur-usd',
+        name: 'دلار آمریکا',
+        accountingCodeText: '',
+        isActive: true,
+        isDefault: true,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'QUOTATION_CURRENCY_DEFAULT_MUST_BE_IRR',
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses setDefaultCurrency for a non-IRR row', async () => {
+    const usd = row({
+      id: 'cur-usd',
+      code: 'USD',
+      name: 'دلار آمریکا',
+      isDefault: false,
+    });
+    const repository = buildRepository();
+    repository.find.mockResolvedValue([row(), usd]);
+    const { service } = buildService({ repository });
+
+    const outcome = await service.setDefaultCurrency('cur-usd', authContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'QUOTATION_CURRENCY_DEFAULT_MUST_BE_IRR',
+    });
+    expect(repository.update).not.toHaveBeenCalled();
   });
 
   it('isolates work through the workspace ORM context', async () => {

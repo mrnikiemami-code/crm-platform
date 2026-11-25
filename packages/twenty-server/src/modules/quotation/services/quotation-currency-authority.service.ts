@@ -99,8 +99,12 @@ export class QuotationCurrencyAuthorityService {
       this.runLocked(async (scope) => {
         const repository = this.repository(scope);
         const existing = await this.findAll(repository);
+        const irr = existing.find((row) => row.code === BASELINE_CURRENCY.code);
 
-        if (existing.length === 0) {
+        // Phase 1: IRR must exist even when other catalog rows are already present.
+        // A non-empty list without IRR is not a completed bootstrap.
+        if (irr === undefined) {
+          await this.clearDefaults(repository, existing, null, actor);
           await repository.insert({
             code: BASELINE_CURRENCY.code,
             name: BASELINE_CURRENCY.name,
@@ -110,17 +114,28 @@ export class QuotationCurrencyAuthorityService {
             createdBy: actor,
             updatedBy: actor,
           } as never);
+        } else if (!irr.isDefault || !irr.isActive) {
+          // Operational default cannot drift to a non-IRR row.
+          await this.clearDefaults(repository, existing, irr.recordId, actor);
+          await repository.update(
+            { id: irr.recordId },
+            {
+              isActive: true,
+              isDefault: true,
+              updatedBy: actor,
+            } as never,
+          );
         }
 
         const currencies = await this.findAll(repository);
+        const insertedIrr = irr === undefined;
 
         return {
           kind: 'OK',
           currencies,
-          message:
-            existing.length === 0
-              ? 'ارز پایهٔ ریال ساخته شد'
-              : 'فهرست ارز از قبل وجود دارد',
+          message: insertedIrr
+            ? 'ارز پایهٔ ریال ساخته شد'
+            : 'فهرست ارز از قبل وجود دارد',
         };
       }),
     );
@@ -166,6 +181,15 @@ export class QuotationCurrencyAuthorityService {
         }
 
         const wasDefault = existing.isDefault === true;
+        const isIrr = existing.code === BASELINE_CURRENCY.code;
+
+        // Phase 1: only IRR may be the operational workspace default.
+        if (input.isDefault && !isIrr) {
+          return refused(
+            'QUOTATION_CURRENCY_DEFAULT_MUST_BE_IRR',
+            'در فاز اول فقط ریال می‌تواند ارز پیش‌فرض باشد',
+          );
+        }
 
         if (wasDefault && !input.isActive) {
           return refused(
@@ -192,7 +216,8 @@ export class QuotationCurrencyAuthorityService {
           );
         }
 
-        const shouldBeDefault = input.isDefault || wasDefault;
+        // IRR that is already default stays default; non-IRR never becomes default here.
+        const shouldBeDefault = isIrr && (input.isDefault || wasDefault);
 
         if (shouldBeDefault) {
           await this.clearDefaults(repository, rows, existing.recordId, actor);
@@ -236,6 +261,13 @@ export class QuotationCurrencyAuthorityService {
 
         if (target === null) {
           return refused('QUOTATION_CURRENCY_NOT_FOUND', 'ارز پیدا نشد');
+        }
+
+        if (target.code !== BASELINE_CURRENCY.code) {
+          return refused(
+            'QUOTATION_CURRENCY_DEFAULT_MUST_BE_IRR',
+            'در فاز اول فقط ریال می‌تواند ارز پیش‌فرض باشد',
+          );
         }
 
         if (!target.isActive) {
@@ -372,23 +404,34 @@ export class QuotationCurrencyAuthorityService {
   ): Promise<boolean> {
     const rows = await this.findAll(repository);
     const defaults = rows.filter((row) => row.isDefault && row.isActive);
+    const irr =
+      rows.find(
+        (row) => row.code === BASELINE_CURRENCY.code && row.isActive,
+      ) ?? null;
 
-    if (defaults.length === 1) {
+    // Healthy phase-1 state: exactly one default and it is IRR.
+    if (
+      defaults.length === 1 &&
+      irr !== null &&
+      defaults[0].recordId === irr.recordId
+    ) {
       return false;
     }
 
-    for (const row of defaults) {
-      await repository.update(
-        { id: row.recordId },
-        { isDefault: false, updatedBy: actor } as never,
-      );
+    for (const row of rows) {
+      if (row.isDefault) {
+        await repository.update(
+          { id: row.recordId },
+          { isDefault: false, updatedBy: actor } as never,
+        );
+      }
     }
 
-    const firstActive = rows.find((row) => row.isActive) ?? null;
-
-    if (firstActive !== null) {
+    // Never auto-promote a non-IRR currency. If IRR is missing, leave no default
+    // rather than inventing an operational currency the money domain cannot book.
+    if (irr !== null) {
       await repository.update(
-        { id: firstActive.recordId },
+        { id: irr.recordId },
         { isDefault: true, updatedBy: actor } as never,
       );
     }

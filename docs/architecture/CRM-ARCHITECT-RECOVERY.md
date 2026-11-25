@@ -1,6 +1,6 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-GOAL-023 / WS1 TECHNICALLY_VERIFIED (2026-11-25; ACTIVE; STOP_FOR_ARCHITECT)
+## CURRENT — CRM-129-GOAL-023 / WS1-R1 + WS7-A DESIGN PREVIEW (2026-11-25; ACTIVE)
 
 **Goal 023 remains ACTIVE and INCOMPLETE.** Feature branch `feat/crm-129-quotation`. Authoritative state: Progress board + this note + HEAD/diff + real tests. A Cursor PASS alone is not Goal completion.
 
@@ -9,7 +9,7 @@
 1. Read `docs/architecture/CRM-129-MASTER-GOAL-023.md`, `CRM-129-FINANCIAL-CONTRACT-023.md`, `CRM-129-EXECUTION-PLAN-023.md`.
 2. Read `docs/architecture/CRM-129-GOAL-023-PROGRESS.md` and `CRM-129-GOAL-023-WS1-PREFLIGHT.md`.
 3. Verify current branch, HEAD, dirty worktree; never overwrite unrelated dirty files.
-4. **ONE Cursor session, SERIAL execution.** Do not start a parallel WS7-A/design session or second worktree.
+4. **ONE Cursor session, SERIAL execution.** Do not start a parallel second worktree or WS2 while design gate is open.
 5. Continue approved packs only. A completed pack is **not** a completed Goal.
 
 ### Architect decisions applied in WS1
@@ -21,21 +21,28 @@
 | `Q-LOCK-2` | Dual advisory keys; currency lock util created; TAX-008 order preserved |
 | `Q-STD-1` | `defineField` on person/company after Dev collision check (**0** collisions) |
 | `Q-WS2-COLS` | No quotation snapshot code columns in WS1 |
-| `Q-IRR-SEED` | Idempotent IRR-only bootstrap |
+| `Q-IRR-SEED` | Idempotent IRR bootstrap **even if catalog non-empty**; phase-1 operational default **IRR only** (WS1-R1) |
 
-### WS1 shipped (technical evidence)
+### WS1-R1 fix (technical evidence)
 
-- Fields (frozen UUIDs): `taxPolicy.accountingCode`, `quotationCurrency` catalog, `catalogItem.accountingCode`, person/company `accountingCode`.
-- Server: `QuotationCurrencyAuthorityService` + write-guards; tax save `accountingCodeText`; currency advisory lock util.
-- UI: tax panel optional ledger code; currency section on tax settings (**open-on-demand**). **No** quotation draft accounting-code inputs (C3).
-- Tests: Jest **42 PASS** (currency/tax authority, currency write-guard, ui controller); Vitest tax panel **31**, money/draft **41**, accounting-code unit.
-- App **0.1.53** (Dev apply when architect authorizes). Outbound/worker/`:6080` untouched.
+- `QuotationCurrencyAuthorityService.bootstrap`: inserts/activates IRR when missing from a non-empty catalog; restores IRR as sole default when drifted.
+- `saveCurrency` / `setDefaultCurrency`: refuse non-IRR operational default (`QUOTATION_CURRENCY_DEFAULT_MUST_BE_IRR`).
+- `enforceSingleActiveDefault`: never auto-promotes a non-IRR currency.
+- Advisory currency lock + financial contracts preserved.
+- Jest: `quotation-currency-authority.service.spec.ts` **8 PASS**.
+- **No Dev Apply** this turn. App still **0.1.53**.
 
-### Next actions (serial, same session after architect accept)
+### WS7-A design preview (same session)
 
-1. Architect marks WS1 `ARCHITECT_ACCEPTED` (or amends).
-2. **Then WS7-A** interactive browser preview (same session) → `STOP_FOR_USER_DESIGN_APPROVAL` — do not wait for WS2–WS6 to start design preview; do not ship design into product without user approval.
-3. Then WS2 (snapshot + C4 lock races) → WS3 → WS4 → WS5 → WS6 → WS7-B from approved design.
+- Interactive mock-only frames: `docs/design/crm-129-goal-023-ws7a/`
+- **`STOP_FOR_USER_DESIGN_APPROVAL`** — WS7-B forbidden until user approves appearance.
+- Product code untouched by preview.
+
+### Next actions (serial)
+
+1. Architect marks WS1 `ARCHITECT_ACCEPTED` (or amends) — before WS2 / Dev Apply.
+2. User reviews WS7-A → approve/reject Design of Record.
+3. Only after user approval: WS7-B. Independently after WS1 accept: WS2 → WS3 → WS4 → WS5 → WS6.
 4. Final Goal close only after SC1–10 + USER_UAT + architect PR/merge gate. Default branch `crm-platform`; no force-push.
 
 ### Known gates that must survive
@@ -46,9 +53,12 @@
 - No LIVE_VERIFIED, no outbound enablement, no real Asan/Sepidar, no secret exposure, no mapping purge, no main worker restart, no `:6080` changes.
 - **Never claim GOAL_023_COMPLETE** early.
 
-### Architect action now
+### Gates open now
 
-Review WS1 evidence → `ARCHITECT_ACCEPTED` or amend. Goal stays ACTIVE.
+| Gate | Owner |
+|---|---|
+| `STOP_FOR_ARCHITECT` (WS1 + R1) | Architect accept / amend |
+| `STOP_FOR_USER_DESIGN_APPROVAL` (WS7-A) | User appearance approval |
 
 ## PRIOR CHECKPOINT — CRM-129-GOAL-023 single-session architect note (2026-11-25 @ `9884f2a4c3`)
 
