@@ -96,4 +96,7 @@ Docs-only C1–C7 + preflight @ `6bc3f558b9`.
 
 ## Gate
 
-**`STOP_FOR_ARCHITECT`** — WS1 technically verified. Goal 023 remains **ACTIVE / NOT COMPLETE**.
+1. **`STOP_FOR_ARCHITECT`** — WS1 + WS1-R1 technically verified; no Dev Apply / WS2 until accept.
+2. **`STOP_FOR_USER_DESIGN_APPROVAL`** — WS7-A preview ready; WS7-B forbidden until appearance approved.
+
+Goal 023 remains **ACTIVE / NOT COMPLETE**.
