@@ -22,6 +22,7 @@ import {
   type CustomerSelection,
 } from 'src/components/customer-picker';
 import {
+  QUOTATION_CURRENCIES_ROUTE,
   SAVE_DRAFT_ROUTE,
   SEARCH_CUSTOMERS_ROUTE,
   TAX_POLICIES_ROUTE,
@@ -30,6 +31,11 @@ import {
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import { type MoneyUnit } from 'src/domain/money/currency';
+import {
+  MULTI_CURRENCY_DOCUMENTS,
+  OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+  selectInitialDocumentCurrencyCode,
+} from 'src/domain/money/document-currency';
 import { toPersianDigits } from 'src/domain/money/display-format';
 import {
   DEFAULT_TAX_POLICY_ID,
@@ -133,6 +139,45 @@ const LEGACY_TAX_LABEL = (() => {
 // The workspace catalog, as the settings route describes it. `rateBasisPoints`
 // arrives as text because an integer percentage must not go through a float
 // scalar; a row whose rate cannot be parsed is skipped rather than guessed.
+type DocumentCurrencyOption = {
+  code: string;
+  name: string;
+  isDefault: boolean;
+  isActive: boolean;
+};
+
+const readDocumentCurrencies = (
+  data: Record<string, unknown>,
+): DocumentCurrencyOption[] => {
+  const currencies = Array.isArray(data.currencies) ? data.currencies : [];
+
+  return currencies.flatMap((candidate) => {
+    if (candidate === null || typeof candidate !== 'object') {
+      return [];
+    }
+
+    const row = candidate as Record<string, unknown>;
+    const code =
+      typeof row.code === 'string' ? row.code.trim().toUpperCase() : '';
+
+    if (code === '') {
+      return [];
+    }
+
+    return [
+      {
+        code,
+        name:
+          typeof row.name === 'string' && row.name.trim() !== ''
+            ? row.name.trim()
+            : code,
+        isDefault: row.isDefault === true,
+        isActive: row.isActive !== false,
+      },
+    ];
+  });
+};
+
 const readTaxPolicies = (
   data: Record<string, unknown>,
 ): TaxPolicyCatalogEntry[] => {
@@ -348,6 +393,13 @@ export const QuotationDraftForm = () => {
     useState('');
   const [taxPolicies, setTaxPolicies] = useState<TaxPolicyCatalogEntry[]>([]);
   const [taxPolicyCode, setTaxPolicyCode] = useState(DEFAULT_TAX_POLICY_ID);
+  const [documentCurrencies, setDocumentCurrencies] = useState<
+    DocumentCurrencyOption[]
+  >([]);
+  const [documentCurrencyCode, setDocumentCurrencyCode] = useState(
+    OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+  );
+  const documentCurrencyChosenByOperator = useRef(false);
   const [lines, setLines] = useState<LineDraft[]>(() => [
     newLine(DEFAULT_TAX_POLICY_ID),
   ]);
@@ -435,6 +487,65 @@ export const QuotationDraftForm = () => {
     };
   }, [isRecordEdit]);
 
+  // WS4: document currency from workspace catalog (phase-1 operational IRR only).
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCurrencies = async () => {
+      try {
+        let response = await callAppRoute(QUOTATION_CURRENCIES_ROUTE, {
+          action: 'list',
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        let rows =
+          response.data.success === true
+            ? readDocumentCurrencies(response.data)
+            : [];
+
+        if (rows.length === 0) {
+          response = await callAppRoute(QUOTATION_CURRENCIES_ROUTE, {
+            action: 'bootstrap',
+          });
+
+          if (cancelled || response.data.success !== true) {
+            return;
+          }
+
+          rows = readDocumentCurrencies(response.data);
+        }
+
+        if (rows.length === 0) {
+          return;
+        }
+
+        setDocumentCurrencies(rows);
+        setDocumentCurrencyCode((current) =>
+          selectInitialDocumentCurrencyCode({
+            entries: rows,
+            currentCode: current,
+            keepCurrent:
+              isRecordEdit || documentCurrencyChosenByOperator.current,
+          }),
+        );
+      } catch (loadFailure) {
+        console.error(
+          'quotation-draft-form: currency catalog load failed',
+          loadFailure,
+        );
+      }
+    };
+
+    void loadCurrencies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRecordEdit]);
+
   useEffect(() => {
     if (!isRecordEdit) {
       return;
@@ -472,6 +583,11 @@ export const QuotationDraftForm = () => {
         setName(draft.name);
         setPaymentTerms(draft.paymentTerms);
         setMoneyUnit(draft.moneyUnit);
+        setDocumentCurrencyCode(
+          draft.currencyCode !== null && draft.currencyCode.trim() !== ''
+            ? draft.currencyCode.trim().toUpperCase()
+            : OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+        );
         setCustomerType(draft.customerType);
         setCustomerIds({
           personId: draft.personId,
@@ -754,6 +870,7 @@ export const QuotationDraftForm = () => {
       paymentTerms,
       taxPolicy: taxPolicyCode,
       taxPolicyDefinition,
+      currencyCode: documentCurrencyCode,
       documentDiscount: toDiscountInput(
         documentDiscountKind,
         documentDiscountPercentText,
@@ -773,6 +890,7 @@ export const QuotationDraftForm = () => {
     taxPolicyCode,
     taxPolicyDefinition,
     taxPolicies,
+    documentCurrencyCode,
     documentDiscountKind,
     documentDiscountPercentText,
     documentDiscountAmountText,
@@ -868,6 +986,7 @@ export const QuotationDraftForm = () => {
         name,
         paymentTerms,
         taxPolicy: taxPolicyCode,
+        currencyCode: documentCurrencyCode,
         displayMoneyUnit: moneyUnit,
         documentDiscountKind,
         documentDiscountPercentText,
@@ -1035,6 +1154,57 @@ export const QuotationDraftForm = () => {
               onChange={(event) => setPaymentTerms(event.target.value)}
             />
           </label>
+        </section>
+
+        <section style={formSectionStyle}>
+          <h3 style={styles.sectionTitle}>ارز سند</h3>
+          <label style={styles.label}>
+            ارز
+            <select
+              style={styles.input}
+              value={documentCurrencyCode}
+              disabled={isFormLocked}
+              onChange={(event) => {
+                documentCurrencyChosenByOperator.current = true;
+                setDocumentCurrencyCode(event.target.value.toUpperCase());
+              }}
+            >
+              {(documentCurrencies.length > 0
+                ? documentCurrencies.filter((currency) => {
+                    if (
+                      !MULTI_CURRENCY_DOCUMENTS &&
+                      currency.code !== OPERATIONAL_DOCUMENT_CURRENCY_CODE
+                    ) {
+                      return currency.code === documentCurrencyCode;
+                    }
+
+                    return (
+                      currency.isActive ||
+                      currency.code === documentCurrencyCode
+                    );
+                  })
+                : [
+                    {
+                      code: OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+                      name: 'ریال ایران',
+                      isDefault: true,
+                      isActive: true,
+                    },
+                  ]
+              ).map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.name} ({currency.code})
+                  {currency.isDefault ? ' — پیش‌فرض' : ''}
+                  {currency.isActive ? '' : ' — غیرفعال'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p style={styles.meta}>
+            تومان و ریال فقط واحد نمایش مبلغ هستند، نه دو ارز مستقل. همهٔ ردیف‌ها
+            همین ارز سند را به ارث می‌برند. در این فاز فقط IRR برای عملیات مالی
+            مجاز است.
+          </p>
         </section>
 
         <section style={formSectionStyle}>

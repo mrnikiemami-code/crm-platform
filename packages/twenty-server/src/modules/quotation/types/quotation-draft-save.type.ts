@@ -38,6 +38,8 @@ export type QuotationDraftSaveLine = {
   taxPolicy?: string | null;
   taxRateBasisPoints?: string | null;
   dutyRateBasisPoints?: string | null;
+  // WS4: inherits document currency; phase-1 always IRR.
+  currencyCode?: string | null;
 };
 
 export type QuotationDraftSaveHeader = {

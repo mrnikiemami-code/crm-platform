@@ -157,6 +157,7 @@ export const buildDraftQuotationSaveRequest = (
     taxPolicy: line.taxPolicy,
     taxRateBasisPoints: line.taxRateBasisPoints,
     dutyRateBasisPoints: line.dutyRateBasisPoints,
+    currencyCode: line.currencyCode,
   })),
 });
 

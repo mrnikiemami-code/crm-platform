@@ -91,6 +91,7 @@ const buildScope = ({
     id: 'cur-irr',
     code: 'IRR',
     accountingCode: 'CUR-IRR',
+    isActive: true,
   };
   const repositories: Record<string, Record<string, jest.Mock>> = {
     quotation: {
@@ -293,6 +294,7 @@ describe('QuotationDraftPersistenceService', () => {
         id: 'cur-irr',
         code: 'IRR',
         accountingCode: '',
+        isActive: true,
       })),
     });
     const { service } = buildService({
@@ -309,6 +311,32 @@ describe('QuotationDraftPersistenceService', () => {
       quotationCurrencyRecordId: 'cur-irr',
       currencyAccountingCode: '',
     });
+  });
+
+  it('refuses a non-IRR document currency in phase 1', async () => {
+    const scope = buildScope({
+      quotationCurrencyFindOne: jest.fn(async () => ({
+        id: 'cur-usd',
+        code: 'USD',
+        accountingCode: 'CUR-USD',
+        isActive: true,
+      })),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const payload = body();
+    (payload.header as { currencyCode: string }).currencyCode = 'USD';
+
+    const result = await service.saveDraft({ authContext, body: payload });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'OPERATIONAL_CURRENCY_MUST_BE_IRR',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
   });
 
   it('writes the header and every line inside one transaction', async () => {
@@ -364,6 +392,7 @@ describe('QuotationDraftPersistenceService', () => {
       quotationId: 'q-1',
       sortOrder: 0,
       totalExact: '1090000.000000',
+      currencyCode: 'IRR',
     });
   });
 

@@ -218,6 +218,67 @@ describe('buildDraftQuotationPlan', () => {
     expect(plan.value.totalExact.endsWith('.000000')).toBe(true);
   });
 
+  it('refuses a non-IRR document currency in phase 1', () => {
+    const plan = buildDraftQuotationPlan({
+      quotationId: null,
+      status: 'DRAFT',
+      customerType: 'COMPANY',
+      personId: null,
+      companyId: 'company-1',
+      name: 'ارز غیرمجاز',
+      paymentTerms: null,
+      taxPolicy: 'IR_VAT_9',
+      currencyCode: 'USD',
+      documentDiscount: { kind: 'NONE' },
+      displayMoneyUnit: 'IRR',
+      lines: [baseLine],
+    });
+
+    expect(plan.ok).toBe(false);
+    if (plan.ok) {
+      return;
+    }
+
+    expect(plan.refusal.code).toBe('OPERATIONAL_CURRENCY_MUST_BE_IRR');
+  });
+
+  it('stamps every line with the document currency code', () => {
+    const plan = buildDraftQuotationPlan({
+      quotationId: null,
+      status: 'DRAFT',
+      customerType: 'COMPANY',
+      personId: null,
+      companyId: 'company-1',
+      name: 'ارث ارز سند',
+      paymentTerms: null,
+      taxPolicy: 'IR_VAT_9',
+      currencyCode: 'IRR',
+      documentDiscount: { kind: 'NONE' },
+      displayMoneyUnit: 'IRR',
+      lines: [
+        baseLine,
+        {
+          ...baseLine,
+          clientLineId: 'line-2',
+          name: 'خدمت',
+          kind: 'SERVICE',
+          unit: 'ساعت',
+        },
+      ],
+    });
+
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) {
+      return;
+    }
+
+    expect(plan.value.currencyCode).toBe('IRR');
+    expect(plan.value.totalsByCurrency).toEqual({});
+    expect(plan.value.lines.every((line) => line.currencyCode === 'IRR')).toBe(
+      true,
+    );
+  });
+
   it('refuses unknown tax policy instead of inventing a rate', () => {
     const plan = buildDraftQuotationPlan({
       quotationId: null,

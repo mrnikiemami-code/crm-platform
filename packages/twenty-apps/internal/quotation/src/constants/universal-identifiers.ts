@@ -135,6 +135,9 @@ export const QUOTATION_LINE_FIELDS = {
   dutyRateBasisPoints: 'b48f590b-66ec-5f28-a27d-6ae46e954084',
   taxAccountingCode: '906e354d-9ef7-578e-b3b3-21b291f83585',
   taxPolicyRecordId: '4cf932cd-a585-5f2f-89ad-7396a178be09',
+  // WS4 phase-2 stub: line inherits document currencyCode; no independent picker while
+  // MULTI_CURRENCY_DOCUMENTS is false.
+  currencyCode: 'fd6422e4-d8ec-54bf-b628-27bd5950fdaf',
 } as const;
 
 export const QUOTATION_REVISION_FIELDS = {

@@ -241,6 +241,19 @@ export default defineObject({
       isUIEditable: false,
     },
     {
+      // WS4: inherits document currency. Independent per-line currency stays behind
+      // MULTI_CURRENCY_DOCUMENTS (off); server writes the document code on save.
+      universalIdentifier: QUOTATION_LINE_FIELDS.currencyCode,
+      type: FieldType.TEXT,
+      name: 'currencyCode',
+      label: 'ارز ردیف',
+      description:
+        'کد ارز این ردیف. در فاز ۱ همیشه برابر ارز سند (IRR) است؛ انتخاب جداگانه در فرم نیست.',
+      icon: 'IconCurrencyIranianRial',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: QUOTATION_LINE_FIELDS.totalExact,
       type: FieldType.TEXT,
       name: 'totalExact',

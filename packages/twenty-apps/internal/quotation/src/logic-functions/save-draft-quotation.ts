@@ -77,6 +77,7 @@ const handler = async (event: RoutePayload<unknown>) => {
     name: readString(body.name),
     paymentTerms: readString(body.paymentTerms) || null,
     taxPolicy: readString(body.taxPolicy) || DEFAULT_TAX_POLICY_ID,
+    currencyCode: readString(body.currencyCode) || 'IRR',
     documentDiscount: readDiscount({
       discountKind: body.documentDiscountKind,
       discountPercentText: body.documentDiscountPercentText,

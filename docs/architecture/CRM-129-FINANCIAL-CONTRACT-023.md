@@ -97,8 +97,8 @@ Terminology:
 | Snapshot of CRM codes on quotation | **MISSING** | WS2 |
 | Lock accountingCode by reference id | **MISSING** | WS2 (design in preflight) |
 | Per-line tax policy | **SOURCE** (WS3) | Dev Apply + UAT pending |
-| Phase-1 IRR inheritance modeled | **PARTIAL** | WS4 |
-| Phase-2 hooks inactive | **MISSING** | WS4 |
+| Phase-1 IRR inheritance modeled | **SOURCE** (WS4) | Dev Apply + UAT pending |
+| Phase-2 hooks inactive | **SOURCE** (flag OFF) | `MULTI_CURRENCY_DOCUMENTS=false` |
 | Settings stop CRM code authoring | **CONFLICT** | WS5 |
 | Mock/Asan shared capability UI | **PARTIAL** | WS6 |
 | Persian UX Goal-level | **BLOCKED** on design/UAT | WS7 |

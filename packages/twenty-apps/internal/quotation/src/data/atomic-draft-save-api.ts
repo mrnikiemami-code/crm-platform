@@ -23,6 +23,7 @@ export type AtomicSaveLinePayload = {
   taxPolicy?: string | null;
   taxRateBasisPoints?: string | null;
   dutyRateBasisPoints?: string | null;
+  currencyCode?: string | null;
 };
 
 export type AtomicSaveHeaderPayload = {

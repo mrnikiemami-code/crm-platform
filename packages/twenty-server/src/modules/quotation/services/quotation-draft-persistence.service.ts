@@ -39,6 +39,7 @@ import {
   buildQuotationAccountingSnapshot,
   type QuotationAccountingSnapshot,
 } from 'src/modules/quotation/utils/quotation-accounting-snapshot.util';
+import { evaluateDocumentCurrencyForSave } from 'src/modules/quotation/utils/quotation-document-currency.util';
 
 type QuotationHeaderRow = {
   id: string;
@@ -226,6 +227,7 @@ export class QuotationDraftPersistenceService {
             line,
             index,
             accountingSnapshot.value.lines[index],
+            accountingSnapshot.value.documentCurrencyCode,
           ),
           quotationId,
         })),
@@ -361,6 +363,7 @@ export class QuotationDraftPersistenceService {
       quotationId,
       lines: request.lines,
       lineSnapshots: accountingSnapshot.value.lines,
+      documentCurrencyCode: accountingSnapshot.value.documentCurrencyCode,
     });
 
     return {
@@ -581,6 +584,7 @@ export class QuotationDraftPersistenceService {
             taxPolicyRecordId: string | null;
             taxAccountingCode: string;
           }>;
+          documentCurrencyCode: string;
         };
       }
     | { ok: false; rejection: QuotationDraftSaveOutcome }
@@ -712,7 +716,7 @@ export class QuotationDraftPersistenceService {
         })
         .findOne({
           where: { code: currencyCode },
-          select: { id: true, accountingCode: true },
+          select: { id: true, accountingCode: true, isActive: true },
         });
     } catch (error) {
       this.logger.error(
@@ -740,6 +744,34 @@ export class QuotationDraftPersistenceService {
       };
     }
 
+    // WS4 phase-1: refuse non-IRR and inactive catalog rows before snapshot write.
+    const currencyDecision = evaluateDocumentCurrencyForSave({
+      currencyCode,
+      catalogIsActive: currencyRow.isActive,
+    });
+
+    if (!currencyDecision.ok) {
+      return {
+        ok: false,
+        rejection: rejected(currencyDecision.code, currencyDecision.message),
+      };
+    }
+
+    // Lines must inherit the document currency (no mixed-currency drafts while flag off).
+    for (const [index, line] of request.lines.entries()) {
+      const lineCurrency = (line.currencyCode ?? '').trim().toUpperCase();
+
+      if (lineCurrency !== '' && lineCurrency !== currencyDecision.currencyCode) {
+        return {
+          ok: false,
+          rejection: rejected(
+            'LINE_CURRENCY_MISMATCH',
+            `lines[${index}] currency must match the document currency`,
+          ),
+        };
+      }
+    }
+
     return {
       ok: true,
       value: {
@@ -750,6 +782,7 @@ export class QuotationDraftPersistenceService {
           currencyAccountingCode: (currencyRow.accountingCode ?? '').trim(),
         }),
         lines: lineSnapshots,
+        documentCurrencyCode: currencyDecision.currencyCode,
       },
     };
   }
@@ -795,6 +828,7 @@ export class QuotationDraftPersistenceService {
     quotationId,
     lines,
     lineSnapshots,
+    documentCurrencyCode,
   }: {
     transactionScope: WorkspaceTransactionScope;
     quotationId: string;
@@ -803,6 +837,7 @@ export class QuotationDraftPersistenceService {
       taxPolicyRecordId: string | null;
       taxAccountingCode: string;
     }>;
+    documentCurrencyCode: string;
   }): Promise<void> {
     const lineRepository = transactionScope.getRepository('quotationLine', {
       shouldBypassPermissionChecks: true,
@@ -825,7 +860,12 @@ export class QuotationDraftPersistenceService {
         // Editing in place keeps the line id, so history and references survive.
         await lineRepository.update(
           { id: existingLineId },
-          this.buildLineColumns(line, index, lineSnapshots[index]),
+          this.buildLineColumns(
+            line,
+            index,
+            lineSnapshots[index],
+            documentCurrencyCode,
+          ),
         );
 
         continue;
@@ -841,6 +881,7 @@ export class QuotationDraftPersistenceService {
             lines[index],
             index,
             lineSnapshots[index],
+            documentCurrencyCode,
           ),
           quotationId,
         })),
@@ -901,7 +942,14 @@ export class QuotationDraftPersistenceService {
       taxPolicyRecordId: string | null;
       taxAccountingCode: string;
     },
+    documentCurrencyCode?: string,
   ): Record<string, unknown> {
+    // WS4: every line inherits the document currency; no independent line picker.
+    const inheritedCurrency =
+      (documentCurrencyCode ?? '').trim().toUpperCase() ||
+      (line.currencyCode ?? '').trim().toUpperCase() ||
+      null;
+
     return {
       name: line.name,
       kind: line.kind,
@@ -921,6 +969,7 @@ export class QuotationDraftPersistenceService {
       dutyRateBasisPoints: line.dutyRateBasisPoints ?? null,
       taxAccountingCode: taxSnapshot?.taxAccountingCode ?? '',
       taxPolicyRecordId: taxSnapshot?.taxPolicyRecordId ?? null,
+      currencyCode: inheritedCurrency,
       sortOrder,
       itemId: line.itemId,
     };

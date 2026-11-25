@@ -56,6 +56,8 @@ export type EditableDraft = {
   // The duty component of the same frozen policy. Absent on documents saved before
   // a policy could carry duty, which are re-priced with zero duty.
   dutyRateBasisPoints: string | null;
+  // ISO document currency (IRR in phase 1). Distinct from moneyUnit display scale.
+  currencyCode: string | null;
   moneyUnit: MoneyUnit;
   documentDiscountKind: EditableDraftDiscountKind;
   documentDiscountPercentText: string;
@@ -351,6 +353,7 @@ export const parseDraftForEdit = (
     taxPolicy: readNullableText(quotation.taxPolicy),
     taxRateBasisPoints: readNullableText(quotation.taxRateBasisPoints),
     dutyRateBasisPoints: readNullableText(quotation.dutyRateBasisPoints),
+    currencyCode: readNullableText(quotation.currencyCode),
     moneyUnit,
     documentDiscountKind: resolvedDocumentDiscountKind,
     documentDiscountPercentText:

@@ -5,6 +5,11 @@ import {
   type MoneyUnit,
 } from 'src/domain/money/currency';
 import {
+  assertPhase1DocumentCurrency,
+  emptyTotalsByCurrency,
+  type TotalsByCurrency,
+} from 'src/domain/money/document-currency';
+import {
   finalizeLinesWithDocumentDiscount,
   formatTotalsExact,
   type QuotationTotalsExactText,
@@ -81,6 +86,8 @@ export type DraftQuotationInput = {
   // sealed document readable without a second source of truth.
   taxPolicyDefinition?: TaxPolicyDefinition | null;
   documentDiscount: DraftDiscountInput;
+  // ISO document currency (catalog). Distinct from displayMoneyUnit (IRR/TOMAN scale).
+  currencyCode?: string | null;
   displayMoneyUnit: MoneyUnit;
   lines: DraftLineInput[];
 };
@@ -107,6 +114,8 @@ export type DraftLineRecord = {
   taxPolicy: string;
   taxRateBasisPoints: string;
   dutyRateBasisPoints: string;
+  // WS4: always equals document currency while MULTI_CURRENCY_DOCUMENTS is off.
+  currencyCode: string;
   sortOrder: number;
   amounts: QuotationLineAmounts;
 };
@@ -124,13 +133,15 @@ export type DraftQuotationPlan = {
   // The duty component of the same policy, frozen with the document exactly like the
   // tax rate. `dutyExact` is the duty part of `taxExact` (tax = taxExact - dutyExact).
   dutyRateBasisPoints: string;
-  currencyCode: 'IRR';
+  currencyCode: string;
   version: number;
   documentDiscountKind: 'NONE' | 'RATE' | 'AMOUNT';
   documentDiscountInputExact: string;
   totalExact: string;
   dutyExact: string;
   totalsExact: QuotationTotalsExactText;
+  // Phase-2 stub: empty while MULTI_CURRENCY_DOCUMENTS is false (no FX bucketing).
+  totalsByCurrency: TotalsByCurrency;
   displayTotal: string;
   displayGross: string;
   displayLineDiscount: string;
@@ -428,6 +439,12 @@ export const buildDraftQuotationPlan = (
     return taxPolicy;
   }
 
+  const documentCurrency = assertPhase1DocumentCurrency(input.currencyCode);
+
+  if (!documentCurrency.ok) {
+    return documentCurrency;
+  }
+
   const documentDiscount = buildDiscount(
     input.documentDiscount,
     input.displayMoneyUnit,
@@ -558,6 +575,7 @@ export const buildDraftQuotationPlan = (
       taxPolicy: linePolicies[index].id,
       taxRateBasisPoints: linePolicies[index].rateBasisPoints.toString(),
       dutyRateBasisPoints: linePolicies[index].dutyRateBasisPoints.toString(),
+      currencyCode: documentCurrency.value,
       sortOrder: preTaxLine.sortOrder,
       amounts,
     };
@@ -574,13 +592,14 @@ export const buildDraftQuotationPlan = (
     taxPolicy: taxPolicy.value.id,
     taxRateBasisPoints: taxPolicy.value.rateBasisPoints.toString(),
     dutyRateBasisPoints: taxPolicy.value.dutyRateBasisPoints.toString(),
-    currencyCode: 'IRR',
+    currencyCode: documentCurrency.value,
     version: 1,
     documentDiscountKind: documentDiscountMeta.value.kind,
     documentDiscountInputExact: documentDiscountMeta.value.inputExact,
     totalExact: totalsExact.totalExact,
     dutyExact: totalsExact.dutyExact,
     totalsExact,
+    totalsByCurrency: emptyTotalsByCurrency(),
     displayTotal: displayTotal.value,
     displayGross: displayGross.value,
     displayLineDiscount: displayLineDiscount.value,

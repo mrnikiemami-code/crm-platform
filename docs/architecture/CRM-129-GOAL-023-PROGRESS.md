@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** WS3 per-line tax TECHNICALLY_VERIFIED → STOP_FOR_ARCHITECT
+**Board updated:** WS4 document currency TECHNICALLY_VERIFIED → STOP_FOR_ARCHITECT (await Apply)
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -21,8 +21,8 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | EXECUTION-024 C1–C7 + board + WS1 preflight | `ARCHITECT_ACCEPTED` | `6bc3f558b9` + WS1-OPEN |
 | WS1 Reference accounting codes | `ARCHITECT_ACCEPTED` | Architect accepted source review (WS1 + R1); Dev Apply still separate |
 | WS2 Snapshot + code lock | `ARCHITECT_ACCEPTED` | WS2 + WS2-R1 accepted; Dev Apply still separate |
-| WS3 Per-line tax | `TECHNICALLY_VERIFIED` | CP-WS3; [`CRM-129-GOAL-023-WS3-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS3-STOP-FOR-ARCHITECT.md); Money narrow grant used |
-| WS4 Document currency phase 1 | `NOT_STARTED` | Catalog exists; picker/IRR refuse in WS4 |
+| WS3 Per-line tax | `ARCHITECT_ACCEPTED` | Source accepted; Dev Apply pending |
+| WS4 Document currency phase 1 | `TECHNICALLY_VERIFIED` | CP-WS4; [`CRM-129-GOAL-023-WS4-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS4-STOP-FOR-ARCHITECT.md); Apply preflight [`CRM-129-GOAL-023-DEV-APPLY-PREFLIGHT-WS1-WS4.md`](./CRM-129-GOAL-023-DEV-APPLY-PREFLIGHT-WS1-WS4.md) |
 | WS5 Settings ownership | `IN_PROGRESS` | Pack A: ownership hint only; catalog-bound mapping rewrite still WS5 |
 | WS6 Mock/Asan shared UI | `IN_PROGRESS` | Shared `ConnectionEditForm` already exists; Pack A Persian honesty; full capability matrix still open |
 | WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |
@@ -41,8 +41,8 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | 2 Snapshot on quotation | Incomplete | WS2–WS3 |
 | 3 Lock after first draft | Incomplete | C4/F6 docs ratified; enforcement WS2 |
 | 4 Per-line tax | Partial | WS3 source verified; Dev Apply + UAT pending |
-| 5 Phase-1 IRR inheritance | Partial | Catalog + IRR bootstrap; draft still IRR literal |
-| 6 Phase-2 designed inactive | Incomplete | WS4 hooks |
+| 5 Phase-1 IRR inheritance | Partial | WS4 source: document select + line inherit + IRR refuse; Apply pending |
+| 6 Phase-2 designed inactive | Partial | Flag OFF + `totalsByCurrency` stub + line `currencyCode` |
 | 7 Item/person/company codes | Partial | Fields defined; record UI via standard forms |
 | 8 Settings no CRM code redefine | Incomplete | WS5 |
 | 9 Mock/Asan shared | Incomplete | WS6 |
@@ -51,6 +51,16 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 ---
 
 ## Checkpoint log
+
+### CP-WS4 — Document currency on existing draft form
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC5 document IRR select + line inheritance; SC6 phase-2 stubs inactive |
+| **2. Financial contract?** | F5/C2; no FX; Money arithmetic unchanged; تومان/ریال display-only |
+| **3. Real tests run?** | Vitest money/draft **206 PASS**; Jest persistence/currency **37 PASS** |
+| **4. Still incomplete?** | Architect accept; **Dev Apply** WS1–WS4; USER_UAT on real form |
+| **5. Next allowed step?** | `STOP_FOR_ARCHITECT` — **await Apply grant only** (no new packs) |
 
 ### CP-WS3 — Per-line tax/duty on existing draft cards
 
