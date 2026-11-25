@@ -191,6 +191,10 @@ export class QuotationDraftPersistenceService {
       request,
     });
 
+    if (!accountingSnapshot.ok) {
+      return accountingSnapshot.rejection;
+    }
+
     const quotationRepository = transactionScope.getRepository('quotation', {
       shouldBypassPermissionChecks: true,
     });
@@ -198,7 +202,7 @@ export class QuotationDraftPersistenceService {
       ...this.buildHeaderColumns(
         request.header,
         customerName,
-        accountingSnapshot,
+        accountingSnapshot.value,
       ),
       // A draft is born without a document number: only issuance claims one.
       status: 'DRAFT',
@@ -321,6 +325,10 @@ export class QuotationDraftPersistenceService {
       request,
     });
 
+    if (!accountingSnapshot.ok) {
+      return accountingSnapshot.rejection;
+    }
+
     // The conditional update is the concurrency gate: a parallel save that bumps
     // the version, or a lifecycle transition that freezes the content, makes this
     // statement match zero rows and the whole transaction is abandoned.
@@ -334,7 +342,7 @@ export class QuotationDraftPersistenceService {
         ...this.buildHeaderColumns(
           request.header,
           customerName,
-          accountingSnapshot,
+          accountingSnapshot.value,
         ),
         version: currentVersion + 1,
       },
@@ -426,22 +434,28 @@ export class QuotationDraftPersistenceService {
     return decision.ok ? null : rejected(decision.code, decision.message);
   }
 
-  // WS2: resolve CRM ledger codes from references under Tax→Currency read locks.
-  // Missing currency catalog (pre-apply) yields empty currency snapshot, not failure.
+  // WS2-R1: fail-closed resolution under Tax→Currency read locks.
+  // Empty accountingCode is allowed only when the reference row exists and has none.
+  // Catalog/table read failures and missing required rows refuse the save (rollback).
   private async resolveAccountingSnapshot({
     transactionScope,
     request,
   }: {
     transactionScope: WorkspaceTransactionScope;
     request: QuotationDraftSaveRequest;
-  }): Promise<QuotationAccountingSnapshot> {
+  }): Promise<
+    | { ok: true; value: QuotationAccountingSnapshot }
+    | { ok: false; rejection: QuotationDraftSaveOutcome }
+  > {
     const taxPolicyCode = (request.header.taxPolicy ?? '').trim();
     let taxPolicyRecordId: string | null = null;
     let taxAccountingCode = '';
 
     if (taxPolicyCode !== '') {
+      let taxRow: WorkspaceTaxPolicyRow | null;
+
       try {
-        const taxRow = await transactionScope
+        taxRow = await transactionScope
           .getRepository<WorkspaceTaxPolicyRow>('taxPolicy', {
             shouldBypassPermissionChecks: true,
           })
@@ -449,55 +463,94 @@ export class QuotationDraftPersistenceService {
             where: { code: taxPolicyCode },
             select: { id: true, accountingCode: true },
           });
-
-        if (taxRow !== null) {
-          taxPolicyRecordId = taxRow.id;
-          taxAccountingCode = (taxRow.accountingCode ?? '').trim();
-        }
       } catch (error) {
         this.logger.error(
           `Tax accounting snapshot lookup failed for "${taxPolicyCode}": ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
+
+        return {
+          ok: false,
+          rejection: rejected(
+            'TAX_POLICY_UNAVAILABLE',
+            'the workspace has no readable tax policy table',
+          ),
+        };
       }
+
+      if (taxRow === null) {
+        return {
+          ok: false,
+          rejection: rejected(
+            'ACCOUNTING_REFERENCE_NOT_FOUND',
+            `tax policy "${taxPolicyCode}" was not found for accounting snapshot`,
+          ),
+        };
+      }
+
+      taxPolicyRecordId = taxRow.id;
+      taxAccountingCode = (taxRow.accountingCode ?? '').trim();
     }
 
     const currencyCode = (request.header.currencyCode ?? '').trim().toUpperCase();
-    let quotationCurrencyRecordId: string | null = null;
-    let currencyAccountingCode = '';
 
-    if (currencyCode !== '') {
-      try {
-        const currencyRow = await transactionScope
-          .getRepository<WorkspaceQuotationCurrencyRow>('quotationCurrency', {
-            shouldBypassPermissionChecks: true,
-          })
-          .findOne({
-            where: { code: currencyCode },
-            select: { id: true, accountingCode: true },
-          });
-
-        if (currencyRow !== null) {
-          quotationCurrencyRecordId = currencyRow.id;
-          currencyAccountingCode = (currencyRow.accountingCode ?? '').trim();
-        }
-      } catch (error) {
-        // Catalog may be absent until WS1/WS2 schema apply; drafts still save.
-        this.logger.warn(
-          `Currency accounting snapshot lookup skipped for "${currencyCode}": ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
+    if (currencyCode === '') {
+      return {
+        ok: false,
+        rejection: rejected(
+          'CURRENCY_CODE_REQUIRED',
+          'document currencyCode is required for accounting snapshot',
+        ),
+      };
     }
 
-    return buildQuotationAccountingSnapshot({
-      taxPolicyRecordId,
-      taxAccountingCode,
-      quotationCurrencyRecordId,
-      currencyAccountingCode,
-    });
+    let currencyRow: WorkspaceQuotationCurrencyRow | null;
+
+    try {
+      currencyRow = await transactionScope
+        .getRepository<WorkspaceQuotationCurrencyRow>('quotationCurrency', {
+          shouldBypassPermissionChecks: true,
+        })
+        .findOne({
+          where: { code: currencyCode },
+          select: { id: true, accountingCode: true },
+        });
+    } catch (error) {
+      this.logger.error(
+        `Currency accounting snapshot lookup failed for "${currencyCode}": ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+
+      return {
+        ok: false,
+        rejection: rejected(
+          'CURRENCY_CATALOG_UNAVAILABLE',
+          'the workspace has no readable quotation currency catalog',
+        ),
+      };
+    }
+
+    if (currencyRow === null) {
+      return {
+        ok: false,
+        rejection: rejected(
+          'CURRENCY_REFERENCE_NOT_FOUND',
+          `currency "${currencyCode}" was not found in the workspace catalog`,
+        ),
+      };
+    }
+
+    return {
+      ok: true,
+      value: buildQuotationAccountingSnapshot({
+        taxPolicyRecordId,
+        taxAccountingCode,
+        quotationCurrencyRecordId: currencyRow.id,
+        currencyAccountingCode: (currencyRow.accountingCode ?? '').trim(),
+      }),
+    };
   }
 
   private async describeLostClaim({    transactionScope,

@@ -47,6 +47,14 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     'کد حسابداری این مرجع پس از استفاده در پیش‌فاکتور قفل شده و قابل تغییر نیست.',
   ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN:
     'کد حسابداری مالیات و ارز فقط توسط سرور از مراجع اسنپ می‌شود و از درخواست قابل ارسال نیست.',
+  ACCOUNTING_REFERENCE_NOT_FOUND:
+    'مرجع مالیات یا ارز انتخاب‌شده برای اسنپ‌شات کد حسابداری پیدا نشد.',
+  CURRENCY_CATALOG_UNAVAILABLE:
+    'فهرست ارز این فضای کاری در دسترس نیست؛ ذخیره پیش‌فاکتور ممکن نیست.',
+  CURRENCY_REFERENCE_NOT_FOUND:
+    'ارز سند در فهرست ارز فضای کاری تعریف نشده است.',
+  CURRENCY_CODE_REQUIRED:
+    'ارز سند برای ذخیره پیش‌فاکتور لازم است.',
   ACCOUNTING_SETTINGS_FORBIDDEN:
     'تغییر تنظیمات حسابداری فقط برای مدیر فضای کاری یا هویت برنامهٔ مجاز انجام می‌شود.',
   ACCOUNTING_CONNECTION_WRITE_FORBIDDEN:

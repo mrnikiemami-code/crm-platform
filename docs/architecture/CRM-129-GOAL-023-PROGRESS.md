@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** WS1/R1 ARCHITECT_ACCEPTED; WS2 IMPLEMENT in progress
+**Board updated:** WS2-R1 fail-closed snapshot; REAL-FORM-027 stage 1 → STOP_FOR_ARCHITECT
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -20,8 +20,8 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | WS0 Goal registration | `ARCHITECT_ACCEPTED` (planning) | `cdb890b3f5` |
 | EXECUTION-024 C1–C7 + board + WS1 preflight | `ARCHITECT_ACCEPTED` | `6bc3f558b9` + WS1-OPEN |
 | WS1 Reference accounting codes | `ARCHITECT_ACCEPTED` | Architect accepted source review (WS1 + R1); Dev Apply still separate |
-| WS2 Snapshot + code lock | `TECHNICALLY_VERIFIED` | See CP-WS2 + [`CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md); needs `ARCHITECT_ACCEPTED` + separate Dev Apply |
-| WS3 Per-line tax | `NOT_STARTED` | |
+| WS2 Snapshot + code lock | `TECHNICALLY_VERIFIED` | CP-WS2 + **CP-WS2-R1** fail-closed; [`CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md); not yet `ARCHITECT_ACCEPTED` |
+| WS3 Per-line tax | `NOT_STARTED` | Blocked until WS2/R1 accept + narrow Money Domain grant |
 | WS4 Document currency phase 1 | `NOT_STARTED` | Catalog exists; picker/IRR refuse in WS4 |
 | WS5 Settings ownership | `IN_PROGRESS` | Pack A: ownership hint only; catalog-bound mapping rewrite still WS5 |
 | WS6 Mock/Asan shared UI | `IN_PROGRESS` | Shared `ConnectionEditForm` already exists; Pack A Persian honesty; full capability matrix still open |
@@ -52,7 +52,17 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 
 ## Checkpoint log
 
-### CP-WS2 — Snapshot + C4 lock (this delivery)
+### CP-WS2-R1 — Fail-closed accounting snapshot (REAL-FORM-027 stage 1)
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC2/SC3 honesty: no silent blank snapshot on catalog failure |
+| **2. Financial contract?** | C3/C4 preserved; empty code only when reference row exists without a code |
+| **3. Real tests run?** | Draft persistence **23 PASS**; PG lock/rollback **4 PASS**; authority suites PASS |
+| **4. Still incomplete?** | Architect accept; Dev Apply; WS3–WS4; USER_UAT |
+| **5. Next allowed step?** | `STOP_FOR_ARCHITECT` — then WS3 (narrow Money) after accept |
+
+### CP-WS2 — Snapshot + C4 lock (prior delivery)
 
 | Question | Answer |
 |---|---|
@@ -120,10 +130,11 @@ Docs-only C1–C7 + preflight @ `6bc3f558b9`.
 
 ## Gate
 
-1. **`STOP_FOR_ARCHITECT`** — WS2 evidence in [`CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md).
-2. Dev Apply (WS1+WS2 schema) — **separate** approval.
-3. WS3 — only with Money Domain permission after WS2 accept.
-4. **`STOP_FOR_USER_UAT`** — deferred until product Pack B on Dev.
-5. WS7-A redesign-as-product: **cancelled**.
+1. **`STOP_FOR_ARCHITECT`** — WS2-R1 evidence in [`CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md).
+2. Dev Apply (WS1+WS2 schema) — **separate** approval after WS2 accept.
+3. WS3 — only with **narrow** Money Domain permission after WS2/R1 accept.
+4. WS4 → controlled Dev apply → **`STOP_FOR_USER_UAT`** on real `:3002` form (REAL-FORM-027 destination).
+5. WS5/WS6 / visual polish — **after** user UAT of this milestone.
+6. WS7-A redesign-as-product: **cancelled**.
 
 Goal 023 remains **ACTIVE / NOT COMPLETE**.

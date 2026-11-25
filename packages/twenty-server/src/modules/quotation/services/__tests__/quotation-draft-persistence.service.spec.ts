@@ -213,6 +213,104 @@ describe('QuotationDraftPersistenceService', () => {
     expect(scope.getRepository).not.toHaveBeenCalled();
   });
 
+  it('fail-closes when the tax policy catalog cannot be read for accounting snapshot', async () => {
+    const scope = buildScope({
+      taxPolicyFindOne: jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'tp-1',
+          code: 'IR_VAT_9',
+          rateBasisPoints: '900',
+          dutyRateBasisPoints: '0',
+          isActive: true,
+          accountingCode: 'TAX-GL-9',
+        })
+        .mockRejectedValueOnce(new Error('tax table missing')),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({ authContext, body: body() });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'TAX_POLICY_UNAVAILABLE',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+  });
+
+  it('fail-closes when the currency catalog cannot be read for accounting snapshot', async () => {
+    const scope = buildScope({
+      quotationCurrencyFindOne: jest.fn(async () => {
+        throw new Error('currency catalog missing');
+      }),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({ authContext, body: body() });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'CURRENCY_CATALOG_UNAVAILABLE',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+  });
+
+  it('fail-closes when the selected currency row is missing from the catalog', async () => {
+    const scope = buildScope({
+      quotationCurrencyFindOne: jest.fn(async () => null),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({ authContext, body: body() });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'CURRENCY_REFERENCE_NOT_FOUND',
+    });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+  });
+
+  it('allows an empty tax accountingCode when the resolved tax policy row exists', async () => {
+    const scope = buildScope({
+      taxPolicyFindOne: jest.fn(async () => ({
+        id: 'tp-1',
+        code: 'IR_VAT_9',
+        rateBasisPoints: '900',
+        dutyRateBasisPoints: '0',
+        isActive: true,
+        accountingCode: '',
+      })),
+      quotationCurrencyFindOne: jest.fn(async () => ({
+        id: 'cur-irr',
+        code: 'IRR',
+        accountingCode: '',
+      })),
+    });
+    const { service } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({ authContext, body: body() });
+
+    expect(result).toMatchObject({ kind: 'SAVED', quotationId: 'q-1' });
+    expect(scope.getRepository('quotation').insert.mock.calls[0][0]).toMatchObject({
+      taxPolicyRecordId: 'tp-1',
+      taxAccountingCode: '',
+      quotationCurrencyRecordId: 'cur-irr',
+      currencyAccountingCode: '',
+    });
+  });
+
   it('writes the header and every line inside one transaction', async () => {
     const scope = buildScope();
     const { service, workspaceOrmManager } = buildService({

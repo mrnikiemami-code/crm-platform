@@ -153,4 +153,24 @@ describePg('WS2 accounting-code advisory locks (real PostgreSQL)', () => {
 
     expect(empty.rows).toHaveLength(0);
   }, 15000);
+
+  it('rolls back a fail-closed snapshot refusal without leaving a draft row', async () => {
+    await setup.query(`
+      CREATE TEMP TABLE IF NOT EXISTS ws2_draft_write (
+        id text PRIMARY KEY,
+        "taxAccountingCode" text NOT NULL DEFAULT ''
+      )
+    `);
+    await setup.query('DELETE FROM ws2_draft_write');
+    await setup.query('BEGIN');
+    await setup.query(
+      `INSERT INTO ws2_draft_write (id, "taxAccountingCode") VALUES ('q-draft', '')`,
+    );
+    // Simulate fail-closed refusal after locks: abort instead of committing blank code.
+    await setup.query('ROLLBACK');
+
+    const { rows } = await setup.query(`SELECT id FROM ws2_draft_write`);
+
+    expect(rows).toHaveLength(0);
+  }, 15000);
 });
