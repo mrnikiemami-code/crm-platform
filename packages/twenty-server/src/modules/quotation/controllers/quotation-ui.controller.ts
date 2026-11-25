@@ -16,13 +16,16 @@ import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
-import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
+import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
+import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
+import { QuotationCurrencyAuthorityService } from 'src/modules/quotation/services/quotation-currency-authority.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 import { type TaxPolicyMutationOutcome } from 'src/modules/quotation/types/tax-policy.type';
+import { type QuotationCurrencyMutationOutcome } from 'src/modules/quotation/types/quotation-currency.type';
 import { type AccountingConnectionOutcome } from 'src/modules/quotation/types/accounting-connection.type';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
 
@@ -39,6 +42,7 @@ type QuotationUiActionBody = {
   name?: unknown;
   ratePercentText?: unknown;
   dutyRatePercentText?: unknown;
+  accountingCodeText?: unknown;
   isActive?: unknown;
   isDefault?: unknown;
   isExempt?: unknown;
@@ -61,6 +65,10 @@ const ALLOWED_ACTIONS = new Set([
   'tax-policy-set-default',
   'tax-policy-deactivate',
   'tax-policy-delete',
+  'quotation-currency-list',
+  'quotation-currency-bootstrap',
+  'quotation-currency-save',
+  'quotation-currency-set-default',
   'accounting-settings-authority',
   'accounting-connection-list',
   'accounting-connection-save',
@@ -76,6 +84,12 @@ const TAX_POLICY_MUTATING_ACTIONS = new Set([
   'tax-policy-set-default',
   'tax-policy-deactivate',
   'tax-policy-delete',
+]);
+
+const QUOTATION_CURRENCY_MUTATING_ACTIONS = new Set([
+  'quotation-currency-bootstrap',
+  'quotation-currency-save',
+  'quotation-currency-set-default',
 ]);
 
 const readBoolean = (value: unknown, fallback: boolean): boolean =>
@@ -95,6 +109,7 @@ export class QuotationUiController {
     private readonly quotationShareService: QuotationShareService,
     private readonly quotationDraftPersistenceService: QuotationDraftPersistenceService,
     private readonly taxPolicyAuthorityService: TaxPolicyAuthorityService,
+    private readonly quotationCurrencyAuthorityService: QuotationCurrencyAuthorityService,
     private readonly quotationPermissionService: QuotationPermissionService,
     private readonly accountingConnectionAuthorityService: AccountingConnectionAuthorityService,
   ) {}
@@ -118,6 +133,10 @@ export class QuotationUiController {
 
     if (action.startsWith('tax-policy-')) {
       return this.handleTaxPolicyAction({ action, body, authContext });
+    }
+
+    if (action.startsWith('quotation-currency-')) {
+      return this.handleQuotationCurrencyAction({ action, body, authContext });
     }
 
     // Read-only authority probe for the standalone settings page. It answers whether the
@@ -383,6 +402,7 @@ export class QuotationUiController {
           name: readText(body.name),
           ratePercentText: readText(body.ratePercentText),
           dutyRatePercentText: readText(body.dutyRatePercentText),
+          accountingCodeText: readText(body.accountingCodeText),
           isActive: readBoolean(body.isActive, true),
           isDefault: body.isDefault === true,
         },
@@ -409,6 +429,109 @@ export class QuotationUiController {
     }
 
     return this.taxPolicyAuthorityService.deactivatePolicy(recordId, authContext);
+  }
+
+  private async handleQuotationCurrencyAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<unknown> {
+    try {
+      if (QUOTATION_CURRENCY_MUTATING_ACTIONS.has(action)) {
+        const authority =
+          await this.quotationCurrencyAuthorityService.resolveAuthority(
+            authContext,
+          );
+
+        if (authority === null) {
+          return {
+            success: false,
+            code: 'TAX_SETTINGS_FORBIDDEN',
+            message: persianMessageForQuotationCode('TAX_SETTINGS_FORBIDDEN'),
+          };
+        }
+      }
+
+      const outcome = await this.runQuotationCurrencyAction({
+        action,
+        body,
+        authContext,
+      });
+
+      if (outcome.kind !== 'OK') {
+        return {
+          success: false,
+          code: outcome.code,
+          message: outcome.message,
+        };
+      }
+
+      const defaultCurrency =
+        outcome.currencies.find(
+          (currency) => currency.isActive && currency.isDefault,
+        ) ??
+        outcome.currencies.find((currency) => currency.isActive) ??
+        null;
+
+      return {
+        success: true,
+        currencies: outcome.currencies,
+        defaultCode: defaultCurrency?.code ?? null,
+        message: outcome.message,
+      };
+    } catch (error) {
+      return this.quotationUiService.toPersianFailure(error);
+    }
+  }
+
+  private runQuotationCurrencyAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<QuotationCurrencyMutationOutcome> {
+    if (action === 'quotation-currency-list') {
+      return this.quotationCurrencyAuthorityService.listCurrencies(authContext);
+    }
+
+    if (action === 'quotation-currency-bootstrap') {
+      return this.quotationCurrencyAuthorityService.bootstrap(authContext);
+    }
+
+    if (action === 'quotation-currency-save') {
+      return this.quotationCurrencyAuthorityService.saveCurrency(
+        {
+          recordId: readText(body.recordId) || null,
+          name: readText(body.name),
+          accountingCodeText: readText(body.accountingCodeText),
+          isActive: readBoolean(body.isActive, true),
+          isDefault: body.isDefault === true,
+        },
+        authContext,
+      );
+    }
+
+    const recordId = readText(body.recordId);
+
+    if (recordId === '') {
+      return Promise.resolve({
+        kind: 'REFUSED',
+        code: 'QUOTATION_CURRENCY_REQUIRED',
+        message: 'ارز را انتخاب کنید',
+      });
+    }
+
+    return this.quotationCurrencyAuthorityService.setDefaultCurrency(
+      recordId,
+      authContext,
+    );
   }
 
   // The accounting surface separates two questions: "may this caller see the

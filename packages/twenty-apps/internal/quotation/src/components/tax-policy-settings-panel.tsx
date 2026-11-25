@@ -7,6 +7,7 @@ import {
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import { TAX_POLICIES_ROUTE, callAppRoute } from 'src/components/quotation-api';
+import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
 import {
   formatExactDecimalForPeople,
   toPersianDigits,
@@ -28,6 +29,7 @@ type TaxPolicyRow = {
   ratePercent: string;
   dutyRatePercent: string;
   totalRatePercent: string;
+  accountingCode: string;
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
@@ -39,6 +41,7 @@ type EditorState = {
   name: string;
   ratePercentText: string;
   dutyPercentText: string;
+  accountingCodeText: string;
   isActive: boolean;
 };
 
@@ -74,6 +77,8 @@ const readRows = (data: Record<string, unknown>): TaxPolicyRow[] => {
             : typeof row.ratePercent === 'string'
               ? row.ratePercent
               : '',
+        accountingCode:
+          typeof row.accountingCode === 'string' ? row.accountingCode : '',
         isActive: row.isActive !== false,
         isDefault: row.isDefault === true,
         isExempt: row.isExempt === true,
@@ -89,6 +94,7 @@ const emptyEditor = (): EditorState => ({
   name: '',
   ratePercentText: '',
   dutyPercentText: '0',
+  accountingCodeText: '',
   isActive: true,
 });
 
@@ -97,6 +103,7 @@ const editorFor = (row: TaxPolicyRow): EditorState => ({
   name: row.name,
   ratePercentText: row.ratePercent,
   dutyPercentText: row.dutyRatePercent,
+  accountingCodeText: row.accountingCode,
   isActive: row.isActive,
 });
 
@@ -135,6 +142,7 @@ const sameEditor = (left: EditorState, right: EditorState): boolean =>
   left.name === right.name &&
   left.ratePercentText === right.ratePercentText &&
   left.dutyPercentText === right.dutyPercentText &&
+  left.accountingCodeText === right.accountingCodeText &&
   left.isActive === right.isActive;
 
 const rateFieldIssue = (text: string): string | null => {
@@ -412,6 +420,7 @@ export const TaxPolicySettingsPanel = () => {
         name: editor.name,
         ratePercentText: editor.ratePercentText,
         dutyRatePercentText: editor.dutyPercentText,
+        accountingCodeText: editor.accountingCodeText,
         isActive: editor.isActive,
       },
       'سیاست مالیات ذخیره شد',
@@ -466,6 +475,7 @@ export const TaxPolicySettingsPanel = () => {
         name: row.name,
         ratePercentText: row.ratePercent,
         dutyRatePercentText: row.dutyRatePercent,
+        accountingCodeText: row.accountingCode,
         isActive: true,
       },
       'سیاست مالیات فعال شد',
@@ -1077,6 +1087,29 @@ export const TaxPolicySettingsPanel = () => {
                   هر دو نرخ صفر یعنی معاف از مالیات.
                 </p>
 
+                <div className="tax-field">
+                  <label htmlFor="tax-policy-accounting-code">
+                    کد حسابداری (اختیاری)
+                  </label>
+                  <input
+                    id="tax-policy-accounting-code"
+                    value={editor.accountingCodeText}
+                    dir="ltr"
+                    placeholder="خالی = بدون کد"
+                    maxLength={64}
+                    onChange={(event) =>
+                      updateEditor({
+                        ...editor,
+                        accountingCodeText: event.target.value,
+                      })
+                    }
+                  />
+                  <span className="tax-hint">
+                    یک کد برای کل سیاست (مالیات و عوارض). در فرم پیش‌فاکتور
+                    قابل ویرایش نیست.
+                  </span>
+                </div>
+
                 <div className="tax-computed" aria-live="polite">
                   <span>نرخ کل (جمع خودکار)</span>
                   <strong>
@@ -1226,6 +1259,7 @@ export const TaxPolicySettingsPanel = () => {
           )}
         </div>
       )}
+      <QuotationCurrencySettingsSection />
     </div>
   );
 };

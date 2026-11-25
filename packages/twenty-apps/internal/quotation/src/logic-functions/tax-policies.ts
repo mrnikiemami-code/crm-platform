@@ -46,6 +46,7 @@ const describePolicy = (
   isActive: entry.isActive,
   isDefault: entry.isDefault,
   isExempt: entry.isExempt,
+  accountingCode: entry.accountingCode ?? '',
   quotationCount: usage.get(entry.id) ?? 0,
 });
 
@@ -105,6 +106,7 @@ const handler = async (event: RoutePayload<unknown>) => {
           name: readString(body.name),
           ratePercentText: readString(body.ratePercentText),
           dutyRatePercentText: readString(body.dutyRatePercentText),
+          accountingCodeText: readString(body.accountingCodeText),
           isActive: readBoolean(body.isActive, true),
           isDefault: body.isDefault === true,
         },

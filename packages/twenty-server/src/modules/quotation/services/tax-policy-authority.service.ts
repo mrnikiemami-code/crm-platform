@@ -17,6 +17,7 @@ import {
   type WorkspaceTaxPolicyRow,
   type WorkspaceTaxPolicyView,
 } from 'src/modules/quotation/types/tax-policy.type';
+import { parseAccountingCodeInput } from 'src/modules/quotation/utils/parse-accounting-code.util';
 import {
   formatBasisPointsAsPercent,
   parseTaxRatePercent,
@@ -45,6 +46,7 @@ const POLICY_COLUMNS = {
   isActive: true,
   isDefault: true,
   isExempt: true,
+  accountingCode: true,
 } as const;
 
 const refused = (
@@ -104,6 +106,7 @@ const toView = (row: WorkspaceTaxPolicyRow): WorkspaceTaxPolicyView | null => {
     // zero, which is the only thing the arithmetic can honour. A stored flag that
     // disagrees with the rates would describe a price the document does not carry.
     isExempt: taxBasisPoints === BigInt(0) && dutyBasisPoints === BigInt(0),
+    accountingCode: readText(row.accountingCode),
     quotationCount: 0,
   };
 };
@@ -153,6 +156,7 @@ export class TaxPolicyAuthorityService {
             name: BASELINE_POLICY.name,
             rateBasisPoints: BASELINE_POLICY.rateBasisPoints.toString(),
             dutyRateBasisPoints: BASELINE_POLICY.dutyRateBasisPoints.toString(),
+            accountingCode: '',
             isActive: true,
             isDefault: true,
             isExempt: false,
@@ -217,6 +221,12 @@ export class TaxPolicyAuthorityService {
 
         if (!dutyRate.ok) {
           return refused(dutyRate.code, dutyRate.message);
+        }
+
+        const accountingCode = parseAccountingCodeInput(input.accountingCodeText);
+
+        if (!accountingCode.ok) {
+          return refused(accountingCode.code, accountingCode.message);
         }
 
         // Each component is a percentage and so is their sum: two valid components
@@ -289,6 +299,7 @@ export class TaxPolicyAuthorityService {
           name,
           rateBasisPoints: rate.rateBasisPoints.toString(),
           dutyRateBasisPoints: dutyRate.rateBasisPoints.toString(),
+          accountingCode: accountingCode.accountingCode,
           isActive: input.isActive,
           isDefault: shouldBeDefault,
           isExempt,

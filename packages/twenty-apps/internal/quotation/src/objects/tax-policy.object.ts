@@ -116,5 +116,19 @@ export default defineObject({
       isUIEditable: false,
       defaultValue: false,
     },
+    {
+      // Optional CRM ledger code for the whole policy (tax + duty share one code).
+      // Authored only here — never on the quotation form and never as a connection map.
+      universalIdentifier: TAX_POLICY_FIELDS.accountingCode,
+      type: FieldType.TEXT,
+      name: 'accountingCode',
+      label: 'کد حسابداری',
+      description:
+        'کد دفتر کل این سیاست (اختیاری). خالی مجاز است؛ پس از نخستین Snapshot غیرخالی روی پیش‌فاکتور قفل می‌شود.',
+      icon: 'IconHash',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: "''",
+    },
   ],
 });

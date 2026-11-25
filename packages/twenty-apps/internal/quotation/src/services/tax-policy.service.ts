@@ -79,6 +79,7 @@ export const parseTaxPolicyRecord = (
     label: readText(node.name) || code,
     rateBasisPoints: rate.value,
     dutyRateBasisPoints: dutyRate.value,
+    accountingCode: readText(node.accountingCode),
     isExempt: readBoolean(
       node.isExempt,
       rate.value === BigInt(0) && dutyRate.value === BigInt(0),
@@ -117,6 +118,7 @@ const parseServerPolicy = (
       name: row.name,
       rateBasisPoints: row.rateBasisPoints,
       dutyRateBasisPoints: row.dutyRateBasisPoints,
+      accountingCode: row.accountingCode,
       isActive: row.isActive,
       isDefault: row.isDefault,
       isExempt: row.isExempt,
@@ -159,6 +161,8 @@ export type SaveTaxPolicyInput = {
   // Optional so an existing caller that only knows about tax keeps working: an omitted
   // duty means "no duty", which is what a policy written before duty existed carries.
   dutyRatePercentText?: string;
+  // Optional CRM ledger code; empty clears / leaves unset.
+  accountingCodeText?: string;
   isActive: boolean;
   isDefault: boolean;
 };
@@ -174,6 +178,7 @@ export const saveTaxPolicy = (
       name: input.name,
       ratePercentText: input.ratePercentText,
       dutyRatePercentText: input.dutyRatePercentText ?? '',
+      accountingCodeText: input.accountingCodeText ?? '',
       isActive: input.isActive,
       isDefault: input.isDefault,
     },

@@ -75,6 +75,19 @@ export default defineObject({
       ],
     },
     {
+      // CRM ledger code on the item itself. Matching to a destination still uses
+      // accountingItemLink.externalItemId — this field must never become that key.
+      universalIdentifier: CATALOG_ITEM_FIELDS.accountingCode,
+      type: FieldType.TEXT,
+      name: 'accountingCode',
+      label: 'کد حسابداری',
+      description:
+        'کد دفتر کل کالا/خدمت در CRM (اختیاری). با شناسهٔ مقصد در پیوند حسابداری یکی نیست.',
+      icon: 'IconHash',
+      isNullable: true,
+      defaultValue: "''",
+    },
+    {
       universalIdentifier: CATALOG_ITEM_FIELDS.sku,
       type: FieldType.TEXT,
       name: 'sku',

@@ -39,10 +39,11 @@ These clauses are **binding**. They close prior open decisions as listed below.
 - No issuer edit of snapshotted codes; not shown as editable line settings.
 - Server resolves codes from references at save; non-empty reference ⇒ mandatory persist; empty ⇒ empty allowed.
 
-### C4 — Lock
+### C4 — Lock (Q-LOCK-1 Option A — ratified)
 
-- First successful save (incl. DRAFT) that uses a tax policy or currency reference locks that reference’s `accountingCode` mutation (by **entity id**).
-- Server + DB transaction + deterministic concurrency tests.
+- First successful save (incl. DRAFT) that **snapshots a non-empty** `accountingCode` for a tax policy or currency reference locks that reference’s `accountingCode` mutation (by **entity id**).
+- Empty→set remains allowed until that first non-empty snapshot; thereafter any change is refused (`ACCOUNTING_CODE_IN_USE`).
+- Server + DB transaction + deterministic concurrency tests (WS2).
 - **Does not** auto-extend to item/person/company codes.
 
 ### C5 — Item / party codes
@@ -137,14 +138,13 @@ Line: `taxPolicy`, `taxRateBasisPoints`, `dutyRateBasisPoints`, snapshotted `tax
 
 Document select from catalog (IRR only in phase 1); lines copy header `currencyCode`; snapshot `currencyAccountingCode` when set.
 
-### F6 — Lock concurrency (WS2)
-
-Proposal (needs architect confirm = former D-023-6):
+### F6 — Lock concurrency (WS2) — Q-LOCK-2 dual keys ratified
 
 1. Keep TAX-008 key `quotation-tax-policy:{workspaceId}` as first lock on draft save and policy mutations (ordering unchanged).
-2. Add `quotation-currency-catalog:{workspaceId}` shared/exclusive for currency accountingCode mutations vs draft.
-3. Usage detection: existence of any quotation (any status) whose snapshotted reference id matches the entity — **by id columns**, not by comparing code strings.
-4. Empty→non-empty before first use remains allowed; after lock, any `accountingCode` change refused (`ACCOUNTING_CODE_IN_USE`).
+2. Add `quotation-currency-catalog:{workspaceId}` shared/exclusive for currency catalog / accountingCode mutations vs draft.
+3. Usage / lock trigger (C4 Option A): a reference id is locked only when a quotation (any status) has persisted a **non-empty** snapshotted accounting code for that reference — detected by **reference id** (not code-text equality).
+4. Empty→non-empty before first non-empty snapshot remains allowed; after lock, any `accountingCode` change refused (`ACCOUNTING_CODE_IN_USE`).
+5. WS1 creates the currency advisory lock helper for catalog mutations; enforcement of C4 usage checks ships in WS2 with snapshot columns.
 
 ### F7 — Settings (WS5)
 

@@ -19,6 +19,7 @@ const { snackbarMock } = vi.hoisted(() => ({ snackbarMock: vi.fn() }));
 
 vi.mock('src/components/quotation-api', () => ({
   TAX_POLICIES_ROUTE: '/quotation/tax-policies',
+  QUOTATION_CURRENCIES_ROUTE: '/quotation/currencies',
   callAppRoute: callAppRouteMock,
 }));
 
@@ -33,6 +34,7 @@ type PolicyFixture = {
   ratePercent: string;
   dutyRatePercent: string;
   totalRatePercent: string;
+  accountingCode: string;
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
@@ -46,6 +48,7 @@ const policy = (overrides: Partial<PolicyFixture> = {}): PolicyFixture => ({
   ratePercent: '10',
   dutyRatePercent: '0',
   totalRatePercent: '10',
+  accountingCode: '',
   isActive: true,
   isDefault: false,
   isExempt: false,
@@ -55,6 +58,23 @@ const policy = (overrides: Partial<PolicyFixture> = {}): PolicyFixture => ({
 
 const catalog = (policies: PolicyFixture[]) => ({
   data: { success: true, policies, defaultCode: null },
+});
+
+const currencyCatalog = () => ({
+  data: {
+    success: true,
+    currencies: [
+      {
+        recordId: 'cur-1',
+        code: 'IRR',
+        name: 'ریال ایران',
+        isDefault: true,
+        isActive: true,
+        accountingCode: '',
+      },
+    ],
+    defaultCode: 'IRR',
+  },
 });
 
 const ledger = (): HTMLElement => {
@@ -90,7 +110,13 @@ const rowOf = (name: string): HTMLElement => {
 beforeEach(() => {
   callAppRouteMock.mockReset();
   snackbarMock.mockReset();
-  callAppRouteMock.mockResolvedValue(catalog([policy({ isDefault: true })]));
+  callAppRouteMock.mockImplementation(async (route: string) => {
+    if (route === '/quotation/currencies') {
+      return currencyCatalog();
+    }
+
+    return catalog([policy({ isDefault: true })]);
+  });
 });
 
 afterEach(cleanup);
@@ -471,6 +497,7 @@ describe('tax policy settings panel', () => {
         name: 'مالیات ۱۰٪',
         ratePercentText: '10',
         dutyRatePercentText: '0',
+        accountingCodeText: '',
         isActive: true,
       },
     );

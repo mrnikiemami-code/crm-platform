@@ -13,6 +13,7 @@ export type WorkspaceTaxPolicyRow = {
   isActive: boolean | null;
   isDefault: boolean | null;
   isExempt: boolean | null;
+  accountingCode: string | null;
 };
 
 // What the settings route returns. `recordId` is the row id; `code` is the stable
@@ -34,6 +35,8 @@ export type WorkspaceTaxPolicyView = {
   // Derived on the server from the two rates being zero: an exemption is the arithmetic
   // fact of a 0% policy, never a separate choice an operator can tick against a rate.
   isExempt: boolean;
+  // Optional CRM ledger code for the whole policy (tax + duty). Empty allowed.
+  accountingCode: string;
   // Live quotations that name this policy. Produced by the same read that produces the
   // row, so the list and the delete refusal cannot disagree.
   quotationCount: number;
@@ -49,6 +52,8 @@ export type SaveTaxPolicyInput = {
   ratePercentText: string;
   // The duty component of the same policy. Empty means zero duty.
   dutyRatePercentText: string;
+  // Optional CRM ledger code; empty clears / leaves unset. Lock-on-use is WS2.
+  accountingCodeText: string;
   isActive: boolean;
   isDefault: boolean;
 };

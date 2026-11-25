@@ -9,6 +9,7 @@ const TAX_POLICY_FIELDS = `
   code
   rateBasisPoints
   dutyRateBasisPoints
+  accountingCode
   isDefault
   isActive
   isExempt

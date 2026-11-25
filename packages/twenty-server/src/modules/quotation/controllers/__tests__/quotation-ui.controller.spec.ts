@@ -50,6 +50,30 @@ const buildController = ({
     deactivatePolicy: jest.fn(async () => ({ kind: 'OK', policies: [], message: '' })),
   };
 
+  const quotationCurrencyAuthorityService = {
+    resolveAuthority: jest.fn(async () => authority),
+    listCurrencies: jest.fn(async () => ({
+      kind: 'OK',
+      currencies: [],
+      message: '',
+    })),
+    bootstrap: jest.fn(async () => ({
+      kind: 'OK',
+      currencies: [],
+      message: '',
+    })),
+    saveCurrency: jest.fn(async () => ({
+      kind: 'OK',
+      currencies: [],
+      message: '',
+    })),
+    setDefaultCurrency: jest.fn(async () => ({
+      kind: 'OK',
+      currencies: [],
+      message: '',
+    })),
+  };
+
   const controller = new QuotationUiController(
     { toPersianFailure: jest.fn(() => ({ success: false, code: 'PERSISTENCE_FAILED' })) } as never,
     {} as never,
@@ -57,11 +81,12 @@ const buildController = ({
     {} as never,
     { saveDraft: saveDraft ?? jest.fn() } as never,
     taxPolicyAuthorityService as never,
+    quotationCurrencyAuthorityService as never,
     { resolveSettingsAuthority: jest.fn(async () => authority) } as never,
     {} as never,
   );
 
-  return { controller, taxPolicyAuthorityService };
+  return { controller, taxPolicyAuthorityService, quotationCurrencyAuthorityService };
 };
 
 const policy = {
@@ -139,6 +164,7 @@ describe('QuotationUiController tax settings boundary', () => {
         name: 'مالیات ۹٪',
         ratePercentText: '۹',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: true,
         isDefault: true,
       },

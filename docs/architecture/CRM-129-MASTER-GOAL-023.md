@@ -75,11 +75,12 @@ Forbidden in the quotation UI:
 
 Operator selects **policy** and **currency** only. Codes are resolved from reference records and written into snapshot/storage automatically. If the reference code is set, saving it on the document is mandatory; if unset, empty snapshot is allowed.
 
-### C4 — Code lock
+### C4 — Code lock (Q-LOCK-1 Option A)
 
-- From the **first successful quotation save**, including **DRAFT**, a used tax-policy or currency **reference id** locks mutation of that reference’s `accountingCode`.
-- Server refuses post-use edits; draft-save vs code-edit races are transactional and tested.
-- Lock key is the **reference entity id** (policy id / currency id), not string equality of the code text.
+- From the **first successful quotation save** (including **DRAFT**) that **persists a non-empty** tax-policy or currency `accountingCode` onto the document/snapshot, that reference’s `accountingCode` becomes immutable.
+- Empty reference codes may still be set later until the first non-empty snapshot for that reference id.
+- Server refuses post-lock edits; draft-save vs code-edit races are transactional and tested (WS2).
+- Lock is keyed by **reference entity id** (policy id / currency id), not by comparing code text.
 - Item and customer code locks are **out of scope** until a separate contract; do not fold them into C4 by implication.
 
 ### C5 — Items and customers

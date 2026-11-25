@@ -45,6 +45,17 @@ import { TaxPolicyRestoreManyPreQueryHook } from 'src/modules/quotation/query-ho
 import { TaxPolicyRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-restore-one.pre-query.hook';
 import { TaxPolicyUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-update-many.pre-query.hook';
 import { TaxPolicyUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/tax-policy-update-one.pre-query.hook';
+import { QuotationCurrencyCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-create-many.pre-query.hook';
+import { QuotationCurrencyCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-create-one.pre-query.hook';
+import { QuotationCurrencyDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-delete-many.pre-query.hook';
+import { QuotationCurrencyDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-delete-one.pre-query.hook';
+import { QuotationCurrencyDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-destroy-many.pre-query.hook';
+import { QuotationCurrencyDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-destroy-one.pre-query.hook';
+import { QuotationCurrencyMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-merge-many.pre-query.hook';
+import { QuotationCurrencyRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-restore-many.pre-query.hook';
+import { QuotationCurrencyRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-restore-one.pre-query.hook';
+import { QuotationCurrencyUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-update-many.pre-query.hook';
+import { QuotationCurrencyUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-update-one.pre-query.hook';
 import { QuotationUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-many.pre-query.hook';
 import { QuotationUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-update-one.pre-query.hook';
 import { QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
@@ -53,6 +64,7 @@ import { QuotationPermissionService } from 'src/modules/quotation/services/quota
 import { QuotationRevisionService } from 'src/modules/quotation/services/quotation-revision.service';
 import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/services/quotation-revision-write-guard.service';
 import { AccountingConnectionWriteGuardService } from 'src/modules/quotation/services/accounting-connection-write-guard.service';
+import { QuotationCurrencyWriteGuardService } from 'src/modules/quotation/services/quotation-currency-write-guard.service';
 import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-policy-write-guard.service';
 
 @Module({
@@ -65,6 +77,7 @@ import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-p
     QuotationRevisionWriteGuardService,
     AccountingConnectionWriteGuardService,
     TaxPolicyWriteGuardService,
+    QuotationCurrencyWriteGuardService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
     QuotationDeleteOnePreQueryHook,
@@ -100,6 +113,17 @@ import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-p
     TaxPolicyRestoreOnePreQueryHook,
     TaxPolicyRestoreManyPreQueryHook,
     TaxPolicyMergeManyPreQueryHook,
+    QuotationCurrencyCreateOnePreQueryHook,
+    QuotationCurrencyCreateManyPreQueryHook,
+    QuotationCurrencyUpdateOnePreQueryHook,
+    QuotationCurrencyUpdateManyPreQueryHook,
+    QuotationCurrencyDeleteOnePreQueryHook,
+    QuotationCurrencyDeleteManyPreQueryHook,
+    QuotationCurrencyDestroyOnePreQueryHook,
+    QuotationCurrencyDestroyManyPreQueryHook,
+    QuotationCurrencyRestoreOnePreQueryHook,
+    QuotationCurrencyRestoreManyPreQueryHook,
+    QuotationCurrencyMergeManyPreQueryHook,
     AccountingConnectionCreateOnePreQueryHook,
     AccountingConnectionCreateManyPreQueryHook,
     AccountingConnectionUpdateOnePreQueryHook,

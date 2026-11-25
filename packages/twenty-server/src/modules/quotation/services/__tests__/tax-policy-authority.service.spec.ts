@@ -1,4 +1,4 @@
-import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+﻿import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 
 const authContext = {
@@ -18,6 +18,8 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   code: 'IR_VAT_9',
   name: 'مالیات بر ارزش افزوده ۹٪',
   rateBasisPoints: '900',
+  dutyRateBasisPoints: '0',
+  accountingCode: '',
   isActive: true,
   isDefault: false,
   isExempt: false,
@@ -272,6 +274,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'معاف',
         ratePercentText: '۰',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: true,
         isDefault: false,
       },
@@ -297,6 +300,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'مالیات ۵٫۵٪ + عوارض ۲٫۱٪',
         ratePercentText: '۵٫۵',
         dutyRatePercentText: '۲٫۱',
+        accountingCodeText: '',
         isActive: true,
         isDefault: false,
       },
@@ -335,6 +339,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'مالیات ۱۰٫۵٪',
         ratePercentText: '۱۰٫۵',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: true,
         isDefault: false,
       },
@@ -376,6 +381,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'مالیات ۱۰٪',
         ratePercentText: '۱۰',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: true,
         isDefault: true,
       },
@@ -414,6 +420,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'مالیات ۱۰٪',
         ratePercentText: '۱۰',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: true,
         isDefault: false,
       },
@@ -438,6 +445,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'غیرفعال',
         ratePercentText: '۱۰',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: false,
         isDefault: false,
       },
@@ -465,6 +473,7 @@ describe('TaxPolicyAuthorityService', () => {
         name: 'مالیات ۱۲٪',
         ratePercentText: '۱۲',
         dutyRatePercentText: '',
+        accountingCodeText: '',
         isActive: true,
         isDefault: false,
       },
@@ -500,6 +509,7 @@ describe('TaxPolicyAuthorityService', () => {
           name: 'تازه',
           ratePercentText: '۱۰',
           dutyRatePercentText: '',
+        accountingCodeText: '',
           isActive: true,
           isDefault: false,
         },

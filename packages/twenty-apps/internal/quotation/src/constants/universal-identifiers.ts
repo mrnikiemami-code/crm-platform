@@ -41,6 +41,8 @@ export const CATALOG_ITEM_FIELDS = {
   unit: '449dc01c-cebc-5569-a9ea-9911dd29cfbb',
   isActive: '86622cae-9041-5a26-80f2-5cf238591f94',
   description: '609565c6-b1ed-5653-b6eb-b2f2e6f9a6cc',
+  // CRM ledger code on the item record — distinct from accountingItemLink.externalItemId.
+  accountingCode: '09915dea-e499-5c01-9ebd-efa2a7fb639a',
 } as const;
 
 export const PRICE_LIST_FIELDS = {
@@ -404,7 +406,29 @@ export const TAX_POLICY_FIELDS = {
   isDefault: 'c56c91eb-166a-583b-a518-3a5f207b2dc7',
   isActive: '6544a8f9-7dca-5d94-a89f-6198e390f912',
   isExempt: '9fab9fe7-53f3-5c4f-a705-1e2a273dfa9a',
+  // Optional CRM ledger code for the whole policy (tax + duty). Locked after first
+  // non-empty snapshot on a saved quotation (WS2); empty is allowed.
+  accountingCode: '9de3f65b-9b9e-5756-819a-d900de12c04a',
 } as const;
+
+// Workspace currency catalog (Goal 023 WS1). Ids frozen in CRM-129-GOAL-023-WS1-PREFLIGHT.
+export const QUOTATION_CURRENCY_OBJECT_UNIVERSAL_IDENTIFIER =
+  '905a687c-fa42-5b47-87d0-e46e0fe15b07';
+
+export const QUOTATION_CURRENCY_FIELDS = {
+  code: '8512c1f2-391f-5bfb-beb9-3a009d1739b0',
+  name: '4ec6e6b6-b43e-5151-8502-eb86c4a517fb',
+  isDefault: '00329b00-d27c-5ab1-b116-23373ac39817',
+  isActive: 'dc76b7f7-944b-5860-ab2d-221aec22a268',
+  accountingCode: '46b1a49d-2088-500e-927c-f07eac565185',
+} as const;
+
+// App-owned fields on standard person / company (defineField). Distinct from vendor
+// party-link external ids.
+export const PERSON_ACCOUNTING_CODE_FIELD_UNIVERSAL_IDENTIFIER =
+  '32280b01-034c-5850-852f-70ea15cb13f0';
+export const COMPANY_ACCOUNTING_CODE_FIELD_UNIVERSAL_IDENTIFIER =
+  '741b9dfc-2eda-5aa5-ae92-908ffae0ed6b';
 
 export const TAX_POLICY_SETTINGS_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
   '09605adf-c6e9-5f95-98b1-5258c2e633a3';
@@ -424,6 +448,8 @@ export const TAX_POLICY_SETTINGS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER =
   'cf90d325-8207-58fb-b1bd-32e7ea768f4a';
 export const TAX_POLICIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '8520069f-3d4f-5b37-85fa-7d170dd67038';
+export const QUOTATION_CURRENCIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'ad256883-27a5-5287-8658-be84ecf37850';
 
 // The workspace accounting settings surface. Same reason as the tax page above: the
 // fork hides Settings → Applications, so an independently reachable page with a sidebar

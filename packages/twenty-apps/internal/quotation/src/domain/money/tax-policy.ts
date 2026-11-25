@@ -87,6 +87,8 @@ export const resolveTaxPolicy = (
 
 // A configured policy row, as the settings page reads it from the workspace.
 export type TaxPolicyCatalogEntry = TaxPolicyDefinition & {
+  // Optional CRM ledger code for the policy (tax + duty). Empty string when unset.
+  accountingCode?: string;
   recordId: string;
   isActive: boolean;
   isDefault: boolean;

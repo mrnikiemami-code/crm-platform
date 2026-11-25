@@ -12,6 +12,7 @@ import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pd
 import { QuotationShareService } from 'src/modules/quotation/services/quotation-share.service';
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
+import { QuotationCurrencyAuthorityService } from 'src/modules/quotation/services/quotation-currency-authority.service';
 import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
 import { AccountingDestinationProbeService } from 'src/modules/quotation/services/accounting-destination-probe.service';
 
@@ -31,6 +32,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
     QuotationShareService,
     QuotationDraftPersistenceService,
     TaxPolicyAuthorityService,
+    QuotationCurrencyAuthorityService,
     AccountingDestinationProbeService,
     AccountingConnectionAuthorityService,
   ],
