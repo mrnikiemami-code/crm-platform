@@ -1,6 +1,26 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-GOAL-023 / WS2 TECHNICALLY_VERIFIED (2026-11-25; ACTIVE; STOP_FOR_ARCHITECT)
+## CURRENT — CRM-129-GOAL-023 / WS2-R1 FAIL-CLOSED GATE; REAL-DEV-UI PRIORITY (2026-11-25)
+
+**Verified feature HEAD before this docs write:** `ce441d4365`. Goal 023 stays **ACTIVE / NOT COMPLETE**. **Single Cursor session only; no parallel work, new prototypes, or redesign.** Existing CRM quotation cards and accounting surfaces are the design authority, subject to targeted correction and user UAT.
+
+### Architect source review, WS2
+
+- WS1/R1 source accepted; WS2 reported Jest PASS and 3 local PostgreSQL tests, but **WS2 is NOT YET ARCHITECT_ACCEPTED**.
+- Found concrete **fail-open** issue in `packages/twenty-server/src/modules/quotation/services/quotation-draft-persistence.service.ts` `resolveAccountingSnapshot`: tax/currency catalog read exceptions are logged, but returned snapshot can remain blank. A missing reference row can also yield blank id/code. After WS1/WS2 are applied, draft saves must **fail closed** if a selected required reference is missing/unreadable, not silently save a blank code. Empty code is allowed **only when the actual resolved reference row exists and explicitly has no accountingCode**. Preserve backward-read behavior of historical sealed docs and safe pre-apply compatibility, but do not bypass fail-closed on new saves. Add regression/integration coverage for tax read failure, currency read failure, missing row, legitimate empty code, non-empty code, and transaction rollback.
+- Source review is not an independent execution of the agent-reported test suites. Schema/Dev Apply **not authorized yet**; prepare impact, collision and backup/rollback evidence for separate controlled approval.
+
+### Next execution request: WS2-R1 → WS3 → WS4 → real Dev user view
+
+1. Current single Cursor session repairs WS2 fail-open, validates lock/reference snapshot semantics, adds real DB tests, pushes code, updates Progress + Recovery, then **STOP_FOR_ARCHITECT**. Do not call WS2 accepted before source evidence is reviewed.
+2. Once WS2 passes that gate, WS3 is prioritized with **narrow architect-approved scope for Money Domain changes solely to support independent per-line tax and duty rates after existing Hamilton document discount allocation**. Freeze all other micros, IRR, rounding, discount allocation, legacy revision, PDF, and security invariants; do not rewrite money engine or introduce an FX model. Test two policies, default on new line, independent override, reopen, sealed revision and PDF agreement, and outbound refusal if adapter lacks multi-tax capability. Same existing quotation form/card UI; no tax/currency code fields.
+3. WS4: document-level IRR currency selection/default, inherited by every line; prepare but disable future per-line multi-currency and totals-by-currency capabilities. No cross-currency calculations.
+4. **First user-visible target** is the **real existing Dev form** on `:3002`, after gated controlled WS1–WS4 schema/app apply and smoke tests. Preserve existing UI. Stop at **USER_UAT**; do not continue to broad UI polish or WS5/WS6 until user has reviewed this milestone.
+5. No new UX prototypes, no new session, no unapproved apply, no real Asan/Sepidar requests or outbound enablement, no main worker restart or `:6080` changes. Final merge `feat/crm-129-quotation` → default `crm-platform` only after complete goal, security/data gates and explicit final approval; no force push.
+
+**Next action for a recovered chat:** inspect WS2-R1 result and exact diff, then open WS3. User explicitly requests fastest route to personally seeing the corrected **existing** form, not another design.
+
+## PRIOR CHECKPOINT — CRM-129-GOAL-023 / WS2 TECHNICALLY_VERIFIED (2026-11-25; ACTIVE; STOP_FOR_ARCHITECT)
 
 **Goal 023 remains ACTIVE and INCOMPLETE.** Feature branch `feat/crm-129-quotation`. Authoritative state: Progress board + this note + HEAD/diff + real tests. A Cursor PASS alone is not Goal completion.
 
