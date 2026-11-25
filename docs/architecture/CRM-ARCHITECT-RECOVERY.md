@@ -1,6 +1,28 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-ACCOUNTING-RETIRE-021-R1 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
+## CURRENT — CRM-129-FINANCIAL-CONTRACT-AND-UX-GOAL-023 (2026-11-25; **PLANNING ONLY** → `STOP_FOR_ARCHITECT`)
+
+Master Goal for a coherent quotation + accounting-settings system: one owner per accounting code, correct tax/currency snapshot, first-use code lock, per-line tax, phase-1 single currency with phase-2 hooks inactive, item/party codes on reference records, settings must not redefine tax/currency codes, Mock/Asan shared capability UI, professional Persian UX (technical PASS alone insufficient).
+
+### Normative docs (read at the start of every later CRM-129 task)
+
+| Doc | Path |
+|---|---|
+| Master Goal | `docs/architecture/CRM-129-MASTER-GOAL-023.md` |
+| Financial Contract + gap matrix | `docs/architecture/CRM-129-FINANCIAL-CONTRACT-023.md` |
+| Execution packs WS0–WS7 | `docs/architecture/CRM-129-EXECUTION-PLAN-023.md` |
+
+### Recovery baseline
+
+- Branch `feat/crm-129-quotation` @ `0fe64a9305` (RETIRE-021-R1) when Goal was defined.
+- **No** product/schema/data/deploy/outbound/worker/`:6080` change in this task.
+- Prior contracts preserved (Money, TAX-008/016, DEFAULT-020, RETIRE-021/R1, outbound flags off). Design pilot 017 rev-02 remains unapproved — not Design of Record.
+
+### Architect must still ratify before coding
+
+Open decisions D-023-1…6 in the Financial Contract (lock granularity, IRR-only phase 1, multi-tax outbound, person/company field vehicle, header tax denorm, lock key family). Then open packs per Execution Plan (recommended: WS7-A ∥ WS1).
+
+## PRIOR — CRM-129-ACCOUNTING-RETIRE-021-R1 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
 
 Close the retired-connection **history read** defect and document send/retire concurrency.
 
