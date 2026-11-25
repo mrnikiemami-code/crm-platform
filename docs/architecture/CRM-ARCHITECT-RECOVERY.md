@@ -1,6 +1,20 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-GOAL-023 / WS2-R1 TECHNICALLY_VERIFIED; STOP_FOR_ARCHITECT (2026-11-25)
+## CURRENT — GOAL 023 / WS2 ACCEPTED; WS3 OPEN WITH NARROW MONEY SCOPE (2026-11-25)
+
+**Source reviewed:** feature HEAD `b5e9e6da54` (immediately before this docs commit). Goal **ACTIVE / NOT COMPLETE**. Single Cursor session; no parallel agents. Main priority is an actual user-visible quotation form on **Dev :3002**, not another HTML design.
+
+**Architect ruling: WS2 + WS2-R1 = ARCHITECT_ACCEPTED for source contract.** Reviewed `CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md` and actual `resolveAccountingSnapshot` source. It now refuses tax/currency catalog read exceptions and missing required reference rows, while accepting truly empty accountingCode on a found reference. Source inspection only; Cursor-reported Jest draft 23 PASS and PostgreSQL 4 PASS have not been independently rerun. WS1 + R1 remain accepted for source. **Dev Schema/App Apply remains separately gated; neither WS2 approval nor WS3 approval means a deployment authorization.**
+
+**Architect ruling: WS3 implementation OPEN; narrow Money Domain permission granted solely for independent per-line tax/duty policies and rates after existing document-discount allocation.** Preserve money micros precision, Hamilton allocation, line/document discounts, rounding, IRR units, sealed revision immutability, legacy header tax behavior, PDF/API alignment and authorization. No other money redesign. Add per-line policy selector to EXISTING quotation cards; default auto-selected for new lines, override one line without mutating others. Freeze tax policy identity/rates and accounting code per line; no accounting-code input or read-only code display on draft. Multi-tax outbound fail-closed unless adapter capability proven. Must demonstrate reproducible two-policy/two-line arithmetic including duty + discounted lines, saved/reopened draft, sealed revision and Persian PDF. If new schema/contract choices expand beyond this scope, STOP_FOR_ARCHITECT.
+
+**Next path, serial:** WS3 implementation/test/proof → architect financial integrity review; WS4 document-level default IRR currency, line inheritance, feature-disabled phase-2 multi-currency hooks → architect review; controlled Dev schema/app apply only after distinct preflight approval and rollback/backups → smoke tests and **STOP_FOR_USER_UAT on the ACTUAL existing form**. Do not proceed to broad WS5/WS6 UX polish until user sees the form. Reuse existing Twenty shared UI, no prototype, no redesign or new design spending.
+
+**Safety:** No outbound enablement, no real Asan/Sepidar send, no :6080 or primary worker restart, no deletion of historical docs or mappings, no force push, no merge until Goal passes all gates. Retire↔inflight-send hard concurrency and historically exposed dev DB credential rotation remain separate unresolved risks.
+
+**Next recovered-chat action:** inspect exact WS3 commit/diff and evidence, and give architect decision; preserve Goal active and prioritize user UAT.
+
+## PRIOR CHECKPOINT — CRM-129-GOAL-023 / WS2-R1 TECHNICALLY_VERIFIED; STOP_FOR_ARCHITECT (2026-11-25)
 
 **Goal 023 stays ACTIVE / NOT COMPLETE.** Branch `feat/crm-129-quotation`. Recovery base `44c1951f83`. Single Cursor session; no prototypes/redesign; existing draft cards are design authority.
 
