@@ -1,8 +1,21 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-GOAL-023 / STOP REDESIGN + UX PACK A (2026-11-25; ACTIVE)
+## CURRENT — CRM-129-GOAL-023 / WS2 TECHNICALLY_VERIFIED (2026-11-25; ACTIVE; STOP_FOR_ARCHITECT)
 
 **Goal 023 remains ACTIVE and INCOMPLETE.** Feature branch `feat/crm-129-quotation`. Authoritative state: Progress board + this note + HEAD/diff + real tests. A Cursor PASS alone is not Goal completion.
+
+### Architect ruling (this session)
+
+| Decision | Ruling |
+|---|---|
+| WS1 + WS1-R1 | **`ARCHITECT_ACCEPTED`** (source review) |
+| WS2 | Implemented → **`TECHNICALLY_VERIFIED`** — see [`CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md) |
+| Dev Schema / App Apply | **Not authorized** until separate approval (app `0.1.54` prepared) |
+| Money Domain / WS3 | **Not authorized** until WS2 accept + explicit Money grant |
+
+## PRIOR — STOP REDESIGN + UX PACK A (2026-11-25; superseded as CURRENT by WS2 IMPLEMENT)
+
+Pack A UX micro-repairs + cancelled WS7-A product redesign. See Progress CP-UX-REPAIR-A.
 
 ### Mandatory recovery order (new chat / Cursor session)
 
@@ -50,14 +63,13 @@
 
 Full decision brief: [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md).
 
-### Next actions (serial) — STOP_FOR_ARCHITECT
+### Next actions (serial)
 
-1. Architect marks WS1 `ARCHITECT_ACCEPTED` (or amends) — before Dev Apply / WS2.
-2. Open **WS2** (snapshot + C4 lock by reference id).
-3. Open **WS3** only with **explicit Money Domain permission**: per-line tax on existing cards; header = default for new lines; C3 no accounting-code fields on draft.
-4. Open **WS4**: catalog-backed document currency; phase-1 IRR-only; keep تومان/ریال as display scale.
-5. Then WS5/WS6 remainder; **`STOP_FOR_USER_UAT`** on real Dev product (not static HTML).
-6. Final Goal close only after SC1–10 + USER_UAT + architect PR/merge. Default branch `crm-platform`; no force-push.
+1. Finish WS2 → `STOP_FOR_ARCHITECT` (no Dev Apply until separate grant).
+2. After WS2 accept: open **WS3** only with **explicit Money Domain permission**.
+3. Then **WS4** (IRR-only document currency + multi-currency hooks off).
+4. Then WS5/WS6; **`STOP_FOR_USER_UAT`** on real Dev product.
+5. Goal close only after SC1–10 + USER_UAT + architect PR/merge. Default branch `crm-platform`; no force-push.
 
 ### Known gates that must survive
 
@@ -71,8 +83,9 @@ Full decision brief: [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-
 
 | Gate | Owner |
 |---|---|
-| `STOP_FOR_ARCHITECT` (WS1 + R1 → WS2 → WS3 Money → WS4) | Architect |
-| `STOP_FOR_USER_UAT` | Deferred until Pack B on real Dev product |
+| `STOP_FOR_ARCHITECT` (WS2 evidence) | Architect |
+| Dev Apply (WS1 schema + WS2 columns) | Separate approval |
+| `STOP_FOR_USER_UAT` | Deferred until Pack B on real Dev |
 
 ## PRIOR CHECKPOINT — CRM-129-GOAL-023 single-session architect note (2026-11-25 @ `9884f2a4c3`)
 

@@ -38,17 +38,24 @@ const buildRepository = (): Repository => ({
 const buildService = ({
   repository,
   authority = 'SETTINGS_ROLE',
+  quotations,
 }: {
   repository: Repository;
   authority?: string | null;
+  quotations?: Repository;
 }) => {
+  const quotationRepository = quotations ?? buildRepository();
   const scope = {
     workspaceId: 'workspace-1',
     executeRawQuery: jest.fn(async () => []),
-    getRepository: jest.fn(() => repository),
+    getRepository: jest.fn((objectName: string) =>
+      objectName === 'quotation' ? quotationRepository : repository,
+    ),
   };
   const workspaceOrmManager = {
-    getRepository: jest.fn(() => repository),
+    getRepository: jest.fn((objectName: string) =>
+      objectName === 'quotation' ? quotationRepository : repository,
+    ),
     executeInWorkspaceContext: jest.fn(async (work: () => unknown) => work()),
     runInWorkspaceTransaction: jest.fn(
       async (work: (transactionScope: typeof scope) => unknown) => work(scope),
@@ -213,6 +220,37 @@ describe('QuotationCurrencyAuthorityService', () => {
       kind: 'REFUSED',
       code: 'QUOTATION_CURRENCY_CREATE_FORBIDDEN',
     });
+  });
+
+  it('refuses accountingCode mutation when a quotation snapshotted a non-empty code for the currency id', async () => {
+    const repository = buildRepository();
+    const quotations = buildRepository();
+    repository.find.mockResolvedValue([row({ accountingCode: 'OLD' })]);
+    quotations.find.mockResolvedValue([
+      {
+        id: 'q-1',
+        quotationCurrencyRecordId: 'cur-1',
+        currencyAccountingCode: 'OLD',
+      },
+    ]);
+    const { service } = buildService({ repository, quotations });
+
+    const outcome = await service.saveCurrency(
+      {
+        recordId: 'cur-1',
+        name: 'ریال ایران',
+        accountingCodeText: 'NEW',
+        isActive: true,
+        isDefault: true,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_CODE_IN_USE',
+    });
+    expect(repository.update).not.toHaveBeenCalled();
   });
 
   it('refuses saving a non-IRR currency as the operational default', async () => {

@@ -13,6 +13,7 @@ import {
   type QuotationDraftSaveLine,
   type QuotationDraftSaveRequest,
 } from 'src/modules/quotation/types/quotation-draft-save.type';
+import { findClientAccountingSnapshotOverrides } from 'src/modules/quotation/utils/quotation-accounting-snapshot.util';
 import { isExactAmountText } from 'src/modules/quotation/utils/quotation-draft-totals.util';
 
 export type QuotationDraftSaveParseOutcome =
@@ -254,6 +255,24 @@ export const parseQuotationDraftSaveRequest = (
 ): QuotationDraftSaveParseOutcome => {
   if (!isPlainObject(body)) {
     return refused('INVALID_INPUT', 'request body is not an object');
+  }
+
+  // C3: snapshot codes are resolved server-side; any client supply is refused.
+  if (findClientAccountingSnapshotOverrides(body).length > 0) {
+    return refused(
+      'ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN',
+      'tax/currency accounting snapshots cannot be supplied by the client',
+    );
+  }
+
+  if (
+    isPlainObject(body.header) &&
+    findClientAccountingSnapshotOverrides(body.header).length > 0
+  ) {
+    return refused(
+      'ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN',
+      'tax/currency accounting snapshots cannot be supplied by the client',
+    );
   }
 
   const quotationId = readNullableId(body.quotationId);

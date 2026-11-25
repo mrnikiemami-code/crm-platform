@@ -74,6 +74,13 @@ export const QUOTATION_FIELDS = {
   opportunity: '91b58882-98e7-5c05-9095-2ce463f2ff11',
   currencyCode: 'a0916c12-9176-5674-a363-a65964a4d308',
   taxPolicy: 'b0bf0dd6-17dd-5c24-b34d-dfd9da1727ee',
+  // WS2: server-resolved CRM ledger snapshots + reference ids for C4 lock-by-id.
+  // tax/currency accountingCode UUIDs frozen in WS1 preflight; record-id UUIDs are
+  // v5(path, APPLICATION_UNIVERSAL_IDENTIFIER).
+  taxAccountingCode: 'd7e0c705-c763-5e3b-a502-06cb44dc86c0',
+  currencyAccountingCode: 'ae36b898-9b40-52a1-a175-785c825864ce',
+  taxPolicyRecordId: 'ef1f25ce-98ac-510c-9ac5-f4ee4923ec67',
+  quotationCurrencyRecordId: 'e2ac4f5f-d387-58de-9e9c-f26145983f8e',
   // The rate the stored tax was computed with. Frozen with the document so a
   // later settings change cannot make a stored amount unexplainable.
   taxRateBasisPoints: 'fc24bf2c-1fd2-5228-bb1c-9fe4450996d5',

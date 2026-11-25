@@ -67,6 +67,7 @@ const buildScope = ({
   companyFindOne,
   personFindOne,
   taxPolicyFindOne,
+  quotationCurrencyFindOne,
 }: {
   headerInsert?: jest.Mock;
   lineInsert?: jest.Mock;
@@ -76,12 +77,20 @@ const buildScope = ({
   companyFindOne?: jest.Mock;
   personFindOne?: jest.Mock;
   taxPolicyFindOne?: jest.Mock;
+  quotationCurrencyFindOne?: jest.Mock;
 } = {}): Scope => {
   const activeNinePercentPolicy = {
     id: 'tp-1',
     code: 'IR_VAT_9',
     rateBasisPoints: '900',
+    dutyRateBasisPoints: '0',
     isActive: true,
+    accountingCode: 'TAX-GL-9',
+  };
+  const irrCurrency = {
+    id: 'cur-irr',
+    code: 'IRR',
+    accountingCode: 'CUR-IRR',
   };
   const repositories: Record<string, Record<string, jest.Mock>> = {
     quotation: {
@@ -91,6 +100,7 @@ const buildScope = ({
         headerFindOne ??
         jest.fn(async () => ({ id: 'q-1', status: 'DRAFT', version: 2 })),
       update: headerUpdate ?? jest.fn(async () => ({ affected: 1 })),
+      find: jest.fn(async () => []),
     },
     quotationLine: {
       insert: lineInsert ?? jest.fn(async () => ({ identifiers: [] })),
@@ -108,6 +118,10 @@ const buildScope = ({
     },
     taxPolicy: {
       findOne: taxPolicyFindOne ?? jest.fn(async () => activeNinePercentPolicy),
+    },
+    quotationCurrency: {
+      findOne:
+        quotationCurrencyFindOne ?? jest.fn(async () => irrCurrency),
     },
   };
 
@@ -154,6 +168,32 @@ const buildService = ({
 };
 
 describe('QuotationDraftPersistenceService', () => {
+  it('refuses client-supplied accounting snapshot fields before opening a transaction', async () => {
+    const scope = buildScope();
+    const { service, workspaceOrmManager } = buildService({
+      permissions: ['quotation.edit'],
+      scope,
+    });
+
+    const result = await service.saveDraft({
+      authContext,
+      body: body({
+        header: {
+          ...body().header,
+          taxAccountingCode: 'CLIENT-FORGED',
+        },
+      }),
+    });
+
+    expect(result).toMatchObject({
+      kind: 'REJECTED',
+      code: 'ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN',
+    });
+    expect(
+      workspaceOrmManager.runInWorkspaceTransaction,
+    ).not.toHaveBeenCalled();
+  });
+
   it('refuses an actor without quotation.edit before opening a transaction', async () => {
     const scope = buildScope();
     const { service, workspaceOrmManager } = buildService({
@@ -190,13 +230,16 @@ describe('QuotationDraftPersistenceService', () => {
     expect(workspaceOrmManager.runInWorkspaceTransaction).toHaveBeenCalledTimes(
       1,
     );
-    // The shared advisory lock is the transaction's first statement, so a policy
-    // edit cannot land between the policy read and the commit.
-    expect(scope.executeRawQuery).toHaveBeenCalledWith(
+    // Fixed order Tax → Currency shared locks before any row repository work.
+    expect(scope.executeRawQuery.mock.calls[0]).toEqual([
       'SELECT pg_advisory_xact_lock_shared(hashtext($1))',
       ['quotation-tax-policy:workspace-1'],
-    );
-    expect(scope.executeRawQuery.mock.invocationCallOrder[0]).toBeLessThan(
+    ]);
+    expect(scope.executeRawQuery.mock.calls[1]).toEqual([
+      'SELECT pg_advisory_xact_lock_shared(hashtext($1))',
+      ['quotation-currency-catalog:workspace-1'],
+    ]);
+    expect(scope.executeRawQuery.mock.invocationCallOrder[1]).toBeLessThan(
       scope.getRepository.mock.invocationCallOrder[0],
     );
 
@@ -209,6 +252,10 @@ describe('QuotationDraftPersistenceService', () => {
       version: 1,
       customerName: 'شرکت آزمون',
       totalExact: '1090000.000000',
+      taxAccountingCode: 'TAX-GL-9',
+      taxPolicyRecordId: 'tp-1',
+      currencyAccountingCode: 'CUR-IRR',
+      quotationCurrencyRecordId: 'cur-irr',
     });
     expect(headerInsert.mock.calls[0][0]).not.toHaveProperty('quotationNumber');
 

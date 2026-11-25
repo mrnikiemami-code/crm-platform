@@ -46,23 +46,42 @@ const buildService = ({
   repository,
   authority = 'SETTINGS_ROLE',
   connections,
+  quotations,
 }: {
   repository: Repository;
   authority?: string | null;
   connections?: Repository;
+  quotations?: Repository;
 }) => {
   const connectionRepository = connections ?? buildRepository();
+  const quotationRepository = quotations ?? buildRepository();
   const scope = {
     workspaceId: 'workspace-1',
     executeRawQuery: jest.fn(async () => []),
-    getRepository: jest.fn((objectName: string) =>
-      objectName === 'accountingConnection' ? connectionRepository : repository,
-    ),
+    getRepository: jest.fn((objectName: string) => {
+      if (objectName === 'accountingConnection') {
+        return connectionRepository;
+      }
+
+      if (objectName === 'quotation') {
+        return quotationRepository;
+      }
+
+      return repository;
+    }),
   };
   const workspaceOrmManager = {
-    getRepository: jest.fn((objectName: string) =>
-      objectName === 'accountingConnection' ? connectionRepository : repository,
-    ),
+    getRepository: jest.fn((objectName: string) => {
+      if (objectName === 'accountingConnection') {
+        return connectionRepository;
+      }
+
+      if (objectName === 'quotation') {
+        return quotationRepository;
+      }
+
+      return repository;
+    }),
     executeInWorkspaceContext: jest.fn(async (work: () => unknown) => work()),
     runInWorkspaceTransaction: jest.fn(
       async (work: (transactionScope: typeof scope) => unknown) => work(scope),
@@ -256,6 +275,41 @@ describe('TaxPolicyAuthorityService', () => {
     await expect(
       service.setDefaultPolicy('tp-2', authContext),
     ).rejects.toThrow('write failed');
+  });
+
+  it('refuses accountingCode mutation when a quotation snapshotted a non-empty code for the policy id', async () => {
+    const repository = buildRepository();
+    const quotations = buildRepository();
+    repository.find.mockResolvedValue([
+      row({ id: 'tp-1', accountingCode: 'OLD', isDefault: true }),
+    ]);
+    quotations.find.mockResolvedValue([
+      {
+        id: 'q-1',
+        taxPolicyRecordId: 'tp-1',
+        taxAccountingCode: 'OLD',
+      },
+    ]);
+    const { service } = buildService({ repository, quotations });
+
+    const outcome = await service.savePolicy(
+      {
+        recordId: 'tp-1',
+        name: 'مالیات بر ارزش افزوده ۹٪',
+        ratePercentText: '۹',
+        dutyRatePercentText: '',
+        accountingCodeText: 'NEW',
+        isActive: true,
+        isDefault: true,
+      },
+      authContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_CODE_IN_USE',
+    });
+    expect(repository.update).not.toHaveBeenCalled();
   });
 
   it('derives exemption from the two rates instead of trusting a posted flag', async () => {
@@ -520,12 +574,13 @@ describe('TaxPolicyAuthorityService', () => {
 
   it('refuses to delete a policy that a live quotation names, quoting the count', async () => {
     const repository = buildRepository();
-    repository.count.mockResolvedValue(8);
+    const quotations = buildRepository();
+    quotations.count.mockResolvedValue(8);
     repository.find.mockResolvedValue([
       row({ id: 'tp-1', isDefault: true }),
       row({ id: 'tp-2', code: 'TAX_1000', isActive: false }),
     ]);
-    const { service } = buildService({ repository });
+    const { service } = buildService({ repository, quotations });
 
     const outcome = await service.deletePolicy('tp-2', authContext);
 

@@ -13,6 +13,7 @@ import {
   type QuotationDraftSaveOutcome,
   type QuotationDraftSaveRequest,
 } from 'src/modules/quotation/types/quotation-draft-save.type';
+import { type WorkspaceQuotationCurrencyRow } from 'src/modules/quotation/types/quotation-currency.type';
 import { type WorkspaceTaxPolicyRow } from 'src/modules/quotation/types/tax-policy.type';
 import { parseQuotationDraftSaveRequest } from 'src/modules/quotation/utils/parse-quotation-draft-save-request.util';
 import { DRAFT_QUOTATION_NUMBER_LABEL } from 'src/modules/quotation/utils/quotation-numbering.util';
@@ -32,7 +33,12 @@ import {
   parseQuotationVersion,
 } from 'src/modules/quotation/utils/quotation-immutability.util';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
+import { acquireCurrencyCatalogReadLock } from 'src/modules/quotation/utils/quotation-currency-lock.util';
 import { acquireTaxPolicyReadLock } from 'src/modules/quotation/utils/quotation-tax-policy-lock.util';
+import {
+  buildQuotationAccountingSnapshot,
+  type QuotationAccountingSnapshot,
+} from 'src/modules/quotation/utils/quotation-accounting-snapshot.util';
 
 type QuotationHeaderRow = {
   id: string;
@@ -119,11 +125,10 @@ export class QuotationDraftPersistenceService {
         () =>
           this.workspaceOrmManager.runInWorkspaceTransaction(
             async (transactionScope) => {
-              // First statement, before any row: a settings edit cannot change the
-              // policy between the read below and this transaction's commit. Shared
-              // mode keeps concurrent draft saves parallel; see the lock util for the
-              // fixed ordering that makes a deadlock impossible.
+              // Fixed order Tax → Currency (F6 / Q-LOCK-2): first statements before
+              // any row read so lock order cannot invert with catalog mutations.
               await acquireTaxPolicyReadLock(transactionScope);
+              await acquireCurrencyCatalogReadLock(transactionScope);
 
               const totals = evaluateQuotationDraftTotals({
                 header: request.header,
@@ -181,11 +186,20 @@ export class QuotationDraftPersistenceService {
       return taxPolicyRejection;
     }
 
+    const accountingSnapshot = await this.resolveAccountingSnapshot({
+      transactionScope,
+      request,
+    });
+
     const quotationRepository = transactionScope.getRepository('quotation', {
       shouldBypassPermissionChecks: true,
     });
     const created = await quotationRepository.insert({
-      ...this.buildHeaderColumns(request.header, customerName),
+      ...this.buildHeaderColumns(
+        request.header,
+        customerName,
+        accountingSnapshot,
+      ),
       // A draft is born without a document number: only issuance claims one.
       status: 'DRAFT',
       version: 1,
@@ -302,6 +316,11 @@ export class QuotationDraftPersistenceService {
       return rejected('CUSTOMER_NOT_FOUND', 'customer record does not exist');
     }
 
+    const accountingSnapshot = await this.resolveAccountingSnapshot({
+      transactionScope,
+      request,
+    });
+
     // The conditional update is the concurrency gate: a parallel save that bumps
     // the version, or a lifecycle transition that freezes the content, makes this
     // statement match zero rows and the whole transaction is abandoned.
@@ -312,7 +331,11 @@ export class QuotationDraftPersistenceService {
         status: In([...QUOTATION_CONTENT_MUTABLE_STATUSES]),
       },
       {
-        ...this.buildHeaderColumns(request.header, customerName),
+        ...this.buildHeaderColumns(
+          request.header,
+          customerName,
+          accountingSnapshot,
+        ),
         version: currentVersion + 1,
       },
     );
@@ -367,6 +390,7 @@ export class QuotationDraftPersistenceService {
               rateBasisPoints: true,
               dutyRateBasisPoints: true,
               isActive: true,
+              accountingCode: true,
             },
           });
       } catch (error) {
@@ -400,6 +424,80 @@ export class QuotationDraftPersistenceService {
     });
 
     return decision.ok ? null : rejected(decision.code, decision.message);
+  }
+
+  // WS2: resolve CRM ledger codes from references under Tax→Currency read locks.
+  // Missing currency catalog (pre-apply) yields empty currency snapshot, not failure.
+  private async resolveAccountingSnapshot({
+    transactionScope,
+    request,
+  }: {
+    transactionScope: WorkspaceTransactionScope;
+    request: QuotationDraftSaveRequest;
+  }): Promise<QuotationAccountingSnapshot> {
+    const taxPolicyCode = (request.header.taxPolicy ?? '').trim();
+    let taxPolicyRecordId: string | null = null;
+    let taxAccountingCode = '';
+
+    if (taxPolicyCode !== '') {
+      try {
+        const taxRow = await transactionScope
+          .getRepository<WorkspaceTaxPolicyRow>('taxPolicy', {
+            shouldBypassPermissionChecks: true,
+          })
+          .findOne({
+            where: { code: taxPolicyCode },
+            select: { id: true, accountingCode: true },
+          });
+
+        if (taxRow !== null) {
+          taxPolicyRecordId = taxRow.id;
+          taxAccountingCode = (taxRow.accountingCode ?? '').trim();
+        }
+      } catch (error) {
+        this.logger.error(
+          `Tax accounting snapshot lookup failed for "${taxPolicyCode}": ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    const currencyCode = (request.header.currencyCode ?? '').trim().toUpperCase();
+    let quotationCurrencyRecordId: string | null = null;
+    let currencyAccountingCode = '';
+
+    if (currencyCode !== '') {
+      try {
+        const currencyRow = await transactionScope
+          .getRepository<WorkspaceQuotationCurrencyRow>('quotationCurrency', {
+            shouldBypassPermissionChecks: true,
+          })
+          .findOne({
+            where: { code: currencyCode },
+            select: { id: true, accountingCode: true },
+          });
+
+        if (currencyRow !== null) {
+          quotationCurrencyRecordId = currencyRow.id;
+          currencyAccountingCode = (currencyRow.accountingCode ?? '').trim();
+        }
+      } catch (error) {
+        // Catalog may be absent until WS1/WS2 schema apply; drafts still save.
+        this.logger.warn(
+          `Currency accounting snapshot lookup skipped for "${currencyCode}": ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+
+    return buildQuotationAccountingSnapshot({
+      taxPolicyRecordId,
+      taxAccountingCode,
+      quotationCurrencyRecordId,
+      currencyAccountingCode,
+    });
   }
 
   private async describeLostClaim({    transactionScope,
@@ -497,6 +595,7 @@ export class QuotationDraftPersistenceService {
   private buildHeaderColumns(
     header: QuotationDraftSaveHeader,
     customerName: string | null,
+    accountingSnapshot: QuotationAccountingSnapshot,
   ): Record<string, unknown> {
     return {
       name: header.name,
@@ -507,6 +606,10 @@ export class QuotationDraftPersistenceService {
       taxPolicy: header.taxPolicy,
       taxRateBasisPoints: header.taxRateBasisPoints,
       dutyRateBasisPoints: header.dutyRateBasisPoints ?? null,
+      taxAccountingCode: accountingSnapshot.taxAccountingCode,
+      taxPolicyRecordId: accountingSnapshot.taxPolicyRecordId,
+      currencyAccountingCode: accountingSnapshot.currencyAccountingCode,
+      quotationCurrencyRecordId: accountingSnapshot.quotationCurrencyRecordId,
       paymentTerms: header.paymentTerms,
       documentDiscountKind: header.documentDiscountKind,
       documentDiscountInputExact: header.documentDiscountInputExact,

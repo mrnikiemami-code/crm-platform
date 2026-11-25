@@ -5,7 +5,15 @@ import { type UpdateOneResolverArgs } from 'src/engine/api/graphql/workspace-res
 
 import { WorkspaceQueryHook } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/decorators/workspace-query-hook.decorator';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import {
+  QuotationQueryValidationException,
+  QuotationQueryValidationExceptionCode,
+} from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
 import { QuotationImmutabilityService } from 'src/modules/quotation/services/quotation-immutability.service';
+import {
+  findClientAccountingSnapshotOverrides,
+  stripAccountingSnapshotFields,
+} from 'src/modules/quotation/utils/quotation-accounting-snapshot.util';
 
 @Injectable()
 @WorkspaceQueryHook('quotation.updateOne')
@@ -21,7 +29,16 @@ export class QuotationUpdateOnePreQueryHook
     _objectName: string,
     payload: UpdateOneResolverArgs<Record<string, unknown>>,
   ): Promise<UpdateOneResolverArgs<Record<string, unknown>>> {
-    const patch = payload.data ?? {};
+    const rawPatch = payload.data ?? {};
+
+    if (findClientAccountingSnapshotOverrides(rawPatch).length > 0) {
+      throw new QuotationQueryValidationException(
+        'ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN: tax/currency accounting snapshots are server-owned',
+        QuotationQueryValidationExceptionCode.FORBIDDEN,
+      );
+    }
+
+    const patch = stripAccountingSnapshotFields(rawPatch);
     const observedVersion =
       typeof patch.version === 'number' ? patch.version : null;
 
@@ -42,6 +59,9 @@ export class QuotationUpdateOnePreQueryHook
       };
     }
 
-    return payload;
+    return {
+      ...payload,
+      data: patch,
+    };
   }
 }

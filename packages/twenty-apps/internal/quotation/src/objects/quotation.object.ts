@@ -224,6 +224,54 @@ export default defineObject({
       isUIEditable: false,
     },
     {
+      // Server-only CRM ledger snapshot of the tax policy at draft save (C3/C4).
+      universalIdentifier: QUOTATION_FIELDS.taxAccountingCode,
+      type: FieldType.TEXT,
+      name: 'taxAccountingCode',
+      label: 'کد حسابداری مالیات (اسنپ‌شات)',
+      description:
+        'کد دفتر کل سیاست مالیات در لحظهٔ ذخیره. فقط سرور می‌نویسد؛ در فرم پیش‌فاکتور دیده/ویرایش نمی‌شود.',
+      icon: 'IconHash',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: "''",
+    },
+    {
+      // Stable tax-policy row id for C4 lock-by-reference (not the policy code string).
+      universalIdentifier: QUOTATION_FIELDS.taxPolicyRecordId,
+      type: FieldType.TEXT,
+      name: 'taxPolicyRecordId',
+      label: 'شناسه رکورد سیاست مالیات',
+      description:
+        'شناسهٔ رکورد سیاست مالیات مرجع برای قفل کد حسابداری. فقط سرور می‌نویسد.',
+      icon: 'IconKey',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      universalIdentifier: QUOTATION_FIELDS.currencyAccountingCode,
+      type: FieldType.TEXT,
+      name: 'currencyAccountingCode',
+      label: 'کد حسابداری ارز (اسنپ‌شات)',
+      description:
+        'کد دفتر کل ارز سند در لحظهٔ ذخیره. فقط سرور می‌نویسد؛ در فرم پیش‌فاکتور دیده/ویرایش نمی‌شود.',
+      icon: 'IconHash',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: "''",
+    },
+    {
+      universalIdentifier: QUOTATION_FIELDS.quotationCurrencyRecordId,
+      type: FieldType.TEXT,
+      name: 'quotationCurrencyRecordId',
+      label: 'شناسه رکورد ارز',
+      description:
+        'شناسهٔ رکورد ارز کاتالوگ برای قفل کد حسابداری. فقط سرور می‌نویسد.',
+      icon: 'IconKey',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: QUOTATION_FIELDS.taxRateBasisPoints,
       type: FieldType.TEXT,
       name: 'taxRateBasisPoints',

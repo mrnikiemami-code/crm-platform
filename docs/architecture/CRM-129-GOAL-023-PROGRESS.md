@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** STOP redesign / targeted UX repair (Pack A) + architect financial gate
+**Board updated:** WS1/R1 ARCHITECT_ACCEPTED; WS2 IMPLEMENT in progress
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -19,8 +19,8 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 |---|---|---|
 | WS0 Goal registration | `ARCHITECT_ACCEPTED` (planning) | `cdb890b3f5` |
 | EXECUTION-024 C1–C7 + board + WS1 preflight | `ARCHITECT_ACCEPTED` | `6bc3f558b9` + WS1-OPEN |
-| WS1 Reference accounting codes | `TECHNICALLY_VERIFIED` | CP-WS1 + **CP-WS1-R1**; needs `ARCHITECT_ACCEPTED` before WS2 / Dev Apply |
-| WS2 Snapshot + code lock | `NOT_STARTED` | Needs WS1 architect accept + lock enforcement |
+| WS1 Reference accounting codes | `ARCHITECT_ACCEPTED` | Architect accepted source review (WS1 + R1); Dev Apply still separate |
+| WS2 Snapshot + code lock | `TECHNICALLY_VERIFIED` | See CP-WS2 + [`CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md); needs `ARCHITECT_ACCEPTED` + separate Dev Apply |
 | WS3 Per-line tax | `NOT_STARTED` | |
 | WS4 Document currency phase 1 | `NOT_STARTED` | Catalog exists; picker/IRR refuse in WS4 |
 | WS5 Settings ownership | `IN_PROGRESS` | Pack A: ownership hint only; catalog-bound mapping rewrite still WS5 |
@@ -51,6 +51,16 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 ---
 
 ## Checkpoint log
+
+### CP-WS2 — Snapshot + C4 lock (this delivery)
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC2/SC3 foundations (snapshot + lock-by-reference-id); SC1 ownership preserved |
+| **2. Financial contract?** | C3/C4 Option A; F6 Tax→Currency lock order; Money Domain untouched |
+| **3. Real tests run?** | Jest draft/tax/currency/snapshot PASS; PG lock suite **3 PASS** on local Postgres |
+| **4. Still incomplete?** | No Dev Apply; sealed-revision PDF field display optional later; WS3+ |
+| **5. Next allowed step?** | Architect accept WS2; separate Dev Apply; then WS3 with Money Domain grant |
 
 ### CP-UX-REPAIR-A — STOP redesign / targeted UX repair
 
@@ -110,8 +120,10 @@ Docs-only C1–C7 + preflight @ `6bc3f558b9`.
 
 ## Gate
 
-1. **`STOP_FOR_ARCHITECT`** — see [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md): WS1 + R1 accept → WS2 → WS3 **with Money Domain permission** → WS4. No Dev Apply / Pack B until granted.
-2. **`STOP_FOR_USER_UAT`** — **deferred** until Pack B ships on real Dev product (same chrome). Static WS7-A HTML is not a UAT target.
-3. WS7-A redesign-as-product: **cancelled**.
+1. **`STOP_FOR_ARCHITECT`** — WS2 evidence in [`CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-STOP-FOR-ARCHITECT.md).
+2. Dev Apply (WS1+WS2 schema) — **separate** approval.
+3. WS3 — only with Money Domain permission after WS2 accept.
+4. **`STOP_FOR_USER_UAT`** — deferred until product Pack B on Dev.
+5. WS7-A redesign-as-product: **cancelled**.
 
 Goal 023 remains **ACTIVE / NOT COMPLETE**.

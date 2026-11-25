@@ -22,6 +22,7 @@ import {
   formatBasisPointsAsPercent,
   parseTaxRatePercent,
 } from 'src/modules/quotation/utils/parse-tax-rate-percent.util';
+import { isTaxPolicyAccountingCodeLocked } from 'src/modules/quotation/utils/quotation-accounting-code-lock.util';
 import { acquireTaxPolicyExclusiveLock } from 'src/modules/quotation/utils/quotation-tax-policy-lock.util';
 import { toPersianDigits } from 'src/modules/quotation/utils/quotation-numbering.util';
 
@@ -227,6 +228,25 @@ export class TaxPolicyAuthorityService {
 
         if (!accountingCode.ok) {
           return refused(accountingCode.code, accountingCode.message);
+        }
+
+        // C4 Option A: once a non-empty code was snapshotted for this policy id,
+        // further accountingCode mutations are refused (empty→set still allowed).
+        if (
+          existing !== null &&
+          accountingCode.accountingCode !== readText(existing.accountingCode)
+        ) {
+          const locked = await isTaxPolicyAccountingCodeLocked({
+            scope,
+            taxPolicyRecordId: existing.recordId,
+          });
+
+          if (locked) {
+            return refused(
+              'ACCOUNTING_CODE_IN_USE',
+              'کد حسابداری این سیاست پس از استفاده در پیش‌فاکتور قفل شده است',
+            );
+          }
         }
 
         // Each component is a percentage and so is their sum: two valid components

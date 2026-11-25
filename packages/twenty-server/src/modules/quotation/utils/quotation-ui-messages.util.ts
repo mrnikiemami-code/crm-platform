@@ -43,6 +43,10 @@ const MESSAGE_BY_CODE: Record<string, string> = {
     'تغییر تنظیمات مالیات فقط برای مدیر فضای کاری مجاز است.',
   TAX_POLICY_WRITE_FORBIDDEN:
     'سیاست مالیات فقط از صفحهٔ تنظیمات مالیات قابل تغییر است.',
+  ACCOUNTING_CODE_IN_USE:
+    'کد حسابداری این مرجع پس از استفاده در پیش‌فاکتور قفل شده و قابل تغییر نیست.',
+  ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN:
+    'کد حسابداری مالیات و ارز فقط توسط سرور از مراجع اسنپ می‌شود و از درخواست قابل ارسال نیست.',
   ACCOUNTING_SETTINGS_FORBIDDEN:
     'تغییر تنظیمات حسابداری فقط برای مدیر فضای کاری یا هویت برنامهٔ مجاز انجام می‌شود.',
   ACCOUNTING_CONNECTION_WRITE_FORBIDDEN:

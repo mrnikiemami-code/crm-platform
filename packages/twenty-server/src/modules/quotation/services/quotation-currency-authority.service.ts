@@ -18,6 +18,7 @@ import {
   type WorkspaceQuotationCurrencyView,
 } from 'src/modules/quotation/types/quotation-currency.type';
 import { parseAccountingCodeInput } from 'src/modules/quotation/utils/parse-accounting-code.util';
+import { isCurrencyAccountingCodeLocked } from 'src/modules/quotation/utils/quotation-accounting-code-lock.util';
 import { acquireCurrencyCatalogExclusiveLock } from 'src/modules/quotation/utils/quotation-currency-lock.util';
 
 const BASELINE_CURRENCY = {
@@ -178,6 +179,23 @@ export class QuotationCurrencyAuthorityService {
 
         if (!accountingCode.ok) {
           return refused(accountingCode.code, accountingCode.message);
+        }
+
+        // C4 Option A: lock-by-currency-row-id after first non-empty snapshot.
+        if (
+          accountingCode.accountingCode !== readText(existing.accountingCode)
+        ) {
+          const locked = await isCurrencyAccountingCodeLocked({
+            scope,
+            quotationCurrencyRecordId: existing.recordId,
+          });
+
+          if (locked) {
+            return refused(
+              'ACCOUNTING_CODE_IN_USE',
+              'کد حسابداری این ارز پس از استفاده در پیش‌فاکتور قفل شده است',
+            );
+          }
         }
 
         const wasDefault = existing.isDefault === true;
