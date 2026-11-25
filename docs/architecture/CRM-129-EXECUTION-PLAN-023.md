@@ -1,9 +1,9 @@
 # CRM-129-EXECUTION-PLAN-023
 
-**Companions:** [`CRM-129-MASTER-GOAL-023.md`](./CRM-129-MASTER-GOAL-023.md), [`CRM-129-FINANCIAL-CONTRACT-023.md`](./CRM-129-FINANCIAL-CONTRACT-023.md)  
-**HEAD at plan:** `feat/crm-129-quotation` @ `0fe64a9305`  
-**Gate:** `STOP_FOR_ARCHITECT` — no pack starts without architect approval for that pack  
-**Principle:** each pack is independently reviewable and revertible; Goal completeness ≠ big-bang merge
+**Companions:** [`CRM-129-MASTER-GOAL-023.md`](./CRM-129-MASTER-GOAL-023.md), [`CRM-129-FINANCIAL-CONTRACT-023.md`](./CRM-129-FINANCIAL-CONTRACT-023.md), [`CRM-129-GOAL-023-PROGRESS.md`](./CRM-129-GOAL-023-PROGRESS.md)  
+**Plan baseline:** `0fe64a9305` · **Execution activation:** `cdb890b3f5` + EXECUTION-024 (C1–C7)  
+**Gate:** pack-level `STOP_FOR_ARCHITECT` / user gates as required  
+**Principle:** each pack is independently reviewable and revertible; Goal completeness ≠ big-bang merge; one pack PASS ≠ Goal done
 
 ---
 
@@ -55,32 +55,31 @@ Prefer installed free skills (`ui-ux-pro-max`, `design-taste-frontend`, Impeccab
 ## Dependency graph (executive)
 
 ```
-WS0  Goal docs (this delivery) ── DONE as planning
+WS0  Goal docs ── DONE
+EXECUTION-024 C1–C7 ratification + Progress + WS1 preflight ── THIS CHECKPOINT
   │
-  ├─ WS7-A Design frames (accounting + quotation financial UX)
+  ├─ STOP_FOR_ARCHITECT (WS1 schema + lock preflight)
+  │
+  ├─ WS7-A Design frames
   │     └─ USER_APPROVAL ──┐
   │                        │
-  ├─ WS1 Reference accounting codes (tax/currency/item/party)
-  │     └─ D-023-1, D-023-4
+  ├─ WS1 Reference accounting codes (after architect open)
   │           │
-  ├─ WS2 Snapshot + first-use lock + draft authority
-  │     └─ D-023-6
+  ├─ WS2 Snapshot + first-use lock (C4; confirm lock family)
   │           │
-  ├─ WS3 Per-line tax (money + persistence + PDF/API)
-  │     └─ D-023-3, D-023-5
+  ├─ WS3 Per-line tax + multi-tax outbound gate (C7)
   │           │
-  ├─ WS4 Document currency phase 1 + phase-2 schema hooks
-  │     └─ D-023-2
+  ├─ WS4 Document currency IRR phase 1 + phase-2 hooks (C2)
   │           │
-  ├─ WS5 Settings ownership cleanup (no CRM code redefinition)
+  ├─ WS5 Settings ownership cleanup (C6)
   │           │
-  ├─ WS6 Mock/Asan shared capability UX honesty
+  ├─ WS6 Mock/Asan shared capability UX
   │           │
-  └─ WS7-B Implement approved design on live surfaces
-        └─ USER_UAT (SC10)
+  └─ WS7-B Implement Design of Record
+        └─ USER_UAT (SC10) → Goal close board
 ```
 
-Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start after WS1 identities exist; WS6 can parallel WS5.
+Parallelism: WS7-A // WS1 after architect opens WS1; WS5 after catalogs exist; WS6 // WS5.
 
 ---
 
@@ -106,10 +105,10 @@ Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start afte
 |---|---|
 | **Scope** | Add `accountingCode` to tax policy; currency catalog foundation; item + person/company fields; settings/tax panel edit surfaces (functional, design-light until WS7-B) |
 | **Likely files** | `tax-policy.object.ts`, tax authority service, tax panel; new currency object + constants; `catalog-item.object.ts`; person/company field defs; universal-identifiers; tests |
-| **Deps** | Close **D-023-1**, **D-023-4**; Goal + Contract read |
-| **Risk** | Medium — standard-object field strategy; metadata apply churn |
-| **Acceptance** | Empty codes allowed; save/validate; workspace isolation; GraphQL generic write still blocked; no quotation behavior change yet |
-| **Done when** | Unit + authority tests green; Dev apply of fields only if architect authorizes deploy pack |
+| **Deps** | Architect acceptance of [`CRM-129-GOAL-023-WS1-PREFLIGHT.md`](./CRM-129-GOAL-023-WS1-PREFLIGHT.md); C1–C7; Goal + Contract |
+| **Risk** | Medium — `defineField` on person/company; new currency object; metadata apply churn |
+| **Acceptance** | Empty codes allowed; IRR currency catalog seeded; save/validate; workspace isolation; GraphQL generic write still blocked; **no** quotation snapshot/lock yet (WS2); **no** item/party lock (C4) |
+| **Done when** | Unit + authority tests green; Progress → `TECHNICALLY_VERIFIED`; architect → `ARCHITECT_ACCEPTED` before WS2 |
 | **Next gate** | Architect → WS2 |
 
 ---
@@ -120,9 +119,9 @@ Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start afte
 |---|---|
 | **Scope** | Persist snapshotted CRM accounting codes on draft save; refuse client overrides; lock reference code mutation after first use; concurrency with shared/exclusive advisory lock |
 | **Likely files** | `quotation-draft-persistence.service.ts`, parse draft util, revision snapshot util, tax/currency/item authority, lock util, draft form read-only displays, Jest + UAT race harness pattern from TAX-016 |
-| **Deps** | WS1; close **D-023-6** |
-| **Risk** | High — TOCTOU; must not break TAX-008 rate lock ordering |
-| **Acceptance** | First draft save locks code; concurrent edit queues/refuses with stable code; sealed revisions unchanged; permissions preserved |
+| **Deps** | WS1 `ARCHITECT_ACCEPTED`; architect confirm of lock-family proposal (ex-D-023-6) in preflight |
+| **Risk** | High — TOCTOU; must not break TAX-008 rate lock ordering; lock by **reference id** (C4) |
+| **Acceptance** | First successful draft save locks tax/currency `accountingCode` by entity id; concurrent edit refused/queued with deterministic test; sealed revisions unchanged; item/party codes remain unlocked |
 | **Done when** | Deterministic concurrency test PASS; recovery note |
 | **Next gate** | Architect → WS3 / WS4 |
 
@@ -132,9 +131,9 @@ Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start afte
 
 | | |
 |---|---|
-| **Scope** | Line fields for policy + rates + tax accounting code; money domain per-line rates; draft form line control; header default for new lines; revision/PDF/API; outbound multi-tax gate per **D-023-3** |
+| **Scope** | Line fields for policy + rates + tax accounting code; money domain per-line rates; draft form line control; header default for new lines; keep legacy header tax fields (C7); revision/PDF/API; outbound multi-tax gate (block unless adapter proves support) |
 | **Likely files** | `quotation-line.object.ts`, `draft-quotation.ts`, `document-totals.ts`, `line.ts`, draft form, persistence, snapshot, PDF templates, outbound-plan / financial-contract, tests |
-| **Deps** | WS2; close **D-023-3**, **D-023-5** |
+| **Deps** | WS2 `ARCHITECT_ACCEPTED`; independent financial-integrity gate |
 | **Risk** | **Very high** — financial correctness; legacy header-only docs; PDF; adapters |
 | **Acceptance** | Two lines, two policies → independent tax; default policy on new line; snapshot seals line policies; legacy reopen rule from Contract; money invariants hold; no silent reprice |
 | **Done when** | Focused money + persistence + app tests PASS; architect DATA_INTEGRITY gate |
@@ -146,11 +145,11 @@ Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start afte
 
 | | |
 |---|---|
-| **Scope** | Currency catalog UX/default; document currency selection (per **D-023-2**); persist line `currencyCode = header`; `totalsByCurrency` shape; `MULTI_CURRENCY_DOCUMENTS=false`; currency accountingCode snapshot |
-| **Likely files** | currency object/services, draft form, persistence, snapshot, financial-contract gates, feature flag constant |
-| **Deps** | WS1 currency rows; preferably WS2; close **D-023-2** |
-| **Risk** | High if non-IRR selectable without money-domain STOP |
-| **Acceptance** | Default currency auto-applies; all lines match header; mixed currency UI absent; no cross-currency sum; IRR history intact |
+| **Scope** | Document currency from catalog; **IRR-only** operational amounts (C2); persist line `currencyCode = header`; `totalsByCurrency` shape reserved; `MULTI_CURRENCY_DOCUMENTS=false`; currency accountingCode snapshot via WS2 fields |
+| **Likely files** | currency services/UI, draft form, persistence, financial-contract gates, feature flag constant |
+| **Deps** | WS1 currency catalog; WS2 snapshot/lock for currency codes |
+| **Risk** | Medium if UI accidentally exposes non-IRR |
+| **Acceptance** | Default IRR auto-applies; all lines match header; non-IRR refused; mixed currency UI absent; no cross-currency sum |
 | **Done when** | Tests + Contract S3 hooks present; flag off verified |
 | **Next gate** | Architect (phase 2 activation is a **future Goal**, not a silent follow-on) |
 
@@ -221,12 +220,12 @@ Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start afte
 
 ---
 
-## Suggested first implementation slice (after architect opens)
+## Suggested first implementation slice (after architect opens WS1)
 
-1. Ratify open decisions D-023-1…6 (can be a short architect addendum).
-2. Open **WS7-A** and **WS1** in parallel.
+1. Implement WS1 per preflight (no quotation behavior change).
+2. Optionally start WS7-A design frames in parallel.
 3. Sequence **WS2 → WS3 → WS4**; **WS5/WS6** after catalogs exist.
-4. **WS7-B** only on approved design.
+4. **WS7-B** only on user-approved design.
 
 ---
 
@@ -234,15 +233,15 @@ Parallelism allowed: WS7-A // WS1 after architect opens both; WS5 can start afte
 
 | Gate | When |
 |---|---|
-| CONTRACT_GATE | Architect accepts Financial Contract (possibly amended) |
+| CONTRACT_GATE | C1–C7 in Contract (this activation) + architect WS1 open |
 | DESIGN_GATE | User approves WS7-A Design of Record |
 | DATA_INTEGRITY_GATE | WS2–WS4 evidence |
 | SECURITY_GATE | Guards + isolation + lock tests |
 | UX_GATE | USER_UAT on Dev |
-| GOAL_023_COMPLETE | All SC1–10 evidenced; Recovery CURRENT closed |
+| GOAL_023_COMPLETE | All SC1–10 evidenced; Progress all USER/ARCHITECT accepted; Recovery closed |
 
 ---
 
-## Final gate for *this* planning delivery
+## Current gate (EXECUTION-024 first action)
 
-**`STOP_FOR_ARCHITECT`** — executable plan registered; product untouched.
+**`STOP_FOR_ARCHITECT` — WS1 schema and lock preflight** — product untouched; await open to implement WS1.
