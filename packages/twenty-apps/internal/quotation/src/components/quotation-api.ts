@@ -63,6 +63,56 @@ export const callAppRoute = async (
   };
 };
 
+// Nest quotation UI actions — used when /s logic-function GraphQL is down on
+// Dev worker (schema/image drift). Same bearer the front component already has.
+const ROUNDING_APP_ACTION_TO_NEST: Record<string, string> = {
+  list: 'rounding-rule-list',
+  bootstrap: 'rounding-rule-bootstrap',
+  save: 'rounding-rule-save',
+  'set-default': 'rounding-rule-set-default',
+  deactivate: 'rounding-rule-deactivate',
+  delete: 'rounding-rule-delete',
+};
+
+export const callRoundingRulesNestAction = async (
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> => {
+  const apiBase = (process.env.TWENTY_API_URL ?? '').trim().replace(/\/$/, '');
+  const token =
+    process.env.TWENTY_APP_ACCESS_TOKEN ?? process.env.TWENTY_API_KEY;
+  const appAction =
+    typeof body.action === 'string' && body.action.trim() !== ''
+      ? body.action.trim()
+      : 'list';
+  const nestAction = ROUNDING_APP_ACTION_TO_NEST[appAction] ?? appAction;
+
+  if (apiBase === '' || !token) {
+    throw new Error('API configuration missing');
+  }
+
+  const response = await fetch(`${apiBase}/rest/quotation/actions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ ...body, action: nestAction }),
+    signal: AbortSignal.timeout(REQUEST_DEADLINE_MS),
+  });
+
+  const text = await response.text();
+  const parsed: unknown = text.length > 0 ? JSON.parse(text) : {};
+
+  return {
+    ok: response.ok,
+    status: response.status,
+    data:
+      parsed !== null && typeof parsed === 'object'
+        ? (parsed as Record<string, unknown>)
+        : {},
+  };
+};
+
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';
 export const SAVE_DRAFT_ROUTE = '/quotation/save-draft';
 export const SEARCH_CATALOG_ROUTE = '/quotation/search-catalog-items';

@@ -10,6 +10,7 @@ import {
   countQuotationsPerRoundingRule,
   deactivateRoundingRule,
   deleteRoundingRule,
+  listRoundingRulesFromServer,
   loadRoundingRules,
   saveRoundingRule,
   setDefaultRoundingRule,
@@ -68,6 +69,18 @@ const handler = async (event: RoutePayload<unknown>) => {
 
   try {
     if (action === 'list' || action === '') {
+      const listed = await listRoundingRulesFromServer({
+        authorizationHeader,
+      });
+
+      if (listed.ok) {
+        const usage = new Map(
+          listed.value.map((entry) => [entry.id, 0] as const),
+        );
+
+        return { success: true, ...describeCatalog(listed.value, usage) };
+      }
+
       const entries = await loadRoundingRules();
       const usage = await countQuotationsPerRoundingRule();
 
@@ -171,10 +184,12 @@ export default defineLogicFunction({
   name: 'rounding-rules',
   description: 'Catalog and mutate named payable rounding rules for a workspace',
   timeoutSeconds: 30,
-  httpRoute: {
-    isAuthenticated: true,
-    path: '/quotation/rounding-rules',
-    method: 'POST',
-  },
   handler,
+  httpRouteTriggerSettings: {
+    path: '/quotation/rounding-rules',
+    httpMethod: 'POST',
+    isAuthRequired: true,
+    // Server boundary checks the caller role; forward the human Authorization.
+    forwardedRequestHeaders: ['authorization'],
+  },
 });

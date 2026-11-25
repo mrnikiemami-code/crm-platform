@@ -184,6 +184,11 @@ export const bootstrapRoundingRules = (
 ): Promise<Result<RoundingRuleCatalogEntry[]>> =>
   runServerAction({ action: 'rounding-rule-bootstrap' }, dependencies);
 
+export const listRoundingRulesFromServer = (
+  dependencies: RoundingRuleMutationDependencies = {},
+): Promise<Result<RoundingRuleCatalogEntry[]>> =>
+  runServerAction({ action: 'rounding-rule-list' }, dependencies);
+
 export const countQuotationsPerRoundingRule = async (
   dependencies: RoundingRuleDependencies = {},
 ): Promise<Map<string, number>> => {

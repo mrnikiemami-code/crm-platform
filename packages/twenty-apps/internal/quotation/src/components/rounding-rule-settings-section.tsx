@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
-import {
-  ROUNDING_RULES_ROUTE,
-  callAppRoute,
-} from 'src/components/quotation-api';
+import { callRoundingRulesNestAction } from 'src/components/quotation-api';
 import { toPersianDigits } from 'src/domain/money/display-format';
 import { parseStepRialsText } from 'src/domain/money/rounding-rule';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
@@ -85,7 +82,7 @@ export const RoundingRuleSettingsSection = () => {
       setLoadError(null);
 
       try {
-        const response = await callAppRoute(ROUNDING_RULES_ROUTE, body);
+        const response = await callRoundingRulesNestAction(body);
         const data = response.data;
 
         if (data.success !== true) {

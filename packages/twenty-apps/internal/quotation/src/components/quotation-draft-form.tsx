@@ -25,9 +25,9 @@ import {
   QUOTATION_CURRENCIES_ROUTE,
   SAVE_DRAFT_ROUTE,
   SEARCH_CUSTOMERS_ROUTE,
-  ROUNDING_RULES_ROUTE,
   TAX_POLICIES_ROUTE,
   callAppRoute,
+  callRoundingRulesNestAction,
 } from 'src/components/quotation-api';
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
@@ -569,7 +569,8 @@ export const QuotationDraftForm = () => {
 
     const loadRoundingRules = async () => {
       try {
-        const response = await callAppRoute(ROUNDING_RULES_ROUTE, {
+        // Nest boundary — Dev /s GraphQL path is unreliable across worker images.
+        const response = await callRoundingRulesNestAction({
           action: 'list',
         });
 
@@ -580,7 +581,7 @@ export const QuotationDraftForm = () => {
         let rows = readRoundingRules(response.data);
 
         if (rows.length === 0) {
-          const bootstrapped = await callAppRoute(ROUNDING_RULES_ROUTE, {
+          const bootstrapped = await callRoundingRulesNestAction({
             action: 'bootstrap',
           });
 
