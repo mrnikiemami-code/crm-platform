@@ -1,6 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 032 CUSTOM ROUNDING → STOP_FOR_USER_UAT (2026-11-25)
+## CURRENT — URGENT UAT REGRESSION: TAX/CURRENCY SETTINGS BROKEN; DECIMAL ROUNDING CORRECTION (2026-11-25)
+
+**Verified remote branch immediately before note:** `811af1b721e2`. **Goal 023 ACTIVE, Goal 032 USER_UAT FAILED / NOT ACCEPTED.** User screenshots show financial settings page presents `ذخیره تنظیمات مالیات انجام نشد؛ دوباره تلاش کنید`, while rounding rules and workspace currencies are shown as sparse unopened sections; user reports tax and currency controls unusable. Urgent restoration is priority before WS5/WS6/WS7.
+
+**Root-cause lead (source verified, not runtime proven):** `tax-policy-settings-panel.tsx` and `quotation-currency-settings-section.tsx` still call `callAppRoute` to `/quotation/tax-policies` and `/quotation/currencies`, while rounding rules use `callRoundingRulesNestAction` via `/rest/quotation/actions` due to known Dev `/s` logic-function transport/worker drift. First capture request URL/status and Dev server logs, isolate auth, host route, response format and actual Nest authority for tax/currency before any write; use a verified route with human/workspace role authorization. Never silently elevate to app permissions or bypass backend guards. Restore tax list/create/edit/default and currencies IRR list/edit with actual persisted Dev smoke tests. Do not break quotation per-line tax/default use.
+
+**UI decision:** Rename financial settings main navigation from `مالیات و عوارض` to `پیش‌نیازهای حسابداری` (or equivalently `تنظیمات مالی پیش‌فاکتور` if navigation constraints), and inside SAME existing page introduce accessible persistent tabs: `مالیات و عوارض`, `ارزها`, `قواعد رُند کردن`. Existing working policy editor, currency catalog and rounding editor must be rendered within their own tabs, never replaced by empty explanatory cards or nonfunctional launch controls. Fix wide layout, RTL, mobile, spacing; no new prototype. Functional CRUD and permissions are mandatory.
+
+**CRITICAL USER CORRECTION ON ROUNDING:** decimal step values such as `0.001` apply **ONLY to future non-IRR currencies**. Phase-1 **IRR step MUST remain a strictly positive whole number of rials** (arbitrary integer 99 allowed). No decimal IRR steps, no enabling multi-currency, FX, or cross-currency totals. Future currency-specific decimal precision/rule may be documented or prepared but not activated without explicit future phase approval. Preserve 032 saved snapshots, historical revisions and current whole-rial rounding behavior.
+
+**Execution:** Single current CRM coding session only. Debug/fix backend route first; then functional tabs and UX; tests against actual Dev, screenshots and user UAT; independent STOP only at genuine destructive schema/security risk or final USER_UAT. Do not restart primary/intranet worker, touch `:6080`, enable outbound, force-push, merge, claim restored based on mock-only tests, or mark Goal 023/032 USER_ACCEPTED prematurely. Operational bridge unavailable in this architect session; no code deployment was performed by this note.
+
+## PRIOR CHECKPOINT — GOAL 032 CUSTOM ROUNDING → STOP_FOR_USER_UAT (2026-11-25)
 
 **Branch:** `feat/crm-129-quotation`. **Baseline:** `dab67dbbb3`. **HEAD:** `8567405840`. **App:** `quotation@0.1.59` on Dev `:3002`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 032 child of Goal 023 — Final Gate **`STOP_FOR_USER_UAT`**.
 
