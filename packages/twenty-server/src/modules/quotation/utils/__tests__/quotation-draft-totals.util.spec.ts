@@ -165,6 +165,56 @@ describe('quotation-draft-totals.util', () => {
     );
   });
 
+  it('accepts independent per-line tax and duty rates after document discount', () => {
+    // Mirrors money-domain WS3 fixture: nets 810000 / 900000 after discounts;
+    // line A 9% tax; line B 6% tax + 3% duty.
+    expect(
+      evaluateQuotationDraftTotals({
+        header: header({
+          taxRateBasisPoints: '900',
+          dutyRateBasisPoints: '0',
+          grossExact: '2000000.000000',
+          lineDiscountExact: '100000.000000',
+          documentDiscountExact: '190000.000000',
+          netExact: '1710000.000000',
+          taxExact: '153900.000000',
+          dutyExact: '27000.000000',
+          roundingExact: '0.000000',
+          totalExact: '1863900.000000',
+        }),
+        lines: [
+          line({
+            unitPriceExact: '1000000.000000',
+            grossExact: '1000000.000000',
+            discountExact: '100000.000000',
+            discountKind: 'RATE',
+            discountInputExact: '10.000000',
+            documentDiscountExact: '90000.000000',
+            taxExact: '72900.000000',
+            totalExact: '882900.000000',
+            taxPolicy: 'IR_VAT_9',
+            taxRateBasisPoints: '900',
+            dutyRateBasisPoints: '0',
+          }),
+          line({
+            name: 'خدمت',
+            kind: 'SERVICE',
+            unit: 'ساعت',
+            unitPriceExact: '1000000.000000',
+            grossExact: '1000000.000000',
+            discountExact: '0.000000',
+            documentDiscountExact: '100000.000000',
+            taxExact: '81000.000000',
+            totalExact: '981000.000000',
+            taxPolicy: 'SPLIT_6_3',
+            taxRateBasisPoints: '600',
+            dutyRateBasisPoints: '300',
+          }),
+        ],
+      }),
+    ).toEqual({ ok: true });
+  });
+
   it('parses exact text without floating point drift', () => {
     expect(parseExactAmountToMicros('0.000001')).toBe(BigInt(1));
     expect(parseExactAmountToMicros('3052.000000')).toBe(BigInt(3052000000));

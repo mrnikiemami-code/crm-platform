@@ -123,6 +123,17 @@ export const buildQuotationDocumentPreview = (
   const taxVendorCode = settings.taxPolicyMappings[taxPolicyCode] ?? '';
   const financial = financialSettingsFromRecord(settings.financial);
   const documentCurrencyCode = (revision?.currencyCode ?? '').trim();
+  const distinctLineTaxPolicies = new Set(
+    (revision?.lines ?? [])
+      .map((line) => {
+        const linePolicy =
+          typeof line.taxPolicy === 'string' ? line.taxPolicy.trim() : '';
+
+        return linePolicy !== '' ? linePolicy : taxPolicyCode;
+      })
+      .filter((code) => code !== ''),
+  );
+  const multiTaxReady = distinctLineTaxPolicies.size <= 1;
 
   // What the destination declared decides what has to be true. A rate/amount destination
   // needs no fiscal code, and a single-currency destination needs no currency code, so the
@@ -187,6 +198,7 @@ export const buildQuotationDocumentPreview = (
     { code: 'REVISION_PRESENT', ok: revision !== null },
     { code: 'CURRENCY_IRR', ok: revision?.currencyCode === 'IRR' },
     { code: 'MONEY_UNIT_CONFIRMED', ok: settings.moneyUnit !== 'UNCONFIRMED' },
+    { code: 'MULTI_TAX_SUPPORTED', ok: multiTaxReady },
     { code: 'VENDOR_USER_ID', ok: userId !== null },
     {
       code: 'STORAGE_ID',

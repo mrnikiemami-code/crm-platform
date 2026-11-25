@@ -411,6 +411,29 @@ export const planQuotationExport = (
 
   const snapshot = input.revision.snapshot;
 
+  // WS3 C7: multi-policy revisions are refuse-closed until an adapter proves MULTI_TAX.
+  // No current adapter capability documents multi-tax support, so distinct line policies block.
+  const distinctLineTaxPolicies = new Set(
+    snapshot.lines
+      .map((line) => {
+        const linePolicy =
+          typeof line.taxPolicy === 'string' ? line.taxPolicy.trim() : '';
+
+        return linePolicy !== ''
+          ? linePolicy
+          : (snapshot.taxPolicy ?? '').trim();
+      })
+      .filter((code) => code !== ''),
+  );
+
+  if (distinctLineTaxPolicies.size > 1) {
+    return block(
+      'MULTI_TAX_UNSUPPORTED',
+      'این مقصد از چند سیاست مالیات روی یک سند پشتیبانی نمی‌کند',
+      operationId,
+    );
+  }
+
   // One gate for the financial contract of this destination. It answers only what the
   // adapter declared: a single-currency destination is never asked for a currency code, a
   // rate/amount tax destination is never asked for a fiscal code, and a destination with no

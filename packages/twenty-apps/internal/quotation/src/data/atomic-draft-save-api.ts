@@ -20,6 +20,9 @@ export type AtomicSaveLinePayload = {
   taxExact: string;
   totalExact: string;
   itemId: string | null;
+  taxPolicy?: string | null;
+  taxRateBasisPoints?: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 export type AtomicSaveHeaderPayload = {

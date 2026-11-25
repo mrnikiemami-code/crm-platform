@@ -363,6 +363,64 @@ describe('finalizeLinesWithDocumentDiscount', () => {
     expect(finalized.totals.totalMicros).toBe(finalized.totals.netMicros);
   });
 
+  // WS3: independent per-line rates after Hamilton document-discount allocation.
+  it('applies distinct tax and duty rates per line after document discount', () => {
+    const lineA = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 1_000_000n * MICROS_PER_UNIT,
+        discount: { kind: 'RATE', basisPoints: 1_000n },
+      }),
+    );
+    const lineB = unwrap(
+      computeLinePreTaxAmounts({
+        quantityScaled: 1_000_000n,
+        unitPriceMicros: 1_000_000n * MICROS_PER_UNIT,
+        discount: { kind: 'NONE' },
+      }),
+    );
+
+    // After line discounts: A=900_000, B=1_000_000; sum nets=1_900_000
+    // Document 10% → 190_000; Hamilton shares: A=90_000, B=100_000
+    // Taxable nets: A=810_000, B=900_000
+    // A: tax 9% + duty 0% → 72_900; B: tax 6% + duty 3% → 54_000 + 27_000 = 81_000
+    const finalized = unwrap(
+      finalizeLinesWithDocumentDiscount({
+        preTaxLines: [lineA, lineB],
+        documentDiscount: { kind: 'RATE', basisPoints: 1_000n },
+        taxRateBasisPoints: 900n,
+        dutyRateBasisPoints: 0n,
+        lineTaxRates: [
+          { taxRateBasisPoints: 900n, dutyRateBasisPoints: 0n },
+          { taxRateBasisPoints: 600n, dutyRateBasisPoints: 300n },
+        ],
+      }),
+    );
+
+    expect(finalized.lines[0].documentDiscountMicros).toBe(
+      90_000n * MICROS_PER_UNIT,
+    );
+    expect(finalized.lines[1].documentDiscountMicros).toBe(
+      100_000n * MICROS_PER_UNIT,
+    );
+    expect(finalized.lines[0].netMicros).toBe(810_000n * MICROS_PER_UNIT);
+    expect(finalized.lines[1].netMicros).toBe(900_000n * MICROS_PER_UNIT);
+    expect(finalized.lines[0].taxOnlyMicros).toBe(72_900n * MICROS_PER_UNIT);
+    expect(finalized.lines[0].dutyMicros).toBe(0n);
+    expect(finalized.lines[1].taxOnlyMicros).toBe(54_000n * MICROS_PER_UNIT);
+    expect(finalized.lines[1].dutyMicros).toBe(27_000n * MICROS_PER_UNIT);
+    expect(finalized.totals.taxOnlyMicros).toBe(126_900n * MICROS_PER_UNIT);
+    expect(finalized.totals.dutyMicros).toBe(27_000n * MICROS_PER_UNIT);
+    expect(finalized.totals.taxMicros).toBe(153_900n * MICROS_PER_UNIT);
+    expect(finalized.totals.netMicros).toBe(1_710_000n * MICROS_PER_UNIT);
+    expect(isWholeRialMicros(finalized.totals.totalMicros)).toBe(true);
+    expect(finalized.totals.totalMicros).toBe(
+      finalized.totals.netMicros +
+        finalized.totals.taxMicros +
+        finalized.totals.roundingMicros,
+    );
+  });
+
   it('supports 100% document discount with zero tax and payable', () => {
     const line = unwrap(
       computeLinePreTaxAmounts({

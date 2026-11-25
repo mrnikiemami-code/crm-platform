@@ -39,6 +39,7 @@ import {
   selectInitialTaxPolicyCode,
   totalRateBasisPoints,
   type TaxPolicyCatalogEntry,
+  type TaxPolicyDefinition,
 } from 'src/domain/money/tax-policy';
 import {
   type DraftDiscountInput,
@@ -66,10 +67,12 @@ type LineDraft = {
   discountKind: DiscountKind;
   discountPercentText: string;
   discountAmountText: string;
+  // WS3: independent per-line policy; new lines inherit the document default.
+  taxPolicyCode: string;
   priceWarning: string | null;
 };
 
-const newLine = (): LineDraft => ({
+const newLine = (defaultTaxPolicyCode: string): LineDraft => ({
   clientLineId: `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   catalogItemId: null,
   kind: 'PRODUCT',
@@ -82,6 +85,7 @@ const newLine = (): LineDraft => ({
   discountKind: 'NONE',
   discountPercentText: '',
   discountAmountText: '',
+  taxPolicyCode: defaultTaxPolicyCode,
   priceWarning: null,
 });
 
@@ -266,6 +270,7 @@ const toDiscountInput = (
 const toDraftLineInput = (
   line: LineDraft,
   moneyUnit: MoneyUnit,
+  lineTaxPolicyDefinition: TaxPolicyDefinition | null | undefined,
 ): DraftLineInput => ({
   clientLineId: line.clientLineId,
   catalogItemId: line.catalogItemId,
@@ -281,6 +286,8 @@ const toDraftLineInput = (
     line.discountPercentText,
     line.discountAmountText,
   ),
+  taxPolicy: line.taxPolicyCode,
+  taxPolicyDefinition: lineTaxPolicyDefinition,
 });
 
 const lineCardStyle = (index: number): CSSProperties => ({
@@ -339,9 +346,11 @@ export const QuotationDraftForm = () => {
     useState('');
   const [documentDiscountAmountText, setDocumentDiscountAmountText] =
     useState('');
-  const [lines, setLines] = useState<LineDraft[]>([newLine()]);
   const [taxPolicies, setTaxPolicies] = useState<TaxPolicyCatalogEntry[]>([]);
   const [taxPolicyCode, setTaxPolicyCode] = useState(DEFAULT_TAX_POLICY_ID);
+  const [lines, setLines] = useState<LineDraft[]>(() => [
+    newLine(DEFAULT_TAX_POLICY_ID),
+  ]);
   // The rate a reopened draft was saved with. It wins over the catalog until the
   // operator picks a different policy, so a later settings edit cannot silently
   // reprice a document that already exists.
@@ -384,13 +393,31 @@ export const QuotationDraftForm = () => {
         // An existing draft keeps the policy it was saved with (hydrated below); a new
         // draft must take the flagged default. Matching "the current code still exists"
         // was wrong: the legacy 9% row usually exists, so the default was never applied.
-        setTaxPolicyCode((current) =>
-          selectInitialTaxPolicyCode({
+        setTaxPolicyCode((current) => {
+          const next = selectInitialTaxPolicyCode({
             entries: rows,
             currentCode: current,
             keepCurrent: isRecordEdit || taxPolicyChosenByOperator.current,
-          }),
-        );
+          });
+
+          // New drafts: push the workspace default onto lines that still hold the
+          // bootstrap code so the first card matches the document default select.
+          if (
+            !isRecordEdit &&
+            !taxPolicyChosenByOperator.current &&
+            next !== current
+          ) {
+            setLines((existing) =>
+              existing.map((line) =>
+                line.taxPolicyCode === current
+                  ? { ...line, taxPolicyCode: next }
+                  : line,
+              ),
+            );
+          }
+
+          return next;
+        });
       } catch (loadFailure) {
         // The save route validates the policy on the server; this panel only
         // needs a rate to preview with.
@@ -470,6 +497,11 @@ export const QuotationDraftForm = () => {
             draft.dutyRateBasisPoints,
           ),
         );
+        const headerTaxPolicy =
+          draft.taxPolicy !== null && draft.taxPolicy.trim() !== ''
+            ? draft.taxPolicy.trim()
+            : DEFAULT_TAX_POLICY_ID;
+
         setLines(
           draft.lines.map((line) => ({
             clientLineId: line.clientLineId,
@@ -484,6 +516,11 @@ export const QuotationDraftForm = () => {
             discountKind: line.discountKind,
             discountPercentText: line.discountPercentText,
             discountAmountText: line.discountAmountText,
+            // Legacy header-only drafts: copy document policy onto each line once.
+            taxPolicyCode:
+              line.taxPolicy !== null && line.taxPolicy.trim() !== ''
+                ? line.taxPolicy.trim()
+                : headerTaxPolicy,
             priceWarning: null,
           })),
         );
@@ -639,6 +676,39 @@ export const QuotationDraftForm = () => {
     [selectedTaxPolicy],
   );
 
+  const resolveLineTaxDefinition = (
+    lineTaxPolicyCode: string,
+  ): TaxPolicyDefinition | null => {
+    if (
+      taxPolicyDefinition !== null &&
+      lineTaxPolicyCode === taxPolicyDefinition.id
+    ) {
+      return taxPolicyDefinition;
+    }
+
+    const fromCatalog = taxPolicies.find(
+      (policy) => policy.id === lineTaxPolicyCode,
+    );
+
+    if (fromCatalog !== undefined) {
+      return {
+        id: fromCatalog.id,
+        label: fromCatalog.label,
+        rateBasisPoints: fromCatalog.rateBasisPoints,
+        dutyRateBasisPoints: fromCatalog.dutyRateBasisPoints,
+        isExempt: fromCatalog.isExempt,
+      };
+    }
+
+    if (lineTaxPolicyCode === DEFAULT_TAX_POLICY_ID) {
+      const legacy = resolveTaxPolicy(DEFAULT_TAX_POLICY_ID);
+
+      return legacy.ok ? legacy.value : null;
+    }
+
+    return null;
+  };
+
   const taxRateLabel =
     selectedTaxPolicy === null
       ? null
@@ -666,7 +736,13 @@ export const QuotationDraftForm = () => {
     selectedTaxPolicy?.label ?? LEGACY_TAX_LABEL;
 
   const preview = useMemo(() => {
-    const draftLines = lines.map((line) => toDraftLineInput(line, moneyUnit));
+    const draftLines = lines.map((line) =>
+      toDraftLineInput(
+        line,
+        moneyUnit,
+        resolveLineTaxDefinition(line.taxPolicyCode),
+      ),
+    );
 
     return buildDraftQuotationPreview({
       quotationId: editingQuotationId,
@@ -696,6 +772,7 @@ export const QuotationDraftForm = () => {
     paymentTerms,
     taxPolicyCode,
     taxPolicyDefinition,
+    taxPolicies,
     documentDiscountKind,
     documentDiscountPercentText,
     documentDiscountAmountText,
@@ -808,6 +885,7 @@ export const QuotationDraftForm = () => {
           discountKind: line.discountKind,
           discountPercentText: line.discountPercentText,
           discountAmountText: line.discountAmountText,
+          taxPolicy: line.taxPolicyCode,
         })),
       });
 
@@ -967,7 +1045,9 @@ export const QuotationDraftForm = () => {
               style={addButtonStyle}
               onMouseEnter={() => setAddHovered(true)}
               onMouseLeave={() => setAddHovered(false)}
-              onClick={() => setLines((current) => [...current, newLine()])}
+              onClick={() =>
+                setLines((current) => [...current, newLine(taxPolicyCode)])
+              }
             >
               افزودن ردیف
             </button>
@@ -1081,6 +1161,35 @@ export const QuotationDraftForm = () => {
                   ) : null}
                 </div>
 
+                <label style={styles.fieldLabel}>
+                  سیاست مالیات و عوارض
+                  <select
+                    style={styles.fieldInput}
+                    value={line.taxPolicyCode}
+                    disabled={isFormLocked}
+                    onChange={(event) =>
+                      updateLine(line.clientLineId, {
+                        taxPolicyCode: event.target.value,
+                      })
+                    }
+                  >
+                    {taxPolicyOptions.map((policy) => (
+                      <option key={policy.id} value={policy.id}>
+                        {policy.label}
+                        {policy.isExempt ? ' — معاف' : ''}
+                        {policy.isActive ? '' : ' — غیرفعال'}
+                      </option>
+                    ))}
+                    {taxPolicyOptions.every(
+                      (policy) => policy.id !== line.taxPolicyCode,
+                    ) ? (
+                      <option value={line.taxPolicyCode} dir="ltr">
+                        {line.taxPolicyCode}
+                      </option>
+                    ) : null}
+                  </select>
+                </label>
+
                 {linePreview && !linePreview.ok ? (
                   <p style={styles.lineError}>{linePreview.detail}</p>
                 ) : null}
@@ -1149,7 +1258,7 @@ export const QuotationDraftForm = () => {
           <h3 style={styles.sectionTitle}>مالیات و عوارض</h3>
           <div style={styles.row}>
             <label style={styles.label}>
-              سیاست مالیات
+              سیاست پیش‌فرض (ردیف‌های جدید)
               <select
                 style={styles.input}
                 value={taxPolicyCode}
@@ -1196,9 +1305,9 @@ export const QuotationDraftForm = () => {
             ) : null}
           </div>
           <p style={styles.meta}>
-            نرخ‌ها در تنظیمات «مالیات و عوارض» تعریف می‌شوند و همین سیاست روی
-            سند مهروموم ثبت می‌شود؛ تغییر آیندهٔ تنظیمات مبلغ سند صادرشده را
-            عوض نمی‌کند.
+            نرخ‌ها در تنظیمات «مالیات و عوارض» تعریف می‌شوند. هر ردیف سیاست
+            مستقل دارد؛ این انتخاب فقط پیش‌فرض ردیف‌های جدید است. سیاست هر ردیف
+            روی سند مهروموم ثبت می‌شود.
           </p>
           {selectedTaxPolicy === null ? (
             <p style={styles.warning}>

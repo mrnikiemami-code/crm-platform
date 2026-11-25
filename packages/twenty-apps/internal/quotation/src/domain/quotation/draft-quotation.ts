@@ -59,6 +59,9 @@ export type DraftLineInput = {
   unitPriceText: string;
   moneyUnit: MoneyUnit;
   discount: DraftDiscountInput;
+  // WS3: omit or null → inherit document default tax policy.
+  taxPolicy?: string | null;
+  taxPolicyDefinition?: TaxPolicyDefinition | null;
 };
 
 export type DraftQuotationInput = {
@@ -100,6 +103,10 @@ export type DraftLineRecord = {
   documentDiscountExact: string;
   taxExact: string;
   totalExact: string;
+  // WS3: frozen per-line policy identity and rates (authority for this line's tax).
+  taxPolicy: string;
+  taxRateBasisPoints: string;
+  dutyRateBasisPoints: string;
   sortOrder: number;
   amounts: QuotationLineAmounts;
 };
@@ -308,17 +315,21 @@ const displayAmount = (
 // A rate is never taken from the form: the selected policy is re-validated here,
 // and a definition that disagrees with the requested code is refused instead of
 // silently pricing the document with a different rate.
-const resolveSelectedTaxPolicy = (
-  input: DraftQuotationInput,
-): Result<TaxPolicyDefinition> => {
-  if (input.taxPolicyDefinition === undefined || input.taxPolicyDefinition === null) {
-    return resolveTaxPolicy(input.taxPolicy ?? DEFAULT_TAX_POLICY_ID);
+const resolveTaxPolicyFromCodeAndDefinition = ({
+  taxPolicy,
+  taxPolicyDefinition,
+}: {
+  taxPolicy: string | null | undefined;
+  taxPolicyDefinition?: TaxPolicyDefinition | null;
+}): Result<TaxPolicyDefinition> => {
+  if (taxPolicyDefinition === undefined || taxPolicyDefinition === null) {
+    return resolveTaxPolicy(taxPolicy ?? DEFAULT_TAX_POLICY_ID);
   }
 
   const requested =
-    (input.taxPolicy ?? '').trim() || input.taxPolicyDefinition.id;
+    (taxPolicy ?? '').trim() || taxPolicyDefinition.id;
 
-  if (requested !== input.taxPolicyDefinition.id) {
+  if (requested !== taxPolicyDefinition.id) {
     return refused(
       'TAX_POLICY_MISMATCH',
       'سیاست مالیات انتخاب‌شده با نرخ ارسالی هم‌خوان نیست',
@@ -326,11 +337,46 @@ const resolveSelectedTaxPolicy = (
   }
 
   return buildTaxPolicyDefinition({
-    code: input.taxPolicyDefinition.id,
-    label: input.taxPolicyDefinition.label,
-    rateBasisPoints: input.taxPolicyDefinition.rateBasisPoints,
-    dutyRateBasisPoints: input.taxPolicyDefinition.dutyRateBasisPoints,
-    isExempt: input.taxPolicyDefinition.isExempt,
+    code: taxPolicyDefinition.id,
+    label: taxPolicyDefinition.label,
+    rateBasisPoints: taxPolicyDefinition.rateBasisPoints,
+    dutyRateBasisPoints: taxPolicyDefinition.dutyRateBasisPoints,
+    isExempt: taxPolicyDefinition.isExempt,
+  });
+};
+
+const resolveSelectedTaxPolicy = (
+  input: DraftQuotationInput,
+): Result<TaxPolicyDefinition> =>
+  resolveTaxPolicyFromCodeAndDefinition({
+    taxPolicy: input.taxPolicy,
+    taxPolicyDefinition: input.taxPolicyDefinition,
+  });
+
+// Line inherits the document default when it omits a policy or points at the same one.
+const resolveLineTaxPolicy = (
+  line: DraftLineInput,
+  documentPolicy: TaxPolicyDefinition,
+): Result<TaxPolicyDefinition> => {
+  const lineCode = (line.taxPolicy ?? '').trim();
+
+  if (
+    lineCode === '' &&
+    (line.taxPolicyDefinition === undefined || line.taxPolicyDefinition === null)
+  ) {
+    return accepted(documentPolicy);
+  }
+
+  if (
+    lineCode === documentPolicy.id &&
+    (line.taxPolicyDefinition === undefined || line.taxPolicyDefinition === null)
+  ) {
+    return accepted(documentPolicy);
+  }
+
+  return resolveTaxPolicyFromCodeAndDefinition({
+    taxPolicy: lineCode || null,
+    taxPolicyDefinition: line.taxPolicyDefinition,
   });
 };
 
@@ -401,6 +447,7 @@ export const buildDraftQuotationPlan = (
   }
 
   const builtPreTax: BuiltPreTaxLine[] = [];
+  const linePolicies: TaxPolicyDefinition[] = [];
 
   for (let index = 0; index < input.lines.length; index += 1) {
     const built = computeOnePreTaxLine(input.lines[index], index);
@@ -409,7 +456,17 @@ export const buildDraftQuotationPlan = (
       return built;
     }
 
+    const linePolicy = resolveLineTaxPolicy(
+      input.lines[index],
+      taxPolicy.value,
+    );
+
+    if (!linePolicy.ok) {
+      return linePolicy;
+    }
+
     builtPreTax.push(built.value);
+    linePolicies.push(linePolicy.value);
   }
 
   const finalized = finalizeLinesWithDocumentDiscount({
@@ -417,6 +474,10 @@ export const buildDraftQuotationPlan = (
     documentDiscount: documentDiscount.value,
     taxRateBasisPoints: taxPolicy.value.rateBasisPoints,
     dutyRateBasisPoints: taxPolicy.value.dutyRateBasisPoints,
+    lineTaxRates: linePolicies.map((policy) => ({
+      taxRateBasisPoints: policy.rateBasisPoints,
+      dutyRateBasisPoints: policy.dutyRateBasisPoints,
+    })),
   });
 
   if (!finalized.ok) {
@@ -494,6 +555,9 @@ export const buildDraftQuotationPlan = (
       documentDiscountExact: formatMicrosExact(amounts.documentDiscountMicros),
       taxExact: formatMicrosExact(amounts.taxMicros),
       totalExact: formatMicrosExact(amounts.totalMicros),
+      taxPolicy: linePolicies[index].id,
+      taxRateBasisPoints: linePolicies[index].rateBasisPoints.toString(),
+      dutyRateBasisPoints: linePolicies[index].dutyRateBasisPoints.toString(),
       sortOrder: preTaxLine.sortOrder,
       amounts,
     };

@@ -21,6 +21,10 @@ export type QuotationRevisionLine = {
   discountMicros: string;
   taxMicros: string;
   totalMicros: string;
+  // WS3: optional; omitted on pre-WS3 seals so hashes stay stable.
+  taxPolicy?: string;
+  taxRateBasisPoints?: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 export type QuotationRevisionSnapshot = {
@@ -80,6 +84,9 @@ export type QuotationRevisionLineRow = {
   documentDiscountExact: string | null;
   taxExact: string | null;
   totalExact: string | null;
+  taxPolicy?: string | null;
+  taxRateBasisPoints?: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 export type QuotationRevisionSnapshotResult =
@@ -233,6 +240,10 @@ export const buildQuotationRevisionSnapshot = ({
     lineTax += tax;
     lineTotal += total;
 
+    const lineTaxPolicy = (line.taxPolicy ?? '').trim();
+    const lineTaxRate = (line.taxRateBasisPoints ?? '').trim();
+    const lineDutyRate = (line.dutyRateBasisPoints ?? '').trim();
+
     sealedLines.push({
       lineId: line.id,
       description: (line.description ?? line.name ?? '').trim(),
@@ -242,6 +253,17 @@ export const buildQuotationRevisionSnapshot = ({
       discountMicros: discount.toString(),
       taxMicros: tax.toString(),
       totalMicros: total.toString(),
+      ...(lineTaxPolicy !== ''
+        ? {
+            taxPolicy: lineTaxPolicy,
+            taxRateBasisPoints: /^\d{1,5}$/.test(lineTaxRate)
+              ? lineTaxRate
+              : null,
+            dutyRateBasisPoints: /^\d{1,5}$/.test(lineDutyRate)
+              ? lineDutyRate
+              : null,
+          }
+        : {}),
     });
   }
 

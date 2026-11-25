@@ -26,6 +26,11 @@ export type QuotationRevisionLine = {
   // issued before policies could carry duty keeps its exact old bytes.
   taxMicros: string;
   totalMicros: string;
+  // WS3: optional per-line policy. Absent on sealed revisions that predate WS3 so
+  // their snapshot hash stays identical.
+  taxPolicy?: string;
+  taxRateBasisPoints?: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 export type QuotationRevisionSnapshot = {

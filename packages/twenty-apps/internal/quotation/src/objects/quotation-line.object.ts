@@ -183,6 +183,64 @@ export default defineObject({
       isUIEditable: false,
     },
     {
+      // WS3: line may override the document default policy; rates freeze at save.
+      universalIdentifier: QUOTATION_LINE_FIELDS.taxPolicy,
+      type: FieldType.TEXT,
+      name: 'taxPolicy',
+      label: 'سیاست مالیات ردیف',
+      description:
+        'شناسهٔ سیاست مالیات/عوارض این ردیف. مستقل از سایر ردیف‌ها؛ پیش‌فرض از سند.',
+      icon: 'IconPercentage',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      universalIdentifier: QUOTATION_LINE_FIELDS.taxRateBasisPoints,
+      type: FieldType.TEXT,
+      name: 'taxRateBasisPoints',
+      label: 'نرخ مالیات ردیف (پایه‌واحد)',
+      description:
+        'نرخ مالیات فریزشدهٔ این ردیف؛ ۹۰۰ یعنی ۹٪. برای بازخوانی و صدور، نه ویرایش دستی.',
+      icon: 'IconPercentage',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      universalIdentifier: QUOTATION_LINE_FIELDS.dutyRateBasisPoints,
+      type: FieldType.TEXT,
+      name: 'dutyRateBasisPoints',
+      label: 'نرخ عوارض ردیف (پایه‌واحد)',
+      description:
+        'نرخ عوارض فریزشدهٔ این ردیف؛ ۴۰۰ یعنی ۴٪. با مالیات جمع می‌شود ولی جدا می‌ماند.',
+      icon: 'IconReceiptTax',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      // Server-only CRM ledger snapshot of this line's tax policy (C3/C4).
+      universalIdentifier: QUOTATION_LINE_FIELDS.taxAccountingCode,
+      type: FieldType.TEXT,
+      name: 'taxAccountingCode',
+      label: 'کد حسابداری مالیات ردیف (اسنپ‌شات)',
+      description:
+        'کد دفتر کل سیاست مالیات ردیف در لحظهٔ ذخیره. فقط سرور می‌نویسد؛ در فرم دیده نمی‌شود.',
+      icon: 'IconHash',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: "''",
+    },
+    {
+      universalIdentifier: QUOTATION_LINE_FIELDS.taxPolicyRecordId,
+      type: FieldType.TEXT,
+      name: 'taxPolicyRecordId',
+      label: 'شناسه رکورد سیاست مالیات ردیف',
+      description:
+        'شناسهٔ رکورد سیاست مالیات مرجع این ردیف برای قفل کد حسابداری. فقط سرور می‌نویسد.',
+      icon: 'IconKey',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: QUOTATION_LINE_FIELDS.totalExact,
       type: FieldType.TEXT,
       name: 'totalExact',

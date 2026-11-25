@@ -129,6 +129,12 @@ export const QUOTATION_LINE_FIELDS = {
   taxExact: '2f3ce772-0169-5895-b580-8aa6c7be41ec',
   totalExact: '58d8751e-476a-501c-9cdb-6bf88162598a',
   sortOrder: 'bf46f321-d0a6-5f77-a80c-1738a9044df1',
+  // WS3 F4: independent tax/duty policy per line (frozen rates + accounting snapshot).
+  taxPolicy: 'a125c2c8-7db7-52f9-9b60-425c4ec390df',
+  taxRateBasisPoints: '3addd952-6dec-5272-9251-df733d37b5d2',
+  dutyRateBasisPoints: 'b48f590b-66ec-5f28-a27d-6ae46e954084',
+  taxAccountingCode: '906e354d-9ef7-578e-b3b3-21b291f83585',
+  taxPolicyRecordId: '4cf932cd-a585-5f2f-89ad-7396a178be09',
 } as const;
 
 export const QUOTATION_REVISION_FIELDS = {

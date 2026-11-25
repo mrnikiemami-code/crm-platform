@@ -34,6 +34,10 @@ export type QuotationDraftSaveLine = {
   taxExact: string;
   totalExact: string;
   itemId: string | null;
+  // WS3: frozen per-line tax/duty; absent on legacy header-only tax saves.
+  taxPolicy?: string | null;
+  taxRateBasisPoints?: string | null;
+  dutyRateBasisPoints?: string | null;
 };
 
 export type QuotationDraftSaveHeader = {

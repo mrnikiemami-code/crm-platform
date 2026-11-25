@@ -103,6 +103,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         unitPriceText: readString(row.unitPriceText),
         moneyUnit,
         discount: readDiscount(row),
+        taxPolicy: readString(row.taxPolicy) || null,
       };
     }),
   };
@@ -169,16 +170,46 @@ const handler = async (event: RoutePayload<unknown>) => {
       };
     }
 
+    const headerDefinition = {
+      id: policy.value.id,
+      label: policy.value.label,
+      rateBasisPoints: policy.value.rateBasisPoints,
+      dutyRateBasisPoints: policy.value.dutyRateBasisPoints,
+      isExempt: policy.value.isExempt,
+    };
+
+    const resolvedLines: typeof input.lines = [];
+
+    for (const line of input.lines) {
+      const lineCode = (line.taxPolicy ?? '').trim() || policy.value.id;
+      const linePolicy = resolveTaxPolicyFromCatalog(lineCode, catalog);
+
+      if (!linePolicy.ok) {
+        return {
+          success: false,
+          code: linePolicy.refusal.code,
+          message: linePolicy.refusal.detail,
+        };
+      }
+
+      resolvedLines.push({
+        ...line,
+        taxPolicy: linePolicy.value.id,
+        taxPolicyDefinition: {
+          id: linePolicy.value.id,
+          label: linePolicy.value.label,
+          rateBasisPoints: linePolicy.value.rateBasisPoints,
+          dutyRateBasisPoints: linePolicy.value.dutyRateBasisPoints,
+          isExempt: linePolicy.value.isExempt,
+        },
+      });
+    }
+
     definedInput = {
       ...input,
       taxPolicy: policy.value.id,
-      taxPolicyDefinition: {
-        id: policy.value.id,
-        label: policy.value.label,
-        rateBasisPoints: policy.value.rateBasisPoints,
-        dutyRateBasisPoints: policy.value.dutyRateBasisPoints,
-        isExempt: policy.value.isExempt,
-      },
+      taxPolicyDefinition: headerDefinition,
+      lines: resolvedLines,
     };
   } catch (error) {
     console.error('save-draft-quotation: tax policy lookup failed', error);

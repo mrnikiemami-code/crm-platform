@@ -202,7 +202,7 @@ export class QuotationDraftPersistenceService {
       ...this.buildHeaderColumns(
         request.header,
         customerName,
-        accountingSnapshot.value,
+        accountingSnapshot.value.header,
       ),
       // A draft is born without a document number: only issuance claims one.
       status: 'DRAFT',
@@ -222,7 +222,11 @@ export class QuotationDraftPersistenceService {
 
       await lineRepository.insert(
         request.lines.map((line, index) => ({
-          ...this.buildLineColumns(line, index),
+          ...this.buildLineColumns(
+            line,
+            index,
+            accountingSnapshot.value.lines[index],
+          ),
           quotationId,
         })),
       );
@@ -342,7 +346,7 @@ export class QuotationDraftPersistenceService {
         ...this.buildHeaderColumns(
           request.header,
           customerName,
-          accountingSnapshot.value,
+          accountingSnapshot.value.header,
         ),
         version: currentVersion + 1,
       },
@@ -356,6 +360,7 @@ export class QuotationDraftPersistenceService {
       transactionScope,
       quotationId,
       lines: request.lines,
+      lineSnapshots: accountingSnapshot.value.lines,
     });
 
     return {
@@ -431,12 +436,136 @@ export class QuotationDraftPersistenceService {
       stored,
     });
 
-    return decision.ok ? null : rejected(decision.code, decision.message);
+    if (!decision.ok) {
+      return rejected(decision.code, decision.message);
+    }
+
+    // WS3: every distinct line policy must also be an approved workspace policy.
+    return this.assertLineTaxPolicyAuthority({
+      transactionScope,
+      request,
+    });
   }
 
-  // WS2-R1: fail-closed resolution under Tax→Currency read locks.
+  private async assertLineTaxPolicyAuthority({
+    transactionScope,
+    request,
+  }: {
+    transactionScope: WorkspaceTransactionScope;
+    request: QuotationDraftSaveRequest;
+  }): Promise<QuotationDraftSaveOutcome | null> {
+    const headerCode = (request.header.taxPolicy ?? '').trim();
+    const checkedCodes = new Set<string>();
+
+    for (const [index, line] of request.lines.entries()) {
+      const lineCode =
+        (line.taxPolicy ?? '').trim() || headerCode;
+
+      if (lineCode === '' || checkedCodes.has(lineCode)) {
+        if (lineCode === '') {
+          const lineTax = (line.taxExact ?? '').trim();
+
+          if (lineTax !== '' && lineTax !== '0' && lineTax !== '0.000000') {
+            return rejected(
+              'TAX_POLICY_REQUIRED',
+              `lines[${index}] needs a tax policy when it carries tax`,
+            );
+          }
+        }
+
+        continue;
+      }
+
+      checkedCodes.add(lineCode);
+
+      let row: WorkspaceTaxPolicyRow | null;
+
+      try {
+        row = await transactionScope
+          .getRepository<WorkspaceTaxPolicyRow>('taxPolicy', {
+            shouldBypassPermissionChecks: true,
+          })
+          .findOne({
+            where: { code: lineCode },
+            select: {
+              id: true,
+              code: true,
+              rateBasisPoints: true,
+              dutyRateBasisPoints: true,
+              isActive: true,
+              accountingCode: true,
+            },
+          });
+      } catch (error) {
+        this.logger.error(
+          `Line tax policy lookup failed for "${lineCode}": ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+
+        return rejected(
+          'TAX_POLICY_UNAVAILABLE',
+          'the workspace has no readable tax policy table',
+        );
+      }
+
+      if (row === null) {
+        return rejected(
+          'TAX_POLICY_UNKNOWN',
+          `سیاست مالیات «${lineCode}» در تنظیمات این فضای کاری تعریف نشده است`,
+        );
+      }
+
+      const linePolicy: DraftTaxPolicyChoice = {
+        code: (row.code ?? lineCode).trim(),
+        rateBasisPoints: (row.rateBasisPoints ?? '').trim(),
+        dutyRateBasisPoints: (row.dutyRateBasisPoints ?? '0').trim(),
+        isActive: row.isActive !== false,
+      };
+
+      const reusesHeaderPolicy = lineCode === headerCode;
+
+      if (!linePolicy.isActive && !reusesHeaderPolicy) {
+        return rejected(
+          'TAX_POLICY_INACTIVE',
+          `سیاست مالیات «${lineCode}» غیرفعال است`,
+        );
+      }
+
+      const declaredRate = (
+        line.taxRateBasisPoints ??
+        request.header.taxRateBasisPoints ??
+        ''
+      ).trim();
+      const declaredDuty = (
+        line.dutyRateBasisPoints ??
+        request.header.dutyRateBasisPoints ??
+        '0'
+      ).trim();
+      const policyDuty = (linePolicy.dutyRateBasisPoints ?? '0').trim();
+      const matchesCatalog =
+        declaredRate === linePolicy.rateBasisPoints &&
+        declaredDuty === policyDuty;
+      const matchesApprovedHeader =
+        reusesHeaderPolicy &&
+        declaredRate === (request.header.taxRateBasisPoints ?? '').trim() &&
+        declaredDuty ===
+          (request.header.dutyRateBasisPoints ?? '0').trim();
+
+      if (!matchesCatalog && !matchesApprovedHeader) {
+        return rejected(
+          'TAX_POLICY_RATE_MISMATCH',
+          `نرخ اعلام‌شده با سیاست «${lineCode}» هم‌خوان نیست`,
+        );
+      }
+    }
+
+    return null;
+  }
+
+  // WS2-R1 + WS3: fail-closed resolution under Tax→Currency read locks.
   // Empty accountingCode is allowed only when the reference row exists and has none.
-  // Catalog/table read failures and missing required rows refuse the save (rollback).
+  // Every distinct line policy used on the draft is snapshotted and locked by record id.
   private async resolveAccountingSnapshot({
     transactionScope,
     request,
@@ -444,14 +573,35 @@ export class QuotationDraftPersistenceService {
     transactionScope: WorkspaceTransactionScope;
     request: QuotationDraftSaveRequest;
   }): Promise<
-    | { ok: true; value: QuotationAccountingSnapshot }
+    | {
+        ok: true;
+        value: {
+          header: QuotationAccountingSnapshot;
+          lines: Array<{
+            taxPolicyRecordId: string | null;
+            taxAccountingCode: string;
+          }>;
+        };
+      }
     | { ok: false; rejection: QuotationDraftSaveOutcome }
   > {
-    const taxPolicyCode = (request.header.taxPolicy ?? '').trim();
-    let taxPolicyRecordId: string | null = null;
-    let taxAccountingCode = '';
+    const policyCache = new Map<
+      string,
+      { taxPolicyRecordId: string; taxAccountingCode: string }
+    >();
 
-    if (taxPolicyCode !== '') {
+    const resolveTaxPolicyRow = async (
+      taxPolicyCode: string,
+    ): Promise<
+      | { ok: true; value: { taxPolicyRecordId: string; taxAccountingCode: string } }
+      | { ok: false; rejection: QuotationDraftSaveOutcome }
+    > => {
+      const cached = policyCache.get(taxPolicyCode);
+
+      if (cached !== undefined) {
+        return { ok: true, value: cached };
+      }
+
       let taxRow: WorkspaceTaxPolicyRow | null;
 
       try {
@@ -489,8 +639,56 @@ export class QuotationDraftPersistenceService {
         };
       }
 
-      taxPolicyRecordId = taxRow.id;
-      taxAccountingCode = (taxRow.accountingCode ?? '').trim();
+      const resolved = {
+        taxPolicyRecordId: taxRow.id,
+        taxAccountingCode: (taxRow.accountingCode ?? '').trim(),
+      };
+
+      policyCache.set(taxPolicyCode, resolved);
+
+      return { ok: true, value: resolved };
+    };
+
+    const taxPolicyCode = (request.header.taxPolicy ?? '').trim();
+    let headerTax: {
+      taxPolicyRecordId: string | null;
+      taxAccountingCode: string;
+    } = { taxPolicyRecordId: null, taxAccountingCode: '' };
+
+    if (taxPolicyCode !== '') {
+      const resolved = await resolveTaxPolicyRow(taxPolicyCode);
+
+      if (!resolved.ok) {
+        return resolved;
+      }
+
+      headerTax = resolved.value;
+    }
+
+    const lineSnapshots: Array<{
+      taxPolicyRecordId: string | null;
+      taxAccountingCode: string;
+    }> = [];
+
+    for (const line of request.lines) {
+      const lineCode =
+        (line.taxPolicy ?? '').trim() || taxPolicyCode;
+
+      if (lineCode === '') {
+        lineSnapshots.push({
+          taxPolicyRecordId: null,
+          taxAccountingCode: '',
+        });
+        continue;
+      }
+
+      const resolved = await resolveTaxPolicyRow(lineCode);
+
+      if (!resolved.ok) {
+        return resolved;
+      }
+
+      lineSnapshots.push(resolved.value);
     }
 
     const currencyCode = (request.header.currencyCode ?? '').trim().toUpperCase();
@@ -544,12 +742,15 @@ export class QuotationDraftPersistenceService {
 
     return {
       ok: true,
-      value: buildQuotationAccountingSnapshot({
-        taxPolicyRecordId,
-        taxAccountingCode,
-        quotationCurrencyRecordId: currencyRow.id,
-        currencyAccountingCode: (currencyRow.accountingCode ?? '').trim(),
-      }),
+      value: {
+        header: buildQuotationAccountingSnapshot({
+          taxPolicyRecordId: headerTax.taxPolicyRecordId,
+          taxAccountingCode: headerTax.taxAccountingCode,
+          quotationCurrencyRecordId: currencyRow.id,
+          currencyAccountingCode: (currencyRow.accountingCode ?? '').trim(),
+        }),
+        lines: lineSnapshots,
+      },
     };
   }
 
@@ -593,10 +794,15 @@ export class QuotationDraftPersistenceService {
     transactionScope,
     quotationId,
     lines,
+    lineSnapshots,
   }: {
     transactionScope: WorkspaceTransactionScope;
     quotationId: string;
     lines: QuotationDraftSaveLine[];
+    lineSnapshots: Array<{
+      taxPolicyRecordId: string | null;
+      taxAccountingCode: string;
+    }>;
   }): Promise<void> {
     const lineRepository = transactionScope.getRepository('quotationLine', {
       shouldBypassPermissionChecks: true,
@@ -619,7 +825,7 @@ export class QuotationDraftPersistenceService {
         // Editing in place keeps the line id, so history and references survive.
         await lineRepository.update(
           { id: existingLineId },
-          this.buildLineColumns(line, index),
+          this.buildLineColumns(line, index, lineSnapshots[index]),
         );
 
         continue;
@@ -631,7 +837,11 @@ export class QuotationDraftPersistenceService {
     if (newLineIndexes.length > 0) {
       await lineRepository.insert(
         newLineIndexes.map((index) => ({
-          ...this.buildLineColumns(lines[index], index),
+          ...this.buildLineColumns(
+            lines[index],
+            index,
+            lineSnapshots[index],
+          ),
           quotationId,
         })),
       );
@@ -687,6 +897,10 @@ export class QuotationDraftPersistenceService {
   private buildLineColumns(
     line: QuotationDraftSaveLine,
     sortOrder: number,
+    taxSnapshot?: {
+      taxPolicyRecordId: string | null;
+      taxAccountingCode: string;
+    },
   ): Record<string, unknown> {
     return {
       name: line.name,
@@ -702,6 +916,11 @@ export class QuotationDraftPersistenceService {
       documentDiscountExact: line.documentDiscountExact,
       taxExact: line.taxExact,
       totalExact: line.totalExact,
+      taxPolicy: line.taxPolicy ?? null,
+      taxRateBasisPoints: line.taxRateBasisPoints ?? null,
+      dutyRateBasisPoints: line.dutyRateBasisPoints ?? null,
+      taxAccountingCode: taxSnapshot?.taxAccountingCode ?? '',
+      taxPolicyRecordId: taxSnapshot?.taxPolicyRecordId ?? null,
       sortOrder,
       itemId: line.itemId,
     };

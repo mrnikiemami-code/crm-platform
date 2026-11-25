@@ -145,6 +145,79 @@ describe('buildDraftQuotationPlan', () => {
     expect(plan.refusal.code).toBe('DOCUMENT_DISCOUNT_EXCEEDS_NET');
   });
 
+  it('prices two lines with independent tax policies after document discount', () => {
+    const plan = buildDraftQuotationPlan({
+      quotationId: null,
+      status: 'DRAFT',
+      customerType: 'COMPANY',
+      personId: null,
+      companyId: 'company-1',
+      name: 'دو سیاست ردیف',
+      paymentTerms: null,
+      taxPolicy: 'IR_VAT_9',
+      taxPolicyDefinition: {
+        id: 'IR_VAT_9',
+        label: 'ارزش افزوده ۹٪',
+        rateBasisPoints: 900n,
+        dutyRateBasisPoints: 0n,
+        isExempt: false,
+      },
+      documentDiscount: { kind: 'RATE', percentText: '10' },
+      displayMoneyUnit: 'IRR',
+      lines: [
+        {
+          ...baseLine,
+          clientLineId: 'line-a',
+          quantityText: '1',
+          unitPriceText: '1000000',
+          moneyUnit: 'IRR',
+          discount: { kind: 'RATE', percentText: '10' },
+          taxPolicy: 'IR_VAT_9',
+          taxPolicyDefinition: {
+            id: 'IR_VAT_9',
+            label: 'ارزش افزوده ۹٪',
+            rateBasisPoints: 900n,
+            dutyRateBasisPoints: 0n,
+            isExempt: false,
+          },
+        },
+        {
+          ...baseLine,
+          clientLineId: 'line-b',
+          name: 'خدمت جدا',
+          kind: 'SERVICE',
+          unit: 'ساعت',
+          quantityText: '1',
+          unitPriceText: '1000000',
+          moneyUnit: 'IRR',
+          discount: { kind: 'NONE' },
+          taxPolicy: 'SPLIT_6_3',
+          taxPolicyDefinition: {
+            id: 'SPLIT_6_3',
+            label: '۶٪ مالیات + ۳٪ عوارض',
+            rateBasisPoints: 600n,
+            dutyRateBasisPoints: 300n,
+            isExempt: false,
+          },
+        },
+      ],
+    });
+
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) {
+      return;
+    }
+
+    expect(plan.value.lines[0].taxPolicy).toBe('IR_VAT_9');
+    expect(plan.value.lines[1].taxPolicy).toBe('SPLIT_6_3');
+    expect(plan.value.lines[0].taxExact).toBe('72900.000000');
+    expect(plan.value.lines[1].taxExact).toBe('81000.000000');
+    expect(plan.value.totalsExact.dutyExact).toBe('27000.000000');
+    expect(plan.value.totalsExact.taxExact).toBe('153900.000000');
+    expect(plan.value.totalsExact.netExact).toBe('1710000.000000');
+    expect(plan.value.totalExact.endsWith('.000000')).toBe(true);
+  });
+
   it('refuses unknown tax policy instead of inventing a rate', () => {
     const plan = buildDraftQuotationPlan({
       quotationId: null,

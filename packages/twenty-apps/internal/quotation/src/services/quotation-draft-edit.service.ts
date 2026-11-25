@@ -33,6 +33,8 @@ export type EditableDraftLine = {
   discountKind: EditableDraftDiscountKind;
   discountPercentText: string;
   discountAmountText: string;
+  // Null on legacy header-only tax documents; form copies header policy once.
+  taxPolicy: string | null;
 };
 
 export type EditableDraft = {
@@ -186,6 +188,7 @@ type RawLine = {
   discountKind: EditableDraftDiscountKind;
   discountInputExact: string;
   itemId: string | null;
+  taxPolicy: string | null;
 };
 
 const readLines = (data: Record<string, unknown>): RawLine[] => {
@@ -216,6 +219,7 @@ const readLines = (data: Record<string, unknown>): RawLine[] => {
         discountKind: readDiscountKind(node.discountKind),
         discountInputExact: readText(node.discountInputExact) || '0.000000',
         itemId: readRelationId(node.item),
+        taxPolicy: readNullableText(node.taxPolicy),
       },
     ];
   });
@@ -317,6 +321,7 @@ export const parseDraftForEdit = (
       discountKind,
       discountPercentText,
       discountAmountText,
+      taxPolicy: rawLine.taxPolicy,
     });
   }
 

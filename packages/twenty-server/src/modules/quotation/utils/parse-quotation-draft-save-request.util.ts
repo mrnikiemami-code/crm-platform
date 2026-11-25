@@ -149,6 +149,21 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
     return null;
   }
 
+  const taxRateBasisPoints = readTaxRateBasisPoints(raw.taxRateBasisPoints);
+  const dutyRateBasisPoints = readTaxRateBasisPoints(raw.dutyRateBasisPoints);
+
+  if (taxRateBasisPoints === undefined || dutyRateBasisPoints === undefined) {
+    return null;
+  }
+
+  // Snapshot codes on lines are server-owned (C3); refuse client supply.
+  if (
+    raw.taxAccountingCode !== undefined ||
+    raw.taxPolicyRecordId !== undefined
+  ) {
+    return null;
+  }
+
   return {
     name,
     kind,
@@ -164,6 +179,9 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
     taxExact: raw.taxExact as string,
     totalExact: raw.totalExact as string,
     itemId: itemId.value,
+    taxPolicy: readNullableText(raw.taxPolicy, 64),
+    taxRateBasisPoints,
+    dutyRateBasisPoints,
   };
 };
 
@@ -335,6 +353,16 @@ export const parseQuotationDraftSaveRequest = (
   const lines: QuotationDraftSaveLine[] = [];
 
   for (const [index, rawLine] of body.lines.entries()) {
+    if (
+      isPlainObject(rawLine) &&
+      findClientAccountingSnapshotOverrides(rawLine).length > 0
+    ) {
+      return refused(
+        'ACCOUNTING_SNAPSHOT_CLIENT_FORBIDDEN',
+        'tax/currency accounting snapshots cannot be supplied by the client',
+      );
+    }
+
     const line = parseLine(rawLine);
 
     if (line === null) {

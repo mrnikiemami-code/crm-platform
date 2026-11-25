@@ -57,21 +57,41 @@ export type QuotationTotalsExactText = {
   roundingExact: string;
 };
 
+export type LineTaxRates = {
+  taxRateBasisPoints: bigint;
+  dutyRateBasisPoints?: bigint;
+};
+
 export const finalizeLinesWithDocumentDiscount = ({
   preTaxLines,
   documentDiscount,
   taxRateBasisPoints,
   dutyRateBasisPoints,
+  lineTaxRates,
 }: {
   preTaxLines: QuotationLinePreTaxAmounts[];
   documentDiscount: LineDiscount;
+  // Document default rates; used when lineTaxRates is omitted or a slot is absent.
   taxRateBasisPoints: bigint;
   dutyRateBasisPoints?: bigint;
+  // WS3: optional per-line rates after Hamilton document-discount allocation.
+  // Length must match preTaxLines when provided. Missing slots fall back to document rates.
+  lineTaxRates?: Array<LineTaxRates | null | undefined>;
 }): Result<{ lines: QuotationLineAmounts[]; totals: QuotationDocumentTotals }> => {
   if (preTaxLines.length === 0) {
     return refused(
       'DOCUMENT_HAS_NO_LINES',
       'a quotation must have at least one line',
+    );
+  }
+
+  if (
+    lineTaxRates !== undefined &&
+    lineTaxRates.length !== preTaxLines.length
+  ) {
+    return refused(
+      'LINE_TAX_RATES_LENGTH_MISMATCH',
+      'per-line tax rates must align with quotation lines',
     );
   }
 
@@ -98,13 +118,18 @@ export const finalizeLinesWithDocumentDiscount = ({
     return sharesResult;
   }
 
-  const dutyRate = dutyRateBasisPoints ?? 0n;
+  const documentDutyRate = dutyRateBasisPoints ?? 0n;
   const lines: QuotationLineAmounts[] = preTaxLines.map((preTax, index) => {
     const documentDiscountMicros = sharesResult.value[index];
     const netMicros =
       preTax.netAfterLineDiscountMicros - documentDiscountMicros;
-    const taxOnlyMicros = applyBasisPoints(netMicros, taxRateBasisPoints);
-    const dutyMicros = applyBasisPoints(netMicros, dutyRate);
+    const lineRates = lineTaxRates?.[index];
+    const lineTaxRate =
+      lineRates?.taxRateBasisPoints ?? taxRateBasisPoints;
+    const lineDutyRate =
+      lineRates?.dutyRateBasisPoints ?? documentDutyRate;
+    const taxOnlyMicros = applyBasisPoints(netMicros, lineTaxRate);
+    const dutyMicros = applyBasisPoints(netMicros, lineDutyRate);
     const taxMicros = taxOnlyMicros + dutyMicros;
 
     return {

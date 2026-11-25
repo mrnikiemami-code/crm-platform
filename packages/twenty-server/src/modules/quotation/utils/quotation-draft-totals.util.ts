@@ -135,21 +135,20 @@ export const evaluateQuotationDraftTotals = ({
   // tax instead of trusting the amounts it is asked to store. A client cannot
   // lower the tax on a document by sending a smaller taxExact.
   //
-  // The document's tax is tax + duty, so both declared components are applied to
-  // the line's net. Applying only the tax rate here would reject every document a
-  // policy with a duty component priced correctly.
+  // WS3: each line may carry its own frozen rates; absent line rates inherit the
+  // document default. Duty is summed from per-line applications (same as Money Domain).
   if (
     typeof header.taxRateBasisPoints === 'string' &&
     /^\d{1,5}$/.test(header.taxRateBasisPoints)
   ) {
-    const rate = BigInt(header.taxRateBasisPoints);
-    const dutyRate =
+    const headerRate = BigInt(header.taxRateBasisPoints);
+    const headerDutyRate =
       typeof header.dutyRateBasisPoints === 'string' &&
       /^\d{1,5}$/.test(header.dutyRateBasisPoints)
         ? BigInt(header.dutyRateBasisPoints)
         : BigInt(0);
 
-    if (rate > BASIS_POINTS_DENOMINATOR) {
+    if (headerRate > BASIS_POINTS_DENOMINATOR) {
       return {
         ok: false,
         code: 'TAX_RATE_OUT_OF_RANGE',
@@ -158,8 +157,8 @@ export const evaluateQuotationDraftTotals = ({
     }
 
     if (
-      dutyRate > BASIS_POINTS_DENOMINATOR ||
-      rate + dutyRate > BASIS_POINTS_DENOMINATOR
+      headerDutyRate > BASIS_POINTS_DENOMINATOR ||
+      headerRate + headerDutyRate > BASIS_POINTS_DENOMINATOR
     ) {
       return {
         ok: false,
@@ -169,11 +168,53 @@ export const evaluateQuotationDraftTotals = ({
       };
     }
 
+    let expectedDutySum = BigInt(0);
+
     for (const [index, line] of lineMicros.entries()) {
+      const lineRow = lines[index];
+      const lineTaxRateText =
+        typeof lineRow.taxRateBasisPoints === 'string' &&
+        /^\d{1,5}$/.test(lineRow.taxRateBasisPoints)
+          ? lineRow.taxRateBasisPoints
+          : header.taxRateBasisPoints;
+      const lineDutyRateText =
+        typeof lineRow.dutyRateBasisPoints === 'string' &&
+        /^\d{1,5}$/.test(lineRow.dutyRateBasisPoints)
+          ? lineRow.dutyRateBasisPoints
+          : typeof header.dutyRateBasisPoints === 'string' &&
+              /^\d{1,5}$/.test(header.dutyRateBasisPoints)
+            ? header.dutyRateBasisPoints
+            : '0';
+
+      const rate = BigInt(lineTaxRateText as string);
+      const dutyRate = BigInt(lineDutyRateText);
+
+      if (rate > BASIS_POINTS_DENOMINATOR) {
+        return {
+          ok: false,
+          code: 'TAX_RATE_OUT_OF_RANGE',
+          message: `lines[${index}] tax rate is outside 0%..100%`,
+        };
+      }
+
+      if (
+        dutyRate > BASIS_POINTS_DENOMINATOR ||
+        rate + dutyRate > BASIS_POINTS_DENOMINATOR
+      ) {
+        return {
+          ok: false,
+          code: 'DUTY_RATE_OUT_OF_RANGE',
+          message: `lines[${index}] duty rate is outside 0%..100% or tax plus duty exceeds 100%`,
+        };
+      }
+
       const taxableNet =
         line.grossExact - line.discountExact - line.documentDiscountExact;
+      const lineDuty = applyBasisPoints(taxableNet, dutyRate);
       const expectedTax =
-        applyBasisPoints(taxableNet, rate) + applyBasisPoints(taxableNet, dutyRate);
+        applyBasisPoints(taxableNet, rate) + lineDuty;
+
+      expectedDutySum += lineDuty;
 
       if (line.taxExact !== expectedTax) {
         return {
@@ -184,19 +225,17 @@ export const evaluateQuotationDraftTotals = ({
       }
     }
 
-    // Duty is derived from the document net, exactly the way the app's Money Domain
-    // computed it, so a caller cannot claim a duty figure the declared rate did not
-    // produce. Absent means a caller that predates the split: nothing to check.
+    // Absent means a caller that predates the split: nothing to check.
     if (isExactAmountText(header.dutyExact)) {
       const declaredDuty = parseExactAmountToMicros(
         header.dutyExact as string,
       ) as bigint;
 
-      if (declaredDuty !== applyBasisPoints(headerMicros.netExact, dutyRate)) {
+      if (declaredDuty !== expectedDutySum) {
         return {
           ok: false,
           code: 'DUTY_AMOUNT_MISMATCH',
-          message: 'header.dutyExact is not the declared duty rate applied to its net',
+          message: 'header.dutyExact is not the sum of per-line duty amounts',
         };
       }
     }

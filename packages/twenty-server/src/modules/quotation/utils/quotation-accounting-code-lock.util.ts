@@ -20,8 +20,16 @@ const quotationRepository = (
     shouldBypassPermissionChecks: true,
   });
 
-// C4 Option A + lock-by-reference-id: any quotation that stored this tax-policy
-// row id with a non-empty taxAccountingCode freezes further accountingCode edits.
+const quotationLineRepository = (
+  scope: WorkspaceTransactionScope,
+): WorkspaceRepository<SnapshotUsageRow> =>
+  scope.getRepository<SnapshotUsageRow>('quotationLine', {
+    shouldBypassPermissionChecks: true,
+  });
+
+// C4 Option A + lock-by-reference-id: any quotation (header) or line that stored
+// this tax-policy row id with a non-empty taxAccountingCode freezes further
+// accountingCode edits on that policy.
 export const isTaxPolicyAccountingCodeLocked = async ({
   scope,
   taxPolicyRecordId,
@@ -33,7 +41,7 @@ export const isTaxPolicyAccountingCodeLocked = async ({
     return false;
   }
 
-  const rows = await quotationRepository(scope).find({
+  const headerRows = await quotationRepository(scope).find({
     where: {
       taxPolicyRecordId,
       taxAccountingCode: Not(''),
@@ -46,9 +54,36 @@ export const isTaxPolicyAccountingCodeLocked = async ({
     take: 20,
   });
 
-  return rows.some((row) =>
-    isNonEmptyAccountingCodeSnapshot(row.taxAccountingCode),
-  );
+  if (
+    headerRows.some((row) =>
+      isNonEmptyAccountingCodeSnapshot(row.taxAccountingCode),
+    )
+  ) {
+    return true;
+  }
+
+  // WS3: multi-policy drafts lock every line policy that carried a non-empty code.
+  try {
+    const lineRows = await quotationLineRepository(scope).find({
+      where: {
+        taxPolicyRecordId,
+        taxAccountingCode: Not(''),
+      },
+      select: {
+        id: true,
+        taxAccountingCode: true,
+        taxPolicyRecordId: true,
+      },
+      take: 20,
+    });
+
+    return lineRows.some((row) =>
+      isNonEmptyAccountingCodeSnapshot(row.taxAccountingCode),
+    );
+  } catch {
+    // Pre-WS3 workspaces may lack line snapshot columns until schema apply.
+    return false;
+  }
 };
 
 export const isCurrencyAccountingCodeLocked = async ({

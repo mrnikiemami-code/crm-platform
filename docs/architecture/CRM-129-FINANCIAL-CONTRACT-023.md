@@ -96,13 +96,13 @@ Terminology:
 | Currency catalog + default | **MISSING** | WS1 (IRR seed) |
 | Snapshot of CRM codes on quotation | **MISSING** | WS2 |
 | Lock accountingCode by reference id | **MISSING** | WS2 (design in preflight) |
-| Per-line tax policy | **MISSING** | WS3 |
+| Per-line tax policy | **SOURCE** (WS3) | Dev Apply + UAT pending |
 | Phase-1 IRR inheritance modeled | **PARTIAL** | WS4 |
 | Phase-2 hooks inactive | **MISSING** | WS4 |
 | Settings stop CRM code authoring | **CONFLICT** | WS5 |
 | Mock/Asan shared capability UI | **PARTIAL** | WS6 |
 | Persian UX Goal-level | **BLOCKED** on design/UAT | WS7 |
-| Multi-tax outbound gate | **MISSING** | WS3 + C7 |
+| Multi-tax outbound gate | **SOURCE** (`MULTI_TAX_UNSUPPORTED`) | Adapter proof still absent |
 | Retire↔send hard lock (021-R1) | **BLOCKED** open | Orthogonal; do not ignore |
 
 ---

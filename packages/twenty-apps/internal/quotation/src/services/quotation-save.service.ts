@@ -154,6 +154,9 @@ export const buildDraftQuotationSaveRequest = (
     taxExact: line.taxExact,
     totalExact: line.totalExact,
     itemId: line.catalogItemId,
+    taxPolicy: line.taxPolicy,
+    taxRateBasisPoints: line.taxRateBasisPoints,
+    dutyRateBasisPoints: line.dutyRateBasisPoints,
   })),
 });
 

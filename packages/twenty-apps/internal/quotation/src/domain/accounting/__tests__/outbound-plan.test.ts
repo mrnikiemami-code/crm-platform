@@ -294,6 +294,52 @@ describe('quotation export gate', () => {
     });
   });
 
+  it('blocks multi-policy revisions until an adapter proves MULTI_TAX support', () => {
+    expect(
+      planQuotationExport(
+        exportInput({
+          revision: {
+            version: 2,
+            snapshot: snapshot({
+              lines: [
+                {
+                  lineId: 'line-1',
+                  description: 'کالا',
+                  unit: 'عدد',
+                  quantityScaled: '1',
+                  unitPriceMicros: '1000000.000000',
+                  discountMicros: '0.000000',
+                  taxMicros: '90000.000000',
+                  totalMicros: '1090000.000000',
+                  taxPolicy: 'IR_VAT_9',
+                  taxRateBasisPoints: '900',
+                  dutyRateBasisPoints: '0',
+                },
+                {
+                  lineId: 'line-2',
+                  description: 'خدمت',
+                  unit: 'ساعت',
+                  quantityScaled: '1',
+                  unitPriceMicros: '1000000.000000',
+                  discountMicros: '0.000000',
+                  taxMicros: '90000.000000',
+                  totalMicros: '1090000.000000',
+                  taxPolicy: 'SPLIT_6_3',
+                  taxRateBasisPoints: '600',
+                  dutyRateBasisPoints: '300',
+                },
+              ],
+            }),
+          },
+          lineLinks: [
+            { lineId: 'line-1', externalItemId: '1001' },
+            { lineId: 'line-2', externalItemId: '1002' },
+          ],
+        }),
+      ),
+    ).toMatchObject({ kind: 'BLOCKED', code: 'MULTI_TAX_UNSUPPORTED' });
+  });
+
   it('blocks while outbound writes are off', () => {
     expect(planQuotationExport(exportInput({ outboundEnabled: false }))).toMatchObject({
       kind: 'BLOCKED',

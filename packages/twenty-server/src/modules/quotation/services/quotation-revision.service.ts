@@ -118,6 +118,9 @@ export class QuotationRevisionService {
         documentDiscountExact: true,
         taxExact: true,
         totalExact: true,
+        taxPolicy: true,
+        taxRateBasisPoints: true,
+        dutyRateBasisPoints: true,
       },
       order: { sortOrder: 'ASC' },
     });

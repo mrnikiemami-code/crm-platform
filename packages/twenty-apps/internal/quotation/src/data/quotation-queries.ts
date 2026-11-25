@@ -96,6 +96,9 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
           discountExact
           discountKind
           discountInputExact
+          taxPolicy
+          taxRateBasisPoints
+          dutyRateBasisPoints
           sortOrder
           item { id }
         }
