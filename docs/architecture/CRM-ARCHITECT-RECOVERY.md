@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 034 SOURCE REVIEW / USER UAT GATE (2026-11-25)
+## CURRENT — USER REJECTED GOAL 034 VISUAL DELIVERY (2026-11-25)
+
+**User UAT evidence:** two screenshots of the SAME current financial settings page at `:3002` after reported `quotation@0.1.63` showed the rounding row's `بیشتر` menu opening at the extreme top-left of the viewport, disconnected from its trigger; tabs and content still looked substantially like prior layout; excessive blank horizontal area and repeated action controls. This refutes previous visual-ready/portal-position claims. **Goal 034 = USER_REJECTED_VISUAL, NOT COMPLETE. Goal 023 ACTIVE**. No WS5/WS6/WS7.
+
+**Architect root-cause lead:** `RowActionsMenu` rendered in the Front Component React tree with `position:fixed` and coordinates obtained from `getBoundingClientRect()`; host stacking/coordinate or containing-block transforms make computed viewport coordinates invalid. Re-architect overlays based on proven Front Component host affordances or reliable same-containing-block anchor, do not keep tweaking top/left blindly. Probe actual rendered bounding boxes and containing block in browser, including scroll and last row. Host `openCommandConfirmationModal` only confirmed for destructive confirm, NOT a generic editor or menu portal. `createPortal` reportedly did not mount, so tools need true runtime compatibility testing. Beware an in-tree fixed settings dialog with no focus trap.
+
+**User's higher-level directive:** autonomous designer must first inventory actual tax/currency/rounding domain functions, object/role guards, operations, and shared Twenty UI patterns, then propose and IMPLEMENT a coherent professional design directly in existing Front Components. User must not hand-spec every button/spacing. Mere CSS reshuffle or passing 35 component tests cannot qualify as real visual design. Avoid unverified Onlook claims; Onlook was evaluated but not used due to compatibility. A design owner/model should make clear information architecture and interaction decisions based on concrete feature inventory, use existing Twenty tokens, then independently verify visual results, responsive widths and actual functionality in Dev. Single CRM session, no separate mock page, no new route, no paid services or framework migration, no Money/schema/backend alteration unless strictly proven necessary. Hold final `STOP_FOR_USER_UAT` until real browser menu anchors, user-perceived design improvements and regression evidence are satisfied.
+
+**Next:** issue a focused Goal 034-R1 continuation of existing Goal, not a new project. First recover from latest HEAD; evidence-driven host overlay repair and an autonomous full-page layout/interaction redesign. Record screenshots and exact dimensions. Do not declare it accepted without USER approval.
+
+## PRIOR CHECKPOINT — GOAL 034 SOURCE REVIEW / USER UAT GATE (2026-11-25)
 
 **Product HEAD audited:** `90a88b5871`, app reported `quotation@0.1.63` on Dev :3002. **Goal 023 ACTIVE**; Goal 034 `TECHNICALLY_VERIFIED / STOP_FOR_USER_UAT`, **NOT USER_ACCEPTED**. Exact current page: http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. Onlook evaluated but not adopted; direct React/Twenty used. No duplicate app or Next migration. See [Goal 034 progress](./CRM-129-GOAL-034-PROGRESS.md).
 
