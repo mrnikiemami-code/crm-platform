@@ -112,7 +112,7 @@ export const AccountingDocumentsSection = ({
           connection.verificationState === 'LIVE_VERIFIED'),
       label:
         connection?.verificationState === 'MOCK'
-          ? 'آزمایش شبیه‌سازی‌شده (Mock) موفق بوده است — نه اتصال واقعی'
+          ? 'آزمایش شبیه‌سازی‌شده موفق بوده است — نه اتصال واقعی'
           : 'آخرین آزمایش اتصال واقعی موفق بوده است',
       ...(onTestConnection !== undefined
         ? { fix: { label: 'آزمایش اتصال', onClick: onTestConnection } }

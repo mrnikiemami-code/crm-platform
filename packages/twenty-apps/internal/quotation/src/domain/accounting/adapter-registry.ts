@@ -104,7 +104,7 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
   },
   {
     id: 'mock',
-    label: 'آزمایشی (Mock)',
+    label: 'آزمایشی، بدون ارتباط واقعی',
     vendor: '—',
     contractVersion: ACCOUNTING_ADAPTER_CONTRACT_VERSION,
     isLive: false,

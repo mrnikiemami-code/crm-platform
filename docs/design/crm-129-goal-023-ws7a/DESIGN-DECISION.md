@@ -1,8 +1,9 @@
 # DESIGN-DECISION — GOAL-023 / WS7-A
 
-**Status:** awaiting user appearance approval (`STOP_FOR_USER_DESIGN_APPROVAL`)  
+**Status:** **CANCELLED as product Design of Record** (user STOP redesign). Archival / non-binding reference only — do not ship into product.  
 **Preview:** [`index.html`](./index.html) (mock data only; no product code)  
-**Goal:** [`CRM-129-MASTER-GOAL-023.md`](../../architecture/CRM-129-MASTER-GOAL-023.md)
+**Goal:** [`CRM-129-MASTER-GOAL-023.md`](../../architecture/CRM-129-MASTER-GOAL-023.md)  
+**Live path:** targeted UX repair on existing draft + accounting settings; Pack B financial capabilities behind `STOP_FOR_ARCHITECT`; appearance gate is `STOP_FOR_USER_UAT` on real Dev UI.
 
 ---
 

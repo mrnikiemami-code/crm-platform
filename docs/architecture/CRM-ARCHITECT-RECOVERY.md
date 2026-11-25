@@ -1,6 +1,6 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-GOAL-023 / WS1-R1 + WS7-A DESIGN PREVIEW (2026-11-25; ACTIVE)
+## CURRENT — CRM-129-GOAL-023 / STOP REDESIGN + UX PACK A (2026-11-25; ACTIVE)
 
 **Goal 023 remains ACTIVE and INCOMPLETE.** Feature branch `feat/crm-129-quotation`. Authoritative state: Progress board + this note + HEAD/diff + real tests. A Cursor PASS alone is not Goal completion.
 
@@ -9,8 +9,14 @@
 1. Read `docs/architecture/CRM-129-MASTER-GOAL-023.md`, `CRM-129-FINANCIAL-CONTRACT-023.md`, `CRM-129-EXECUTION-PLAN-023.md`.
 2. Read `docs/architecture/CRM-129-GOAL-023-PROGRESS.md` and `CRM-129-GOAL-023-WS1-PREFLIGHT.md`.
 3. Verify current branch, HEAD, dirty worktree; never overwrite unrelated dirty files.
-4. **ONE Cursor session, SERIAL execution.** Do not start a parallel second worktree or WS2 while design gate is open.
+4. **ONE Cursor session, SERIAL execution.** No parallel worktree; no Money Domain edits without architect grant.
 5. Continue approved packs only. A completed pack is **not** a completed Goal.
+
+### Redesign cancelled
+
+- From-scratch WS7-A product redesign: **cancelled** by user.
+- `docs/design/crm-129-goal-023-ws7a/` is **non-binding archival reference only** — not Design of Record; do not copy into product.
+- Keep existing draft form + five-section accounting settings chrome; repair defects only.
 
 ### Architect decisions applied in WS1
 
@@ -32,18 +38,26 @@
 - Jest: `quotation-currency-authority.service.spec.ts` **8 PASS**.
 - **No Dev Apply** this turn. App still **0.1.53**.
 
-### WS7-A design preview (same session)
+### UX Pack A (this delivery — no Money Domain)
 
-- Interactive mock-only frames: `docs/design/crm-129-goal-023-ws7a/`
-- **`STOP_FOR_USER_DESIGN_APPROVAL`** — WS7-B forbidden until user approves appearance.
-- Product code untouched by preview.
+- Persian honesty (no English «Mock» in operator-facing readiness copy).
+- Draft RTL hygiene (`dir=ltr` on Latin SKU / raw policy-code fallback).
+- Connection form ownership hint (CRM tax/currency codes on «مالیات و عوارض»; connection maps vendor destinations only).
+- `fa-IR` formatting for connection health-check timestamps.
+- **Not shipped:** per-line tax, catalog document currency, WS7-A table chrome, Deploy.
 
-### Next actions (serial)
+### Architect stop package
 
-1. Architect marks WS1 `ARCHITECT_ACCEPTED` (or amends) — before WS2 / Dev Apply.
-2. User reviews WS7-A → approve/reject Design of Record.
-3. Only after user approval: WS7-B. Independently after WS1 accept: WS2 → WS3 → WS4 → WS5 → WS6.
-4. Final Goal close only after SC1–10 + USER_UAT + architect PR/merge gate. Default branch `crm-platform`; no force-push.
+Full decision brief: [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md).
+
+### Next actions (serial) — STOP_FOR_ARCHITECT
+
+1. Architect marks WS1 `ARCHITECT_ACCEPTED` (or amends) — before Dev Apply / WS2.
+2. Open **WS2** (snapshot + C4 lock by reference id).
+3. Open **WS3** only with **explicit Money Domain permission**: per-line tax on existing cards; header = default for new lines; C3 no accounting-code fields on draft.
+4. Open **WS4**: catalog-backed document currency; phase-1 IRR-only; keep تومان/ریال as display scale.
+5. Then WS5/WS6 remainder; **`STOP_FOR_USER_UAT`** on real Dev product (not static HTML).
+6. Final Goal close only after SC1–10 + USER_UAT + architect PR/merge. Default branch `crm-platform`; no force-push.
 
 ### Known gates that must survive
 
@@ -57,8 +71,8 @@
 
 | Gate | Owner |
 |---|---|
-| `STOP_FOR_ARCHITECT` (WS1 + R1) | Architect accept / amend |
-| `STOP_FOR_USER_DESIGN_APPROVAL` (WS7-A) | User appearance approval |
+| `STOP_FOR_ARCHITECT` (WS1 + R1 → WS2 → WS3 Money → WS4) | Architect |
+| `STOP_FOR_USER_UAT` | Deferred until Pack B on real Dev product |
 
 ## PRIOR CHECKPOINT — CRM-129-GOAL-023 single-session architect note (2026-11-25 @ `9884f2a4c3`)
 

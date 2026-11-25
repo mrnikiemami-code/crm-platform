@@ -22,6 +22,7 @@ import {
   type TaxCodeContractView,
   type TaxPolicyView,
   connectionHealthState,
+  formatHealthCheckAt,
   parseKeyValueLines,
   parseTaxPolicyMappingsText,
   setMappingRow,
@@ -91,6 +92,10 @@ export const ConnectionEditForm = ({
     data.connections.find((entry) => entry.id === form.id) ?? null;
   const savedHealth =
     savedConnection === null ? null : connectionHealthState(savedConnection);
+  const lastHealthCheckLabel =
+    savedConnection === null
+      ? null
+      : formatHealthCheckAt(savedConnection.lastHealthCheckAt);
 
   // A draft that differs from the stored record cannot be the thing a probe checks: the
   // server dials the SAVED address with the SAVED settings. Saying so up front is what stops
@@ -156,6 +161,11 @@ export const ConnectionEditForm = ({
           می‌شوند.
         </InlineAlert>
       ) : null}
+
+      <InlineAlert tone="info">
+        کد حسابداری مالیات و ارز در صفحهٔ «مالیات و عوارض» تعریف می‌شود. این فرم فقط نگاشت
+        مقصد فروشنده را نگه می‌دارد و هویت CRM را دوباره تعریف نمی‌کند.
+      </InlineAlert>
 
       <Card>
         <SectionHeading
@@ -298,9 +308,9 @@ export const ConnectionEditForm = ({
           <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
             {savedConnection === null
               ? 'پس از ذخیره و آزمایش، وضعیت واقعی اینجا نمایش داده می‌شود.'
-              : savedConnection.lastHealthCheckAt === null
+              : lastHealthCheckLabel === null
                 ? 'این اتصال هنوز آزمایش نشده است.'
-                : `آخرین آزمایش: ${savedConnection.lastHealthCheckAt}`}
+                : `آخرین آزمایش: ${lastHealthCheckLabel}`}
           </span>
         </div>
       </Card>

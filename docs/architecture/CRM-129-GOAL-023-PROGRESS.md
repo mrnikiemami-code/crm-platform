@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** WS1-R1 IRR authority fix + WS7-A design preview (awaiting gates)
+**Board updated:** STOP redesign / targeted UX repair (Pack A) + architect financial gate
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -23,10 +23,12 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | WS2 Snapshot + code lock | `NOT_STARTED` | Needs WS1 architect accept + lock enforcement |
 | WS3 Per-line tax | `NOT_STARTED` | |
 | WS4 Document currency phase 1 | `NOT_STARTED` | Catalog exists; picker/IRR refuse in WS4 |
-| WS5 Settings ownership | `NOT_STARTED` | |
-| WS6 Mock/Asan shared UI | `NOT_STARTED` | |
-| WS7-A Design frames | `TECHNICALLY_VERIFIED` | `docs/design/crm-129-goal-023-ws7a/` + DESIGN-DECISION; **`STOP_FOR_USER_DESIGN_APPROVAL`** |
-| WS7-B Implement Design of Record | `NOT_STARTED` | Blocked until user design approval |
+| WS5 Settings ownership | `IN_PROGRESS` | Pack A: ownership hint only; catalog-bound mapping rewrite still WS5 |
+| WS6 Mock/Asan shared UI | `IN_PROGRESS` | Shared `ConnectionEditForm` already exists; Pack A Persian honesty; full capability matrix still open |
+| WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |
+| WS7-B Product UX polish | `NOT_STARTED` | After Pack B (WS2→WS3/WS4) + **`STOP_FOR_USER_UAT`** on real Dev UI |
+| UX Pack A micro-repairs | `TECHNICALLY_VERIFIED` | Same product chrome; copy/RTL/ownership/timestamp; see CP-UX-REPAIR-A |
+| Pack B financial (WS2–WS4) | `BLOCKED` | [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md) |
 | Goal 023 close | `NOT_STARTED` | **ACTIVE / NOT COMPLETE** |
 
 ---
@@ -50,7 +52,19 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 
 ## Checkpoint log
 
-### CP-WS7-A — Interactive design preview (this delivery)
+### CP-UX-REPAIR-A — STOP redesign / targeted UX repair
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC8/SC9/SC10 honesty path only (copy, ownership hint, RTL); no SC4/SC5 product capabilities yet |
+| **2. Financial contract?** | C3 preserved; **no** Money Domain change; **no** per-line tax / catalog document currency in product this turn |
+| **3. Real tests run?** | Vitest `accounting-connections-section.test.tsx` — **43 PASS** (incl. ownership hint + fa-IR health-check time; no English `(Mock)` on form) |
+| **4. Still incomplete?** | WS1 accept; WS2→WS3 (Money)→WS4; full WS5/WS6; real-product USER_UAT |
+| **5. Next allowed step?** | **`STOP_FOR_ARCHITECT`**: accept WS1 → open WS2 → WS3 with Money Domain permission → WS4; then product UAT |
+
+**Cancelled:** from-scratch WS7-A redesign as product path. HTML preview remains archival/non-binding.
+
+### CP-WS7-A — Interactive design preview (superseded as product path)
 
 | Question | Answer |
 |---|---|
@@ -96,7 +110,8 @@ Docs-only C1–C7 + preflight @ `6bc3f558b9`.
 
 ## Gate
 
-1. **`STOP_FOR_ARCHITECT`** — WS1 + WS1-R1 technically verified; no Dev Apply / WS2 until accept.
-2. **`STOP_FOR_USER_DESIGN_APPROVAL`** — WS7-A preview ready; WS7-B forbidden until appearance approved.
+1. **`STOP_FOR_ARCHITECT`** — see [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md): WS1 + R1 accept → WS2 → WS3 **with Money Domain permission** → WS4. No Dev Apply / Pack B until granted.
+2. **`STOP_FOR_USER_UAT`** — **deferred** until Pack B ships on real Dev product (same chrome). Static WS7-A HTML is not a UAT target.
+3. WS7-A redesign-as-product: **cancelled**.
 
 Goal 023 remains **ACTIVE / NOT COMPLETE**.

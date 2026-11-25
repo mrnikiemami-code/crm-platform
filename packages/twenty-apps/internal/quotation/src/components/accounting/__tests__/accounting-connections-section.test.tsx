@@ -78,7 +78,7 @@ const adapters: AdapterDescriptor[] = [
   },
   {
     id: 'mock',
-    label: 'آزمایشی (Mock)',
+    label: 'آزمایشی، بدون ارتباط واقعی',
     vendor: '—',
     contractVersion: '2026-11-1',
     isLive: false,
@@ -555,6 +555,31 @@ describe('the form is one structure for every adapter', () => {
     expect(screen.getByText(/۴\. تنظیمات پیشرفته/)).toBeTruthy();
     expect(screen.queryByText('TAX_CODE')).toBeNull();
     expect(screen.queryByText('DUTY_AMOUNT')).toBeNull();
+  });
+
+  it('states CRM tax and currency code ownership outside the connection form', () => {
+    renderSection({ view: 'form' });
+
+    expect(
+      screen.getByText(
+        /کد حسابداری مالیات و ارز در صفحهٔ «مالیات و عوارض» تعریف می‌شود/,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/\(Mock\)/)).toBeNull();
+  });
+
+  it('formats the last health-check time for Persian operators', () => {
+    renderSection({
+      view: 'form',
+      form: formFrom(
+        connection({
+          lastHealthCheckAt: '2026-11-21T08:00:00.000Z',
+        }),
+      ),
+    });
+
+    expect(screen.getByText(/آخرین آزمایش:/)).toBeTruthy();
+    expect(screen.queryByText(/2026-11-21T08:00:00/)).toBeNull();
   });
 
   it('keeps the advanced section collapsed by default', () => {

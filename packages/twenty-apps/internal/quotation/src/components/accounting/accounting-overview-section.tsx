@@ -12,6 +12,7 @@ import {
   type PanelData,
   HEALTH_LABELS,
   VERIFICATION_LABELS,
+  formatHealthCheckAt,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
 import { type SnapshotView } from 'src/components/accounting/accounting-mapping-types';
@@ -24,23 +25,6 @@ const STALE_SNAPSHOT_MS = 30 * 60 * 1000;
 // connected, is what I see current, and what do I do next — and nothing else. Everything an
 // accountant never needs (adapter ids, verification vocabulary, health detail) is folded
 // into «جزئیات فنی» instead of being printed beside the answer.
-
-const formatCheckTime = (value: string | null): string | null => {
-  if (value === null || value.trim() === '') {
-    return null;
-  }
-
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return new Intl.DateTimeFormat('fa-IR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(parsed);
-};
 
 const formatAge = (ageMs: number): string => {
   const minutes = Math.max(0, Math.round(ageMs / 60000));
@@ -79,7 +63,7 @@ export const AccountingOverviewSection = ({
     data.connections.find((entry) => entry.id === activeConnectionId) ?? null;
   const outboundDisabled =
     !data.flags.outboundEnabled && !data.flags.documentExportEnabled;
-  const checkedAt = formatCheckTime(connection?.lastHealthCheckAt ?? null);
+  const checkedAt = formatHealthCheckAt(connection?.lastHealthCheckAt ?? null);
   const snapshotAge = snapshot === null ? null : formatAge(snapshot.ageMs);
   const snapshotIncomplete = snapshot !== null && snapshot.syncStatus === 'INCOMPLETE';
   const snapshotDegraded = snapshot !== null && snapshot.degradedReason !== null;

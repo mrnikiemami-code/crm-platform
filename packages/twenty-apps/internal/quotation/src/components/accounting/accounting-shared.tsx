@@ -318,7 +318,7 @@ export const CONNECTION_HEALTH_STATES = [
 export type ConnectionHealthState = (typeof CONNECTION_HEALTH_STATES)[number];
 
 export const CONNECTION_HEALTH_LABELS: Record<ConnectionHealthState, string> = {
-  MOCK: 'آزمایشی — Mock',
+  MOCK: 'آزمایشی — بدون ارتباط واقعی',
   CONFIGURED_NOT_TESTED: 'تنظیم‌شده، بررسی‌نشده',
   LIVE_VERIFIED: 'اتصال واقعی تأییدشده',
   FAILED: 'ارتباط برقرار نشد',
@@ -845,18 +845,39 @@ export const Field = ({
   </label>
 );
 
+export const formatHealthCheckAt = (value: string | null): string | null => {
+  if (value === null || value.trim() === '') {
+    return null;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat('fa-IR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(parsed);
+};
+
 export const ConnectionStatus = ({
   connection,
 }: {
   connection: ConnectionRecord;
-}) => (
-  <p style={sharedStyles.meta}>
-    وضعیت ذخیره‌شده: {HEALTH_LABELS[connection.healthState] ?? connection.healthState}
-    {connection.lastHealthMessage ? ` — ${connection.lastHealthMessage}` : ''}
-    {` — ${VERIFICATION_LABELS[connection.verificationState] ?? connection.verificationState}`}
-    {connection.lastHealthCheckAt ? ` — آخرین آزمایش: ${connection.lastHealthCheckAt}` : ''}
-  </p>
-);
+}) => {
+  const checkedAt = formatHealthCheckAt(connection.lastHealthCheckAt);
+
+  return (
+    <p style={sharedStyles.meta}>
+      وضعیت ذخیره‌شده: {HEALTH_LABELS[connection.healthState] ?? connection.healthState}
+      {connection.lastHealthMessage ? ` — ${connection.lastHealthMessage}` : ''}
+      {` — ${VERIFICATION_LABELS[connection.verificationState] ?? connection.verificationState}`}
+      {checkedAt ? ` — آخرین آزمایش: ${checkedAt}` : ''}
+    </p>
+  );
+};
 
 export const CapabilityTable = ({ connection }: { connection: ConnectionRecord }) =>
   connection.capabilityRows === undefined ? (

@@ -981,7 +981,9 @@ export const QuotationDraftForm = () => {
                 <div style={styles.lineHeader}>
                   <strong style={styles.lineTitle}>ردیف {index + 1}</strong>
                   {line.sku ? (
-                    <span style={styles.badge}>{line.sku}</span>
+                    <span style={styles.badge} dir="ltr">
+                      {line.sku}
+                    </span>
                   ) : null}
                 </div>
 
@@ -1168,7 +1170,9 @@ export const QuotationDraftForm = () => {
                 {taxPolicyOptions.every(
                   (policy) => policy.id !== taxPolicyCode,
                 ) ? (
-                  <option value={taxPolicyCode}>{taxPolicyCode}</option>
+                  <option value={taxPolicyCode} dir="ltr">
+                    {taxPolicyCode}
+                  </option>
                 ) : null}
               </select>
             </label>
@@ -1415,6 +1419,8 @@ const styles: Record<string, CSSProperties> = {
     background: '#e2e8f0',
     borderRadius: 6,
     padding: '2px 8px',
+    direction: 'ltr',
+    unicodeBidi: 'isolate',
   },
   warning: { margin: 0, color: '#9a6700', fontSize: 12, lineHeight: 1.5 },
   lineError: { margin: 0, color: '#b42318', fontSize: 12 },
