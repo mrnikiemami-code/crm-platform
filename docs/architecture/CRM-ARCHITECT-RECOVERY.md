@@ -2,13 +2,13 @@
 
 ## CURRENT — GOAL 032 CUSTOM ROUNDING → STOP_FOR_USER_UAT (2026-11-25)
 
-**Branch:** `feat/crm-129-quotation`. **Baseline:** `dab67dbbb3`. **App:** `quotation@0.1.58` on Dev `:3002`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 032 child of Goal 023 — Final Gate **`STOP_FOR_USER_UAT`**.
+**Branch:** `feat/crm-129-quotation`. **Baseline:** `dab67dbbb3`. **HEAD:** `8567405840`. **App:** `quotation@0.1.59` on Dev `:3002`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 032 child of Goal 023 — Final Gate **`STOP_FOR_USER_UAT`**.
 
-**Shipped:** named `roundingRule` catalog (seed 10…1e6 + arbitrary e.g. 99); settings section on existing financial panel; form picker «مبنای رُند کردن»; floor-to-step micros math; quotation snapshot fields; Nest authority + draft recompute; PDF label. Detail: [`CRM-129-GOAL-032-PROGRESS.md`](./CRM-129-GOAL-032-PROGRESS.md).
+**Shipped:** named `roundingRule` catalog (seed 10…1e6 + STEP_99); settings «قواعد رُند کردن»; form picker «مبنای رُند کردن»; floor-to-step micros; snapshot fields; Nest authority; front loads catalog via Nest actions. Browser evidence: STEP_1000 → deduction −۹۵ تومان, payable ۹۳٬۱۰۰. Detail: [`CRM-129-GOAL-032-PROGRESS.md`](./CRM-129-GOAL-032-PROGRESS.md).
 
-**Safety:** no `:6080`, no primary worker restart, no outbound, no historical rewrite, no force-push/merge. Legacy drafts without snapshot keep step 1 until operator picks a rule.
+**Dev runtime:** server(+Dev worker) on `twenty-dev/o117-restore` after stock-image ORM mismatch; QuotationModule docker-cp. Backup `D:\CrmDeployment\backups\crm129-goal-032-20261125-191247\`. Intranet `:6080` untouched. No force-push/merge/outbound.
 
-**Gate:** User UAT on real Dev form + settings. Goal 032 closes only on user confirm. Do **not** start WS5/WS6/WS7 until then.
+**Gate:** User UAT on real Dev form + settings. Goal 032 closes only on user confirm. Do **not** start WS5/WS6/WS7 until then. Goal 023 stays ACTIVE.
 
 ## PRIOR — GOAL 023/031: USER-DEFINED NAMED PAYABLE ROUNDING RULES SPEC (2026-11-25)
 
