@@ -119,14 +119,15 @@ const rowOf = (name: string): HTMLElement => {
   return row;
 };
 
-const openMoreMenu = (name: string) => {
+const openMoreMenu = async (name: string) => {
   fireEvent.click(
     within(rowOf(name)).getByRole('button', { name: /^عملیات بیشتر/ }),
   );
+  await screen.findByRole('menu');
 };
 
-const moreItem = (name: string, itemName: RegExp | string) =>
-  within(rowOf(name)).getByRole('menuitem', { name: itemName });
+const moreItem = (_name: string, itemName: RegExp | string) =>
+  screen.getByRole('menuitem', { name: itemName });
 
 beforeEach(() => {
   callTaxPoliciesNestActionMock.mockReset();
@@ -165,7 +166,7 @@ describe('tax policy settings panel', () => {
       within(defaultRow).queryByRole('button', { name: /^پیش‌فرض$/ }),
     ).toBeNull();
 
-    openMoreMenu('مالیات ۶٪');
+    await openMoreMenu('مالیات ۶٪');
     expect(moreItem('مالیات ۶٪', /^پیش‌فرض$/)).toBeTruthy();
   });
 
@@ -234,7 +235,7 @@ describe('tax policy settings panel', () => {
       'سیاست استفاده‌شده',
     );
 
-    openMoreMenu('سیاست استفاده‌شده');
+    await openMoreMenu('سیاست استفاده‌شده');
     const deleteButton = moreItem('سیاست استفاده‌شده', /^حذف/);
 
     expect((deleteButton as HTMLButtonElement).disabled).toBe(true);
@@ -258,7 +259,7 @@ describe('tax policy settings panel', () => {
     await within(await screen.findByRole('table')).findByText(
       'سیاست بی‌استفاده',
     );
-    openMoreMenu('سیاست بی‌استفاده');
+    await openMoreMenu('سیاست بی‌استفاده');
     fireEvent.click(moreItem('سیاست بی‌استفاده', /^حذف/));
 
     await waitFor(() => {
@@ -297,7 +298,7 @@ describe('tax policy settings panel', () => {
 
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('سیاست بی‌استفاده');
-    openMoreMenu('سیاست بی‌استفاده');
+    await openMoreMenu('سیاست بی‌استفاده');
     fireEvent.click(moreItem('سیاست بی‌استفاده', /^حذف/));
 
     expect((await screen.findByRole('alert')).textContent).toContain('۸ سند');
@@ -332,7 +333,7 @@ describe('tax policy settings panel', () => {
 
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('سیاست آزمایشی');
-    openMoreMenu('سیاست آزمایشی');
+    await openMoreMenu('سیاست آزمایشی');
     fireEvent.click(moreItem('سیاست آزمایشی', /^حذف/));
 
     await waitForElementToBeRemoved(() => screen.queryByText('سیاست آزمایشی'));
@@ -346,14 +347,14 @@ describe('tax policy settings panel', () => {
     await renderPanel();
 
     const row = rowOf('مالیات ۱۰٪');
-    openMoreMenu('مالیات ۱۰٪');
+    await openMoreMenu('مالیات ۱۰٪');
 
     const deactivate = moreItem('مالیات ۱۰٪', /^غیرفعال/) as HTMLButtonElement;
     const remove = moreItem('مالیات ۱۰٪', /^حذف/) as HTMLButtonElement;
 
     expect(deactivate.disabled).toBe(true);
     expect(remove.disabled).toBe(true);
-    expect(within(row).queryByRole('menuitem', { name: /^پیش‌فرض$/ })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: /^پیش‌فرض$/ })).toBeNull();
     expect(within(row).getByRole('button', { name: /^ویرایش/ })).toBeTruthy();
     expect(remove.getAttribute('title')).toContain('پیش‌فرض');
   });
@@ -385,7 +386,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    openMoreMenu('مالیات ۹٪');
+    await openMoreMenu('مالیات ۹٪');
     fireEvent.click(moreItem('مالیات ۹٪', /^پیش‌فرض$/));
 
     expect(callTaxPoliciesNestActionMock).toHaveBeenLastCalledWith(
@@ -401,9 +402,7 @@ describe('tax policy settings panel', () => {
     const promoted = rowOf('مالیات ۹٪');
 
     expect(within(promoted).getByText('پیش‌فرض').closest('button')).toBeNull();
-    expect(
-      within(promoted).queryByRole('menuitem', { name: /^پیش‌فرض$/ }),
-    ).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: /^پیش‌فرض$/ })).toBeNull();
   });
 
   it('repaints a demoted row as non-default when the payload still flags it', async () => {
@@ -428,7 +427,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    openMoreMenu('مالیات ۱۰٪');
+    await openMoreMenu('مالیات ۱۰٪');
     fireEvent.click(moreItem('مالیات ۱۰٪', /^پیش‌فرض$/));
 
     await waitFor(() => {
@@ -437,7 +436,7 @@ describe('tax policy settings panel', () => {
       }
     });
 
-    openMoreMenu('مالیات ۹٪');
+    await openMoreMenu('مالیات ۹٪');
     expect(moreItem('مالیات ۹٪', /^پیش‌فرض$/)).toBeTruthy();
     expect(within(rowOf('مالیات ۱۰٪')).getByText('پیش‌فرض')).toBeTruthy();
   });
@@ -652,7 +651,7 @@ describe('tax policy settings panel', () => {
     expect(within(row).getByText('غیرفعال')).toBeTruthy();
     expect(row.className).toContain('is-inactive');
 
-    openMoreMenu('نرخ قدیم');
+    await openMoreMenu('نرخ قدیم');
     expect(moreItem('نرخ قدیم', /^فعال/)).toBeTruthy();
 
     const remove = moreItem('نرخ قدیم', /^حذف/) as HTMLButtonElement;
@@ -783,7 +782,7 @@ describe('tax policy settings panel', () => {
     expect(within(cells[3]).queryByText('۰٪')).toBeNull();
   });
 
-  it('keeps the row mounted and opens the inspector beside the ledger', async () => {
+  it('keeps the row mounted and opens the editor dialog without shrinking the ledger', async () => {
     callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
@@ -794,34 +793,22 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    const toggle = within(rowOf('مالیات ۹٪')).getByRole('button', {
-      name: /^ویرایش/,
-    });
+    fireEvent.click(
+      within(rowOf('مالیات ۹٪')).getByRole('button', { name: /^ویرایش/ }),
+    );
 
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-
-    fireEvent.click(toggle);
-
-    const reopened = within(rowOf('مالیات ۹٪')).getByRole('button', {
-      name: /^ویرایش/,
-    });
-
-    expect(reopened.getAttribute('aria-expanded')).toBe('true');
-    expect(reopened.textContent).toBe('بستن');
+    expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByLabelText('نام سیاست')).toBeTruthy();
-    expect(document.getElementById('tax-inspector')).toBeTruthy();
+    expect(document.querySelector('.tax-workspace-closed')).toBeTruthy();
+    expect(within(rowOf('مالیات ۹٪')).getByText('مالیات ۹٪')).toBeTruthy();
 
-    fireEvent.click(reopened);
+    fireEvent.click(screen.getByRole('button', { name: 'انصراف' }));
 
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByLabelText('نام سیاست')).toBeNull();
-    expect(
-      within(rowOf('مالیات ۹٪'))
-        .getByRole('button', { name: /^ویرایش/ })
-        .getAttribute('aria-expanded'),
-    ).toBe('false');
   });
 
-  it('saves from the keyboard when Enter is pressed in a field', async () => {
+  it('saves from the dialog save action', async () => {
     callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
       .mockResolvedValueOnce({
@@ -839,10 +826,7 @@ describe('tax policy settings panel', () => {
       within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
     );
 
-    const nameField = screen.getByLabelText('نام سیاست').closest('form');
-    expect(nameField).not.toBeNull();
-
-    fireEvent.submit(nameField as HTMLFormElement);
+    fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
     await waitFor(() => {
       if (callTaxPoliciesNestActionMock.mock.calls.length < 2) {

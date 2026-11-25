@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import { callRoundingRulesNestAction } from 'src/components/quotation-api';
-import { confirmDestructiveAction } from 'src/components/shared/confirm-destructive-action';
+import { RowActionsMenu } from 'src/components/shared/row-actions-menu';
+import { runDestructiveConfirm } from 'src/components/shared/run-destructive-confirm';
+import { SettingsDialog } from 'src/components/shared/settings-dialog';
 import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
 import { parseStepRialsText } from 'src/domain/money/rounding-rule';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
@@ -86,7 +88,6 @@ const toast = (
   void enqueueSnackbar({ message, variant, dedupeKey });
 };
 
-// Compact CRUD for named rounding rules inside existing financial settings.
 export const RoundingRuleSettingsSection = ({
   alwaysOpen = false,
 }: RoundingRuleSettingsSectionProps) => {
@@ -98,8 +99,7 @@ export const RoundingRuleSettingsSection = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
-  const [editor, setEditor] = useState<EditorState>(emptyEditor());
-  const editorOpen = editor.recordId !== null || editor.name !== '' || editor.stepRialsText !== '';
+  const [editor, setEditor] = useState<EditorState | null>(null);
 
   const applyPayload = useCallback((data: Record<string, unknown>) => {
     setRows(readRows(data));
@@ -126,7 +126,7 @@ export const RoundingRuleSettingsSection = ({
         }
 
         applyPayload(data);
-        if (body.action !== 'list') {
+        if (body.action !== 'list' && body.action !== 'bootstrap') {
           toast(
             successMessage,
             'success',
@@ -148,26 +148,85 @@ export const RoundingRuleSettingsSection = ({
     [applyPayload],
   );
 
+  const ensureCatalog = useCallback(async () => {
+    setBusy(true);
+    setLoadError(null);
+
+    try {
+      const listResponse = await callRoundingRulesNestAction({
+        action: 'list',
+      });
+      const listData = listResponse.data;
+
+      if (listData.success !== true) {
+        const message = toPersianUiMessage(
+          listData.message,
+          'عملیات قواعد رُند ناموفق بود',
+        );
+        setLoadError(message);
+        toast(message, 'error', 'rounding-error:list');
+
+        return;
+      }
+
+      const listed = readRows(listData);
+
+      if (listed.length > 0) {
+        applyPayload(listData);
+
+        return;
+      }
+
+      const bootResponse = await callRoundingRulesNestAction({
+        action: 'bootstrap',
+      });
+      const bootData = bootResponse.data;
+
+      if (bootData.success !== true) {
+        const message = toPersianUiMessage(
+          bootData.message,
+          'راه‌اندازی قواعد رُند ناموفق بود',
+        );
+        setLoadError(message);
+        toast(message, 'error', 'rounding-error:bootstrap');
+
+        return;
+      }
+
+      applyPayload(bootData);
+    } catch {
+      const message = 'ارتباط با سرور برقرار نشد';
+      setLoadError(message);
+      toast(message, 'error', 'rounding-network');
+    } finally {
+      setBusy(false);
+    }
+  }, [applyPayload]);
+
   useEffect(() => {
     if (!opened) {
       return;
     }
 
-    void runAction({ action: 'list' }, 'فهرست قواعد رُند خوانده شد');
-  }, [opened, runAction]);
+    void ensureCatalog();
+  }, [ensureCatalog, opened]);
 
   const closeEditor = () => {
-    setEditor(emptyEditor());
+    setEditor(null);
     setNameError(null);
     setStepError(null);
   };
 
   const onSave = async () => {
+    if (editor === null) {
+      return;
+    }
+
     const step = parseStepRialsText(editor.stepRialsText);
     let hasFieldError = false;
 
     if (editor.name.trim() === '') {
-      setNameError('نام قاعده رُند را وارد کنید');
+      setNameError('نام قاعده را وارد کنید');
       hasFieldError = true;
     } else {
       setNameError(null);
@@ -220,7 +279,7 @@ export const RoundingRuleSettingsSection = ({
       return;
     }
 
-    const confirmation = await confirmDestructiveAction({
+    const confirmation = await runDestructiveConfirm({
       title: 'حذف قاعده رُند',
       subtitle: `آیا قاعده «${row.name}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
       confirmButtonText: 'حذف قاعده',
@@ -238,7 +297,7 @@ export const RoundingRuleSettingsSection = ({
         'قاعده رُند حذف شد',
       );
 
-      if (ok && editor.recordId === row.recordId) {
+      if (ok && editor?.recordId === row.recordId) {
         closeEditor();
       }
     } finally {
@@ -247,143 +306,54 @@ export const RoundingRuleSettingsSection = ({
   };
 
   return (
-    <section
-      aria-labelledby="rounding-rule-heading"
-      className="rounding-section"
-      style={
-        alwaysOpen
-          ? { ...styles.section, marginTop: 0, paddingTop: 0, borderTop: 'none' }
-          : styles.section
-      }
-      dir="rtl"
-    >
+    <section className="rounding-section" dir="rtl">
       <style>{ROUNDING_CSS}</style>
-      <header style={styles.header}>
-        <h2 id="rounding-rule-heading" style={styles.title}>
-          قواعد رُند کردن
-        </h2>
-        <div className="rounding-head-actions">
-          {opened ? (
-            <>
+      {opened || alwaysOpen ? null : (
+        <button
+          type="button"
+          className="tax-btn"
+          onClick={() => setOpened(true)}
+        >
+          مدیریت قواعد رُند
+        </button>
+      )}
+
+      {opened ? (
+        <>
+          <div className="rounding-toolbar">
+            <span className="rounding-count">
+              {rows.length === 0 ? 'بدون قاعده' : `${rows.length} قاعده`}
+            </span>
+            <button
+              type="button"
+              className="tax-btn tax-btn-primary"
+              disabled={busy}
+              onClick={() => {
+                setOpenMoreRecordId(null);
+                setEditor(emptyEditor());
+                setNameError(null);
+                setStepError(null);
+              }}
+            >
+              + قاعده جدید
+            </button>
+          </div>
+
+          {loadError ? (
+            <div className="rounding-error-bar">
+              <p className="rounding-error">{loadError}</p>
               <button
                 type="button"
                 className="tax-btn"
                 disabled={busy}
-                onClick={() =>
-                  void runAction(
-                    { action: 'bootstrap' },
-                    'قواعد پایه آماده شد',
-                  )
-                }
+                onClick={() => void ensureCatalog()}
               >
-                قواعد پایه
+                تلاش مجدد
               </button>
-              <button
-                type="button"
-                className="tax-btn tax-btn-primary"
-                disabled={busy}
-                onClick={() => {
-                  setOpenMoreRecordId(null);
-                  setEditor(emptyEditor());
-                  setNameError(null);
-                  setStepError(null);
-                }}
-              >
-                + قاعده جدید
-              </button>
-            </>
-          ) : alwaysOpen ? null : (
-            <button
-              type="button"
-              className="tax-btn"
-              onClick={() => setOpened(true)}
-            >
-              مدیریت قواعد رُند
-            </button>
-          )}
-        </div>
-      </header>
-
-      {opened ? (
-        <>
-          {loadError ? <p style={styles.error}>{loadError}</p> : null}
-
-          <div className="rounding-editor">
-            <label className="rounding-field">
-              نام قاعده
-              <input
-                value={editor.name}
-                onChange={(event) =>
-                  setEditor((current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
-                disabled={busy}
-              />
-              {nameError ? (
-                <span role="alert" className="rounding-field-error">
-                  {nameError}
-                </span>
-              ) : null}
-            </label>
-            <label className="rounding-field">
-              مبنای رُند (ریال)
-              <input
-                inputMode="numeric"
-                value={editor.stepRialsText}
-                onChange={(event) =>
-                  setEditor((current) => ({
-                    ...current,
-                    stepRialsText: event.target.value,
-                  }))
-                }
-                disabled={busy}
-                placeholder="مثلاً ۹۹"
-              />
-              {stepError ? (
-                <span role="alert" className="rounding-field-error">
-                  {stepError}
-                </span>
-              ) : null}
-            </label>
-            <label className="rounding-check">
-              <input
-                type="checkbox"
-                checked={editor.isActive}
-                onChange={(event) =>
-                  setEditor((current) => ({
-                    ...current,
-                    isActive: event.target.checked,
-                  }))
-                }
-                disabled={busy}
-              />
-              فعال
-            </label>
-            <div className="rounding-editor-actions">
-              <button
-                type="button"
-                className="tax-btn tax-btn-primary"
-                disabled={busy}
-                onClick={() => void onSave()}
-              >
-                {editor.recordId === null ? 'ایجاد' : 'ذخیره'}
-              </button>
-              {editorOpen ? (
-                <button
-                  type="button"
-                  className="tax-btn"
-                  disabled={busy}
-                  onClick={() => closeEditor()}
-                >
-                  انصراف
-                </button>
-              ) : null}
             </div>
-          </div>
+          ) : null}
 
-          {rows.length === 0 ? (
+          {rows.length === 0 && !busy ? (
             <p className="rounding-empty">هنوز قاعده‌ای ثبت نشده است.</p>
           ) : (
             <ul className="rounding-list">
@@ -420,84 +390,67 @@ export const RoundingRuleSettingsSection = ({
                       >
                         ویرایش
                       </button>
-                      <div className="rounding-more">
-                        <button
-                          type="button"
-                          className="tax-btn"
-                          aria-label={`عملیات بیشتر — ${row.name}`}
-                          aria-expanded={moreOpen ? 'true' : 'false'}
-                          disabled={busy || deletingRecordId !== null}
-                          onClick={() =>
-                            setOpenMoreRecordId(
-                              moreOpen ? null : row.recordId,
-                            )
-                          }
-                        >
-                          بیشتر
-                        </button>
-                        {moreOpen ? (
-                          <div className="rounding-more-menu" role="menu">
-                            {row.isDefault ? null : (
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="rounding-more-item"
-                                disabled={busy || !row.isActive}
-                                onClick={() => {
-                                  setOpenMoreRecordId(null);
-                                  void runAction(
-                                    {
-                                      action: 'set-default',
-                                      recordId: row.recordId,
-                                    },
-                                    'قاعده پیش‌فرض تغییر کرد',
-                                  );
-                                }}
-                              >
-                                پیش‌فرض
-                              </button>
-                            )}
-                            {row.isDefault || !row.isActive ? null : (
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="rounding-more-item"
-                                disabled={busy}
-                                onClick={() => {
-                                  setOpenMoreRecordId(null);
-                                  void runAction(
-                                    {
-                                      action: 'deactivate',
-                                      recordId: row.recordId,
-                                    },
-                                    'قاعده غیرفعال شد',
-                                  );
-                                }}
-                              >
-                                غیرفعال
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className="rounding-more-item rounding-more-item-danger"
-                              disabled={
-                                busy || deleteBusy || !canDeleteRow(row)
-                              }
-                              title={
-                                canDeleteRow(row)
-                                  ? undefined
-                                  : row.isDefault
-                                    ? 'قاعده پیش‌فرض حذف نمی‌شود'
-                                    : 'به‌دلیل استفاده در سند حذف نمی‌شود'
-                              }
-                              onClick={() => void requestDelete(row)}
-                            >
-                              {deleteBusy ? 'در حال حذف…' : 'حذف'}
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
+                      <RowActionsMenu
+                        label={`عملیات بیشتر — ${row.name}`}
+                        open={moreOpen}
+                        onOpenChange={(nextOpen) =>
+                          setOpenMoreRecordId(nextOpen ? row.recordId : null)
+                        }
+                        disabled={busy || deletingRecordId !== null}
+                        items={[
+                          ...(row.isDefault
+                            ? []
+                            : [
+                                {
+                                  id: 'default',
+                                  label: 'پیش‌فرض',
+                                  disabled: busy || !row.isActive,
+                                  onSelect: () => {
+                                    void runAction(
+                                      {
+                                        action: 'set-default',
+                                        recordId: row.recordId,
+                                      },
+                                      'قاعده پیش‌فرض تغییر کرد',
+                                    );
+                                  },
+                                },
+                              ]),
+                          ...(row.isDefault || !row.isActive
+                            ? []
+                            : [
+                                {
+                                  id: 'deactivate',
+                                  label: 'غیرفعال',
+                                  disabled: busy,
+                                  onSelect: () => {
+                                    void runAction(
+                                      {
+                                        action: 'deactivate',
+                                        recordId: row.recordId,
+                                      },
+                                      'قاعده غیرفعال شد',
+                                    );
+                                  },
+                                },
+                              ]),
+                          {
+                            id: 'delete',
+                            label: deleteBusy ? 'در حال حذف…' : 'حذف',
+                            disabled:
+                              busy || deleteBusy || !canDeleteRow(row),
+                            danger: true,
+                            title: canDeleteRow(row)
+                              ? undefined
+                              : row.isDefault
+                                ? 'قاعده پیش‌فرض حذف نمی‌شود'
+                                : 'به‌دلیل استفاده در سند حذف نمی‌شود',
+                            onSelect: () => {
+                              void requestDelete(row);
+                            },
+                          },
+                        ]}
+                      />
                     </div>
                   </li>
                 );
@@ -506,21 +459,136 @@ export const RoundingRuleSettingsSection = ({
           )}
         </>
       ) : null}
+
+      {editor === null ? null : (
+        <SettingsDialog
+          title={editor.recordId === null ? 'قاعده جدید' : 'ویرایش قاعده'}
+          busy={busy}
+          onClose={closeEditor}
+          footer={
+            <>
+              <button
+                type="button"
+                className="tax-btn tax-btn-primary"
+                disabled={busy}
+                onClick={() => void onSave()}
+              >
+                {editor.recordId === null ? 'ایجاد' : 'ذخیره'}
+              </button>
+              <button
+                type="button"
+                className="tax-btn"
+                disabled={busy}
+                onClick={closeEditor}
+              >
+                انصراف
+              </button>
+            </>
+          }
+        >
+          <label className="rounding-field">
+            نام قاعده
+            <input
+              value={editor.name}
+              onChange={(event) =>
+                setEditor((current) =>
+                  current === null
+                    ? current
+                    : { ...current, name: event.target.value },
+                )
+              }
+              disabled={busy}
+            />
+            {nameError ? (
+              <span role="alert" className="rounding-field-error">
+                {nameError}
+              </span>
+            ) : null}
+          </label>
+          <label className="rounding-field">
+            مبنای رُند (ریال)
+            <input
+              inputMode="numeric"
+              value={editor.stepRialsText}
+              onChange={(event) =>
+                setEditor((current) =>
+                  current === null
+                    ? current
+                    : { ...current, stepRialsText: event.target.value },
+                )
+              }
+              disabled={busy}
+              placeholder="مثلاً ۹۹"
+            />
+            {stepError ? (
+              <span role="alert" className="rounding-field-error">
+                {stepError}
+              </span>
+            ) : null}
+          </label>
+          <label className="rounding-check">
+            <input
+              type="checkbox"
+              checked={editor.isActive}
+              onChange={(event) =>
+                setEditor((current) =>
+                  current === null
+                    ? current
+                    : { ...current, isActive: event.target.checked },
+                )
+              }
+              disabled={busy}
+            />
+            فعال
+          </label>
+        </SettingsDialog>
+      )}
     </section>
   );
 };
 
 const ROUNDING_CSS = `
-.rounding-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.rounding-editor {
-  display: grid;
+.rounding-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.rounding-count { font-size: 13px; color: var(--t-color-gray10); }
+.rounding-error-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.rounding-error { margin: 0; color: var(--t-color-red11); font-size: 13px; }
+.rounding-empty { margin: 0; font-size: 13px; color: var(--t-color-gray10); }
+.rounding-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+}
+.rounding-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--t-color-gray4);
+  border-radius: 8px;
   background: var(--t-color-gray1);
-  border: 1px solid var(--t-color-gray5);
-  border-radius: 10px;
-  max-width: 560px;
+}
+.rounding-row-main { display: grid; gap: 4px; min-width: 0; }
+.rounding-meta { font-size: 12px; color: var(--t-color-gray10); }
+.rounding-row-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: flex-start;
 }
 .rounding-field {
   display: grid;
@@ -549,94 +617,9 @@ const ROUNDING_CSS = `
   gap: 8px;
   font-size: 13px;
 }
-.rounding-editor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.rounding-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--t-color-gray10);
-}
-.rounding-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-  max-width: 720px;
-}
-.rounding-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 10px 12px;
-  border: 1px solid var(--t-color-gray4);
-  border-radius: 8px;
-  background: var(--t-color-gray1);
-}
-.rounding-row-main { display: grid; gap: 4px; min-width: 0; }
-.rounding-meta { font-size: 12px; color: var(--t-color-gray10); }
-.rounding-row-actions {
-  display: inline-flex;
-  gap: 6px;
-  align-items: flex-start;
-  position: relative;
-}
-.rounding-more { position: relative; }
-.rounding-more-menu {
-  position: absolute;
-  inset-inline-end: 0;
-  top: calc(100% + 4px);
-  z-index: 20;
-  min-width: 140px;
-  padding: 4px;
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 8px;
-  background: var(--t-color-gray1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  display: grid;
-  gap: 2px;
-}
-.rounding-more-item {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--t-color-gray12);
-  font: inherit;
-  font-size: 13px;
-  text-align: right;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  min-height: 36px;
-}
-.rounding-more-item:hover:not(:disabled) { background: var(--t-color-gray3); }
-.rounding-more-item:disabled {
-  color: var(--t-color-gray9);
-  cursor: not-allowed;
-}
-.rounding-more-item-danger { color: var(--t-color-red11); }
 @media (max-width: 720px) {
   .rounding-field input { height: 44px; }
   .rounding-row-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-  .rounding-more { width: 100%; }
-  .rounding-more .tax-btn { width: 100%; }
-  .rounding-more-item { min-height: 44px; }
+  .rounding-toolbar { flex-direction: column; align-items: stretch; }
 }
 `;
-
-const styles: Record<string, CSSProperties> = {
-  section: {
-    marginTop: 28,
-    paddingTop: 20,
-    borderTop: '1px solid var(--t-color-gray4)',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 12,
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  title: { margin: 0, fontSize: 16, fontWeight: 700 },
-  error: { color: 'var(--t-color-red11)', fontSize: 13 },
-};

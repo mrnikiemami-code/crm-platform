@@ -1,24 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CHAT-LOSS RECOVERY / GOAL 034 LIVE SETTINGS REDESIGN (2026-11-25)
+## CURRENT — GOAL 034 LIVE VISUAL REDESIGN → STOP_FOR_USER_UAT (2026-11-26)
 
-**START HERE:** Full authoritative user requirements and immediate Goal 034 execution are preserved in **[CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md](./CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md)**, created at `e546498b2499`. Read this document and the Goal 023 master/financial contract/progress before coding. **Pre-recovery product HEAD:** `99c212bc9442` (do not treat it as fixed HEAD after this docs commit). Repo `mrnikiemami-code/crm-platform`, branch `feat/crm-129-quotation`; verify current local and remote head before work. **Goal 023 ACTIVE / NOT COMPLETE**.
+**Parent:** CRM-129-GOAL-023 (ACTIVE / NOT COMPLETE). Goal 033 UX **not user-accepted** → superseded by 034. **Branch:** `feat/crm-129-quotation`. **App:** `quotation@0.1.62` on Dev `:3002`. Final Gate **`STOP_FOR_USER_UAT`**.
 
-**User decision:** Goal 033 is **USER_REJECTED_VISUAL**, despite app `quotation@0.1.61` reported on Dev :3002 and functional PASS. It was WRONG to open edit/create policy as a second panel beside ledger, show duplicated `پیش‌نیازهای حسابداری` title, expose `راه‌اندازی ریال`, retain confusing currency UX, long cluttered text/rows, and poorly designed mobile. **NEW P0 Goal 034** must install/smoke free Onlook visual React editor if compatible, with early fail-fast fallback to installed OpenDesign/direct existing Twenty React; must edit **same existing page** `http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d`, not a new prototype/route. Full-width compact tax list; independent modal/drawer for create/edit; host shared central delete confirm; clear IRR card without bootstrap button; compact rounding rules; one visible title; professional RTL/mobile. Use native Twenty design components, no paid credits or framework migration.
+**Onlook:** evaluated (Apache-2.0); **not used** — Windows desktop path / paid agent / Front-Component host architecture incompatible without forbidden Next-Tailwind conversion. Notes: `D:\CrmTools\onlook-evaluation-goal-034.md`. Implementation: direct React on the real settings page.
 
-**Source-level audit risks:** [Goal 033 independent audit](./CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md): delete double-confirm race, last-row menu clipping, menu keyboard/focus, missing broad regressions, insufficient responsive evidence. Fix within 034; verify mobile/container widths, functional tax/currency/rounding, PDF/Money unaffected. Do not accept on worker assertion alone. Goal 034 final `STOP_FOR_USER_UAT`; only user's approval counts. Keep WS5/WS6/WS7 frozen; do not merge/force push.
+**Shipped vs Goal 033 risks:** portal `SettingsDialog` for create/edit (ledger full-width); portal `RowActionsMenu` (Escape/click-away, last-row safe); `runDestructiveConfirm` synchronous single-flight latch; currency/rounding auto idempotent bootstrap (no bootstrap buttons); host title once + compact tabs. Money Domain / Nest / seals / `:6080` unchanged. Detail: [`CRM-129-GOAL-034-PROGRESS.md`](./CRM-129-GOAL-034-PROGRESS.md).
 
-**Financial guardrails:** WS1–WS4 architect accepted and applied only to Dev; Goal031/032 features present with UAT unresolved. Phase1 IRR only; named rounding IRR positive integer steps including 99, no decimal IRR step; decimal `0.001` reserved for future non-IRR. No Money Domain/schema/revision rewrite, :6080 or primary worker restart, outbound or real vendor send. Use same single CRM coding session, not video session. The earlier attempt to contact local coding bridge failed, so no claim that Goal034 implementation or Onlook installation has occurred.
+**UAT:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d — sidebar «پیش‌نیازهای حسابداری». Goal 034 closes only on user confirm; Goal 023 stays ACTIVE.
 
-## PRIOR CHECKPOINT — GOAL 033 INDEPENDENT ARCHITECT AUDIT (2026-11-25)
+## PRIOR — GOAL 033 INDEPENDENT ARCHITECT AUDIT (2026-11-25)
 
-**Scope audited:** product commit `1acbaf7e9e`, from baseline `b089598eef14`; audit committed as `047cbb81eaa` in [CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md](./CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md). **Verdict:** `SOURCE_SCOPE_PASS_WITH_OPEN_UI_RISKS`, **not** unconditional system acceptance. Goal 023 ACTIVE; Goal 033 waits USER_UAT.
-
-**Positive:** Goal 033 diff contains front components, host-shared confirm and focused tests/docs, **no** schema, Money Domain, Nest financial authority, workspace security, PDF or sealed-revision modifications. Host `openCommandConfirmationModal` danger pattern and cancellation-on-error are good reuse choices.
-
-**Open before Goal 033 close:** (R1) double confirmation race: delete single-flight state set only after awaiting host dialog; use synchronous latch for full dialog+mutation path, (R2) tax more-menu may clip inside `overflow:hidden` / `overflow-x:auto` ancestor; verify last row and move to host menu/portal if needed, (R3) custom `role=menu` lacks proven Escape/arrow focus/focus return behavior; favor shared Twenty menu, (R4) broad financial/permissions regression not rerun by independent reviewer, (R5) container width ~601px tested by worker but 320/360/390/430 etc. need actual measured proof. Details in audit. Preserve phase-1 whole-rial rounding, outbound off, :6080 untouched.
-
-**Execution policy:** no merge or `USER_ACCEPTED` until actual user review and open blockers resolved with evidence; same single CRM session for targeted follow-up only, no redesign or extra WS. Unrelated original Goal 023 go-live blockers (retire/inflight race, credential rotation) remain open separately.
+**Verdict:** `SOURCE_SCOPE_PASS_WITH_OPEN_UI_RISKS`. Open R1–R5 addressed under Goal 034 (single-flight, portal menu, dialog editor, responsive follow-up on Dev). Audit: [`CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md`](./CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md).
 
 ## PRIOR CHECKPOINT — GOAL 033 → STOP_FOR_USER_UAT (2026-11-25)
 

@@ -9,7 +9,9 @@ import { enqueueSnackbar } from 'twenty-sdk/front-component';
 import { callTaxPoliciesNestAction } from 'src/components/quotation-api';
 import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
 import { RoundingRuleSettingsSection } from 'src/components/rounding-rule-settings-section';
-import { confirmDestructiveAction } from 'src/components/shared/confirm-destructive-action';
+import { RowActionsMenu } from 'src/components/shared/row-actions-menu';
+import { runDestructiveConfirm } from 'src/components/shared/run-destructive-confirm';
+import { SettingsDialog } from 'src/components/shared/settings-dialog';
 import {
   formatExactDecimalForPeople,
   toPersianDigits,
@@ -507,7 +509,7 @@ export const TaxPolicySettingsPanel = () => {
     }
 
     const nameText = displayPolicyName(row.name);
-    const confirmation = await confirmDestructiveAction({
+    const confirmation = await runDestructiveConfirm({
       title: 'حذف سیاست مالیات',
       subtitle: `آیا سیاست «${nameText}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
       confirmButtonText: 'حذف سیاست',
@@ -579,9 +581,56 @@ export const TaxPolicySettingsPanel = () => {
 
   const renderRowActions = (row: TaxPolicyRow) => {
     const nameText = displayPolicyName(row.name);
-    const selected = editor?.recordId === row.recordId;
     const moreOpen = openMoreRecordId === row.recordId;
     const deleteBusy = deletingRecordId === row.recordId;
+    const menuItems = [
+      ...(row.isActive && !row.isDefault
+        ? [
+            {
+              id: 'default',
+              label: 'پیش‌فرض',
+              disabled: busy,
+              onSelect: () => {
+                void onSetDefault(row);
+              },
+            },
+          ]
+        : []),
+      row.isActive
+        ? {
+            id: 'deactivate',
+            label: 'غیرفعال',
+            disabled: busy || row.isDefault,
+            title: row.isDefault
+              ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
+              : undefined,
+            onSelect: () => {
+              void onDeactivate(row);
+            },
+          }
+        : {
+            id: 'activate',
+            label: 'فعال',
+            disabled: busy,
+            onSelect: () => {
+              void onActivate(row);
+            },
+          },
+      {
+        id: 'delete',
+        label: deleteBusy ? 'در حال حذف…' : 'حذف',
+        disabled: busy || deleteBusy || !canDeleteRow(row),
+        danger: true,
+        title: canDeleteRow(row)
+          ? undefined
+          : row.isDefault
+            ? 'سیاست پیش‌فرض حذف نمی‌شود'
+            : 'به‌دلیل استفاده در سند حذف نمی‌شود',
+        onSelect: () => {
+          void requestDelete(row);
+        },
+      },
+    ];
 
     return (
       <div
@@ -592,95 +641,20 @@ export const TaxPolicySettingsPanel = () => {
           type="button"
           className="tax-btn"
           aria-label={`ویرایش — ${nameText}`}
-          aria-expanded={selected ? 'true' : 'false'}
-          aria-controls="tax-inspector"
           disabled={busy || deletingRecordId !== null}
-          onClick={() =>
-            selected ? closeEditor() : openEditor(editorFor(row))
-          }
+          onClick={() => openEditor(editorFor(row))}
         >
-          {selected ? 'بستن' : 'ویرایش'}
+          ویرایش
         </button>
-        <div className="tax-more">
-          <button
-            type="button"
-            className="tax-btn"
-            aria-label={`عملیات بیشتر — ${nameText}`}
-            aria-expanded={moreOpen ? 'true' : 'false'}
-            disabled={busy || deletingRecordId !== null}
-            onClick={() =>
-              setOpenMoreRecordId(moreOpen ? null : row.recordId)
-            }
-          >
-            بیشتر
-          </button>
-          {moreOpen ? (
-            <div className="tax-more-menu" role="menu">
-              {row.isActive && !row.isDefault ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="tax-more-item"
-                  disabled={busy}
-                  onClick={() => {
-                    setOpenMoreRecordId(null);
-                    void onSetDefault(row);
-                  }}
-                >
-                  پیش‌فرض
-                </button>
-              ) : null}
-              {row.isActive ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="tax-more-item"
-                  disabled={busy || row.isDefault}
-                  title={
-                    row.isDefault
-                      ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
-                      : undefined
-                  }
-                  onClick={() => {
-                    setOpenMoreRecordId(null);
-                    void onDeactivate(row);
-                  }}
-                >
-                  غیرفعال
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="tax-more-item"
-                  disabled={busy}
-                  onClick={() => {
-                    setOpenMoreRecordId(null);
-                    void onActivate(row);
-                  }}
-                >
-                  فعال
-                </button>
-              )}
-              <button
-                type="button"
-                role="menuitem"
-                className="tax-more-item tax-more-item-danger"
-                disabled={busy || deleteBusy || !canDeleteRow(row)}
-                title={
-                  canDeleteRow(row)
-                    ? undefined
-                    : row.isDefault
-                      ? 'سیاست پیش‌فرض حذف نمی‌شود'
-                      : 'به‌دلیل استفاده در سند حذف نمی‌شود'
-                }
-                onClick={() => void requestDelete(row)}
-              >
-                {deleteBusy ? 'در حال حذف…' : 'حذف'}
-              </button>
-            </div>
-          ) : null}
-        </div>
+        <RowActionsMenu
+          label={`عملیات بیشتر — ${nameText}`}
+          open={moreOpen}
+          onOpenChange={(nextOpen) =>
+            setOpenMoreRecordId(nextOpen ? row.recordId : null)
+          }
+          disabled={busy || deletingRecordId !== null}
+          items={menuItems}
+        />
       </div>
     );
   };
@@ -689,10 +663,29 @@ export const TaxPolicySettingsPanel = () => {
     <div className="tax-root" style={styles.root} dir="rtl">
       <style>{PANEL_CSS}</style>
 
-      <header className="tax-page-head">
-        <div>
-          <h2 style={styles.title}>پیش‌نیازهای حسابداری</h2>
-        </div>
+      <div className="tax-toolbar">
+        <nav className="tax-tabs" aria-label="بخش‌های پیش‌نیازهای حسابداری">
+          {(
+            [
+              { id: 'tax', label: 'مالیات و عوارض' },
+              { id: 'currencies', label: 'ارزها' },
+              { id: 'rounding', label: 'قواعد رُند کردن' },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={
+                activeTab === tab.id ? 'tax-tab tax-tab-active' : 'tax-tab'
+              }
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
         {activeTab === 'tax' && rows.length > 0 && error === null ? (
           <button
             type="button"
@@ -704,30 +697,7 @@ export const TaxPolicySettingsPanel = () => {
             + سیاست جدید
           </button>
         ) : null}
-      </header>
-
-      <nav className="tax-tabs" aria-label="بخش‌های پیش‌نیازهای حسابداری">
-        {(
-          [
-            { id: 'tax', label: 'مالیات و عوارض' },
-            { id: 'currencies', label: 'ارزها' },
-            { id: 'rounding', label: 'قواعد رُند کردن' },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            className={
-              activeTab === tab.id ? 'tax-tab tax-tab-active' : 'tax-tab'
-            }
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      </div>
 
       {activeTab !== 'tax' ? null : error === null ? null : (
         <div className="tax-page-error">
@@ -796,20 +766,14 @@ export const TaxPolicySettingsPanel = () => {
           </div>
         </section>
       ) : (
-        <div
-          className={
-            editor === null
-              ? 'tax-workspace tax-workspace-closed'
-              : 'tax-workspace'
-          }
-        >
+        <div className="tax-workspace tax-workspace-closed">
           <section className="tax-panel" aria-labelledby="tax-list-title">
             <div className="tax-panel-toolbar">
               <h3 id="tax-list-title" style={styles.listTitle}>
-                فهرست سیاست‌ها
+                سیاست‌ها
                 <span className="tax-count">
                   {' '}
-                  {toPersianDigits(String(rows.length))} مورد
+                  {toPersianDigits(String(rows.length))}
                 </span>
               </h3>
               <button
@@ -994,299 +958,179 @@ export const TaxPolicySettingsPanel = () => {
 
           </section>
 
-          {editor === null ? null : (
-            <aside
-              className="tax-panel tax-inspector"
-              id="tax-inspector"
-              aria-labelledby="tax-inspector-title"
-            >
-              <div className="tax-inspector-head">
-                <div>
-                  <h3 id="tax-inspector-title" style={styles.inspectorTitle}>
-                    {editor.recordId === null ? 'سیاست جدید' : 'ویرایش سیاست'}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  className="tax-btn"
-                  aria-label="بستن بازرس"
-                  disabled={busy}
-                  onClick={() => closeEditor()}
-                >
-                  ×
-                </button>
-              </div>
-
-              <form
-                className="tax-editor-form"
-                noValidate
-                onSubmit={(event) => {
-                  event.preventDefault();
-
-                  if (!busy) {
-                    void onSave();
-                  }
-                }}
-              >
-                <div
-                  className={
-                    nameError === null ? 'tax-field' : 'tax-field is-invalid'
-                  }
-                >
-                  <label htmlFor="tax-policy-name">نام سیاست</label>
-                  <input
-                    id="tax-policy-name"
-                    value={editor.name}
-                    aria-invalid={nameError !== null}
-                    aria-describedby={
-                      nameError === null ? undefined : 'tax-policy-name-error'
-                    }
-                    placeholder="مثلاً مالیات بر ارزش افزوده"
-                    onChange={(event) => {
-                      setNameError(null);
-                      updateEditor({ ...editor, name: event.target.value });
-                    }}
-                  />
-                  {nameError === null ? null : (
-                    <span
-                      id="tax-policy-name-error"
-                      role="alert"
-                      className="tax-field-error"
-                    >
-                      {nameError}
-                    </span>
-                  )}
-                </div>
-
-                <div className="tax-split-2">
-                  <div
-                    className={
-                      rateDisplayIssue === null
-                        ? 'tax-field'
-                        : 'tax-field is-invalid'
-                    }
-                  >
-                    <label htmlFor="tax-policy-rate">مالیات ٪</label>
-                    <input
-                      id="tax-policy-rate"
-                      value={editor.ratePercentText}
-                      inputMode="decimal"
-                      dir="ltr"
-                      aria-invalid={rateDisplayIssue !== null}
-                      aria-describedby={
-                        rateDisplayIssue === null
-                          ? 'tax-policy-exempt-legend'
-                          : 'tax-policy-rate-error'
-                      }
-                      placeholder="۹"
-                      onChange={(event) =>
-                        updateEditor({
-                          ...editor,
-                          ratePercentText: event.target.value,
-                        })
-                      }
-                    />
-                    {rateDisplayIssue === null ? null : (
-                      <span
-                        id="tax-policy-rate-error"
-                        role="alert"
-                        className="tax-field-error"
-                      >
-                        {rateDisplayIssue}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={
-                      dutyDisplayIssue === null
-                        ? 'tax-field'
-                        : 'tax-field is-invalid'
-                    }
-                  >
-                    <label htmlFor="tax-policy-duty">عوارض ٪</label>
-                    <input
-                      id="tax-policy-duty"
-                      value={editor.dutyPercentText}
-                      inputMode="decimal"
-                      dir="ltr"
-                      aria-invalid={dutyDisplayIssue !== null}
-                      aria-describedby={
-                        dutyDisplayIssue === null
-                          ? 'tax-policy-exempt-legend'
-                          : 'tax-policy-duty-error'
-                      }
-                      placeholder="۰"
-                      onChange={(event) =>
-                        updateEditor({
-                          ...editor,
-                          dutyPercentText: event.target.value,
-                        })
-                      }
-                    />
-                    {dutyDisplayIssue === null ? null : (
-                      <span
-                        id="tax-policy-duty-error"
-                        role="alert"
-                        className="tax-field-error"
-                      >
-                        {dutyDisplayIssue}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <p id="tax-policy-exempt-legend" className="tax-hint">
-                  هر دو نرخ صفر یعنی معاف از مالیات.
-                </p>
-
-                <div className="tax-field">
-                  <label htmlFor="tax-policy-accounting-code">
-                    کد حسابداری (اختیاری)
-                  </label>
-                  <input
-                    id="tax-policy-accounting-code"
-                    value={editor.accountingCodeText}
-                    dir="ltr"
-                    placeholder="خالی = بدون کد"
-                    maxLength={64}
-                    onChange={(event) =>
-                      updateEditor({
-                        ...editor,
-                        accountingCodeText: event.target.value,
-                      })
-                    }
-                  />
-                  <span className="tax-hint">
-                    یک کد برای کل سیاست (مالیات و عوارض). در فرم پیش‌فاکتور
-                    قابل ویرایش نیست.
-                  </span>
-                </div>
-
-                <div className="tax-computed" aria-live="polite">
-                  <span>نرخ کل (جمع خودکار)</span>
-                  <strong>
-                    {sumPercentText(
-                      editor.ratePercentText,
-                      editor.dutyPercentText,
-                    )}
-                  </strong>
-                </div>
-
-                {editorIsDirty ? (
-                  <p role="status" className="tax-unsaved">
-                    ذخیره‌نشده
-                  </p>
-                ) : null}
-
-                {combinedFieldIssue === null ? null : (
-                  <p role="alert" className="tax-field-error">
-                    {combinedFieldIssue}
-                  </p>
-                )}
-                {editorNotice === null ? null : (
-                  <p
-                    role={
-                      editorNotice.kind === 'instruction' ? 'status' : 'alert'
-                    }
-                    className={
-                      editorNotice.kind === 'instruction'
-                        ? 'tax-row-notice'
-                        : 'tax-field-error'
-                    }
-                  >
-                    {editorNotice.message}
-                  </p>
-                )}
-
-                <p className="tax-hint">
-                  {editingRow === null
-                    ? 'در هیچ سندی استفاده نشده است'
-                    : usageLine(editingRow)}
-                </p>
-
-                {editingRow === null ? null : (
-                  <div className="tax-inspector-lifecycle">
-                    {editingRow.isActive && !editingRow.isDefault ? (
-                      <button
-                        type="button"
-                        className="tax-btn"
-                        disabled={busy}
-                        onClick={() => void onSetDefault(editingRow)}
-                      >
-                        پیش‌فرض
-                      </button>
-                    ) : null}
-                    {editingRow.isActive ? (
-                      <button
-                        type="button"
-                        className="tax-btn"
-                        disabled={busy || editingRow.isDefault}
-                        title={
-                          editingRow.isDefault
-                            ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
-                            : undefined
-                        }
-                        onClick={() => void onDeactivate(editingRow)}
-                      >
-                        غیرفعال
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="tax-btn"
-                        disabled={busy}
-                        onClick={() => void onActivate(editingRow)}
-                      >
-                        فعال
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                <div className="tax-inspector-foot">
-                  <button
-                    type="submit"
-                    className="tax-btn tax-btn-primary"
-                    disabled={busy}
-                  >
-                    {busy ? 'در حال ذخیره…' : 'ذخیره'}
-                  </button>
-                  <button
-                    type="button"
-                    className="tax-btn"
-                    disabled={busy}
-                    onClick={() => closeEditor()}
-                  >
-                    انصراف
-                  </button>
-                  {editor.recordId === null || editingRow === null ? null : (
-                    <button
-                      type="button"
-                      className="tax-btn tax-btn-danger tax-foot-danger"
-                      disabled={
-                        busy ||
-                        deletingRecordId !== null ||
-                        !canDeleteRow(editingRow)
-                      }
-                      title={
-                        canDeleteRow(editingRow)
-                          ? undefined
-                          : editingRow.isDefault
-                            ? 'سیاست پیش‌فرض حذف نمی‌شود'
-                            : 'به‌دلیل استفاده در سند حذف نمی‌شود'
-                      }
-                      onClick={() => void requestDelete(editingRow)}
-                    >
-                      {deletingRecordId === editingRow.recordId
-                        ? 'در حال حذف…'
-                        : 'حذف'}
-                    </button>
-                  )}
-                </div>
-              </form>
-            </aside>
-          )}
         </div>
+      )}
+
+      {editor === null ? null : (
+        <SettingsDialog
+          title={editor.recordId === null ? 'سیاست جدید' : 'ویرایش سیاست'}
+          busy={busy}
+          onClose={() => closeEditor()}
+          footer={
+            <>
+              <button
+                type="button"
+                className="tax-btn tax-btn-primary"
+                disabled={busy}
+                onClick={() => void onSave()}
+              >
+                {busy ? 'در حال ذخیره…' : 'ذخیره'}
+              </button>
+              <button
+                type="button"
+                className="tax-btn"
+                disabled={busy}
+                onClick={() => closeEditor()}
+              >
+                انصراف
+              </button>
+            </>
+          }
+        >
+          <div
+            className={
+              nameError === null ? 'tax-field' : 'tax-field is-invalid'
+            }
+          >
+            <label htmlFor="tax-policy-name">نام سیاست</label>
+            <input
+              id="tax-policy-name"
+              value={editor.name}
+              aria-invalid={nameError !== null}
+              aria-describedby={
+                nameError === null ? undefined : 'tax-policy-name-error'
+              }
+              placeholder="مثلاً مالیات بر ارزش افزوده"
+              onChange={(event) => {
+                setNameError(null);
+                updateEditor({ ...editor, name: event.target.value });
+              }}
+            />
+            {nameError === null ? null : (
+              <span
+                id="tax-policy-name-error"
+                role="alert"
+                className="tax-field-error"
+              >
+                {nameError}
+              </span>
+            )}
+          </div>
+
+          <div className="tax-split-2">
+            <div
+              className={
+                rateDisplayIssue === null
+                  ? 'tax-field'
+                  : 'tax-field is-invalid'
+              }
+            >
+              <label htmlFor="tax-policy-rate">مالیات ٪</label>
+              <input
+                id="tax-policy-rate"
+                value={editor.ratePercentText}
+                inputMode="decimal"
+                dir="ltr"
+                aria-invalid={rateDisplayIssue !== null}
+                placeholder="۹"
+                onChange={(event) =>
+                  updateEditor({
+                    ...editor,
+                    ratePercentText: event.target.value,
+                  })
+                }
+              />
+              {rateDisplayIssue === null ? null : (
+                <span role="alert" className="tax-field-error">
+                  {rateDisplayIssue}
+                </span>
+              )}
+            </div>
+            <div
+              className={
+                dutyDisplayIssue === null
+                  ? 'tax-field'
+                  : 'tax-field is-invalid'
+              }
+            >
+              <label htmlFor="tax-policy-duty">عوارض ٪</label>
+              <input
+                id="tax-policy-duty"
+                value={editor.dutyPercentText}
+                inputMode="decimal"
+                dir="ltr"
+                aria-invalid={dutyDisplayIssue !== null}
+                placeholder="۰"
+                onChange={(event) =>
+                  updateEditor({
+                    ...editor,
+                    dutyPercentText: event.target.value,
+                  })
+                }
+              />
+              {dutyDisplayIssue === null ? null : (
+                <span role="alert" className="tax-field-error">
+                  {dutyDisplayIssue}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="tax-hint">هر دو نرخ صفر یعنی معاف از مالیات.</p>
+
+          <div className="tax-field">
+            <label htmlFor="tax-policy-accounting-code">
+              کد حسابداری (اختیاری)
+            </label>
+            <input
+              id="tax-policy-accounting-code"
+              value={editor.accountingCodeText}
+              dir="ltr"
+              placeholder="اختیاری"
+              maxLength={64}
+              onChange={(event) =>
+                updateEditor({
+                  ...editor,
+                  accountingCodeText: event.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="tax-computed" aria-live="polite">
+            <span>نرخ کل</span>
+            <strong>
+              {sumPercentText(editor.ratePercentText, editor.dutyPercentText)}
+            </strong>
+          </div>
+
+          {editorIsDirty ? (
+            <p role="status" className="tax-unsaved">
+              ذخیره‌نشده
+            </p>
+          ) : null}
+
+          {combinedFieldIssue === null ? null : (
+            <p role="alert" className="tax-field-error">
+              {combinedFieldIssue}
+            </p>
+          )}
+          {editorNotice === null ? null : (
+            <p
+              role={editorNotice.kind === 'instruction' ? 'status' : 'alert'}
+              className={
+                editorNotice.kind === 'instruction'
+                  ? 'tax-row-notice'
+                  : 'tax-field-error'
+              }
+            >
+              {editorNotice.message}
+            </p>
+          )}
+          {editingRow === null ? null : (
+            <p className="tax-hint">{usageLine(editingRow)}</p>
+          )}
+        </SettingsDialog>
       )}
 
       {activeTab === 'currencies' ? (
@@ -1300,22 +1144,24 @@ export const TaxPolicySettingsPanel = () => {
 };
 
 const PANEL_CSS = `
-.tax-page-head {
+.tax-toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 .tax-tabs {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 4px;
-  border: 1px solid var(--t-color-gray4);
-  border-radius: 12px;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--t-color-gray5);
+  border-radius: 10px;
   background: var(--t-color-gray2);
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .tax-tab {
   appearance: none;
@@ -1385,7 +1231,7 @@ const PANEL_CSS = `
   background: var(--t-color-gray1);
   border: 1px solid var(--t-color-gray6);
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 .tax-panel-toolbar {
   display: flex;
@@ -1759,10 +1605,10 @@ const PANEL_CSS = `
   .tax-inspector { position: static; }
 }
 @container tax-settings (max-width: 720px) {
-  .tax-page-head { flex-direction: column; align-items: stretch; }
+  .tax-toolbar { flex-direction: column; align-items: stretch; }
   .tax-add { width: 100%; min-height: 44px; height: 44px; }
-  .tax-tabs { flex-direction: column; }
-  .tax-tab { width: 100%; text-align: right; min-height: 44px; }
+  .tax-tabs { width: 100%; }
+  .tax-tab { flex: 1 1 auto; text-align: center; min-height: 40px; }
   .tax-row-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1786,10 +1632,10 @@ const PANEL_CSS = `
   .tax-inspector { position: static; }
 }
 @media (max-width: 720px) {
-  .tax-page-head { flex-direction: column; align-items: stretch; }
+  .tax-toolbar { flex-direction: column; align-items: stretch; }
   .tax-add { width: 100%; min-height: 44px; height: 44px; }
-  .tax-tabs { flex-direction: column; }
-  .tax-tab { width: 100%; text-align: right; min-height: 44px; }
+  .tax-tabs { width: 100%; }
+  .tax-tab { flex: 1 1 auto; text-align: center; min-height: 40px; }
   .tax-row-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1813,22 +1659,11 @@ const styles: Record<string, CSSProperties> = {
     width: '100%',
     minWidth: 0,
   },
-  title: {
-    margin: 0,
-    fontSize: 24,
-    fontWeight: 700,
-    letterSpacing: '-0.02em',
-  },
   listTitle: {
     margin: 0,
     fontSize: 13,
     fontWeight: 600,
     color: 'var(--t-color-gray11)',
-  },
-  inspectorTitle: {
-    margin: 0,
-    fontSize: 16,
-    fontWeight: 700,
   },
   meta: {
     margin: 0,
