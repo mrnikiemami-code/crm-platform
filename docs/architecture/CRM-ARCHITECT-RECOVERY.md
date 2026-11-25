@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 033 INDEPENDENT ARCHITECT AUDIT (2026-11-25)
+## CURRENT — CHAT-LOSS RECOVERY / GOAL 034 LIVE SETTINGS REDESIGN (2026-11-25)
+
+**START HERE:** Full authoritative user requirements and immediate Goal 034 execution are preserved in **[CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md](./CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md)**, created at `e546498b2499`. Read this document and the Goal 023 master/financial contract/progress before coding. **Pre-recovery product HEAD:** `99c212bc9442` (do not treat it as fixed HEAD after this docs commit). Repo `mrnikiemami-code/crm-platform`, branch `feat/crm-129-quotation`; verify current local and remote head before work. **Goal 023 ACTIVE / NOT COMPLETE**.
+
+**User decision:** Goal 033 is **USER_REJECTED_VISUAL**, despite app `quotation@0.1.61` reported on Dev :3002 and functional PASS. It was WRONG to open edit/create policy as a second panel beside ledger, show duplicated `پیش‌نیازهای حسابداری` title, expose `راه‌اندازی ریال`, retain confusing currency UX, long cluttered text/rows, and poorly designed mobile. **NEW P0 Goal 034** must install/smoke free Onlook visual React editor if compatible, with early fail-fast fallback to installed OpenDesign/direct existing Twenty React; must edit **same existing page** `http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d`, not a new prototype/route. Full-width compact tax list; independent modal/drawer for create/edit; host shared central delete confirm; clear IRR card without bootstrap button; compact rounding rules; one visible title; professional RTL/mobile. Use native Twenty design components, no paid credits or framework migration.
+
+**Source-level audit risks:** [Goal 033 independent audit](./CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md): delete double-confirm race, last-row menu clipping, menu keyboard/focus, missing broad regressions, insufficient responsive evidence. Fix within 034; verify mobile/container widths, functional tax/currency/rounding, PDF/Money unaffected. Do not accept on worker assertion alone. Goal 034 final `STOP_FOR_USER_UAT`; only user's approval counts. Keep WS5/WS6/WS7 frozen; do not merge/force push.
+
+**Financial guardrails:** WS1–WS4 architect accepted and applied only to Dev; Goal031/032 features present with UAT unresolved. Phase1 IRR only; named rounding IRR positive integer steps including 99, no decimal IRR step; decimal `0.001` reserved for future non-IRR. No Money Domain/schema/revision rewrite, :6080 or primary worker restart, outbound or real vendor send. Use same single CRM coding session, not video session. The earlier attempt to contact local coding bridge failed, so no claim that Goal034 implementation or Onlook installation has occurred.
+
+## PRIOR CHECKPOINT — GOAL 033 INDEPENDENT ARCHITECT AUDIT (2026-11-25)
 
 **Scope audited:** product commit `1acbaf7e9e`, from baseline `b089598eef14`; audit committed as `047cbb81eaa` in [CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md](./CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md). **Verdict:** `SOURCE_SCOPE_PASS_WITH_OPEN_UI_RISKS`, **not** unconditional system acceptance. Goal 023 ACTIVE; Goal 033 waits USER_UAT.
 
