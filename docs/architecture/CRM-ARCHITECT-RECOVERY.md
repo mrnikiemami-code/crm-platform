@@ -1,6 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — USER REJECTED GOAL 034 VISUAL DELIVERY (2026-11-25)
+## CURRENT — GOAL 034-R2 OPENDESIGN REDESIGN → STOP_FOR_USER_UAT (2026-11-26)
+
+**App:** `quotation@0.1.64` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. No WS5/WS6/WS7.
+
+**OpenDesign:** Docker daemon `:7456` health OK (`0.25.1`); project `crm129-fs-r2` + redesign skill artifacts transferred into React. Evidence doc: `CRM-129-GOAL-034-R2-OPENDESIGN-EVIDENCE.md`.
+
+**Menu fix (browser CDP):** last-row tax `بیشتر` menu `top = trigger.bottom + 4px`, left-aligned with trigger, `isTopLeftBug=false` (no longer viewport top-left). Absolute anchor under relative trigger. Rounding last-row same pattern.
+
+**Design deltas vs rejected 0.1.63:** no default banner; IRR hero card; rounding dense surface; dialog focus trap; delete latch confirm→mutation; denser ledger.
+
+**Gate:** `STOP_FOR_USER_UAT` — user must visually accept. Goal 034-R2 / Goal 023 not complete until then.
+
+## PRIOR — USER REJECTED GOAL 034 VISUAL DELIVERY (2026-11-25)
 
 **User UAT evidence:** two screenshots of the SAME current financial settings page at `:3002` after reported `quotation@0.1.63` showed the rounding row's `بیشتر` menu opening at the extreme top-left of the viewport, disconnected from its trigger; tabs and content still looked substantially like prior layout; excessive blank horizontal area and repeated action controls. This refutes previous visual-ready/portal-position claims. **Goal 034 = USER_REJECTED_VISUAL, NOT COMPLETE. Goal 023 ACTIVE**. No WS5/WS6/WS7.
 

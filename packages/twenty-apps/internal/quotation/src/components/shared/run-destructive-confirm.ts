@@ -3,22 +3,30 @@ import {
   type ConfirmDestructiveActionInput,
 } from 'src/components/shared/confirm-destructive-action';
 
-// Synchronous single-flight latch so two rapid Delete clicks cannot open two
-// host confirmation dialogs before React state updates (UX-R1).
-let destructiveConfirmInFlight = false;
+// Synchronous single-flight latch covering confirm AND optional follow-up
+// mutation so two rapid Delete clicks cannot open two dialogs or fire two
+// deletes (UX-R1 / Goal 034 architect note).
+let destructiveOperationInFlight = false;
 
 export const runDestructiveConfirm = async (
   input: ConfirmDestructiveActionInput,
+  afterConfirm?: () => Promise<void>,
 ): Promise<'confirm' | 'cancel'> => {
-  if (destructiveConfirmInFlight) {
+  if (destructiveOperationInFlight) {
     return 'cancel';
   }
 
-  destructiveConfirmInFlight = true;
+  destructiveOperationInFlight = true;
 
   try {
-    return await confirmDestructiveAction(input);
+    const result = await confirmDestructiveAction(input);
+
+    if (result === 'confirm' && afterConfirm !== undefined) {
+      await afterConfirm();
+    }
+
+    return result;
   } finally {
-    destructiveConfirmInFlight = false;
+    destructiveOperationInFlight = false;
   }
 };

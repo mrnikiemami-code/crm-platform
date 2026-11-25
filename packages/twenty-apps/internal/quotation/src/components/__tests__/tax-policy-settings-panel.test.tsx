@@ -935,7 +935,7 @@ describe('tax policy settings panel', () => {
     expect(css).toContain('var(--t-color-');
   });
 
-  it('surfaces the active default above the ledger', async () => {
+  it('marks the default policy on the ledger row instead of a banner', async () => {
     callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({
@@ -947,12 +947,11 @@ describe('tax policy settings panel', () => {
       ]),
     );
 
-    render(<TaxPolicySettingsPanel />);
+    const { container } = render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات بر ارزش افزوده ۹٪');
 
-    expect(
-      screen.getByRole('region', { name: 'سیاست پیش‌فرض فعال' }),
-    ).toBeTruthy();
-    expect(screen.getByText(/پیش‌فرض —/)).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'سیاست پیش‌فرض فعال' })).toBeNull();
+    expect(container.querySelector('tr.is-default')).toBeTruthy();
+    expect(screen.getByText('پیش‌فرض')).toBeTruthy();
   });
 });

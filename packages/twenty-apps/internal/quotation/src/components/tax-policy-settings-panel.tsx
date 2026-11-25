@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
@@ -22,9 +23,8 @@ import {
 } from 'src/domain/money/tax-policy';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
-// Ledger + Inspector: the catalog is a comparable table; create/edit lives in one
-// sticky inspector so browsing and writing stay separate surfaces. Tax and duty remain
-// two fields of one policy; the server still owns default uniqueness and delete refusal.
+// Dense operational ledger (OpenDesign R2). Create/edit in SettingsDialog; tax and
+// duty stay two fields of one policy. Server owns default uniqueness and delete refusal.
 
 type TaxPolicyRow = {
   recordId: string;
@@ -223,6 +223,7 @@ export const TaxPolicySettingsPanel = () => {
   // One catalog surface at a time: the ledger and the phone cards must not both sit
   // in the accessibility tree, or a rotor hears every policy twice.
   const [compactLayout, setCompactLayout] = useState(false);
+  const deleteLatchRef = useRef(false);
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') {
@@ -504,48 +505,49 @@ export const TaxPolicySettingsPanel = () => {
       return;
     }
 
-    if (deletingRecordId !== null) {
+    if (deleteLatchRef.current || deletingRecordId !== null) {
       return;
     }
 
-    const nameText = displayPolicyName(row.name);
-    const confirmation = await runDestructiveConfirm({
-      title: 'حذف سیاست مالیات',
-      subtitle: `آیا سیاست «${nameText}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
-      confirmButtonText: 'حذف سیاست',
-    });
-
-    if (confirmation !== 'confirm') {
-      return;
-    }
-
+    deleteLatchRef.current = true;
     setDeletingRecordId(row.recordId);
+    const nameText = displayPolicyName(row.name);
 
     try {
-      const failure = await runAction(
-        { action: 'delete', recordId: row.recordId },
-        'سیاست مالیات حذف شد',
+      await runDestructiveConfirm(
+        {
+          title: 'حذف سیاست مالیات',
+          subtitle: `آیا سیاست «${nameText}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
+          confirmButtonText: 'حذف سیاست',
+        },
+        async () => {
+          const failure = await runAction(
+            { action: 'delete', recordId: row.recordId },
+            'سیاست مالیات حذف شد',
+          );
+
+          if (failure !== null) {
+            setRowIssue({
+              recordId: row.recordId,
+              kind: 'error',
+              message: failure,
+            });
+            void enqueueSnackbar({
+              message: failure,
+              variant: 'error',
+              dedupeKey: `tax-delete-error:${row.recordId}`,
+            });
+
+            return;
+          }
+
+          if (editor?.recordId === row.recordId) {
+            closeEditor();
+          }
+        },
       );
-
-      if (failure !== null) {
-        setRowIssue({
-          recordId: row.recordId,
-          kind: 'error',
-          message: failure,
-        });
-        void enqueueSnackbar({
-          message: failure,
-          variant: 'error',
-          dedupeKey: `tax-delete-error:${row.recordId}`,
-        });
-
-        return;
-      }
-
-      if (editor?.recordId === row.recordId) {
-        closeEditor();
-      }
     } finally {
+      deleteLatchRef.current = false;
       setDeletingRecordId(null);
     }
   };
@@ -561,7 +563,6 @@ export const TaxPolicySettingsPanel = () => {
     }
   };
 
-  const defaultRow = rows.find((row) => row.isDefault && row.isActive) ?? null;
   const editingRow =
     editor?.recordId === null
       ? null
@@ -721,26 +722,6 @@ export const TaxPolicySettingsPanel = () => {
         </p>
       ) : null}
 
-      {activeTab !== 'tax' ||
-      loading ||
-      error !== null ||
-      defaultRow === null ? null : (
-        <section className="tax-default-banner" aria-label="سیاست پیش‌فرض فعال">
-          <div>
-            <strong>
-              پیش‌فرض — {displayPolicyName(defaultRow.name)}
-            </strong>
-          </div>
-          <div className="tax-rate-pill">
-            <span>
-              {defaultRow.isExempt
-                ? 'معاف'
-                : percentLabel(defaultRow.totalRatePercent)}
-            </span>
-          </div>
-        </section>
-      )}
-
       {activeTab !== 'tax' || loading ? null : error !== null ? null : rows.length === 0 ? (
         <section className="tax-empty">
           <p style={styles.emptyText}>
@@ -770,15 +751,11 @@ export const TaxPolicySettingsPanel = () => {
           <section className="tax-panel" aria-labelledby="tax-list-title">
             <div className="tax-panel-toolbar">
               <h3 id="tax-list-title" style={styles.listTitle}>
-                سیاست‌ها
-                <span className="tax-count">
-                  {' '}
-                  {toPersianDigits(String(rows.length))}
-                </span>
+                {toPersianDigits(String(rows.length))} سیاست
               </h3>
               <button
                 type="button"
-                className="tax-btn"
+                className="tax-btn tax-btn-ghost"
                 disabled={busy || loading}
                 onClick={() => void load()}
               >
@@ -798,6 +775,7 @@ export const TaxPolicySettingsPanel = () => {
                       className={[
                         'tax-m-card',
                         selected ? 'is-selected' : '',
+                        row.isDefault ? 'is-default' : '',
                         row.isActive ? '' : 'is-inactive',
                       ]
                         .filter(Boolean)
@@ -883,21 +861,12 @@ export const TaxPolicySettingsPanel = () => {
                           key={`${row.recordId}:${row.isDefault ? 'd' : 's'}`}
                           className={[
                             selected ? 'is-selected' : '',
+                            row.isDefault ? 'is-default' : '',
                             row.isActive ? '' : 'is-inactive',
                           ]
                             .filter(Boolean)
                             .join(' ')}
                           data-record-id={row.recordId}
-                          tabIndex={0}
-                          onClick={() => openEditor(editorFor(row))}
-                          onKeyDown={(event) => {
-                            if (event.key !== 'Enter' && event.key !== ' ') {
-                              return;
-                            }
-
-                            event.preventDefault();
-                            openEditor(editorFor(row));
-                          }}
                         >
                           <td className="tax-col-policy">
                             <div className="tax-name">{nameText}</div>
@@ -965,6 +934,7 @@ export const TaxPolicySettingsPanel = () => {
         <SettingsDialog
           title={editor.recordId === null ? 'سیاست جدید' : 'ویرایش سیاست'}
           busy={busy}
+          size="lg"
           onClose={() => closeEditor()}
           footer={
             <>
@@ -1188,29 +1158,6 @@ const PANEL_CSS = `
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
-.tax-default-banner {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  margin-bottom: 16px;
-  border: 1px solid var(--t-color-blue4);
-  border-radius: 10px;
-  background: var(--t-color-blue2);
-}
-.tax-rate-pill {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--t-color-gray6);
-  background: var(--t-color-gray1);
-  font-weight: 700;
-  color: var(--t-color-blue11);
-}
 .tax-root {
   container-type: inline-size;
   container-name: tax-settings;
@@ -1238,11 +1185,19 @@ const PANEL_CSS = `
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--t-color-gray6);
-  background: var(--t-color-gray2);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--t-color-gray5);
+  background: var(--t-color-gray1);
 }
-.tax-count { color: var(--t-color-gray10); font-weight: 500; }
+.tax-btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--t-color-gray11);
+}
+.tax-btn-ghost:hover:not(:disabled) {
+  background: var(--t-color-gray3);
+  border-color: transparent;
+}
 .tax-table-wrap {
   overflow-x: auto;
   max-width: 100%;
@@ -1264,21 +1219,26 @@ const PANEL_CSS = `
   white-space: nowrap;
 }
 .tax-ledger td {
-  padding: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--t-color-gray5);
   vertical-align: middle;
 }
-.tax-col-policy { width: 28%; }
-.tax-col-num { width: 10%; white-space: nowrap; }
+.tax-col-policy { width: 32%; }
+.tax-col-num { width: 11%; white-space: nowrap; }
 .tax-col-status { width: 12%; white-space: nowrap; }
 .tax-col-actions {
-  width: 22%;
+  width: 20%;
   white-space: nowrap;
 }
-.tax-ledger tbody tr { cursor: pointer; }
 .tax-ledger tbody tr:hover { background: var(--t-color-gray2); }
 .tax-ledger tbody tr.is-selected { background: var(--t-color-blue2); }
+.tax-ledger tbody tr.is-default td:first-child {
+  box-shadow: inset -3px 0 0 var(--t-color-blue9);
+}
 .tax-ledger tbody tr.is-inactive .tax-name { color: var(--t-color-gray10); }
+.tax-m-card.is-default {
+  box-shadow: inset -3px 0 0 var(--t-color-blue9);
+}
 .tax-name {
   font-weight: 600;
   color: var(--t-color-gray12);
@@ -1655,7 +1615,7 @@ const styles: Record<string, CSSProperties> = {
     gap: 0,
     fontFamily: 'inherit',
     color: 'var(--t-color-gray12)',
-    maxWidth: 1180,
+    maxWidth: 1120,
     width: '100%',
     minWidth: 0,
   },
@@ -1663,7 +1623,7 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     fontSize: 13,
     fontWeight: 600,
-    color: 'var(--t-color-gray11)',
+    color: 'var(--t-color-gray10)',
   },
   meta: {
     margin: 0,

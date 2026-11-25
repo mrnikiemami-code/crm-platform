@@ -1,7 +1,6 @@
 import {
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -24,13 +23,9 @@ type RowActionsMenuProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-type MenuPosition = {
-  top: number;
-  left: number;
-  minWidth: number;
-};
-
-// Portal menu so last-row actions are not clipped by overflow:hidden panels.
+// Anchor-relative absolute menu. Host Front Components often apply CSS
+// transforms; position:fixed + getBoundingClientRect viewport coords then
+// land at the wrong place (top-left). Same containing block as the trigger.
 export const RowActionsMenu = ({
   label,
   items,
@@ -41,29 +36,16 @@ export const RowActionsMenu = ({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
-  const [position, setPosition] = useState<MenuPosition | null>(null);
+  const [openUpward, setOpenUpward] = useState(false);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!open || triggerRef.current === null) {
-      setPosition(null);
-
       return;
     }
 
     const rect = triggerRef.current.getBoundingClientRect();
-    const menuWidth = Math.max(160, rect.width);
     const estimatedHeight = 8 + items.length * 40;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpward = spaceBelow < estimatedHeight + 12;
-    const top = openUpward
-      ? Math.max(8, rect.top - estimatedHeight - 4)
-      : rect.bottom + 4;
-    const left = Math.min(
-      Math.max(8, rect.right - menuWidth),
-      window.innerWidth - menuWidth - 8,
-    );
-
-    setPosition({ top, left, minWidth: menuWidth });
+    setOpenUpward(window.innerHeight - rect.bottom < estimatedHeight + 12);
   }, [items.length, open]);
 
   useEffect(() => {
@@ -93,7 +75,34 @@ export const RowActionsMenu = ({
         event.preventDefault();
         onOpenChange(false);
         triggerRef.current?.focus();
+
+        return;
       }
+
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+        return;
+      }
+
+      const itemsInMenu = Array.from(
+        menuRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[role="menuitem"]:not([disabled])',
+        ) ?? [],
+      );
+
+      if (itemsInMenu.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      const activeIndex = itemsInMenu.findIndex(
+        (item) => item === document.activeElement,
+      );
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      const nextIndex =
+        activeIndex < 0
+          ? 0
+          : (activeIndex + delta + itemsInMenu.length) % itemsInMenu.length;
+      itemsInMenu[nextIndex]?.focus();
     };
 
     document.addEventListener('mousedown', onPointerDown);
@@ -124,17 +133,16 @@ export const RowActionsMenu = ({
       >
         بیشتر
       </button>
-      {open && position !== null ? (
+      {open ? (
         <div
           ref={menuRef}
           id={menuId}
-          className="fs-row-more-menu"
+          className={
+            openUpward
+              ? 'fs-row-more-menu fs-row-more-menu-up'
+              : 'fs-row-more-menu'
+          }
           role="menu"
-          style={{
-            top: position.top,
-            left: position.left,
-            minWidth: position.minWidth,
-          }}
         >
           {items.map((item) => (
             <button
@@ -172,10 +180,17 @@ export type RowActionsMenuShellProps = {
 };
 
 const MENU_CSS = `
-.fs-row-more { position: relative; display: inline-flex; }
+.fs-row-more {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
 .fs-row-more-menu {
-  position: fixed;
-  z-index: 10050;
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline-end: 0;
+  z-index: 40;
+  min-width: 168px;
   padding: 4px;
   border: 1px solid var(--t-color-gray6);
   border-radius: 8px;
@@ -183,6 +198,10 @@ const MENU_CSS = `
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
   display: grid;
   gap: 2px;
+}
+.fs-row-more-menu-up {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 .fs-row-more-item {
   appearance: none;
@@ -197,11 +216,16 @@ const MENU_CSS = `
   cursor: pointer;
   min-height: 40px;
 }
-.fs-row-more-item:hover:not(:disabled) { background: var(--t-color-gray3); }
+.fs-row-more-item:hover:not(:disabled),
+.fs-row-more-item:focus-visible {
+  background: var(--t-color-gray3);
+  outline: none;
+}
 .fs-row-more-item:disabled {
   color: var(--t-color-gray9);
   cursor: not-allowed;
 }
 .fs-row-more-item-danger { color: var(--t-color-red11); }
-.fs-row-more-item-danger:hover:not(:disabled) { background: var(--t-color-red2); }
+.fs-row-more-item-danger:hover:not(:disabled),
+.fs-row-more-item-danger:focus-visible { background: var(--t-color-red2); }
 `;

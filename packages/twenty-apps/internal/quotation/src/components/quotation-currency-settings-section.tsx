@@ -60,7 +60,7 @@ const toast = (
   void enqueueSnackbar({ message, variant, dedupeKey });
 };
 
-// Phase-1 IRR card. Bootstrap is automatic/idempotent — no operator button.
+// Phase-1 IRR operational card (OpenDesign R2). Bootstrap is automatic — no button.
 export const QuotationCurrencySettingsSection = ({
   alwaysOpen = false,
 }: QuotationCurrencySettingsSectionProps) => {
@@ -220,6 +220,8 @@ export const QuotationCurrencySettingsSection = ({
     closeEdit();
   };
 
+  const operational = rows.find((row) => row.code === 'IRR') ?? rows[0] ?? null;
+
   return (
     <section className="currency-section" dir="rtl">
       <style>{CURRENCY_CSS}</style>
@@ -251,43 +253,51 @@ export const QuotationCurrencySettingsSection = ({
             </div>
           )}
 
-          {busy && rows.length === 0 ? (
+          {busy && operational === null ? (
             <p className="currency-empty">در حال آماده‌سازی ارز…</p>
           ) : null}
 
-          {rows.length === 0 && !busy && loadError === null ? (
+          {operational === null && !busy && loadError === null ? (
             <p className="currency-empty">ارز عملیاتی هنوز آماده نیست.</p>
-          ) : (
-            <ul className="currency-list">
-              {rows.map((row) => (
-                <li key={row.recordId} className="currency-card">
-                  <div className="currency-card-main">
-                    <div>
-                      <strong>
-                        {row.name}{' '}
-                        <span className="currency-code" dir="ltr">
-                          ({row.code})
-                        </span>
-                      </strong>
-                      <div className="currency-meta">
-                        {row.isDefault ? 'پیش‌فرض' : 'فعال'}
-                        {row.accountingCode
-                          ? ` · کد ${row.accountingCode}`
-                          : ' · بدون کد حسابداری'}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="tax-btn"
-                      disabled={busy}
-                      onClick={() => openEdit(row)}
-                    >
-                      ویرایش
-                    </button>
+          ) : operational === null ? null : (
+            <article className="currency-hero" aria-label="ارز عملیاتی">
+              <div className="currency-hero-top">
+                <div>
+                  <div className="currency-hero-code" dir="ltr">
+                    {operational.code}
                   </div>
-                </li>
-              ))}
-            </ul>
+                  <div className="currency-hero-name">{operational.name}</div>
+                </div>
+                <div className="currency-hero-badges">
+                  {operational.isDefault ? (
+                    <span className="currency-badge currency-badge-default">
+                      پیش‌فرض
+                    </span>
+                  ) : null}
+                  <span className="currency-badge currency-badge-phase">
+                    فاز ۱
+                  </span>
+                </div>
+              </div>
+              <div className="currency-hero-account">
+                <div>
+                  <span className="currency-hero-label">کد حسابداری</span>
+                  <strong className="currency-hero-value" dir="ltr">
+                    {operational.accountingCode.trim() === ''
+                      ? '—'
+                      : operational.accountingCode}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  className="tax-btn tax-btn-primary"
+                  disabled={busy}
+                  onClick={() => openEdit(operational)}
+                >
+                  ویرایش کد
+                </button>
+              </div>
+            </article>
           )}
         </>
       ) : null}
@@ -346,32 +356,75 @@ export const QuotationCurrencySettingsSection = ({
 };
 
 const CURRENCY_CSS = `
-.currency-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
+.currency-hero {
   max-width: 560px;
-}
-.currency-card {
-  padding: 12px 14px;
-  border: 1px solid var(--t-color-gray4);
+  border: 1px solid var(--t-color-gray6);
   border-radius: 10px;
   background: var(--t-color-gray1);
+  overflow: hidden;
 }
-.currency-card-main {
+.currency-hero-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--t-color-gray5);
+}
+.currency-hero-code {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-color-gray12);
+}
+.currency-hero-name {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--t-color-gray10);
+}
+.currency-hero-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.currency-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.currency-badge-default {
+  background: var(--t-color-blue3);
+  color: var(--t-color-blue11);
+}
+.currency-badge-phase {
+  background: var(--t-color-gray3);
+  color: var(--t-color-gray11);
+}
+.currency-hero-account {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  padding: 14px 16px 16px;
 }
-.currency-code { font-weight: 600; color: var(--t-color-gray11); }
-.currency-meta {
-  margin-top: 4px;
-  font-size: 12px;
+.currency-hero-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--t-color-gray10);
+  margin-bottom: 4px;
+}
+.currency-hero-value {
+  font-size: 15px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--t-color-gray12);
 }
 .currency-empty, .currency-dialog-meta {
   margin: 0;
@@ -408,6 +461,7 @@ const CURRENCY_CSS = `
 }
 @media (max-width: 720px) {
   .currency-field input { height: 44px; }
-  .currency-card .tax-btn { min-height: 44px; }
+  .currency-hero-account .tax-btn { min-height: 44px; width: 100%; }
+  .currency-hero-account { flex-direction: column; align-items: stretch; }
 }
 `;

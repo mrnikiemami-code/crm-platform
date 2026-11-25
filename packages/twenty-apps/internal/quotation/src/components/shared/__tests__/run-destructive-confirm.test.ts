@@ -52,4 +52,28 @@ describe('runDestructiveConfirm', () => {
     await expect(first).resolves.toBe('confirm');
     expect(confirmDestructiveActionMock).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps the latch through afterConfirm mutation', async () => {
+    confirmDestructiveActionMock.mockResolvedValueOnce('confirm');
+    let releaseMutation!: () => void;
+    const mutation = new Promise<void>((resolve) => {
+      releaseMutation = resolve;
+    });
+
+    const first = runDestructiveConfirm(
+      { title: 'حذف', subtitle: 'اول' },
+      async () => {
+        await mutation;
+      },
+    );
+    await Promise.resolve();
+    const second = runDestructiveConfirm({
+      title: 'حذف',
+      subtitle: 'دوم',
+    });
+
+    await expect(second).resolves.toBe('cancel');
+    releaseMutation();
+    await expect(first).resolves.toBe('confirm');
+  });
 });

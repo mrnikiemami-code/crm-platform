@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import { callRoundingRulesNestAction } from 'src/components/quotation-api';
@@ -100,6 +100,7 @@ export const RoundingRuleSettingsSection = ({
   const [nameError, setNameError] = useState<string | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const deleteLatchRef = useRef(false);
 
   const applyPayload = useCallback((data: Record<string, unknown>) => {
     setRows(readRows(data));
@@ -275,32 +276,33 @@ export const RoundingRuleSettingsSection = ({
       return;
     }
 
-    if (deletingRecordId !== null) {
+    if (deleteLatchRef.current || deletingRecordId !== null) {
       return;
     }
 
-    const confirmation = await runDestructiveConfirm({
-      title: 'حذف قاعده رُند',
-      subtitle: `آیا قاعده «${row.name}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
-      confirmButtonText: 'حذف قاعده',
-    });
-
-    if (confirmation !== 'confirm') {
-      return;
-    }
-
+    deleteLatchRef.current = true;
     setDeletingRecordId(row.recordId);
 
     try {
-      const ok = await runAction(
-        { action: 'delete', recordId: row.recordId },
-        'قاعده رُند حذف شد',
-      );
+      await runDestructiveConfirm(
+        {
+          title: 'حذف قاعده رُند',
+          subtitle: `آیا قاعده «${row.name}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
+          confirmButtonText: 'حذف قاعده',
+        },
+        async () => {
+          const ok = await runAction(
+            { action: 'delete', recordId: row.recordId },
+            'قاعده رُند حذف شد',
+          );
 
-      if (ok && editor?.recordId === row.recordId) {
-        closeEditor();
-      }
+          if (ok && editor?.recordId === row.recordId) {
+            closeEditor();
+          }
+        },
+      );
     } finally {
+      deleteLatchRef.current = false;
       setDeletingRecordId(null);
     }
   };
@@ -320,143 +322,162 @@ export const RoundingRuleSettingsSection = ({
 
       {opened ? (
         <>
-          <div className="rounding-toolbar">
-            <span className="rounding-count">
-              {rows.length === 0 ? 'بدون قاعده' : `${rows.length} قاعده`}
-            </span>
-            <button
-              type="button"
-              className="tax-btn tax-btn-primary"
-              disabled={busy}
-              onClick={() => {
-                setOpenMoreRecordId(null);
-                setEditor(emptyEditor());
-                setNameError(null);
-                setStepError(null);
-              }}
-            >
-              + قاعده جدید
-            </button>
-          </div>
-
-          {loadError ? (
-            <div className="rounding-error-bar">
-              <p className="rounding-error">{loadError}</p>
+          <div className="rounding-surface">
+            <div className="rounding-toolbar">
+              <span className="rounding-count">
+                {rows.length === 0 ? 'بدون قاعده' : `${rows.length} قاعده`}
+              </span>
               <button
                 type="button"
-                className="tax-btn"
+                className="tax-btn tax-btn-primary"
                 disabled={busy}
-                onClick={() => void ensureCatalog()}
+                onClick={() => {
+                  setOpenMoreRecordId(null);
+                  setEditor(emptyEditor());
+                  setNameError(null);
+                  setStepError(null);
+                }}
               >
-                تلاش مجدد
+                + قاعده جدید
               </button>
             </div>
-          ) : null}
 
-          {rows.length === 0 && !busy ? (
-            <p className="rounding-empty">هنوز قاعده‌ای ثبت نشده است.</p>
-          ) : (
-            <ul className="rounding-list">
-              {rows.map((row) => {
-                const moreOpen = openMoreRecordId === row.recordId;
-                const deleteBusy = deletingRecordId === row.recordId;
+            {loadError ? (
+              <div className="rounding-error-bar">
+                <p className="rounding-error">{loadError}</p>
+                <button
+                  type="button"
+                  className="tax-btn"
+                  disabled={busy}
+                  onClick={() => void ensureCatalog()}
+                >
+                  تلاش مجدد
+                </button>
+              </div>
+            ) : null}
 
-                return (
-                  <li key={row.recordId} className="rounding-row">
-                    <div className="rounding-row-main">
-                      <strong>{row.name}</strong>
-                      <span className="rounding-meta">
-                        {formatStepLabel(row.stepRials)}
-                        {row.isDefault ? ' · پیش‌فرض' : ''}
-                        {row.isActive ? '' : ' · غیرفعال'}
-                      </span>
-                    </div>
-                    <div className="rounding-row-actions">
-                      <button
-                        type="button"
-                        className="tax-btn"
-                        disabled={busy || deletingRecordId !== null}
-                        onClick={() => {
-                          setOpenMoreRecordId(null);
-                          setEditor({
-                            recordId: row.recordId,
-                            name: row.name,
-                            stepRialsText: row.stepRials,
-                            isActive: row.isActive,
-                          });
-                          setNameError(null);
-                          setStepError(null);
-                        }}
-                      >
-                        ویرایش
-                      </button>
-                      <RowActionsMenu
-                        label={`عملیات بیشتر — ${row.name}`}
-                        open={moreOpen}
-                        onOpenChange={(nextOpen) =>
-                          setOpenMoreRecordId(nextOpen ? row.recordId : null)
-                        }
-                        disabled={busy || deletingRecordId !== null}
-                        items={[
-                          ...(row.isDefault
-                            ? []
-                            : [
-                                {
-                                  id: 'default',
-                                  label: 'پیش‌فرض',
-                                  disabled: busy || !row.isActive,
-                                  onSelect: () => {
-                                    void runAction(
-                                      {
-                                        action: 'set-default',
-                                        recordId: row.recordId,
-                                      },
-                                      'قاعده پیش‌فرض تغییر کرد',
-                                    );
+            {rows.length === 0 && !busy ? (
+              <p className="rounding-empty">هنوز قاعده‌ای ثبت نشده است.</p>
+            ) : (
+              <ul className="rounding-list">
+                {rows.map((row) => {
+                  const moreOpen = openMoreRecordId === row.recordId;
+                  const deleteBusy = deletingRecordId === row.recordId;
+
+                  return (
+                    <li
+                      key={row.recordId}
+                      className={[
+                        'rounding-row',
+                        row.isDefault ? 'is-default' : '',
+                        row.isActive ? '' : 'is-inactive',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <div className="rounding-row-main">
+                        <div className="rounding-row-title">
+                          <strong>{row.name}</strong>
+                          {row.isDefault ? (
+                            <span className="rounding-badge">پیش‌فرض</span>
+                          ) : null}
+                          {row.isActive ? null : (
+                            <span className="rounding-badge rounding-badge-off">
+                              غیرفعال
+                            </span>
+                          )}
+                        </div>
+                        <span className="rounding-step">
+                          {formatStepLabel(row.stepRials)}
+                        </span>
+                      </div>
+                      <div className="rounding-row-actions">
+                        <button
+                          type="button"
+                          className="tax-btn"
+                          disabled={busy || deletingRecordId !== null}
+                          onClick={() => {
+                            setOpenMoreRecordId(null);
+                            setEditor({
+                              recordId: row.recordId,
+                              name: row.name,
+                              stepRialsText: row.stepRials,
+                              isActive: row.isActive,
+                            });
+                            setNameError(null);
+                            setStepError(null);
+                          }}
+                        >
+                          ویرایش
+                        </button>
+                        <RowActionsMenu
+                          label={`عملیات بیشتر — ${row.name}`}
+                          open={moreOpen}
+                          onOpenChange={(nextOpen) =>
+                            setOpenMoreRecordId(nextOpen ? row.recordId : null)
+                          }
+                          disabled={busy || deletingRecordId !== null}
+                          items={[
+                            ...(row.isDefault
+                              ? []
+                              : [
+                                  {
+                                    id: 'default',
+                                    label: 'پیش‌فرض',
+                                    disabled: busy || !row.isActive,
+                                    onSelect: () => {
+                                      void runAction(
+                                        {
+                                          action: 'set-default',
+                                          recordId: row.recordId,
+                                        },
+                                        'قاعده پیش‌فرض تغییر کرد',
+                                      );
+                                    },
                                   },
-                                },
-                              ]),
-                          ...(row.isDefault || !row.isActive
-                            ? []
-                            : [
-                                {
-                                  id: 'deactivate',
-                                  label: 'غیرفعال',
-                                  disabled: busy,
-                                  onSelect: () => {
-                                    void runAction(
-                                      {
-                                        action: 'deactivate',
-                                        recordId: row.recordId,
-                                      },
-                                      'قاعده غیرفعال شد',
-                                    );
+                                ]),
+                            ...(row.isDefault || !row.isActive
+                              ? []
+                              : [
+                                  {
+                                    id: 'deactivate',
+                                    label: 'غیرفعال',
+                                    disabled: busy,
+                                    onSelect: () => {
+                                      void runAction(
+                                        {
+                                          action: 'deactivate',
+                                          recordId: row.recordId,
+                                        },
+                                        'قاعده غیرفعال شد',
+                                      );
+                                    },
                                   },
-                                },
-                              ]),
-                          {
-                            id: 'delete',
-                            label: deleteBusy ? 'در حال حذف…' : 'حذف',
-                            disabled:
-                              busy || deleteBusy || !canDeleteRow(row),
-                            danger: true,
-                            title: canDeleteRow(row)
-                              ? undefined
-                              : row.isDefault
-                                ? 'قاعده پیش‌فرض حذف نمی‌شود'
-                                : 'به‌دلیل استفاده در سند حذف نمی‌شود',
-                            onSelect: () => {
-                              void requestDelete(row);
+                                ]),
+                            {
+                              id: 'delete',
+                              label: deleteBusy ? 'در حال حذف…' : 'حذف',
+                              disabled:
+                                busy || deleteBusy || !canDeleteRow(row),
+                              danger: true,
+                              title: canDeleteRow(row)
+                                ? undefined
+                                : row.isDefault
+                                  ? 'قاعده پیش‌فرض حذف نمی‌شود'
+                                  : 'به‌دلیل استفاده در سند حذف نمی‌شود',
+                              onSelect: () => {
+                                void requestDelete(row);
+                              },
                             },
-                          },
-                        ]}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                          ]}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </>
       ) : null}
 
@@ -548,47 +569,86 @@ export const RoundingRuleSettingsSection = ({
 };
 
 const ROUNDING_CSS = `
+.rounding-surface {
+  max-width: 720px;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: 10px;
+  background: var(--t-color-gray1);
+  overflow: visible;
+}
 .rounding-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--t-color-gray5);
 }
-.rounding-count { font-size: 13px; color: var(--t-color-gray10); }
+.rounding-count { font-size: 13px; color: var(--t-color-gray10); font-weight: 600; }
 .rounding-error-bar {
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  padding: 10px 14px;
 }
 .rounding-error { margin: 0; color: var(--t-color-red11); font-size: 13px; }
-.rounding-empty { margin: 0; font-size: 13px; color: var(--t-color-gray10); }
+.rounding-empty { margin: 0; padding: 16px 14px; font-size: 13px; color: var(--t-color-gray10); }
 .rounding-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
-  max-width: 720px;
 }
 .rounding-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 10px 12px;
-  border: 1px solid var(--t-color-gray4);
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--t-color-gray5);
   background: var(--t-color-gray1);
 }
+.rounding-row:last-child { border-bottom: 0; }
+.rounding-row.is-default {
+  box-shadow: inset -3px 0 0 var(--t-color-blue9);
+}
+.rounding-row.is-inactive strong { color: var(--t-color-gray10); }
 .rounding-row-main { display: grid; gap: 4px; min-width: 0; }
-.rounding-meta { font-size: 12px; color: var(--t-color-gray10); }
+.rounding-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rounding-step {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--t-color-blue11);
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+.rounding-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--t-color-blue3);
+  color: var(--t-color-blue11);
+}
+.rounding-badge-off {
+  background: var(--t-color-gray4);
+  color: var(--t-color-gray11);
+}
 .rounding-row-actions {
   display: inline-flex;
   gap: 6px;
-  align-items: flex-start;
+  align-items: center;
+  position: relative;
 }
 .rounding-field {
   display: grid;
@@ -621,5 +681,6 @@ const ROUNDING_CSS = `
   .rounding-field input { height: 44px; }
   .rounding-row-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .rounding-toolbar { flex-direction: column; align-items: stretch; }
+  .rounding-toolbar .tax-btn { min-height: 44px; }
 }
 `;
