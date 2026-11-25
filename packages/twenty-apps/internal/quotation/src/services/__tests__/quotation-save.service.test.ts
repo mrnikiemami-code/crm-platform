@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildDraftQuotationSaveRequest,
   buildDraftQuotationWritePayload,
   validateCatalogItemUpsert,
   validateDraftQuotation,
@@ -69,6 +70,10 @@ describe('quotation-save.service', () => {
     ]);
     expect(payload.value.lines[0]).toHaveProperty('grossExact');
     expect(payload.value.lines[0]).toHaveProperty('documentDiscountExact');
+    expect(payload.value.lines.map((line) => line.sortOrder)).toEqual([0, 1]);
+
+    const atomic = buildDraftQuotationSaveRequest(outcome.plan, null);
+    expect(atomic.lines.map((line) => line.sortOrder)).toEqual([0, 1]);
   });
 
   it('validates catalog upsert separately from quotation', () => {

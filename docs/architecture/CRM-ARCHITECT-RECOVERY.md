@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 023: DEV-APPLY-030 DONE → STOP_FOR_USER_UAT (2026-11-25)
+## CURRENT — GOAL 031 UX COMPLETION → STOP_FOR_USER_UAT (2026-11-25)
+
+**Branch:** `feat/crm-129-quotation`. **Goal 031 base:** `a0cdbf78d0`. Goal 023 **ACTIVE / NOT COMPLETE**. Goal 031 is a child UX completion of the same real form — not a parallel architecture.
+
+**Dev target:** `quotation@0.1.57` on `:3002` after Goal 031 apply (was `0.1.56`). Schema WS1–WS4 already applied (DEV-APPLY-030) — **do not re-run**. Intranet `:6080` + worker untouched.
+
+**UX pack:** حقیقی/حقوقی, paginated customer picker (≤100/page), currency + display unit clarity, per-line tax amounts, single summary, RTL/mobile, `position`↔`sortOrder` on Nest line write. Detail: [`CRM-129-GOAL-031-PROGRESS.md`](./CRM-129-GOAL-031-PROGRESS.md).
+
+**Gate:** **`STOP_FOR_USER_UAT`** on the real Dev form. No WS5/WS6 / redesign until user confirms.
+
+## PRIOR — GOAL 023: DEV-APPLY-030 DONE → STOP_FOR_USER_UAT (2026-11-25)
 
 **Branch:** `feat/crm-129-quotation`. **Pre-apply recovery:** `23698e4ae7`. **Post-apply docs/IRR HEAD:** `5a665ef2b1`. Goal 023 **ACTIVE / NOT COMPLETE**.
 

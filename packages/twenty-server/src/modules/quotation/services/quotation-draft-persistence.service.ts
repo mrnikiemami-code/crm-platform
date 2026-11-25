@@ -971,6 +971,9 @@ export class QuotationDraftPersistenceService {
       taxPolicyRecordId: taxSnapshot?.taxPolicyRecordId ?? null,
       currencyCode: inheritedCurrency,
       sortOrder,
+      // Keep Twenty's list `position` aligned with document order so multi-line
+      // drafts do not all land at position 0 in object views.
+      position: sortOrder,
       itemId: line.itemId,
     };
   }

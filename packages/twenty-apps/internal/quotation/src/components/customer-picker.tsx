@@ -24,6 +24,8 @@ type CustomerPickerProps = {
   selected: CustomerSelection | null;
   onSelect: (selection: CustomerSelection) => void;
   disabled?: boolean;
+  // Visible label for the field (حقیقی / حقوقی). Defaults keep older callers working.
+  fieldLabel?: string;
 };
 
 const DEBOUNCE_MS = 300;
@@ -67,6 +69,7 @@ export const CustomerPicker = ({
   selected,
   onSelect,
   disabled = false,
+  fieldLabel,
 }: CustomerPickerProps) => {
   const listboxId = useId();
   const requestSerial = useRef(0);
@@ -74,7 +77,10 @@ export const CustomerPicker = ({
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [rows, setRows] = useState<PickerRow[]>([]);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [endCursor, setEndCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,19 +97,35 @@ export const CustomerPicker = ({
     setQuery('');
     setDebouncedQuery('');
     setRows([]);
+    setHasNextPage(false);
+    setEndCursor(null);
     setError(null);
+    setOpen(false);
   }, [customerType]);
 
-  const load = async (search: string) => {
+  const load = async ({
+    search,
+    afterCursor,
+    append,
+  }: {
+    search: string;
+    afterCursor: string | null;
+    append: boolean;
+  }) => {
     const serial = ++requestSerial.current;
 
-    setLoading(true);
-    setError(null);
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const response = await callAppRoute(SEARCH_CUSTOMERS_ROUTE, {
         customerType,
         search,
+        afterCursor,
       });
 
       if (serial !== requestSerial.current) {
@@ -116,21 +138,40 @@ export const CustomerPicker = ({
             ? response.data.message
             : 'بارگذاری فهرست مشتریان انجام نشد',
         );
-        setRows([]);
+        if (!append) {
+          setRows([]);
+          setHasNextPage(false);
+          setEndCursor(null);
+        }
         return;
       }
 
-      setRows(readRows(response.data));
+      const nextRows = readRows(response.data);
+      const nextCursor =
+        typeof response.data.endCursor === 'string' &&
+        response.data.endCursor.trim() !== ''
+          ? response.data.endCursor
+          : null;
+
+      setRows((current) => (append ? [...current, ...nextRows] : nextRows));
+      setHasNextPage(response.data.hasNextPage === true);
+      setEndCursor(nextCursor);
+      setError(null);
     } catch {
       if (serial !== requestSerial.current) {
         return;
       }
 
       setError('ارتباط با سرور برقرار نشد');
-      setRows([]);
+      if (!append) {
+        setRows([]);
+        setHasNextPage(false);
+        setEndCursor(null);
+      }
     } finally {
       if (serial === requestSerial.current) {
         setLoading(false);
+        setLoadingMore(false);
       }
     }
   };
@@ -140,7 +181,11 @@ export const CustomerPicker = ({
       return;
     }
 
-    void load(debouncedQuery);
+    void load({
+      search: debouncedQuery,
+      afterCursor: null,
+      append: false,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on open/search/type
   }, [open, debouncedQuery, customerType]);
 
@@ -150,16 +195,25 @@ export const CustomerPicker = ({
     setQuery('');
   };
 
+  const noun =
+    fieldLabel ??
+    (customerType === 'PERSON' ? 'شخص حقیقی' : 'شخص حقوقی / شرکت');
+
   const placeholder =
     customerType === 'PERSON'
-      ? 'جست‌وجوی نام یا ایمیل شخص…'
+      ? 'جست‌وجوی نام یا ایمیل…'
       : 'جست‌وجوی نام شرکت…';
 
+  const emptyMessage =
+    debouncedQuery === ''
+      ? `مشتری ${noun} در این صفحه یافت نشد`
+      : 'موردی یافت نشد';
+
   return (
-    <div style={styles.root}>
+    <div style={styles.root} className="qd-customer-picker">
       <div style={styles.selectionRow}>
         <span style={styles.selectionLabel}>
-          {selected === null ? 'هنوز مشتری انتخاب نشده است' : selected.label}
+          {selected === null ? `هنوز ${noun} انتخاب نشده است` : selected.label}
         </span>
         <button
           type="button"
@@ -173,7 +227,7 @@ export const CustomerPicker = ({
           aria-expanded={open}
           aria-controls={listboxId}
         >
-          {selected === null ? 'انتخاب مشتری' : 'تغییر مشتری'}
+          {selected === null ? `انتخاب ${noun}` : 'تغییر'}
         </button>
       </div>
 
@@ -187,25 +241,27 @@ export const CustomerPicker = ({
             onChange={(event) => setQuery(event.target.value)}
           />
           <div id={listboxId} role="listbox" style={styles.list}>
-            {loading ? <div style={styles.state}>در حال جست‌وجو…</div> : null}
+            {loading ? <div style={styles.state}>در حال بارگذاری…</div> : null}
             {!loading && error !== null ? (
               <div style={styles.state}>
                 <div style={styles.error}>{error}</div>
                 <button
                   type="button"
                   style={styles.retry}
-                  onClick={() => void load(debouncedQuery)}
+                  onClick={() =>
+                    void load({
+                      search: debouncedQuery,
+                      afterCursor: null,
+                      append: false,
+                    })
+                  }
                 >
                   تلاش دوباره
                 </button>
               </div>
             ) : null}
             {!loading && error === null && rows.length === 0 ? (
-              <div style={styles.state}>
-                {query.trim() === ''
-                  ? 'برای دیدن گزینه‌ها نام را جست‌وجو کنید'
-                  : 'موردی یافت نشد'}
-              </div>
+              <div style={styles.state}>{emptyMessage}</div>
             ) : null}
             {!loading &&
               error === null &&
@@ -228,6 +284,22 @@ export const CustomerPicker = ({
                   )}
                 </button>
               ))}
+            {!loading && error === null && hasNextPage ? (
+              <button
+                type="button"
+                style={styles.loadMore}
+                disabled={loadingMore || endCursor === null}
+                onClick={() =>
+                  void load({
+                    search: debouncedQuery,
+                    afterCursor: endCursor,
+                    append: true,
+                  })
+                }
+              >
+                {loadingMore ? 'در حال دریافت…' : 'نمایش موارد بیشتر'}
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -246,6 +318,7 @@ const styles: Record<string, CSSProperties> = {
     borderRadius: 8,
     border: '1px solid #d0d0d0',
     background: '#fff',
+    minWidth: 0,
   },
   selectionLabel: {
     fontSize: 14,
@@ -253,15 +326,17 @@ const styles: Record<string, CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    minWidth: 0,
   },
   changeButton: {
     flexShrink: 0,
     border: '1px solid #c5cdd8',
     background: '#f7f9fc',
     borderRadius: 6,
-    padding: '5px 10px',
+    padding: '8px 12px',
     fontSize: 12,
     fontWeight: 600,
+    minHeight: 36,
   },
   panel: {
     border: '1px solid #d8d8d8',
@@ -269,7 +344,7 @@ const styles: Record<string, CSSProperties> = {
     boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
     display: 'flex',
     flexDirection: 'column',
-    maxHeight: 260,
+    maxHeight: 280,
     overflow: 'hidden',
     background: '#fff',
   },
@@ -284,7 +359,7 @@ const styles: Record<string, CSSProperties> = {
   },
   list: {
     overflowY: 'auto',
-    maxHeight: 200,
+    maxHeight: 220,
     display: 'flex',
     flexDirection: 'column',
   },
@@ -293,11 +368,12 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'stretch',
     gap: 2,
-    padding: '8px 12px',
+    padding: '10px 12px',
     border: 0,
     borderBottom: '1px solid #f2f2f2',
     cursor: 'pointer',
     textAlign: 'right',
+    minHeight: 44,
   },
   optionTitle: { fontSize: 13, fontWeight: 600, color: '#1a1a1a' },
   optionMeta: { fontSize: 11, color: '#666' },
@@ -312,8 +388,20 @@ const styles: Record<string, CSSProperties> = {
     border: '1px solid #ddd',
     background: '#f7f7f7',
     borderRadius: 6,
-    padding: '4px 10px',
+    padding: '6px 10px',
     cursor: 'pointer',
     fontSize: 12,
+    minHeight: 36,
+  },
+  loadMore: {
+    border: 0,
+    borderTop: '1px solid #eee',
+    background: '#f8fafc',
+    padding: '10px 12px',
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#2563eb',
+    minHeight: 40,
   },
 };

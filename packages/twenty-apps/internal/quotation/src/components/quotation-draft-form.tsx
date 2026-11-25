@@ -30,20 +30,22 @@ import {
 } from 'src/components/quotation-api';
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
-import { type MoneyUnit } from 'src/domain/money/currency';
+import {
+  formatMoneyForDisplay,
+  type MoneyUnit,
+} from 'src/domain/money/currency';
 import {
   MULTI_CURRENCY_DOCUMENTS,
   OPERATIONAL_DOCUMENT_CURRENCY_CODE,
   selectInitialDocumentCurrencyCode,
 } from 'src/domain/money/document-currency';
-import { toPersianDigits } from 'src/domain/money/display-format';
+import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
+import { formatMicrosExact } from 'src/domain/money/micros';
 import {
   DEFAULT_TAX_POLICY_ID,
-  formatBasisPointsAsPercent,
   parseBasisPointsText,
   resolveTaxPolicy,
   selectInitialTaxPolicyCode,
-  totalRateBasisPoints,
   type TaxPolicyCatalogEntry,
   type TaxPolicyDefinition,
 } from 'src/domain/money/tax-policy';
@@ -339,6 +341,36 @@ const lineCardStyle = (index: number): CSSProperties => ({
   ...styles.lineCard,
   background: index % 2 === 0 ? '#f7f8fa' : '#eef3fb',
 });
+
+const formatPlanAmount = (micros: bigint, unit: MoneyUnit): string => {
+  const display = formatMoneyForDisplay({
+    irrMicros: micros,
+    unit,
+    formatExact: formatMicrosExact,
+    formatPeople: formatExactDecimalForPeople,
+  });
+
+  return display.ok ? display.value : '—';
+};
+
+const customerTypeLabel = (type: 'PERSON' | 'COMPANY'): string =>
+  type === 'PERSON' ? 'حقیقی' : 'حقوقی';
+
+const RESPONSIVE_FORM_CSS = `
+.qd-form { box-sizing: border-box; }
+.qd-form *, .qd-form *::before, .qd-form *::after { box-sizing: border-box; }
+.qd-form .qd-row { display: flex; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.qd-form .qd-field { flex: 1 1 140px; min-width: 0; }
+.qd-form .qd-line-totals { margin-top: 4px; }
+.qd-form .qd-actions button { min-height: 40px; }
+@media (max-width: 430px) {
+  .qd-form .qd-row { flex-direction: column; }
+  .qd-form .qd-field { flex: 1 1 auto; width: 100%; }
+  .qd-form .qd-actions { flex-direction: column-reverse; align-items: stretch; }
+  .qd-form .qd-actions button { width: 100%; }
+  .qd-form .qd-line-card { padding: 10px; }
+}
+`;
 
 export const QuotationDraftForm = () => {
   const sourceObject = useFrontComponentExecutionContext(
@@ -825,32 +857,6 @@ export const QuotationDraftForm = () => {
     return null;
   };
 
-  const taxRateLabel =
-    selectedTaxPolicy === null
-      ? null
-      : toPersianDigits(
-          formatBasisPointsAsPercent(selectedTaxPolicy.rateBasisPoints),
-        );
-
-  const dutyRateLabel =
-    selectedTaxPolicy === null
-      ? null
-      : toPersianDigits(
-          formatBasisPointsAsPercent(selectedTaxPolicy.dutyRateBasisPoints),
-        );
-
-  const totalRateLabel =
-    selectedTaxPolicy === null
-      ? null
-      : toPersianDigits(
-          formatBasisPointsAsPercent(
-            totalRateBasisPoints(selectedTaxPolicy),
-          ),
-        );
-
-  const taxPolicyLabel =
-    selectedTaxPolicy?.label ?? LEGACY_TAX_LABEL;
-
   const preview = useMemo(() => {
     const draftLines = lines.map((line) =>
       toDraftLineInput(
@@ -927,6 +933,17 @@ export const QuotationDraftForm = () => {
             id: customerIds.companyId,
             label: customerLabels.COMPANY ?? 'در حال خواندن نام مشتری…',
           };
+
+  const onCustomerTypeChange = (nextType: 'PERSON' | 'COMPANY') => {
+    if (nextType === customerType) {
+      return;
+    }
+
+    // Drop the previous side so a PERSON id cannot ride along with COMPANY.
+    setCustomerType(nextType);
+    setCustomerIds({ personId: null, companyId: null });
+    setCustomerLabels({ PERSON: null, COMPANY: null });
+  };
 
   // Selecting a record is the only way a customer is set. The other side is
   // cleared so a stale relation can never be sent alongside the new one.
@@ -1052,9 +1069,9 @@ export const QuotationDraftForm = () => {
 
   const customerHint =
     selectedCustomer === null
-      ? 'تا وقتی یک شخص یا شرکت واقعی انتخاب نشود، ذخیره ممکن نیست.'
+      ? `تا وقتی یک مشتری ${customerTypeLabel(customerType)} واقعی انتخاب نشود، ذخیره ممکن نیست.`
       : editingQuotationId !== null
-        ? 'مشتری متصل به این پیش‌فاکتور؛ با «تغییر مشتری» می‌توانید آن را عوض کنید.'
+        ? 'مشتری متصل به این پیش‌فاکتور؛ با «تغییر» می‌توانید آن را عوض کنید.'
         : sourceRecordId === ''
           ? 'مشتری از میان رکوردهای واقعی CRM انتخاب می‌شود.'
           : 'مشتری از رکوردی گرفته شده که فرم از آن باز شده است.';
@@ -1071,7 +1088,8 @@ export const QuotationDraftForm = () => {
   };
 
   return (
-    <div style={styles.root} dir="rtl">
+    <div style={styles.root} className="qd-form" dir="rtl">
+      <style>{RESPONSIVE_FORM_CSS}</style>
       <div style={styles.scrollBody}>
         <header style={styles.header}>
           <h2 style={styles.title}>
@@ -1098,7 +1116,7 @@ export const QuotationDraftForm = () => {
           </p>
         ) : null}
 
-        <section style={formSectionStyle}>
+        <section style={formSectionStyle} className="qd-section">
           <h3 style={styles.sectionTitle}>مشخصات</h3>
           <label style={styles.label}>
             عنوان
@@ -1108,41 +1126,29 @@ export const QuotationDraftForm = () => {
               onChange={(event) => setName(event.target.value)}
             />
           </label>
-          <div style={styles.row}>
-            <label style={styles.label}>
-              نوع مشتری
-              <select
-                style={styles.input}
-                value={customerType}
-                onChange={(event) =>
-                  setCustomerType(event.target.value as 'PERSON' | 'COMPANY')
-                }
-              >
-                <option value="PERSON">شخص</option>
-                <option value="COMPANY">شرکت</option>
-              </select>
-            </label>
-            <label style={styles.label}>
-              واحد نمایش مبالغ
-              <select
-                style={styles.input}
-                value={moneyUnit}
-                onChange={(event) =>
-                  setMoneyUnit(event.target.value as MoneyUnit)
-                }
-              >
-                <option value="TOMAN">تومان</option>
-                <option value="IRR">ریال</option>
-              </select>
-            </label>
-          </div>
+          <label style={styles.label} className="qd-field">
+            نوع مشتری
+            <select
+              style={styles.input}
+              value={customerType}
+              onChange={(event) =>
+                onCustomerTypeChange(
+                  event.target.value as 'PERSON' | 'COMPANY',
+                )
+              }
+            >
+              <option value="PERSON">حقیقی</option>
+              <option value="COMPANY">حقوقی</option>
+            </select>
+          </label>
           <label style={styles.label}>
-            مشتری
+            مشتری {customerTypeLabel(customerType)}
             <CustomerPicker
               customerType={customerType}
               selected={selectedCustomer}
               onSelect={onSelectCustomer}
               disabled={isFormLocked}
+              fieldLabel={customerTypeLabel(customerType)}
             />
           </label>
           <p style={styles.meta}>{customerHint}</p>
@@ -1156,58 +1162,72 @@ export const QuotationDraftForm = () => {
           </label>
         </section>
 
-        <section style={formSectionStyle}>
-          <h3 style={styles.sectionTitle}>ارز سند</h3>
-          <label style={styles.label}>
-            ارز
-            <select
-              style={styles.input}
-              value={documentCurrencyCode}
-              disabled={isFormLocked}
-              onChange={(event) => {
-                documentCurrencyChosenByOperator.current = true;
-                setDocumentCurrencyCode(event.target.value.toUpperCase());
-              }}
-            >
-              {(!MULTI_CURRENCY_DOCUMENTS
-                ? [
-                    documentCurrencies.find(
-                      (currency) =>
-                        currency.code === OPERATIONAL_DOCUMENT_CURRENCY_CODE,
-                    ) ?? {
-                      code: OPERATIONAL_DOCUMENT_CURRENCY_CODE,
-                      name: 'ریال ایران',
-                      isDefault: true,
-                      isActive: true,
-                    },
-                  ]
-                : documentCurrencies.length > 0
-                  ? documentCurrencies.filter(
-                      (currency) =>
-                        currency.isActive ||
-                        currency.code === documentCurrencyCode,
-                    )
-                  : [
-                      {
+        <section style={formSectionStyle} className="qd-section">
+          <h3 style={styles.sectionTitle}>ارز سند و نمایش مبلغ</h3>
+          <div style={styles.row} className="qd-row">
+            <label style={styles.label} className="qd-field">
+              ارز سند
+              <select
+                style={styles.input}
+                value={documentCurrencyCode}
+                disabled={isFormLocked}
+                onChange={(event) => {
+                  documentCurrencyChosenByOperator.current = true;
+                  setDocumentCurrencyCode(event.target.value.toUpperCase());
+                }}
+              >
+                {(!MULTI_CURRENCY_DOCUMENTS
+                  ? [
+                      documentCurrencies.find(
+                        (currency) =>
+                          currency.code === OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+                      ) ?? {
                         code: OPERATIONAL_DOCUMENT_CURRENCY_CODE,
                         name: 'ریال ایران',
                         isDefault: true,
                         isActive: true,
                       },
                     ]
-              ).map((currency) => (
-                <option key={currency.code} value={currency.code}>
-                  {currency.name} ({currency.code})
-                  {currency.isDefault ? ' — پیش‌فرض' : ''}
-                  {currency.isActive ? '' : ' — غیرفعال'}
-                </option>
-              ))}
-            </select>
-          </label>
+                  : documentCurrencies.length > 0
+                    ? documentCurrencies.filter(
+                        (currency) =>
+                          currency.isActive ||
+                          currency.code === documentCurrencyCode,
+                      )
+                    : [
+                        {
+                          code: OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+                          name: 'ریال ایران',
+                          isDefault: true,
+                          isActive: true,
+                        },
+                      ]
+                ).map((currency) => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.name} ({currency.code})
+                    {currency.isDefault ? ' — پیش‌فرض' : ''}
+                    {currency.isActive ? '' : ' — غیرفعال'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={styles.label} className="qd-field">
+              نمایش مبلغ به
+              <select
+                style={styles.input}
+                value={moneyUnit}
+                onChange={(event) =>
+                  setMoneyUnit(event.target.value as MoneyUnit)
+                }
+              >
+                <option value="TOMAN">تومان</option>
+                <option value="IRR">ریال</option>
+              </select>
+            </label>
+          </div>
           <p style={styles.meta}>
-            تومان و ریال فقط واحد نمایش مبلغ هستند، نه دو ارز مستقل. همهٔ ردیف‌ها
-            همین ارز سند را به ارث می‌برند. در این فاز فقط IRR برای عملیات مالی
-            مجاز است.
+            ارز سند عملیات مالی است (در این فاز فقط IRR). «نمایش مبلغ به» فقط
+            مقیاس ورود و نمایش است و ارز سند را عوض نمی‌کند.
           </p>
         </section>
 
@@ -1229,9 +1249,16 @@ export const QuotationDraftForm = () => {
 
           {lines.map((line, index) => {
             const linePreview = preview.linePreviews[index];
+            const plannedLine = summaryPlan?.lines.find(
+              (entry) => entry.clientLineId === line.clientLineId,
+            );
 
             return (
-              <div key={line.clientLineId} style={lineCardStyle(index)}>
+              <div
+                key={line.clientLineId}
+                style={lineCardStyle(index)}
+                className="qd-line-card"
+              >
                 <div style={styles.lineHeader}>
                   <strong style={styles.lineTitle}>ردیف {index + 1}</strong>
                   {line.sku ? (
@@ -1262,8 +1289,8 @@ export const QuotationDraftForm = () => {
                   <p style={styles.warning}>{line.priceWarning}</p>
                 ) : null}
 
-                <div style={styles.row}>
-                  <label style={styles.fieldLabel}>
+                <div style={styles.row} className="qd-row">
+                  <label style={styles.fieldLabel} className="qd-field">
                     تعداد
                     <PersianPlainNumberInput
                       style={styles.fieldInput}
@@ -1273,7 +1300,7 @@ export const QuotationDraftForm = () => {
                       }
                     />
                   </label>
-                  <label style={styles.fieldLabel}>
+                  <label style={styles.fieldLabel} className="qd-field">
                     قیمت واحد
                     <MoneyAmountInput
                       style={styles.fieldInput}
@@ -1288,9 +1315,9 @@ export const QuotationDraftForm = () => {
                   </label>
                 </div>
 
-                <div style={styles.row}>
-                  <label style={styles.fieldLabel}>
-                    تخفیف
+                <div style={styles.row} className="qd-row">
+                  <label style={styles.fieldLabel} className="qd-field">
+                    تخفیف ردیف
                     <select
                       style={styles.fieldInput}
                       value={line.discountKind}
@@ -1306,7 +1333,7 @@ export const QuotationDraftForm = () => {
                     </select>
                   </label>
                   {line.discountKind === 'RATE' ? (
-                    <label style={styles.fieldLabel}>
+                    <label style={styles.fieldLabel} className="qd-field">
                       درصد تخفیف
                       <PersianPlainNumberInput
                         style={styles.fieldInput}
@@ -1320,7 +1347,7 @@ export const QuotationDraftForm = () => {
                     </label>
                   ) : null}
                   {line.discountKind === 'AMOUNT' ? (
-                    <label style={styles.fieldLabel}>
+                    <label style={styles.fieldLabel} className="qd-field">
                       مبلغ تخفیف
                       <MoneyAmountInput
                         style={styles.fieldInput}
@@ -1364,6 +1391,47 @@ export const QuotationDraftForm = () => {
                   </select>
                 </label>
 
+                {plannedLine ? (
+                  <div style={styles.lineTotals} className="qd-line-totals">
+                    <div style={styles.lineTotalRow}>
+                      <span>خالص مشمول مالیات</span>
+                      <strong>
+                        {formatPlanAmount(
+                          plannedLine.amounts.netMicros,
+                          moneyUnit,
+                        )}
+                      </strong>
+                    </div>
+                    <div style={styles.lineTotalRow}>
+                      <span>مالیات</span>
+                      <strong>
+                        {formatPlanAmount(
+                          plannedLine.amounts.taxOnlyMicros,
+                          moneyUnit,
+                        )}
+                      </strong>
+                    </div>
+                    <div style={styles.lineTotalRow}>
+                      <span>عوارض</span>
+                      <strong>
+                        {formatPlanAmount(
+                          plannedLine.amounts.dutyMicros,
+                          moneyUnit,
+                        )}
+                      </strong>
+                    </div>
+                    <div style={styles.lineTotalRow}>
+                      <span>جمع ردیف</span>
+                      <strong>
+                        {formatPlanAmount(
+                          plannedLine.amounts.totalMicros,
+                          moneyUnit,
+                        )}
+                      </strong>
+                    </div>
+                  </div>
+                ) : null}
+
                 {linePreview && !linePreview.ok ? (
                   <p style={styles.lineError}>{linePreview.detail}</p>
                 ) : null}
@@ -1388,11 +1456,14 @@ export const QuotationDraftForm = () => {
           })}
         </section>
 
-        <section style={formSectionStyle}>
+        <section style={styles.documentDiscountSection} className="qd-section">
           <h3 style={styles.sectionTitle}>تخفیف کل سند</h3>
-          <div style={styles.row}>
-            <label style={styles.label}>
-              نوع
+          <p style={styles.meta}>
+            مستقل از تخفیف داخل هر ردیف است و پس از جمع ردیف‌ها اعمال می‌شود.
+          </p>
+          <div style={styles.row} className="qd-row">
+            <label style={styles.label} className="qd-field">
+              نوع تخفیف کل
               <select
                 style={styles.input}
                 value={documentDiscountKind}
@@ -1406,7 +1477,7 @@ export const QuotationDraftForm = () => {
               </select>
             </label>
             {documentDiscountKind === 'RATE' ? (
-              <label style={styles.label}>
+              <label style={styles.label} className="qd-field">
                 درصد تخفیف کل
                 <PersianPlainNumberInput
                   style={styles.input}
@@ -1416,7 +1487,7 @@ export const QuotationDraftForm = () => {
               </label>
             ) : null}
             {documentDiscountKind === 'AMOUNT' ? (
-              <label style={styles.label}>
+              <label style={styles.label} className="qd-field">
                 مبلغ تخفیف کل
                 <MoneyAmountInput
                   style={styles.input}
@@ -1428,95 +1499,6 @@ export const QuotationDraftForm = () => {
           </div>
         </section>
 
-        <section style={formSectionStyle}>
-          <h3 style={styles.sectionTitle}>مالیات و عوارض</h3>
-          <div style={styles.row}>
-            <label style={styles.label}>
-              سیاست پیش‌فرض (ردیف‌های جدید)
-              <select
-                style={styles.input}
-                value={taxPolicyCode}
-                disabled={isFormLocked}
-                onChange={(event) => {
-                  taxPolicyChosenByOperator.current = true;
-                  setTaxPolicyCode(event.target.value);
-                  setStoredTaxRate(null);
-                }}
-              >
-                {taxPolicyOptions.map((policy) => (
-                  <option key={policy.id} value={policy.id}>
-                    {policy.label}
-                    {policy.isExempt ? ' — معاف' : ''}
-                    {policy.isActive ? '' : ' — غیرفعال'}
-                  </option>
-                ))}
-                {taxPolicyOptions.every(
-                  (policy) => policy.id !== taxPolicyCode,
-                ) ? (
-                  <option value={taxPolicyCode} dir="ltr">
-                    {taxPolicyCode}
-                  </option>
-                ) : null}
-              </select>
-            </label>
-            {taxRateLabel !== null ? (
-              <div style={styles.label}>
-                مالیات اعمال‌شده
-                <strong style={styles.fieldInput}>{taxRateLabel}٪</strong>
-              </div>
-            ) : null}
-            {dutyRateLabel !== null ? (
-              <div style={styles.label}>
-                عوارض اعمال‌شده
-                <strong style={styles.fieldInput}>{dutyRateLabel}٪</strong>
-              </div>
-            ) : null}
-            {totalRateLabel !== null ? (
-              <div style={styles.label}>
-                جمع نرخ (مالیات + عوارض)
-                <strong style={styles.fieldInput}>{totalRateLabel}٪</strong>
-              </div>
-            ) : null}
-          </div>
-          <p style={styles.meta}>
-            نرخ‌ها در تنظیمات «مالیات و عوارض» تعریف می‌شوند. هر ردیف سیاست
-            مستقل دارد؛ این انتخاب فقط پیش‌فرض ردیف‌های جدید است. سیاست هر ردیف
-            روی سند مهروموم ثبت می‌شود.
-          </p>
-          {selectedTaxPolicy === null ? (
-            <p style={styles.warning}>
-              سیاست مالیات انتخاب‌شده در تنظیمات پیدا نشد؛ یک سیاست فعال انتخاب
-              کنید.
-            </p>
-          ) : null}
-          {summaryPlan ? (
-            <>
-              <div style={styles.totalsRow}>
-                <span>مبلغ مشمول مالیات</span>
-                <strong>{summaryPlan.displayNet}</strong>
-              </div>
-              <div style={styles.totalsRow}>
-                <span>
-                  {taxPolicyLabel} — مالیات
-                  {taxRateLabel !== null ? ` (${taxRateLabel}٪)` : ''}
-                </span>
-                <strong>{summaryPlan.displayTaxOnly}</strong>
-              </div>
-              <div style={styles.totalsRow}>
-                <span>
-                  {taxPolicyLabel} — عوارض
-                  {dutyRateLabel !== null ? ` (${dutyRateLabel}٪)` : ''}
-                </span>
-                <strong>{summaryPlan.displayDuty}</strong>
-              </div>
-              <div style={styles.totalsRow}>
-                <span>جمع کل</span>
-                <strong>{summaryPlan.displayTotal}</strong>
-              </div>
-            </>
-          ) : null}
-        </section>
-
         {error ? <p style={styles.error}>{error}</p> : null}
       </div>
 
@@ -1526,7 +1508,7 @@ export const QuotationDraftForm = () => {
           {summaryPlan ? (
             <>
               <div style={styles.totalsRow}>
-                <span>ناخالص</span>
+                <span>جمع مبلغ ردیف‌ها</span>
                 <strong>{summaryPlan.displayGross}</strong>
               </div>
               <div style={styles.totalsRow}>
@@ -1534,23 +1516,25 @@ export const QuotationDraftForm = () => {
                 <strong>{summaryPlan.displayLineDiscount}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>تخفیف کل</span>
+                <span>تخفیف کل سند</span>
                 <strong>{summaryPlan.displayDocumentDiscount}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>{taxPolicyLabel} — مالیات</span>
+                <span>جمع خالص پس از تخفیف‌ها</span>
+                <strong>{summaryPlan.displayNet}</strong>
+              </div>
+              <div style={styles.totalsRow}>
+                <span>مالیات</span>
                 <strong>{summaryPlan.displayTaxOnly}</strong>
               </div>
               <div style={styles.totalsRow}>
-                <span>{taxPolicyLabel} — عوارض</span>
+                <span>عوارض</span>
                 <strong>{summaryPlan.displayDuty}</strong>
               </div>
-              {summaryPlan.totalsExact.roundingExact !== '0.000000' ? (
-                <div style={styles.totalsRow}>
-                  <span>تعدیل گردکردن</span>
-                  <strong>{summaryPlan.displayRounding}</strong>
-                </div>
-              ) : null}
+              <div style={styles.totalsRow}>
+                <span>تعدیل رُند کردن مبلغ</span>
+                <strong>{summaryPlan.displayRounding}</strong>
+              </div>
               <div style={styles.payable}>
                 <span>مبلغ نهایی قابل پرداخت</span>
                 <strong>{summaryPlan.displayTotal}</strong>
@@ -1570,7 +1554,7 @@ export const QuotationDraftForm = () => {
           )}
         </section>
 
-        <div style={styles.actions}>
+        <div style={styles.actions} className="qd-actions">
           {isRecordEdit ? null : (
             <button
               type="button"
@@ -1677,8 +1661,17 @@ const styles: Record<string, CSSProperties> = {
     background: '#fff',
     color: '#111',
   },
-  row: { display: 'flex', gap: 8, minWidth: 0 },
+  row: { display: 'flex', gap: 8, minWidth: 0, flexWrap: 'wrap' },
   meta: { margin: 0, fontSize: 11, color: '#777', lineHeight: 1.5 },
+  documentDiscountSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    border: '1px solid #cbd5e1',
+    background: '#f8fafc',
+  },
   lineCard: {
     border: '1px solid #e2e8f0',
     borderRadius: 10,
@@ -1687,6 +1680,23 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: 10,
     minWidth: 0,
+  },
+  lineTotals: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    padding: '8px 10px',
+    borderRadius: 8,
+    background: 'rgba(255,255,255,0.72)',
+    border: '1px solid #e2e8f0',
+  },
+  lineTotalRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: 12,
+    fontSize: 12,
+    color: '#334155',
   },
   lineHeader: {
     display: 'flex',

@@ -25,6 +25,7 @@ const handler = async (event: RoutePayload<unknown>) => {
   // A preselected id (person/company context, or a hydrated draft) asks for that
   // one row so the form can show a readable name instead of a bare id.
   const recordId = readString(body.recordId) || null;
+  const afterCursor = readString(body.afterCursor) || null;
 
   if (!process.env.TWENTY_API_URL || !process.env.TWENTY_APP_ACCESS_TOKEN) {
     return {
@@ -36,7 +37,7 @@ const handler = async (event: RoutePayload<unknown>) => {
 
   try {
     const page = await searchCustomersForPicker(
-      { customerType, search, recordId },
+      { customerType, search, recordId, afterCursor },
       { execute: executeRecordGraphql },
     );
 
@@ -45,6 +46,7 @@ const handler = async (event: RoutePayload<unknown>) => {
       customerType,
       rows: page.rows,
       hasNextPage: page.hasNextPage,
+      endCursor: page.endCursor,
     };
   } catch (error) {
     if (error instanceof RecordApiError) {

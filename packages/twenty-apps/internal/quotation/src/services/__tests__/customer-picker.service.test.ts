@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { CUSTOMER_PICKER_PAGE_SIZE } from 'src/data/customer-queries';
 import { RecordApiError } from 'src/data/record-api';
 import {
   parseCustomerPickerPage,
@@ -95,6 +96,10 @@ describe('customer-picker.service', () => {
       endCursor: null,
       totalKnown: null,
     });
+  });
+
+  it('keeps the first customer page at most 100 rows', () => {
+    expect(CUSTOMER_PICKER_PAGE_SIZE).toBe(100);
   });
 
   it('pages with the cursor the server issued so the next page continues the same order', async () => {

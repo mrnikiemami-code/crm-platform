@@ -154,6 +154,7 @@ export const buildDraftQuotationSaveRequest = (
     taxExact: line.taxExact,
     totalExact: line.totalExact,
     itemId: line.catalogItemId,
+    sortOrder: line.sortOrder,
     taxPolicy: line.taxPolicy,
     taxRateBasisPoints: line.taxRateBasisPoints,
     dutyRateBasisPoints: line.dutyRateBasisPoints,

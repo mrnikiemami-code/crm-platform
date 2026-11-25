@@ -6,7 +6,8 @@ import { type GraphqlValue, toGraphqlLiteral } from 'src/data/graphql-literal';
 
 export type CustomerKind = 'PERSON' | 'COMPANY';
 
-export const CUSTOMER_PICKER_PAGE_SIZE = 20;
+// First page ceiling for the quotation customer picker (server-side pages only).
+export const CUSTOMER_PICKER_PAGE_SIZE = 100;
 
 const PERSON_FIELDS = 'id name { firstName lastName } jobTitle emails { primaryEmail }';
 const COMPANY_FIELDS = 'id name';

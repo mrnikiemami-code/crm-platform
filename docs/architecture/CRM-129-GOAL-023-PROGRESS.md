@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** DEV-APPLY-030 on Dev → **`STOP_FOR_USER_UAT`** (no WS5/WS6 until user confirms)
+**Board updated:** Goal 031 UX on `quotation@0.1.57` → **`STOP_FOR_USER_UAT`** (no WS5/WS6 until user confirms)
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -24,6 +24,7 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | WS3 Per-line tax | `ARCHITECT_ACCEPTED` | Source + **Dev applied**; real form UAT evidence in STOP_FOR_USER_UAT |
 | WS4 Document currency phase 1 | `ARCHITECT_ACCEPTED` | Source accepted; **Dev applied** (`quotation@0.1.56`); IRR-only form verified |
 | DEV-APPLY-030 (WS1–WS4 schema + app) | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md) |
+| GOAL-031 Quotation UX completion | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-031-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-031-STOP-FOR-USER-UAT.md); app **0.1.57** |
 | WS5 Settings ownership | `IN_PROGRESS` | **Frozen** until user UAT of real form |
 | WS6 Mock/Asan shared UI | `IN_PROGRESS` | **Frozen** until user UAT of real form |
 | WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |

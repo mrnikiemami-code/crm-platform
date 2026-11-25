@@ -20,6 +20,8 @@ export type AtomicSaveLinePayload = {
   taxExact: string;
   totalExact: string;
   itemId: string | null;
+  // Stable line order on the document (0-based). Server also derives index order.
+  sortOrder: number;
   taxPolicy?: string | null;
   taxRateBasisPoints?: string | null;
   dutyRateBasisPoints?: string | null;
