@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** WS4 document currency TECHNICALLY_VERIFIED → STOP_FOR_ARCHITECT (await Apply)
+**Board updated:** DEV-APPLY-030 on Dev → **`STOP_FOR_USER_UAT`** (no WS5/WS6 until user confirms)
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -19,16 +19,17 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 |---|---|---|
 | WS0 Goal registration | `ARCHITECT_ACCEPTED` (planning) | `cdb890b3f5` |
 | EXECUTION-024 C1–C7 + board + WS1 preflight | `ARCHITECT_ACCEPTED` | `6bc3f558b9` + WS1-OPEN |
-| WS1 Reference accounting codes | `ARCHITECT_ACCEPTED` | Architect accepted source review (WS1 + R1); Dev Apply still separate |
-| WS2 Snapshot + code lock | `ARCHITECT_ACCEPTED` | WS2 + WS2-R1 accepted; Dev Apply still separate |
-| WS3 Per-line tax | `ARCHITECT_ACCEPTED` | Source accepted; Dev Apply pending |
-| WS4 Document currency phase 1 | `TECHNICALLY_VERIFIED` | CP-WS4; [`CRM-129-GOAL-023-WS4-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS4-STOP-FOR-ARCHITECT.md); Apply preflight [`CRM-129-GOAL-023-DEV-APPLY-PREFLIGHT-WS1-WS4.md`](./CRM-129-GOAL-023-DEV-APPLY-PREFLIGHT-WS1-WS4.md) |
-| WS5 Settings ownership | `IN_PROGRESS` | Pack A: ownership hint only; catalog-bound mapping rewrite still WS5 |
-| WS6 Mock/Asan shared UI | `IN_PROGRESS` | Shared `ConnectionEditForm` already exists; Pack A Persian honesty; full capability matrix still open |
+| WS1 Reference accounting codes | `ARCHITECT_ACCEPTED` | Source + **Dev schema applied** in DEV-APPLY-030 |
+| WS2 Snapshot + code lock | `ARCHITECT_ACCEPTED` | Source + **Dev schema applied** in DEV-APPLY-030 |
+| WS3 Per-line tax | `ARCHITECT_ACCEPTED` | Source + **Dev applied**; real form UAT evidence in STOP_FOR_USER_UAT |
+| WS4 Document currency phase 1 | `ARCHITECT_ACCEPTED` | Source accepted; **Dev applied** (`quotation@0.1.56`); IRR-only form verified |
+| DEV-APPLY-030 (WS1–WS4 schema + app) | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md) |
+| WS5 Settings ownership | `IN_PROGRESS` | **Frozen** until user UAT of real form |
+| WS6 Mock/Asan shared UI | `IN_PROGRESS` | **Frozen** until user UAT of real form |
 | WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |
-| WS7-B Product UX polish | `NOT_STARTED` | After Pack B (WS2→WS3/WS4) + **`STOP_FOR_USER_UAT`** on real Dev UI |
+| WS7-B Product UX polish | `NOT_STARTED` | After **`STOP_FOR_USER_UAT`** pass |
 | UX Pack A micro-repairs | `TECHNICALLY_VERIFIED` | Same product chrome; copy/RTL/ownership/timestamp; see CP-UX-REPAIR-A |
-| Pack B financial (WS2–WS4) | `BLOCKED` | [`CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md`](./CRM-129-GOAL-023-STOP-FOR-ARCHITECT-UX-REPAIR.md) |
+| Pack B financial (WS2–WS4) | `TECHNICALLY_VERIFIED` on Dev | Real `:3002` form live; awaiting **USER** accept |
 | Goal 023 close | `NOT_STARTED` | **ACTIVE / NOT COMPLETE** |
 
 ---
@@ -40,8 +41,8 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | 1 Owner per code | Partial | WS1 fields landed; snapshot/lock WS2 |
 | 2 Snapshot on quotation | Incomplete | WS2–WS3 |
 | 3 Lock after first draft | Incomplete | C4/F6 docs ratified; enforcement WS2 |
-| 4 Per-line tax | Partial | WS3 source verified; Dev Apply + UAT pending |
-| 5 Phase-1 IRR inheritance | Partial | WS4 source: document select + line inherit + IRR refuse; Apply pending |
+| 4 Per-line tax | Partial | WS3 on Dev; mixed-line UAT PASS; summary labels cosmetic gap |
+| 5 Phase-1 IRR inheritance | Partial | WS4 on Dev; form IRR-only; bootstrap IRR; USER_UAT gate |
 | 6 Phase-2 designed inactive | Partial | Flag OFF + `totalsByCurrency` stub + line `currencyCode` |
 | 7 Item/person/company codes | Partial | Fields defined; record UI via standard forms |
 | 8 Settings no CRM code redefine | Incomplete | WS5 |
@@ -51,6 +52,19 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 ---
 
 ## Checkpoint log
+
+### CP-DEV-APPLY-030 — Controlled Dev Apply + real form UAT
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC4/SC5 on live Dev; user can open real form |
+| **2. Financial contract?** | C2 IRR-only ops; C3 no accounting codes on form; per-line sealed rates |
+| **3. Real tests run?** | Browser UAT on `:3002`; bootstrap REST; Vitest document-currency **9 PASS**; DB line seals |
+| **4. Still incomplete?** | User visual/behavior accept; mixed-tax summary labels; WS5/WS6 frozen |
+| **5. Next allowed step?** | **`STOP_FOR_USER_UAT`** — no WS5/WS6/design until user confirms |
+
+**Form:** http://localhost:3002/object/quotation/52179082-a5b9-4302-a28c-afed681fc729  
+**App:** `quotation@0.1.56` · **Backup:** `D:\CrmDeployment\backups\crm129-dev-apply-030\`
 
 ### CP-WS4 — Document currency on existing draft form
 
@@ -150,11 +164,10 @@ Docs-only C1–C7 + preflight @ `6bc3f558b9`.
 
 ## Gate
 
-1. **`STOP_FOR_ARCHITECT`** — WS2-R1 evidence in [`CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md`](./CRM-129-GOAL-023-WS2-R1-STOP-FOR-ARCHITECT.md).
-2. Dev Apply (WS1+WS2 schema) — **separate** approval after WS2 accept.
-3. WS3 — only with **narrow** Money Domain permission after WS2/R1 accept.
-4. WS4 → controlled Dev apply → **`STOP_FOR_USER_UAT`** on real `:3002` form (REAL-FORM-027 destination).
-5. WS5/WS6 / visual polish — **after** user UAT of this milestone.
-6. WS7-A redesign-as-product: **cancelled**.
+1. ~~Architect accept WS1–WS4 source~~ — done.
+2. ~~Controlled Dev Apply WS1–WS4 + `quotation@0.1.56`~~ — done (DEV-APPLY-030).
+3. **`STOP_FOR_USER_UAT`** — user must confirm real `:3002` form ([handoff](./CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md)).
+4. WS5/WS6 / visual polish — **only after** user UAT of this milestone.
+5. WS7-A redesign-as-product: **cancelled**.
 
 Goal 023 remains **ACTIVE / NOT COMPLETE**.

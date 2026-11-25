@@ -1,6 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 023: WS4 ACCEPTED; CONDITIONAL DEV APPLY AUTHORIZED (2026-11-25)
+## CURRENT — GOAL 023: DEV-APPLY-030 DONE → STOP_FOR_USER_UAT (2026-11-25)
+
+**Branch:** `feat/crm-129-quotation`. **Pre-apply recovery:** `23698e4ae7`. Goal 023 **ACTIVE / NOT COMPLETE**.
+
+**Dev live:** `quotation@0.1.56` on `:3002`. Schema WS1–WS4 applied. Tax/currency bootstrap idempotent (IRR default; `IR_VAT_9` default). Intranet `:6080` + worker untouched. Backup: `D:\CrmDeployment\backups\crm129-dev-apply-030\`.
+
+**Real form for user:** http://localhost:3002/object/quotation/52179082-a5b9-4302-a28c-afed681fc729 (`UAT-APPLY-030 تست فرم واقعی`) or Person → ایجاد پیش‌فاکتور. Handoff: [`CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md).
+
+**Gate:** **`STOP_FOR_USER_UAT`**. Do **not** start WS5/WS6, redesign, or further Apply until the user confirms appearance and behavior of the real form.
+
+**IRR repair:** phase-1 `selectInitialDocumentCurrencyCode` always IRR; form select IRR-only; vitest document-currency 9 PASS.
+
+## PRIOR — GOAL 023: WS4 ACCEPTED; CONDITIONAL DEV APPLY AUTHORIZED (2026-11-25)
 
 **Verified feature HEAD immediately before this note:** `6e71646bb4`. **WS1/WS2/WS3/WS4 source ARCHITECT_ACCEPTED**, subject to executable Dev validation. Goal 023 **ACTIVE / NOT COMPLETE**. User priority: see the **real existing quotation form** on Dev `:3002`, not a mock/prototype, in the current SINGLE Cursor session.
 

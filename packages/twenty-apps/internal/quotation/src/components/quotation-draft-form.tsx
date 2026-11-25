@@ -1169,28 +1169,32 @@ export const QuotationDraftForm = () => {
                 setDocumentCurrencyCode(event.target.value.toUpperCase());
               }}
             >
-              {(documentCurrencies.length > 0
-                ? documentCurrencies.filter((currency) => {
-                    if (
-                      !MULTI_CURRENCY_DOCUMENTS &&
-                      currency.code !== OPERATIONAL_DOCUMENT_CURRENCY_CODE
-                    ) {
-                      return currency.code === documentCurrencyCode;
-                    }
-
-                    return (
-                      currency.isActive ||
-                      currency.code === documentCurrencyCode
-                    );
-                  })
-                : [
-                    {
+              {(!MULTI_CURRENCY_DOCUMENTS
+                ? [
+                    documentCurrencies.find(
+                      (currency) =>
+                        currency.code === OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+                    ) ?? {
                       code: OPERATIONAL_DOCUMENT_CURRENCY_CODE,
                       name: 'ریال ایران',
                       isDefault: true,
                       isActive: true,
                     },
                   ]
+                : documentCurrencies.length > 0
+                  ? documentCurrencies.filter(
+                      (currency) =>
+                        currency.isActive ||
+                        currency.code === documentCurrencyCode,
+                    )
+                  : [
+                      {
+                        code: OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+                        name: 'ریال ایران',
+                        isDefault: true,
+                        isActive: true,
+                      },
+                    ]
               ).map((currency) => (
                 <option key={currency.code} value={currency.code}>
                   {currency.name} ({currency.code})

@@ -53,6 +53,39 @@ describe('document currency (WS4)', () => {
     ).toBe('IRR');
   });
 
+  it('never auto-selects USD when it is the only active default', () => {
+    expect(
+      selectInitialDocumentCurrencyCode({
+        entries: [{ code: 'USD', isDefault: true, isActive: true }],
+        currentCode: 'USD',
+        keepCurrent: false,
+      }),
+    ).toBe('IRR');
+  });
+
+  it('never keeps a non-IRR current code in phase 1', () => {
+    expect(
+      selectInitialDocumentCurrencyCode({
+        entries: [
+          { code: 'USD', isDefault: true, isActive: true },
+          { code: 'IRR', isDefault: false, isActive: false },
+        ],
+        currentCode: 'USD',
+        keepCurrent: true,
+      }),
+    ).toBe('IRR');
+  });
+
+  it('still returns IRR when the catalog is empty', () => {
+    expect(
+      selectInitialDocumentCurrencyCode({
+        entries: [],
+        currentCode: '',
+        keepCurrent: false,
+      }),
+    ).toBe('IRR');
+  });
+
   it('exposes an empty totalsByCurrency stub with no FX data', () => {
     expect(emptyTotalsByCurrency()).toEqual({});
   });

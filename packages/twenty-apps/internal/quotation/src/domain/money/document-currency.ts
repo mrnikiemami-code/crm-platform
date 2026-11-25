@@ -66,6 +66,29 @@ export const selectInitialDocumentCurrencyCode = ({
 }): string => {
   const normalizedCurrent = normalizeDocumentCurrencyCode(currentCode);
 
+  // Phase 1: never adopt a non-IRR current/default/fallback — even if the catalog
+  // is incomplete, corrupted, or marks USD as default.
+  if (!MULTI_CURRENCY_DOCUMENTS) {
+    if (
+      keepCurrent &&
+      normalizedCurrent === OPERATIONAL_DOCUMENT_CURRENCY_CODE
+    ) {
+      return OPERATIONAL_DOCUMENT_CURRENCY_CODE;
+    }
+
+    const activeIrr = entries.find(
+      (entry) =>
+        entry.isActive &&
+        entry.code.toUpperCase() === OPERATIONAL_DOCUMENT_CURRENCY_CODE,
+    );
+
+    if (activeIrr !== undefined) {
+      return OPERATIONAL_DOCUMENT_CURRENCY_CODE;
+    }
+
+    return OPERATIONAL_DOCUMENT_CURRENCY_CODE;
+  }
+
   if (keepCurrent && normalizedCurrent !== '') {
     return normalizedCurrent;
   }
