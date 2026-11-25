@@ -5,7 +5,7 @@
 **Plan:** [`CRM-129-EXECUTION-PLAN-023.md`](./CRM-129-EXECUTION-PLAN-023.md)  
 **Branch:** `feat/crm-129-quotation`  
 **Activation checkpoint:** `cdb890b3f5`  
-**Board updated:** P0 financial-settings recovery on `quotation@0.1.60` → **`STOP_FOR_USER_UAT`** (Goal 023 stays ACTIVE; Goal 032 context; no WS5/WS6/WS7 until user confirms)
+**Board updated:** User REJECTED Goal 033 visual UX after seeing `quotation@0.1.61`; Goal 034 P0 same-page live design/implementation now REQUIRED; full saved recovery: [`CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md`](./CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md). Goal 023 ACTIVE; WS5–WS7 frozen. Goal 034 is NOT implemented or USER_ACCEPTED yet.
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
@@ -24,6 +24,8 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | WS3 Per-line tax | `ARCHITECT_ACCEPTED` | Source + **Dev applied**; real form UAT evidence in STOP_FOR_USER_UAT |
 | WS4 Document currency phase 1 | `ARCHITECT_ACCEPTED` | Source accepted; **Dev applied** (`quotation@0.1.56`); IRR-only form verified |
 | DEV-APPLY-030 (WS1–WS4 schema + app) | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-023-DEV-APPLY-030-STOP-FOR-USER-UAT.md) |
+| GOAL-033 Financial settings UX | `TECHNICALLY_VERIFIED` / **`USER_REJECTED_VISUAL`** | App `0.1.61`; see independent audit and latest user screenshots; cannot close |
+| GOAL-034 Real-page visual implementation | `NOT_STARTED` / P0 authorized request | [Full recovery and execution](./CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md); must update SAME operational page, no new prototype or paid tool |
 | GOAL-031 Quotation UX completion | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-031-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-031-STOP-FOR-USER-UAT.md); app **0.1.57** |
 | GOAL-032 Named payable rounding rules | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-032-PROGRESS.md`](./CRM-129-GOAL-032-PROGRESS.md); app **0.1.59** then recovery **0.1.60** |
 | P0 Financial settings recovery | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-FINANCIAL-SETTINGS-RECOVERY-PROGRESS.md`](./CRM-129-FINANCIAL-SETTINGS-RECOVERY-PROGRESS.md); Nest tax/currency/rounding + tabs; **STOP_FOR_USER_UAT** |
