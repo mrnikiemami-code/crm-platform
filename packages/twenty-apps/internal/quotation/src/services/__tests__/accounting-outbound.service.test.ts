@@ -17,6 +17,29 @@ const edges = (root: string, rows: Record<string, unknown>[]) => ({
   [root]: { edges: rows.map((node) => ({ node })) },
 });
 
+const connectionNode = (overrides: Record<string, unknown> = {}) => ({
+  id: 'conn-1',
+  name: 'آزمایشی',
+  adapterId: 'mock',
+  adapterVersion: '2026-11-1',
+  isActive: true,
+  isDefault: true,
+  baseUrl: 'http://mock.invalid',
+  remoteUserId: '7',
+  defaultStorageId: '2',
+  moneyUnit: 'RIAL',
+  transportApproved: true,
+  specialCodes: { discount: true, duty: false, tax: true },
+  healthState: 'UNKNOWN',
+  lastHealthCheckAt: null,
+  lastHealthMessage: null,
+  verificationState: 'MOCK',
+  ...overrides,
+});
+
+const accountingConnections = (...rows: Record<string, unknown>[]) =>
+  edges('accountingConnections', rows);
+
 const settings = (overrides: Partial<ConnectionSettings> = {}): ConnectionSettings => ({
   baseUrl: 'https://accounting.example',
   remoteUserId: '7',
@@ -129,6 +152,10 @@ const quotationExecute = ({
 
     if (query.includes('accountingSyncOperations')) {
       return edges('accountingSyncOperations', []);
+    }
+
+    if (query.includes('accountingConnections')) {
+      return accountingConnections(connectionNode());
     }
 
     if (query.includes('createAccountingSyncOperation')) {
@@ -252,6 +279,10 @@ describe('item push execution', () => {
         );
       }
 
+      if (query.includes('accountingConnections')) {
+        return accountingConnections(connectionNode());
+      }
+
       return {};
     });
 
@@ -291,7 +322,11 @@ describe('item push execution', () => {
   });
 
   it('refuses before any write when outbound is off', async () => {
-    const execute = vi.fn();
+    const execute = vi.fn(async (query: string) =>
+      query.includes('accountingConnections')
+        ? accountingConnections(connectionNode())
+        : {},
+    );
     const outcome = await executeItemPush(
       {
         connectionId: 'conn-1',
@@ -309,7 +344,48 @@ describe('item push execution', () => {
       ok: false,
       refusal: { code: 'OUTBOUND_DISABLED' },
     });
-    expect(execute).not.toHaveBeenCalled();
+    expect(
+      execute.mock.calls.some(([query]) =>
+        String(query).includes('createAccountingSyncOperation'),
+      ),
+    ).toBe(false);
+  });
+
+  it('refuses execute when the destination was retired before the write cutoff', async () => {
+    const execute = vi.fn(async (query: string) => {
+      if (query.includes('accountingConnections')) {
+        return accountingConnections(connectionNode({ isActive: false }));
+      }
+
+      if (query.includes('createAccountingSyncOperation')) {
+        throw new Error('ledger must not start for a retired destination');
+      }
+
+      return {};
+    });
+
+    const outcome = await executeItemPush(
+      {
+        connectionId: 'conn-1',
+        internalItemId: 'item-1',
+        changedFields: ['price'],
+        adapter: new MockAccountingAdapter(),
+        settings: settings(),
+        flags: flags(),
+        item,
+      },
+      { execute },
+    );
+
+    expect(outcome).toMatchObject({
+      ok: false,
+      refusal: { code: 'CONNECTION_INACTIVE' },
+    });
+    expect(
+      execute.mock.calls.some(([query]) =>
+        String(query).includes('createAccountingSyncOperation'),
+      ),
+    ).toBe(false);
   });
 
   it('closes the operation as failed-final when the unit is unconfirmed', async () => {

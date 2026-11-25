@@ -113,6 +113,54 @@ export const loadConnections = async (
     .filter((record): record is AccountingConnectionRecord => record !== null);
 };
 
+// Load a stored connection by id for history / ledger reads. Retired rows are returned
+// as-is: this must never be used to authorize preview or execute of new outbound work.
+export const loadConnectionByIdForHistory = async (
+  connectionId: string,
+  dependencies: ConnectionDependencies = {},
+): Promise<Result<AccountingConnectionRecord>> => {
+  const id = connectionId.trim();
+
+  if (id === '') {
+    return refused('CONNECTION_NOT_FOUND', 'no accounting connection is configured');
+  }
+
+  const execute = dependencies.execute ?? executeRecordGraphql;
+  const data = await execute(buildAccountingConnectionsQuery({ connectionId: id }));
+  const connections = readRows(data, 'accountingConnections')
+    .map(parseConnectionRecord)
+    .filter((record): record is AccountingConnectionRecord => record !== null);
+  const selected = connections.find((connection) => connection.id === id) ?? null;
+
+  if (selected === null) {
+    return refused('CONNECTION_NOT_FOUND', 'no accounting connection is configured');
+  }
+
+  return accepted(selected);
+};
+
+// Gate for new outbound / import work: the destination must still be active at check time.
+// Call again immediately before side effects when a concurrent retire is possible.
+export const requireActiveAccountingConnection = async (
+  connectionId: string,
+  dependencies: ConnectionDependencies = {},
+): Promise<Result<AccountingConnectionRecord>> => {
+  const loaded = await loadConnectionByIdForHistory(connectionId, dependencies);
+
+  if (!loaded.ok) {
+    return loaded;
+  }
+
+  if (loaded.value.isActive !== true) {
+    return refused(
+      'CONNECTION_INACTIVE',
+      'retired accounting connections cannot accept new work',
+    );
+  }
+
+  return loaded;
+};
+
 export const resolveConnection = async (
   {
     connectionId,

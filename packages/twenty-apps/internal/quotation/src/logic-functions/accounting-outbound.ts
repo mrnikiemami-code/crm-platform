@@ -16,7 +16,11 @@ import {
   previewItemPush,
   previewQuotationExport,
 } from 'src/services/accounting-outbound.service';
-import { resolveConnection } from 'src/services/accounting-connection.service';
+import {
+  loadConnectionByIdForHistory,
+  requireActiveAccountingConnection,
+  resolveConnection,
+} from 'src/services/accounting-connection.service';
 import {
   adapterForConnection,
   appNotInstalled,
@@ -151,6 +155,36 @@ const handler = async (event: RoutePayload<unknown>) => {
   }
 
   try {
+    // History reads must not share the "new work" resolver: a retired connection still
+    // owns its sync-operation ledger. Preview/execute stay on the active-only path.
+    if (action === 'operations') {
+      const historical = await loadConnectionByIdForHistory(connectionId);
+
+      if (!historical.ok) {
+        return failure(
+          historical.refusal.code,
+          persianAccountingMessage(historical.refusal.code),
+        );
+      }
+
+      return {
+        success: true,
+        connectionId: historical.value.id,
+        connectionIsActive: historical.value.isActive,
+        operations: await loadOperations(
+          historical.value.id,
+          {},
+          readString(body.quotationId) ||
+            readString(body.internalEntityId) ||
+            undefined,
+        ),
+      };
+    }
+
+    // New work only: workspace-default / explicit id must be active. A second active
+    // check follows so a concurrent retire after the first resolve is still refused
+    // before adapter construction. Without a shared lock with deactivate, work that
+    // already passed this gate can still finish; see recovery R1 concurrency note.
     const resolved = await resolveConnection({ connectionId });
 
     if (!resolved.ok) {
@@ -160,7 +194,17 @@ const handler = async (event: RoutePayload<unknown>) => {
       );
     }
 
-    const adapter = adapterForConnection(resolved.value, readRouteSecrets());
+    const stillActive = await requireActiveAccountingConnection(connectionId);
+
+    if (!stillActive.ok) {
+      return failure(
+        stillActive.refusal.code,
+        persianAccountingMessage(stillActive.refusal.code),
+      );
+    }
+
+    const activeConnection = stillActive.value;
+    const adapter = adapterForConnection(activeConnection, readRouteSecrets());
 
     if (!adapter.ok) {
       return failure(
@@ -170,17 +214,6 @@ const handler = async (event: RoutePayload<unknown>) => {
     }
 
     const flags = readOutboundFlags(body);
-
-    if (action === 'operations') {
-      return {
-        success: true,
-        operations: await loadOperations(
-          connectionId,
-          {},
-          readString(body.quotationId) || readString(body.internalEntityId) || undefined,
-        ),
-      };
-    }
 
     if (action === 'preview-item-push') {
       const itemId = readString(body.itemId);
@@ -194,7 +227,7 @@ const handler = async (event: RoutePayload<unknown>) => {
             )
           : [],
         adapter: adapter.value,
-        settings: resolved.value.settings,
+        settings: activeConnection.settings,
         observedRemoteVersion: readString(body.observedRemoteVersion) || null,
         flags,
       });
@@ -231,7 +264,7 @@ const handler = async (event: RoutePayload<unknown>) => {
             )
           : [],
         adapter: adapter.value,
-        settings: resolved.value.settings,
+        settings: activeConnection.settings,
         observedRemoteVersion: readString(body.observedRemoteVersion) || null,
         flags,
       });
@@ -250,7 +283,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         loaded.item.salesPriceMicros = await preserveSalesPriceTiers({
           adapter,
           externalItemId,
-          moneyUnit: resolved.value.settings.moneyUnit,
+          moneyUnit: activeConnection.settings.moneyUnit,
         });
       }
 
@@ -263,7 +296,7 @@ const handler = async (event: RoutePayload<unknown>) => {
             )
           : [],
         adapter: adapter.value,
-        settings: resolved.value.settings,
+        settings: activeConnection.settings,
         flags,
         item: loaded.item,
         observedRemoteVersion: readString(body.observedRemoteVersion) || null,
@@ -285,7 +318,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         connectionId,
         quotationId,
         adapter: adapter.value,
-        settings: resolved.value.settings,
+        settings: activeConnection.settings,
         flags,
       });
 
@@ -304,7 +337,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         connectionId,
         quotationId: readString(body.quotationId),
         adapter: adapter.value,
-        settings: resolved.value.settings,
+        settings: activeConnection.settings,
         flags,
       });
 

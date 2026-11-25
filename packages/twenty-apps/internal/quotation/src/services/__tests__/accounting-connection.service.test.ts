@@ -4,10 +4,12 @@ import { callAccountingSettingsAction } from 'src/data/accounting-settings-api';
 import {
   buildAdapter,
   describeSecretStatus,
+  loadConnectionByIdForHistory,
   loadConnections,
   loadConnectionsThroughServer,
   parseConnectionRecord,
   readAdapterSecrets,
+  requireActiveAccountingConnection,
   resolveConnection,
   type AccountingConnectionRecord,
 } from 'src/services/accounting-connection.service';
@@ -135,6 +137,41 @@ describe('connection listing and resolution', () => {
     expect(resolved).toMatchObject({
       ok: false,
       refusal: { code: 'CONNECTION_NOT_FOUND' },
+    });
+  });
+
+  it('loads a retired connection for history without reactivating it', async () => {
+    const execute = vi.fn(async () =>
+      edges(node({ id: 'conn-retired', isActive: false, isDefault: false })),
+    );
+
+    const loaded = await loadConnectionByIdForHistory('conn-retired', {
+      execute,
+    });
+
+    expect(loaded).toMatchObject({
+      ok: true,
+      value: { id: 'conn-retired', isActive: false, isDefault: false },
+    });
+  });
+
+  it('refuses retired connections for new work while history load still succeeds', async () => {
+    const execute = vi.fn(async () =>
+      edges(node({ id: 'conn-1', isActive: false })),
+    );
+
+    await expect(
+      requireActiveAccountingConnection('conn-1', { execute }),
+    ).resolves.toMatchObject({
+      ok: false,
+      refusal: { code: 'CONNECTION_INACTIVE' },
+    });
+
+    await expect(
+      resolveConnection({ connectionId: 'conn-1' }, { execute }),
+    ).resolves.toMatchObject({
+      ok: false,
+      refusal: { code: 'CONNECTION_INACTIVE' },
     });
   });
 

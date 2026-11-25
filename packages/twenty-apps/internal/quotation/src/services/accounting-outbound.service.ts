@@ -11,6 +11,7 @@ import {
   buildUpdateAccountingOperationMutation,
 } from 'src/data/accounting-queries';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
+import { requireActiveAccountingConnection } from 'src/services/accounting-connection.service';
 import {
   type AccountingAdapter,
   type AccountingMoneyUnit,
@@ -407,6 +408,16 @@ export const executeItemPush = async (
   },
   dependencies: OutboundDependencies = {},
 ): Promise<Result<ItemPushExecution>> => {
+  // Cutoff for concurrent retire vs send: refuse before any ledger write if the
+  // destination was soft-retired after the caller resolved it as active.
+  const active = await requireActiveAccountingConnection(connectionId, {
+    execute: dependencies.execute,
+  });
+
+  if (!active.ok) {
+    return active;
+  }
+
   if (!flags.outboundEnabled) {
     return refused(
       'OUTBOUND_DISABLED',
@@ -816,6 +827,14 @@ export const executeQuotationExport = async (
     documentNumber: string;
   }>
 > => {
+  const active = await requireActiveAccountingConnection(connectionId, {
+    execute: dependencies.execute,
+  });
+
+  if (!active.ok) {
+    return active;
+  }
+
   const preview = await previewQuotationExport(
     { connectionId, quotationId, adapter, settings, flags },
     dependencies,

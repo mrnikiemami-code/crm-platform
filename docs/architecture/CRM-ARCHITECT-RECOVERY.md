@@ -1,6 +1,27 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-ACCOUNTING-CONNECTION-RETIRE-021 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
+## CURRENT — CRM-129-ACCOUNTING-RETIRE-021-R1 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
+
+Close the retired-connection **history read** defect and document send/retire concurrency.
+
+### R1 fix
+
+- `operations` uses `loadConnectionByIdForHistory` (retired allowed; no reactivate/default).
+- Preview/execute keep `resolveConnection` + `requireActiveAccountingConnection` (retired refused).
+- `executeItemPush` / `executeQuotationExport` re-check activity before ledger/vendor (Mock cutoff).
+- Consumer matrix + concurrency stop-line: `docs/architecture/CRM-129-ACCOUNTING-RETIRE-021-R1-AUDIT.md`.
+
+### Evidence
+
+- Vitest: connection + outbound + resolve + connections section **79 PASS**; settings panel **8 PASS**; server authority **21 PASS** (020/021).
+- App **0.1.52** applied to `dev-crm129` (logic/front only; no Nest module change required for this R1).
+- No vendor call; outbound flags unchanged; worker / `:6080` untouched.
+
+### Architect decision still open (concurrency)
+
+Hard “retire always aborts in-flight send” needs a **shared** lock/outbox with deactivate — **not** done in R1. Current cutoff is the last successful active check before ledger create.
+
+## PRIOR — CRM-129-ACCOUNTING-CONNECTION-RETIRE-021 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
 
 Soft retire / reactivate for accounting connections (P0-2 from ACCOUNTING-AUDIT-019 / DEFAULT-020).
 
