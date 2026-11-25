@@ -5,7 +5,6 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 
 type SettingsDialogProps = {
   title: string;
@@ -17,7 +16,8 @@ type SettingsDialogProps = {
 
 // Modal shell for create/edit on financial settings. Host has no general Dialog
 // export for Front Components — ConfirmationDialog is reserved for destructive
-// confirms. This overlay uses Twenty tokens and portals above clipped panels.
+// confirms. Fixed overlay stays in the React tree (createPortal is unreliable
+// across the Front Component / host React boundary).
 export const SettingsDialog = ({
   title,
   onClose,
@@ -54,11 +54,7 @@ export const SettingsDialog = ({
     };
   }, [busy, onClose]);
 
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  return createPortal(
+  return (
     <div className="fs-dialog-root" dir="rtl">
       <style>{DIALOG_CSS}</style>
       <button
@@ -99,8 +95,7 @@ export const SettingsDialog = ({
           <footer className="fs-dialog-foot">{footer}</footer>
         )}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 };
 

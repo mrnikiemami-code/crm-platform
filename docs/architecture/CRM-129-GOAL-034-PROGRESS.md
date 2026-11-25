@@ -3,7 +3,7 @@
 **Parent:** Goal 023 (ACTIVE)  
 **Supersedes:** Goal 033 UX acceptance failure  
 **Branch:** `feat/crm-129-quotation`  
-**App:** `quotation@0.1.62` on Dev `:3002`  
+**App:** `quotation@0.1.63` on Dev `:3002`  
 **Gate:** `STOP_FOR_USER_UAT`
 
 ## Onlook
@@ -23,12 +23,20 @@ Evaluated from https://github.com/onlook-dev/onlook (Apache-2.0). Notes: `D:\Crm
 - Currency: auto idempotent bootstrap; no «راه‌اندازی ریال» button; edit dialog for accounting code
 - Rounding: auto bootstrap when empty; create/edit dialog; portal more-menu
 - Responsive tokens / container queries retained; dialog sheet on ≤430px
+- Front Component note: `createPortal` to `document.body` did not mount under the host React boundary; dialogs/menus use in-tree `position: fixed` instead
 
 ## Tests
 
 - tax-policy-settings-panel: 31 PASS
 - confirm-destructive-action: 2 PASS
 - run-destructive-confirm: 2 PASS
+
+## Dev browser evidence
+
+- Title appears once; no «راه‌اندازی ریال»
+- Create opens dialog «سیاست جدید» while `.tax-workspace-closed` keeps ledger full width
+- Currency / rounding tabs load; auto bootstrap path (no bootstrap buttons)
+- Container width checks 320–1024: no horizontal overflow flags
 
 ## UAT URL
 

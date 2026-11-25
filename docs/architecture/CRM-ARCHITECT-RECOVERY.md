@@ -2,7 +2,7 @@
 
 ## CURRENT — GOAL 034 LIVE VISUAL REDESIGN → STOP_FOR_USER_UAT (2026-11-26)
 
-**Parent:** CRM-129-GOAL-023 (ACTIVE / NOT COMPLETE). Goal 033 UX **not user-accepted** → superseded by 034. **Branch:** `feat/crm-129-quotation`. **App:** `quotation@0.1.62` on Dev `:3002`. Final Gate **`STOP_FOR_USER_UAT`**.
+**Parent:** CRM-129-GOAL-023 (ACTIVE / NOT COMPLETE). Goal 033 UX **not user-accepted** → superseded by 034. **Branch:** `feat/crm-129-quotation`. **App:** `quotation@0.1.63` on Dev `:3002`. Final Gate **`STOP_FOR_USER_UAT`**.
 
 **Onlook:** evaluated (Apache-2.0); **not used** — Windows desktop path / paid agent / Front-Component host architecture incompatible without forbidden Next-Tailwind conversion. Notes: `D:\CrmTools\onlook-evaluation-goal-034.md`. Implementation: direct React on the real settings page.
 

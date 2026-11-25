@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 
 export type RowActionsMenuItem = {
   id: string;
@@ -125,48 +124,45 @@ export const RowActionsMenu = ({
       >
         بیشتر
       </button>
-      {open && position !== null && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              ref={menuRef}
-              id={menuId}
-              className="fs-row-more-menu"
-              role="menu"
-              style={{
-                top: position.top,
-                left: position.left,
-                minWidth: position.minWidth,
+      {open && position !== null ? (
+        <div
+          ref={menuRef}
+          id={menuId}
+          className="fs-row-more-menu"
+          role="menu"
+          style={{
+            top: position.top,
+            left: position.left,
+            minWidth: position.minWidth,
+          }}
+        >
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="menuitem"
+              className={
+                item.danger
+                  ? 'fs-row-more-item fs-row-more-item-danger'
+                  : 'fs-row-more-item'
+              }
+              disabled={item.disabled === true}
+              title={item.title}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (item.disabled === true) {
+                  return;
+                }
+
+                onOpenChange(false);
+                item.onSelect();
               }}
             >
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="menuitem"
-                  className={
-                    item.danger
-                      ? 'fs-row-more-item fs-row-more-item-danger'
-                      : 'fs-row-more-item'
-                  }
-                  disabled={item.disabled === true}
-                  title={item.title}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (item.disabled === true) {
-                      return;
-                    }
-
-                    onOpenChange(false);
-                    item.onSelect();
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>,
-            document.body,
-          )
-        : null}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 };
