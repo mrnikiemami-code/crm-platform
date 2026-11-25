@@ -1,6 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 023 / WS4 TECHNICALLY_VERIFIED; STOP_FOR_ARCHITECT — AWAIT APPLY (2026-11-25)
+## CURRENT — GOAL 023: WS4 ACCEPTED; CONDITIONAL DEV APPLY AUTHORIZED (2026-11-25)
+
+**Verified feature HEAD immediately before this note:** `6e71646bb4`. **WS1/WS2/WS3/WS4 source ARCHITECT_ACCEPTED**, subject to executable Dev validation. Goal 023 **ACTIVE / NOT COMPLETE**. User priority: see the **real existing quotation form** on Dev `:3002`, not a mock/prototype, in the current SINGLE Cursor session.
+
+**Architect decision:** controlled Dev-only Schema/App Apply for WS1–WS4, `quotation@0.1.56`, is **CONDITIONALLY AUTHORIZED** under `docs/architecture/CRM-129-GOAL-023-DEV-APPLY-PREFLIGHT-WS1-WS4.md`. Before any write: verify exact target/branch, no unintended dirty files; recheck metadata/UUID collisions; record DB backup and tested recovery plan; verify outbound off, no unrelated worker or `:6080` changes; inspect pending schema diff and ensure strictly additive intended fields. If a prerequisite fails or unexpected destructive schema/metadata diff appears, **STOP_FOR_ARCHITECT WITHOUT APPLY**. No production deployment.
+
+**Important WS4 check:** `selectInitialDocumentCurrencyCode` has fallback to first active catalog row. With corrupted/incomplete catalog this may offer non-IRR in a phase-1 form although backend refuses it. Normalize phase-1 selection to IRR / fail-closed and test missing/disabled/default USD scenarios as a strictly limited repair before Apply; no extra design. Ensure currency bootstrap produces active IRR and that selector offers only active phase-1 IRR.
+
+**Authorized execution sequence after passing preflight:** (1) controlled Dev schema apply of precisely WS1–WS4 fields, (2) apply quotation app `0.1.56` with safe build/installation requirements, (3) idempotently bootstrap tax and currency references, (4) run money/security/regression and real browser UAT smoke on SAME existing quotation form: IRR header, independent default/override per-line tax+duty, discount + Hamilton total, save/reopen, existing revision/PDF integrity, no accountingCode UI fields; (5) capture served URL and practical user test steps; **STOP_FOR_USER_UAT**. Do not launch WS5/WS6 or new prototype.
+
+**No authorization:** enable outbound or real vendor calls; merge, force push, production deploy, main worker restart, `:6080` changes, remove historical mappings, or declare Goal complete. Test reports given by worker are not independently rerun by architect. After user UAT, reconcile Progress and remaining gates.
+
+## PRIOR CHECKPOINT — GOAL 023 / WS4 TECHNICALLY_VERIFIED; STOP_FOR_ARCHITECT — AWAIT APPLY (2026-11-25)
 
 **Goal 023 stays ACTIVE / NOT COMPLETE.** Branch `feat/crm-129-quotation`. Base `745bf58fea`. Single Cursor session. Highest priority: real quotation form on Dev `:3002` after controlled Apply.
 
