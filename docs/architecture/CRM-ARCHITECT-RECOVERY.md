@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 033 → STOP_FOR_USER_UAT (2026-11-25)
+## CURRENT — GOAL 033 INDEPENDENT ARCHITECT AUDIT (2026-11-25)
+
+**Scope audited:** product commit `1acbaf7e9e`, from baseline `b089598eef14`; audit committed as `047cbb81eaa` in [CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md](./CRM-129-GOAL-033-INDEPENDENT-ARCHITECT-AUDIT.md). **Verdict:** `SOURCE_SCOPE_PASS_WITH_OPEN_UI_RISKS`, **not** unconditional system acceptance. Goal 023 ACTIVE; Goal 033 waits USER_UAT.
+
+**Positive:** Goal 033 diff contains front components, host-shared confirm and focused tests/docs, **no** schema, Money Domain, Nest financial authority, workspace security, PDF or sealed-revision modifications. Host `openCommandConfirmationModal` danger pattern and cancellation-on-error are good reuse choices.
+
+**Open before Goal 033 close:** (R1) double confirmation race: delete single-flight state set only after awaiting host dialog; use synchronous latch for full dialog+mutation path, (R2) tax more-menu may clip inside `overflow:hidden` / `overflow-x:auto` ancestor; verify last row and move to host menu/portal if needed, (R3) custom `role=menu` lacks proven Escape/arrow focus/focus return behavior; favor shared Twenty menu, (R4) broad financial/permissions regression not rerun by independent reviewer, (R5) container width ~601px tested by worker but 320/360/390/430 etc. need actual measured proof. Details in audit. Preserve phase-1 whole-rial rounding, outbound off, :6080 untouched.
+
+**Execution policy:** no merge or `USER_ACCEPTED` until actual user review and open blockers resolved with evidence; same single CRM session for targeted follow-up only, no redesign or extra WS. Unrelated original Goal 023 go-live blockers (retire/inflight race, credential rotation) remain open separately.
+
+## PRIOR CHECKPOINT — GOAL 033 → STOP_FOR_USER_UAT (2026-11-25)
 
 **Parent:** CRM-129-GOAL-023 (ACTIVE / NOT COMPLETE). Goal 032 still user-UAT open. **Branch:** `feat/crm-129-quotation`. **App:** `quotation@0.1.61` on Dev `:3002`. **Recovery baseline:** `cd3af69d17`. Final Gate **`STOP_FOR_USER_UAT`**.
 
