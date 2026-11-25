@@ -1,10 +1,60 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-GOAL-023-EXECUTION-024 (2026-11-25; **ACTIVE GOAL** → `STOP_FOR_ARCHITECT` WS1 preflight)
+## CURRENT — CRM-129-GOAL-023 / SINGLE-SESSION DELIVERY (2026-11-25; ACTIVE; WS1 ARCHITECT-OPEN)
 
-Continuous execution of Master Goal 023. Checkpoint verified: `cdb890b3f5`. This turn is **docs only** (C1–C7 ratification, Progress board, WS1 schema/lock preflight). **No** product/schema/deploy/outbound/worker/`:6080` change.
+**Architect recovery checkpoint:** `feat/crm-129-quotation` @ `6bc3f558b9` (last inspected HEAD before this documentation update). **Goal 023 remains ACTIVE and INCOMPLETE.** This note authorizes no deployment or merge. Authoritative implementation state must always be rechecked from current HEAD, working-tree diff, real tests, and the Progress board; a Cursor PASS is not evidence by itself.
 
-### Normative docs (read first every CRM-129 turn)
+### Mandatory recovery order (new chat / Cursor session)
+
+1. Read `docs/architecture/CRM-129-MASTER-GOAL-023.md`, `CRM-129-FINANCIAL-CONTRACT-023.md`, `CRM-129-EXECUTION-PLAN-023.md`.
+2. Read `docs/architecture/CRM-129-GOAL-023-PROGRESS.md` and `CRM-129-GOAL-023-WS1-PREFLIGHT.md`; reconcile stale status against approved architect decision **below**, actual source and tests.
+3. Verify current branch `feat/crm-129-quotation`, HEAD, dirty worktree and any in-flight Cursor agent before writing. Never overwrite/stage unrelated dirty files.
+4. The user requested **ONE Cursor session, SERIAL execution**. Do **not** start a parallel WS7-A/design session or a second worktree/worker. Earlier suggestion to run `UX-FASTTRACK-025` in a separate session was explicitly withdrawn.
+5. Continue current approved pack only; maintain Goal 023 across checkpoints. A completed pack is **not** a completed Goal.
+
+### Architect decisions — WS1 OPEN (approved in conversation, not yet implementation-verified)
+
+| Decision | Architect ruling |
+|---|---|
+| `WS1-OPEN` | **APPROVED**: implement WS1 on feature branch per preflight; no assertion it is already coded or tested |
+| `Q-LOCK-1` | **Option A**: accounting code remains editable if no **non-empty code** has yet been snapshotted; once a non-empty reference code is saved in any quotation including DRAFT, lock its source tax-policy/currency reference by record ID. Amend C4/F6 wording to match before implementation; no accidental lock on empty code |
+| `Q-LOCK-2` / D-023-6 | Dual advisory families, tax (existing TAX-008) before currency, deterministic transaction/lock ordering, with explicit WS2 concurrency tests |
+| `Q-STD-1` | `defineField` on standard `person` and `company` only after checking Dev field/metadata collisions and permissions |
+| `Q-WS2-COLS` | Quotation/line snapshot columns belong in WS2, **not** WS1 |
+| `Q-IRR-SEED` | Idempotent bootstrap of **IRR only**, default phase-1 currency |
+
+**Financial/UI constraints:** Each tax+duty policy has ONE optional accounting code and independent tax/duty rates; each currency has optional accounting code and a default. Catalog item, person and company each get their own reference accounting code, with **no automatic first-use lock** for item/party under C4. Issuer chooses tax **policy per line** (default auto-applied), and document **currency** (phase 1 IRR-only, default auto-applied). **Never expose tax/currency accounting-code inputs, editable fields or read-only code fields on the quotation creation/edit form**: resolve and snapshot codes server-side. Multi-currency per-line choice/totals is future phase 2 only; no mixed-currency sum or unauthorized FX. Do not re-author CRM tax/currency codes in accounting connection settings; vendor-specific mappings only with proven adapter need; preserve existing mapping data until reconciled.
+
+### Execution sequence — NO PARALLEL AGENTS
+
+1. **Current action: WS1 implementation** in existing Cursor session. Correct C4/F6 first, set Progress WS1 `IN_PROGRESS`, add authoritative reference code fields (tax policy, currency catalog + IRR default, item, person, company), server authority and GraphQL guard, permission/collision checks, focused DB and UI tests. No quotation-code form controls. Only after real evidence may WS1 be marked `TECHNICALLY_VERIFIED`; architect reviews before further schema/money work.
+2. **Then WS7-A fast-track in the SAME Cursor session**: deliver one local interactive, Persian RTL, browser-reviewable prototype of accounting settings (overview, connections, items, customers, documents), tax/currency reference settings and quotation with **per-line tax**. Mock and Asan share UI structure; no actual Asan calls. Use free existing design tools only, no Superdesign paid credits. Prototype not product UI, no DB/deploy. Gate `STOP_FOR_USER_DESIGN_APPROVAL` (user personally approves design). User wants this preview quickly; do not defer until WS2–WS6.
+3. After architect grants applicable gates, execute WS2 (snapshot + reference code race locks), WS3 (per-line tax and money/revision/PDF integrity), WS4 (single IRR document currency + phase-2 inactive hooks), WS5 (remove redundant CRM code authoring from accounting settings), WS6 (shared Mock/Asan capability UX), and WS7-B **only from user-approved design**. Each has independently reviewed code/tests and explicit Progress status; the designer prototype may evolve only with user approval.
+4. Final: data integrity, security/isolation, regressions, real UI fidelity and `USER_UAT`. Only after explicit final architect approval, prepare/review a Pull Request from `feat/crm-129-quotation` into the GitHub default branch `crm-platform`, then merge **without force push or history rewrite**. Do not merge just because the feature branch has many commits.
+
+### GitHub branch reality (verified before this note)
+
+Repo `mrnikiemami-code/crm-platform`, default `crm-platform` @ `f9d8b91bbbf2` (last commit 2026-11-14). CRM-129 feature branch @ `6bc3f558b9` (at inspection), **166 commits ahead, 0 behind**, no open PR. Nothing is missing; development is intentionally unmerged. Recheck counts at future final gate.
+
+### Known quality and security gates — must survive handoff
+
+- Existing financial micros / Hamilton document discount / TAX-008 authority / sealed revision immutability / Persian PDF are preserved unless pack specifically authorizes and proves a change.
+- Retired-connection history read fixed in 021-R1, but hard retire-versus-inflight-send concurrency remains OPEN; do not declare go-live until resolved under appropriate pack.
+- Prior plaintext DB credential removed from HEAD but remains in Git history; authorized credential rotation remains pending. No force-push as workaround.
+- No LIVE_VERIFIED claim, no outbound flag enablement, no Asan/Sepidar real sends, no secret exposure, no physical deletion of history/mappings, no main worker restart, no `:6080` modifications.
+- App Dev `:3002` and CRM intranet `:6080` are distinct. No production deployment implied by a design prototype.
+- A stale `WS1=BLOCKED` in Progress may reflect the **pre-approval** checkpoint; update it to `IN_PROGRESS` only when the WS1 implementation session actually begins and to verified only after proof.
+- **Never claim GOAL_023_COMPLETE** until SC1–SC10, architect gates and user approval are met.
+
+### Recovery next action for a fresh chat
+
+Ask for/inspect **actual WS1 Cursor result** and HEAD/diff; verify it independently against this approved contract and preflight. If WS1 is not started, instruct the **existing, single** Cursor session to implement WS1 under prior approval. Then prioritize same-session WS7-A interactive preview for user's early visual approval. Do not create a parallel design task.
+
+## PRIOR CHECKPOINT — CRM-129-GOAL-023-EXECUTION-024 (2026-11-25; previously STOP_FOR_ARCHITECT WS1)
+
+Continuous execution of Master Goal 023. Checkpoint verified: `cdb890b3f5`. This was **docs only** (C1–C7 ratification, Progress board, WS1 schema/lock preflight); no product/schema/deploy/outbound/worker/`:6080` change. The subsequent architect decision above **opens WS1**, superseding this prior stop.
+
+### Normative docs (prior checkpoint)
 
 | Doc | Path |
 |---|---|
@@ -16,15 +66,15 @@ Continuous execution of Master Goal 023. Checkpoint verified: `cdb890b3f5`. This
 
 ### Decisions closed by C1–C7
 
-D-023-1 (lock by reference id), D-023-2 (IRR-only phase 1), D-023-3 (multi-tax outbound gate), D-023-4 (`defineField` on person/company), D-023-5 (keep header tax fields). D-023-6 lock-family **proposed** in WS1 preflight (Q-LOCK-1/2) — confirm before WS2.
+D-023-1 (lock by reference id), D-023-2 (IRR-only phase 1), D-023-3 (multi-tax outbound gate), D-023-4 (`defineField` on person/company), D-023-5 (keep header tax fields). D-023-6 lock-family previously proposed; now approved above.
 
-### Architect action required
+### Status of earlier stop
 
-Approve **WS1-OPEN** (+ Q-LOCK-1 Option A, Q-LOCK-2 dual keys, Q-STD-1, Q-WS2-COLS strict WS2, Q-IRR-SEED) in the preflight. Then WS1 implementation may start. Goal is **not** complete until SC1–10 + USER_UAT.
+The earlier request to approve WS1 is resolved by CURRENT. WS1 implementation and tests are **not yet verified**.
 
 ### Still open (orthogonal)
 
-021-R1 hard retire↔inflight-send shared lock — do not ignore during later outbound packs.
+021-R1 hard retire↔inflight-send shared lock remains open.
 
 ## PRIOR — CRM-129-FINANCIAL-CONTRACT-AND-UX-GOAL-023 (2026-11-25; planning @ `cdb890b3f5`)
 
