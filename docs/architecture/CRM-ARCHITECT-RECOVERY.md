@@ -1,6 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 023 / WS3 TECHNICALLY_VERIFIED; STOP_FOR_ARCHITECT (2026-11-25)
+## CURRENT — GOAL 023 / WS3 SOURCE ARCHITECT ACCEPTED; WS4 OPEN (2026-11-25)
+
+**Verified prior feature HEAD:** `efc4478c03`. **Goal remains ACTIVE / NOT COMPLETE.** Only one Cursor session; user's highest priority is to SEE the existing real quotation form on Dev :3002. Do not redesign or build another HTML mock.
+
+**Architect decision:** WS3 per-line tax/duty source implementation **ARCHITECT_ACCEPTED within narrow financial scope**, based on review of exact committed diff, WS3 STOP report, money calculation and outbound policy gate. Agent-reported 240 Vitest and 44 Jest PASS are not independently rerun by architect; **no Dev Apply or USER_UAT performed**. Money code applies each line's rates after Hamilton-distributed document discount. Existing card has a per-line tax-policy selector with automatic header default for new lines; snapshot/reference lock extended for multiple policies; outbound refuses multi-policy with `MULTI_TAX_UNSUPPORTED`. The financial integrity sign-off for a served Dev build remains conditional on controlled apply, database regression and real-form smoke/UAT.
+
+**Next authorized pack: WS4**, implement document-level IRR currency selection/default and ensure every line inherits the single document currency. Phase 1 remains **IRR ONLY**; no independent line-currency UI or mixed-currency arithmetic. Introduce only safe dormant v2 representation / feature flag for future line currency and separate per-currency totals, without activating multi-currency. Preserve micros, Hamilton, legacy docs, revision hashes, PDF and tax behavior. Reuse EXACT same draft form; do not introduce new design.
+
+**Next required handoff:** WS4 code + unit/permission/regression evidence → STOP_FOR_ARCHITECT; then separately inspect WS1–WS4 consolidated Dev schema/app preflight, collision/rollback/backup and authorization → controlled Dev apply on :3002 → browser tests and STOP_FOR_USER_UAT where user can personally approve appearance and behavior. No deployment authorization issued by this note. Hold WS5/WS6 and other UX packs until user sees form.
+
+**Safety and open items:** no `:6080`, no primary worker restart, outbound disabled, no external vendor send, no secret exposure, no history/data/mapping deletion, no force push/merge. Retire↔inflight-send shared lock and historical DB credential rotation remain open separate go-live risks.
+
+## PRIOR CHECKPOINT — GOAL 023 / WS3 TECHNICALLY_VERIFIED; STOP_FOR_ARCHITECT (2026-11-25)
 
 **Goal 023 stays ACTIVE / NOT COMPLETE.** Branch `feat/crm-129-quotation`. Base `d1d5da6c4a`. Single Cursor session; no prototypes/redesign; existing draft cards remain design authority.
 
