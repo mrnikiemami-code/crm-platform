@@ -19,7 +19,7 @@ type ViewportWidgetManifest = PageLayoutWidgetManifest & {
 
 const TAX_POLICY_SETTINGS_WIDGET: ViewportWidgetManifest = {
   universalIdentifier: TAX_POLICY_SETTINGS_PAGE_LAYOUT_WIDGET_UNIVERSAL_IDENTIFIER,
-  title: 'سیاست‌های مالیات و عوارض',
+  title: 'پیش‌نیازهای حسابداری',
   type: 'FRONT_COMPONENT',
   heightBehavior: 'TAB_VIEWPORT',
   configuration: {
@@ -32,12 +32,12 @@ const TAX_POLICY_SETTINGS_WIDGET: ViewportWidgetManifest = {
 // The reachable tax settings surface, rendered as one viewport-height widget.
 export default definePageLayout({
   universalIdentifier: TAX_POLICY_SETTINGS_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
-  name: 'مالیات و عوارض',
+  name: 'پیش‌نیازهای حسابداری',
   type: 'STANDALONE_PAGE',
   tabs: [
     {
       universalIdentifier: TAX_POLICY_SETTINGS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-      title: 'مالیات و عوارض',
+      title: 'پیش‌نیازهای حسابداری',
       position: 0,
       icon: 'IconPercentage',
       layoutMode: PageLayoutTabLayoutMode.VERTICAL_LIST,

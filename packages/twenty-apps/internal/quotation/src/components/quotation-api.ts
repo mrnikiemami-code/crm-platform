@@ -63,18 +63,10 @@ export const callAppRoute = async (
   };
 };
 
-// Nest quotation UI actions — used when /s logic-function GraphQL is down on
-// Dev worker (schema/image drift). Same bearer the front component already has.
-const ROUNDING_APP_ACTION_TO_NEST: Record<string, string> = {
-  list: 'rounding-rule-list',
-  bootstrap: 'rounding-rule-bootstrap',
-  save: 'rounding-rule-save',
-  'set-default': 'rounding-rule-set-default',
-  deactivate: 'rounding-rule-deactivate',
-  delete: 'rounding-rule-delete',
-};
-
-export const callRoundingRulesNestAction = async (
+// Nest quotation UI actions. Dev /s logic-function GraphQL fails when the worker
+// image drifts from the DB; Nest still enforces workspace role + settings authority.
+const callQuotationNestAction = async (
+  actionMap: Record<string, string>,
   body: Record<string, unknown>,
 ): Promise<AppRouteResponse> => {
   const apiBase = (process.env.TWENTY_API_URL ?? '').trim().replace(/\/$/, '');
@@ -84,7 +76,7 @@ export const callRoundingRulesNestAction = async (
     typeof body.action === 'string' && body.action.trim() !== ''
       ? body.action.trim()
       : 'list';
-  const nestAction = ROUNDING_APP_ACTION_TO_NEST[appAction] ?? appAction;
+  const nestAction = actionMap[appAction] ?? appAction;
 
   if (apiBase === '' || !token) {
     throw new Error('API configuration missing');
@@ -112,6 +104,46 @@ export const callRoundingRulesNestAction = async (
         : {},
   };
 };
+
+const ROUNDING_APP_ACTION_TO_NEST: Record<string, string> = {
+  list: 'rounding-rule-list',
+  bootstrap: 'rounding-rule-bootstrap',
+  save: 'rounding-rule-save',
+  'set-default': 'rounding-rule-set-default',
+  deactivate: 'rounding-rule-deactivate',
+  delete: 'rounding-rule-delete',
+};
+
+const TAX_APP_ACTION_TO_NEST: Record<string, string> = {
+  list: 'tax-policy-list',
+  bootstrap: 'tax-policy-bootstrap',
+  save: 'tax-policy-save',
+  'set-default': 'tax-policy-set-default',
+  deactivate: 'tax-policy-deactivate',
+  delete: 'tax-policy-delete',
+};
+
+const CURRENCY_APP_ACTION_TO_NEST: Record<string, string> = {
+  list: 'quotation-currency-list',
+  bootstrap: 'quotation-currency-bootstrap',
+  save: 'quotation-currency-save',
+  'set-default': 'quotation-currency-set-default',
+};
+
+export const callRoundingRulesNestAction = (
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> =>
+  callQuotationNestAction(ROUNDING_APP_ACTION_TO_NEST, body);
+
+export const callTaxPoliciesNestAction = (
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> =>
+  callQuotationNestAction(TAX_APP_ACTION_TO_NEST, body);
+
+export const callQuotationCurrenciesNestAction = (
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> =>
+  callQuotationNestAction(CURRENCY_APP_ACTION_TO_NEST, body);
 
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';
 export const SAVE_DRAFT_ROUTE = '/quotation/save-draft';

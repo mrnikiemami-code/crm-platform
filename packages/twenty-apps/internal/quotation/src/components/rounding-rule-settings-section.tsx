@@ -6,6 +6,10 @@ import { toPersianDigits } from 'src/domain/money/display-format';
 import { parseStepRialsText } from 'src/domain/money/rounding-rule';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
+type RoundingRuleSettingsSectionProps = {
+  alwaysOpen?: boolean;
+};
+
 type RoundingRuleRow = {
   recordId: string;
   code: string;
@@ -65,8 +69,10 @@ const formatStepLabel = (stepRials: string): string =>
   `${toPersianDigits(stepRials)} ریال`;
 
 // Compact CRUD for named rounding rules inside existing financial settings.
-export const RoundingRuleSettingsSection = () => {
-  const [opened, setOpened] = useState(false);
+export const RoundingRuleSettingsSection = ({
+  alwaysOpen = false,
+}: RoundingRuleSettingsSectionProps) => {
+  const [opened, setOpened] = useState(alwaysOpen);
   const [rows, setRows] = useState<RoundingRuleRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -158,7 +164,11 @@ export const RoundingRuleSettingsSection = () => {
   return (
     <section
       aria-labelledby="rounding-rule-heading"
-      style={styles.section}
+      style={
+        alwaysOpen
+          ? { ...styles.section, marginTop: 0, paddingTop: 0, borderTop: 'none' }
+          : styles.section
+      }
       dir="rtl"
     >
       <header style={styles.header}>
@@ -167,8 +177,10 @@ export const RoundingRuleSettingsSection = () => {
             قواعد رُند کردن
           </h2>
           <p style={styles.hint}>
-            مبنای رُند مبلغ نهایی قابل پرداخت برحسب ریال. مقادیر دلخواه مانند ۹۹
-            مجازند؛ اسناد مهرشده مبنای ذخیره‌شدهٔ خود را نگه می‌دارند.
+            مبنای رُند مبلغ نهایی قابل پرداخت برحسب ریال باید عدد صحیح مثبت
+            باشد (مثل ۹۹). اعشار مانند ۰٫۰۰۱ فقط برای ارزهای غیرریالی آینده است
+            و اکنون فعال نیست؛ اسناد مهرشده مبنای ذخیره‌شدهٔ خود را نگه
+            می‌دارند.
           </p>
         </div>
         {opened ? (
@@ -182,7 +194,7 @@ export const RoundingRuleSettingsSection = () => {
           >
             راه‌اندازی قواعد پایه
           </button>
-        ) : (
+        ) : alwaysOpen ? null : (
           <button
             type="button"
             className="tax-btn"
@@ -193,7 +205,7 @@ export const RoundingRuleSettingsSection = () => {
         )}
       </header>
 
-      {opened ? null : (
+      {opened || alwaysOpen ? null : (
         <p style={styles.hint}>
           برای فهرست، ایجاد، ویرایش و انتخاب پیش‌فرض، «مدیریت قواعد رُند» را باز
           کنید.

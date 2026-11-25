@@ -13,7 +13,7 @@ import {
 export default defineNavigationMenuItem({
   universalIdentifier:
     TAX_POLICY_SETTINGS_NAVIGATION_MENU_ITEM_UNIVERSAL_IDENTIFIER,
-  name: 'مالیات و عوارض',
+  name: 'پیش‌نیازهای حسابداری',
   icon: 'IconPercentage',
   position: 36,
   type: NavigationMenuItemType.PAGE_LAYOUT,

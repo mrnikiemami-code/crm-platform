@@ -12,15 +12,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TaxPolicySettingsPanel } from 'src/components/tax-policy-settings-panel';
 
-const { callAppRouteMock } = vi.hoisted(() => ({
-  callAppRouteMock: vi.fn(),
-}));
+const { callTaxPoliciesNestActionMock, callQuotationCurrenciesNestActionMock, callRoundingRulesNestActionMock } =
+  vi.hoisted(() => ({
+    callTaxPoliciesNestActionMock: vi.fn(),
+    callQuotationCurrenciesNestActionMock: vi.fn(),
+    callRoundingRulesNestActionMock: vi.fn(),
+  }));
 const { snackbarMock } = vi.hoisted(() => ({ snackbarMock: vi.fn() }));
 
 vi.mock('src/components/quotation-api', () => ({
   TAX_POLICIES_ROUTE: '/quotation/tax-policies',
   QUOTATION_CURRENCIES_ROUTE: '/quotation/currencies',
-  callAppRoute: callAppRouteMock,
+  callTaxPoliciesNestAction: callTaxPoliciesNestActionMock,
+  callQuotationCurrenciesNestAction: callQuotationCurrenciesNestActionMock,
+  callRoundingRulesNestAction: callRoundingRulesNestActionMock,
 }));
 
 vi.mock('twenty-sdk/front-component', () => ({
@@ -108,22 +113,20 @@ const rowOf = (name: string): HTMLElement => {
 };
 
 beforeEach(() => {
-  callAppRouteMock.mockReset();
+  callTaxPoliciesNestActionMock.mockReset();
   snackbarMock.mockReset();
-  callAppRouteMock.mockImplementation(async (route: string) => {
-    if (route === '/quotation/currencies') {
-      return currencyCatalog();
-    }
-
-    return catalog([policy({ isDefault: true })]);
-  });
+  callTaxPoliciesNestActionMock.mockResolvedValue(catalog([policy({ isDefault: true })]));
+  callQuotationCurrenciesNestActionMock.mockReset();
+  callRoundingRulesNestActionMock.mockReset();
+  callQuotationCurrenciesNestActionMock.mockResolvedValue(currencyCatalog());
+  callRoundingRulesNestActionMock.mockResolvedValue({ data: { success: true, rules: [], defaultCode: null } });
 });
 
 afterEach(cleanup);
 
 describe('tax policy settings panel', () => {
   it('paints exactly one default badge and no action labelled like it', async () => {
-    callAppRouteMock.mockResolvedValue(
+    callTaxPoliciesNestActionMock.mockResolvedValue(
       catalog([
         policy({ recordId: 'tp-1', code: 'TAX_1000', isDefault: true }),
         policy({
@@ -149,7 +152,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('shows tax, duty, total and document count in ledger columns', async () => {
-    callAppRouteMock.mockResolvedValue(
+    callTaxPoliciesNestActionMock.mockResolvedValue(
       catalog([
         policy({
           recordId: 'tp-1',
@@ -195,7 +198,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('keeps the delete control on a used policy and explains why it is disabled', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({
@@ -226,7 +229,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('asks on the first delete press and cancels without touching the server', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({
@@ -251,11 +254,11 @@ describe('tax policy settings panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'انصراف از حذف' }));
 
     expect(screen.queryByRole('button', { name: 'تأیید حذف' })).toBeNull();
-    expect(callAppRouteMock).toHaveBeenCalledTimes(1);
+    expect(callTaxPoliciesNestActionMock).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a delete the server rejects on the row, so a stale count cannot delete history', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(
         catalog([
           policy({ recordId: 'tp-1', isDefault: true }),
@@ -283,15 +286,14 @@ describe('tax policy settings panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'تأیید حذف' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('۸ سند');
-    expect(callAppRouteMock).toHaveBeenLastCalledWith(
-      '/quotation/tax-policies',
+    expect(callTaxPoliciesNestActionMock).toHaveBeenLastCalledWith(
       { action: 'delete', recordId: 'tp-2' },
     );
     expect(snackbarMock).not.toHaveBeenCalled();
   });
 
   it('deletes an unused policy after confirm and reports success', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(
         catalog([
           policy({ recordId: 'tp-1', isDefault: true }),
@@ -346,7 +348,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('sets the default from the row and keeps a single default badge afterwards', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(
         catalog([
           policy({ recordId: 'tp-1', isDefault: true }),
@@ -374,8 +376,7 @@ describe('tax policy settings panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^پیش‌فرض/ }));
 
-    expect(callAppRouteMock).toHaveBeenLastCalledWith(
-      '/quotation/tax-policies',
+    expect(callTaxPoliciesNestActionMock).toHaveBeenLastCalledWith(
       { action: 'set-default', recordId: 'tp-2' },
     );
 
@@ -397,7 +398,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('repaints a demoted row as non-default when the payload still flags it', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(
         catalog([
           policy({ recordId: 'tp-1', name: 'مالیات ۹٪', isDefault: true }),
@@ -468,7 +469,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('opens the inspector on the row being edited and saves it back', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
       .mockResolvedValueOnce({
         data: {
@@ -489,8 +490,7 @@ describe('tax policy settings panel', () => {
     expect(screen.getByText('ویرایش سیاست')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
-    expect(callAppRouteMock).toHaveBeenLastCalledWith(
-      '/quotation/tax-policies',
+    expect(callTaxPoliciesNestActionMock).toHaveBeenLastCalledWith(
       {
         action: 'save',
         recordId: 'tp-1',
@@ -512,7 +512,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('shows the unsaved mark while the editor differs from the row it opened', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([policy({ recordId: 'tp-1' })]),
     );
 
@@ -533,7 +533,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('keeps the editor open with the server message when a save is refused', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
       .mockResolvedValueOnce({
         data: {
@@ -556,7 +556,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('offers the base 9% policy when the catalog is empty', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(catalog([]))
       .mockResolvedValueOnce({
         data: {
@@ -579,15 +579,14 @@ describe('tax policy settings panel', () => {
       screen.getByRole('button', { name: 'ساخت سیاست پایهٔ ۹٪' }),
     );
 
-    expect(callAppRouteMock).toHaveBeenLastCalledWith(
-      '/quotation/tax-policies',
+    expect(callTaxPoliciesNestActionMock).toHaveBeenLastCalledWith(
       { action: 'bootstrap' },
     );
     expect(await screen.findByText('مالیات ۹٪')).toBeTruthy();
   });
 
   it('gives every row action a bounded control and keeps the height in the stylesheet', async () => {
-    callAppRouteMock.mockResolvedValue(
+    callTaxPoliciesNestActionMock.mockResolvedValue(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({
@@ -626,7 +625,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('marks an inactive policy with an explicit badge', async () => {
-    callAppRouteMock.mockResolvedValue(
+    callTaxPoliciesNestActionMock.mockResolvedValue(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({
@@ -655,7 +654,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('renders a labelled ledger table for the catalog', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
@@ -671,7 +670,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('names each row control after the policy it acts on', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
@@ -694,7 +693,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('refuses to replace an editor holding typed numbers and says why', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
@@ -719,7 +718,7 @@ describe('tax policy settings panel', () => {
     expect(
       (screen.getByLabelText('مالیات ٪') as HTMLInputElement).value,
     ).toBe('۷');
-    expect(callAppRouteMock).toHaveBeenCalledTimes(1);
+    expect(callTaxPoliciesNestActionMock).toHaveBeenCalledTimes(1);
   });
 
   it('lets the operator discard deliberately, by cancelling', async () => {
@@ -736,7 +735,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('offers a retry when the list cannot be read', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]));
 
@@ -748,11 +747,11 @@ describe('tax policy settings panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'تلاش مجدد' }));
 
     expect(await screen.findByText('مالیات ۱۰٪')).toBeTruthy();
-    expect(callAppRouteMock).toHaveBeenCalledTimes(2);
+    expect(callTaxPoliciesNestActionMock).toHaveBeenCalledTimes(2);
   });
 
   it('states an exempt policy in words instead of a zero that reads as unfilled', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({
           recordId: 'tp-1',
@@ -778,7 +777,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('keeps the row mounted and opens the inspector beside the ledger', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
@@ -816,7 +815,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('saves from the keyboard when Enter is pressed in a field', async () => {
-    callAppRouteMock
+    callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
       .mockResolvedValueOnce({
         data: {
@@ -839,13 +838,12 @@ describe('tax policy settings panel', () => {
     fireEvent.submit(nameField as HTMLFormElement);
 
     await waitFor(() => {
-      if (callAppRouteMock.mock.calls.length < 2) {
+      if (callTaxPoliciesNestActionMock.mock.calls.length < 2) {
         throw new Error('the submit has not reached the server yet');
       }
     });
 
-    expect(callAppRouteMock).toHaveBeenLastCalledWith(
-      '/quotation/tax-policies',
+    expect(callTaxPoliciesNestActionMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ action: 'save', recordId: 'tp-1' }),
     );
   });
@@ -869,11 +867,11 @@ describe('tax policy settings panel', () => {
     expect(screen.getByLabelText('مالیات ٪').getAttribute('aria-invalid')).toBe(
       'false',
     );
-    expect(callAppRouteMock).toHaveBeenCalledTimes(1);
+    expect(callTaxPoliciesNestActionMock).toHaveBeenCalledTimes(1);
   });
 
   it('shows the retry and nothing else when the first read fails', async () => {
-    callAppRouteMock.mockRejectedValueOnce(new Error('offline'));
+    callTaxPoliciesNestActionMock.mockRejectedValueOnce(new Error('offline'));
 
     render(<TaxPolicySettingsPanel />);
 
@@ -894,7 +892,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('writes the unsaved refusal on the row that was pressed', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
@@ -922,7 +920,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('paints no colour literal, so the panel follows the shell theme', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
         policy({
@@ -947,7 +945,7 @@ describe('tax policy settings panel', () => {
   });
 
   it('surfaces the active default above the ledger', async () => {
-    callAppRouteMock.mockResolvedValueOnce(
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({
           recordId: 'tp-1',

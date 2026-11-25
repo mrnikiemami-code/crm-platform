@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
-import {
-  QUOTATION_CURRENCIES_ROUTE,
-  callAppRoute,
-} from 'src/components/quotation-api';
+import { callQuotationCurrenciesNestAction } from 'src/components/quotation-api';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
+
+type QuotationCurrencySettingsSectionProps = {
+  alwaysOpen?: boolean;
+};
 
 type CurrencyRow = {
   recordId: string;
@@ -48,8 +49,10 @@ const readRows = (data: Record<string, unknown>): CurrencyRow[] => {
 
 // Minimal phase-1 currency catalog UI: bootstrap IRR, edit optional accounting
 // code. No quotation draft fields here (C3).
-export const QuotationCurrencySettingsSection = () => {
-  const [opened, setOpened] = useState(false);
+export const QuotationCurrencySettingsSection = ({
+  alwaysOpen = false,
+}: QuotationCurrencySettingsSectionProps) => {
+  const [opened, setOpened] = useState(alwaysOpen);
   const [rows, setRows] = useState<CurrencyRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -71,7 +74,7 @@ export const QuotationCurrencySettingsSection = () => {
       setLoadError(null);
 
       try {
-        const response = await callAppRoute(QUOTATION_CURRENCIES_ROUTE, body);
+        const response = await callQuotationCurrenciesNestAction(body);
         const data = response.data;
 
         if (data.success !== true) {
@@ -113,11 +116,15 @@ export const QuotationCurrencySettingsSection = () => {
   return (
     <section
       aria-labelledby="quotation-currency-heading"
-      style={{
-        marginTop: 28,
-        paddingTop: 20,
-        borderTop: '1px solid var(--t-color-gray4)',
-      }}
+      style={
+        alwaysOpen
+          ? { marginTop: 0, paddingTop: 0 }
+          : {
+              marginTop: 28,
+              paddingTop: 20,
+              borderTop: '1px solid var(--t-color-gray4)',
+            }
+      }
     >
       <header
         style={{
@@ -157,7 +164,7 @@ export const QuotationCurrencySettingsSection = () => {
           >
             راه‌اندازی ریال
           </button>
-        ) : (
+        ) : alwaysOpen ? null : (
           <button
             type="button"
             className="tax-btn"
@@ -168,7 +175,7 @@ export const QuotationCurrencySettingsSection = () => {
         )}
       </header>
 
-      {opened ? null : (
+      {opened || alwaysOpen ? null : (
         <p style={{ fontSize: 13, color: 'var(--t-color-gray10)', margin: 0 }}>
           برای راه‌اندازی ریال و ویرایش کد حسابداری ارز، «مدیریت ارزها» را باز
           کنید.

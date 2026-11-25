@@ -140,11 +140,11 @@ export default defineLogicFunction({
   name: 'quotation-currencies',
   description: 'Workspace currency catalog for quotation financial settings',
   timeoutSeconds: 15,
-  httpRoute: {
-    isPublished: true,
-    path: '/quotation/currencies',
-    method: 'POST',
-    isAuthRequired: true,
-  },
   handler: quotationCurrenciesHandler,
+  httpRouteTriggerSettings: {
+    path: '/quotation/currencies',
+    httpMethod: 'POST',
+    isAuthRequired: true,
+    forwardedRequestHeaders: ['authorization'],
+  },
 });

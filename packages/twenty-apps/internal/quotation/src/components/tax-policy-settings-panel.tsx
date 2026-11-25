@@ -6,7 +6,7 @@ import {
 } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
-import { TAX_POLICIES_ROUTE, callAppRoute } from 'src/components/quotation-api';
+import { callTaxPoliciesNestAction } from 'src/components/quotation-api';
 import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
 import { RoundingRuleSettingsSection } from 'src/components/rounding-rule-settings-section';
 import {
@@ -202,7 +202,10 @@ const usageLine = (row: TaxPolicyRow): string => {
   return row.quotationCount === 0 ? count : `${count}؛ حذف‌شدنی نیست.`;
 };
 
+type SettingsTab = 'tax' | 'currencies' | 'rounding';
+
 export const TaxPolicySettingsPanel = () => {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('tax');
   const [rows, setRows] = useState<TaxPolicyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -323,7 +326,7 @@ export const TaxPolicySettingsPanel = () => {
     setConfirmingDeleteId(null);
 
     try {
-      const response = await callAppRoute(TAX_POLICIES_ROUTE, {
+      const response = await callTaxPoliciesNestAction({
         action: 'list',
       });
 
@@ -353,7 +356,7 @@ export const TaxPolicySettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(TAX_POLICIES_ROUTE, body);
+      const response = await callTaxPoliciesNestAction(body);
 
       return applyResponse(
         response.data,
@@ -634,14 +637,13 @@ export const TaxPolicySettingsPanel = () => {
 
       <header className="tax-page-head">
         <div>
-          <h2 style={styles.title}>مالیات و عوارض</h2>
+          <h2 style={styles.title}>پیش‌نیازهای حسابداری</h2>
           <p style={styles.subtitle}>
-            نرخ‌هایی که پیش‌فاکتور جدید با آن‌ها شروع می‌شود. هر سیاست یک تصمیم
-            است با دو جزء: مالیات و عوارض. اسناد قبلی نرخ مهرشدهٔ خود را نگه
-            می‌دارند.
+            مالیات و عوارض، ارز عملیاتی، و قواعد رُند مبلغ نهایی — یک صفحه برای
+            تصمیم‌های مالی فضای کاری، بدون تغییر اسناد مهرشده.
           </p>
         </div>
-        {rows.length === 0 || error !== null ? null : (
+        {activeTab === 'tax' && rows.length > 0 && error === null ? (
           <button
             type="button"
             className="tax-btn tax-btn-primary tax-add"
@@ -651,10 +653,33 @@ export const TaxPolicySettingsPanel = () => {
           >
             + سیاست جدید
           </button>
-        )}
+        ) : null}
       </header>
 
-      {error === null ? null : (
+      <nav className="tax-tabs" aria-label="بخش‌های پیش‌نیازهای حسابداری">
+        {(
+          [
+            { id: 'tax', label: 'مالیات و عوارض' },
+            { id: 'currencies', label: 'ارزها' },
+            { id: 'rounding', label: 'قواعد رُند کردن' },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={
+              activeTab === tab.id ? 'tax-tab tax-tab-active' : 'tax-tab'
+            }
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab !== 'tax' ? null : error === null ? null : (
         <div className="tax-page-error">
           <p role="alert" style={styles.pageError}>
             {error}
@@ -670,13 +695,16 @@ export const TaxPolicySettingsPanel = () => {
         </div>
       )}
 
-      {loading ? (
+      {activeTab !== 'tax' ? null : loading ? (
         <p role="status" style={styles.meta}>
           در حال خواندن سیاست‌ها…
         </p>
       ) : null}
 
-      {loading || error !== null || defaultRow === null ? null : (
+      {activeTab !== 'tax' ||
+      loading ||
+      error !== null ||
+      defaultRow === null ? null : (
         <section className="tax-default-banner" aria-label="سیاست پیش‌فرض فعال">
           <div className="tax-default-mark" aria-hidden="true">
             ٪
@@ -699,7 +727,7 @@ export const TaxPolicySettingsPanel = () => {
         </section>
       )}
 
-      {loading ? null : error !== null ? null : rows.length === 0 ? (
+      {activeTab !== 'tax' || loading ? null : error !== null ? null : rows.length === 0 ? (
         <section className="tax-empty">
           <p style={styles.emptyText}>
             هنوز سیاست مالیات و عوارضی ثبت نشده است.
@@ -1260,8 +1288,13 @@ export const TaxPolicySettingsPanel = () => {
           )}
         </div>
       )}
-      <RoundingRuleSettingsSection />
-      <QuotationCurrencySettingsSection />
+
+      {activeTab === 'currencies' ? (
+        <QuotationCurrencySettingsSection alwaysOpen />
+      ) : null}
+      {activeTab === 'rounding' ? (
+        <RoundingRuleSettingsSection alwaysOpen />
+      ) : null}
     </div>
   );
 };
@@ -1273,6 +1306,34 @@ const PANEL_CSS = `
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+}
+.tax-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--t-color-gray4);
+  border-radius: 12px;
+  background: var(--t-color-gray2);
+}
+.tax-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--t-color-gray11);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.tax-tab-active {
+  background: var(--t-color-gray1);
+  color: var(--t-color-gray12);
+  box-shadow: 0 1px 0 var(--t-color-gray4);
 }
 .tax-page-error {
   display: flex;
@@ -1686,6 +1747,8 @@ const PANEL_CSS = `
 @media (max-width: 720px) {
   .tax-page-head { flex-direction: column; align-items: stretch; }
   .tax-add { width: 100%; height: 44px; }
+  .tax-tabs { flex-direction: column; }
+  .tax-tab { width: 100%; text-align: right; min-height: 44px; }
   .tax-row-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .tax-btn { height: 44px; width: 100%; }
   .tax-field input { height: 44px; }
