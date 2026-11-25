@@ -2,7 +2,7 @@
 
 ## CURRENT — GOAL 023: DEV-APPLY-030 DONE → STOP_FOR_USER_UAT (2026-11-25)
 
-**Branch:** `feat/crm-129-quotation`. **Pre-apply recovery:** `23698e4ae7`. Goal 023 **ACTIVE / NOT COMPLETE**.
+**Branch:** `feat/crm-129-quotation`. **Pre-apply recovery:** `23698e4ae7`. **Post-apply docs/IRR HEAD:** `5a665ef2b1`. Goal 023 **ACTIVE / NOT COMPLETE**.
 
 **Dev live:** `quotation@0.1.56` on `:3002`. Schema WS1–WS4 applied. Tax/currency bootstrap idempotent (IRR default; `IR_VAT_9` default). Intranet `:6080` + worker untouched. Backup: `D:\CrmDeployment\backups\crm129-dev-apply-030\`.
 
