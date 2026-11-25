@@ -58,7 +58,7 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 |---|---|
 | **1. SC advanced?** | SC8/SC9/SC10 honesty path only (copy, ownership hint, RTL); no SC4/SC5 product capabilities yet |
 | **2. Financial contract?** | C3 preserved; **no** Money Domain change; **no** per-line tax / catalog document currency in product this turn |
-| **3. Real tests run?** | Vitest `accounting-connections-section.test.tsx` — **43 PASS** (incl. ownership hint + fa-IR health-check time; no English `(Mock)` on form) |
+| **3. Real tests run?** | Vitest `accounting-connections-section.test.tsx` — **43 PASS** (re-confirmed at checkpoint `0ac6d22153`); WS1-R1 Jest currency authority **8 PASS** |
 | **4. Still incomplete?** | WS1 accept; WS2→WS3 (Money)→WS4; full WS5/WS6; real-product USER_UAT |
 | **5. Next allowed step?** | **`STOP_FOR_ARCHITECT`**: accept WS1 → open WS2 → WS3 with Money Domain permission → WS4; then product UAT |
 
