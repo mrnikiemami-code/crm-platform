@@ -47,15 +47,15 @@ P0-1 Default-connection contract
 
 ### P0-2 — Retire connection without harming history
 
-**Why:** `isActive` exists but no deactivate/delete route; stale destinations stay selectable. Live Dev witness: **۱۹** connection rows (repeated Mock/Asan UAT stubs) with no prune path — selection noise is already operational, not theoretical.
+**Status (021):** **IMPLEMENTED** — soft `deactivate` / `reactivate` under the same advisory lock as set-default; retiring default clears `isDefault` without promoting another; GraphQL hard delete remains forbidden. See recovery CURRENT 021.
 
 | | |
 |---|---|
-| **Depends on** | P0-1 (what “active” means after retire) |
-| **Scope** | Server action `deactivate` (soft): keep sync ops, item/party links; exclude from “selectable for new work”; refuse hard delete if history exists **or** only soft-retire forever |
-| **Out of scope** | Vendor-side product deactivate |
-| **Acceptance** | Deactivated connection: not offered for new mapping/export; history still readable in اسناد; GraphQL generic delete still blocked; focused Jest + settings UAT script extension |
-| **Architect decision** | **Yes** — soft-only vs eventual purge policy |
+| **Depends on** | P0-1 — done |
+| **Scope** | Server `deactivate` / `reactivate`; UI badges; refuse inactive for new work and temporary selection |
+| **Out of scope** | Vendor-side product deactivate; purge |
+| **Acceptance** | Covered by 021 unit/Jest evidence; optional Dev UAT |
+| **Architect decision** | Soft-only closed; purge deferred |
 
 ### P0-3 — Go-live safety pack (flags, verification, retry)
 

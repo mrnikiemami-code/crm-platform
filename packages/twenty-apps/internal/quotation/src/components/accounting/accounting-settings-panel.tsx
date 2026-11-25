@@ -597,7 +597,12 @@ export const AccountingSettingsPanel = () => {
   };
 
   // Temporary working context only — does not change the workspace default destination.
+  // Retired connections cannot become the working destination.
   const selectConnection = (entry: ConnectionRecord) => {
+    if (entry.isActive === false) {
+      return;
+    }
+
     setSelectedConnectionId(entry.id);
     setTestResult(null);
   };
@@ -628,6 +633,100 @@ export const AccountingSettingsPanel = () => {
 
       await enqueueSnackbar({
         message: 'مقصد پیش‌فرض فضای کاری به‌روز شد.',
+        variant: 'success',
+      });
+      await loadPanel();
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deactivateConnection = async (entry: ConnectionRecord) => {
+    if (busy || !data?.canManage) {
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+        action: 'deactivate',
+        connectionId: entry.id,
+      });
+
+      if (!response.ok || response.data.success !== true) {
+        await enqueueSnackbar({
+          message: toPersianUiMessage(
+            readString(response.data.message),
+            'بازنشسته‌کردن اتصال انجام نشد.',
+          ),
+          variant: 'error',
+        });
+        return;
+      }
+
+      // A retired id must not remain the temporary working destination.
+      if (selectedConnectionId === entry.id) {
+        setSelectedConnectionId(null);
+        try {
+          window.localStorage.removeItem(ACCOUNTING_CONNECTION_STORAGE_KEY);
+        } catch {
+          // Storage may be unavailable; selection state above still clears.
+        }
+      }
+
+      await enqueueSnackbar({
+        message: toPersianUiMessage(
+          readString(response.data.message),
+          'اتصال بازنشسته شد؛ سوابق حفظ شدند.',
+        ),
+        variant: 'success',
+      });
+      await loadPanel();
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reactivateConnection = async (entry: ConnectionRecord) => {
+    if (busy || !data?.canManage) {
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+        action: 'reactivate',
+        connectionId: entry.id,
+      });
+
+      if (!response.ok || response.data.success !== true) {
+        await enqueueSnackbar({
+          message: toPersianUiMessage(
+            readString(response.data.message),
+            'فعال‌سازی مجدد اتصال انجام نشد.',
+          ),
+          variant: 'error',
+        });
+        return;
+      }
+
+      await enqueueSnackbar({
+        message: toPersianUiMessage(
+          readString(response.data.message),
+          'اتصال دوباره فعال شد؛ پیش‌فرض خودکار تنظیم نشد.',
+        ),
         variant: 'success',
       });
       await loadPanel();
@@ -923,6 +1022,12 @@ export const AccountingSettingsPanel = () => {
                 }}
                 onSelectConnection={selectConnection}
                 onSetWorkspaceDefault={(entry) => void setWorkspaceDefault(entry)}
+                onDeactivateConnection={(entry) =>
+                  void deactivateConnection(entry)
+                }
+                onReactivateConnection={(entry) =>
+                  void reactivateConnection(entry)
+                }
                 onEditConnection={editConnection}
                 onChange={(next) => {
                   // A previous probe's verdict belongs to the saved values; editing the

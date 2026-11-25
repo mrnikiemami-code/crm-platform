@@ -251,6 +251,8 @@ const renderSection = ({
   taxPolicies = policies,
   onSelectConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSetWorkspaceDefault = vi.fn<(connection: ConnectionRecord) => void>(),
+  onDeactivateConnection = vi.fn<(connection: ConnectionRecord) => void>(),
+  onReactivateConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onEditConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSave = vi.fn<() => void>(),
   onChange = vi.fn<(form: FormState) => void>(),
@@ -264,6 +266,12 @@ const renderSection = ({
   taxPolicies?: TaxPolicyView[];
   onSelectConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onSetWorkspaceDefault?: ReturnType<
+    typeof vi.fn<(connection: ConnectionRecord) => void>
+  >;
+  onDeactivateConnection?: ReturnType<
+    typeof vi.fn<(connection: ConnectionRecord) => void>
+  >;
+  onReactivateConnection?: ReturnType<
     typeof vi.fn<(connection: ConnectionRecord) => void>
   >;
   onEditConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
@@ -297,6 +305,8 @@ const renderSection = ({
       onOpenList={vi.fn()}
       onSelectConnection={onSelectConnection}
       onSetWorkspaceDefault={onSetWorkspaceDefault}
+      onDeactivateConnection={onDeactivateConnection}
+      onReactivateConnection={onReactivateConnection}
       onEditConnection={onEditConnection}
       onChange={onChange}
       onSave={onSave}
@@ -308,6 +318,8 @@ const renderSection = ({
   return {
     onSelectConnection,
     onSetWorkspaceDefault,
+    onDeactivateConnection,
+    onReactivateConnection,
     onEditConnection,
     onSave,
     onChange,
@@ -434,6 +446,51 @@ describe('choosing between several connections', () => {
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
+  });
+
+  it('offers retire on an active row and reactivate on a retired row', () => {
+    const { onDeactivateConnection, onReactivateConnection } = renderSection({
+      connections: [
+        connection({ id: 'conn-1', isActive: true }),
+        connection({ id: 'conn-2', name: 'بازنشسته', isActive: false }),
+      ],
+      selectedConnectionId: 'conn-1',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'بازنشسته‌کردن' }));
+    expect(onDeactivateConnection).toHaveBeenCalledTimes(1);
+    expect(onDeactivateConnection.mock.calls[0][0].id).toBe('conn-1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'فعال‌سازی مجدد' }));
+    expect(onReactivateConnection).toHaveBeenCalledTimes(1);
+    expect(onReactivateConnection.mock.calls[0][0].id).toBe('conn-2');
+  });
+
+  it('blocks temporary selection of a retired connection', () => {
+    renderSection({
+      connections: [
+        connection({ id: 'conn-1' }),
+        connection({ id: 'conn-2', name: 'اتصال قدیمی', isActive: false }),
+      ],
+      selectedConnectionId: 'conn-1',
+    });
+
+    const retiredRow = within(
+      screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
+    )
+      .getAllByRole('row')
+      .find((entry) => entry.getAttribute('data-connection-id') === 'conn-2');
+
+    expect(
+      (
+        within(retiredRow as HTMLElement).getByRole('button', {
+          name: 'انتخاب نمای موقت',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      within(retiredRow as HTMLElement).getAllByText('بازنشسته').length,
+    ).toBeGreaterThan(0);
   });
 
   it('labels a mock destination as simulated, never as a real connection', () => {

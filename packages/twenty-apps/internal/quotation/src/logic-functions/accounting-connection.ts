@@ -16,6 +16,8 @@ import {
   loadConnectionsThroughServer,
   readAccountingSettingsAuthority,
   resolveConnection,
+  deactivateConnectionThroughServer,
+  reactivateConnectionThroughServer,
   saveConnectionThroughServer,
   setDefaultConnectionThroughServer,
   testConnectionThroughServer,
@@ -164,6 +166,54 @@ const handler = async (event: RoutePayload<unknown>) => {
       };
     }
 
+    if (action === 'deactivate' || action === 'reactivate') {
+      const connectionId = readString(body.connectionId) || readString(body.id);
+
+      if (connectionId === '') {
+        return failure(
+          'INVALID_INPUT',
+          persianAccountingMessage('INVALID_INPUT'),
+        );
+      }
+
+      const updated =
+        action === 'deactivate'
+          ? await deactivateConnectionThroughServer(connectionId, {
+              authorizationHeader,
+            })
+          : await reactivateConnectionThroughServer(connectionId, {
+              authorizationHeader,
+            });
+
+      if (!updated.ok) {
+        return failure(
+          updated.refusal.code,
+          persianAccountingMessage(updated.refusal.code) ||
+            updated.refusal.detail,
+        );
+      }
+
+      return {
+        success: true,
+        connections: updated.value.map((connection) => ({
+          ...connection,
+          capabilityRows: describeCapabilities(
+            findAdapterDescriptor(connection.adapterId) ?? {
+              transportIsSecure: false,
+            },
+          ),
+        })),
+        adapters: ADAPTER_DESCRIPTORS,
+        credentials: describeSecretStatus(secrets),
+        flags: readFlags(),
+        canManage: true,
+        message:
+          action === 'deactivate'
+            ? 'اتصال بازنشسته شد'
+            : 'اتصال دوباره فعال شد',
+      };
+    }
+
     if (action === 'test') {
       // A probe emits network traffic and records its answer, so it is an operator
       // action, not a read. Refused before a single request leaves the workspace.
@@ -251,7 +301,7 @@ export default defineLogicFunction({
     ACCOUNTING_CONNECTION_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER,
   name: 'accounting-connection-action',
   description:
-    'مدیریت اتصال حسابداری: فهرست، ذخیره، تعیین پیش‌فرض فضای کاری و آزمایش اتصال',
+    'مدیریت اتصال حسابداری: فهرست، ذخیره، پیش‌فرض، بازنشستگی، فعال‌سازی مجدد و آزمایش اتصال',
   timeoutSeconds: 30,
   handler,
   httpRouteTriggerSettings: {

@@ -91,4 +91,39 @@ describe('resolveTemporaryWorkingConnectionId', () => {
       }),
     ).toBeNull();
   });
+
+  it('rejects a remembered retired connection instead of reusing localStorage', () => {
+    expect(
+      resolveTemporaryWorkingConnectionId({
+        connections: [
+          row({ id: 'retired', isActive: false }),
+          row({ id: 'default', isDefault: true }),
+        ],
+        rememberedConnectionId: 'retired',
+      }),
+    ).toBe('default');
+  });
+
+  it('leaves the workspace without a temporary destination when only retired rows remain', () => {
+    expect(
+      resolveTemporaryWorkingConnectionId({
+        connections: [row({ id: 'retired', isActive: false })],
+        rememberedConnectionId: 'retired',
+      }),
+    ).toBeNull();
+  });
+});
+
+describe('inactive destinations for new work', () => {
+  it('refuses an explicit retired connection id', () => {
+    expect(
+      resolveAccountingDestination({
+        connections: [row({ id: 'retired', isActive: false })],
+        connectionId: 'retired',
+      }),
+    ).toEqual({
+      kind: 'REFUSED',
+      code: 'CONNECTION_INACTIVE',
+    });
+  });
 });

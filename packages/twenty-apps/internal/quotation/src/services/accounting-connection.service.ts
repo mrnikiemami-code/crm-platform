@@ -415,6 +415,44 @@ export const setDefaultConnectionThroughServer = async (
   return accepted(readServerConnections(outcome.data));
 };
 
+export const deactivateConnectionThroughServer = async (
+  connectionId: string,
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<Result<AccountingConnectionRecord[]>> => {
+  const outcome = await callAccountingSettingsAction({
+    body: {
+      action: 'accounting-connection-deactivate',
+      recordId: connectionId,
+    },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  return accepted(readServerConnections(outcome.data));
+};
+
+export const reactivateConnectionThroughServer = async (
+  connectionId: string,
+  dependencies: AccountingSettingsDependencies = {},
+): Promise<Result<AccountingConnectionRecord[]>> => {
+  const outcome = await callAccountingSettingsAction({
+    body: {
+      action: 'accounting-connection-reactivate',
+      recordId: connectionId,
+    },
+    authorizationHeader: dependencies.authorizationHeader ?? null,
+  });
+
+  if (outcome.kind === 'REFUSED') {
+    return refusedOutcome(outcome);
+  }
+
+  return accepted(readServerConnections(outcome.data));
+};
+
 export const testConnectionThroughServer = async (
   connectionId: string,
   dependencies: AccountingSettingsDependencies = {},

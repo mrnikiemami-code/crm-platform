@@ -67,7 +67,7 @@ const connections = () => [
     name: 'آزمایشی ساده',
     adapterId: 'mock',
     adapterVersion: '2026-11-1',
-    isActive: false,
+    isActive: true,
     isDefault: false,
     settings: storedSettings({ baseUrl: 'http://mock.invalid', moneyUnit: 'UNCONFIRMED' }),
     healthState: 'UNKNOWN',
@@ -80,7 +80,7 @@ const connections = () => [
     name: 'آزمایشی کدمحور',
     adapterId: 'mock',
     adapterVersion: '2026-11-1',
-    isActive: false,
+    isActive: true,
     isDefault: false,
     settings: storedSettings({
       baseUrl: 'http://mock.invalid',

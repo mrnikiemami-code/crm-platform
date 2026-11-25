@@ -66,6 +66,8 @@ const ALLOWED_ACTIONS = new Set([
   'accounting-connection-save',
   'accounting-connection-test',
   'accounting-connection-set-default',
+  'accounting-connection-deactivate',
+  'accounting-connection-reactivate',
 ]);
 
 const TAX_POLICY_MUTATING_ACTIONS = new Set([
@@ -484,6 +486,48 @@ export class QuotationUiController {
 
         return this.describeAccountingOutcome(
           await this.accountingConnectionAuthorityService.setDefaultConnection(
+            recordId,
+            authContext,
+          ),
+          authContext,
+        );
+      }
+
+      if (action === 'accounting-connection-deactivate') {
+        const recordId =
+          readText(body.recordId) || readText(body.connectionId);
+
+        if (recordId === '') {
+          return {
+            success: false,
+            code: 'INVALID_INPUT',
+            message: 'اتصال حسابداری را انتخاب کنید',
+          };
+        }
+
+        return this.describeAccountingOutcome(
+          await this.accountingConnectionAuthorityService.deactivateConnection(
+            recordId,
+            authContext,
+          ),
+          authContext,
+        );
+      }
+
+      if (action === 'accounting-connection-reactivate') {
+        const recordId =
+          readText(body.recordId) || readText(body.connectionId);
+
+        if (recordId === '') {
+          return {
+            success: false,
+            code: 'INVALID_INPUT',
+            message: 'اتصال حسابداری را انتخاب کنید',
+          };
+        }
+
+        return this.describeAccountingOutcome(
+          await this.accountingConnectionAuthorityService.reactivateConnection(
             recordId,
             authContext,
           ),

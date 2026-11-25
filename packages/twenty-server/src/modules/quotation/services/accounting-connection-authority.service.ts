@@ -417,6 +417,149 @@ export class AccountingConnectionAuthorityService {
     );
   }
 
+  // Soft retire: isActive=false. History, mappings and settings stay on the row. If the
+  // row was the workspace default, isDefault is cleared in the same locked transaction and
+  // no other connection is auto-promoted.
+  async deactivateConnection(
+    recordId: string,
+    authContext: WorkspaceAuthContext,
+  ): Promise<AccountingConnectionOutcome> {
+    const authority = await this.resolveAuthority(authContext);
+
+    if (authority === null) {
+      return refused(
+        'ACCOUNTING_SETTINGS_FORBIDDEN',
+        'بازنشسته‌کردن اتصال حسابداری فقط برای مدیر فضای کاری یا هویت برنامهٔ مجاز انجام می‌شود',
+      );
+    }
+
+    const id = recordId.trim();
+
+    if (id === '') {
+      return refused('INVALID_INPUT', 'اتصال حسابداری را انتخاب کنید');
+    }
+
+    const actor = this.actorFor(authContext);
+
+    return this.inWorkspace(authContext, () =>
+      this.runLocked(async (scope) => {
+        const repository = scope.getRepository<WorkspaceAccountingConnectionRow>(
+          'accountingConnection',
+          { shouldBypassPermissionChecks: true },
+        );
+        const rows = await this.findAll(repository);
+        const chosen = rows.find((row) => row.recordId === id);
+
+        if (chosen === undefined) {
+          return refused(
+            'ACCOUNTING_CONNECTION_NOT_FOUND',
+            'اتصال حسابداری انتخاب‌شده پیدا نشد',
+          );
+        }
+
+        if (chosen.isActive !== true) {
+          return {
+            kind: 'OK' as const,
+            connections: rows,
+            message: 'این اتصال از قبل بازنشسته است',
+          };
+        }
+
+        const wasDefault = chosen.isDefault === true;
+
+        await repository.update(
+          { id },
+          {
+            isActive: false,
+            // Retiring the default must not leave an inactive default badge, and must not
+            // invent a replacement — the workspace stays without a default until set-default.
+            ...(wasDefault ? { isDefault: false } : {}),
+            updatedBy: actor,
+          } as never,
+        );
+        const repaired = await this.enforceSingleActiveDefault(repository, actor);
+
+        return {
+          kind: 'OK' as const,
+          connections: await this.findAll(repository),
+          message: wasDefault
+            ? repaired
+              ? 'اتصال بازنشسته شد و پیش‌فرض فضای کاری برداشته شد؛ وضعیت ناسازگار نیز اصلاح شد'
+              : 'اتصال بازنشسته شد و پیش‌فرض فضای کاری برداشته شد؛ مقصد پیش‌فرض دیگری خودکار انتخاب نشد'
+            : 'اتصال حسابداری بازنشسته شد؛ سوابق و نگاشت‌ها حفظ شدند',
+        };
+      }),
+    );
+  }
+
+  // Bring a retired connection back for new work. Reactivation never restores or invents
+  // workspace default — that requires an explicit set-default after the row is active again.
+  async reactivateConnection(
+    recordId: string,
+    authContext: WorkspaceAuthContext,
+  ): Promise<AccountingConnectionOutcome> {
+    const authority = await this.resolveAuthority(authContext);
+
+    if (authority === null) {
+      return refused(
+        'ACCOUNTING_SETTINGS_FORBIDDEN',
+        'فعال‌سازی مجدد اتصال حسابداری فقط برای مدیر فضای کاری یا هویت برنامهٔ مجاز انجام می‌شود',
+      );
+    }
+
+    const id = recordId.trim();
+
+    if (id === '') {
+      return refused('INVALID_INPUT', 'اتصال حسابداری را انتخاب کنید');
+    }
+
+    const actor = this.actorFor(authContext);
+
+    return this.inWorkspace(authContext, () =>
+      this.runLocked(async (scope) => {
+        const repository = scope.getRepository<WorkspaceAccountingConnectionRow>(
+          'accountingConnection',
+          { shouldBypassPermissionChecks: true },
+        );
+        const rows = await this.findAll(repository);
+        const chosen = rows.find((row) => row.recordId === id);
+
+        if (chosen === undefined) {
+          return refused(
+            'ACCOUNTING_CONNECTION_NOT_FOUND',
+            'اتصال حسابداری انتخاب‌شده پیدا نشد',
+          );
+        }
+
+        if (chosen.isActive === true) {
+          return {
+            kind: 'OK' as const,
+            connections: rows,
+            message: 'این اتصال از قبل فعال است',
+          };
+        }
+
+        await repository.update(
+          { id },
+          {
+            isActive: true,
+            // Explicit false: a corrupt inactive+default row must not come back as default.
+            isDefault: false,
+            updatedBy: actor,
+          } as never,
+        );
+        await this.enforceSingleActiveDefault(repository, actor);
+
+        return {
+          kind: 'OK' as const,
+          connections: await this.findAll(repository),
+          message:
+            'اتصال دوباره فعال شد؛ برای استفاده به‌عنوان مقصد رسمی، پیش‌فرض فضای کاری را جداگانه تنظیم کنید',
+        };
+      }),
+    );
+  }
+
   // A health record is evidence, not configuration. The probe runs here, in the trusted
   // process, against an address that is resolved and validated for this request; only its
   // result is stored. The caller supplies neither a state, a time nor a message, so a

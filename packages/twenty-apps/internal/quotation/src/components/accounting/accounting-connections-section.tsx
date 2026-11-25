@@ -47,6 +47,8 @@ export const AccountingConnectionsSection = ({
   onOpenList,
   onSelectConnection,
   onSetWorkspaceDefault,
+  onDeactivateConnection,
+  onReactivateConnection,
   onEditConnection,
   onChange,
   onSave,
@@ -66,6 +68,8 @@ export const AccountingConnectionsSection = ({
   onOpenList: () => void;
   onSelectConnection: (connection: ConnectionRecord) => void;
   onSetWorkspaceDefault: (connection: ConnectionRecord) => void;
+  onDeactivateConnection: (connection: ConnectionRecord) => void;
+  onReactivateConnection: (connection: ConnectionRecord) => void;
   onEditConnection: (connection: ConnectionRecord) => void;
   onChange: (form: FormState) => void;
   onSave: () => void;
@@ -221,7 +225,12 @@ export const AccountingConnectionsSection = ({
                             marginTop: '4px',
                           }}
                         >
-                          {entry.isDefault ? (
+                          {entry.isActive === false ? (
+                            <Badge tone="neutral">بازنشسته</Badge>
+                          ) : (
+                            <Badge tone="info">فعال</Badge>
+                          )}
+                          {entry.isDefault && entry.isActive ? (
                             <Badge tone="success">پیش‌فرض فضای کاری</Badge>
                           ) : null}
                           {selected ? (
@@ -266,12 +275,16 @@ export const AccountingConnectionsSection = ({
                             label={
                               selected ? 'نمای موقت فعال' : 'انتخاب نمای موقت'
                             }
-                            disabled={selected || busy}
+                            disabled={
+                              selected ||
+                              busy ||
+                              entry.isActive === false
+                            }
                             onClick={() => onSelectConnection(entry)}
                           />
                           <SecondaryButton
                             label={
-                              entry.isDefault
+                              entry.isDefault && entry.isActive
                                 ? 'پیش‌فرض فضای کاری'
                                 : 'تنظیم به‌عنوان پیش‌فرض'
                             }
@@ -283,6 +296,19 @@ export const AccountingConnectionsSection = ({
                             }
                             onClick={() => onSetWorkspaceDefault(entry)}
                           />
+                          {entry.isActive === false ? (
+                            <SecondaryButton
+                              label="فعال‌سازی مجدد"
+                              disabled={!canManage || busy}
+                              onClick={() => onReactivateConnection(entry)}
+                            />
+                          ) : (
+                            <SecondaryButton
+                              label="بازنشسته‌کردن"
+                              disabled={!canManage || busy}
+                              onClick={() => onDeactivateConnection(entry)}
+                            />
+                          )}
                           <SecondaryButton
                             label="ویرایش تنظیمات"
                             disabled={!canManage || busy}
@@ -305,9 +331,10 @@ export const AccountingConnectionsSection = ({
           </div>
           <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', marginTop: '6px' }}>
             «نمای موقت» فقط همین صفحه را برای نگاشت کالا و مشتری تغییر می‌دهد و پیش‌فرض فضای
-            کاری را عوض نمی‌کند. «تنظیم به‌عنوان پیش‌فرض» مقصد رسمی Workspace را روی سرور ثبت
-            می‌کند و همان مقصد را پیش‌فاکتور می‌خواند. برای نام، آدرس یا تنظیمات مالی، «ویرایش
-            تنظیمات» را بزنید.
+            کاری را عوض نمی‌کند. «بازنشسته‌کردن» اتصال را از مقصدهای جدید کنار می‌گذارد ولی
+            سوابق و نگاشت‌ها را نگه می‌دارد؛ «فعال‌سازی مجدد» آن را دوباره قابل استفاده می‌کند
+            بدون اینکه خودکار پیش‌فرض شود. اتصال بازنشسته را نمی‌توان به‌عنوان نمای موقت یا
+            پیش‌فرض انتخاب کرد.
           </p>
         </Card>
       )}

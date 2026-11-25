@@ -78,8 +78,9 @@ export const resolveAccountingDestination = ({
   };
 };
 
-// Temporary working context for the settings shell: remembered selection if still present,
-// else the workspace default, else null. Never invents a destination from row order.
+// Temporary working context for the settings shell: remembered selection if still present
+// and still active, else the workspace default, else null. A retired connection left in
+// localStorage must not become the working destination after refresh.
 export const resolveTemporaryWorkingConnectionId = ({
   connections,
   rememberedConnectionId,
@@ -87,11 +88,14 @@ export const resolveTemporaryWorkingConnectionId = ({
   connections: readonly AccountingDestinationCandidate[];
   rememberedConnectionId: string | null;
 }): string | null => {
-  if (
-    rememberedConnectionId !== null &&
-    connections.some((row) => row.id === rememberedConnectionId)
-  ) {
-    return rememberedConnectionId;
+  if (rememberedConnectionId !== null) {
+    const remembered = connections.find(
+      (row) => row.id === rememberedConnectionId,
+    );
+
+    if (remembered !== undefined && remembered.isActive === true) {
+      return remembered.id;
+    }
   }
 
   return findValidWorkspaceDefaultConnection(connections)?.id ?? null;

@@ -1,6 +1,29 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — CRM-129-ACCOUNTING-DEFAULT-020 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
+## CURRENT — CRM-129-ACCOUNTING-CONNECTION-RETIRE-021 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
+
+Soft retire / reactivate for accounting connections (P0-2 from ACCOUNTING-AUDIT-019 / DEFAULT-020).
+
+### Contract shipped
+
+- `deactivate` → `isActive=false`; **no hard delete**; history, party/item links and settings retained.
+- Retiring the workspace default clears `isDefault` in the **same advisory-locked** transaction; **no auto-promotion**.
+- `reactivate` → `isActive=true` and forces `isDefault=false` (never auto-default).
+- New work / temporary localStorage selection refuse inactive destinations (`CONNECTION_INACTIVE` / cleared working id).
+- GraphQL generic delete/update still closed by write-guard (unchanged).
+
+### Evidence
+
+- App vitest focused: **70 PASS** (resolve + connections section + settings panel + connection service).
+- Server Jest: authority + write-guard (**66 PASS** in those suites), including deactivate default, reactivate without default, foreign id, forbidden, shared lock key with set-default.
+- App **0.1.51** applied to `dev-crm129`; `dist/modules/quotation` copied into `twenty-server-1` only; worker / `:6080` untouched.
+- No vendor calls; outbound flags unchanged; no LIVE_VERIFIED claim; Money/tax/revision/PDF untouched.
+
+### Architect still owns
+
+- P0-3 go-live / LIVE_VERIFIED; Sepidar priority; optional live UAT of retire on `:3002`.
+
+## PRIOR — CRM-129-ACCOUNTING-DEFAULT-020 (2026-11-25; **IMPLEMENTED** → `STOP_FOR_ARCHITECT`)
 
 Workspace default accounting destination contract (P0-1 from ACCOUNTING-AUDIT-019).
 

@@ -437,4 +437,125 @@ describe('AccountingConnectionAuthorityService', () => {
       expect.objectContaining({ isDefault: false, isActive: true }),
     );
   });
+
+  it('refuses deactivate without settings authority', async () => {
+    const { service, update, executeRawQuery } = buildService({
+      authority: null,
+      rows: [storedRow({ id: 'a' })],
+    });
+
+    const outcome = await service.deactivateConnection('a', userAuthContext);
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_SETTINGS_FORBIDDEN',
+    });
+    expect(executeRawQuery).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('soft-retires an ordinary active connection without touching other rows', async () => {
+    const { service, update, executeRawQuery } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [
+        storedRow({ id: 'a', isDefault: false }),
+        storedRow({ id: 'b', isDefault: true }),
+      ],
+    });
+
+    const outcome = await service.deactivateConnection('a', userAuthContext);
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(executeRawQuery).toHaveBeenCalled();
+    expect(update).toHaveBeenCalledWith(
+      { id: 'a' },
+      expect.objectContaining({ isActive: false }),
+    );
+    expect(update).not.toHaveBeenCalledWith(
+      { id: 'b' },
+      expect.anything(),
+    );
+  });
+
+  it('clears isDefault when retiring the workspace default and does not promote another', async () => {
+    const { service, update } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [
+        storedRow({ id: 'default', isDefault: true }),
+        storedRow({ id: 'other', isDefault: false }),
+      ],
+    });
+
+    const outcome = await service.deactivateConnection(
+      'default',
+      userAuthContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(update).toHaveBeenCalledWith(
+      { id: 'default' },
+      expect.objectContaining({ isActive: false, isDefault: false }),
+    );
+    expect(update).not.toHaveBeenCalledWith(
+      { id: 'other' },
+      expect.objectContaining({ isDefault: true }),
+    );
+  });
+
+  it('refuses a foreign connection id on deactivate (workspace isolation)', async () => {
+    const { service, update } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [storedRow({ id: 'local-only' })],
+    });
+
+    const outcome = await service.deactivateConnection(
+      'foreign-row',
+      userAuthContext,
+    );
+
+    expect(outcome).toMatchObject({
+      kind: 'REFUSED',
+      code: 'ACCOUNTING_CONNECTION_NOT_FOUND',
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('reactivates without restoring workspace default', async () => {
+    const { service, update } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [
+        storedRow({ id: 'retired', isActive: false, isDefault: false }),
+        storedRow({ id: 'other', isDefault: true }),
+      ],
+    });
+
+    const outcome = await service.reactivateConnection(
+      'retired',
+      userAuthContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+    expect(update).toHaveBeenCalledWith(
+      { id: 'retired' },
+      expect.objectContaining({ isActive: true, isDefault: false }),
+    );
+    expect(update).not.toHaveBeenCalledWith(
+      { id: 'retired' },
+      expect.objectContaining({ isDefault: true }),
+    );
+  });
+
+  it('serializes deactivate under the same advisory lock as set-default', async () => {
+    const { service, executeRawQuery } = buildService({
+      authority: 'SETTINGS_ROLE',
+      rows: [storedRow({ id: 'a', isDefault: true })],
+    });
+
+    await service.deactivateConnection('a', userAuthContext);
+
+    expect(executeRawQuery).toHaveBeenCalledWith(
+      'SELECT pg_advisory_xact_lock(hashtext($1))',
+      ['quotation-accounting-connection:workspace-1'],
+    );
+  });
 });
