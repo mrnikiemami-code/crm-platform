@@ -18,7 +18,7 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | Pack | Status | Evidence / note |
 |---|---|---|
 | WS0 Goal registration | `ARCHITECT_ACCEPTED` (planning) | `cdb890b3f5` |
-| EXECUTION-024 C1–C7 + board + WS1 preflight | `IN_PROGRESS` → docs commit this turn | No product code |
+| EXECUTION-024 C1–C7 + board + WS1 preflight | `TECHNICALLY_VERIFIED` (docs) @ `ffa24df26c` | Awaiting architect on WS1 preflight; not Goal-complete |
 | WS1 Reference accounting codes | `BLOCKED` | Awaiting architect on [`CRM-129-GOAL-023-WS1-PREFLIGHT.md`](./CRM-129-GOAL-023-WS1-PREFLIGHT.md) |
 | WS2 Snapshot + code lock | `NOT_STARTED` | Needs WS1 + lock-family confirm |
 | WS3 Per-line tax | `NOT_STARTED` | Needs WS2 + financial integrity gate |
