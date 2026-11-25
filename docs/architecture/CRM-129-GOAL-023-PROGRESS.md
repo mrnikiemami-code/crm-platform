@@ -25,7 +25,7 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | WS4 Document currency phase 1 | `NOT_STARTED` | Catalog exists; picker/IRR refuse in WS4 |
 | WS5 Settings ownership | `NOT_STARTED` | |
 | WS6 Mock/Asan shared UI | `NOT_STARTED` | |
-| WS7-A Design frames | `IN_PROGRESS` | Preview under `docs/design/crm-129-goal-023-ws7a/`; `STOP_FOR_USER_DESIGN_APPROVAL` |
+| WS7-A Design frames | `TECHNICALLY_VERIFIED` | `docs/design/crm-129-goal-023-ws7a/` + DESIGN-DECISION; **`STOP_FOR_USER_DESIGN_APPROVAL`** |
 | WS7-B Implement Design of Record | `NOT_STARTED` | Blocked until user design approval |
 | Goal 023 close | `NOT_STARTED` | **ACTIVE / NOT COMPLETE** |
 
@@ -49,6 +49,18 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 ---
 
 ## Checkpoint log
+
+### CP-WS7-A — Interactive design preview (this delivery)
+
+| Question | Answer |
+|---|---|
+| **1. SC advanced?** | SC10 design path; frames for SC8/SC9 ownership clarity |
+| **2. Financial contract?** | C3 (no tax/currency codes on quotation form); C6 (connection does not author those codes); C1 per-line policy select; C2 IRR default message |
+| **3. Real tests run?** | N/A product tests; browser-servable static preview with mock data only |
+| **4. Still incomplete?** | Awaiting user appearance approval; WS7-B blocked |
+| **5. Next allowed step?** | User approve/amend/reject design; architect still must accept WS1 before WS2/Dev Apply |
+
+**Paths:** `docs/design/crm-129-goal-023-ws7a/index.html`, `DESIGN-DECISION.md`
 
 ### CP-WS1-R1 — IRR bootstrap / default authority (this delivery)
 

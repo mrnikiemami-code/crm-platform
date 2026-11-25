@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پیش‌نمایش طراحی — تنظیمات حسابداری و پیش‌فاکتور (GOAL-023 / WS7-A)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+:root {
+  --gray1: #fff; --gray2: #fcfcfc; --gray3: #f9f9f9; --gray4: #f1f1f1;
+  --gray5: #ebebeb; --gray6: #d6d6d6; --gray8: #b3b3b3; --gray9: #999;
+  --gray10: #838383; --gray11: #666; --gray12: #333;
+  --blue3: #edf2fe; --blue9: #3e63dd; --blue11: #3a5bc7;
+  --green3: #e6f6eb; --green11: #00824d;
+  --amber3: #fff7c2; --amber11: #ad6200;
+  --red3: #feebec; --red11: #ce2c31;
+  --page: var(--gray4); --surface: var(--gray1); --ink: var(--gray12);
+  --accent: var(--blue9); --r: 8px; --ctl: 32px;
+  --font: 'Vazirmatn', Tahoma, sans-serif;
+}
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--page); color: var(--ink);
+  font: 14px/1.7 var(--font); -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.side {
+  background: #1b1b1b; color: #ebebeb; padding: 20px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.brand { padding: 4px 10px 18px; }
+.brand strong { display: block; font-size: 15px; font-weight: 700; }
+.brand span { font-size: 11px; color: #999; }
+.nav-label {
+  margin: 14px 10px 6px; font-size: 11px; color: #818181;
+  letter-spacing: 0.02em;
+}
+.nav-btn {
+  appearance: none; border: 0; background: transparent; color: #b3b3b3;
+  text-align: right; padding: 8px 10px; border-radius: 6px; width: 100%;
+}
+.nav-btn:hover { background: #222; color: #fff; }
+.nav-btn.active { background: #2a2a2a; color: #fff; font-weight: 600; }
+.nav-btn.quote { margin-top: 8px; border: 1px solid #484848; }
+.main { padding: 20px 28px 40px; max-width: 1180px; }
+.banner {
+  background: var(--amber3); color: var(--amber11);
+  border: 1px solid #f0d978; border-radius: var(--r);
+  padding: 8px 12px; font-size: 12px; margin-bottom: 16px;
+}
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.page-head h1 { margin: 0; font-size: 20px; font-weight: 700; }
+.page-head p { margin: 4px 0 0; color: var(--gray11); font-size: 13px; }
+.panel {
+  background: var(--surface); border: 1px solid var(--gray5);
+  border-radius: var(--r); padding: 16px 18px; margin-bottom: 14px;
+}
+.panel h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.panel .hint { margin: 0 0 14px; color: var(--gray11); font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 160px; flex: 1; }
+.field label { font-size: 12px; color: var(--gray11); font-weight: 500; }
+.field input, .field select, .field textarea {
+  height: var(--ctl); border: 1px solid var(--gray6); border-radius: 6px;
+  padding: 0 10px; background: var(--gray1); color: var(--ink);
+}
+.field textarea { height: 72px; padding: 8px 10px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: 2px solid var(--blue3); border-color: var(--accent);
+}
+.field.narrow { flex: 0 0 140px; min-width: 120px; }
+.field.wide { flex: 2 1 280px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn {
+  height: var(--ctl); padding: 0 14px; border-radius: 6px;
+  border: 1px solid var(--gray6); background: var(--gray1); color: var(--ink);
+  font-weight: 500;
+}
+.btn:hover { background: var(--gray3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--blue11); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--blue11); }
+.btn.danger { color: var(--red11); border-color: #f3c4c6; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.seg {
+  display: inline-flex; border: 1px solid var(--gray6); border-radius: 6px; overflow: hidden;
+}
+.seg button {
+  height: 30px; padding: 0 12px; border: 0; background: var(--gray1); color: var(--gray11);
+  border-left: 1px solid var(--gray6);
+}
+.seg button:first-child { border-left: 0; }
+.seg button.on { background: var(--blue3); color: var(--blue11); font-weight: 600; }
+.table-wrap { overflow: auto; border: 1px solid var(--gray5); border-radius: 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--gray5); text-align: right; vertical-align: middle; }
+th { background: var(--gray3); color: var(--gray11); font-weight: 600; font-size: 12px; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tr:hover td { background: var(--gray2); }
+.money { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; direction: ltr; unicode-bidi: isolate; text-align: left; white-space: nowrap; }
+.badge {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+  border-radius: 999px; font-size: 11px; font-weight: 600;
+}
+.badge.ok { background: var(--green3); color: var(--green11); }
+.badge.warn { background: var(--amber3); color: var(--amber11); }
+.badge.mute { background: var(--gray4); color: var(--gray11); }
+.badge.lock { background: var(--blue3); color: var(--blue11); }
+.toast {
+  position: fixed; bottom: 20px; left: 20px; background: #1b1b1b; color: #fff;
+  padding: 10px 14px; border-radius: 8px; font-size: 13px; opacity: 0;
+  transform: translateY(8px); transition: .18s ease; pointer-events: none; z-index: 20;
+}
+.toast.show { opacity: 1; transform: none; }
+.hidden { display: none !important; }
+.summary {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 24px;
+  max-width: 320px; margin-right: auto; font-size: 13px;
+}
+.summary .money { font-weight: 600; }
+.summary .total { font-size: 15px; font-weight: 700; border-top: 1px solid var(--gray5); padding-top: 6px; margin-top: 4px; }
+.inline-note { font-size: 12px; color: var(--gray10); margin-top: 8px; }
+.cap-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.cap {
+  border: 1px solid var(--gray5); border-radius: 6px; padding: 8px 10px; background: var(--gray2);
+  font-size: 12px;
+}
+.cap strong { display: block; margin-bottom: 2px; }
+.line-tax select { min-width: 150px; height: 28px; }
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .side { flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 12px; }
+  .brand, .nav-label { width: 100%; }
+  .nav-btn { width: auto; }
+  .cap-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <strong>حسابداری CRM</strong>
+      <span>پیش‌نمایش آزمایشی · GOAL-023</span>
+    </div>
+    <div class="nav-label">تنظیمات حسابداری</div>
+    <button type="button" class="nav-btn active" data-view="connection">۱. اتصال</button>
+    <button type="button" class="nav-btn" data-view="items">۲. کالاها</button>
+    <button type="button" class="nav-btn" data-view="parties">۳. مشتریان</button>
+    <button type="button" class="nav-btn" data-view="tax">۴. مالیات و عوارض</button>
+    <button type="button" class="nav-btn" data-view="currency">۵. ارز</button>
+    <div class="nav-label">عملیات</div>
+    <button type="button" class="nav-btn quote" data-view="quotation">پیش‌فاکتور</button>
+  </aside>
+
+  <main class="main">
+    <div class="banner">
+      دادهٔ آزمایشی فقط — محصول واقعی تغییر نمی‌کند. کد حسابداری مالیات/ارز روی فرم پیش‌فاکتور نمایش داده نمی‌شود (C3).
+    </div>
+
+    <!-- 1. CONNECTION -->
+    <section id="view-connection">
+      <div class="page-head">
+        <div>
+          <h1>اتصال حسابداری</h1>
+          <p>Mock و آسان‌حساب یک فرم مشترک دارند؛ فقط قابلیت‌های آداپتر تغییر می‌کند.</p>
+        </div>
+        <div class="seg" role="group" aria-label="نوع اتصال">
+          <button type="button" id="adapter-mock" class="on">Mock</button>
+          <button type="button" id="adapter-asan">آسان‌حساب</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>پروفایل اتصال</h2>
+        <p class="hint" id="adapter-hint">محیط آزمایشی بدون فراخوانی واقعی. مناسب برای تمرین گردش‌کار.</p>
+        <div class="row">
+          <div class="field wide">
+            <label for="conn-name">نام نمایشی</label>
+            <input id="conn-name" value="اتصال آزمایشی انبار مرکزی">
+          </div>
+          <div class="field">
+            <label for="conn-env">محیط</label>
+            <select id="conn-env">
+              <option>آزمایشی</option>
+              <option>عملیاتی (غیرفعال در پیش‌نمایش)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field" id="field-base-url">
+            <label for="conn-url">آدرس پایه</label>
+            <input id="conn-url" value="https://mock.local/accounting">
+          </div>
+          <div class="field" id="field-api-key">
+            <label for="conn-key">کلید دسترسی</label>
+            <input id="conn-key" type="password" value="mock-preview-key">
+          </div>
+          <div class="field hidden" id="field-company">
+            <label for="conn-company">شناسه شرکت آسان</label>
+            <input id="conn-company" value="ASAN-DEMO-91">
+          </div>
+        </div>
+        <div class="cap-grid" id="cap-grid"></div>
+        <p class="inline-note">کد حسابداری مالیات و ارز در این صفحه تعریف نمی‌شود؛ مالکیت کد روی رکورد مرجع است (C6).</p>
+        <div class="actions" style="margin-top:14px">
+          <button type="button" class="btn primary" id="btn-save-conn">ذخیرهٔ پروفایل</button>
+          <button type="button" class="btn" id="btn-test-conn">آزمون اتصال</button>
+          <span class="badge mute" id="conn-status">قطع</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ITEMS -->
+    <section id="view-items" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>کالاها و خدمات</h1>
+          <p>کد حسابداری کالا روی خود رکورد کالا نگهداری می‌شود — جدا از شناسهٔ لینک فروشنده.</p>
+        </div>
+        <button type="button" class="btn primary" id="btn-add-item">کالای جدید</button>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>نام</th>
+                <th>واحد</th>
+                <th>قیمت پایه</th>
+                <th>کد حسابداری CRM</th>
+                <th>شناسه لینک فروشنده</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. PARTIES -->
+    <section id="view-parties" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>مشتریان</h1>
+          <p>کد حسابداری شخص/شرکت روی رکورد مرجع؛ شناسهٔ لینک فروشنده جداست.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>نام</th>
+                <th>نوع</th>
+                <th>کد حسابداری CRM</th>
+                <th>شناسه لینک فروشنده</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="parties-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. TAX -->
+    <section id="view-tax" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>مالیات و عوارض</h1>
+          <p>یک کد حسابداری اختیاری برای کل سیاست؛ نرخ مالیات و عوارض مستقل‌اند.</p>
+        </div>
+        <button type="button" class="btn primary" id="btn-add-tax">سیاست جدید</button>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>نام</th>
+                <th>مالیات</th>
+                <th>عوارض</th>
+                <th>کد حسابداری</th>
+                <th>وضعیت</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tax-body"></tbody>
+          </table>
+        </div>
+        <p class="inline-note">قفل کد پس از اولین اسنپ‌شات غیرخالی روی پیش‌فاکتور اعمال می‌شود (C4) — در این پیش‌نمایش فقط نمایشی است.</p>
+      </div>
+    </section>
+
+    <!-- 5. CURRENCY -->
+    <section id="view-currency" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>ارز</h1>
+          <p>فاز اول: فقط ریال ارز عملیاتی پیش‌فرض است. ارزهای دیگر بدون انتخاب خودکار غیرمنتظره.</p>
+        </div>
+        <button type="button" class="btn" id="btn-bootstrap-irr">راه‌اندازی / ترمیم ریال</button>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>کد</th>
+                <th>نام</th>
+                <th>کد حسابداری</th>
+                <th>فعال</th>
+                <th>پیش‌فرض</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="currency-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUOTATION -->
+    <section id="view-quotation" class="hidden">
+      <div class="page-head">
+        <div>
+          <h1>پیش‌فاکتور</h1>
+          <p>انتخاب سیاست مالیات در هر ردیف؛ بدون فیلد کد حسابداری مالیات یا ارز روی فرم.</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" id="btn-add-line">افزودن ردیف</button>
+          <button type="button" class="btn primary" id="btn-save-quote">ذخیرهٔ پیش‌نویس</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="row">
+          <div class="field wide">
+            <label for="q-party">مشتری</label>
+            <select id="q-party"></select>
+          </div>
+          <div class="field narrow">
+            <label for="q-currency">ارز سند</label>
+            <select id="q-currency" disabled></select>
+          </div>
+          <div class="field narrow">
+            <label for="q-number">شماره</label>
+            <input id="q-number" value="QT-1404-018" readonly>
+          </div>
+        </div>
+        <p class="inline-note">ارز سند از کاتالوگ به‌صورت ارث‌بری فاز۱ روی ریال قفل است. کدهای حسابداری از مراجع سرور در ذخیره اسنپ می‌شوند — اینجا دیده/ویرایش نمی‌شوند.</p>
+      </div>
+      <div class="panel">
+        <h2>ردیف‌ها</h2>
+        <p class="hint">هر ردیف سیاست مالیات مستقل دارد؛ پیش‌فرض سیاست فعال روی ردیف جدید اعمال می‌شود.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>کالا</th>
+                <th>تعداد</th>
+                <th>فی</th>
+                <th>تخفیف</th>
+                <th>سیاست مالیات</th>
+                <th>خالص ردیف</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lines-body"></tbody>
+          </table>
+        </div>
+        <div class="summary" id="quote-summary" style="margin-top:16px"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const state = {
+  adapter: 'mock',
+  connected: false,
+  items: [
+    { id: 'i1', name: 'مشاوره استقرار', unit: 'ساعت', price: 4500000, accountingCode: '4101', vendorLink: 'MOCK-ITEM-12' },
+    { id: 'i2', name: 'پشتیبانی ماهانه', unit: 'ماه', price: 18000000, accountingCode: '4102', vendorLink: '' },
+    { id: 'i3', name: 'آموزش کاربران', unit: 'جلسه', price: 9200000, accountingCode: '', vendorLink: 'ASAN-SKU-77' },
+  ],
+  parties: [
+    { id: 'p1', name: 'شرکت نوآوران داده', kind: 'شرکت', accountingCode: '1101', vendorLink: 'MOCK-PARTY-3' },
+    { id: 'p2', name: 'سارا محمدی', kind: 'شخص', accountingCode: '', vendorLink: '' },
+    { id: 'p3', name: 'بازرگانی سپهر', kind: 'شرکت', accountingCode: '1108', vendorLink: 'ASAN-C-441' },
+  ],
+  taxes: [
+    { id: 't1', name: 'ارزش‌افزوده ۹٪', taxBp: 900, dutyBp: 0, accountingCode: 'VAT-OUT', locked: true, active: true },
+    { id: 't2', name: 'معاف', taxBp: 0, dutyBp: 0, accountingCode: '', locked: false, active: true },
+    { id: 't3', name: 'مالیات+عوارض نمونه', taxBp: 900, dutyBp: 300, accountingCode: 'TAX-MIX', locked: false, active: false },
+  ],
+  currencies: [
+    { id: 'c1', code: 'IRR', name: 'ریال ایران', accountingCode: 'CUR-IRR', active: true, isDefault: true },
+    { id: 'c2', code: 'USD', name: 'دلار آمریکا', accountingCode: '', active: true, isDefault: false },
+  ],
+  lines: [
+    { id: 'l1', itemId: 'i1', qty: 8, unitPrice: 4500000, discount: 0, taxId: 't1' },
+    { id: 'l2', itemId: 'i2', qty: 1, unitPrice: 18000000, discount: 1000000, taxId: 't1' },
+  ],
+};
+
+const money = (n) => {
+  const v = Math.round(Number(n) || 0);
+  return new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 }).format(v) + ' ریال';
+};
+
+const pct = (bp) => (bp / 100).toLocaleString('fa-IR', { maximumFractionDigits: 2 }) + '٪';
+
+const toast = (msg) => {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2200);
+};
+
+const uid = (p) => p + Math.random().toString(36).slice(2, 7);
+
+function showView(name) {
+  document.querySelectorAll('main > section').forEach((s) => s.classList.add('hidden'));
+  document.getElementById('view-' + name).classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === name));
+}
+
+document.querySelectorAll('.nav-btn').forEach((btn) => {
+  btn.addEventListener('click', () => showView(btn.dataset.view));
+});
+
+/* ---- Connection shared form ---- */
+const caps = {
+  mock: [
+    ['ارسال پیش‌فاکتور', 'پشتیبانی می‌شود'],
+    ['چند سیاست مالیات', 'شبیه‌سازی شده'],
+    ['کد خاص ردیف آسان', 'ندارد'],
+  ],
+  asan: [
+    ['ارسال پیش‌فاکتور', 'پشتیبانی می‌شود'],
+    ['چند سیاست مالیات', 'مسدود تا اثبات آداپتر'],
+    ['کد خاص ردیف آسان', 'فقط مسیر آسان'],
+  ],
+};
+
+function renderCaps() {
+  const grid = document.getElementById('cap-grid');
+  grid.innerHTML = caps[state.adapter].map(([k, v]) =>
+    `<div class="cap"><strong>${k}</strong>${v}</div>`
+  ).join('');
+  const asan = state.adapter === 'asan';
+  document.getElementById('adapter-hint').textContent = asan
+    ? 'فرم مشترک با Mock؛ فیلدهای اختصاصی آسان فقط وقتی آداپتر آسان است نمایان می‌شوند. فراخوانی واقعی انجام نمی‌شود.'
+    : 'محیط آزمایشی بدون فراخوانی واقعی. مناسب برای تمرین گردش‌کار.';
+  document.getElementById('field-company').classList.toggle('hidden', !asan);
+  document.getElementById('conn-url').value = asan
+    ? 'https://api.asanhesab.example/v1'
+    : 'https://mock.local/accounting';
+  document.getElementById('adapter-mock').classList.toggle('on', !asan);
+  document.getElementById('adapter-asan').classList.toggle('on', asan);
+}
+
+document.getElementById('adapter-mock').onclick = () => { state.adapter = 'mock'; renderCaps(); };
+document.getElementById('adapter-asan').onclick = () => { state.adapter = 'asan'; renderCaps(); };
+document.getElementById('btn-save-conn').onclick = () => toast('پروفایل اتصال ذخیره شد (آزمایشی)');
+document.getElementById('btn-test-conn').onclick = () => {
+  state.connected = true;
+  document.getElementById('conn-status').textContent = 'متصل · ' + (state.adapter === 'asan' ? 'آسان' : 'Mock');
+  document.getElementById('conn-status').className = 'badge ok';
+  toast('آزمون اتصال موفق (شبیه‌سازی)');
+};
+
+/* ---- Items / parties ---- */
+function renderItems() {
+  document.getElementById('items-body').innerHTML = state.items.map((it) => `
+    <tr>
+      <td>${it.name}</td>
+      <td>${it.unit}</td>
+      <td class="money">${money(it.price)}</td>
+      <td><input data-item-code="${it.id}" value="${it.accountingCode}" style="height:28px;width:110px;border:1px solid var(--gray6);border-radius:4px;padding:0 8px"></td>
+      <td>${it.vendorLink || '—'}</td>
+      <td><button type="button" class="btn ghost" data-save-item="${it.id}">ذخیره</button></td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-save-item]').forEach((b) => {
+    b.onclick = () => {
+      const it = state.items.find((x) => x.id === b.dataset.saveItem);
+      it.accountingCode = document.querySelector(`[data-item-code="${it.id}"]`).value.trim();
+      toast('کد حسابداری کالا ذخیره شد');
+    };
+  });
+}
+
+document.getElementById('btn-add-item').onclick = () => {
+  state.items.push({
+    id: uid('i'), name: 'کالای جدید', unit: 'عدد', price: 1000000,
+    accountingCode: '', vendorLink: '',
+  });
+  renderItems();
+  renderQuoteMeta();
+  toast('کالا افزوده شد');
+};
+
+function renderParties() {
+  document.getElementById('parties-body').innerHTML = state.parties.map((p) => `
+    <tr>
+      <td>${p.name}</td>
+      <td>${p.kind}</td>
+      <td><input data-party-code="${p.id}" value="${p.accountingCode}" style="height:28px;width:110px;border:1px solid var(--gray6);border-radius:4px;padding:0 8px"></td>
+      <td>${p.vendorLink || '—'}</td>
+      <td><button type="button" class="btn ghost" data-save-party="${p.id}">ذخیره</button></td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-save-party]').forEach((b) => {
+    b.onclick = () => {
+      const p = state.parties.find((x) => x.id === b.dataset.saveParty);
+      p.accountingCode = document.querySelector(`[data-party-code="${p.id}"]`).value.trim();
+      toast('کد حسابداری مشتری ذخیره شد');
+    };
+  });
+}
+
+/* ---- Tax ---- */
+function renderTax() {
+  document.getElementById('tax-body').innerHTML = state.taxes.map((t) => `
+    <tr>
+      <td>${t.name}</td>
+      <td>${pct(t.taxBp)}</td>
+      <td>${pct(t.dutyBp)}</td>
+      <td>
+        <input data-tax-code="${t.id}" value="${t.accountingCode}" ${t.locked ? 'readonly' : ''}
+          style="height:28px;width:120px;border:1px solid var(--gray6);border-radius:4px;padding:0 8px;background:${t.locked ? 'var(--gray3)' : 'var(--gray1)'}">
+        ${t.locked ? '<span class="badge lock" style="margin-right:6px">قفل</span>' : ''}
+      </td>
+      <td>${t.active ? '<span class="badge ok">فعال</span>' : '<span class="badge mute">غیرفعال</span>'}</td>
+      <td><button type="button" class="btn ghost" data-save-tax="${t.id}" ${t.locked ? 'disabled' : ''}>ذخیره کد</button></td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-save-tax]').forEach((b) => {
+    b.onclick = () => {
+      const t = state.taxes.find((x) => x.id === b.dataset.saveTax);
+      if (t.locked) return;
+      t.accountingCode = document.querySelector(`[data-tax-code="${t.id}"]`).value.trim();
+      toast('کد حسابداری سیاست ذخیره شد');
+    };
+  });
+}
+
+document.getElementById('btn-add-tax').onclick = () => {
+  state.taxes.push({
+    id: uid('t'), name: 'سیاست جدید', taxBp: 900, dutyBp: 0,
+    accountingCode: '', locked: false, active: true,
+  });
+  renderTax();
+  renderLines();
+  toast('سیاست افزوده شد');
+};
+
+/* ---- Currency ---- */
+function renderCurrency() {
+  document.getElementById('currency-body').innerHTML = state.currencies.map((c) => `
+    <tr>
+      <td><strong>${c.code}</strong></td>
+      <td>${c.name}</td>
+      <td><input data-cur-code="${c.id}" value="${c.accountingCode}" style="height:28px;width:120px;border:1px solid var(--gray6);border-radius:4px;padding:0 8px"></td>
+      <td>${c.active ? 'بله' : 'خیر'}</td>
+      <td>${c.isDefault ? '<span class="badge ok">پیش‌فرض</span>' : '—'}</td>
+      <td class="actions">
+        <button type="button" class="btn ghost" data-save-cur="${c.id}">ذخیره کد</button>
+        <button type="button" class="btn" data-default-cur="${c.id}" ${c.code !== 'IRR' ? '' : 'disabled'}>
+          ${c.code === 'IRR' ? 'پیش‌فرض فاز۱' : 'تعیین پیش‌فرض'}
+        </button>
+      </td>
+    </tr>`).join('');
+  document.querySelectorAll('[data-save-cur]').forEach((b) => {
+    b.onclick = () => {
+      const c = state.currencies.find((x) => x.id === b.dataset.saveCur);
+      c.accountingCode = document.querySelector(`[data-cur-code="${c.id}"]`).value.trim();
+      toast('کد حسابداری ارز ذخیره شد');
+    };
+  });
+  document.querySelectorAll('[data-default-cur]').forEach((b) => {
+    b.onclick = () => {
+      const c = state.currencies.find((x) => x.id === b.dataset.defaultCur);
+      if (c.code !== 'IRR') {
+        toast('در فاز اول فقط ریال می‌تواند ارز پیش‌فرض باشد');
+        return;
+      }
+      state.currencies.forEach((x) => { x.isDefault = x.code === 'IRR'; });
+      renderCurrency();
+      renderQuoteMeta();
+      toast('ریال به‌عنوان پیش‌فرض تأیید شد');
+    };
+  });
+}
+
+document.getElementById('btn-bootstrap-irr').onclick = () => {
+  const irr = state.currencies.find((c) => c.code === 'IRR');
+  if (!irr) {
+    state.currencies.unshift({
+      id: uid('c'), code: 'IRR', name: 'ریال ایران',
+      accountingCode: '', active: true, isDefault: true,
+    });
+  }
+  state.currencies.forEach((c) => {
+    c.isDefault = c.code === 'IRR';
+    if (c.code === 'IRR') c.active = true;
+  });
+  renderCurrency();
+  renderQuoteMeta();
+  toast('ریال راه‌اندازی / ترمیم شد');
+};
+
+/* ---- Quotation (no tax/currency accounting codes on form) ---- */
+function defaultTaxId() {
+  return state.taxes.find((t) => t.active)?.id || state.taxes[0]?.id;
+}
+
+function lineNet(line) {
+  const base = line.qty * line.unitPrice - line.discount;
+  const tax = state.taxes.find((t) => t.id === line.taxId);
+  const rate = tax ? (tax.taxBp + tax.dutyBp) / 10000 : 0;
+  return Math.round(base * (1 + rate));
+}
+
+function renderQuoteMeta() {
+  const partySel = document.getElementById('q-party');
+  const curSel = document.getElementById('q-currency');
+  const partyVal = partySel.value;
+  partySel.innerHTML = state.parties.map((p) =>
+    `<option value="${p.id}">${p.name}</option>`
+  ).join('');
+  if (partyVal) partySel.value = partyVal;
+  const irr = state.currencies.find((c) => c.code === 'IRR' && c.isDefault) || state.currencies.find((c) => c.code === 'IRR');
+  curSel.innerHTML = irr
+    ? `<option value="${irr.id}">${irr.code} — ${irr.name}</option>`
+    : '<option>ریال در دسترس نیست</option>';
+}
+
+function renderLines() {
+  const taxOptions = state.taxes.filter((t) => t.active).map((t) =>
+    `<option value="${t.id}">${t.name}</option>`
+  ).join('');
+  const itemOptions = state.items.map((i) =>
+    `<option value="${i.id}">${i.name}</option>`
+  ).join('');
+
+  document.getElementById('lines-body').innerHTML = state.lines.map((line) => `
+    <tr>
+      <td><select data-line-item="${line.id}">${itemOptions}</select></td>
+      <td><input data-line-qty="${line.id}" type="number" min="1" value="${line.qty}" style="width:72px;height:28px;border:1px solid var(--gray6);border-radius:4px;padding:0 6px"></td>
+      <td><input data-line-price="${line.id}" type="number" min="0" step="1" value="${line.unitPrice}" style="width:110px;height:28px;border:1px solid var(--gray6);border-radius:4px;padding:0 6px"></td>
+      <td><input data-line-disc="${line.id}" type="number" min="0" step="1" value="${line.discount}" style="width:100px;height:28px;border:1px solid var(--gray6);border-radius:4px;padding:0 6px"></td>
+      <td class="line-tax"><select data-line-tax="${line.id}">${taxOptions}</select></td>
+      <td class="money" data-line-net="${line.id}">${money(lineNet(line))}</td>
+      <td><button type="button" class="btn danger" data-del-line="${line.id}">حذف</button></td>
+    </tr>`).join('');
+
+  state.lines.forEach((line) => {
+    const itemEl = document.querySelector(`[data-line-item="${line.id}"]`);
+    const taxEl = document.querySelector(`[data-line-tax="${line.id}"]`);
+    itemEl.value = line.itemId;
+    taxEl.value = line.taxId;
+    itemEl.onchange = () => {
+      line.itemId = itemEl.value;
+      const item = state.items.find((i) => i.id === line.itemId);
+      if (item) {
+        line.unitPrice = item.price;
+        document.querySelector(`[data-line-price="${line.id}"]`).value = item.price;
+      }
+      refreshLine(line.id);
+    };
+    taxEl.onchange = () => { line.taxId = taxEl.value; refreshLine(line.id); };
+    ['qty', 'price', 'disc'].forEach((k) => {
+      const map = { qty: 'qty', price: 'unitPrice', disc: 'discount' };
+      const el = document.querySelector(`[data-line-${k === 'price' ? 'price' : k === 'disc' ? 'disc' : 'qty'}="${line.id}"]`);
+      el.oninput = () => {
+        line[map[k]] = Math.max(0, Math.round(Number(el.value) || 0));
+        refreshLine(line.id);
+      };
+    });
+    document.querySelector(`[data-del-line="${line.id}"]`).onclick = () => {
+      state.lines = state.lines.filter((l) => l.id !== line.id);
+      renderLines();
+    };
+  });
+  renderSummary();
+}
+
+function refreshLine(id) {
+  const line = state.lines.find((l) => l.id === id);
+  document.querySelector(`[data-line-net="${id}"]`).textContent = money(lineNet(line));
+  renderSummary();
+}
+
+function renderSummary() {
+  let sub = 0;
+  let taxAmt = 0;
+  state.lines.forEach((line) => {
+    const base = line.qty * line.unitPrice - line.discount;
+    const tax = state.taxes.find((t) => t.id === line.taxId);
+    const rate = tax ? (tax.taxBp + tax.dutyBp) / 10000 : 0;
+    sub += base;
+    taxAmt += Math.round(base * rate);
+  });
+  document.getElementById('quote-summary').innerHTML = `
+    <span>جمع قبل از مالیات</span><span class="money">${money(sub)}</span>
+    <span>مالیات و عوارض ردیف‌ها</span><span class="money">${money(taxAmt)}</span>
+    <span class="total">مبلغ قابل پرداخت</span><span class="money total">${money(sub + taxAmt)}</span>
+  `;
+}
+
+document.getElementById('btn-add-line').onclick = () => {
+  const item = state.items[0];
+  state.lines.push({
+    id: uid('l'), itemId: item.id, qty: 1,
+    unitPrice: item.price, discount: 0, taxId: defaultTaxId(),
+  });
+  renderLines();
+};
+
+document.getElementById('btn-save-quote').onclick = () => {
+  toast('پیش‌نویس ذخیره شد — کدهای حسابداری از مراجع اسنپ شدند (نمایش داده نشدند)');
+};
+
+renderCaps();
+renderItems();
+renderParties();
+renderTax();
+renderCurrency();
+renderQuoteMeta();
+renderLines();
+</script>
+</body>
+</html>
