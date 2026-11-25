@@ -47,8 +47,19 @@ const readRows = (data: Record<string, unknown>): CurrencyRow[] => {
   });
 };
 
-// Minimal phase-1 currency catalog UI: bootstrap IRR, edit optional accounting
-// code. No quotation draft fields here (C3).
+const toast = (
+  message: string,
+  variant: 'success' | 'error' | 'warning',
+  dedupeKey: string,
+) => {
+  if (message.trim() === '') {
+    return;
+  }
+
+  void enqueueSnackbar({ message, variant, dedupeKey });
+};
+
+// Phase-1: IRR operational currency only — compact card, accounting code edit.
 export const QuotationCurrencySettingsSection = ({
   alwaysOpen = false,
 }: QuotationCurrencySettingsSectionProps) => {
@@ -57,6 +68,7 @@ export const QuotationCurrencySettingsSection = ({
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draftCodes, setDraftCodes] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const applyPayload = useCallback((data: Record<string, unknown>) => {
     const next = readRows(data);
@@ -66,10 +78,14 @@ export const QuotationCurrencySettingsSection = ({
         next.map((row) => [row.recordId, row.accountingCode]),
       ),
     );
+    setFieldErrors({});
   }, []);
 
   const runAction = useCallback(
-    async (body: Record<string, unknown>, successMessage: string) => {
+    async (
+      body: Record<string, unknown>,
+      successMessage: string,
+    ): Promise<string | null> => {
       setBusy(true);
       setLoadError(null);
 
@@ -83,19 +99,23 @@ export const QuotationCurrencySettingsSection = ({
             'عملیات ارز ناموفق بود',
           );
           setLoadError(message);
-          enqueueSnackbar(message, { variant: 'error' });
+          toast(message, 'error', `currency-error:${String(body.action)}`);
 
-          return;
+          return message;
         }
 
         applyPayload(data);
         if (body.action !== 'list') {
-          enqueueSnackbar(successMessage, { variant: 'success' });
+          toast(successMessage, 'success', `currency-ok:${String(body.action)}`);
         }
+
+        return null;
       } catch {
         const message = 'ارتباط با سرور برقرار نشد';
         setLoadError(message);
-        enqueueSnackbar(message, { variant: 'error' });
+        toast(message, 'error', 'currency-network');
+
+        return message;
       } finally {
         setBusy(false);
       }
@@ -103,8 +123,6 @@ export const QuotationCurrencySettingsSection = ({
     [applyPayload],
   );
 
-  // Open on demand so the tax-panel test surface stays isolated from currency
-  // fetches (same page, separate concern until WS7 redesign).
   useEffect(() => {
     if (!opened) {
       return;
@@ -113,8 +131,38 @@ export const QuotationCurrencySettingsSection = ({
     void runAction({ action: 'list' }, 'فهرست ارز خوانده شد');
   }, [opened, runAction]);
 
+  const onSaveCode = async (row: CurrencyRow) => {
+    const nextCode = draftCodes[row.recordId] ?? '';
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next[row.recordId];
+
+      return next;
+    });
+
+    const failure = await runAction(
+      {
+        action: 'save',
+        recordId: row.recordId,
+        name: row.name,
+        accountingCodeText: nextCode,
+        isActive: row.isActive,
+        isDefault: row.isDefault,
+      },
+      'کد حسابداری ذخیره شد',
+    );
+
+    if (failure !== null) {
+      setFieldErrors((current) => ({
+        ...current,
+        [row.recordId]: failure,
+      }));
+    }
+  };
+
   return (
     <section
+      className="currency-section"
       aria-labelledby="quotation-currency-heading"
       style={
         alwaysOpen
@@ -125,34 +173,13 @@ export const QuotationCurrencySettingsSection = ({
               borderTop: '1px solid var(--t-color-gray4)',
             }
       }
+      dir="rtl"
     >
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          alignItems: 'flex-start',
-          marginBottom: 12,
-        }}
-      >
-        <div>
-          <h2
-            id="quotation-currency-heading"
-            style={{ margin: 0, fontSize: 16, fontWeight: 700 }}
-          >
-            ارزهای فضای کاری
-          </h2>
-          <p
-            style={{
-              margin: '6px 0 0',
-              fontSize: 13,
-              color: 'var(--t-color-gray10)',
-            }}
-          >
-            فاز اول فقط ریال برای مبالغ عملیاتی. کد حسابداری اختیاری است و در
-            فرم پیش‌فاکتور تایپ نمی‌شود.
-          </p>
-        </div>
+      <style>{CURRENCY_CSS}</style>
+      <header className="currency-head">
+        <h2 id="quotation-currency-heading" className="currency-title">
+          ارزهای فضای کاری
+        </h2>
         {opened ? (
           <button
             type="button"
@@ -176,94 +203,138 @@ export const QuotationCurrencySettingsSection = ({
       </header>
 
       {opened || alwaysOpen ? null : (
-        <p style={{ fontSize: 13, color: 'var(--t-color-gray10)', margin: 0 }}>
-          برای راه‌اندازی ریال و ویرایش کد حسابداری ارز، «مدیریت ارزها» را باز
-          کنید.
-        </p>
+        <p className="currency-hint">برای ویرایش کد حسابداری ریال باز کنید.</p>
       )}
 
       {opened ? (
         <>
+          {loadError === null ? null : (
+            <p role="alert" className="currency-error">
+              {loadError}
+            </p>
+          )}
 
-      {loadError === null ? null : (
-        <p role="alert" style={{ color: 'var(--t-color-red11)', fontSize: 13 }}>
-          {loadError}
-        </p>
-      )}
-
-      {rows.length === 0 ? (
-        <p style={{ fontSize: 14, color: 'var(--t-color-gray11)' }}>
-          هنوز ارزی ثبت نشده. «راه‌اندازی ریال» را بزنید.
-        </p>
-      ) : (
-        <ul
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
-            display: 'grid',
-            gap: 10,
-          }}
-        >
-          {rows.map((row) => (
-            <li
-              key={row.recordId}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '88px 1fr 180px auto',
-                gap: 10,
-                alignItems: 'center',
-                padding: '10px 12px',
-                border: '1px solid var(--t-color-gray4)',
-                borderRadius: 8,
-              }}
-            >
-              <strong dir="ltr">{row.code}</strong>
-              <span>
-                {row.name}
-                {row.isDefault ? ' · پیش‌فرض' : ''}
-                {row.isActive ? '' : ' · غیرفعال'}
-              </span>
-              <input
-                aria-label={`کد حسابداری ${row.code}`}
-                value={draftCodes[row.recordId] ?? ''}
-                dir="ltr"
-                maxLength={64}
-                placeholder="کد حسابداری"
-                disabled={busy}
-                onChange={(event) =>
-                  setDraftCodes((current) => ({
-                    ...current,
-                    [row.recordId]: event.target.value,
-                  }))
-                }
-              />
-              <button
-                type="button"
-                className="tax-btn tax-btn-primary"
-                disabled={busy}
-                onClick={() =>
-                  void runAction(
-                    {
-                      action: 'save',
-                      recordId: row.recordId,
-                      name: row.name,
-                      accountingCodeText: draftCodes[row.recordId] ?? '',
-                      isActive: row.isActive,
-                      isDefault: row.isDefault,
-                    },
-                    'ارز ذخیره شد',
-                  )
-                }
-              >
-                ذخیره کد
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+          {rows.length === 0 ? (
+            <p className="currency-empty">
+              هنوز ارزی ثبت نشده. «راه‌اندازی ریال» را بزنید.
+            </p>
+          ) : (
+            <ul className="currency-list">
+              {rows.map((row) => (
+                <li key={row.recordId} className="currency-card">
+                  <div className="currency-card-main">
+                    <strong dir="ltr">{row.code}</strong>
+                    <span>{row.name}</span>
+                    <span className="currency-badge">
+                      {row.isDefault ? 'پیش‌فرض' : ''}
+                      {row.isActive ? '' : 'غیرفعال'}
+                    </span>
+                  </div>
+                  <label className="currency-field">
+                    کد حسابداری
+                    <input
+                      aria-label={`کد حسابداری ${row.code}`}
+                      value={draftCodes[row.recordId] ?? ''}
+                      dir="ltr"
+                      maxLength={64}
+                      placeholder="اختیاری"
+                      disabled={busy}
+                      onChange={(event) =>
+                        setDraftCodes((current) => ({
+                          ...current,
+                          [row.recordId]: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  {fieldErrors[row.recordId] ? (
+                    <p role="alert" className="currency-field-error">
+                      {fieldErrors[row.recordId]}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="tax-btn tax-btn-primary"
+                    disabled={busy}
+                    onClick={() => void onSaveCode(row)}
+                  >
+                    ذخیره
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       ) : null}
     </section>
   );
 };
+
+const CURRENCY_CSS = `
+.currency-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.currency-title { margin: 0; font-size: 16px; font-weight: 700; }
+.currency-hint, .currency-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--t-color-gray10);
+}
+.currency-error, .currency-field-error {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--t-color-red11);
+}
+.currency-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  max-width: 520px;
+}
+.currency-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--t-color-gray4);
+  border-radius: 10px;
+  background: var(--t-color-gray1);
+}
+.currency-card-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.currency-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-blue11);
+}
+.currency-field {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t-color-gray11);
+}
+.currency-field input {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: 8px;
+  background: var(--t-color-gray1);
+  color: var(--t-color-gray12);
+  font: inherit;
+}
+@media (max-width: 720px) {
+  .currency-head { flex-direction: column; align-items: stretch; }
+  .currency-field input { height: 44px; }
+  .currency-card .tax-btn { min-height: 44px; }
+}
+`;

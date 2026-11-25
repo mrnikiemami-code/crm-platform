@@ -9,6 +9,7 @@ import { enqueueSnackbar } from 'twenty-sdk/front-component';
 import { callTaxPoliciesNestAction } from 'src/components/quotation-api';
 import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
 import { RoundingRuleSettingsSection } from 'src/components/rounding-rule-settings-section';
+import { confirmDestructiveAction } from 'src/components/shared/confirm-destructive-action';
 import {
   formatExactDecimalForPeople,
   toPersianDigits,
@@ -181,25 +182,16 @@ const combinedIssue = (taxText: string, dutyText: string): string | null => {
 const canDeleteRow = (row: TaxPolicyRow): boolean =>
   !row.isDefault && row.quotationCount === 0;
 
-const usageShort = (row: TaxPolicyRow): string => {
-  if (row.quotationCount === 0) {
-    return 'بدون سند';
-  }
-
-  return `${toPersianDigits(String(row.quotationCount))} سند`;
-};
-
 const usageLine = (row: TaxPolicyRow): string => {
-  const count =
-    row.quotationCount === 0
-      ? 'در هیچ سندی استفاده نشده است'
-      : `در ${toPersianDigits(String(row.quotationCount))} سند استفاده شده است`;
-
   if (row.isDefault) {
-    return `${count}؛ سیاست پیش‌فرض غیرفعال یا حذف نمی‌شود.`;
+    return 'پیش‌فرض — حذف یا غیرفعال نمی‌شود';
   }
 
-  return row.quotationCount === 0 ? count : `${count}؛ حذف‌شدنی نیست.`;
+  if (row.quotationCount === 0) {
+    return 'بدون سند وابسته';
+  }
+
+  return `${toPersianDigits(String(row.quotationCount))} سند وابسته`;
 };
 
 type SettingsTab = 'tax' | 'currencies' | 'rounding';
@@ -221,9 +213,8 @@ export const TaxPolicySettingsPanel = () => {
     kind: 'notice' | 'error';
     message: string;
   } | null>(null);
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(
-    null,
-  );
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  const [openMoreRecordId, setOpenMoreRecordId] = useState<string | null>(null);
   const [editorBaseline, setEditorBaseline] = useState<EditorState | null>(
     null,
   );
@@ -254,7 +245,6 @@ export const TaxPolicySettingsPanel = () => {
   const closeEditor = () => {
     updateEditor(null);
     setEditorBaseline(null);
-    setConfirmingDeleteId(null);
   };
 
   const openEditor = (next: EditorState | null) => {
@@ -278,8 +268,8 @@ export const TaxPolicySettingsPanel = () => {
       return;
     }
 
-    setConfirmingDeleteId(null);
     setRowIssue(null);
+    setOpenMoreRecordId(null);
     setEditorBaseline(next);
     updateEditor(next);
   };
@@ -310,10 +300,15 @@ export const TaxPolicySettingsPanel = () => {
             })),
       );
       setError(null);
-      enqueueSnackbar({
-        message: toPersianUiMessage(data.message, fallbackMessage),
-        variant: 'success',
-      });
+      const successMessage = toPersianUiMessage(data.message, fallbackMessage);
+
+      if (successMessage.trim() !== '') {
+        void enqueueSnackbar({
+          message: successMessage,
+          variant: 'success',
+          dedupeKey: `tax-success:${successMessage}`,
+        });
+      }
 
       return null;
     },
@@ -323,7 +318,7 @@ export const TaxPolicySettingsPanel = () => {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setConfirmingDeleteId(null);
+    setOpenMoreRecordId(null);
 
     try {
       const response = await callTaxPoliciesNestAction({
@@ -440,7 +435,7 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onSetDefault = async (row: TaxPolicyRow) => {
-    setConfirmingDeleteId(null);
+    setOpenMoreRecordId(null);
     setRowIssue(null);
 
     const failure = await runAction(
@@ -455,7 +450,7 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onDeactivate = async (row: TaxPolicyRow) => {
-    setConfirmingDeleteId(null);
+    setOpenMoreRecordId(null);
     setRowIssue(null);
 
     const failure = await runAction(
@@ -469,7 +464,7 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onActivate = async (row: TaxPolicyRow) => {
-    setConfirmingDeleteId(null);
+    setOpenMoreRecordId(null);
     setRowIssue(null);
 
     const failure = await runAction(
@@ -490,38 +485,67 @@ export const TaxPolicySettingsPanel = () => {
     }
   };
 
-  const onDelete = async (row: TaxPolicyRow) => {
+  const requestDelete = async (row: TaxPolicyRow) => {
     setRowIssue(null);
+    setOpenMoreRecordId(null);
 
-    if (confirmingDeleteId !== row.recordId) {
-      setConfirmingDeleteId(row.recordId);
-      return;
-    }
-
-    const failure = await runAction(
-      { action: 'delete', recordId: row.recordId },
-      'سیاست مالیات حذف شد',
-    );
-
-    setConfirmingDeleteId(null);
-
-    if (failure !== null) {
-      setRowIssue({ recordId: row.recordId, kind: 'error', message: failure });
-      return;
-    }
-
-    if (editor?.recordId === row.recordId) {
-      closeEditor();
-    }
-  };
-
-  const requestDelete = (row: TaxPolicyRow) => {
     if (!canDeleteRow(row)) {
+      const reason = row.isDefault
+        ? 'سیاست پیش‌فرض را نمی‌توان حذف کرد'
+        : 'این سیاست در سند استفاده شده و حذف نمی‌شود';
+      void enqueueSnackbar({
+        message: reason,
+        variant: 'warning',
+        dedupeKey: `tax-delete-blocked:${row.recordId}`,
+      });
+
       return;
     }
 
-    openEditor(editorFor(row));
-    setConfirmingDeleteId(row.recordId);
+    if (deletingRecordId !== null) {
+      return;
+    }
+
+    const nameText = displayPolicyName(row.name);
+    const confirmation = await confirmDestructiveAction({
+      title: 'حذف سیاست مالیات',
+      subtitle: `آیا سیاست «${nameText}» حذف شود؟ این عملیات قابل بازگشت نیست.`,
+      confirmButtonText: 'حذف سیاست',
+    });
+
+    if (confirmation !== 'confirm') {
+      return;
+    }
+
+    setDeletingRecordId(row.recordId);
+
+    try {
+      const failure = await runAction(
+        { action: 'delete', recordId: row.recordId },
+        'سیاست مالیات حذف شد',
+      );
+
+      if (failure !== null) {
+        setRowIssue({
+          recordId: row.recordId,
+          kind: 'error',
+          message: failure,
+        });
+        void enqueueSnackbar({
+          message: failure,
+          variant: 'error',
+          dedupeKey: `tax-delete-error:${row.recordId}`,
+        });
+
+        return;
+      }
+
+      if (editor?.recordId === row.recordId) {
+        closeEditor();
+      }
+    } finally {
+      setDeletingRecordId(null);
+    }
   };
 
   const onBootstrap = async () => {
@@ -556,9 +580,8 @@ export const TaxPolicySettingsPanel = () => {
   const renderRowActions = (row: TaxPolicyRow) => {
     const nameText = displayPolicyName(row.name);
     const selected = editor?.recordId === row.recordId;
-    // While the inspector is open the ledger is narrower; keep only the two
-    // actions that belong on every row and leave lifecycle controls in the inspector.
-    const showLifecycle = editor === null;
+    const moreOpen = openMoreRecordId === row.recordId;
+    const deleteBusy = deletingRecordId === row.recordId;
 
     return (
       <div
@@ -571,62 +594,93 @@ export const TaxPolicySettingsPanel = () => {
           aria-label={`ویرایش — ${nameText}`}
           aria-expanded={selected ? 'true' : 'false'}
           aria-controls="tax-inspector"
-          disabled={busy}
+          disabled={busy || deletingRecordId !== null}
           onClick={() =>
             selected ? closeEditor() : openEditor(editorFor(row))
           }
         >
           {selected ? 'بستن' : 'ویرایش'}
         </button>
-        {showLifecycle && row.isActive && !row.isDefault ? (
+        <div className="tax-more">
           <button
             type="button"
             className="tax-btn"
-            aria-label={`پیش‌فرض — ${nameText}`}
-            disabled={busy}
-            onClick={() => void onSetDefault(row)}
+            aria-label={`عملیات بیشتر — ${nameText}`}
+            aria-expanded={moreOpen ? 'true' : 'false'}
+            disabled={busy || deletingRecordId !== null}
+            onClick={() =>
+              setOpenMoreRecordId(moreOpen ? null : row.recordId)
+            }
           >
-            پیش‌فرض
+            بیشتر
           </button>
-        ) : null}
-        {showLifecycle ? (
-          row.isActive ? (
-            <button
-              type="button"
-              className="tax-btn"
-              aria-label={`غیرفعال‌سازی — ${nameText}`}
-              disabled={busy || row.isDefault}
-              title={
-                row.isDefault ? 'پیش‌فرض را نمی‌توان غیرفعال کرد' : undefined
-              }
-              onClick={() => void onDeactivate(row)}
-            >
-              غیرفعال
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="tax-btn"
-              aria-label={`فعال‌سازی — ${nameText}`}
-              disabled={busy}
-              onClick={() => void onActivate(row)}
-            >
-              فعال
-            </button>
-          )
-        ) : null}
-        <button
-          type="button"
-          className="tax-btn tax-btn-danger"
-          aria-label={`حذف — ${nameText}`}
-          disabled={busy || !canDeleteRow(row)}
-          title={
-            canDeleteRow(row) ? undefined : 'به‌دلیل وابستگی قابل حذف نیست'
-          }
-          onClick={() => requestDelete(row)}
-        >
-          حذف
-        </button>
+          {moreOpen ? (
+            <div className="tax-more-menu" role="menu">
+              {row.isActive && !row.isDefault ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="tax-more-item"
+                  disabled={busy}
+                  onClick={() => {
+                    setOpenMoreRecordId(null);
+                    void onSetDefault(row);
+                  }}
+                >
+                  پیش‌فرض
+                </button>
+              ) : null}
+              {row.isActive ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="tax-more-item"
+                  disabled={busy || row.isDefault}
+                  title={
+                    row.isDefault
+                      ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
+                      : undefined
+                  }
+                  onClick={() => {
+                    setOpenMoreRecordId(null);
+                    void onDeactivate(row);
+                  }}
+                >
+                  غیرفعال
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="tax-more-item"
+                  disabled={busy}
+                  onClick={() => {
+                    setOpenMoreRecordId(null);
+                    void onActivate(row);
+                  }}
+                >
+                  فعال
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                className="tax-more-item tax-more-item-danger"
+                disabled={busy || deleteBusy || !canDeleteRow(row)}
+                title={
+                  canDeleteRow(row)
+                    ? undefined
+                    : row.isDefault
+                      ? 'سیاست پیش‌فرض حذف نمی‌شود'
+                      : 'به‌دلیل استفاده در سند حذف نمی‌شود'
+                }
+                onClick={() => void requestDelete(row)}
+              >
+                {deleteBusy ? 'در حال حذف…' : 'حذف'}
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   };
@@ -638,10 +692,6 @@ export const TaxPolicySettingsPanel = () => {
       <header className="tax-page-head">
         <div>
           <h2 style={styles.title}>پیش‌نیازهای حسابداری</h2>
-          <p style={styles.subtitle}>
-            مالیات و عوارض، ارز عملیاتی، و قواعد رُند مبلغ نهایی — یک صفحه برای
-            تصمیم‌های مالی فضای کاری، بدون تغییر اسناد مهرشده.
-          </p>
         </div>
         {activeTab === 'tax' && rows.length > 0 && error === null ? (
           <button
@@ -706,22 +756,16 @@ export const TaxPolicySettingsPanel = () => {
       error !== null ||
       defaultRow === null ? null : (
         <section className="tax-default-banner" aria-label="سیاست پیش‌فرض فعال">
-          <div className="tax-default-mark" aria-hidden="true">
-            ٪
-          </div>
           <div>
             <strong>
-              پیش‌فرض فعال: {displayPolicyName(defaultRow.name)}
+              پیش‌فرض — {displayPolicyName(defaultRow.name)}
             </strong>
-            <div className="tax-default-meta">
-              پیش‌فاکتور تازه با این سیاست باز می‌شود · کد{' '}
-              <span dir="ltr">{defaultRow.code}</span>
-            </div>
           </div>
           <div className="tax-rate-pill">
-            <small>نرخ کل</small>
             <span>
-              {defaultRow.isExempt ? 'معاف' : percentLabel(defaultRow.totalRatePercent)}
+              {defaultRow.isExempt
+                ? 'معاف'
+                : percentLabel(defaultRow.totalRatePercent)}
             </span>
           </div>
         </section>
@@ -831,7 +875,6 @@ export const TaxPolicySettingsPanel = () => {
                           </strong>
                         </div>
                       </div>
-                      <p className="tax-usage">{usageLine(row)}</p>
                       {rowIssue?.recordId === row.recordId ? (
                         <p
                           role={
@@ -861,7 +904,6 @@ export const TaxPolicySettingsPanel = () => {
                       <th scope="col">عوارض</th>
                       <th scope="col">نرخ کل</th>
                       <th scope="col">وضعیت</th>
-                      <th scope="col">اسناد</th>
                       <th scope="col">
                         <span className="tax-sr-only">عملیات</span>
                       </th>
@@ -939,16 +981,6 @@ export const TaxPolicySettingsPanel = () => {
                             </span>
                           </td>
                           <td className="tax-col-status">{statusBadge(row)}</td>
-                          <td className="tax-col-docs">
-                            <span className="tax-usage">
-                              {usageShort(row)}
-                            </span>
-                            {row.quotationCount > 0 || row.isDefault ? (
-                              <p className="tax-usage-detail">
-                                {usageLine(row)}
-                              </p>
-                            ) : null}
-                          </td>
                           <td className="tax-col-actions">
                             {renderRowActions(row)}
                           </td>
@@ -960,10 +992,6 @@ export const TaxPolicySettingsPanel = () => {
               </div>
             )}
 
-            <p className="tax-footnote">
-              حذف فقط برای سیاست بدون سند مجاز است. سیاست استفاده‌شده را غیرفعال
-              کنید؛ اسناد تاریخی تغییر نمی‌کنند.
-            </p>
           </section>
 
           {editor === null ? null : (
@@ -977,11 +1005,6 @@ export const TaxPolicySettingsPanel = () => {
                   <h3 id="tax-inspector-title" style={styles.inspectorTitle}>
                     {editor.recordId === null ? 'سیاست جدید' : 'ویرایش سیاست'}
                   </h3>
-                  <p className="tax-inspector-sub">
-                    {editor.recordId === null
-                      ? 'پس از ذخیره، می‌توانید آن را پیش‌فرض کنید.'
-                      : 'تغییرات فقط روی پیش‌فاکتورهای جدید اثر می‌گذارد.'}
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -1236,53 +1259,30 @@ export const TaxPolicySettingsPanel = () => {
                   >
                     انصراف
                   </button>
-                  {editor.recordId === null ? null : (
+                  {editor.recordId === null || editingRow === null ? null : (
                     <button
                       type="button"
                       className="tax-btn tax-btn-danger tax-foot-danger"
                       disabled={
                         busy ||
-                        editingRow === null ||
+                        deletingRecordId !== null ||
                         !canDeleteRow(editingRow)
                       }
-                      onClick={() => {
-                        if (editingRow !== null) {
-                          void onDelete(editingRow);
-                        }
-                      }}
+                      title={
+                        canDeleteRow(editingRow)
+                          ? undefined
+                          : editingRow.isDefault
+                            ? 'سیاست پیش‌فرض حذف نمی‌شود'
+                            : 'به‌دلیل استفاده در سند حذف نمی‌شود'
+                      }
+                      onClick={() => void requestDelete(editingRow)}
                     >
-                      حذف
+                      {deletingRecordId === editingRow.recordId
+                        ? 'در حال حذف…'
+                        : 'حذف'}
                     </button>
                   )}
                 </div>
-
-                {editingRow !== null &&
-                confirmingDeleteId === editingRow.recordId ? (
-                  <div className="tax-confirm">
-                    <p role="status">
-                      «{displayPolicyName(editingRow.name)}» حذف شود؟ این کار
-                      برگشت‌پذیر نیست.
-                    </p>
-                    <div className="tax-confirm-actions">
-                      <button
-                        type="button"
-                        className="tax-btn tax-btn-danger-solid"
-                        disabled={busy}
-                        onClick={() => void onDelete(editingRow)}
-                      >
-                        تأیید حذف
-                      </button>
-                      <button
-                        type="button"
-                        className="tax-btn"
-                        disabled={busy}
-                        onClick={() => setConfirmingDeleteId(null)}
-                      >
-                        انصراف از حذف
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
               </form>
             </aside>
           )}
@@ -1343,52 +1343,42 @@ const PANEL_CSS = `
   margin-bottom: 12px;
 }
 .tax-default-banner {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   align-items: center;
-  padding: 14px 16px;
+  justify-content: space-between;
+  padding: 10px 14px;
   margin-bottom: 16px;
   border: 1px solid var(--t-color-blue4);
   border-radius: 10px;
   background: var(--t-color-blue2);
 }
-.tax-default-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: var(--t-color-gray12);
-  color: var(--t-color-gray1);
-  font-weight: 700;
-}
-.tax-default-meta {
-  margin-top: 2px;
-  font-size: 13px;
-  color: var(--t-color-gray11);
-}
 .tax-rate-pill {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--t-color-gray6);
   background: var(--t-color-gray1);
   font-weight: 700;
   color: var(--t-color-blue11);
 }
-.tax-rate-pill small {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--t-color-gray10);
+.tax-root {
+  container-type: inline-size;
+  container-name: tax-settings;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 .tax-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
   gap: 16px;
   align-items: start;
+  min-width: 0;
 }
 .tax-workspace-closed { grid-template-columns: minmax(0, 1fr); }
 .tax-panel {
@@ -1407,12 +1397,15 @@ const PANEL_CSS = `
   background: var(--t-color-gray2);
 }
 .tax-count { color: var(--t-color-gray10); font-weight: 500; }
-.tax-table-wrap { overflow-x: auto; }
+.tax-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
 .tax-ledger {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  min-width: 980px;
+  min-width: 0;
 }
 .tax-ledger th {
   text-align: right;
@@ -1429,12 +1422,11 @@ const PANEL_CSS = `
   border-bottom: 1px solid var(--t-color-gray5);
   vertical-align: middle;
 }
-.tax-col-policy { width: 22%; }
-.tax-col-num { width: 8%; white-space: nowrap; }
-.tax-col-status { width: 10%; white-space: nowrap; }
-.tax-col-docs { width: 16%; }
+.tax-col-policy { width: 28%; }
+.tax-col-num { width: 10%; white-space: nowrap; }
+.tax-col-status { width: 12%; white-space: nowrap; }
 .tax-col-actions {
-  width: 28%;
+  width: 22%;
   white-space: nowrap;
 }
 .tax-ledger tbody tr { cursor: pointer; }
@@ -1503,11 +1495,48 @@ const PANEL_CSS = `
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
+  position: relative;
 }
 .tax-col-actions .tax-btn {
   flex: 0 0 auto;
   padding: 0 10px;
+  min-height: 32px;
 }
+.tax-more { position: relative; }
+.tax-more-menu {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  min-width: 148px;
+  padding: 4px;
+  border: 1px solid var(--t-color-gray6);
+  border-radius: 8px;
+  background: var(--t-color-gray1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: grid;
+  gap: 2px;
+}
+.tax-more-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--t-color-gray12);
+  font: inherit;
+  font-size: 13px;
+  text-align: right;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 36px;
+}
+.tax-more-item:hover:not(:disabled) { background: var(--t-color-gray3); }
+.tax-more-item:disabled {
+  color: var(--t-color-gray9);
+  cursor: not-allowed;
+}
+.tax-more-item-danger { color: var(--t-color-red11); }
+.tax-more-item-danger:hover:not(:disabled) { background: var(--t-color-red2); }
 .tax-mobile-cards {
   display: grid;
   gap: 10px;
@@ -1655,19 +1684,6 @@ const PANEL_CSS = `
   align-items: center;
 }
 .tax-foot-danger { margin-inline-start: auto; }
-.tax-confirm {
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--t-color-red6);
-  background: var(--t-color-red2);
-}
-.tax-confirm p {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--t-color-red11);
-}
-.tax-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .tax-empty {
   padding: 24px;
   border: 1px dashed var(--t-color-gray6);
@@ -1737,21 +1753,52 @@ const PANEL_CSS = `
   white-space: nowrap;
   border: 0;
 }
+@container tax-settings (max-width: 960px) {
+  .tax-workspace,
+  .tax-workspace-closed { grid-template-columns: 1fr; }
+  .tax-inspector { position: static; }
+}
+@container tax-settings (max-width: 720px) {
+  .tax-page-head { flex-direction: column; align-items: stretch; }
+  .tax-add { width: 100%; min-height: 44px; height: 44px; }
+  .tax-tabs { flex-direction: column; }
+  .tax-tab { width: 100%; text-align: right; min-height: 44px; }
+  .tax-row-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .tax-more { width: 100%; }
+  .tax-more .tax-btn { width: 100%; }
+  .tax-more-menu {
+    inset-inline: 0;
+    min-width: 0;
+  }
+  .tax-btn { min-height: 44px; height: 44px; width: 100%; }
+  .tax-more-item { min-height: 44px; }
+  .tax-field input { height: 44px; }
+  .tax-split-2 { grid-template-columns: 1fr; }
+}
 @media (max-width: 960px) {
   .tax-workspace,
   .tax-workspace-closed { grid-template-columns: 1fr; }
   .tax-inspector { position: static; }
-  .tax-default-banner { grid-template-columns: auto 1fr; }
-  .tax-rate-pill { grid-column: 1 / -1; justify-self: start; }
 }
 @media (max-width: 720px) {
   .tax-page-head { flex-direction: column; align-items: stretch; }
-  .tax-add { width: 100%; height: 44px; }
+  .tax-add { width: 100%; min-height: 44px; height: 44px; }
   .tax-tabs { flex-direction: column; }
   .tax-tab { width: 100%; text-align: right; min-height: 44px; }
-  .tax-row-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .tax-btn { height: 44px; width: 100%; }
+  .tax-row-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .tax-btn { min-height: 44px; height: 44px; width: 100%; }
   .tax-field input { height: 44px; }
+  .tax-split-2 { grid-template-columns: 1fr; }
 }
 `;
 
@@ -1763,18 +1810,14 @@ const styles: Record<string, CSSProperties> = {
     fontFamily: 'inherit',
     color: 'var(--t-color-gray12)',
     maxWidth: 1180,
+    width: '100%',
+    minWidth: 0,
   },
   title: {
     margin: 0,
     fontSize: 24,
     fontWeight: 700,
     letterSpacing: '-0.02em',
-  },
-  subtitle: {
-    margin: '6px 0 0',
-    maxWidth: '46ch',
-    fontSize: 14,
-    color: 'var(--t-color-gray11)',
   },
   listTitle: {
     margin: 0,
