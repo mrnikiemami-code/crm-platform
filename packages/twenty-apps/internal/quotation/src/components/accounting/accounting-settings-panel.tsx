@@ -1164,6 +1164,7 @@ export const AccountingSettingsPanel = () => {
                 canManage={data.canManage}
                 outboundEnabled={data.flags.outboundEnabled}
                 documentExportEnabled={data.flags.documentExportEnabled}
+                metadataVerified={data.metadataVerified}
                 taxMappingCount={taxMappingCount}
                 taxHandling={resolveFinancialModes({
                   adapterId: connection?.adapterId ?? 'mock',
