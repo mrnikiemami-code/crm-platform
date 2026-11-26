@@ -22,6 +22,7 @@ const verifiedAdapterDescriptors = (value: unknown): PanelData['adapters'] => {
     const local = ADAPTER_DESCRIPTORS.find((entry) => entry.id === id);
 
     if (
+      server === null ||
       local === undefined ||
       contractVersion === '' ||
       local.contractVersion !== contractVersion ||
@@ -31,7 +32,19 @@ const verifiedAdapterDescriptors = (value: unknown): PanelData['adapters'] => {
       return [];
     }
 
-    return [local];
+    return [{
+      ...local,
+      limitations: [...local.limitations],
+      testProfiles: local.testProfiles.map((profile) => ({
+        ...profile,
+        ...(profile.taxCodeCatalog === undefined
+          ? {}
+          : { taxCodeCatalog: profile.taxCodeCatalog.map((entry) => ({ ...entry })) }),
+      })),
+      ...(local.taxCodeCatalog === undefined
+        ? {}
+        : { taxCodeCatalog: local.taxCodeCatalog.map((entry) => ({ ...entry })) }),
+    }];
   });
 };
 
