@@ -12,10 +12,12 @@ vi.mock('twenty-sdk/front-component', () => ({
 
 const {
   callAppRoute,
+  callAccountingConnectionNestActionMock,
   callTaxPoliciesNestActionMock,
   callQuotationCurrenciesNestActionMock,
 } = vi.hoisted(() => ({
   callAppRoute: vi.fn(),
+  callAccountingConnectionNestActionMock: vi.fn(),
   callTaxPoliciesNestActionMock: vi.fn(),
   callQuotationCurrenciesNestActionMock: vi.fn(),
 }));
@@ -27,12 +29,12 @@ vi.mock('src/components/quotation-api', async (importOriginal) => {
   return {
     ...actual,
     callAppRoute: (...args: unknown[]) => callAppRoute(...args),
+    callAccountingConnectionNestAction: callAccountingConnectionNestActionMock,
     callTaxPoliciesNestAction: callTaxPoliciesNestActionMock,
     callQuotationCurrenciesNestAction: callQuotationCurrenciesNestActionMock,
   };
 });
 
-import { ACCOUNTING_CONNECTION_ROUTE } from 'src/components/quotation-api';
 import { AccountingSettingsPanel } from 'src/components/accounting/accounting-settings-panel';
 import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
 
@@ -106,8 +108,8 @@ const connections = () => [
 ];
 
 const installRoutes = () => {
-  callAppRoute.mockImplementation(async (path: string, body: { action?: string }) => {
-    if (path === ACCOUNTING_CONNECTION_ROUTE && body.action === 'list') {
+  callAccountingConnectionNestActionMock.mockImplementation(async (body: { action?: string }) => {
+    if (body.action === 'list') {
       return {
         ok: true,
         status: 200,
@@ -115,7 +117,11 @@ const installRoutes = () => {
           success: true,
           canManage: true,
           connections: connections(),
-          adapters: ADAPTER_DESCRIPTORS,
+          supportedAdapters: ADAPTER_DESCRIPTORS.map((adapter) => ({
+            id: adapter.id,
+            isLive: adapter.isLive,
+            contractVersion: adapter.contractVersion,
+          })),
           credentials: {
             tunnelTokenConfigured: false,
             insecureWritesApproved: false,
@@ -126,7 +132,7 @@ const installRoutes = () => {
       };
     }
 
-    throw new Error(`unexpected route ${path}`);
+    throw new Error(`unexpected connection action ${body.action}`);
   });
 
   callTaxPoliciesNestActionMock.mockResolvedValue({
@@ -172,6 +178,7 @@ const rowFor = (table: HTMLElement, id: string): HTMLElement => {
 beforeEach(() => {
   window.localStorage.clear();
   callAppRoute.mockReset();
+  callAccountingConnectionNestActionMock.mockReset();
   callTaxPoliciesNestActionMock.mockReset();
   callQuotationCurrenciesNestActionMock.mockReset();
   installRoutes();
