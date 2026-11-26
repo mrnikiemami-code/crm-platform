@@ -32,14 +32,13 @@ import {
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
-import { partyTypeFromNationalCode } from 'src/domain/accounting/party-identity';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 const PAGE_SIZE = 25;
 const CANDIDATE_PAGE_SIZE = 10;
 const APPLY_BATCH_SIZE = 25;
 const TRANSFER_ALL_PAGE_CAP = 1000;
-const BULK_PAGE_SIZE = 100;
+const BULK_PAGE_SIZE = 25;
 
 type PartySelection = {
   internalPartyId?: string;
@@ -78,8 +77,7 @@ const matchesPartyFilter = (row: PartyMappingRow, filter: PartyFilter): boolean 
 // sends intent, not a claimed identity match or a request to blindly create.
 const isAutoTransferable = (row: PartyMappingRow): boolean =>
   ['LINK_SUGGESTED', 'NEEDS_CRM_RECORD', 'REMOTE_CHANGED'].includes(row.decision) &&
-  partyTypeFromNationalCode(row.nationalCode) !== null &&
-  row.fullName.trim() !== '';
+  row.autoEligible === true;
 
 const selectionFromSuggested = (row: PartyMappingRow): PartySelection | null =>
   isAutoTransferable(row) ? { label: row.fullName, createNew: true } : null;

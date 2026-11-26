@@ -3,7 +3,8 @@ import {
   type RemoteCatalogItem,
   type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
-import { normalizeNationalCode } from 'src/domain/accounting/party-identity';
+import { type AccountingPartyProfile } from 'src/domain/accounting/party-profile';
+import { normalizeNationalCode, normalizeEconomicCode, partyNationalIdentity } from 'src/domain/accounting/party-identity';
 import { asanUnitsToCrmMicros } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
 
@@ -52,6 +53,7 @@ export type CrmPartyCandidate = {
 export type ImportWarning =
   | 'DUPLICATE_REMOTE_NAME'
   | 'DUPLICATE_REMOTE_NATIONAL_CODE'
+  | 'DUPLICATE_REMOTE_ECONOMIC_CODE'
   | 'PRICE_UNIT_UNCONFIRMED'
   | 'NO_CRM_CANDIDATE'
   | 'REMOTE_ID_NOT_NUMERIC'
@@ -484,6 +486,7 @@ export const resolveItemApplyPlan = ({
 export type ExistingPartyLink = {
   linkId: string;
   partyType?: 'PERSON' | 'COMPANY';
+  sourceProfile?: string | null;
   externalPartyId: string | null;
   internalPartyId: string | null;
   remoteVersion: string | null;
@@ -498,7 +501,8 @@ export type PartyImportDecision =
   | 'AMBIGUOUS_CRM_MATCH'
   | 'DUPLICATE_REMOTE_CODE';
 
-export type PartyImportRow = {
+export type PartyImportRow = AccountingPartyProfile & {
+  autoEligible?: boolean;
   externalPartyId: string;
   code: string;
   fullName: string;
@@ -558,31 +562,27 @@ export const planPartyImport = ({
   );
   const remoteNationalCounts = countBy(
     remoteParties
-      .map((party) => normalizeNationalCode(party.nationalCode) ?? '')
+      .map((party) => partyNationalIdentity(party) ?? '')
       .filter((code) => code !== ''),
   );
 
+  const remoteEconomicCounts = countBy(remoteParties.map((party) => normalizeEconomicCode(party.economicCode) ?? '').filter(Boolean));
+  const duplicateLinks = countBy(links.flatMap((link) => link.externalPartyId ? [link.externalPartyId] : []));
   const rows: PartyImportRow[] = remoteParties.map((party) => {
     const warnings: ImportWarning[] = [];
-    const nationalCode = normalizeNationalCode(party.nationalCode) ?? '';
+    const nationalCode = partyNationalIdentity(party) ?? '';
 
     if (nationalCode !== '' && (remoteNationalCounts.get(nationalCode) ?? 0) > 1) {
       warnings.push('DUPLICATE_REMOTE_NATIONAL_CODE');
     }
 
-    // A document needs the vendor's numeric customer id, so a non-numeric destination
-    // identifier is flagged before anyone tries to issue a quotation.
-    if (!/^\d+$/.test(party.externalPartyId) || Number(party.externalPartyId) <= 0) {
-      warnings.push('REMOTE_ID_NOT_NUMERIC');
-    }
+    const economicCode = normalizeEconomicCode(party.economicCode);
+    if (economicCode !== null && (remoteEconomicCounts.get(economicCode) ?? 0) > 1) warnings.push('DUPLICATE_REMOTE_ECONOMIC_CODE');
+    // Vendor-neutral IDs can be alphanumeric. Document constraints belong to the adapter.
 
-    if ((remoteCodeCounts.get(party.externalPartyId) ?? 0) > 1 || warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE')) {
+    if (!party.externalPartyId.trim() || (remoteCodeCounts.get(party.externalPartyId) ?? 0) > 1 || (duplicateLinks.get(party.externalPartyId) ?? 0) > 1 || warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE') || warnings.includes('DUPLICATE_REMOTE_ECONOMIC_CODE')) {
       return {
-        externalPartyId: party.externalPartyId,
-        code: party.code,
-        fullName: party.fullName,
-        mobile: party.mobile,
-        nationalCode: party.nationalCode,
+        ...party,
         decision: 'DUPLICATE_REMOTE_CODE',
         existingLinkId: null,
         suggestedInternalPartyId: null,
@@ -597,11 +597,7 @@ export const planPartyImport = ({
         existingLink.remoteVersion !== party.remoteVersion;
 
       return {
-        externalPartyId: party.externalPartyId,
-        code: party.code,
-        fullName: party.fullName,
-        mobile: party.mobile,
-        nationalCode: party.nationalCode,
+        ...party,
         decision: changed ? 'REMOTE_CHANGED' : 'IN_SYNC',
         existingLinkId: existingLink.linkId,
         suggestedInternalPartyId: existingLink.internalPartyId,
@@ -616,11 +612,7 @@ export const planPartyImport = ({
 
     if (matches.length === 1) {
       return {
-        externalPartyId: party.externalPartyId,
-        code: party.code,
-        fullName: party.fullName,
-        mobile: party.mobile,
-        nationalCode: party.nationalCode,
+        ...party,
         decision: 'LINK_SUGGESTED',
         existingLinkId: null,
         suggestedInternalPartyId: matches[0].id,
@@ -633,11 +625,7 @@ export const planPartyImport = ({
     }
 
     return {
-      externalPartyId: party.externalPartyId,
-      code: party.code,
-      fullName: party.fullName,
-      mobile: party.mobile,
-      nationalCode: party.nationalCode,
+      ...party,
       decision: matches.length > 1 ? 'AMBIGUOUS_CRM_MATCH' : 'NEEDS_CRM_RECORD',
       existingLinkId: null,
       suggestedInternalPartyId: null,

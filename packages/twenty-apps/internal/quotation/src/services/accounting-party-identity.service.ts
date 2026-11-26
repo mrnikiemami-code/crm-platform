@@ -1,17 +1,23 @@
+import { createHash } from 'node:crypto';
 import { type GraphqlValue, toGraphqlLiteral } from 'src/data/graphql-literal';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import {
   normalizeIranMobile,
   normalizeNationalCode,
   normalizePartyName,
-  partyTypeFromNationalCode,
+  normalizeEconomicCode,
+  partyNationalIdentity,
+  partyIdentityConflict,
+  resolvePartyKind,
+  partyDisplayName,
+  type PartyIdentityAttributes,
   splitPartyPersonName,
 } from 'src/domain/accounting/party-identity';
 import { type PartyImportRow } from 'src/domain/accounting/import-plan';
 
 type Execute = (query: string) => Promise<Record<string, unknown>>;
 type Kind = 'PERSON' | 'COMPANY';
-type IdentityInput = { fullName: string; nationalCode: string | null; mobile: string | null };
+type IdentityInput = PartyIdentityAttributes;
 type Phones = {
   primaryPhoneNumber?: string;
   primaryPhoneCountryCode?: string;
@@ -23,6 +29,8 @@ export type CrmPartyIdentity = {
   partyType: Kind;
   name: string;
   nationalCode: string | null;
+  economicCode?: string | null;
+  profile?: Record<string, GraphqlValue>;
   mobile: string | null;
   phones: Phones | null;
 };
@@ -51,10 +59,11 @@ export const loadCrmPartyIdentities = async (
     const batch = inputs.slice(offset, offset + 25);
     const batchIds = unique(ids.slice(offset, offset + 25));
     const nationalCodes = unique(batch.flatMap((row) => {
-      const code = normalizeNationalCode(row.nationalCode);
-      return code === null ? [] : [...variants(code), row.nationalCode ?? ''];
+      const code = partyNationalIdentity(row);
+      return code === null ? [] : [...variants(code), row.nationalCode ?? '', row.legalNationalId ?? ''];
     }));
-    const names = unique(batch.map((row) => row.fullName.trim()));
+    const economics = unique(batch.flatMap((row) => { const code = normalizeEconomicCode(row.economicCode); return code === null ? [] : [...variants(code), row.economicCode ?? '']; }));
+    const names = unique(batch.map(partyDisplayName));
     const mobiles = unique(batch.flatMap((row) => {
       const mobile = normalizeIranMobile(row.mobile);
       return mobile === null ? [] : mobileVariants(mobile);
@@ -64,6 +73,7 @@ export const loadCrmPartyIdentities = async (
       const clauses: GraphqlValue[] = [];
       if (batchIds.length) clauses.push({ id: { in: batchIds } });
       if (nationalCodes.length) clauses.push({ nationalCode: { in: nationalCodes } });
+      if (economics.length) clauses.push({ economicCode: { in: economics } });
       if (kind === 'PERSON') {
         for (const name of names) {
           const parts = splitPartyPersonName(name);
@@ -75,9 +85,10 @@ export const loadCrmPartyIdentities = async (
         if (mobiles.length) clauses.push({ accountingMobile: { in: mobiles } });
       }
       if (!clauses.length) continue;
+      const common = 'id nationalCode economicCode accountingPhone accountingSecondPhone accountingFax address { addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry addressLat addressLng }';
       const fields = kind === 'PERSON'
-        ? 'id nationalCode name { firstName lastName } phones { primaryPhoneNumber primaryPhoneCountryCode primaryPhoneCallingCode additionalPhones }'
-        : 'id nationalCode name accountingMobile';
+        ? common + ' name { firstName lastName } phones { primaryPhoneNumber primaryPhoneCountryCode primaryPhoneCallingCode additionalPhones } emails { primaryEmail additionalEmails }'
+        : common + ' name accountingMobile registrationNumber accountingEmail';
       let cursor: string | null = null;
       const seen = new Set<string>();
       for (;;) {
@@ -102,6 +113,8 @@ export const loadCrmPartyIdentities = async (
             partyType: kind,
             name: kind === 'PERSON' ? [text(fullName?.firstName), text(fullName?.lastName)].filter(Boolean).join(' ') : text(node.name),
             nationalCode: text(node.nationalCode) || null,
+            economicCode: text(node.economicCode) || null,
+            profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','emails'].includes(key))) as Record<string, GraphqlValue>,
             mobile: kind === 'PERSON' ? text(phone?.primaryPhoneNumber) || null : text(node.accountingMobile) || null,
             phones: phone === null ? null : {
               primaryPhoneNumber: text(phone.primaryPhoneNumber),
@@ -126,9 +139,15 @@ export const loadCrmPartyIdentities = async (
   return [...results.values()];
 };
 
+// A stable connection-scoped ID protects first-create retries even without national ID.
+export const stableCustomerRecordId = (connectionId: string, externalPartyId: string): string => {
+  const hex = createHash('sha256').update('quotation/accounting-customer:' + JSON.stringify([connectionId, externalPartyId])).digest('hex');
+  return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-5' + hex.slice(13, 16) + '-8' + hex.slice(17, 20) + '-' + hex.slice(20, 32);
+};
+
 export type PartyIdentityDecision =
   | { kind: 'MATCH'; target: CrmPartyIdentity }
-  | { kind: 'CREATE'; partyType: Kind; nationalCode: string }
+  | { kind: 'CREATE'; partyType: Kind; nationalCode: string | null }
   | { kind: 'CONFLICT' }
   | { kind: 'MISSING_IDENTITY' };
 
@@ -138,33 +157,41 @@ export const resolvePartyIdentity = (
   linkedId: string | null = null,
   linkedKind?: Kind,
 ): PartyIdentityDecision => {
-  const code = normalizeNationalCode(remote.nationalCode);
-  const kind = partyTypeFromNationalCode(code);
-  if (code === null || kind === null || !remote.fullName.trim()) return { kind: 'MISSING_IDENTITY' };
-  const exact = crm.filter((entry) => normalizeNationalCode(entry.nationalCode) === code);
-  if (exact.length > 1 || exact.some((entry) => entry.partyType !== kind)) return { kind: 'CONFLICT' };
+  if (partyIdentityConflict(remote)) return { kind: 'CONFLICT' };
+  const code = partyNationalIdentity(remote);
+  const economic = normalizeEconomicCode(remote.economicCode);
+  const kind = resolvePartyKind(remote);
+  const exact = crm.filter((entry) =>
+    (code !== null && normalizeNationalCode(entry.nationalCode) === code) ||
+    (economic !== null && normalizeEconomicCode(entry.economicCode) === economic),
+  );
+  const compatible = (target: CrmPartyIdentity): boolean =>
+    (kind === null || target.partyType === kind) &&
+    (code === null || !target.nationalCode || normalizeNationalCode(target.nationalCode) === code) &&
+    (economic === null || !target.economicCode || normalizeEconomicCode(target.economicCode) === economic);
+  if (exact.length > 1 || exact.some((entry) => !compatible(entry))) return { kind: 'CONFLICT' };
   if (linkedId !== null) {
-    const targets = crm.filter((entry) => entry.id === linkedId && entry.partyType === kind);
+    const targets = crm.filter((entry) => entry.id === linkedId && (linkedKind === undefined || entry.partyType === linkedKind));
     const target = targets[0];
-    if (targets.length !== 1 || (linkedKind !== undefined && linkedKind !== kind) ||
-        (target.nationalCode !== null && normalizeNationalCode(target.nationalCode) !== code) ||
-        exact.some((entry) => entry.id !== linkedId)) return { kind: 'CONFLICT' };
+    if (targets.length !== 1 || !compatible(target) || exact.some((entry) => entry.id !== linkedId)) return { kind: 'CONFLICT' };
     return { kind: 'MATCH', target };
   }
   if (exact.length === 1) return { kind: 'MATCH', target: exact[0] };
-  const name = normalizePartyName(remote.fullName);
+  const name = normalizePartyName(partyDisplayName(remote));
   const mobile = normalizeIranMobile(remote.mobile);
   const possible = crm.filter((entry) =>
-    normalizePartyName(entry.name) === name ||
+    (name !== '' && normalizePartyName(entry.name) === name) ||
     (mobile !== null && normalizeIranMobile(entry.mobile) === mobile),
   );
   if (possible.length === 1) {
     const candidate = possible[0];
-    if (candidate.partyType === kind && candidate.nationalCode === null &&
-        mobile !== null && normalizeIranMobile(candidate.mobile) === mobile &&
-        normalizePartyName(candidate.name) === name) return { kind: 'MATCH', target: candidate };
+    if (compatible(candidate) && mobile !== null && normalizeIranMobile(candidate.mobile) === mobile &&
+        name !== '' && normalizePartyName(candidate.name) === name) return { kind: 'MATCH', target: candidate };
   }
-  return possible.length > 0 ? { kind: 'CONFLICT' } : { kind: 'CREATE', partyType: kind, nationalCode: code };
+  if (possible.length > 0) return { kind: 'CONFLICT' };
+  return kind !== null && name !== '' && (code !== null || economic !== null || !!remote.externalPartyId?.trim())
+    ? { kind: 'CREATE', partyType: kind, nationalCode: code }
+    : { kind: 'MISSING_IDENTITY' };
 };
 
 export const crmPartyFields = (
@@ -173,11 +200,49 @@ export const crmPartyFields = (
   existing: CrmPartyIdentity | null,
 ): Record<string, GraphqlValue> => {
   const fields: Record<string, GraphqlValue> = {};
-  const code = normalizeNationalCode(remote.nationalCode);
+  const code = partyNationalIdentity(remote);
   if (code !== null && existing?.nationalCode !== code) fields.nationalCode = code;
-  if (existing === null || normalizePartyName(existing.name) !== normalizePartyName(remote.fullName)) {
-    fields.name = partyType === 'PERSON' ? splitPartyPersonName(remote.fullName) : remote.fullName.trim();
+  const name = partyDisplayName(remote);
+  if (name !== '' && (existing === null || normalizePartyName(existing.name) !== normalizePartyName(name))) {
+    fields.name = partyType === 'PERSON'
+      ? (remote.firstName?.trim() && remote.lastName?.trim() ? { firstName: remote.firstName.trim(), lastName: remote.lastName.trim() } : splitPartyPersonName(name))
+      : name;
   }
+  const economic = normalizeEconomicCode(remote.economicCode);
+  if (economic !== null && existing?.economicCode !== economic) fields.economicCode = economic;
+  const profile = existing?.profile ?? {};
+  const setText = (key: string, value: string | null | undefined) => {
+    const next = value?.trim();
+    if (next && next !== text(profile[key])) fields[key] = next;
+  };
+  setText('accountingPhone', remote.firstPhone);
+  setText('accountingSecondPhone', remote.secondPhone);
+  setText('accountingFax', remote.fax);
+  if (partyType === 'COMPANY') {
+    setText('registrationNumber', remote.registrationNumber);
+    setText('accountingEmail', remote.email);
+  } else if (remote.email?.trim()) {
+    const previous = record(profile.emails);
+    const email = remote.email.trim();
+    const primary = text(previous?.primaryEmail);
+    const additional = Array.isArray(previous?.additionalEmails) ? previous.additionalEmails.filter((value): value is string => typeof value === 'string') : [];
+    if (!primary) fields.emails = { primaryEmail: email, additionalEmails: additional };
+    else if (primary.toLowerCase() !== email.toLowerCase() && !additional.some((value) => value.toLowerCase() === email.toLowerCase())) {
+      fields.emails = { primaryEmail: primary, additionalEmails: [...additional, email] };
+    }
+  }
+  const currentAddress = record(profile.address);
+  const nextAddress: Record<string, GraphqlValue> = {};
+  for (const key of ['addressStreet1','addressStreet2','addressCity','addressState','addressPostcode','addressCountry','addressLat','addressLng']) {
+    const value = currentAddress?.[key];
+    if (typeof value === 'string' || typeof value === 'number') nextAddress[key] = value;
+  }
+  let addressChanged = false;
+  for (const [key, value] of Object.entries({ addressStreet1: remote.address, addressCity: remote.city, addressState: remote.state, addressPostcode: remote.postalCode, addressCountry: remote.country })) {
+    const next = value?.trim();
+    if (next && nextAddress[key] !== next) { nextAddress[key] = next; addressChanged = true; }
+  }
+  if (addressChanged) fields.address = nextAddress;
   const mobile = normalizeIranMobile(remote.mobile);
   if (mobile !== null && normalizeIranMobile(existing?.mobile) !== mobile) {
     if (partyType === 'COMPANY') {
@@ -209,26 +274,28 @@ export const crmPartyFields = (
 export const enrichPartyRows = async (
   rows: PartyImportRow[],
   execute: Execute = executeRecordGraphql,
+  connectionId?: string,
 ): Promise<PartyImportRow[]> => {
-  const eligible = rows.filter((row) => row.decision !== 'DUPLICATE_REMOTE_CODE' && normalizeNationalCode(row.nationalCode) !== null && row.fullName.trim() !== '');
-  const crm = await loadCrmPartyIdentities(eligible, eligible.flatMap((row) => row.suggestedInternalPartyId ? [row.suggestedInternalPartyId] : []), execute);
+  const eligible = rows.filter((row) => row.decision !== 'DUPLICATE_REMOTE_CODE' &&
+    (row.existingLinkId !== null || resolvePartyKind(row) !== null || partyNationalIdentity(row) !== null || normalizeEconomicCode(row.economicCode) !== null || normalizeIranMobile(row.mobile) !== null));
+  const crm = await loadCrmPartyIdentities(eligible, eligible.flatMap((row) => [
+    ...(row.suggestedInternalPartyId ? [row.suggestedInternalPartyId] : []),
+    ...(connectionId && row.externalPartyId ? [stableCustomerRecordId(connectionId, row.externalPartyId)] : []),
+  ]), execute);
   return rows.map((row) => {
-    if (row.decision === 'DUPLICATE_REMOTE_CODE' || row.warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE')) {
-      return { ...row, decision: 'DUPLICATE_REMOTE_CODE', suggestedInternalPartyId: null };
+    if (row.decision === 'DUPLICATE_REMOTE_CODE' || row.warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE') || row.warnings.includes('DUPLICATE_REMOTE_ECONOMIC_CODE')) {
+      return { ...row, autoEligible: false, decision: 'DUPLICATE_REMOTE_CODE', suggestedInternalPartyId: null };
     }
-    const linkedId = row.existingLinkId !== null ? row.suggestedInternalPartyId : null;
-    if (row.existingLinkId !== null && linkedId === null) return { ...row, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
+    const stableId = connectionId ? stableCustomerRecordId(connectionId, row.externalPartyId) : null;
+    const recovered = stableId !== null && crm.some((entry) => entry.id === stableId) ? stableId : null;
+    const linkedId = row.existingLinkId !== null ? row.suggestedInternalPartyId : recovered;
+    if (row.existingLinkId !== null && linkedId === null) return { ...row, autoEligible: false, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
     const decision = resolvePartyIdentity(row, crm, linkedId);
-    if (decision.kind === 'CONFLICT') return { ...row, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
-    if (decision.kind === 'MISSING_IDENTITY') {
-      return row.existingLinkId !== null ? row : { ...row, decision: 'NEEDS_CRM_RECORD', suggestedInternalPartyId: null };
-    }
-    if (decision.kind === 'CREATE') return { ...row, decision: 'NEEDS_CRM_RECORD', suggestedInternalPartyId: null };
-    return {
-      ...row,
-      decision: linkedId === null ? 'LINK_SUGGESTED' :
-        row.decision === 'REMOTE_CHANGED' || Object.keys(crmPartyFields(row, decision.target.partyType, decision.target)).length > 0 ? 'REMOTE_CHANGED' : 'IN_SYNC',
-      suggestedInternalPartyId: decision.target.id,
-    };
+    if (decision.kind === 'CONFLICT') return { ...row, autoEligible: false, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
+    if (decision.kind === 'MISSING_IDENTITY') return { ...row, autoEligible: false, decision: 'NEEDS_CRM_RECORD', suggestedInternalPartyId: null };
+    if (decision.kind === 'CREATE') return { ...row, autoEligible: true, decision: 'NEEDS_CRM_RECORD', suggestedInternalPartyId: null };
+    const status = row.existingLinkId === null ? 'LINK_SUGGESTED' :
+      row.decision === 'REMOTE_CHANGED' || Object.keys(crmPartyFields(row, decision.target.partyType, decision.target)).length > 0 ? 'REMOTE_CHANGED' : 'IN_SYNC';
+    return { ...row, autoEligible: status !== 'IN_SYNC', decision: status, suggestedInternalPartyId: decision.target.id };
   });
 };

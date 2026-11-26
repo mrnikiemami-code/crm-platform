@@ -51,6 +51,7 @@ export type ItemMappingRow = {
 };
 
 export type PartyMappingRow = {
+  autoEligible?: boolean;
   externalPartyId: string;
   code: string;
   fullName: string;
@@ -256,7 +257,8 @@ export const parsePartyMappingPage = (value: unknown): MappingPage<PartyMappingR
           code: readString(row.code),
           fullName: readString(row.fullName),
           mobile: readNullableString(row.mobile),
-          nationalCode: readNullableString(row.nationalCode),
+          nationalCode: readNullableString(row.legalNationalId) ?? readNullableString(row.nationalCode),
+          autoEligible: row.autoEligible === true,
           decision: readString(row.decision) || 'NEEDS_CRM_RECORD',
           existingLinkId: readNullableString(row.existingLinkId),
           suggestedInternalPartyId: readNullableString(

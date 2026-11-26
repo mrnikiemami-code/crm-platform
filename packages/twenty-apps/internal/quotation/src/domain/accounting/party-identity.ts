@@ -1,3 +1,5 @@
+import { type AccountingPartyProfile, type PartyKind } from 'src/domain/accounting/party-profile';
+
 // National identifiers are strings: leading zeroes are significant. Length determines
 // the structural kind under the current adapter contract; it is not a civil-registry check.
 export const asciiDigits = (value: string): string =>
@@ -32,3 +34,31 @@ export const normalizeIranMobile = (value: string | null | undefined): string | 
   const match = /^(?:\+98|0098|98|0)?(9\d{9})$/.exec(number);
   return match?.[1] ?? null;
 };
+
+export type PartyIdentityAttributes = AccountingPartyProfile & { nationalCode?: string | null; fullName: string; mobile?: string | null; externalPartyId?: string | null };
+
+export const normalizeEconomicCode = (value: string | null | undefined): string | null => {
+  const code = asciiDigits(value ?? '').trim().replace(/[\s-]/g, '');
+  return /^\d{8,20}$/.test(code) && !/^0+$/.test(code) ? code : null;
+};
+
+export const partyNationalIdentity = (party: PartyIdentityAttributes): string | null =>
+  normalizeNationalCode(party.legalNationalId) ?? normalizeNationalCode(party.nationalCode);
+
+export const partyIdentityConflict = (party: PartyIdentityAttributes): boolean => {
+  const personal = normalizeNationalCode(party.nationalCode);
+  const legal = normalizeNationalCode(party.legalNationalId);
+  const inferred = partyTypeFromNationalCode(legal ?? personal);
+  return (legal !== null && legal.length !== 11) ||
+    (personal !== null && legal !== null && personal !== legal) ||
+    ((party.partyType === 'PERSON' || party.partyType === 'COMPANY') && inferred !== null && party.partyType !== inferred);
+};
+
+export const resolvePartyKind = (party: PartyIdentityAttributes): PartyKind | null =>
+  partyIdentityConflict(party) ? null :
+    party.partyType === 'PERSON' || party.partyType === 'COMPANY' ? party.partyType :
+    partyTypeFromNationalCode(partyNationalIdentity(party));
+
+export const partyDisplayName = (party: PartyIdentityAttributes): string =>
+  (party.partyType === 'COMPANY' ? party.companyName?.trim() : [party.firstName?.trim(), party.lastName?.trim()].filter(Boolean).join(' ')) ||
+  party.fullName.trim() || party.companyName?.trim() || '';
