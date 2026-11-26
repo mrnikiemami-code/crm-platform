@@ -922,7 +922,7 @@ const DestinationTaxCodeControl = ({
 }: {
   label: string;
   value: string;
-  catalog: TaxCodeContractView[] | undefined;
+  catalog: readonly TaxCodeContractView[] | undefined;
   canManage: boolean;
   onChange: (next: string) => void;
 }) => {
@@ -1008,7 +1008,7 @@ const PolicyTaxTable = ({
   catalogVerified: boolean;
   showCode: boolean;
   text: string;
-  catalog: TaxCodeContractView[] | undefined;
+  catalog: readonly TaxCodeContractView[] | undefined;
   canManage: boolean;
   onChange: (text: string) => void;
 }) => {

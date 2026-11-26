@@ -36,7 +36,7 @@ vi.mock('src/components/quotation-api', async (importOriginal) => {
 });
 
 import { AccountingSettingsPanel } from 'src/components/accounting/accounting-settings-panel';
-import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
+import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-descriptors';
 
 const CONNECTION_STORAGE_KEY = 'quotation:accounting:working-connection';
 
@@ -133,6 +133,23 @@ const installRoutes = () => {
     }
 
     throw new Error(`unexpected connection action ${body.action}`);
+  });
+
+  // Import/outbound remain /s Logic Function routes. Always return a Promise so
+  // panel `.catch` handlers never see undefined after mockReset.
+  callAppRoute.mockImplementation(async (path: string) => {
+    if (
+      typeof path === 'string' &&
+      (path.includes('accounting-import') || path.includes('accounting-outbound'))
+    ) {
+      return {
+        ok: false,
+        status: 503,
+        data: { success: false, message: 'import/outbound unavailable in test' },
+      };
+    }
+
+    throw new Error(`unexpected app route ${path}`);
   });
 
   callTaxPoliciesNestActionMock.mockResolvedValue({

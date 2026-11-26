@@ -4,7 +4,7 @@ import {
   asRecord,
   readString,
 } from 'src/components/accounting/accounting-shared';
-import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
+import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-descriptors';
 import { connectionSettingsFromRecord } from 'src/domain/accounting/connection-settings';
 
 // Nest owns identity, permissions and the actual adapter contract. Local descriptors are

@@ -14,7 +14,7 @@
           "rimraf dist",
           "nest build --path ./tsconfig.build.json",
           "node ./scripts/copy-yarn-engine-asset.mjs",
-          "mkdir -p dist/assets/twenty-client-sdk && cp ../twenty-client-sdk/package.json dist/assets/twenty-client-sdk/ && cp -r ../twenty-client-sdk/dist dist/assets/twenty-client-sdk/dist"
+          "node ./scripts/copy-twenty-client-sdk-asset.mjs"
         ]
       },
       "dependsOn": ["^build"]

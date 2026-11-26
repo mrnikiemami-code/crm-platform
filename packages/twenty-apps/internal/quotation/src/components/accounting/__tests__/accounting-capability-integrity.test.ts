@@ -9,7 +9,7 @@ import {
   resolveFinancialModes,
   type AdapterDescriptor,
 } from 'src/components/accounting/accounting-shared';
-import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
+import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-descriptors';
 
 const adapters = ADAPTER_DESCRIPTORS as unknown as AdapterDescriptor[];
 

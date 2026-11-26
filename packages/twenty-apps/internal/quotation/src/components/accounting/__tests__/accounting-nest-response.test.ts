@@ -7,7 +7,7 @@ import {
   savedAccountingRecordFromNest,
 } from 'src/components/accounting/accounting-nest-response';
 import { callAccountingConnectionNestAction } from 'src/components/quotation-api';
-import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
+import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-descriptors';
 
 const advertised = ADAPTER_DESCRIPTORS.map((adapter) => ({
   id: adapter.id,

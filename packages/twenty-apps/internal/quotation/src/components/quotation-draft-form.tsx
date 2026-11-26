@@ -483,7 +483,7 @@ export const QuotationDraftForm = () => {
   const [documentCurrencies, setDocumentCurrencies] = useState<
     DocumentCurrencyOption[]
   >([]);
-  const [documentCurrencyCode, setDocumentCurrencyCode] = useState(
+  const [documentCurrencyCode, setDocumentCurrencyCode] = useState<string>(
     OPERATIONAL_DOCUMENT_CURRENCY_CODE,
   );
   const documentCurrencyChosenByOperator = useRef(false);

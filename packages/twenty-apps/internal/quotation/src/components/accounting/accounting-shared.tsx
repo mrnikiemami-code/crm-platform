@@ -30,7 +30,7 @@ export type AdapterDescriptor = {
   transportIsSecure: boolean;
   readiness: string;
   summary: string;
-  limitations: string[];
+  limitations: readonly string[];
   // Present for an adapter that declares one financial contract. A mock declares `null`
   // because its contract comes from the profile stored on the connection.
   taxHandling?: string | null;
@@ -40,9 +40,10 @@ export type AdapterDescriptor = {
   currencyHandling?: string | null;
   baseCurrency?: string;
   requiresSpecialItemCodes?: boolean;
-  // The destination's own tax codes and the rates they stand for, when it publishes them.
-  taxCodeCatalog?: TaxCodeContractView[];
-  testProfiles?: {
+  // Catalog rows are presentation data from a verified descriptor; keep readonly so Nest
+  // domain catalogs (readonly TaxCodeContract[]) assign without inventing mutable copies.
+  taxCodeCatalog?: readonly TaxCodeContractView[];
+  testProfiles?: readonly {
     id: string;
     label: string;
     summary: string;
@@ -51,7 +52,7 @@ export type AdapterDescriptor = {
     currencyHandling: string;
     baseCurrency?: string;
     requiresSpecialItemCodes?: boolean;
-    taxCodeCatalog?: TaxCodeContractView[];
+    taxCodeCatalog?: readonly TaxCodeContractView[];
   }[];
 };
 
@@ -380,7 +381,7 @@ export type FinancialModes = {
   // Whether this destination identifies a non-product amount by a pre-existing item-row
   // code. A rate/amount destination has no such row, so the panel must not ask for its code.
   requiresSpecialItemCodes: boolean;
-  taxCodeCatalog?: TaxCodeContractView[];
+  taxCodeCatalog?: readonly TaxCodeContractView[];
 };
 
 export type AdapterContractAvailability =

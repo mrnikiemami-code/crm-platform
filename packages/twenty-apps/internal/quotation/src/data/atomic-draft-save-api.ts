@@ -53,6 +53,11 @@ export type AtomicSaveHeaderPayload = {
   dutyExact: string;
   roundingExact: string;
   totalExact: string;
+  roundingRuleCode?: string | null;
+  roundingRuleName?: string | null;
+  roundingStepRials?: string | null;
+  preRoundTotalExact?: string | null;
+  roundingRuleRecordId?: string | null;
 };
 
 export type AtomicSaveRequest = {

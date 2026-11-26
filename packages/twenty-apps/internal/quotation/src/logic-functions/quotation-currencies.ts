@@ -45,15 +45,15 @@ const readCallerAuthorization = (
 };
 
 export const quotationCurrenciesHandler = async (
-  request: RoutePayload['request'],
+  event: RoutePayload<unknown>,
 ) => {
-  if (!(await isAppInstalled())) {
+  if (!isAppInstalled()) {
     return appNotInstalled();
   }
 
-  const body = readBody(request);
+  const body = readBody(event);
   const action = readString(body.action) || 'list';
-  const authorizationHeader = readCallerAuthorization(request.headers ?? {});
+  const authorizationHeader = readCallerAuthorization(event.headers ?? {});
 
   if (action === 'list') {
     const listed = await listQuotationCurrencies({ authorizationHeader });
