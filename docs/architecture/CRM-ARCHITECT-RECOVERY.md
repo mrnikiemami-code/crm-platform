@@ -1,6 +1,14 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
+## CURRENT — USER UAT DEFECTS DE-035 / QUOTATION 0.1.65 (2026-11-26)
+
+**User screenshots of actual :3002 page (three tabs):** DE-035 materially redesigned the UI but has a confirmed **nested interactive event bug**: tax `TaxLedger` and rounding `RoundingList` use a row-level `role=button` with `onClick=onEdit` and `onKeyDown` handling Enter/Space. Clicking the nested three-dots menu opens the menu AND launches edit because event bubbling reaches row; current inner `onClick(stopPropagation)` on menu wrapper is not a sufficiently robust boundary against React/host events or keyboard bubbling. **Treat DE-035 as USER_UAT_FAIL_FUNCTIONAL.** Fix architecture, not only `stopPropagation`: make the row a neutral `div` and provide a dedicated native keyboard-accessible Edit button in identity/name area; menu trigger/actions independently focusable. No interactive descendants of `role=button` parent. Add regression tests clicking dots and menu items do NOT open edit and Enter/Space on trigger do not fire row edit, while Edit does.
+
+**User-facing copy is too technical:** screenshots show repeated internal implementation descriptions and diagnostics, e.g. `ساختار ثبت با ریل زمینه`, `فاز ۱`, `bootstrap`, `در سند ثبت می‌شود` as repeated guidance, `گام رُند باید عدد صحیح مثبت ریال باشد...۰٫۰۰۱...`, `ارزهای دیگر به فازهای بعدی منتقل می‌شوند`, and redundant information panels at bottom of context rail, exposing implementation detail. Perform a *complete* inventory of all text in SettingsShell, TaxLedger, CurrencyHero, RoundingList, RecordDialog and three composers; rewrite for everyday Persian accountants, concise contextual/field-level copy only, remove internal phases/system/roadmap/bootstrap information from operational UI. Keep necessary business warnings, e.g. used/default cannot be deleted and accounting code locked. Ensure errors honest and localized; no code/units/data meanings changed.
+
+**Scoped repair:** same CRM page `http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d` and branch `feat/crm-129-quotation`; no new redesign, route, DB/schema/Money Domain/Nest contract changes, no :6080. Keep OpenDesign DE-035 design intent; fix interaction/accessibility and remove technical copy, verify real browser on tax and rounding more menus / dialog / mobile and targeted regression, commit, apply safely on Dev. Goal 023 ACTIVE, WS5–WS7 frozen. Final STOP_FOR_USER_UAT not PASS by tests alone. Agent bridge unavailable to architect at time of this source-level review, so **no code changes or new deploy claimed by this entry**.
+
+## PRIOR CHECKPOINT — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
 
 **App:** `quotation@0.1.65` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. No WS5/WS6/WS7.
 
