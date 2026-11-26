@@ -438,6 +438,34 @@ describe('AccountingConnectionAuthorityService', () => {
     );
   });
 
+  it('returns an exact immutable affected id from an authorized create transaction', async () => {
+    const { service, insert } = buildService({ authority: 'SETTINGS_ROLE' });
+
+    const outcome = await service.saveConnection(
+      {
+        recordId: null,
+        name: 'اتصال جدید',
+        adapterId: 'mock',
+        settings: { baseUrl: 'http://mock.invalid' },
+      },
+      userAuthContext,
+    );
+
+    expect(outcome).toMatchObject({ kind: 'OK' });
+
+    if (outcome.kind !== 'OK') {
+      throw new Error('Expected an authorized save');
+    }
+
+    const inserted = insert.mock.calls[0][0] as { id: string; isDefault: boolean };
+
+    expect(inserted.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(outcome.affectedRecordId).toBe(inserted.id);
+    expect(inserted.isDefault).toBe(false);
+  });
+
   it('refuses deactivate without settings authority', async () => {
     const { service, update, executeRawQuery } = buildService({
       authority: null,
