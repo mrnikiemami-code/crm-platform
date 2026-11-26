@@ -366,7 +366,15 @@ export const ConnectionEditForm = ({
           </p>
         ) : null}
 
+        {adapterIsLive && data.metadataVerified === false ? (
+          <InlineAlert tone="warning" title="وضعیت امنیت اتصال نامشخص است">
+            تنظیمات تونل و مجوز ارتباط از این سرویس قابل تأیید نیست؛
+            ذخیره اتصال به معنی اجازه ارسال سند نیست.
+          </InlineAlert>
+        ) : null}
+
         {adapterIsLive &&
+        data.metadataVerified !== false &&
         !data.credentials.tunnelTokenConfigured &&
         form.baseUrl.trim().toLowerCase().startsWith('http://') ? (
           <InlineAlert title="ارتباط امن تنظیم نشده است">
