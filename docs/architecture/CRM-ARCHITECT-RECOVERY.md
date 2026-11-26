@@ -18,7 +18,17 @@
 
 **Regression this session:** vitest financial+accounting suites **142 PASS**. Browser Package A isolation PASS. Money Domain / `:6080` / main worker / outbound unchanged. Open risks: retire/inflight send, credential rotation; WS7-B PENDING_USER_DESIGN_APPROVAL items listed in Package D.
 
-**Gate:** architect review + user UAT required. Do not merge / force-push / declare Goal 023 complete.
+**Gate:** architect review + user UAT required. Do not merge / force-push / declare Goal 023 complete. Git history reconciled with architect recovery checkpoint `c47523b0e3` (docs-only).
+
+## PRIOR — USER UAT DEFECTS DE-035 / QUOTATION 0.1.65 (2026-11-26)
+
+**Architect recovery checkpoint `c47523b0e3` (preserved verbatim intent):** DE-035 materially redesigned the UI but has a confirmed **nested interactive event bug**: tax `TaxLedger` and rounding `RoundingList` use a row-level `role=button` with `onClick=onEdit` and `onKeyDown` handling Enter/Space. Clicking the nested three-dots menu opens the menu AND launches edit because event bubbling reaches row; current inner `onClick(stopPropagation)` on menu wrapper is not a sufficiently robust boundary against React/host events or keyboard bubbling. **Treat DE-035 as USER_UAT_FAIL_FUNCTIONAL.** Fix architecture, not only `stopPropagation`: make the row a neutral `div` and provide a dedicated native keyboard-accessible Edit button in identity/name area; menu trigger/actions independently focusable. No interactive descendants of `role=button` parent. Add regression tests clicking dots and menu items do NOT open edit and Enter/Space on trigger do not fire row edit, while Edit does.
+
+**User-facing copy is too technical:** screenshots show repeated internal implementation descriptions and diagnostics, e.g. `ساختار ثبت با ریل زمینه`, `فاز ۱`, `bootstrap`, `در سند ثبت می‌شود` as repeated guidance, `گام رُند باید عدد صحیح مثبت ریال باشد...۰٫۰۰۱...`, `ارزهای دیگر به فازهای بعدی منتقل می‌شوند`, and redundant information panels at bottom of context rail, exposing implementation detail. Perform a *complete* inventory of all text in SettingsShell, TaxLedger, CurrencyHero, RoundingList, RecordDialog and three composers; rewrite for everyday Persian accountants, concise contextual/field-level copy only, remove internal phases/system/roadmap/bootstrap information from operational UI. Keep necessary business warnings, e.g. used/default cannot be deleted and accounting code locked. Ensure errors honest and localized; no code/units/data meanings changed.
+
+**Scoped repair:** same CRM page `http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d` and branch `feat/crm-129-quotation`; no new redesign, route, DB/schema/Money Domain/Nest contract changes, no :6080. Keep OpenDesign DE-035 design intent; fix interaction/accessibility and remove technical copy, verify real browser on tax and rounding more menus / dialog / mobile and targeted regression, commit, apply safely on Dev. Goal 023 ACTIVE, WS5–WS7 frozen. Final STOP_FOR_USER_UAT not PASS by tests alone. Agent bridge unavailable to architect at time of this source-level review, so **no code changes or new deploy claimed by this entry**.
+
+**Note:** GOAL-036 Package A (`cab53037` / `0.1.66`) implemented the scoped interaction + microcopy repair above; architect/user UAT of that repair remains open.
 
 ## PRIOR — GOAL-036 Package C/WS6 DONE → WS7-B / E NEXT (2026-11-26)
 
@@ -48,7 +58,7 @@
 
 **Next:** Package B / WS5 accounting ownership + mapping (C1–C7/F7). Do not treat Goal 023 as complete.
 
-## PRIOR — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
+## PRIOR CHECKPOINT — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
 
 **App:** `quotation@0.1.65` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. No WS5/WS6/WS7.
 
