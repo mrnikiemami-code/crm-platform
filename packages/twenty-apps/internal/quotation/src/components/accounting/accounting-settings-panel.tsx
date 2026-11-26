@@ -2,11 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppPath, enqueueSnackbar, navigate } from 'twenty-sdk/front-component';
 
 import {
-  ACCOUNTING_CONNECTION_ROUTE,
+  callAccountingConnectionNestAction,
   ACCOUNTING_IMPORT_ROUTE,
   ACCOUNTING_OUTBOUND_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
+import {
+  parseAccountingNestPanel,
+  readAccountingNestHealth,
+  savedAccountingRecordFromNest,
+} from 'src/components/accounting/accounting-nest-response';
 import {
   catalogBlocksMappingEdits,
   emptyCatalogState,
@@ -35,10 +40,8 @@ import {
   type PanelData,
   CONNECTION_HEALTH_LABELS,
   EMPTY_FORM,
-  asRecord,
   connectionHealthState,
   parseKeyValueLines,
-  parsePanelData,
   parseTaxPolicyMappingsText,
   readRows,
   readString,
@@ -175,7 +178,7 @@ export const AccountingSettingsPanel = () => {
     setLoadError(null);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction(, {
         action: 'list',
       });
 
@@ -189,7 +192,7 @@ export const AccountingSettingsPanel = () => {
         return;
       }
 
-      const parsed = parsePanelData(response.data);
+      const parsed = parseAccountingNestPanel(response.data);
 
       setData(parsed);
 
@@ -448,7 +451,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction(, {
         action: 'save',
         name: form.name,
         adapterId: form.adapterId,
@@ -515,17 +518,11 @@ export const AccountingSettingsPanel = () => {
         return;
       }
 
-      const saved = asRecord(response.data.connection);
-
-      if (saved !== null) {
-        const savedRecord = saved as unknown as ConnectionRecord;
-        setForm(toForm(savedRecord));
-        // Saving a new connection also makes it the active destination: otherwise the
-        // person lands on a list where the record they just filled in is not the one the
-        // rest of the CRM is using.
-        setSelectedConnectionId(savedRecord.id);
-      }
-
+      const savedRecord = savedAccountingRecordFromNest(response.data, form.id);
+      setForm(toForm(savedRecord));
+      // The server identifies the exact created/edited row, including duplicate names.
+      // Never select a "last" connection or guess from its position in the list.
+      setSelectedConnectionId(savedRecord.id);
       setTestResult(null);
       await enqueueSnackbar({
         message: 'تنظیمات اتصال ذخیره شد؛ اکنون «آزمایش اتصال» را بزنید.',
@@ -561,7 +558,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction(, {
         action: 'test',
         connectionId: targetConnectionId,
       });
@@ -577,16 +574,12 @@ export const AccountingSettingsPanel = () => {
         return;
       }
 
-      setTestResult({
-        healthState: readString(response.data.healthState),
-        message: readString(response.data.message),
-        detail: readString(response.data.detail),
-      });
+      const health = readAccountingNestHealth(response.data);
+      setTestResult(health);
 
       await enqueueSnackbar({
-        message: readString(response.data.message),
-        variant:
-          readString(response.data.healthState) === 'OK' ? 'success' : 'warning',
+        message: health.message,
+        variant: health.healthState === 'OK' ? 'success' : 'warning',
       });
       await loadPanel();
     } catch {
@@ -690,7 +683,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction(, {
         action: 'set-default',
         connectionId: entry.id,
       });
@@ -729,7 +722,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction(, {
         action: 'deactivate',
         connectionId: entry.id,
       });
@@ -781,7 +774,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction(, {
         action: 'reactivate',
         connectionId: entry.id,
       });
@@ -1052,7 +1045,11 @@ export const AccountingSettingsPanel = () => {
               ارسال سند به حسابداری
             </span>
             <span style={{ fontSize: 'var(--t-font-size-sm)' }}>
-              {data.flags.documentExportEnabled ? 'فعال' : 'در این نسخه غیرفعال است'}
+              {data.metadataVerified === false
+                ? 'وضعیت این قابلیت از سرور تأیید نشده است'
+                : data.flags.documentExportEnabled
+                  ? 'فعال'
+                  : 'در این نسخه غیرفعال است'}
             </span>
             <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
               این صفحه هیچ سندی ارسال نمی‌کند.
