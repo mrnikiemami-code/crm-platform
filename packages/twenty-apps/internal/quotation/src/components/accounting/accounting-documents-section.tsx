@@ -406,7 +406,9 @@ export const AccountingDocumentsSection = ({
           }}
           disabled={loading || sending || busy}
         />
-        {tab === 'PENDING' ? (
+      </div>
+      <div role="group" aria-label="عملیات گروهی" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--t-spacing-2)' }}>
+        {tab === 'PENDING' && selected.size === 0 ? (
           <SecondaryButton
             label={sending ? 'در حال ارسال…' : 'ارسال همه'}
             onClick={sendAllPending}
