@@ -1,6 +1,14 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 036 INDEPENDENT ARCHITECT AUDIT (2026-11-26)
+## CURRENT — EXECUTION CONTRACT GOAL 036-R1 (2026-11-26)
+
+**Canonical next task:** [CRM-129-GOAL-036-R1-ARCHITECTURE-REPAIR-TASK.md](./goal-036/CRM-129-GOAL-036-R1-ARCHITECTURE-REPAIR-TASK.md), created after the independent architecture audit. This is the **authoritative, unambiguous execution plan** for F01–F05. The prior [independent audit](./goal-036/CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md) remains `ARCHITECT_BLOCKED_ON_WS5_CONTRACT` until repair is verified.
+
+**Decisive rules:** (1) Only the existing role-gated Nest quotation catalog list wrappers are trusted for tax/currency catalogs in Accounting Settings; do not read those via `callAppRoute` / `/s`. (2) Failed/loading/empty catalog and active/inactive/missing reference are distinct states, without fabricated IRR success; preserve historical mappings and forbid new orphan/inactive selections. (3) Mock/Asan modes derive from server-accepted adapter identity/capabilities, with unknown adapter fail-closed; `isLive` is a display descriptor, never auth. (4) Real API/negative auth/E2E/browser evidence required, not just Vitest. (5) Single CRM OpenCode session; keep Money Domain, SQL schema, seals, PDF, outbound off and :6080 unchanged.
+
+**Git coordination:** Architect docs were committed after Goal 036 merge; fetch/merge current origin carefully before product work; never rebase/reset/force-push, and never touch unrelated untracked `twenty-shared` AI artifacts. Implement R1-A source authority → R1-B mapping lifecycle → R1-C adapter matrix → R1-D real verification → R1-E controlled Dev apply. `STOP_FOR_ARCHITECT_AND_USER_UAT`; do not claim Goal 023 complete or WS5/WS6 architect-accepted before independent review. At this checkpoint **task planned/persisted, not implemented**.
+
+## PRIOR CHECKPOINT — GOAL 036 INDEPENDENT ARCHITECT AUDIT (2026-11-26)
 
 **Verdict:** `ARCHITECT_BLOCKED_ON_WS5_CONTRACT`, NOT Goal 036 acceptance. Full evidence: [CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md](./goal-036/CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md). Audited source from `1c5bc757fb` to `4ccff18f5f` on reconciled branch `ad909fe3f9`. Product diff is scoped to frontend/tests/docs; no schema, Money Domain, Nest authority, PDF or sealed revisions changed in this pack.
 
