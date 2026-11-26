@@ -3,7 +3,7 @@ import {
   type RemoteCatalogItem,
   type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
-import { type AccountingPartyProfile } from 'src/domain/accounting/party-profile';
+import { mergeSourcePartyProfile, type AccountingPartyProfile } from 'src/domain/accounting/party-profile';
 import { normalizeNationalCode, normalizeEconomicCode, partyNationalIdentity } from 'src/domain/accounting/party-identity';
 import { asanUnitsToCrmMicros } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
@@ -594,7 +594,7 @@ export const planPartyImport = ({
 
     if (existingLink !== null) {
       const changed =
-        existingLink.remoteVersion !== party.remoteVersion;
+        existingLink.remoteVersion !== party.remoteVersion || mergeSourcePartyProfile(party, existingLink.sourceProfile) !== (existingLink.sourceProfile ?? null);
 
       return {
         ...party,

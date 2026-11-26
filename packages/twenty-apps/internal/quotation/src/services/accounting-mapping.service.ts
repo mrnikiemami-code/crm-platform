@@ -410,7 +410,7 @@ export const loadPartyMappingPage = async (
 
     return {
       connectionId: input.connectionId,
-      rows: await enrichPartyRows(built.rows, execute),
+      rows: await enrichPartyRows(built.rows, execute, input.connectionId),
       nextCursor: built.nextCursor ?? null,
       hasNextPage: built.hasNextPage,
       totalKnown: built.totalKnown,
@@ -473,7 +473,7 @@ export const loadPartyMappingPage = async (
 
   return {
     connectionId: input.connectionId,
-    rows: await enrichPartyRows(page.rows, execute),
+    rows: await enrichPartyRows(page.rows, execute, input.connectionId),
     nextCursor: page.nextCursor,
     hasNextPage: page.hasNextPage,
     totalKnown: page.totalKnown,

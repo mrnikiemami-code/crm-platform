@@ -38,8 +38,9 @@ import {
   enrichItemPage,
 } from 'src/domain/accounting/mapping-page';
 import { loadCrmItemIndex } from 'src/services/accounting-crm-lookup.service';
-import { crmPartyFields, enrichPartyRows, loadCrmPartyIdentities, resolvePartyIdentity } from 'src/services/accounting-party-identity.service';
-import { normalizeNationalCode, partyTypeFromNationalCode } from 'src/domain/accounting/party-identity';
+import { crmPartyFields, enrichPartyRows, loadCrmPartyIdentities, resolvePartyIdentity, stableCustomerRecordId } from 'src/services/accounting-party-identity.service';
+import { partyDisplayName, partyNationalIdentity, normalizeEconomicCode } from 'src/domain/accounting/party-identity';
+import { mergeSourcePartyProfile } from 'src/domain/accounting/party-profile';
 import { verifyCustomerRecord } from 'src/services/customer-picker.service';
 import { isPriceValidOnDay } from 'src/domain/catalog/price-snapshot';
 import { parseMicrosExact } from 'src/domain/money/micros';
@@ -130,6 +131,7 @@ export const loadPartyLinks = async (
         externalPartyId: readString(node.externalPartyId) || null,
         internalPartyId: readString(node.internalPartyId) || null,
         remoteVersion: readString(node.remoteVersion) || null,
+        sourceProfile: readString(node.sourceProfile) || null,
         syncStatus: readString(node.syncStatus) || 'LINKED',
         ...(kind === 'PERSON' || kind === 'COMPANY' ? { partyType: kind } : {}),
       });
@@ -441,7 +443,7 @@ export const previewPartyImport = async (
     crmParties: [],
     crmCandidates: candidates,
   });
-  const rows = await enrichPartyRows(preview.rows, dependencies.execute ?? executeRecordGraphql);
+  const rows = await enrichPartyRows(preview.rows, dependencies.execute ?? executeRecordGraphql, connectionId);
   const summary = { ...preview.summary };
   for (const key of Object.keys(summary) as (keyof typeof summary)[]) summary[key] = 0;
   for (const row of rows) summary[row.decision] += 1;
@@ -486,7 +488,8 @@ export const applyPartyImport = async (
   const identities = await loadCrmPartyIdentities(
     selectedRemote,
     [...links.filter((link) => link.externalPartyId !== null && requested.has(link.externalPartyId)).flatMap((link) => link.internalPartyId ? [link.internalPartyId] : []),
-      ...selections.flatMap((selection) => selection.internalPartyId ? [selection.internalPartyId] : [])],
+      ...selections.flatMap((selection) => selection.internalPartyId ? [selection.internalPartyId] : []),
+      ...selectedRemote.map((party) => stableCustomerRecordId(connectionId, party.externalPartyId))],
     execute,
   );
   const plan = planPartyImport({ remoteParties, links, crmParties: [] });
@@ -515,19 +518,15 @@ export const applyPartyImport = async (
       continue;
     }
     try {
-      const resolved = resolvePartyIdentity(remote, identities, existing?.internalPartyId ?? null, existing?.partyType);
+      const stableId = stableCustomerRecordId(connectionId, externalPartyId);
+      const recovered = identities.some((entry) => entry.id === stableId) ? stableId : null;
+      const resolved = resolvePartyIdentity(remote, identities, existing?.internalPartyId ?? recovered, existing?.partyType);
+      const sourceProfile = mergeSourcePartyProfile(remote, existing?.sourceProfile);
       let target = resolved.kind === 'MATCH' ? resolved.target : null;
       if (!automatic) {
         const selected = identities.find((entry) => entry.id === selection.internalPartyId && entry.partyType === selection.partyType);
-        // Manual resolution may attach an unverified/missing identity, but cannot
-        // override a contradictory national code or another known identity.
-        const code = normalizeNationalCode(remote.nationalCode);
-        const selectedCode = normalizeNationalCode(selected?.nationalCode);
-        const expected = partyTypeFromNationalCode(code);
-        const exact = code === null ? [] : identities.filter((entry) => normalizeNationalCode(entry.nationalCode) === code);
-        if (!selected || (expected !== null && selected.partyType !== expected) ||
-            (selected.nationalCode !== null && code !== null && selectedCode !== code) ||
-            exact.some((entry) => entry.id !== selected.id)) {
+        // Explicit selection cannot override a contradictory strong identifier.
+        if (!selected || resolvePartyIdentity(remote, identities, selected.id, selected.partyType).kind !== 'MATCH') {
           refuse('INVALID_INPUT', 'Selected CRM identity conflicts with accounting');
           continue;
         }
@@ -543,34 +542,33 @@ export const applyPartyImport = async (
         internalPartyId = target.id;
         const visible = await verifyCustomerRecord({ customerType: partyType, recordId: internalPartyId }, { execute: executeCustomer });
         if (!visible.ok) { refuse(visible.refusal.code, 'Customer is not visible to caller'); continue; }
-        // Do not overwrite contact fields for a manually attached customer with
-        // insufficient identity. Strong or explicitly resolved identities may sync.
-        const fields = normalizeNationalCode(remote.nationalCode) === null ? {} : crmPartyFields(remote, partyType, target);
+        const fields = crmPartyFields(remote, partyType, target);
         if (Object.keys(fields).length > 0) {
           const root = partyType === 'PERSON' ? 'updatePerson' : 'updateCompany';
           const updated = await executeCustomer(`mutation SyncAccountingParty { ${root}(id: ${toGraphqlLiteral(internalPartyId)}, data: ${toGraphqlLiteral(fields)}) { id } }`);
           if (readCreatedId(updated, root) !== internalPartyId) { refuse('QUERY_ERROR', 'CRM update not confirmed'); continue; }
-        } else if (existing !== null && existing.remoteVersion === remote.remoteVersion) {
+        } else if (existing !== null && existing.remoteVersion === remote.remoteVersion && (existing.sourceProfile ?? null) === sourceProfile) {
           refuse('ALREADY_SUCCEEDED', 'CRM customer already synchronized');
           continue;
         }
-      } else if (automatic && resolved.kind === 'CREATE' && remote.fullName.trim()) {
+      } else if (automatic && resolved.kind === 'CREATE' && partyDisplayName(remote)) {
         partyType = resolved.partyType;
         const root = partyType === 'PERSON' ? 'createPerson' : 'createCompany';
-        const fields = crmPartyFields(remote, partyType, null);
+        const fields = { ...crmPartyFields(remote, partyType, null), id: stableId };
         const created = await executeCustomer(`mutation CreateAccountingCustomer { ${root}(data: ${toGraphqlLiteral(fields)}) { id } }`);
         internalPartyId = readCreatedId(created, root);
         if (!internalPartyId) { refuse('QUERY_ERROR', 'CRM create not confirmed'); continue; }
         createdParties += 1;
         // A retry after link failure resolves the canonical unique code; it must
         // never create a second customer. Include this successful write in the batch index.
-        identities.push({ id: internalPartyId, partyType, name: remote.fullName, nationalCode: resolved.nationalCode, mobile: remote.mobile, phones: null });
+        identities.push({ id: internalPartyId, partyType, name: partyDisplayName(remote), nationalCode: partyNationalIdentity(remote), economicCode: normalizeEconomicCode(remote.economicCode), mobile: remote.mobile, phones: null });
       } else {
         refuse('INVALID_INPUT', 'A verified CRM identity is required');
         continue;
       }
       const linkFields = {
         externalCode: remote.code,
+        ...(sourceProfile === null ? {} : { sourceProfile }),
         remoteVersion: remote.remoteVersion,
         lastSyncedAt: new Date().toISOString(),
         syncStatus: 'LINKED',

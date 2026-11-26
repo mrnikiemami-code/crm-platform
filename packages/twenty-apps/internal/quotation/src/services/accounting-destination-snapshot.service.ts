@@ -242,7 +242,7 @@ export const partyRowHaystack = (row: PartyImportRow): string[] => [
   row.code,
   row.fullName,
   row.externalPartyId,
-  row.nationalCode ?? '',
+  row.nationalCode ?? '', row.legalNationalId ?? '', row.economicCode ?? '',
   row.mobile ?? '',
 ];
 
