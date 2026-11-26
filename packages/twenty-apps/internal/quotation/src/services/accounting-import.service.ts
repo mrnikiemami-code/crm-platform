@@ -496,10 +496,26 @@ export const applyPartyImport = async (
   let createdParties = 0;
   const refused: { externalPartyId: string; code: string; detail: string }[] = [];
 
+  const processedExternalIds = new Set<string>();
   for (const selection of selections) {
+    if (processedExternalIds.has(selection.externalPartyId)) {
+      refused.push({ externalPartyId: selection.externalPartyId, code: 'ALREADY_SUCCEEDED', detail: 'duplicate selection' });
+      continue;
+    }
+    processedExternalIds.add(selection.externalPartyId);
     const existing = byExternalId.get(selection.externalPartyId) ?? null;
     let internalPartyId = selection.internalPartyId?.trim() ?? '';
     let partyType = selection.partyType;
+
+    // Never create another CRM record for an already mapped external identity.
+    if (selection.createNew === true && existing !== null) {
+      refused.push({
+        externalPartyId: selection.externalPartyId,
+        code: 'ALREADY_SUCCEEDED',
+        detail: 'this customer is already linked',
+      });
+      continue;
+    }
 
     if (selection.createNew === true && internalPartyId === '') {
       const remote = remoteById.get(selection.externalPartyId);
