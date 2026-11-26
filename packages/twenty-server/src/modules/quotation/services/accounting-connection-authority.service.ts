@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { type ActorMetadata, FieldActorSource } from 'twenty-shared/types';
@@ -310,6 +311,7 @@ export class AccountingConnectionAuthorityService {
           );
         }
 
+        const affectedRecordId = existing?.id ?? randomUUID();
         const values = {
           name,
           adapterId,
@@ -323,6 +325,7 @@ export class AccountingConnectionAuthorityService {
 
         if (existing === null) {
           await repository.insert({
+            id: affectedRecordId,
             ...values,
             isActive: true,
             // New rows are never auto-promoted: an authorized set-default must opt in.
@@ -343,6 +346,7 @@ export class AccountingConnectionAuthorityService {
         return {
           kind: 'OK' as const,
           connections: await this.findAll(repository),
+          affectedRecordId,
           message:
             existing === null
               ? 'اتصال حسابداری ثبت شد؛ ارسال مالی همچنان غیرفعال است'
