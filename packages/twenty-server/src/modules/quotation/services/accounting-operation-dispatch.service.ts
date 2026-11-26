@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { LogicFunctionExecutorService } from 'src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.service';
+import { LogicFunctionExecutionStatus } from 'src/engine/metadata-modules/logic-function/dtos/logic-function-execution-result.dto';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
@@ -116,9 +117,13 @@ export class AccountingOperationDispatchService {
         // Never bypass workspace record permissions here. The executor's later
         // application-role reads do not authorize the original caller.
         if (!isOwnerApp) {
+          const roleId = await this.permissions.resolveRoleId(authContext);
+          if (!roleId) {
+            return forbidden();
+          }
           const visible = await this.workspaceOrmManager.executeInWorkspaceContext(
             () => this.workspaceOrmManager
-              .getRepository<{ id: string }>('quotation')
+              .getRepository<{ id: string }>('quotation', { unionOf: [roleId] })
               .findOne({ where: { id: quotationId }, select: { id: true } }),
             authContext,
           );
@@ -166,7 +171,7 @@ export class AccountingOperationDispatchService {
       });
 
       const data = asRecord(result.data);
-      if (result.error || data === null || typeof data.success !== 'boolean') {
+      if (result.status !== LogicFunctionExecutionStatus.SUCCESS || result.error || data === null || typeof data.success !== 'boolean') {
         return unavailable();
       }
       return data;

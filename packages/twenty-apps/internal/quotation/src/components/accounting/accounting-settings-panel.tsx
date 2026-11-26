@@ -165,8 +165,8 @@ export const AccountingSettingsPanel = () => {
     detail: string;
   } | null>(null);
   const [operations, setOperations] = useState<OperationRow[]>([]);
-  const [pendingItems, setPendingItems] = useState(0);
-  const [pendingCustomers, setPendingCustomers] = useState(0);
+  const [pendingItems, setPendingItems] = useState<number | null>(null);
+  const [pendingCustomers, setPendingCustomers] = useState<number | null>(null);
   // The overview promises to say how current the list is, so the same one-row read that
   // produces the counters also brings the snapshot it came from.
   const [snapshot, setSnapshot] = useState<SnapshotView | null>(null);
@@ -305,12 +305,12 @@ export const AccountingSettingsPanel = () => {
 
   // The overview is the first screen, so it cannot wait for the catalog and customer panels
   // to be opened before it knows how much work is outstanding. One row is asked for; only
-  // the counters are used, and a failure leaves them at zero without blocking the panel.
+  // the counters are used, and a refusal or failed read leaves the counters unknown.
   useEffect(() => {
+    setPendingItems(null);
+    setPendingCustomers(null);
+    setSnapshot(null);
     if (activeConnectionId === null) {
-      setPendingItems(0);
-      setPendingCustomers(0);
-      setSnapshot(null);
       return;
     }
 
@@ -896,8 +896,8 @@ export const AccountingSettingsPanel = () => {
     label: SECTION_COPY[id].label,
     description: SECTION_COPY[id].description,
     ...(id === 'connections' ? { count: data.connections.length } : {}),
-    ...(id === 'catalog' && pendingItems > 0 ? { alertCount: pendingItems } : {}),
-    ...(id === 'customers' && pendingCustomers > 0
+    ...(id === 'catalog' && pendingItems !== null && pendingItems > 0 ? { alertCount: pendingItems } : {}),
+    ...(id === 'customers' && pendingCustomers !== null && pendingCustomers > 0
       ? { alertCount: pendingCustomers }
       : {}),
   }));

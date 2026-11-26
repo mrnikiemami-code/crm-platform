@@ -6,7 +6,7 @@ const auth = {
 } as WorkspaceAuthContext;
 
 const setup = (authority: string | null, legacy = false, visible = true) => {
-  const execute = jest.fn(async () => ({ data: { success: true } }));
+  const execute = jest.fn(async () => ({ status: 'SUCCESS', data: { success: true } }));
   const cache = { getOrRecompute: jest.fn(async () => ({
     flatLogicFunctionMaps: { byUniversalIdentifier: {
       'b257fa8c-38a4-5cec-ba65-0cf27634abf9': { id: 'import-fn', applicationId: 'app', httpRouteTriggerSettings: legacy ? {} : null },
@@ -20,7 +20,7 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
   };
   const service = new AccountingOperationDispatchService(
     cache as never, { execute } as never,
-    { resolveSettingsAuthority: jest.fn(async () => authority) } as never,
+    { resolveSettingsAuthority: jest.fn(async () => authority), resolveRoleId: jest.fn(async () => 'role-1') } as never,
     manager as never,
   );
   return { service, execute, manager };
@@ -57,7 +57,7 @@ describe('accounting operation boundary', () => {
   it('allows record-scoped preview after a non-bypassed read but not document export without settings authority', async () => {
     const { service, execute, manager } = setup(null);
     expect(await service.dispatch('accounting-outbound-preview-quotation-export', { connectionId: 'c', quotationId: 'q-1' }, auth)).toEqual({ success: true });
-    expect(manager.getRepository).toHaveBeenCalledWith('quotation');
+    expect(manager.getRepository).toHaveBeenCalledWith('quotation', { unionOf: ['role-1'] });
     expect(await service.dispatch('accounting-outbound-execute-quotation-export', { connectionId: 'c', quotationId: 'q-1' }, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
     expect(execute).toHaveBeenCalledTimes(1);
   });

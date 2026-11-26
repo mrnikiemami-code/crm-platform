@@ -1,0 +1,8 @@
+# Overlay only: apply to the EXISTING verified Dev compose project, never Intranet.
+services:
+  server:
+    image: ${CRM129_DEV_IMAGE:?Set the verified CRM129 Dev image}
+    pull_policy: never
+  worker:
+    image: ${CRM129_DEV_IMAGE:?Set the verified CRM129 Dev image}
+    pull_policy: never

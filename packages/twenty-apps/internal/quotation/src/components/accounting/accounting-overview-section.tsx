@@ -55,8 +55,8 @@ export const AccountingOverviewSection = ({
   data: PanelData;
   activeConnectionId: string | null;
   snapshot: SnapshotView | null;
-  pendingItems: number;
-  pendingCustomers: number;
+  pendingItems: number | null;
+  pendingCustomers: number | null;
   onGoTo: (sectionId: string) => void;
   onTestConnection?: () => void;
 }) => {
@@ -96,7 +96,16 @@ export const AccountingOverviewSection = ({
     });
   }
 
-  if (pendingItems > 0) {
+  if (connection !== null && (pendingItems === null || pendingCustomers === null)) {
+    attention.push({
+      key: 'mapping-unread',
+      text: 'آمار نگاشت هنوز خوانده نشده یا دسترسی خواندن آن وجود ندارد.',
+      label: 'بررسی نگاشت',
+      target: pendingItems === null ? 'catalog' : 'customers',
+    });
+  }
+
+  if (pendingItems !== null && pendingItems > 0) {
     attention.push({
       key: 'items',
       text: `${pendingItems.toLocaleString('fa-IR')} کالا در حسابداری هست که به کالای CRM وصل نشده است.`,
@@ -130,7 +139,7 @@ export const AccountingOverviewSection = ({
     });
   }
 
-  if (pendingCustomers > 0) {
+  if (pendingCustomers !== null && pendingCustomers > 0) {
     attention.push({
       key: 'customers',
       text: `${pendingCustomers.toLocaleString('fa-IR')} مشتری هنوز مشتری CRM ندارد.`,
@@ -202,15 +211,15 @@ export const AccountingOverviewSection = ({
         />
         <StatCard
           label="کالاهای وصل‌نشده"
-          value={pendingItems.toLocaleString('fa-IR')}
+          value={pendingItems === null ? 'نخوانده' : pendingItems.toLocaleString('fa-IR')}
           hint="در حسابداری هست، در CRM وصل نشده"
-          tone={pendingItems > 0 ? 'warning' : 'success'}
+          tone={pendingItems === null || pendingItems > 0 ? 'warning' : 'success'}
         />
         <StatCard
           label="مشتریان وصل‌نشده"
-          value={pendingCustomers.toLocaleString('fa-IR')}
+          value={pendingCustomers === null ? 'نخوانده' : pendingCustomers.toLocaleString('fa-IR')}
           hint="نیازمند انتخاب مشتری CRM"
-          tone={pendingCustomers > 0 ? 'warning' : 'success'}
+          tone={pendingCustomers === null || pendingCustomers > 0 ? 'warning' : 'success'}
         />
       </StatGrid>
 
@@ -290,8 +299,10 @@ export const AccountingOverviewSection = ({
         />
       </div>
 
-      <InlineAlert tone={outboundDisabled ? 'success' : 'danger'}>
-        {outboundDisabled
+      <InlineAlert tone={data.metadataVerified === false ? 'warning' : outboundDisabled ? 'success' : 'danger'}>
+        {data.metadataVerified === false
+          ? 'وضعیت کلیدهای ارسال از محیط اجرای حسابداری تأیید نشده است.'
+          : outboundDisabled
           ? 'ارسال سند به حسابداری در این نسخه غیرفعال است؛ این صفحه فقط می‌خواند و چیزی به حسابداری نمی‌نویسد.'
           : 'یکی از کلیدهای ارسال فعال است. با این حال، این صفحه خودش سندی ارسال نمی‌کند؛ ارسال از مسیر پیش‌فاکتور انجام می‌شود.'}
       </InlineAlert>

@@ -77,6 +77,7 @@ export const callAppRoute = async (
 const callQuotationNestAction = async (
   actionMap: Record<string, string>,
   body: Record<string, unknown>,
+  deadlineMs = REQUEST_DEADLINE_MS,
 ): Promise<AppRouteResponse> => {
   const apiBase = (process.env.TWENTY_API_URL ?? '').trim().replace(/\/$/, '');
   const token =
@@ -98,7 +99,7 @@ const callQuotationNestAction = async (
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ ...body, action: nestAction }),
-    signal: AbortSignal.timeout(REQUEST_DEADLINE_MS),
+    signal: AbortSignal.timeout(deadlineMs),
   });
 
   const text = await response.text();
@@ -218,7 +219,7 @@ export const callAccountingOperationNestAction = (
       data: { success: false, code: 'INVALID_INPUT', message: 'عملیات حسابداری معتبر نیست.' },
     });
   }
-  return callQuotationNestAction(actions, body);
+  return callQuotationNestAction(actions, body, 70_000);
 };
 
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';

@@ -169,7 +169,7 @@ export class QuotationPermissionService {
     return role?.canUpdateAllSettings === true ? 'SETTINGS_ROLE' : null;
   }
 
-  private async resolveRoleId(
+  async resolveRoleId(
     authContext: WorkspaceAuthContext,
   ): Promise<string | null> {
     if (authContext.type === 'user') {

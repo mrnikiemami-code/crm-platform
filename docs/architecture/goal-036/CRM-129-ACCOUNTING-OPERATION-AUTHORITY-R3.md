@@ -15,7 +15,9 @@ Use the existing Dockerfile at packages/twenty-docker/twenty/Dockerfile. Build f
 
 Example build from clean checkout:
 ```sh
-docker build --target twenty -f packages/twenty-docker/twenty/Dockerfile --build-arg APP_VERSION=0.1.72 --label org.opencontainers.image.revision=<full-commit> -t twenty-dev/crm129:<commit> .
+docker build --target twenty -f packages/twenty-docker/twenty/Dockerfile --build-arg APP_VERSION=<existing-platform-version> --label org.opencontainers.image.revision=<full-commit> -t twenty-dev/crm129:<commit> .
 ```
 
 Before apply: TypeCheck, Vitest (zero unhandled), relevant server Jest and clean package/image build. After server and worker recreation: verify both image IDs, health, database continuity, apply quotation@0.1.72 to Dev only, inspect manifest removal of HTTP triggers, authorized browser/API tests for all actions, unauthorized direct legacy URL and cross-workspace/record access negative controls, no external vendor writes. Record actual image digest, commit, app version, runtime results and any blockers. Goal 023 stays ACTIVE.
+
+The Twenty platform version is independent of quotation@0.1.72. Preserve the existing platform version. The committed PowerShell build helper creates a temporary clean worktree, builds the existing full Dockerfile and verifies the OCI revision. The committed Compose overlay selects the same image for both server and worker; use it only with the actual confirmed Dev Compose files/project/environment. Review resolved configuration without logging secrets, back up Dev and verify port 3002, not 6080, before recreation. The helper does not deploy anything. The dispatch record gate supplies the actual caller role to the ORM, and unread mapping counts are unknown rather than a green zero.
