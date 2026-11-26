@@ -85,15 +85,17 @@ export const buildUpdateAccountingItemLinkMutation = (
 
 export const buildAccountingPartyLinksQuery = ({
   connectionId,
-  limit = 200,
+  limit = 100,
+  afterCursor = null,
 }: {
   connectionId: string;
   limit?: number;
+  afterCursor?: string | null;
 }): string =>
   `query AccountingPartyLinks {
     accountingPartyLinks(
       filter: { connectionId: { eq: ${toGraphqlLiteral(connectionId)} } }
-      first: ${limit}
+      first: ${limit}${afterCursor === null ? '' : `, after: ${toGraphqlLiteral(afterCursor)}`}
     ) {
       edges {
         node {
@@ -108,6 +110,7 @@ export const buildAccountingPartyLinksQuery = ({
           internalPartyId
         }
       }
+      pageInfo { hasNextPage endCursor }
     }
   }`;
 

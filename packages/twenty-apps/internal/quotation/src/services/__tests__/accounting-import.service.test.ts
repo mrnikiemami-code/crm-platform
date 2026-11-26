@@ -338,7 +338,7 @@ describe('party import', () => {
     const adapter = new MockAccountingAdapter();
     const preview = await previewPartyImport(
       { connectionId: 'conn-1', adapter },
-      { execute: async () => edges('accountingPartyLinks', []) },
+      { execute: async () => ({ ...edges('accountingPartyLinks', []), ...edges('people', []), ...edges('companies', []) }) },
     );
 
     expect(preview.ok).toBe(true);
@@ -366,6 +366,7 @@ describe('party import', () => {
 
   it('creates a link for an explicit CRM party and refuses to duplicate it', async () => {
     let linkExists = false;
+    const remoteParties = [{ externalPartyId: '101', code: '101', fullName: 'شرکت الف', mobile: null, nationalCode: null, remoteVersion: 'v1' }];
     const execute = fakeExecute((query) => {
       if (query.includes('createAccountingPartyLink')) {
         linkExists = true;
@@ -373,6 +374,8 @@ describe('party import', () => {
         return { createAccountingPartyLink: { id: 'pl-new' } };
       }
 
+      if (query.includes('AccountingPartyIdentities')) return { ...edges('people', []), ...edges('companies', [{ id: 'company-1', name: 'شرکت الف', nationalCode: null }]) };
+      if (query.includes('CustomerCompanies')) return edges('companies', [{ id: 'company-1', name: 'شرکت الف' }]);
       return edges(
         'accountingPartyLinks',
         linkExists ? [partyLinkNode({ id: 'pl-new', externalPartyId: '101' })] : [],
@@ -386,6 +389,7 @@ describe('party import', () => {
           { externalPartyId: '101', internalPartyId: 'company-1', partyType: 'COMPANY' },
         ],
         allowRemoteVersionUpdate: false,
+        remoteParties,
       },
       { execute },
     );
@@ -399,6 +403,7 @@ describe('party import', () => {
           { externalPartyId: '101', internalPartyId: 'company-1', partyType: 'COMPANY' },
         ],
         allowRemoteVersionUpdate: false,
+        remoteParties,
       },
       { execute },
     );

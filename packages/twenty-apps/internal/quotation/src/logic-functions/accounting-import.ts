@@ -250,26 +250,18 @@ const handler = async (event: RoutePayload<unknown>) => {
 
     if (action === 'apply-parties') {
       const selections = readPartySelections(body.selections);
-      const needsRemote = selections.some(
-        (selection) => selection.createNew === true,
-      );
-      const remoteList = needsRemote
-        ? await adapter.value.listParties()
-        : null;
-
+      if (selections.length > 25) {
+        return failure('INVALID_INPUT', 'حداکثر ۲۵ مشتری در هر درخواست قابل انتقال است.');
+      }
+      const remoteList = await adapter.value.listParties();
+      if (!remoteList.ok) {
+        return failure(remoteList.refusal.code, persianAccountingMessage(remoteList.refusal.code));
+      }
       const outcome = await applyPartyImport({
         connectionId,
         selections,
         allowRemoteVersionUpdate: body.allowRemoteVersionUpdate === true,
-        remoteParties:
-          remoteList !== null && remoteList.ok
-            ? remoteList.value.map((party) => ({
-                externalPartyId: party.externalPartyId,
-                fullName: party.fullName,
-                nationalCode: party.nationalCode,
-                mobile: party.mobile,
-              }))
-            : [],
+        remoteParties: remoteList.value,
       });
 
       return { success: true, outcome };

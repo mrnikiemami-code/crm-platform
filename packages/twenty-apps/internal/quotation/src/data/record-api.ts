@@ -116,3 +116,17 @@ export const executeRecordGraphql = async (
 
   return runGraphql({ endpoint: '/graphql', query, accessToken: token });
 };
+
+
+// CRM person/company writes act as the triggering user, never as the broad app
+// identity. The platform supplies a distinct delegated token for user invocations.
+export const executeCallerRecordGraphql = async (
+  query: string,
+): Promise<Record<string, unknown>> => {
+  const token = process.env.TWENTY_APP_ACCESS_TOKEN;
+  const applicationToken = process.env.TWENTY_APP_APPLICATION_ACCESS_TOKEN;
+  if (!token || !applicationToken || token === applicationToken) {
+    throw new RecordApiError('FORBIDDEN', 'A delegated CRM user is required');
+  }
+  return runGraphql({ endpoint: '/graphql', query, accessToken: token });
+};

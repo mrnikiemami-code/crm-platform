@@ -206,10 +206,9 @@ export const buildPartySnapshot = ({
 
   const kept = remoteParties.slice(0, limit);
   const preview = planPartyImport({
-    remoteParties: kept,
+    remoteParties,
     links,
-    // A CRM national code is not a standard field, so no automatic match is proposed; the
-    // candidate list is searched explicitly by the person, one page at a time.
+    // Remote-side snapshot only. CRM identity enrichment is performed on each read page.
     crmParties: [],
     crmCandidates: [],
   });
@@ -224,7 +223,7 @@ export const buildPartySnapshot = ({
       ...syncStatusFor(declaredTotal, kept.length),
     },
     itemRows: [],
-    partyRows: preview.rows,
+    partyRows: preview.rows.slice(0, kept.length),
     itemSummary: {},
     partySummary: preview.summary,
   });

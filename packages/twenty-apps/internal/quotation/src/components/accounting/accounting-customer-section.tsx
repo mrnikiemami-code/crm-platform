@@ -32,6 +32,7 @@ import {
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
+import { partyTypeFromNationalCode } from 'src/domain/accounting/party-identity';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 const PAGE_SIZE = 25;
@@ -72,40 +73,15 @@ const matchesPartyFilter = (row: PartyMappingRow, filter: PartyFilter): boolean 
   );
 };
 
-// Auto-link only when the domain already suggested a unique CRM match.
+// All valid, unambiguous identities are resolved again on the server. The UI
+// sends intent, not a claimed identity match or a request to blindly create.
 const isAutoTransferable = (row: PartyMappingRow): boolean =>
-  row.decision === 'LINK_SUGGESTED' &&
-  typeof row.suggestedInternalPartyId === 'string' &&
-  row.suggestedInternalPartyId.trim() !== '';
+  ['LINK_SUGGESTED', 'NEEDS_CRM_RECORD', 'REMOTE_CHANGED'].includes(row.decision) &&
+  partyTypeFromNationalCode(row.nationalCode) !== null &&
+  row.fullName.trim() !== '';
 
-// Iranian national identifiers: 10 digits = person (کد ملی), 11 = company (شناسه ملی).
-const partyTypeFromNationalCode = (
-  nationalCode: string | null,
-): 'PERSON' | 'COMPANY' | null => {
-  const digits = (nationalCode ?? '').replace(/\D/g, '');
-  if (digits.length === 10) {
-    return 'PERSON';
-  }
-  if (digits.length === 11) {
-    return 'COMPANY';
-  }
-  return null;
-};
-
-const selectionFromSuggested = (row: PartyMappingRow): PartySelection | null => {
-  if (!isAutoTransferable(row) || row.suggestedInternalPartyId === null) {
-    return null;
-  }
-  const partyType = partyTypeFromNationalCode(row.nationalCode);
-  if (partyType === null) {
-    return null;
-  }
-  return {
-    internalPartyId: row.suggestedInternalPartyId,
-    partyType,
-    label: row.fullName,
-  };
-};
+const selectionFromSuggested = (row: PartyMappingRow): PartySelection | null =>
+  isAutoTransferable(row) ? { label: row.fullName, createNew: true } : null;
 
 export const AccountingCustomerSection = ({
   connectionId,
@@ -213,12 +189,25 @@ export const AccountingCustomerSection = ({
       visibleRows.filter(
         (row) =>
           selected.has(row.externalPartyId) ||
-          isAutoTransferable(row) ||
-          row.decision === 'NEEDS_CRM_RECORD' ||
-          row.decision === 'AMBIGUOUS_CRM_MATCH',
+          isAutoTransferable(row),
       ),
     [visibleRows, selected],
   );
+
+  const allPageSelected = pageSelectable.length > 0 && pageSelectable.every((row) => selected.has(row.externalPartyId));
+  const togglePage = () => {
+    setSelected((current) => {
+      const next = new Map(current);
+      for (const row of pageSelectable) {
+        if (allPageSelected) next.delete(row.externalPartyId);
+        else if (!next.has(row.externalPartyId)) {
+          const choice = selectionFromSuggested(row);
+          if (choice !== null) next.set(row.externalPartyId, choice);
+        }
+      }
+      return next;
+    });
+  };
 
   const toggleRow = (row: PartyMappingRow) => {
     setSelected((current) => {
@@ -253,6 +242,7 @@ export const AccountingCustomerSection = ({
         const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
           action: 'apply-parties',
           connectionId,
+          allowRemoteVersionUpdate: true,
           selections: batch.map(([externalPartyId, selection]) => ({
             externalPartyId,
             ...(selection.createNew === true
@@ -277,7 +267,8 @@ export const AccountingCustomerSection = ({
 
         const outcome = asRecord(response.data.outcome);
         createdLinks +=
-          typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
+          (typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0) +
+          (typeof outcome?.updatedLinks === 'number' ? outcome.updatedLinks : 0);
         refused += Array.isArray(outcome?.refused) ? outcome.refused.length : 0;
       }
 
@@ -287,7 +278,8 @@ export const AccountingCustomerSection = ({
       });
       setSelected(new Map());
       setPickerFor(null);
-      void loadPage({ atCursor: cursor, search: submittedSearch, refresh: true });
+      setCursorStack([null]);
+      void loadPage({ atCursor: null, search: submittedSearch, refresh: true });
     } catch {
       await enqueueSnackbar({
         message: 'ارتباط با سرور برقرار نشد.',
@@ -323,6 +315,7 @@ export const AccountingCustomerSection = ({
       let atCursor: string | null = null;
       let pages = 0;
       let skipped = 0;
+      let completed = false;
 
       while (pages < TRANSFER_ALL_PAGE_CAP) {
         const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
@@ -351,15 +344,6 @@ export const AccountingCustomerSection = ({
           if (suggested !== null) {
             collected.set(row.externalPartyId, suggested);
           } else if (
-            row.decision === 'NEEDS_CRM_RECORD' &&
-            partyTypeFromNationalCode(row.nationalCode) !== null &&
-            row.fullName.trim() !== ''
-          ) {
-            collected.set(row.externalPartyId, {
-              label: row.fullName,
-              createNew: true,
-            });
-          } else if (
             row.decision === 'NEEDS_CRM_RECORD' ||
             row.decision === 'AMBIGUOUS_CRM_MATCH' ||
             row.decision === 'DUPLICATE_REMOTE_CODE'
@@ -369,17 +353,23 @@ export const AccountingCustomerSection = ({
         }
 
         pages += 1;
-        if (!mapped.hasNextPage || mapped.nextCursor === null) {
+        if (!mapped.hasNextPage) {
+          completed = true;
           break;
         }
+        if (mapped.nextCursor === null || mapped.nextCursor === atCursor) break;
         atCursor = mapped.nextCursor;
       }
 
+      if (!completed) {
+        await enqueueSnackbar({ message: 'فهرست کامل خوانده نشد؛ انتقال همه انجام نشد.', variant: 'error' });
+        return;
+      }
       if (collected.size === 0) {
         await enqueueSnackbar({
           message:
             skipped > 0
-              ? 'مشتری واجد شرایط خودکار نیست؛ موارد مبهم یا فاقد رکورد نیازمند تصمیم دستی‌اند.'
+              ? 'موارد باقی‌مانده نیازمند بررسی هویت هستند.'
               : 'مشتری واجد شرایطی برای انتقال نیست.',
           variant: 'info',
         });
@@ -388,7 +378,7 @@ export const AccountingCustomerSection = ({
 
       if (
         !window.confirm(
-          `انتقال همه: ${collected.size.toLocaleString('fa-IR')} مشتری با تطابق یکتا. موارد نیازمند بررسی دستی: ${skipped.toLocaleString('fa-IR')}. ادامه؟`,
+          `انتقال همه: ${collected.size.toLocaleString('fa-IR')} مشتری واجد شرایط. موارد نیازمند بررسی دستی: ${skipped.toLocaleString('fa-IR')}. ادامه؟`,
         )
       ) {
         return;
@@ -401,6 +391,7 @@ export const AccountingCustomerSection = ({
         message: 'ارتباط با سرور برقرار نشد.',
         variant: 'error',
       });
+    } finally {
       setApplying(false);
     }
   };
@@ -555,7 +546,9 @@ export const AccountingCustomerSection = ({
             >
               <thead>
                 <tr>
-                  <th style={styles.cell}>انتخاب</th>
+                  <th style={styles.cell}>
+                    <input type="checkbox" aria-label="انتخاب مشتریان این صفحه" checked={allPageSelected} disabled={!canManage || applying || pageSelectable.length === 0} onChange={togglePage} />
+                  </th>
                   <th style={styles.cell}>شناسه حسابداری</th>
                   <th style={styles.cell}>نام مشتری</th>
                   <th style={styles.cell}>کد ملی یا شناسه ملی</th>
@@ -578,7 +571,7 @@ export const AccountingCustomerSection = ({
                         <input
                           type="checkbox"
                           checked={selection !== undefined}
-                          disabled={!canManage || applying || linked || !canCheck}
+                          disabled={!canManage || applying || !canCheck}
                           aria-label={`انتخاب ${row.fullName}`}
                           onChange={() => toggleRow(row)}
                         />
@@ -605,7 +598,7 @@ export const AccountingCustomerSection = ({
                         </Badge>
                       </td>
                       <td style={styles.cell}>
-                        {linked ? (
+                        {linked || isAutoTransferable(row) ? (
                           '—'
                         ) : row.decision === 'DUPLICATE_REMOTE_CODE' ? (
                           '—'

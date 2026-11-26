@@ -36,6 +36,7 @@ import {
   type SnapshotStorage,
 } from 'src/services/accounting-snapshot-storage';
 import { loadItemLinks, loadPartyLinks } from 'src/services/accounting-import.service';
+import { enrichPartyRows } from 'src/services/accounting-party-identity.service';
 import { loadCrmItemIndex } from 'src/services/accounting-crm-lookup.service';
 import {
   type CustomerKind,
@@ -409,7 +410,7 @@ export const loadPartyMappingPage = async (
 
     return {
       connectionId: input.connectionId,
-      rows: built.rows,
+      rows: await enrichPartyRows(built.rows, execute),
       nextCursor: built.nextCursor ?? null,
       hasNextPage: built.hasNextPage,
       totalKnown: built.totalKnown,
@@ -472,7 +473,7 @@ export const loadPartyMappingPage = async (
 
   return {
     connectionId: input.connectionId,
-    rows: page.rows,
+    rows: await enrichPartyRows(page.rows, execute),
     nextCursor: page.nextCursor,
     hasNextPage: page.hasNextPage,
     totalKnown: page.totalKnown,

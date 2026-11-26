@@ -3,6 +3,7 @@ import {
   type RemoteCatalogItem,
   type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
+import { normalizeNationalCode } from 'src/domain/accounting/party-identity';
 import { asanUnitsToCrmMicros } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
 
@@ -482,6 +483,7 @@ export const resolveItemApplyPlan = ({
 
 export type ExistingPartyLink = {
   linkId: string;
+  partyType?: 'PERSON' | 'COMPANY';
   externalPartyId: string | null;
   internalPartyId: string | null;
   remoteVersion: string | null;
@@ -539,7 +541,7 @@ export const planPartyImport = ({
   const partiesByNationalCode = new Map<string, CrmPartySummary[]>();
 
   for (const party of crmParties) {
-    const nationalCode = party.nationalCode?.trim() ?? '';
+    const nationalCode = normalizeNationalCode(party.nationalCode) ?? '';
 
     if (nationalCode === '') {
       continue;
@@ -556,13 +558,13 @@ export const planPartyImport = ({
   );
   const remoteNationalCounts = countBy(
     remoteParties
-      .map((party) => party.nationalCode?.trim() ?? '')
+      .map((party) => normalizeNationalCode(party.nationalCode) ?? '')
       .filter((code) => code !== ''),
   );
 
   const rows: PartyImportRow[] = remoteParties.map((party) => {
     const warnings: ImportWarning[] = [];
-    const nationalCode = party.nationalCode?.trim() ?? '';
+    const nationalCode = normalizeNationalCode(party.nationalCode) ?? '';
 
     if (nationalCode !== '' && (remoteNationalCounts.get(nationalCode) ?? 0) > 1) {
       warnings.push('DUPLICATE_REMOTE_NATIONAL_CODE');
@@ -574,7 +576,7 @@ export const planPartyImport = ({
       warnings.push('REMOTE_ID_NOT_NUMERIC');
     }
 
-    if ((remoteCodeCounts.get(party.externalPartyId) ?? 0) > 1) {
+    if ((remoteCodeCounts.get(party.externalPartyId) ?? 0) > 1 || warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE')) {
       return {
         externalPartyId: party.externalPartyId,
         code: party.code,
@@ -592,7 +594,6 @@ export const planPartyImport = ({
 
     if (existingLink !== null) {
       const changed =
-        existingLink.remoteVersion !== null &&
         existingLink.remoteVersion !== party.remoteVersion;
 
       return {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   buildAccountingItemLinksQuery,
   buildAccountingPartyCandidatesQuery,
@@ -13,17 +14,17 @@ import {
   buildCreatePriceMutation,
   buildDefaultPriceListQuery,
 } from 'src/data/quotation-queries';
-import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
+import { RecordApiError, executeCallerRecordGraphql, executeRecordGraphql } from 'src/data/record-api';
 import {
   type AccountingAdapter,
   type AccountingMoneyUnit,
+  type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
 import {
   planItemImport,
   planPartyImport,
   resolveItemApplyPlan,
   type CrmPartyCandidate,
-  type CrmPartySummary,
   type ExistingItemLink,
   type ExistingPartyLink,
   type ItemApplySelection,
@@ -35,10 +36,14 @@ import {
   enrichItemPage,
 } from 'src/domain/accounting/mapping-page';
 import { loadCrmItemIndex } from 'src/services/accounting-crm-lookup.service';
+import { crmPartyFields, enrichPartyRows, loadCrmPartyIdentities, resolvePartyIdentity } from 'src/services/accounting-party-identity.service';
+import { normalizeNationalCode, partyTypeFromNationalCode } from 'src/domain/accounting/party-identity';
+import { verifyCustomerRecord } from 'src/services/customer-picker.service';
 import { accepted, type Result } from 'src/domain/shared/result';
 
 export type ImportDependencies = {
   execute?: (query: string) => Promise<Record<string, unknown>>;
+  executeCustomer?: (query: string) => Promise<Record<string, unknown>>;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -107,25 +112,34 @@ export const loadPartyLinks = async (
   dependencies: ImportDependencies = {},
 ): Promise<ExistingPartyLink[]> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(buildAccountingPartyLinksQuery({ connectionId }));
-
-  return readRows(data, 'accountingPartyLinks').flatMap((node) => {
-    const linkId = readString(node.id);
-
-    if (linkId === '') {
-      return [];
-    }
-
-    return [
-      {
+  const links: ExistingPartyLink[] = [];
+  let afterCursor: string | null = null;
+  const seen = new Set<string>();
+  for (;;) {
+    const data = await execute(buildAccountingPartyLinksQuery({ connectionId, afterCursor }));
+    for (const node of readRows(data, 'accountingPartyLinks')) {
+      const linkId = readString(node.id);
+      if (linkId === '') continue;
+      const kind = readString(node.partyType);
+      links.push({
         linkId,
         externalPartyId: readString(node.externalPartyId) || null,
         internalPartyId: readString(node.internalPartyId) || null,
         remoteVersion: readString(node.remoteVersion) || null,
         syncStatus: readString(node.syncStatus) || 'LINKED',
-      },
-    ];
-  });
+        ...(kind === 'PERSON' || kind === 'COMPANY' ? { partyType: kind } : {}),
+      });
+    }
+    const page = asRecord(asRecord(data.accountingPartyLinks)?.pageInfo);
+    if (page?.hasNextPage !== true) break;
+    const next = readString(page.endCursor);
+    if (!next || seen.has(next) || seen.size >= 1000) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Accounting party links could not be read completely');
+    }
+    seen.add(next);
+    afterCursor = next;
+  }
+  return links;
 };
 
 // A person's full name is stored as two fields; the candidate list is displayed, never used
@@ -385,19 +399,17 @@ export const previewPartyImport = async (
 
   const links = await loadPartyLinks(connectionId, dependencies);
   const candidates = await loadCrmPartyCandidates(dependencies);
-  // A CRM party's national code is not a standard CRM field, so no automatic candidate is
-  // proposed. The preview still reports duplicates inside the vendor and every already-linked
-  // customer; linking a new one requires choosing a CRM record explicitly.
-  const crmParties: CrmPartySummary[] = [];
-
-  return accepted(
-    planPartyImport({
-      remoteParties: remote.value,
-      links,
-      crmParties,
-      crmCandidates: candidates,
-    }),
-  );
+  const preview = planPartyImport({
+    remoteParties: remote.value,
+    links,
+    crmParties: [],
+    crmCandidates: candidates,
+  });
+  const rows = await enrichPartyRows(preview.rows, dependencies.execute ?? executeRecordGraphql);
+  const summary = { ...preview.summary };
+  for (const key of Object.keys(summary) as (keyof typeof summary)[]) summary[key] = 0;
+  for (const row of rows) summary[row.decision] += 1;
+  return accepted({ ...preview, rows, summary });
 };
 
 export type PartyApplySelection = {
@@ -409,67 +421,19 @@ export type PartyApplySelection = {
   createNew?: boolean;
 };
 
-const partyTypeFromNationalCode = (
-  nationalCode: string | null | undefined,
-): 'PERSON' | 'COMPANY' | null => {
-  const digits = (nationalCode ?? '').replace(/\D/g, '');
-  if (digits.length === 10) {
-    return 'PERSON';
-  }
-  if (digits.length === 11) {
-    return 'COMPANY';
-  }
-  return null;
-};
-
-const buildCreatePersonMutation = (data: {
-  firstName: string;
-  lastName: string;
-}): string =>
-  `mutation CreatePersonFromAccounting {
-    createPerson(data: ${toGraphqlLiteral({
-      name: { firstName: data.firstName, lastName: data.lastName },
-    })}) { id }
-  }`;
-
-const buildCreateCompanyMutation = (name: string): string =>
-  `mutation CreateCompanyFromAccounting {
-    createCompany(data: ${toGraphqlLiteral({ name })}) { id }
-  }`;
-
-const splitPersonName = (
-  fullName: string,
-): { firstName: string; lastName: string } => {
-  const trimmed = fullName.trim();
-  const parts = trimmed.split(/\s+/).filter((part) => part.length > 0);
-  if (parts.length === 0) {
-    return { firstName: 'بدون‌نام', lastName: '-' };
-  }
-  if (parts.length === 1) {
-    return { firstName: parts[0], lastName: '-' };
-  }
-  return {
-    firstName: parts[0],
-    lastName: parts.slice(1).join(' '),
-  };
+// An external id belongs to one connection. A deterministic record id protects a
+// simultaneous first link creation without hashing any national identity or contact data.
+const partyLinkRecordId = (connectionId: string, externalPartyId: string): string => {
+  const hex = createHash('sha256').update('quotation/accounting-party-link:' + JSON.stringify([connectionId, externalPartyId])).digest('hex');
+  return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-5' + hex.slice(13, 16) + '-8' + hex.slice(17, 20) + '-' + hex.slice(20, 32);
 };
 
 export const applyPartyImport = async (
-  {
-    connectionId,
-    selections,
-    allowRemoteVersionUpdate,
-    remoteParties = [],
-  }: {
+  { connectionId, selections, allowRemoteVersionUpdate, remoteParties }: {
     connectionId: string;
     selections: PartyApplySelection[];
     allowRemoteVersionUpdate: boolean;
-    remoteParties?: {
-      externalPartyId: string;
-      fullName: string;
-      nationalCode: string | null;
-      mobile: string | null;
-    }[];
+    remoteParties: RemoteParty[];
   },
   dependencies: ImportDependencies = {},
 ): Promise<{
@@ -479,132 +443,127 @@ export const applyPartyImport = async (
   refused: { externalPartyId: string; code: string; detail: string }[];
 }> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
+  const executeCustomer = dependencies.executeCustomer ?? dependencies.execute ?? executeCallerRecordGraphql;
   const links = await loadPartyLinks(connectionId, dependencies);
-  const byExternalId = new Map(
-    links
-      .filter((link): link is ExistingPartyLink & { externalPartyId: string } =>
-        link.externalPartyId !== null,
-      )
-      .map((link) => [link.externalPartyId, link]),
+  const requested = new Set(selections.map((selection) => selection.externalPartyId));
+  const selectedRemote = remoteParties.filter((party) => requested.has(party.externalPartyId));
+  const identities = await loadCrmPartyIdentities(
+    selectedRemote,
+    [...links.filter((link) => link.externalPartyId !== null && requested.has(link.externalPartyId)).flatMap((link) => link.internalPartyId ? [link.internalPartyId] : []),
+      ...selections.flatMap((selection) => selection.internalPartyId ? [selection.internalPartyId] : [])],
+    execute,
   );
-  const remoteById = new Map(
-    remoteParties.map((party) => [party.externalPartyId, party]),
-  );
-
+  const plan = planPartyImport({ remoteParties, links, crmParties: [] });
   let createdLinks = 0;
   let updatedLinks = 0;
   let createdParties = 0;
   const refused: { externalPartyId: string; code: string; detail: string }[] = [];
-
-  const processedExternalIds = new Set<string>();
+  const processed = new Set<string>();
   for (const selection of selections) {
-    if (processedExternalIds.has(selection.externalPartyId)) {
-      refused.push({ externalPartyId: selection.externalPartyId, code: 'ALREADY_SUCCEEDED', detail: 'duplicate selection' });
+    const externalPartyId = selection.externalPartyId;
+    const refuse = (code: string, detail: string) => refused.push({ externalPartyId, code, detail });
+    if (processed.has(externalPartyId)) { refuse('ALREADY_SUCCEEDED', 'Duplicate selection'); continue; }
+    processed.add(externalPartyId);
+    const row = plan.rows.find((candidate) => candidate.externalPartyId === externalPartyId);
+    const remote = selectedRemote.find((candidate) => candidate.externalPartyId === externalPartyId);
+    const matchingLinks = links.filter((link) => link.externalPartyId === externalPartyId);
+    if (!row || !remote || row.decision === 'DUPLICATE_REMOTE_CODE' || matchingLinks.length > 1) {
+      refuse('INVALID_INPUT', 'Missing or duplicate destination identity');
       continue;
     }
-    processedExternalIds.add(selection.externalPartyId);
-    const existing = byExternalId.get(selection.externalPartyId) ?? null;
-    let internalPartyId = selection.internalPartyId?.trim() ?? '';
-    let partyType = selection.partyType;
-
-    // Never create another CRM record for an already mapped external identity.
-    if (selection.createNew === true && existing !== null) {
-      refused.push({
-        externalPartyId: selection.externalPartyId,
-        code: 'ALREADY_SUCCEEDED',
-        detail: 'this customer is already linked',
-      });
+    const existing = matchingLinks[0] ?? null;
+    const automatic = selection.createNew === true;
+    if (existing !== null && (!automatic || !allowRemoteVersionUpdate)) {
+      refuse('ALREADY_SUCCEEDED', 'This customer is already linked');
       continue;
     }
-
-    if (selection.createNew === true && internalPartyId === '') {
-      const remote = remoteById.get(selection.externalPartyId);
-      if (remote === undefined || remote.fullName.trim() === '') {
-        refused.push({
-          externalPartyId: selection.externalPartyId,
-          code: 'INSUFFICIENT_PARTY_DATA',
-          detail: 'remote party data is missing for create',
-        });
+    try {
+      const resolved = resolvePartyIdentity(remote, identities, existing?.internalPartyId ?? null, existing?.partyType);
+      let target = resolved.kind === 'MATCH' ? resolved.target : null;
+      if (!automatic) {
+        const selected = identities.find((entry) => entry.id === selection.internalPartyId && entry.partyType === selection.partyType);
+        // Manual resolution may attach an unverified/missing identity, but cannot
+        // override a contradictory national code or another known identity.
+        const code = normalizeNationalCode(remote.nationalCode);
+        const selectedCode = normalizeNationalCode(selected?.nationalCode);
+        const expected = partyTypeFromNationalCode(code);
+        const exact = code === null ? [] : identities.filter((entry) => normalizeNationalCode(entry.nationalCode) === code);
+        if (!selected || (expected !== null && selected.partyType !== expected) ||
+            (selected.nationalCode !== null && code !== null && selectedCode !== code) ||
+            exact.some((entry) => entry.id !== selected.id)) {
+          refuse('INVALID_INPUT', 'Selected CRM identity conflicts with accounting');
+          continue;
+        }
+        target = selected;
+      } else if (resolved.kind === 'CONFLICT' || resolved.kind === 'MISSING_IDENTITY') {
+        refuse('INVALID_INPUT', 'CRM identity needs manual review');
         continue;
       }
-      const resolvedType = partyTypeFromNationalCode(remote.nationalCode);
-      if (resolvedType === null) {
-        refused.push({
-          externalPartyId: selection.externalPartyId,
-          code: 'PARTY_KIND_UNKNOWN',
-          detail:
-            'person/company cannot be inferred without a valid national identifier',
-        });
-        continue;
-      }
-      partyType = resolvedType;
-      if (resolvedType === 'PERSON') {
-        const names = splitPersonName(remote.fullName);
-        const created = await execute(buildCreatePersonMutation(names));
-        internalPartyId = readString(asRecord(created.createPerson)?.id);
+      let partyType: 'PERSON' | 'COMPANY';
+      let internalPartyId: string;
+      if (target !== null) {
+        partyType = target.partyType;
+        internalPartyId = target.id;
+        const visible = await verifyCustomerRecord({ customerType: partyType, recordId: internalPartyId }, { execute: executeCustomer });
+        if (!visible.ok) { refuse(visible.refusal.code, 'Customer is not visible to caller'); continue; }
+        // Do not overwrite contact fields for a manually attached customer with
+        // insufficient identity. Strong or explicitly resolved identities may sync.
+        const fields = normalizeNationalCode(remote.nationalCode) === null ? {} : crmPartyFields(remote, partyType, target);
+        if (Object.keys(fields).length > 0) {
+          const root = partyType === 'PERSON' ? 'updatePerson' : 'updateCompany';
+          const updated = await executeCustomer(`mutation SyncAccountingParty { ${root}(id: ${toGraphqlLiteral(internalPartyId)}, data: ${toGraphqlLiteral(fields)}) { id } }`);
+          if (readCreatedId(updated, root) !== internalPartyId) { refuse('QUERY_ERROR', 'CRM update not confirmed'); continue; }
+        } else if (existing !== null && existing.remoteVersion === remote.remoteVersion) {
+          refuse('ALREADY_SUCCEEDED', 'CRM customer already synchronized');
+          continue;
+        }
+      } else if (automatic && resolved.kind === 'CREATE' && remote.fullName.trim()) {
+        partyType = resolved.partyType;
+        const root = partyType === 'PERSON' ? 'createPerson' : 'createCompany';
+        const fields = crmPartyFields(remote, partyType, null);
+        const created = await executeCustomer(`mutation CreateAccountingCustomer { ${root}(data: ${toGraphqlLiteral(fields)}) { id } }`);
+        internalPartyId = readCreatedId(created, root);
+        if (!internalPartyId) { refuse('QUERY_ERROR', 'CRM create not confirmed'); continue; }
+        createdParties += 1;
+        // A retry after link failure resolves the canonical unique code; it must
+        // never create a second customer. Include this successful write in the batch index.
+        identities.push({ id: internalPartyId, partyType, name: remote.fullName, nationalCode: resolved.nationalCode, mobile: remote.mobile, phones: null });
       } else {
-        const created = await execute(
-          buildCreateCompanyMutation(remote.fullName.trim()),
-        );
-        internalPartyId = readString(asRecord(created.createCompany)?.id);
-      }
-      if (internalPartyId === '') {
-        refused.push({
-          externalPartyId: selection.externalPartyId,
-          code: 'PARTY_CREATE_FAILED',
-          detail: 'CRM create returned no id',
-        });
+        refuse('INVALID_INPUT', 'A verified CRM identity is required');
         continue;
       }
-      createdParties += 1;
-    }
-
-    if (internalPartyId === '' || partyType === undefined) {
-      refused.push({
-        externalPartyId: selection.externalPartyId,
-        code: 'INVALID_INPUT',
-        detail: 'internal party id and type are required',
-      });
-      continue;
-    }
-
-    if (existing !== null) {
-      if (!allowRemoteVersionUpdate) {
-        refused.push({
-          externalPartyId: selection.externalPartyId,
-          code: 'ALREADY_SUCCEEDED',
-          detail: 'this customer is already linked',
-        });
-        continue;
-      }
-
-      await execute(
-        buildUpdateAccountingPartyLinkMutation(existing.linkId, {
-          internalPartyId,
-          partyType,
-          lastSyncedAt: new Date().toISOString(),
-          syncStatus: 'LINKED',
-        }),
-      );
-      updatedLinks += 1;
-      continue;
-    }
-
-    await execute(
-      buildCreateAccountingPartyLinkMutation({
-        name: `${internalPartyId.slice(0, 8)} @ ${connectionId.slice(0, 8)}`,
-        externalPartyId: selection.externalPartyId,
-        externalCode: selection.externalPartyId,
+      const linkFields = {
+        externalCode: remote.code,
+        remoteVersion: remote.remoteVersion,
+        lastSyncedAt: new Date().toISOString(),
         syncStatus: 'LINKED',
         partyType,
         internalPartyId,
-        lastSyncedAt: new Date().toISOString(),
-        connectionId,
-      }),
-    );
-    createdLinks += 1;
+      };
+      if (existing !== null) {
+        const updated = await execute(buildUpdateAccountingPartyLinkMutation(existing.linkId, linkFields));
+        if (readCreatedId(updated, 'updateAccountingPartyLink') !== existing.linkId) {
+          refuse('QUERY_ERROR', 'Mapping update not confirmed');
+          continue;
+        }
+        updatedLinks += 1;
+      } else {
+        const created = await execute(buildCreateAccountingPartyLinkMutation({
+          id: partyLinkRecordId(connectionId, externalPartyId),
+          name: remote.fullName + ' @ ' + connectionId.slice(0, 8),
+          externalPartyId,
+          connectionId,
+          ...linkFields,
+        }));
+        if (!readCreatedId(created, 'createAccountingPartyLink')) { refuse('QUERY_ERROR', 'Mapping create not confirmed'); continue; }
+        createdLinks += 1;
+      }
+    } catch (error) {
+      // A refused row must not abort the rest of the batch. Never echo tokens,
+      // national identifiers, GraphQL bodies or vendor errors to the browser.
+      refuse(error instanceof RecordApiError ? error.code : 'QUERY_ERROR', 'CRM synchronization not confirmed');
+    }
   }
-
   return { createdLinks, updatedLinks, createdParties, refused };
 };
 

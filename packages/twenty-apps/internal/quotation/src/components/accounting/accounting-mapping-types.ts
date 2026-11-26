@@ -311,8 +311,8 @@ export const ITEM_STATUS_LABELS: Record<string, string> = {
 export const PARTY_STATUS_LABELS: Record<string, string> = {
   IN_SYNC: 'وصل شده و هم‌خوان است',
   REMOTE_CHANGED: 'در حسابداری تغییر کرده',
-  LINK_SUGGESTED: 'پیشنهاد اتصال به مشتری موجود',
-  NEEDS_CRM_RECORD: 'هنوز به مشتری CRM وصل نشده',
+  LINK_SUGGESTED: 'آماده به‌روزرسانی',
+  NEEDS_CRM_RECORD: 'ثبت‌نشده در CRM',
   AMBIGUOUS_CRM_MATCH: 'چند مشتری متناظر؛ انتخاب لازم است',
   DUPLICATE_REMOTE_CODE: 'شناسهٔ تکراری در حسابداری',
 };
