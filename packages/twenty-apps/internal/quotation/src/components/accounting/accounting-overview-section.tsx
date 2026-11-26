@@ -336,8 +336,9 @@ export const AccountingOverviewSection = ({
               <span>{`پیام آخرین آزمایش: ${connection.lastHealthMessage}`}</span>
             )}
             <span>
-              ارسال به حسابداری: {data.flags.outboundEnabled ? 'فعال' : 'غیرفعال'} —
-              ثبت سند: {data.flags.documentExportEnabled ? 'فعال' : 'غیرفعال'}
+              {data.metadataVerified === false
+                ? 'وضعیت قابلیت‌های ارسال از سرور تأیید نشده است.'
+                : `ارسال به حسابداری: ${data.flags.outboundEnabled ? 'فعال' : 'غیرفعال'} — ثبت سند: ${data.flags.documentExportEnabled ? 'فعال' : 'غیرفعال'}`}
             </span>
           </>
         )}
