@@ -11,6 +11,9 @@ import {
 } from 'src/components/accounting/accounting-business-ui';
 import { ConnectionEditForm } from 'src/components/accounting/accounting-connection-form';
 import {
+  type CatalogReadState,
+} from 'src/components/accounting/accounting-catalog-read';
+import {
   CONNECTION_HEALTH_LABELS,
   adapterDisplayLabel,
   type ConnectionRecord,
@@ -41,6 +44,9 @@ export const AccountingConnectionsSection = ({
   modes,
   policies,
   currencies,
+  taxCatalog,
+  currencyCatalog,
+  onRetryCatalogs,
   canManage,
   busy,
   selectedConnectionId,
@@ -63,6 +69,9 @@ export const AccountingConnectionsSection = ({
   modes: FinancialModes;
   policies: TaxPolicyView[];
   currencies: CurrencyCatalogView[];
+  taxCatalog: CatalogReadState<TaxPolicyView>;
+  currencyCatalog: CatalogReadState<CurrencyCatalogView>;
+  onRetryCatalogs: () => void;
   canManage: boolean;
   busy: boolean;
   selectedConnectionId: string | null;
@@ -116,6 +125,9 @@ export const AccountingConnectionsSection = ({
         modes={modes}
         policies={policies}
         currencies={currencies}
+        taxCatalog={taxCatalog}
+        currencyCatalog={currencyCatalog}
+        onRetryCatalogs={onRetryCatalogs}
         canManage={canManage}
         busy={busy}
         testResult={testResult}

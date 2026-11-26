@@ -5,10 +5,17 @@ import {
   ACCOUNTING_CONNECTION_ROUTE,
   ACCOUNTING_IMPORT_ROUTE,
   ACCOUNTING_OUTBOUND_ROUTE,
-  QUOTATION_CURRENCIES_ROUTE,
-  TAX_POLICIES_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
+import {
+  catalogBlocksMappingEdits,
+  emptyCatalogState,
+  loadCurrencyCatalogFromNest,
+  loadTaxCatalogFromNest,
+  mergeCurrencyCatalogResult,
+  mergeTaxCatalogResult,
+  type CatalogReadState,
+} from 'src/components/accounting/accounting-catalog-read';
 import {
   Badge,
   Breadcrumbs,
@@ -35,8 +42,6 @@ import {
   parseTaxPolicyMappingsText,
   readRows,
   readString,
-  readCurrencies,
-  readTaxPolicies,
   resolveFinancialModes,
   sharedStyles as styles,
   toForm,
@@ -141,8 +146,12 @@ export const AccountingSettingsPanel = () => {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
     readStoredConnectionId,
   );
-  const [policies, setPolicies] = useState<TaxPolicyView[]>([]);
-  const [currencies, setCurrencies] = useState<CurrencyCatalogView[]>([]);
+  const [taxCatalog, setTaxCatalog] = useState<CatalogReadState<TaxPolicyView>>(
+    emptyCatalogState,
+  );
+  const [currencyCatalog, setCurrencyCatalog] = useState<
+    CatalogReadState<CurrencyCatalogView>
+  >(emptyCatalogState);
   // The customers section owns its picker state; it reports the inner view label here so the
   // breadcrumb and title can name it without lifting the picker out of the section.
   const [customerView, setCustomerView] = useState<string | null>(null);
@@ -238,41 +247,57 @@ export const AccountingSettingsPanel = () => {
     }
   }, [selectedConnectionId]);
 
-  // Tax policies and currencies are CRM catalog ownership for mapping rows. Connection
-  // settings only store vendor destination ids; they never invent CRM tax/currency identity.
-  useEffect(() => {
-    let cancelled = false;
+  // Catalog ownership for mapping rows: Nest list actions only (same as Financial Settings).
+  // Independent settled reads so one failure never clears the other or masquerades as empty.
+  const reloadCatalogs = useCallback(async () => {
+    setTaxCatalog((previous) => ({
+      status: 'loading',
+      rows: previous.rows,
+      stale:
+        previous.status === 'ready_nonempty' || previous.status === 'ready_empty',
+      errorMessage: null,
+    }));
+    setCurrencyCatalog((previous) => ({
+      status: 'loading',
+      rows: previous.rows,
+      stale:
+        previous.status === 'ready_nonempty' || previous.status === 'ready_empty',
+      errorMessage: null,
+    }));
 
-    const loadCatalogs = async () => {
-      try {
-        const [policyResponse, currencyResponse] = await Promise.all([
-          callAppRoute(TAX_POLICIES_ROUTE, { action: 'list' }),
-          callAppRoute(QUOTATION_CURRENCIES_ROUTE, { action: 'list' }),
-        ]);
+    const [taxSettled, currencySettled] = await Promise.allSettled([
+      loadTaxCatalogFromNest(),
+      loadCurrencyCatalogFromNest(),
+    ]);
 
-        if (!cancelled && policyResponse.ok && policyResponse.data.success === true) {
-          setPolicies(readTaxPolicies(policyResponse.data.policies));
-        }
-
-        if (
-          !cancelled &&
-          currencyResponse.ok &&
-          currencyResponse.data.success === true
-        ) {
-          setCurrencies(readCurrencies(currencyResponse.data.currencies));
-        }
-      } catch {
-        // Catalog read failures leave mapping editors with fallbacks; they must not block
-        // the rest of the panel.
+    setTaxCatalog((previous) => {
+      if (taxSettled.status === 'fulfilled') {
+        return mergeTaxCatalogResult(previous, taxSettled.value);
       }
-    };
 
-    void loadCatalogs();
+      return mergeTaxCatalogResult(previous, {
+        ok: false,
+        message:
+          'فهرست سیاست‌های مالیات از سرور خوانده نشد. نگاشت وابسته تا بازخوانی موفق قفل است.',
+      });
+    });
 
-    return () => {
-      cancelled = true;
-    };
+    setCurrencyCatalog((previous) => {
+      if (currencySettled.status === 'fulfilled') {
+        return mergeCurrencyCatalogResult(previous, currencySettled.value);
+      }
+
+      return mergeCurrencyCatalogResult(previous, {
+        ok: false,
+        message:
+          'فهرست ارزها از سرور خوانده نشد. نگاشت وابسته تا بازخوانی موفق قفل است.',
+      });
+    });
   }, []);
+
+  useEffect(() => {
+    void reloadCatalogs();
+  }, [reloadCatalogs]);
 
   // The overview is the first screen, so it cannot wait for the catalog and customer panels
   // to be opened before it knows how much work is outstanding. One row is asked for; only
@@ -369,8 +394,6 @@ export const AccountingSettingsPanel = () => {
       return;
     }
 
-    setBusy(true);
-
     const selectedAdapter =
       data?.adapters.find((entry) => entry.id === form.adapterId) ?? null;
     const needsServiceAddress = selectedAdapter?.isLive === true;
@@ -386,6 +409,28 @@ export const AccountingSettingsPanel = () => {
         mockProfile: form.mockProfile,
       },
     });
+    const fieldsNeedTaxCatalog =
+      savingModes.taxHandling !== 'UNSUPPORTED' &&
+      savingModes.taxHandling !== null;
+    const fieldsNeedCurrencyCatalog =
+      savingModes.currencyHandling === 'CURRENCY_CODE' ||
+      savingModes.currencyHandling === 'CURRENCY_NAME' ||
+      savingModes.currencyHandling === 'CURRENCY_CODE_AND_RATE' ||
+      savingModes.currencyHandling === 'SINGLE_CURRENCY';
+
+    if (
+      (fieldsNeedTaxCatalog && catalogBlocksMappingEdits(taxCatalog)) ||
+      (fieldsNeedCurrencyCatalog && catalogBlocksMappingEdits(currencyCatalog))
+    ) {
+      await enqueueSnackbar({
+        message:
+          'کاتالوگ مالیات یا ارز هنوز تأیید نشده است؛ ابتدا بازخوانی کنید، سپس ذخیره کنید.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    setBusy(true);
 
     try {
       const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
@@ -1024,8 +1069,13 @@ export const AccountingSettingsPanel = () => {
                 data={data}
                 form={form}
                 modes={formModes}
-                policies={policies}
-                currencies={currencies}
+                policies={taxCatalog.rows}
+                currencies={currencyCatalog.rows}
+                taxCatalog={taxCatalog}
+                currencyCatalog={currencyCatalog}
+                onRetryCatalogs={() => {
+                  void reloadCatalogs();
+                }}
                 canManage={data.canManage}
                 busy={busy}
                 selectedConnectionId={selectedConnectionId}

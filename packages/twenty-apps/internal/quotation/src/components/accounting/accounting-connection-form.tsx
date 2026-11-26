@@ -17,7 +17,6 @@ import {
   adapterBadgeTone,
   adapterDisplayLabel,
   type CurrencyCatalogView,
-  FALLBACK_OPERATIONAL_CURRENCY_CODES,
   type FinancialModes,
   type FormState,
   type PanelData,
@@ -34,6 +33,10 @@ import {
   sharedStyles as styles,
   toForm,
 } from 'src/components/accounting/accounting-shared';
+import {
+  catalogBlocksMappingEdits,
+  type CatalogReadState,
+} from 'src/components/accounting/accounting-catalog-read';
 import {
   connectionFormFields,
   validateConnectionForm,
@@ -62,6 +65,9 @@ export const ConnectionEditForm = ({
   modes,
   policies,
   currencies,
+  taxCatalog,
+  currencyCatalog,
+  onRetryCatalogs,
   canManage,
   busy,
   testResult,
@@ -76,6 +82,9 @@ export const ConnectionEditForm = ({
   modes: FinancialModes;
   policies: TaxPolicyView[];
   currencies: CurrencyCatalogView[];
+  taxCatalog: CatalogReadState<TaxPolicyView>;
+  currencyCatalog: CatalogReadState<CurrencyCatalogView>;
+  onRetryCatalogs: () => void;
   canManage: boolean;
   busy: boolean;
   testResult: { healthState: string; message: string; detail: string } | null;
@@ -150,14 +159,27 @@ export const ConnectionEditForm = ({
     (profile) => profile.id === form.mockProfile,
   );
   const currencyMappings = parseKeyValueLines(form.currencyMappingsText);
-  const currencyRows = resolveCurrencyMappingRows({
-    currencies,
-    mappingKeys: Object.keys(currencyMappings),
-  });
-  const baseCurrencyOptions =
-    currencyRows.length > 0
-      ? currencyRows.map((row) => row.code)
-      : [...FALLBACK_OPERATIONAL_CURRENCY_CODES];
+  const taxCatalogBlocked = catalogBlocksMappingEdits(taxCatalog);
+  const currencyCatalogBlocked = catalogBlocksMappingEdits(currencyCatalog);
+  const currencyRows = currencyCatalogBlocked
+    ? Object.keys(currencyMappings).map((code) => ({
+        code,
+        name: code,
+        orphan: true,
+        inactive: false,
+      }))
+    : resolveCurrencyMappingRows({
+        currencies,
+        mappingKeys: Object.keys(currencyMappings),
+      });
+  const baseCurrencyOptions = currencyCatalogBlocked
+    ? form.baseCurrency.trim() !== ''
+      ? [form.baseCurrency]
+      : []
+    : currencies
+        .filter((row) => row.isActive)
+        .map((row) => row.code);
+  const mappingEditable = canManage && !taxCatalogBlocked && !currencyCatalogBlocked;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
@@ -182,6 +204,32 @@ export const ConnectionEditForm = ({
         کد حسابداری مالیات و ارز در صفحهٔ «مالیات و عوارض» تعریف می‌شود. این فرم فقط نگاشت
         مقصد فروشنده را نگه می‌دارد و هویت CRM را دوباره تعریف نمی‌کند.
       </InlineAlert>
+
+      {taxCatalog.status === 'error' ? (
+        <InlineAlert tone="danger" title="کاتالوگ مالیات در دسترس نیست">
+          {taxCatalog.errorMessage}
+          {taxCatalog.stale
+            ? ' آخرین فهرست موفق فقط برای نمایش نگه‌داری شده و قابل اتکا برای ویرایش نیست.'
+            : ''}
+          <SecondaryButton label="بازخوانی مالیات" onClick={onRetryCatalogs} />
+        </InlineAlert>
+      ) : null}
+
+      {currencyCatalog.status === 'error' ? (
+        <InlineAlert tone="danger" title="کاتالوگ ارز در دسترس نیست">
+          {currencyCatalog.errorMessage}
+          {currencyCatalog.stale
+            ? ' آخرین فهرست موفق فقط برای نمایش نگه‌داری شده و قابل اتکا برای ویرایش نیست.'
+            : ''}
+          <SecondaryButton label="بازخوانی ارز" onClick={onRetryCatalogs} />
+        </InlineAlert>
+      ) : null}
+
+      {taxCatalog.status === 'loading' || currencyCatalog.status === 'loading' ? (
+        <InlineAlert tone="info">
+          در حال خواندن کاتالوگ مالیات و ارز از سرور…
+        </InlineAlert>
+      ) : null}
 
       <Card>
         <SectionHeading
@@ -353,7 +401,7 @@ export const ConnectionEditForm = ({
                 <select
                   style={styles.input}
                   value={form.baseCurrency}
-                  disabled={!canManage}
+                  disabled={!mappingEditable}
                   aria-invalid={attemptedSave && issues.baseCurrency !== undefined}
                   onChange={(event) =>
                     onChange({ ...form, baseCurrency: event.target.value })
@@ -411,10 +459,14 @@ export const ConnectionEditForm = ({
               label={
                 fields.currencyNameTable ? 'نام ارز در مقصد' : 'کد ارز در مقصد'
               }
-              helper="فقط ارزهای تعریف‌شده در کاتالوگ CRM نگاشت می‌شوند. کد یا نام مقصد را وارد کنید؛ هویت ارز در CRM اینجا ساخته نمی‌شود."
+              helper={
+                currencyCatalogBlocked
+                  ? 'وضعیت مرجع در دسترس نیست؛ نگاشت قبلی فقط نمایش داده می‌شود.'
+                  : 'فقط ارزهای تعریف‌شده در کاتالوگ CRM نگاشت می‌شوند. کد یا نام مقصد را وارد کنید؛ هویت ارز در CRM اینجا ساخته نمی‌شود.'
+              }
               rows={currencyRows}
               text={form.currencyMappingsText}
-              canManage={canManage}
+              canManage={mappingEditable}
               onChange={(next) => onChange({ ...form, currencyMappingsText: next })}
             />
           )}
@@ -436,7 +488,7 @@ export const ConnectionEditForm = ({
               showCode={fields.taxCodeTable}
               text={form.taxPolicyMappingsText}
               catalog={modes.taxCodeCatalog}
-              canManage={canManage}
+              canManage={mappingEditable && !taxCatalogBlocked}
               onChange={(next) => onChange({ ...form, taxPolicyMappingsText: next })}
             />
           )}
@@ -591,7 +643,7 @@ export const ConnectionEditForm = ({
 
               onSave();
             }}
-            disabled={busy || !canManage}
+            disabled={busy || !canManage || !mappingEditable}
           />
           <SecondaryButton
             label={busy ? 'در حال اجرا…' : 'آزمایش اتصال ذخیره‌شده'}
@@ -599,6 +651,12 @@ export const ConnectionEditForm = ({
             disabled={busy || !canTestSavedRecord || !canManage}
           />
         </div>
+
+        {!mappingEditable && canManage ? (
+          <p style={styles.meta}>
+            تا تأیید کاتالوگ مالیات و ارز، ذخیرهٔ نگاشت‌ها ممکن نیست.
+          </p>
+        ) : null}
 
         {!canTestSavedRecord ? (
           <p style={styles.meta}>

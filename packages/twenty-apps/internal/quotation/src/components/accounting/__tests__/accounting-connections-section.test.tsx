@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AccountingConnectionsSection } from 'src/components/accounting/accounting-connections-section';
+import type { CatalogReadState } from 'src/components/accounting/accounting-catalog-read';
 import {
   EMPTY_FORM,
   type AdapterDescriptor,
@@ -13,6 +14,13 @@ import {
   type TaxPolicyView,
 } from 'src/components/accounting/accounting-shared';
 import { resolveFinancialModes } from 'src/components/accounting/accounting-shared';
+
+const readyCatalog = <TRow,>(rows: TRow[]): CatalogReadState<TRow> => ({
+  status: rows.length === 0 ? 'ready_empty' : 'ready_nonempty',
+  rows,
+  stale: false,
+  errorMessage: null,
+});
 
 // jsdom has no layout, so the deep-link scroll is asserted through the call, and the focus
 // assertion uses the real activeElement the component sets.
@@ -309,6 +317,9 @@ const renderSection = ({
       modes={modes}
       policies={taxPolicies}
       currencies={currencyCatalog}
+      taxCatalog={readyCatalog(taxPolicies)}
+      currencyCatalog={readyCatalog(currencyCatalog)}
+      onRetryCatalogs={vi.fn()}
       canManage
       busy={false}
       selectedConnectionId={selectedConnectionId}
@@ -817,6 +828,9 @@ describe('the tax form shows one row and one destination code per policy', () =>
         })}
         policies={policies}
         currencies={currencies}
+        taxCatalog={readyCatalog(policies)}
+        currencyCatalog={readyCatalog(currencies)}
+        onRetryCatalogs={vi.fn()}
         canManage
         busy={false}
         selectedConnectionId="conn-2"
@@ -857,6 +871,9 @@ describe('the tax form shows one row and one destination code per policy', () =>
         })}
         policies={policies}
         currencies={currencies}
+        taxCatalog={readyCatalog(policies)}
+        currencyCatalog={readyCatalog(currencies)}
+        onRetryCatalogs={vi.fn()}
         canManage
         busy={false}
         selectedConnectionId="conn-2"

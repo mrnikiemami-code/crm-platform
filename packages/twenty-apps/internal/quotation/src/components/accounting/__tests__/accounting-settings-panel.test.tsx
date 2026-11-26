@@ -10,7 +10,15 @@ vi.mock('twenty-sdk/front-component', () => ({
   navigate: vi.fn(async () => undefined),
 }));
 
-const callAppRoute = vi.fn();
+const {
+  callAppRoute,
+  callTaxPoliciesNestActionMock,
+  callQuotationCurrenciesNestActionMock,
+} = vi.hoisted(() => ({
+  callAppRoute: vi.fn(),
+  callTaxPoliciesNestActionMock: vi.fn(),
+  callQuotationCurrenciesNestActionMock: vi.fn(),
+}));
 
 vi.mock('src/components/quotation-api', async (importOriginal) => {
   const actual =
@@ -19,13 +27,12 @@ vi.mock('src/components/quotation-api', async (importOriginal) => {
   return {
     ...actual,
     callAppRoute: (...args: unknown[]) => callAppRoute(...args),
+    callTaxPoliciesNestAction: callTaxPoliciesNestActionMock,
+    callQuotationCurrenciesNestAction: callQuotationCurrenciesNestActionMock,
   };
 });
 
-import {
-  ACCOUNTING_CONNECTION_ROUTE,
-  TAX_POLICIES_ROUTE,
-} from 'src/components/quotation-api';
+import { ACCOUNTING_CONNECTION_ROUTE } from 'src/components/quotation-api';
 import { AccountingSettingsPanel } from 'src/components/accounting/accounting-settings-panel';
 import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-registry';
 
@@ -119,11 +126,23 @@ const installRoutes = () => {
       };
     }
 
-    if (path === TAX_POLICIES_ROUTE) {
-      return { ok: true, status: 200, data: { success: true, policies: [] } };
-    }
-
     throw new Error(`unexpected route ${path}`);
+  });
+
+  callTaxPoliciesNestActionMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: { success: true, policies: [] },
+  });
+  callQuotationCurrenciesNestActionMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: {
+      success: true,
+      currencies: [
+        { code: 'IRR', name: 'ریال ایران', isActive: true, isDefault: true },
+      ],
+    },
   });
 };
 
@@ -153,6 +172,8 @@ const rowFor = (table: HTMLElement, id: string): HTMLElement => {
 beforeEach(() => {
   window.localStorage.clear();
   callAppRoute.mockReset();
+  callTaxPoliciesNestActionMock.mockReset();
+  callQuotationCurrenciesNestActionMock.mockReset();
   installRoutes();
 });
 
@@ -168,6 +189,24 @@ afterEach(() => {
 });
 
 describe('the selected destination is the one every section talks about', () => {
+  it('loads tax and currency catalogs from Nest list actions, not /s routes', async () => {
+    render(<AccountingSettingsPanel />);
+
+    await screen.findByText(/پیش‌فرض فضای کاری: آسان کارخانه/);
+
+    expect(callTaxPoliciesNestActionMock).toHaveBeenCalledWith({ action: 'list' });
+    expect(callQuotationCurrenciesNestActionMock).toHaveBeenCalledWith({
+      action: 'list',
+    });
+    expect(
+      callAppRoute.mock.calls.some(
+        (call) =>
+          typeof call[0] === 'string' &&
+          (call[0].includes('tax-policies') || call[0].includes('currencies')),
+      ),
+    ).toBe(false);
+  });
+
   it('starts on the workspace default and names it separately from temporary view', async () => {
     render(<AccountingSettingsPanel />);
 
