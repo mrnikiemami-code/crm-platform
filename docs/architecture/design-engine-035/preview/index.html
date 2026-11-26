@@ -1,0 +1,1590 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تنظیمات مالی — پیش‌نمایش طراحی</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23333333'/%3E%3Crect x='6' y='8' width='20' height='4' rx='2' fill='%234CA394'/%3E%3Crect x='6' y='15' width='14' height='4' rx='2' fill='%23ffffff'/%3E%3Crect x='6' y='22' width='17' height='4' rx='2' fill='%234762D5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== Twenty light-theme tokens (official token reference, baked for standalone preview) ===== */
+:root{
+  --t-color-gray1:#ffffff; --t-color-gray2:#fcfcfc; --t-color-gray3:#f9f9f9;
+  --t-color-gray4:#f1f1f1; --t-color-gray5:#ebebeb; --t-color-gray6:#d6d6d6;
+  --t-color-gray7:#cccccc; --t-color-gray8:#b3b3b3; --t-color-gray9:#999999;
+  --t-color-gray10:#838383; --t-color-gray11:#666666; --t-color-gray12:#333333;
+  --t-color-blue:#4762d5; --t-color-blue2:#f8f9fe; --t-color-blue3:#eef2fd;
+  --t-color-blue4:#e2e9ff; --t-color-blue5:#d4deff; --t-color-blue6:#c3d0fe;
+  --t-color-blue7:#afbdf4; --t-color-blue8:#91a3ea; --t-color-blue9:#4762d5;
+  --t-color-blue10:#3b57cc; --t-color-blue11:#415ac0; --t-color-blue12:#222c59;
+  --t-color-turquoise:#4ca394; --t-color-turquoise1:#fbfef d;
+  --t-color-turquoise2:#f5fbf9; --t-color-turquoise3:#e5f7f3;
+  --t-color-turquoise4:#d4f2eb; --t-color-turquoise5:#c2e9e0;
+  --t-color-turquoise6:#addcd2; --t-color-turquoise7:#94ccc1;
+  --t-color-turquoise8:#6eb7ab; --t-color-turquoise9:#4ca394;
+  --t-color-turquoise10:#46988a; --t-color-turquoise11:#14806d;
+  --t-color-turquoise12:#1c3c38;
+  --t-color-red:#d45452; --t-color-red3:#fcecec; --t-color-red4:#ffdddd;
+  --t-color-red5:#fbcfcf; --t-color-red9:#d45452; --t-color-red11:#be3b39;
+  --t-color-red12:#5c1d24;
+  --t-color-orange:#e67333; --t-color-orange3:#fceda; --t-color-orange4:#ffdfb0;
+  --t-color-orange9:#e67333; --t-color-orange11:#c25700; --t-color-orange12:#523021;
+  --t-background-primary:#ffffff; --t-background-secondary:#fcfcfc;
+  --t-background-tertiary:#f1f1f1;
+  --t-background-danger:#fcecec; --t-background-danger-solid:#be3b39;
+  --t-background-transparent-blue:#0047f112; --t-background-transparent-orange:#ff9c0029;
+  --t-border-color-light:#f1f1f1; --t-border-color-medium:#ebebeb; --t-border-color-strong:#d6d6d6;
+  --t-box-shadow-light:0 2px 4px rgba(0,0,0,.04), 0 0 4px rgba(0,0,0,.08);
+  --t-border-radius-sm:4px; --t-border-radius-md:8px; --t-border-radius-lg:16px;
+  --t-animation-duration-fast:.15s; --t-animation-duration-normal:.3s;
+  --font-ui:'Vazirmatn','Segoe UI',Tahoma,sans-serif;
+  --font-mono:ui-monospace,'Cascadia Mono','SF Mono',Consolas,'Courier New',monospace;
+}
+/* fix accidental space in token above */
+:root{ --t-color-turquoise1:#fbfefd; --t-color-orange3:#fcefd9; }
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font-ui); font-size:16px; line-height:1.55;
+  color:var(--t-color-gray12); background:var(--t-color-gray4);
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--t-color-blue9); outline-offset:2px; border-radius:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ltr{direction:ltr; unicode-bidi:isolate; font-family:var(--font-mono); font-size:.94em; letter-spacing:.01em}
+
+/* ===== prototype harness (annotation chrome — not product UI) ===== */
+.harness{
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+  padding:10px 20px; background:var(--t-color-gray3);
+  border-block-end:1px dashed var(--t-color-gray6);
+  font-size:12.5px; color:var(--t-color-gray11);
+}
+.h-title{font-weight:600; color:var(--t-color-gray12); margin-inline-end:6px}
+.h-group{display:flex; border:1px solid var(--t-color-gray6); border-radius:6px; overflow:hidden; background:var(--t-color-gray1)}
+.h-group button{
+  border:0; background:transparent; padding:5px 12px; font-size:12.5px; font-weight:500;
+  color:var(--t-color-gray11); cursor:pointer; border-inline-start:1px solid var(--t-color-gray4);
+  transition:background var(--t-animation-duration-fast) ease;
+}
+.h-group button:first-child{border-inline-start:0}
+.h-group button:hover{background:var(--t-color-gray4)}
+.h-group button.on{background:var(--t-color-gray12); color:#fff}
+.h-group button.on:hover{background:var(--t-color-gray12)}
+
+.stage{display:flex; justify-content:center; padding:24px 24px 40px; min-height:calc(100vh - 49px)}
+
+/* ===== app frame ===== */
+.frame{
+  width:min(1280px, 100%); height:min(800px, calc(100vh - 140px));
+  background:var(--t-color-gray2); border:1px solid var(--t-color-gray6);
+  border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+  display:flex; flex-direction:column; overflow:hidden; position:relative;
+}
+.frame[data-shell="mobile"]{width:390px; height:min(760px, calc(100vh - 140px))}
+
+/* header */
+.appbar{background:var(--t-color-gray1); border-block-end:1px solid var(--t-color-gray4); flex:none}
+.appbar-top{display:flex; align-items:center; gap:10px; padding:12px 20px 4px}
+.back-btn{
+  display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px;
+  border:0; background:transparent; border-radius:6px; color:var(--t-color-gray11); cursor:pointer;
+  transition:background var(--t-animation-duration-fast) ease;
+}
+.back-btn:hover{background:var(--t-color-gray4); color:var(--t-color-gray12)}
+.appbar-title{font-size:17px; font-weight:600; letter-spacing:-.01em; margin:0}
+.appbar-sub{font-size:12.5px; color:var(--t-color-gray11); margin:0}
+.tabs{display:flex; gap:4px; padding:0 20px; overflow-x:auto; scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  position:relative; display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+  border:0; background:transparent; padding:10px 6px 12px; margin-inline-start:14px;
+  font-size:14px; font-weight:500; color:var(--t-color-gray11); cursor:pointer;
+  transition:color var(--t-animation-duration-fast) ease;
+}
+.tab:first-child{margin-inline-start:0}
+.tab:hover{color:var(--t-color-gray12)}
+.tab[aria-selected="true"]{color:var(--t-color-gray12); font-weight:600}
+.tab[aria-selected="true"]::after{
+  content:""; position:absolute; inset-inline:0; bottom:0; height:2px;
+  background:var(--t-color-blue9); border-radius:2px 2px 0 0;
+}
+.tab-count{
+  font-size:11px; font-weight:600; background:var(--t-color-gray4); color:var(--t-color-gray11);
+  border-radius:999px; padding:1px 7px; line-height:1.5;
+}
+.tab[aria-selected="true"] .tab-count{background:var(--t-color-blue3); color:var(--t-color-blue11)}
+
+/* split: rail + content */
+.split{flex:1; display:grid; grid-template-columns:264px minmax(0,1fr); min-height:0}
+.rail{
+  background:var(--t-color-gray1); border-inline-end:1px solid var(--t-color-gray4);
+  padding:20px 18px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:20px;
+}
+.rail-label{font-size:11.5px; font-weight:600; color:var(--t-color-gray11); letter-spacing:.02em; margin:0 0 8px}
+.stats{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.stat-cell{background:var(--t-color-gray2); border:1px solid var(--t-color-gray4); border-radius:var(--t-border-radius-md); padding:10px 12px}
+.stat-cap{display:block; font-size:11.5px; color:var(--t-color-gray11); margin-bottom:2px}
+.stat-val{display:block; font-size:22px; font-weight:600; line-height:1.2; font-variant-numeric:tabular-nums; color:var(--t-color-gray12)}
+.rail-actions{display:flex; flex-direction:column; gap:8px}
+.filters{display:flex; flex-wrap:wrap; gap:6px}
+.chip{
+  border:1px solid var(--t-color-gray6); background:var(--t-color-gray1); color:var(--t-color-gray11);
+  border-radius:999px; padding:4px 12px; font-size:12.5px; font-weight:500; cursor:pointer;
+  transition:background var(--t-animation-duration-fast) ease, border-color var(--t-animation-duration-fast) ease, color var(--t-animation-duration-fast) ease;
+}
+.chip:hover{background:var(--t-color-gray4); color:var(--t-color-gray12)}
+.chip.on{background:var(--t-color-gray12); border-color:var(--t-color-gray12); color:#fff}
+.chip .c{font-variant-numeric:tabular-nums; opacity:.75; margin-inline-start:4px}
+.help{
+  font-size:12.5px; line-height:1.6; color:var(--t-color-gray11);
+  background:var(--t-color-gray2); border:1px solid var(--t-color-gray4);
+  border-radius:var(--t-border-radius-md); padding:10px 12px; margin-top:auto;
+}
+.help strong{color:var(--t-color-gray12); font-weight:600}
+
+/* content */
+.content{overflow-y:auto; overscroll-behavior:contain; padding:20px 24px 36px; min-width:0}
+.content-inner{max-width:960px}
+
+/* buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  height:36px; padding:0 14px; border-radius:6px; border:1px solid transparent;
+  font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap;
+  transition:background var(--t-animation-duration-fast) ease, border-color var(--t-animation-duration-fast) ease, transform .1s ease, color var(--t-animation-duration-fast) ease;
+}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--t-color-blue9); color:#fff}
+.btn-primary:hover{background:var(--t-color-blue10)}
+.btn-ghost{background:var(--t-color-gray1); border-color:var(--t-color-gray6); color:var(--t-color-gray12)}
+.btn-ghost:hover{background:var(--t-color-gray4)}
+.btn-quiet{background:transparent; color:var(--t-color-gray11); border-color:transparent; font-weight:500}
+.btn-quiet:hover{background:var(--t-color-gray4); color:var(--t-color-gray12)}
+.btn-danger{background:var(--t-background-danger-solid); color:#fff}
+.btn-danger:hover{background:#a93230}
+.btn:disabled{background:var(--t-color-gray5); color:var(--t-color-gray11); border-color:transparent; cursor:not-allowed; transform:none}
+.btn-block{width:100%}
+.ic{width:16px; height:16px; flex:none; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.ic-sm{width:14px; height:14px}
+
+/* badges */
+.badge{
+  display:inline-flex; align-items:center; gap:4px; border-radius:999px;
+  font-size:11.5px; font-weight:600; padding:2px 9px; line-height:1.6; white-space:nowrap;
+}
+.badge-def{background:var(--t-color-turquoise3); color:var(--t-color-turquoise12)}
+.badge-on{background:var(--t-color-gray4); color:var(--t-color-gray11)}
+.badge-on::before{content:""; width:6px; height:6px; border-radius:50%; background:var(--t-color-turquoise9)}
+.badge-off{background:var(--t-color-gray4); color:var(--t-color-gray11)}
+.badge-exempt{background:var(--t-color-orange3); color:var(--t-color-orange12)}
+.badge-phase{background:var(--t-color-blue3); color:var(--t-color-blue12)}
+.badge-used{background:transparent; border:1px solid var(--t-color-gray5); color:var(--t-color-gray11); font-weight:500}
+
+/* ===== register (tax) ===== */
+.register{border:1px solid var(--t-color-gray5); border-radius:var(--t-border-radius-md); background:var(--t-color-gray1); overflow:visible}
+.reg-head{
+  display:grid; grid-template-columns:minmax(180px,1.5fr) minmax(230px,1.6fr) minmax(150px,1fr) 44px;
+  gap:12px; padding:9px 18px; border-block-end:1px solid var(--t-color-gray4);
+  background:var(--t-color-gray2); border-radius:7px 7px 0 0;
+  font-size:11.5px; font-weight:600; color:var(--t-color-gray11);
+}
+.row{
+  position:relative; display:grid; grid-template-columns:minmax(180px,1.5fr) minmax(230px,1.6fr) minmax(150px,1fr) 44px;
+  gap:12px; align-items:center; padding:14px 18px;
+  border-block-end:1px solid var(--t-color-gray4); cursor:pointer;
+  transition:background var(--t-animation-duration-fast) ease;
+}
+.row:last-child{border-block-end:0}
+.row:hover{background:var(--t-color-gray2)}
+.row:focus-visible{outline:2px solid var(--t-color-blue9); outline-offset:-2px; border-radius:2px}
+.row.is-def::before{
+  content:""; position:absolute; inset-block:0; inset-inline-start:0; width:3px;
+  background:var(--t-color-turquoise9); border-radius:0 3px 3px 0;
+}
+.row.is-off .row-name{color:var(--t-color-gray11)}
+.row-ident{min-width:0; display:flex; flex-direction:column; gap:5px}
+.row-name{font-size:16px; font-weight:500; color:var(--t-color-gray12); margin:0; line-height:1.4}
+.row-badges{display:flex; flex-wrap:wrap; gap:5px}
+.row-code{font-size:12px; color:var(--t-color-gray11)}
+.trio{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0}
+.trio .st{padding-inline:12px; border-inline-start:1px solid var(--t-color-gray4)}
+.trio .st:first-child{border-inline-start:0; padding-inline-start:0}
+.trio .st-cap{display:block; font-size:11.5px; color:var(--t-color-gray11); margin-bottom:1px}
+.trio .st-num{font-size:23px; font-weight:600; line-height:1.2; font-variant-numeric:tabular-nums; color:var(--t-color-gray11)}
+.trio .st.total .st-num{color:var(--t-color-gray12)}
+.trio-exempt{display:flex; flex-direction:column; gap:2px}
+.trio-exempt .big{font-size:21px; font-weight:600; color:var(--t-color-orange11)}
+.trio-exempt .sub{font-size:12px; color:var(--t-color-gray11)}
+.row-acct{min-width:0; display:flex; flex-direction:column; gap:4px}
+.acct-chip{
+  display:inline-flex; align-items:center; gap:6px; align-self:flex-start;
+  background:var(--t-color-gray3); border:1px solid var(--t-color-gray4); border-radius:var(--t-border-radius-sm);
+  padding:3px 8px; font-size:13px; color:var(--t-color-gray12); font-family:var(--font-mono);
+}
+.acct-chip .ic{color:var(--t-color-orange11)}
+.row-used{font-size:12.5px; color:var(--t-color-gray11)}
+.row-anchor{position:relative; display:flex; justify-content:flex-start}
+.icon-btn{
+  display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
+  border:0; background:transparent; border-radius:6px; color:var(--t-color-gray11); cursor:pointer;
+  transition:background var(--t-animation-duration-fast) ease, color var(--t-animation-duration-fast) ease;
+}
+.icon-btn:hover{background:var(--t-color-gray4); color:var(--t-color-gray12)}
+
+/* anchored menu */
+.menu{
+  position:absolute; top:calc(100% + 6px); inset-inline-end:0; z-index:30;
+  min-width:210px; background:var(--t-color-gray1); border:1px solid var(--t-color-gray5);
+  border-radius:var(--t-border-radius-md); box-shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.05);
+  padding:5px; animation:menu-in var(--t-animation-duration-fast) ease-out;
+}
+.menu.flip{top:auto; bottom:calc(100% + 6px)}
+@keyframes menu-in{from{opacity:0; transform:translateY(-5px)} to{opacity:1; transform:none}}
+.menu-item{
+  display:flex; align-items:center; gap:8px; width:100%; border:0; background:transparent;
+  padding:8px 10px; border-radius:5px; font-size:13.5px; font-weight:500; color:var(--t-color-gray12);
+  cursor:pointer; text-align:start; transition:background var(--t-animation-duration-fast) ease;
+}
+.menu-item:hover:not(:disabled){background:var(--t-color-gray4)}
+.menu-item:disabled{color:var(--t-color-gray9); cursor:not-allowed}
+.menu-item.danger{color:var(--t-color-red11)}
+.menu-item.danger:hover:not(:disabled){background:var(--t-color-red3)}
+.menu-item .ic{color:var(--t-color-gray10)}
+.menu-item.danger .ic{color:var(--t-color-red11)}
+.menu-item:disabled .ic{color:var(--t-color-gray8)}
+.menu-sep{height:1px; background:var(--t-color-gray4); margin:5px 8px}
+.menu-note{font-size:11.5px; color:var(--t-color-gray11); padding:4px 10px 6px; line-height:1.5}
+
+/* ===== ladder (rounding) ===== */
+.ladder{position:relative; border:1px solid var(--t-color-gray5); border-radius:var(--t-border-radius-md); background:var(--t-color-gray1)}
+.ladder::before{
+  content:""; position:absolute; top:34px; bottom:34px; inset-inline-start:37px;
+  width:1px; background:var(--t-color-gray5);
+}
+.lrow{
+  position:relative; display:grid; grid-template-columns:56px minmax(160px,1.4fr) minmax(200px,1.4fr) minmax(140px,1fr) 44px;
+  gap:12px; align-items:center; padding:16px 18px 16px 18px;
+  border-block-end:1px solid var(--t-color-gray4); cursor:pointer;
+  transition:background var(--t-animation-duration-fast) ease;
+}
+.lrow:last-child{border-block-end:0}
+.lrow:hover{background:var(--t-color-gray2)}
+.lrow:focus-visible{outline:2px solid var(--t-color-blue9); outline-offset:-2px}
+.lrow.is-def::after{
+  content:""; position:absolute; inset-block:0; inset-inline-end:0; width:3px;
+  background:var(--t-color-turquoise9);
+}
+.lrow.is-off .step-num{color:var(--t-color-gray9)}
+.ord{
+  position:relative; z-index:1; width:26px; height:26px; border-radius:50%;
+  background:var(--t-color-gray1); border:1px solid var(--t-color-gray6);
+  display:flex; align-items:center; justify-content:center; margin-inline-start:11px;
+  font-size:12px; font-weight:600; color:var(--t-color-gray11); font-variant-numeric:tabular-nums;
+}
+.lrow.is-def .ord{background:var(--t-color-turquoise3); border-color:var(--t-color-turquoise6); color:var(--t-color-turquoise12)}
+.step-cell{display:flex; align-items:baseline; gap:6px; min-width:0}
+.step-num{font-size:27px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; color:var(--t-color-gray12); letter-spacing:-.01em}
+.step-unit{font-size:13px; font-weight:500; color:var(--t-color-gray11)}
+.step-meta{display:flex; flex-direction:column; gap:4px; min-width:0}
+.step-name{font-size:16px; font-weight:500; margin:0; line-height:1.4}
+.step-badges{display:flex; flex-wrap:wrap; gap:5px}
+.lcell-status{display:flex; flex-direction:column; gap:4px}
+.lcell-status .lbl{font-size:11.5px; color:var(--t-color-gray11)}
+
+/* ===== currency dossier ===== */
+.dossier{border:1px solid var(--t-color-gray5); border-radius:var(--t-border-radius-md); background:var(--t-color-gray1); overflow:hidden}
+.dos-top{padding:26px 28px 22px; display:flex; flex-wrap:wrap; align-items:flex-start; gap:16px; justify-content:space-between}
+.dos-id{min-width:0; display:flex; flex-direction:column; gap:8px}
+.dos-name{font-size:28px; font-weight:700; letter-spacing:-.02em; margin:0; line-height:1.25}
+.dos-badges{display:flex; flex-wrap:wrap; gap:6px}
+.dos-mark{
+  width:56px; height:56px; border-radius:12px; background:var(--t-color-gray12);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:15px; letter-spacing:.04em; flex:none;
+}
+.dos-grid{display:grid; grid-template-columns:1.3fr 1fr 1fr; border-block-start:1px solid var(--t-color-gray4)}
+.dos-cell{padding:18px 28px; border-inline-start:1px solid var(--t-color-gray4); display:flex; flex-direction:column; gap:6px; min-width:0}
+.dos-cell:first-child{border-inline-start:0}
+.dos-cap{font-size:11.5px; font-weight:600; color:var(--t-color-gray11)}
+.dos-acct{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.dos-acct-val{font-size:26px; font-weight:600; font-family:var(--font-mono); letter-spacing:.02em; color:var(--t-color-gray12)}
+.dos-val{font-size:17px; font-weight:600; color:var(--t-color-gray12)}
+.dos-sub{font-size:13px; color:var(--t-color-gray11)}
+.dos-note{
+  display:flex; gap:10px; align-items:flex-start; padding:14px 28px;
+  background:var(--t-color-blue2); border-block-start:1px solid var(--t-color-gray4);
+  font-size:13.5px; line-height:1.6; color:var(--t-color-blue12);
+}
+.dos-note .ic{color:var(--t-color-blue11); margin-top:3px}
+.dos-future{
+  padding:16px 28px; border-block-start:1px solid var(--t-color-gray4);
+  display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--t-color-gray11);
+}
+.dos-future .ghost-row{
+  flex:1; border:1px dashed var(--t-color-gray6); border-radius:6px; padding:8px 12px;
+  font-size:12.5px; color:var(--t-color-gray9); text-align:center;
+}
+
+/* ===== states ===== */
+.errband{
+  display:flex; align-items:flex-start; gap:10px; padding:13px 16px; margin-bottom:16px;
+  background:var(--t-background-danger); border:1px solid var(--t-color-red5);
+  border-radius:var(--t-border-radius-md); font-size:14px; color:var(--t-color-red12); line-height:1.6;
+}
+.errband .ic{color:var(--t-color-red11); margin-top:3px}
+.errband .eb-body{flex:1; min-width:0}
+.errband .btn{height:30px; font-size:13px; margin-top:2px}
+.empty{
+  border:1px solid var(--t-color-gray5); border-radius:var(--t-border-radius-md);
+  background:var(--t-color-gray1); padding:52px 28px; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+.empty-ic{
+  width:46px; height:46px; border-radius:12px; background:var(--t-color-gray4);
+  display:flex; align-items:center; justify-content:center; color:var(--t-color-gray11); margin-bottom:4px;
+}
+.empty-ic .ic{width:22px; height:22px}
+.empty h3{margin:0; font-size:17px; font-weight:600}
+.empty p{margin:0; font-size:14px; color:var(--t-color-gray11); max-width:420px; line-height:1.7}
+.empty .btn{margin-top:10px}
+.skel{background:var(--t-color-gray4); border-radius:6px; animation:shimmer 1.2s ease-in-out infinite alternate}
+@keyframes shimmer{from{opacity:1} to{opacity:.45}}
+.skel-reg{border:1px solid var(--t-color-gray5); border-radius:var(--t-border-radius-md); background:var(--t-color-gray1); overflow:hidden}
+.skel-row{display:grid; grid-template-columns:1.5fr 1.6fr 1fr 44px; gap:16px; align-items:center; padding:18px; border-block-end:1px solid var(--t-color-gray4)}
+.skel-row:last-child{border-block-end:0}
+.skel-col{display:flex; flex-direction:column; gap:8px}
+.skel-note{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--t-color-gray11); margin-bottom:14px}
+
+/* ===== layer: dialog / confirms / toast ===== */
+.layer{position:absolute; inset:0; z-index:50; pointer-events:none}
+.layer > *{pointer-events:auto}
+.backdrop{position:absolute; inset:0; background:rgba(0,0,0,.36); animation:fade-in var(--t-animation-duration-fast) ease-out}
+@keyframes fade-in{from{opacity:0} to{opacity:1}}
+.dlg{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:min(440px, calc(100% - 32px)); max-height:calc(100% - 48px); overflow-y:auto;
+  background:var(--t-color-gray1); border-radius:12px; box-shadow:0 16px 48px rgba(0,0,0,.18);
+  animation:dlg-in var(--t-animation-duration-normal) cubic-bezier(.16,1,.3,1);
+}
+.dlg-wide{width:min(480px, calc(100% - 32px))}
+@keyframes dlg-in{from{opacity:0; transform:translate(-50%,-46%)} to{opacity:1; transform:translate(-50%,-50%)}}
+.dlg-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 22px 0}
+.dlg-title{margin:0; font-size:17px; font-weight:600; letter-spacing:-.01em}
+.dlg-body{padding:16px 22px 4px; display:flex; flex-direction:column; gap:16px}
+.dlg-foot{
+  display:flex; align-items:center; justify-content:flex-end; gap:8px;
+  padding:16px 22px 20px; margin-top:8px; border-block-start:1px solid var(--t-color-gray4);
+}
+.dlg-foot .spacer{margin-inline-end:auto; font-size:12.5px; color:var(--t-color-gray11)}
+.field{display:flex; flex-direction:column; gap:6px}
+.field-row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.label{font-size:13px; font-weight:600; color:var(--t-color-gray12); display:flex; align-items:center; gap:5px}
+.label .req{color:var(--t-color-red11)}
+.input, .num-input{
+  height:38px; border:1px solid var(--t-color-gray6); border-radius:6px;
+  background:var(--t-color-gray1); padding:0 12px; font-family:inherit; font-size:14.5px;
+  color:var(--t-color-gray12); width:100%;
+  transition:border-color var(--t-animation-duration-fast) ease, background var(--t-animation-duration-fast) ease;
+}
+.num-input{font-variant-numeric:tabular-nums}
+.input:hover, .num-input:hover{border-color:var(--t-color-gray7)}
+.input:focus, .num-input:focus{outline:none; border-color:var(--t-color-blue9); box-shadow:0 0 0 3px var(--t-color-blue4)}
+.input:disabled, .num-input:disabled{background:var(--t-color-gray3); color:var(--t-color-gray11); cursor:not-allowed}
+.input.bad, .num-input.bad{border-color:var(--t-color-red9)}
+.err{font-size:12.5px; color:var(--t-color-red11); line-height:1.5; min-height:0}
+.err:empty{display:none}
+.hint{font-size:12.5px; color:var(--t-color-gray11); line-height:1.55}
+.hint-lock{display:flex; align-items:flex-start; gap:6px; background:var(--t-color-orange3); color:var(--t-color-orange12); border-radius:6px; padding:8px 10px; font-size:12.5px; line-height:1.55}
+.hint-lock .ic{margin-top:2px; flex:none}
+.total-line{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:var(--t-color-gray2); border:1px solid var(--t-color-gray4); border-radius:6px;
+  padding:9px 12px; font-size:13px; color:var(--t-color-gray11);
+}
+.total-line b{font-size:16px; color:var(--t-color-gray12); font-variant-numeric:tabular-nums}
+.total-line .exempt-tag{color:var(--t-color-orange11); font-weight:600}
+.switch-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:4px 0}
+.switch-row .sw-txt{display:flex; flex-direction:column; gap:2px}
+.switch-row .sw-txt b{font-size:14px; font-weight:600}
+.switch-row .sw-txt span{font-size:12.5px; color:var(--t-color-gray11)}
+.sw{position:relative; width:40px; height:22px; flex:none}
+.sw input{position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; width:100%; height:100%; z-index:1}
+.sw .track{
+  position:absolute; inset:0; background:var(--t-color-gray7); border-radius:999px;
+  transition:background var(--t-animation-duration-fast) ease; pointer-events:none;
+}
+.sw .knob{
+  position:absolute; top:3px; inset-inline-start:3px; width:16px; height:16px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:transform var(--t-animation-duration-fast) ease; pointer-events:none;
+}
+.sw input:checked ~ .track{background:var(--t-color-turquoise9)}
+.sw input:checked ~ .knob{transform:translateX(-18px)}
+.sw input:focus-visible ~ .track{outline:2px solid var(--t-color-blue9); outline-offset:2px}
+.sw input:disabled ~ .track{opacity:.5}
+
+.confirm{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:min(400px, calc(100% - 32px)); background:var(--t-color-gray1); border-radius:12px;
+  box-shadow:0 16px 48px rgba(0,0,0,.18); padding:22px;
+  animation:dlg-in var(--t-animation-duration-normal) cubic-bezier(.16,1,.3,1);
+}
+.confirm .cf-ic{
+  width:40px; height:40px; border-radius:10px; background:var(--t-background-danger);
+  display:flex; align-items:center; justify-content:center; color:var(--t-color-red11); margin-bottom:12px;
+}
+.confirm .cf-ic .ic{width:20px; height:20px}
+.confirm h3{margin:0 0 6px; font-size:16.5px; font-weight:600}
+.confirm p{margin:0 0 4px; font-size:14px; color:var(--t-color-gray11); line-height:1.7}
+.confirm .cf-name{color:var(--t-color-gray12); font-weight:600}
+.confirm .cf-foot{display:flex; justify-content:flex-start; gap:8px; margin-top:18px}
+
+#toast-root{position:absolute; bottom:20px; inset-inline-start:50%; transform:translateX(50%); display:flex; flex-direction:column; gap:8px; align-items:center; z-index:60; pointer-events:none}
+.toast{
+  display:flex; align-items:center; gap:8px; background:var(--t-color-gray12); color:#fff;
+  font-size:13.5px; font-weight:500; padding:10px 16px; border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.2); animation:toast-in var(--t-animation-duration-normal) cubic-bezier(.16,1,.3,1);
+  max-width:min(420px, 90%);
+}
+.toast .ic{color:var(--t-color-turquoise8)}
+.toast.bad .ic{color:var(--t-color-red5)}
+@keyframes toast-in{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+
+/* ===== mobile shell ===== */
+.frame[data-shell="mobile"] .split{display:flex; flex-direction:column}
+.frame[data-shell="mobile"] .rail{
+  border-inline-end:0; border-block-end:1px solid var(--t-color-gray4);
+  padding:14px 16px 16px; gap:14px; overflow:visible;
+}
+.frame[data-shell="mobile"] .stats{display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
+.frame[data-shell="mobile"] .stats::-webkit-scrollbar{display:none}
+.frame[data-shell="mobile"] .stat-cell{min-width:104px; flex:none}
+.frame[data-shell="mobile"] .rail-actions{flex-direction:row}
+.frame[data-shell="mobile"] .rail-actions .btn{flex:1}
+.frame[data-shell="mobile"] .filters{flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
+.frame[data-shell="mobile"] .filters::-webkit-scrollbar{display:none}
+.frame[data-shell="mobile"] .chip{white-space:nowrap; flex:none}
+.frame[data-shell="mobile"] .help{margin-top:0}
+.frame[data-shell="mobile"] .content{padding:16px 16px 28px}
+.frame[data-shell="mobile"] .appbar-top{padding:10px 16px 2px}
+.frame[data-shell="mobile"] .appbar-title{font-size:16px}
+.frame[data-shell="mobile"] .tabs{padding:0 16px}
+.frame[data-shell="mobile"] .reg-head{display:none}
+.frame[data-shell="mobile"] .row{
+  grid-template-columns:1fr auto; gap:8px 10px; padding:14px 16px; align-items:start;
+}
+.frame[data-shell="mobile"] .row-ident{grid-column:1; grid-row:1}
+.frame[data-shell="mobile"] .row-anchor{grid-column:2; grid-row:1; justify-content:flex-end}
+.frame[data-shell="mobile"] .trio, .frame[data-shell="mobile"] .trio-exempt{
+  grid-column:1 / -1; grid-row:2; background:var(--t-color-gray2); border:1px solid var(--t-color-gray4);
+  border-radius:8px; padding:10px 12px;
+}
+.frame[data-shell="mobile"] .trio .st{padding-inline:8px}
+.frame[data-shell="mobile"] .trio .st-num{font-size:20px}
+.frame[data-shell="mobile"] .row-acct{grid-column:1 / -1; grid-row:3; flex-direction:row; align-items:center; gap:10px; flex-wrap:wrap}
+.frame[data-shell="mobile"] .lrow{
+  grid-template-columns:34px minmax(0,1fr) 44px; gap:6px 10px; padding:14px 14px;
+}
+.frame[data-shell="mobile"] .ladder::before{inset-inline-start:30px; top:30px; bottom:30px}
+.frame[data-shell="mobile"] .ord{margin-inline-start:4px}
+.frame[data-shell="mobile"] .step-cell{grid-column:2; grid-row:1}
+.frame[data-shell="mobile"] .lrow .row-anchor{grid-column:3; grid-row:1}
+.frame[data-shell="mobile"] .step-meta{grid-column:2; grid-row:2}
+.frame[data-shell="mobile"] .lcell-status{grid-column:2; grid-row:3; flex-direction:row; align-items:center; gap:8px; flex-wrap:wrap}
+.frame[data-shell="mobile"] .step-num{font-size:24px}
+.frame[data-shell="mobile"] .dos-top{padding:20px 18px 16px}
+.frame[data-shell="mobile"] .dos-name{font-size:23px}
+.frame[data-shell="mobile"] .dos-grid{grid-template-columns:1fr}
+.frame[data-shell="mobile"] .dos-cell{padding:14px 18px; border-inline-start:0; border-block-start:1px solid var(--t-color-gray4)}
+.frame[data-shell="mobile"] .dos-cell:first-child{border-block-start:0}
+.frame[data-shell="mobile"] .dos-note, .frame[data-shell="mobile"] .dos-future{padding:14px 18px}
+.frame[data-shell="mobile"] .dos-future{flex-direction:column; align-items:stretch}
+.frame[data-shell="mobile"] .skel-row{grid-template-columns:1fr; gap:10px}
+.frame[data-shell="mobile"] .dlg{
+  top:auto; bottom:0; left:0; transform:none; width:100%; max-height:88%;
+  border-radius:14px 14px 0 0; animation:sheet-in var(--t-animation-duration-normal) cubic-bezier(.16,1,.3,1);
+}
+@keyframes sheet-in{from{opacity:0; transform:translateY(24px)} to{opacity:1; transform:none}}
+.frame[data-shell="mobile"] .field-row{grid-template-columns:1fr}
+.frame[data-shell="mobile"] .confirm{width:calc(100% - 32px)}
+.frame[data-shell="mobile"] .menu{min-width:200px}
+.frame[data-shell="mobile"] #toast-root{bottom:14px}
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.7" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3z"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  </defs>
+</svg>
+
+<div class="harness" role="region" aria-label="ابزارهای پیش‌نمایش">
+  <span class="h-title">پیش‌نمایش طراحی — تنظیمات مالی</span>
+  <div class="h-group" role="group" aria-label="اندازه صفحه">
+    <button type="button" data-h="shell" data-v="desktop" class="on">دسکتاپ ۱۲۸۰</button>
+    <button type="button" data-h="shell" data-v="mobile">موبایل ۳۹۰</button>
+  </div>
+  <div class="h-group" role="group" aria-label="وضعیت داده">
+    <button type="button" data-h="view" data-v="normal" class="on">عادی</button>
+    <button type="button" data-h="view" data-v="loading">بارگذاری</button>
+    <button type="button" data-h="view" data-v="empty">خالی</button>
+    <button type="button" data-h="view" data-v="error">خطا</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="frame" id="app" data-shell="desktop" dir="rtl"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- helpers ---------- */
+  var FA = '۰۱۲۳۴۵۶۷۸۹';
+  function fa(s) { return String(s).replace(/[0-9]/g, function (d) { return FA[+d]; }); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fas(n) { return Number(n).toLocaleString('fa-IR'); }
+  function pct(v) {
+    var n = Number(v);
+    if (isNaN(n)) return fa(v);
+    return fa(Number.isInteger(n) ? n : String(n));
+  }
+  function sumPct(a, b) {
+    var s = (parseFloat(a) || 0) + (parseFloat(b) || 0);
+    return Math.round(s * 100) / 100;
+  }
+  function isExempt(r) { return parseFloat(r.rate || 0) === 0 && parseFloat(r.duty || 0) === 0; }
+  function icon(id, cls) {
+    return '<svg class="ic ' + (cls || '') + '" aria-hidden="true"><use href="#' + id + '"/></svg>';
+  }
+
+  /* ---------- state ---------- */
+  var S = {
+    shell: 'desktop',
+    view: 'normal',
+    tab: 'tax',
+    filter: 'all',
+    tax: [
+      { id: 'tp1', code: 'VAT-9',   name: 'مالیات بر ارزش افزوده',            rate: '9',  duty: '0', acct: '2101', active: true,  def: true,  used: 142 },
+      { id: 'tp2', code: 'IMP-10',  name: 'ورود کالا — ارزش افزوده و عوارض',   rate: '10', duty: '2', acct: '2102', active: true,  def: false, used: 17 },
+      { id: 'tp3', code: 'EXP-0',   name: 'صادرات کالا — معاف',                rate: '0',  duty: '0', acct: '2109', active: true,  def: false, used: 3 },
+      { id: 'tp4', code: 'SRV-7',   name: 'خدمات مشمول عوارض شهرداری',         rate: '7',  duty: '5', acct: '2103', active: true,  def: false, used: 0 },
+      { id: 'tp5', code: 'CIT-25',  name: 'شرکت‌ها — مالیات بر درآمد',         rate: '25', duty: '0', acct: '2105', active: false, def: false, used: 0 }
+    ],
+    round: [
+      { id: 'rr1', code: 'RND-100',  name: 'رند به صد ریال',      step: '100',   active: true,  def: false, used: 8 },
+      { id: 'rr2', code: 'RND-1K',   name: 'رند به هزار ریال',     step: '1000',  active: true,  def: true,  used: 57 },
+      { id: 'rr3', code: 'RND-10K',  name: 'رند به ده‌هزار ریال',  step: '10000', active: false, def: false, used: 0 }
+    ],
+    cur: { id: 'c1', code: 'IRR', name: 'ریال ایران', acct: '1101', active: true, def: true, phase: 1 },
+    menu: null,      /* {kind:'tax'|'round', id} */
+    dialog: null,    /* {kind, mode, id, values, errors, busy, snapshot} */
+    discard: false,
+    confirm: null,   /* {kind, id} */
+    focusKey: null,
+    justOpened: false
+  };
+
+  var app = document.getElementById('app');
+  var layer = null;
+
+  /* ---------- derived ---------- */
+  function taxCounts() {
+    var t = S.tax;
+    return {
+      total: t.length,
+      def: t.filter(function (r) { return r.def; }).length,
+      active: t.filter(function (r) { return r.active; }).length,
+      exempt: t.filter(isExempt).length
+    };
+  }
+  function roundCounts() {
+    var r = S.round;
+    return {
+      total: r.length,
+      def: r.filter(function (x) { return x.def; }).length,
+      active: r.filter(function (x) { return x.active; }).length
+    };
+  }
+  function filtered(list) {
+    if (S.filter === 'active') return list.filter(function (r) { return r.active; });
+    if (S.filter === 'default') return list.filter(function (r) { return r.def; });
+    return list.slice();
+  }
+  function tabCount(id) {
+    if (id === 'tax') return S.tax.length;
+    if (id === 'round') return S.round.length;
+    return 1;
+  }
+
+  /* ---------- fragments ---------- */
+  function badgesTax(r) {
+    var h = '';
+    if (r.def) h += '<span class="badge badge-def">پیش‌فرض</span>';
+    if (isExempt(r)) h += '<span class="badge badge-exempt">معاف</span>';
+    h += r.active
+      ? '<span class="badge badge-on">فعال</span>'
+      : '<span class="badge badge-off">غیرفعال</span>';
+    return h;
+  }
+  function badgesRound(r) {
+    var h = '';
+    if (r.def) h += '<span class="badge badge-def">پیش‌فرض</span>';
+    h += r.active
+      ? '<span class="badge badge-on">فعال</span>'
+      : '<span class="badge badge-off">غیرفعال</span>';
+    if (r.used > 0) h += '<span class="badge badge-used">در ' + fa(r.used) + ' سند</span>';
+    return h;
+  }
+
+  function railStats(cells) {
+    return '<div class="stats">' + cells.map(function (c) {
+      return '<div class="stat-cell"><span class="stat-cap">' + c[0] + '</span>' +
+        '<span class="stat-val"><bdi>' + c[1] + '</bdi></span></div>';
+    }).join('') + '</div>';
+  }
+  function railFilters() {
+    var c = S.tab === 'tax' ? taxCounts() : roundCounts();
+    var opts = [
+      ['all', 'همه', c.total],
+      ['active', 'فعال', c.active],
+      ['default', 'پیش‌فرض', c.def]
+    ];
+    return '<div><p class="rail-label">نمایش</p><div class="filters" role="group" aria-label="فیلتر">' +
+      opts.map(function (o) {
+        return '<button type="button" class="chip' + (S.filter === o[0] ? ' on' : '') + '" data-act="filter" data-v="' + o[0] + '"' +
+          (S.filter === o[0] ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+          o[1] + '<span class="c"><bdi>' + fa(o[2]) + '</bdi></span></button>';
+      }).join('') + '</div></div>';
+  }
+
+  function rail() {
+    if (S.tab === 'tax') {
+      var c = taxCounts();
+      return '<aside class="rail">' +
+        '<div><p class="rail-label">آمار سیاست‌ها</p>' + railStats([
+          ['کل سیاست‌ها', fa(c.total)], ['پیش‌فرض', fa(c.def)],
+          ['فعال', fa(c.active)], ['معاف', fa(c.exempt)]
+        ]) + '</div>' +
+        '<div class="rail-actions">' +
+          '<button type="button" class="btn btn-primary btn-block" data-act="create">' + icon('i-plus') + 'سیاست جدید</button>' +
+          '<button type="button" class="btn btn-ghost btn-block" data-act="refresh">' + icon('i-refresh') + 'بازخوانی</button>' +
+        '</div>' +
+        railFilters() +
+        '<p class="help"><strong>حذف</strong> فقط برای سیاستِ غیرپیش‌فرض و بدون سند ممکن است. کد حسابداری پس از ثبت در سند قفل می‌شود.</p>' +
+        '</aside>';
+    }
+    if (S.tab === 'round') {
+      var rc = roundCounts();
+      return '<aside class="rail">' +
+        '<div><p class="rail-label">آمار قواعد</p>' + railStats([
+          ['کل قواعد', fa(rc.total)], ['پیش‌فرض', fa(rc.def)],
+          ['فعال', fa(rc.active)], ['استفاده‌شده', fa(S.round.filter(function (r) { return r.used > 0; }).length)]
+        ]) + '</div>' +
+        '<div class="rail-actions">' +
+          '<button type="button" class="btn btn-primary btn-block" data-act="create">' + icon('i-plus') + 'قاعده جدید</button>' +
+          '<button type="button" class="btn btn-ghost btn-block" data-act="refresh">' + icon('i-refresh') + 'بازخوانی</button>' +
+        '</div>' +
+        railFilters() +
+        '<p class="help"><strong>گام رند</strong> عدد صحیح مثبت به ریال است و در اسناد ذخیره می‌شود. مقدار ۰٫۰۰۱ مربوط به ارزهای غیرریالی در آینده است.</p>' +
+        '</aside>';
+    }
+    return '<aside class="rail">' +
+      '<div><p class="rail-label">آمار ارزها</p>' + railStats([
+        ['ارز عملیاتی', fa(1)], ['پیش‌فرض', fa(1)]
+      ]) + '</div>' +
+      '<div class="rail-actions">' +
+        '<button type="button" class="btn btn-ghost btn-block" data-act="refresh">' + icon('i-refresh') + 'بازخوانی</button>' +
+      '</div>' +
+      '<p class="help"><strong>فقط ریال ایران</strong> در فاز ۱ عملیاتی است. راه‌اندازی ارز پایه خودکار است و دکمه جداگانه‌ای ندارد.</p>' +
+      '</aside>';
+  }
+
+  function head() {
+    var tabs = [
+      ['tax', 'مالیات و عوارض'],
+      ['currency', 'ارزها'],
+      ['round', 'قواعد رُند کردن']
+    ];
+    var titles = { tax: 'تنظیمات مالیات و عوارض', currency: 'تنظیمات ارز', round: 'تنظیمات قواعد رُند' };
+    var subs = {
+      tax: 'سیاست‌های مالیات و عوارض مستقل، با کد حسابداری و سطح پیش‌فرض',
+      currency: 'ارز عملیاتی فاز ۱ و کد حسابداری مرتبط',
+      round: 'گام‌های رند مبلغ اسناد صورتحساب'
+    };
+    return '<header class="appbar">' +
+      '<div class="appbar-top">' +
+        '<button type="button" class="back-btn" aria-label="بازگشت به تنظیمات">' + icon('i-back') + '</button>' +
+        '<div><h1 class="appbar-title">' + titles[S.tab] + '</h1>' +
+        '<p class="appbar-sub">' + subs[S.tab] + '</p></div>' +
+      '</div>' +
+      '<div class="tabs" role="tablist" aria-label="بخش‌های تنظیمات مالی">' +
+        tabs.map(function (t) {
+          return '<button type="button" class="tab" role="tab" id="tab-' + t[0] + '" data-act="tab" data-v="' + t[0] + '"' +
+            ' aria-selected="' + (S.tab === t[0] ? 'true' : 'false') + '" tabindex="' + (S.tab === t[0] ? '0' : '-1') + '">' +
+            t[1] + '<span class="tab-count"><bdi>' + fa(tabCount(t[0])) + '</bdi></span></button>';
+        }).join('') +
+      '</div>' +
+    '</header>';
+  }
+
+  /* ---------- states ---------- */
+  function errBand(msg) {
+    return '<div class="errband" role="alert">' + icon('i-alert') +
+      '<div class="eb-body">' + msg + '</div>' +
+      '<button type="button" class="btn btn-ghost" data-act="retry">تلاش مجدد</button></div>';
+  }
+  function emptyState(cfg) {
+    return '<div class="empty">' +
+      '<div class="empty-ic">' + icon(cfg.icon) + '</div>' +
+      '<h3>' + cfg.title + '</h3><p>' + cfg.body + '</p>' +
+      (cfg.action
+        ? '<button type="button" class="btn btn-primary" data-act="create">' + icon('i-plus') + cfg.action + '</button>'
+        : '') +
+      '</div>';
+  }
+  function skelTax() {
+    var rows = '';
+    for (var i = 0; i < 4; i++) {
+      rows += '<div class="skel-row">' +
+        '<div class="skel-col"><div class="skel" style="height:16px;width:72%"></div><div class="skel" style="height:12px;width:45%"></div></div>' +
+        '<div class="skel" style="height:30px;width:92%"></div>' +
+        '<div class="skel-col"><div class="skel" style="height:14px;width:60%"></div><div class="skel" style="height:12px;width:40%"></div></div>' +
+        '<div class="skel" style="height:26px;width:26px;border-radius:6px"></div>' +
+        '</div>';
+    }
+    return '<div class="skel-note">' + icon('i-refresh') + 'در حال بارگذاری سیاست‌ها…</div>' +
+      '<div class="skel-reg" aria-busy="true"><span class="sr">در حال بارگذاری</span>' + rows + '</div>';
+  }
+  function skelRound() {
+    var rows = '';
+    for (var i = 0; i < 3; i++) {
+      rows += '<div class="skel-row" style="grid-template-columns:56px 1.4fr 1.4fr 1fr 44px">' +
+        '<div class="skel" style="height:26px;width:26px;border-radius:50%"></div>' +
+        '<div class="skel" style="height:26px;width:70%"></div>' +
+        '<div class="skel-col"><div class="skel" style="height:15px;width:65%"></div><div class="skel" style="height:13px;width:45%"></div></div>' +
+        '<div class="skel" style="height:14px;width:70%"></div>' +
+        '<div class="skel" style="height:26px;width:26px;border-radius:6px"></div>' +
+        '</div>';
+    }
+    return '<div class="skel-note">' + icon('i-refresh') + 'در حال بارگذاری قواعد…</div>' +
+      '<div class="skel-reg" aria-busy="true"><span class="sr">در حال بارگذاری</span>' + rows + '</div>';
+  }
+  function skelCur() {
+    return '<div class="skel-note">' + icon('i-refresh') + 'در حال بررسی ارز پایه…</div>' +
+      '<div class="skel-reg" aria-busy="true" style="padding:26px">' +
+      '<div class="skel" style="height:28px;width:46%;margin-bottom:12px"></div>' +
+      '<div class="skel" style="height:16px;width:30%;margin-bottom:24px"></div>' +
+      '<div class="skel" style="height:64px;width:100%"></div></div>';
+  }
+
+  /* ---------- tax register ---------- */
+  function taxRow(r) {
+    var trio = isExempt(r)
+      ? '<div class="trio-exempt"><span class="big">معاف</span><span class="sub">مالیات و عوارض صفر است</span></div>'
+      : '<div class="trio">' +
+          '<div class="st"><span class="st-cap">مالیات</span><span class="st-num"><bdi>' + pct(r.rate) + '٪</bdi></span></div>' +
+          '<div class="st"><span class="st-cap">عوارض</span><span class="st-num"><bdi>' + pct(r.duty) + '٪</bdi></span></div>' +
+          '<div class="st total"><span class="st-cap">مجموع</span><span class="st-num"><bdi>' + pct(sumPct(r.rate, r.duty)) + '٪</bdi></span></div>' +
+        '</div>';
+    return '<div class="row' + (r.def ? ' is-def' : '') + (r.active ? '' : ' is-off') + '"' +
+        ' role="button" tabindex="0" data-act="edit" data-kind="tax" data-id="' + r.id + '"' +
+        ' aria-label="ویرایش سیاست ' + esc(r.name) + '">' +
+      '<div class="row-ident">' +
+        '<p class="row-name">' + esc(r.name) + '</p>' +
+        '<div class="row-badges">' + badgesTax(r) + '</div>' +
+        '<span class="row-code ltr">' + esc(r.code) + '</span>' +
+      '</div>' +
+      trio +
+      '<div class="row-acct">' +
+        '<span class="acct-chip">' + (r.used > 0 ? icon('i-lock', 'ic-sm') : '') + '<span class="ltr">' + esc(r.acct) + '</span></span>' +
+        '<span class="row-used">' + (r.used > 0 ? 'در ' + fa(r.used) + ' سند استفاده شده' : 'بدون سند') + '</span>' +
+      '</div>' +
+      '<div class="row-anchor">' +
+        '<button type="button" class="icon-btn" data-act="menu" data-kind="tax" data-id="' + r.id + '"' +
+          ' aria-haspopup="menu" aria-expanded="' + (isMenuOpen('tax', r.id) ? 'true' : 'false') + '" aria-label="عملیات بیشتر برای ' + esc(r.name) + '">' +
+          icon('i-dots') + '</button>' +
+        (isMenuOpen('tax', r.id) ? menuTax(r) : '') +
+      '</div>' +
+    '</div>';
+  }
+  function registerTax() {
+    var rows = filtered(S.tax);
+    if (rows.length === 0) {
+      return emptyState({
+        icon: 'i-inbox',
+        title: 'سیاستی در این نمایش نیست',
+        body: 'فیلتر انتخاب‌شده سیاستی نشان نمی‌دهد. فیلتر «همه» را انتخاب کنید یا سیاست جدیدی ثبت کنید.',
+        action: null
+      });
+    }
+    return '<div class="register">' +
+      '<div class="reg-head" aria-hidden="true"><span>سیاست</span><span>نرخ‌ها</span><span>حسابداری</span><span></span></div>' +
+      rows.map(taxRow).join('') +
+      '</div>';
+  }
+
+  /* ---------- ladder (rounding) ---------- */
+  function roundRow(r, idx) {
+    return '<div class="lrow' + (r.def ? ' is-def' : '') + (r.active ? '' : ' is-off') + '"' +
+        ' role="button" tabindex="0" data-act="edit" data-kind="round" data-id="' + r.id + '"' +
+        ' aria-label="ویرایش قاعده ' + esc(r.name) + '">' +
+      '<span class="ord" aria-hidden="true"><bdi>' + fa(idx + 1) + '</bdi></span>' +
+      '<div class="step-cell">' +
+        '<span class="step-num"><bdi>' + fas(r.step) + '</bdi></span>' +
+        '<span class="step-unit">ریال</span>' +
+      '</div>' +
+      '<div class="step-meta">' +
+        '<p class="step-name">' + esc(r.name) + '</p>' +
+        '<span class="row-code ltr">' + esc(r.code) + '</span>' +
+        '<div class="step-badges">' + badgesRound(r) + '</div>' +
+      '</div>' +
+      '<div class="lcell-status">' +
+        '<span class="lbl">گام رند</span>' +
+        '<span class="row-used">' + (r.used > 0 ? 'در ' + fa(r.used) + ' سند ذخیره شده' : 'هنوز در سندی استفاده نشده') + '</span>' +
+      '</div>' +
+      '<div class="row-anchor">' +
+        '<button type="button" class="icon-btn" data-act="menu" data-kind="round" data-id="' + r.id + '"' +
+          ' aria-haspopup="menu" aria-expanded="' + (isMenuOpen('round', r.id) ? 'true' : 'false') + '" aria-label="عملیات بیشتر برای ' + esc(r.name) + '">' +
+          icon('i-dots') + '</button>' +
+        (isMenuOpen('round', r.id) ? menuRound(r) : '') +
+      '</div>' +
+    '</div>';
+  }
+  function ladder() {
+    var rows = filtered(S.round);
+    if (rows.length === 0) {
+      return emptyState({
+        icon: 'i-inbox',
+        title: 'قاعده‌ای در این نمایش نیست',
+        body: 'فیلتر انتخاب‌شده قاعده‌ای نشان نمی‌دهد. فیلتر «همه» را انتخاب کنید یا قاعده جدیدی بسازید.',
+        action: null
+      });
+    }
+    return '<div class="ladder">' + rows.map(roundRow).join('') + '</div>';
+  }
+
+  /* ---------- currency dossier ---------- */
+  function dossier() {
+    var c = S.cur;
+    return '<div class="dossier">' +
+      '<div class="dos-top">' +
+        '<div class="dos-id">' +
+          '<h2 class="dos-name">' + esc(c.name) + '</h2>' +
+          '<div class="dos-badges">' +
+            '<span class="badge badge-def">پیش‌فرض</span>' +
+            '<span class="badge badge-phase">فاز ۱</span>' +
+            (c.active ? '<span class="badge badge-on">فعال</span>' : '<span class="badge badge-off">غیرفعال</span>') +
+            '<span class="badge badge-used ltr">' + esc(c.code) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="dos-mark ltr" aria-hidden="true">IRR</div>' +
+      '</div>' +
+      '<div class="dos-grid">' +
+        '<div class="dos-cell">' +
+          '<span class="dos-cap">کد حسابداری</span>' +
+          '<div class="dos-acct">' +
+            '<span class="dos-acct-val ltr">' + esc(c.acct) + '</span>' +
+            '<button type="button" class="btn btn-ghost" data-act="edit" data-kind="currency" data-id="' + c.id + '">' +
+              icon('i-pencil') + 'ویرایش</button>' +
+          '</div>' +
+          '<span class="dos-sub">در اسناد مالی با این کد ثبت می‌شود</span>' +
+        '</div>' +
+        '<div class="dos-cell">' +
+          '<span class="dos-cap">دامنه عملیاتی</span>' +
+          '<span class="dos-val">فقط ریال ایران</span>' +
+          '<span class="dos-sub">ارزهای دیگر به فازهای بعدی منتقل می‌شوند</span>' +
+        '</div>' +
+        '<div class="dos-cell">' +
+          '<span class="dos-cap">وضعیت پیش‌فرض</span>' +
+          '<span class="dos-val">ارز پیش‌فرض صورتحساب</span>' +
+          '<span class="dos-sub">تغییر پیش‌فرض توسط سرور مدیریت می‌شود</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dos-note">' + icon('i-info') +
+        '<span>راه‌اندازی ارز پایه به‌صورت خودکار و بدون دکمه جداگانه انجام می‌شود؛ پس از اولین بارگذاری، ریال آماده استفاده است.</span>' +
+      '</div>' +
+      '<div class="dos-future">' +
+        '<span>ارز بعدی:</span>' +
+        '<span class="ghost-row">در فاز ۱ اضافه نمی‌شود — منتظر پشتیبانی چندارزی</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ---------- menus ---------- */
+  function isMenuOpen(kind, id) { return !!(S.menu && S.menu.kind === kind && S.menu.id === id); }
+
+  function menuTax(r) {
+    var delReason = r.def ? 'سیاست پیش‌فرض قابل حذف نیست'
+      : (r.used > 0 ? 'در ' + fa(r.used) + ' سند استفاده شده' : '');
+    return '<div class="menu" role="menu" aria-label="عملیات ' + esc(r.name) + '">' +
+      '<button type="button" class="menu-item" role="menuitem" data-m="edit" data-kind="tax" data-id="' + r.id + '">' + icon('i-pencil') + 'ویرایش</button>' +
+      '<button type="button" class="menu-item" role="menuitem" data-m="default" data-kind="tax" data-id="' + r.id + '"' + (r.def ? ' disabled' : '') + '>' + icon('i-star') + 'پیش‌فرض کردن</button>' +
+      '<button type="button" class="menu-item" role="menuitem" data-m="toggle" data-kind="tax" data-id="' + r.id + '">' +
+        icon('i-bolt') + (r.active ? 'غیرفعال‌سازی' : 'فعال‌سازی') + '</button>' +
+      '<div class="menu-sep"></div>' +
+      '<button type="button" class="menu-item danger" role="menuitem" data-m="del" data-kind="tax" data-id="' + r.id + '"' +
+        (delReason ? ' disabled aria-describedby="mn-note"' : '') + '>' + icon('i-x') + 'حذف</button>' +
+      (delReason ? '<p class="menu-note" id="mn-note">' + delReason + '</p>' : '') +
+      '</div>';
+  }
+  function menuRound(r) {
+    var delReason = r.def ? 'قاعده پیش‌فرض قابل حذف نیست'
+      : (r.used > 0 ? 'در ' + fa(r.used) + ' سند استفاده شده' : '');
+    return '<div class="menu" role="menu" aria-label="عملیات ' + esc(r.name) + '">' +
+      '<button type="button" class="menu-item" role="menuitem" data-m="edit" data-kind="round" data-id="' + r.id + '">' + icon('i-pencil') + 'ویرایش</button>' +
+      '<button type="button" class="menu-item" role="menuitem" data-m="default" data-kind="round" data-id="' + r.id + '"' + (r.def ? ' disabled' : '') + '>' + icon('i-star') + 'پیش‌فرض کردن</button>' +
+      '<button type="button" class="menu-item" role="menuitem" data-m="toggle" data-kind="round" data-id="' + r.id + '">' +
+        icon('i-bolt') + (r.active ? 'غیرفعال‌سازی' : 'فعال‌سازی') + '</button>' +
+      '<div class="menu-sep"></div>' +
+      '<button type="button" class="menu-item danger" role="menuitem" data-m="del" data-kind="round" data-id="' + r.id + '"' +
+        (delReason ? ' disabled aria-describedby="mn-note"' : '') + '>' + icon('i-x') + 'حذف</button>' +
+      (delReason ? '<p class="menu-note" id="mn-note">' + delReason + '</p>' : '') +
+      '</div>';
+  }
+
+  /* ---------- content ---------- */
+  function content() {
+    var inner = '';
+    if (S.view === 'loading') {
+      inner = S.tab === 'tax' ? skelTax() : S.tab === 'round' ? skelRound() : skelCur();
+    } else if (S.view === 'error') {
+      var msg = S.tab === 'tax' ? 'بارگذاری سیاست‌های مالیاتی ناموفق بود.'
+        : S.tab === 'round' ? 'بارگذاری قواعد رُند ناموفق بود.'
+        : 'بارگذاری ارز ناموفق بود.';
+      inner = errBand(msg) +
+        '<p class="skel-note" style="margin:0">برای مشاهده فهرست، دوباره تلاش کنید.</p>';
+    } else if (S.view === 'empty') {
+      if (S.tab === 'tax') {
+        inner = emptyState({
+          icon: 'i-inbox',
+          title: 'هنوز سیاست مالیاتی ثبت نشده',
+          body: 'هر سیاست می‌تواند نرخ مالیات و عوارض مستقل، کد حسابداری و وضعیت فعال داشته باشد. اولین سیاست را بسازید تا در اسناد صورتحساب استفاده شود.',
+          action: 'سیاست جدید'
+        });
+      } else if (S.tab === 'round') {
+        inner = emptyState({
+          icon: 'i-inbox',
+          title: 'قاعده رُندی ثبت نشده',
+          body: 'هر قاعده یک گام صحیح مثبت به ریال دارد. بدون قاعده، مبالغ اسناد بدون رُند محاسبه می‌شوند.',
+          action: 'قاعده جدید'
+        });
+      } else {
+        inner = emptyState({
+          icon: 'i-refresh',
+          title: 'ارز پایه در حال راه‌اندازی است',
+          body: 'راه‌اندازی ریال ایران به‌صورت خودکار انجام می‌شود و چند لحظه طول می‌کشد. دکمه‌ای لازم نیست؛ این صفحه خودش به‌روز می‌شود.',
+          action: null
+        });
+      }
+    } else {
+      if (S.tab === 'tax') inner = registerTax();
+      else if (S.tab === 'round') inner = ladder();
+      else inner = dossier();
+    }
+    return '<main class="content" id="panel-' + S.tab + '" role="tabpanel" aria-labelledby="tab-' + S.tab + '" tabindex="-1">' +
+      '<div class="content-inner">' + inner + '</div></main>';
+  }
+
+  /* ---------- dialogs ---------- */
+  function emptyValues(kind) {
+    if (kind === 'tax') return { name: '', rate: '', duty: '0', acct: '', active: true };
+    if (kind === 'round') return { name: '', step: '', active: true };
+    return { acct: S.cur.acct };
+  }
+  function valuesFor(kind, id) {
+    if (kind === 'tax') {
+      var r = S.tax.find(function (x) { return x.id === id; });
+      return { name: r.name, rate: r.rate, duty: r.duty, acct: r.acct, active: r.active };
+    }
+    if (kind === 'round') {
+      var g = S.round.find(function (x) { return x.id === id; });
+      return { name: g.name, step: g.step, active: g.active };
+    }
+    return { acct: S.cur.acct };
+  }
+  function openDialog(kind, mode, id) {
+    var values = mode === 'create' ? emptyValues(kind) : valuesFor(kind, id);
+    S.dialog = {
+      kind: kind, mode: mode, id: id || null,
+      values: values,
+      snapshot: JSON.stringify(values),
+      errors: {}, busy: false
+    };
+    S.menu = null; S.discard = false; S.confirm = null;
+    S.justOpened = true;
+    render();
+  }
+  function dialogDirty() {
+    return S.dialog && JSON.stringify(S.dialog.values) !== S.dialog.snapshot;
+  }
+  function attemptCloseDialog() {
+    if (!S.dialog || S.dialog.busy) return;
+    if (dialogDirty()) { S.discard = true; renderLayer(); return; }
+    S.dialog = null; S.focusKey = null; render();
+  }
+
+  function validate(kind, v, id) {
+    var e = {};
+    if (kind === 'tax') {
+      if (!String(v.name).trim()) e.name = 'نام سیاست را وارد کنید.';
+      else if (String(v.name).trim().length > 80) e.name = 'نام بلند است؛ حداکثر ۸۰ نویسه.';
+      if (v.rate === '' || isNaN(parseFloat(v.rate)) || parseFloat(v.rate) < 0 || parseFloat(v.rate) > 100)
+        e.rate = 'نرخ باید عددی بین ۰ تا ۱۰۰ باشد.';
+      if (v.duty === '' || isNaN(parseFloat(v.duty)) || parseFloat(v.duty) < 0 || parseFloat(v.duty) > 100)
+        e.duty = 'عوارض باید عددی بین ۰ تا ۱۰۰ باشد.';
+      if (!String(v.acct).trim()) e.acct = 'کد حسابداری را وارد کنید.';
+      else if (S.tax.some(function (r) { return r.id !== id && String(r.acct).trim() === String(v.acct).trim(); }))
+        e.acct = 'این کد حسابداری برای سیاست دیگری ثبت شده است.';
+    } else if (kind === 'round') {
+      if (!String(v.name).trim()) e.name = 'نام قاعده را وارد کنید.';
+      else if (String(v.name).trim().length > 80) e.name = 'نام بلند است؛ حداکثر ۸۰ نویسه.';
+      if (!/^[1-9][0-9]*$/.test(String(v.step).trim())) e.step = 'گام باید عدد صحیح مثبت باشد.';
+    } else {
+      if (!String(v.acct).trim()) e.acct = 'کد حسابداری را وارد کنید.';
+    }
+    return e;
+  }
+
+  function fieldErr(id) {
+    var e = S.dialog && S.dialog.errors[id];
+    return '<p class="err" data-err="' + id + '">' + (e ? esc(e) : '') + '</p>';
+  }
+  function inputCls(id, base) {
+    return base + (S.dialog.errors[id] ? ' bad' : '');
+  }
+
+  function dialogMarkup() {
+    var d = S.dialog;
+    if (!d) return '';
+    var title = d.kind === 'tax'
+      ? (d.mode === 'create' ? 'سیاست مالیاتی جدید' : 'ویرایش سیاست مالیاتی')
+      : d.kind === 'round'
+        ? (d.mode === 'create' ? 'قاعده رُند جدید' : 'ویرایش قاعده رُند')
+        : 'ویرایش کد حسابداری';
+    var body = '';
+    var v = d.values;
+
+    if (d.kind === 'tax') {
+      var locked = d.mode === 'edit' && (function () {
+        var r = S.tax.find(function (x) { return x.id === d.id; });
+        return r && r.used > 0;
+      })();
+      var total = sumPct(v.rate, v.duty);
+      var exemptNow = (parseFloat(v.rate) || 0) === 0 && (parseFloat(v.duty) || 0) === 0;
+      body =
+        '<div class="field">' +
+          '<label class="label" for="f-name">نام سیاست <span class="req" aria-hidden="true">*</span></label>' +
+          '<input class="' + inputCls('name', 'input') + '" id="f-name" data-f="name" type="text" value="' + esc(v.name) + '"' +
+            ' autocomplete="off" aria-describedby="e-name" required>' +
+          fieldErr('name') +
+        '</div>' +
+        '<div class="field-row">' +
+          '<div class="field">' +
+            '<label class="label" for="f-rate">نرخ مالیات (٪) <span class="req" aria-hidden="true">*</span></label>' +
+            '<input class="' + inputCls('rate', 'num-input') + '" id="f-rate" data-f="rate" type="text" inputmode="decimal" value="' + esc(v.rate) + '" aria-describedby="e-rate" required>' +
+            fieldErr('rate') +
+          '</div>' +
+          '<div class="field">' +
+            '<label class="label" for="f-duty">نرخ عوارض (٪)</label>' +
+            '<input class="' + inputCls('duty', 'num-input') + '" id="f-duty" data-f="duty" type="text" inputmode="decimal" value="' + esc(v.duty) + '" aria-describedby="e-duty">' +
+            fieldErr('duty') +
+          '</div>' +
+        '</div>' +
+        '<div class="total-line" id="total-line">' +
+          '<span>مجموع نرخ' + (exemptNow ? ' — <span class="exempt-tag">سیاست معاف</span>' : '') + '</span>' +
+          '<b><bdi>' + pct(total) + '٪</bdi></b>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label class="label" for="f-acct">کد حسابداری <span class="req" aria-hidden="true">*</span></label>' +
+          '<input class="' + inputCls('acct', 'input') + '" id="f-acct" data-f="acct" type="text" value="' + esc(v.acct) + '"' +
+            (locked ? ' disabled' : '') + ' style="font-family:var(--font-mono)" autocomplete="off" aria-describedby="e-acct" required>' +
+          fieldErr('acct') +
+          (locked
+            ? '<span class="hint-lock">' + icon('i-lock', 'ic-sm') + 'این سیاست در سند استفاده شده؛ کد حسابداری پس از ثبت سند قفل است.</span>'
+            : '<span class="hint">مثلاً ۲۱۰۱ — در اسناد مالی با این کد ثبت می‌شود.</span>') +
+        '</div>' +
+        '<div class="switch-row">' +
+          '<span class="sw-txt"><b>سیاست فعال</b><span>در انتخاب هنگام صورتحساب نمایش داده شود</span></span>' +
+          '<span class="sw"><input type="checkbox" data-f="active"' + (v.active ? ' checked' : '') + ' aria-label="سیاست فعال"><span class="track"></span><span class="knob"></span></span>' +
+        '</div>';
+    } else if (d.kind === 'round') {
+      body =
+        '<div class="field">' +
+          '<label class="label" for="f-name">نام قاعده <span class="req" aria-hidden="true">*</span></label>' +
+          '<input class="' + inputCls('name', 'input') + '" id="f-name" data-f="name" type="text" value="' + esc(v.name) + '"' +
+            ' autocomplete="off" aria-describedby="e-name" required>' +
+          fieldErr('name') +
+        '</div>' +
+        '<div class="field">' +
+          '<label class="label" for="f-step">گام رُند (ریال) <span class="req" aria-hidden="true">*</span></label>' +
+          '<input class="' + inputCls('step', 'num-input') + '" id="f-step" data-f="step" type="text" inputmode="numeric" value="' + esc(v.step) + '"' +
+            ' autocomplete="off" aria-describedby="e-step" required>' +
+          fieldErr('step') +
+          '<span class="hint">عدد صحیح مثبت؛ برای مثال <bdi>۱٬۰۰۰</bdi>. در اسناد ذخیره می‌شود.</span>' +
+          '<span class="hint-lock">' + icon('i-lock', 'ic-sm') + 'مقدار ۰٫۰۰۱ فقط برای ارزهای غیرریالی در آینده است و برای ریال پذیرفته نمی‌شود.</span>' +
+        '</div>' +
+        '<div class="switch-row">' +
+          '<span class="sw-txt"><b>قاعده فعال</b><span>برای رُند کردن مبالغ اسناد استفاده شود</span></span>' +
+          '<span class="sw"><input type="checkbox" data-f="active"' + (v.active ? ' checked' : '') + ' aria-label="قاعده فعال"><span class="track"></span><span class="knob"></span></span>' +
+        '</div>';
+    } else {
+      body =
+        '<div class="field">' +
+          '<label class="label" for="f-acct">کد حسابداری <span class="req" aria-hidden="true">*</span></label>' +
+          '<input class="' + inputCls('acct', 'input') + '" id="f-acct" data-f="acct" type="text" value="' + esc(v.acct) + '"' +
+            ' style="font-family:var(--font-mono)" autocomplete="off" aria-describedby="e-acct" required>' +
+          fieldErr('acct') +
+          '<span class="hint">کد حسابداری ' + esc(S.cur.name) + ' در اسناد مالی استفاده می‌شود.</span>' +
+        '</div>';
+    }
+
+    return '<div class="backdrop" data-act="dlg-backdrop"></div>' +
+      '<div class="dlg' + (d.kind === 'tax' ? ' dlg-wide' : '') + '" role="dialog" aria-modal="true" aria-labelledby="dlg-title">' +
+        '<div class="dlg-head">' +
+          '<h2 class="dlg-title" id="dlg-title">' + title + '</h2>' +
+          '<button type="button" class="icon-btn" data-act="dlg-close" aria-label="بستن">' + icon('i-x') + '</button>' +
+        '</div>' +
+        '<div class="dlg-body">' + body + '</div>' +
+        '<div class="dlg-foot">' +
+          '<span class="spacer">' + (d.busy ? 'در حال ذخیره…' : '') + '</span>' +
+          '<button type="button" class="btn btn-quiet" data-act="dlg-close"' + (d.busy ? ' disabled' : '') + '>انصراف</button>' +
+          '<button type="button" class="btn btn-primary" data-act="dlg-save"' + (d.busy ? ' disabled' : '') + '>' +
+            (d.busy ? 'ذخیره…' : 'ذخیره') + '</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function discardMarkup() {
+    if (!S.discard) return '';
+    return '<div class="backdrop" style="z-index:5"></div>' +
+      '<div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="dc-title" style="z-index:6">' +
+        '<div class="cf-ic">' + icon('i-alert') + '</div>' +
+        '<h3 id="dc-title">تغییرات ذخیره نشده</h3>' +
+        '<p>فیلدهای ویرایش‌شده ذخیره نشده‌اند. اگر ببندید، تغییرات از بین می‌رود.</p>' +
+        '<div class="cf-foot">' +
+          '<button type="button" class="btn btn-ghost" data-act="discard-keep">ادامه ویرایش</button>' +
+          '<button type="button" class="btn btn-danger" data-act="discard-yes">رها کردن</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function confirmMarkup() {
+    if (!S.confirm) return '';
+    var isTax = S.confirm.kind === 'tax';
+    var rec = isTax
+      ? S.tax.find(function (x) { return x.id === S.confirm.id; })
+      : S.round.find(function (x) { return x.id === S.confirm.id; });
+    if (!rec) return '';
+    return '<div class="backdrop" data-act="cf-cancel"></div>' +
+      '<div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-desc">' +
+        '<div class="cf-ic">' + icon('i-alert') + '</div>' +
+        '<h3 id="cf-title">' + (isTax ? 'حذف سیاست مالیاتی؟' : 'حذف قاعده رُند؟') + '</h3>' +
+        '<p id="cf-desc"><span class="cf-name">«' + esc(rec.name) + '»</span> حذف می‌شود. این عمل قابل بازگشت نیست.</p>' +
+        '<p>' + (isTax
+          ? 'اگر سیاست در سندی استفاده شده باشد، سرور حذف را رد می‌کند.'
+          : 'اگر قاعده در سندی استفاده شده باشد، سرور حذف را رد می‌کند.') + '</p>' +
+        '<div class="cf-foot">' +
+          '<button type="button" class="btn btn-ghost" data-act="cf-cancel">انصراف</button>' +
+          '<button type="button" class="btn btn-danger" data-act="cf-ok">حذف</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function layerMarkup() {
+    var h = '';
+    if (S.dialog) h += dialogMarkup();
+    if (S.discard) h += discardMarkup();
+    if (S.confirm) h += confirmMarkup();
+    h += '<div id="toast-root" aria-live="polite"></div>';
+    return '<div class="layer" id="layer">' + h + '</div>';
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    app.dataset.shell = S.shell;
+    app.innerHTML = head() +
+      '<div class="split">' + rail() + content() + '</div>' +
+      layerMarkup();
+    layer = document.getElementById('layer');
+
+    if (S.menu) positionMenu();
+    if (S.justOpened) {
+      S.justOpened = false;
+      var first = layer && layer.querySelector('.dlg .input:not(:disabled), .dlg .num-input:not(:disabled)');
+      if (first) first.focus();
+    }
+    if (S.focusKey) {
+      var t = app.querySelector(S.focusKey);
+      S.focusKey = null;
+      if (t) t.focus();
+    }
+  }
+  function renderLayer() {
+    /* rebuild only the overlay layer (menu stays in content) */
+    var old = document.getElementById('layer');
+    if (!old) { render(); return; }
+    var wrap = document.createElement('div');
+    wrap.innerHTML = layerMarkup();
+    old.replaceWith(wrap.firstElementChild);
+    layer = document.getElementById('layer');
+    if (S.justOpened) {
+      S.justOpened = false;
+      var first = layer.querySelector('.dlg .input:not(:disabled), .dlg .num-input:not(:disabled)');
+      if (first) first.focus();
+    }
+  }
+
+  function positionMenu() {
+    var m = app.querySelector('.menu');
+    if (!m) return;
+    var frame = app.getBoundingClientRect();
+    var r = m.getBoundingClientRect();
+    if (r.bottom > frame.bottom - 10) m.classList.add('flip');
+    if (m.classList.contains('flip')) {
+      var rb = m.getBoundingClientRect();
+      if (rb.top < frame.top + 10) m.classList.remove('flip');
+    }
+  }
+
+  /* ---------- toast ---------- */
+  var toastTimer = null;
+  function showToast(msg, bad) {
+    var root = document.getElementById('toast-root');
+    if (!root) return;
+    root.innerHTML = '<div class="toast' + (bad ? ' bad' : '') + '" role="status">' +
+      icon(bad ? 'i-alert' : 'i-check') + '<span>' + esc(msg) + '</span></div>';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      var r = document.getElementById('toast-root');
+      if (r) r.innerHTML = '';
+    }, 3200);
+  }
+
+  /* ---------- actions ---------- */
+  function findRec(kind, id) {
+    return kind === 'tax'
+      ? S.tax.find(function (x) { return x.id === id; })
+      : S.round.find(function (x) { return x.id === id; });
+  }
+
+  function closeMenu(focusTrigger) {
+    if (!S.menu) return;
+    var id = S.menu.id;
+    S.menu = null;
+    if (focusTrigger) S.focusKey = '[data-act="menu"][data-id="' + id + '"]';
+    render();
+  }
+
+  function menuAction(m, kind, id) {
+    var rec = findRec(kind, id);
+    if (!rec) { S.menu = null; render(); return; }
+    if (m === 'edit') { openDialog(kind, 'edit', id); return; }
+    if (m === 'default') {
+      var list = kind === 'tax' ? S.tax : S.round;
+      list.forEach(function (x) { x.def = x.id === id; });
+      S.menu = null;
+      S.focusKey = '[data-act="menu"][data-id="' + id + '"]';
+      render();
+      showToast(kind === 'tax' ? 'سیاست پیش‌فرض شد.' : 'قاعده پیش‌فرض شد.');
+      return;
+    }
+    if (m === 'toggle') {
+      rec.active = !rec.active;
+      S.menu = null;
+      S.focusKey = '[data-act="menu"][data-id="' + id + '"]';
+      render();
+      showToast(rec.name + (rec.active ? ' فعال شد.' : ' غیرفعال شد.'));
+      return;
+    }
+    if (m === 'del') {
+      S.menu = null;
+      S.confirm = { kind: kind, id: id };
+      render();
+      var cf = app.querySelector('.confirm .btn-danger');
+      if (cf) cf.focus();
+      return;
+    }
+  }
+
+  function doRefresh() {
+    S.view = 'loading';
+    S.menu = null;
+    render();
+    setTimeout(function () {
+      S.view = 'normal';
+      syncHarness();
+      render();
+      showToast('فهرست به‌روزرسانی شد.');
+    }, 700);
+  }
+
+  function saveDialog() {
+    var d = S.dialog;
+    if (!d || d.busy) return;
+    var errs = validate(d.kind, d.values, d.id);
+    d.errors = errs;
+    if (Object.keys(errs).length) {
+      renderLayer();
+      var firstKey = ['name', 'rate', 'duty', 'step', 'acct'].find(function (k) { return errs[k]; });
+      var el = firstKey && layer.querySelector('[data-f="' + firstKey + '"]');
+      if (el) el.focus();
+      return;
+    }
+    d.busy = true;
+    renderLayer();
+    setTimeout(function () {
+      var kind = d.kind, mode = d.mode, v = d.values, id = d.id;
+      var toastMsg = '';
+      if (kind === 'tax') {
+        if (mode === 'create') {
+          S.tax.push({
+            id: 'tp' + (Date.now() % 100000), code: 'NEW-' + fa(S.tax.length + 1),
+            name: String(v.name).trim(), rate: String(v.rate), duty: String(v.duty),
+            acct: String(v.acct).trim(), active: !!v.active, def: S.tax.length === 0, used: 0
+          });
+          toastMsg = 'سیاست مالیاتی ذخیره شد.';
+        } else {
+          var r = S.tax.find(function (x) { return x.id === id; });
+          r.name = String(v.name).trim(); r.rate = String(v.rate); r.duty = String(v.duty);
+          if (!r.used) r.acct = String(v.acct).trim();
+          r.active = !!v.active;
+          toastMsg = 'تغییرات ذخیره شد.';
+        }
+      } else if (kind === 'round') {
+        if (mode === 'create') {
+          S.round.push({
+            id: 'rr' + (Date.now() % 100000), code: 'RND-' + fa(S.round.length + 1),
+            name: String(v.name).trim(), step: String(v.step),
+            active: !!v.active, def: S.round.length === 0, used: 0
+          });
+          toastMsg = 'قاعده ذخیره شد.';
+        } else {
+          var g = S.round.find(function (x) { return x.id === id; });
+          g.name = String(v.name).trim(); g.step = String(v.step); g.active = !!v.active;
+          toastMsg = 'تغییرات ذخیره شد.';
+        }
+      } else {
+        S.cur.acct = String(v.acct).trim();
+        toastMsg = 'کد حسابداری ذخیره شد.';
+      }
+      S.dialog = null; S.discard = false;
+      render();
+      showToast(toastMsg);
+    }, 550);
+  }
+
+  /* ---------- harness ---------- */
+  function syncHarness() {
+    document.querySelectorAll('[data-h]').forEach(function (b) {
+      var key = b.dataset.h === 'shell' ? S.shell : S.view;
+      b.classList.toggle('on', b.dataset.v === key);
+    });
+  }
+  document.querySelector('.harness').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-h]');
+    if (!b) return;
+    if (b.dataset.h === 'shell') {
+      S.shell = b.dataset.v;
+      S.menu = null;
+    } else {
+      S.view = b.dataset.v;
+      if (S.view !== 'normal') S.menu = null;
+    }
+    syncHarness();
+    render();
+  });
+
+  /* ---------- app events ---------- */
+  app.addEventListener('click', function (e) {
+    var mi = e.target.closest('[data-m]');
+    if (mi && !mi.disabled) {
+      e.stopPropagation();
+      menuAction(mi.dataset.m, mi.dataset.kind, mi.dataset.id);
+      return;
+    }
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.dataset.act;
+
+    if (act === 'tab') {
+      if (S.tab !== el.dataset.v) {
+        S.tab = el.dataset.v; S.filter = 'all'; S.menu = null;
+        render();
+      }
+      return;
+    }
+    if (act === 'filter') { S.filter = el.dataset.v; S.menu = null; render(); return; }
+    if (act === 'refresh' || act === 'retry') { doRefresh(); return; }
+    if (act === 'create') { openDialog(S.tab === 'tax' ? 'tax' : S.tab === 'round' ? 'round' : 'currency', 'create', null); return; }
+    if (act === 'edit') { openDialog(el.dataset.kind, 'edit', el.dataset.id); return; }
+    if (act === 'menu') {
+      var kind = el.dataset.kind, id = el.dataset.id;
+      if (isMenuOpen(kind, id)) { closeMenu(true); }
+      else { S.menu = { kind: kind, id: id }; render(); }
+      return;
+    }
+    if (act === 'dlg-close' || act === 'dlg-backdrop') { attemptCloseDialog(); return; }
+    if (act === 'dlg-save') { saveDialog(); return; }
+    if (act === 'discard-keep') { S.discard = false; renderLayer(); return; }
+    if (act === 'discard-yes') { S.dialog = null; S.discard = false; render(); return; }
+    if (act === 'cf-cancel') { S.confirm = null; render(); return; }
+    if (act === 'cf-ok') {
+      var c = S.confirm;
+      if (c) {
+        if (c.kind === 'tax') S.tax = S.tax.filter(function (x) { return x.id !== c.id; });
+        else S.round = S.round.filter(function (x) { return x.id !== c.id; });
+      }
+      S.confirm = null;
+      render();
+      showToast(c && c.kind === 'tax' ? 'سیاست حذف شد.' : 'قاعده حذف شد.');
+      return;
+    }
+  });
+
+  /* row keyboard */
+  app.addEventListener('keydown', function (e) {
+    var row = e.target.closest('[data-act="edit"][role="button"]');
+    if (row && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      openDialog(row.dataset.kind, 'edit', row.dataset.id);
+      return;
+    }
+    /* tab arrow navigation */
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.target.getAttribute('role') === 'tab') {
+      e.preventDefault();
+      var tabs = Array.from(app.querySelectorAll('[role="tab"]'));
+      var i = tabs.indexOf(e.target);
+      var dir = e.key === 'ArrowLeft' ? 1 : -1; /* RTL: left = next */
+      var next = tabs[(i + dir + tabs.length) % tabs.length];
+      next.focus(); next.click();
+    }
+  });
+
+  /* dialog field input / blur */
+  app.addEventListener('input', function (e) {
+    var f = e.target.dataset && e.target.dataset.f;
+    if (!f || !S.dialog) return;
+    var val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    S.dialog.values[f] = val;
+    /* live total for tax rates */
+    if (S.dialog.kind === 'tax' && (f === 'rate' || f === 'duty')) {
+      var line = document.getElementById('total-line');
+      if (line) {
+        var v = S.dialog.values;
+        var t = sumPct(v.rate, v.duty);
+        var ex = (parseFloat(v.rate) || 0) === 0 && (parseFloat(v.duty) || 0) === 0;
+        line.innerHTML = '<span>مجموع نرخ' + (ex ? ' — <span class="exempt-tag">سیاست معاف</span>' : '') + '</span>' +
+          '<b><bdi>' + pct(t) + '٪</bdi></b>';
+      }
+    }
+    /* clear stale error once the field is valid */
+    if (S.dialog.errors[f]) {
+      var errs = validate(S.dialog.kind, S.dialog.values, S.dialog.id);
+      if (!errs[f]) {
+        S.dialog.errors[f] = '';
+        var errNode = layer && layer.querySelector('[data-err="' + f + '"]');
+        if (errNode) errNode.textContent = '';
+        var input = e.target;
+        if (input.classList) input.classList.remove('bad');
+      }
+    }
+  });
+
+  app.addEventListener('focusout', function (e) {
+    var f = e.target.dataset && e.target.dataset.f;
+    if (!f || !S.dialog || S.dialog.busy) return;
+    var errs = validate(S.dialog.kind, S.dialog.values, S.dialog.id);
+    var msg = errs[f] || '';
+    S.dialog.errors[f] = msg;
+    var errNode = layer && layer.querySelector('[data-err="' + f + '"]');
+    if (errNode) errNode.textContent = msg;
+    if (e.target.classList) e.target.classList.toggle('bad', !!msg);
+  });
+
+  /* ---------- global keys ---------- */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (S.discard) { S.discard = false; renderLayer(); return; }
+      if (S.confirm) { S.confirm = null; render(); return; }
+      if (S.dialog) { attemptCloseDialog(); return; }
+      if (S.menu) { closeMenu(true); return; }
+      return;
+    }
+    /* focus trap inside dialogs */
+    if (e.key === 'Tab' && (S.dialog || S.confirm)) {
+      var rootEl = S.discard
+        ? app.querySelector('.confirm')
+        : S.confirm
+          ? app.querySelector('.confirm')
+          : app.querySelector('.dlg');
+      if (!rootEl) return;
+      var f = Array.from(rootEl.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])'));
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !rootEl.contains(document.activeElement))) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !rootEl.contains(document.activeElement))) {
+        e.preventDefault(); first.focus();
+      }
+      return;
+    }
+    /* menu keyboard */
+    if (S.menu && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      var menu = app.querySelector('.menu');
+      if (!menu) return;
+      e.preventDefault();
+      var items = Array.from(menu.querySelectorAll('.menu-item:not(:disabled)'));
+      if (!items.length) return;
+      var idx = items.indexOf(document.activeElement);
+      var delta = e.key === 'ArrowDown' ? 1 : -1;
+      items[(idx < 0 ? (delta > 0 ? -1 : 0) : idx + delta + items.length) % items.length].focus();
+    }
+    if (S.menu && e.key === 'Tab') { closeMenu(false); }
+    /* Enter saves dialog */
+    if (S.dialog && e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
+      e.preventDefault();
+      saveDialog();
+    }
+  });
+
+  /* outside click closes menu */
+  document.addEventListener('mousedown', function (e) {
+    if (!S.menu) return;
+    if (e.target.closest('.menu') || e.target.closest('[data-act="menu"]')) return;
+    closeMenu(false);
+  });
+
+  /* ---------- boot ---------- */
+  render();
+})();
+</script>
+</body>
+</html>

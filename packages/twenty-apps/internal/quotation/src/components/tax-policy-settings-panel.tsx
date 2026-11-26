@@ -1,30 +1,21 @@
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
+import { SettingsShell } from 'src/components/financial-settings/settings-shell';
+import { TaxLedger } from 'src/components/financial-settings/tax-ledger';
 import { callTaxPoliciesNestAction } from 'src/components/quotation-api';
 import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
 import { RoundingRuleSettingsSection } from 'src/components/rounding-rule-settings-section';
-import { RowActionsMenu } from 'src/components/shared/row-actions-menu';
 import { runDestructiveConfirm } from 'src/components/shared/run-destructive-confirm';
 import { SettingsDialog } from 'src/components/shared/settings-dialog';
-import {
-  formatExactDecimalForPeople,
-  toPersianDigits,
-} from 'src/domain/money/display-format';
+import { toPersianDigits } from 'src/domain/money/display-format';
 import {
   formatBasisPointsAsPercent,
   parsePercentToBasisPoints,
 } from 'src/domain/money/tax-policy';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
-// Dense operational ledger (OpenDesign R2). Create/edit in SettingsDialog; tax and
-// duty stay two fields of one policy. Server owns default uniqueness and delete refusal.
+// OpenDesign DE-035: register + context rail. Domain contracts unchanged.
 
 type TaxPolicyRow = {
   recordId: string;
@@ -131,9 +122,6 @@ const sumPercentText = (taxText: string, dutyText: string): string => {
   return `${toPersianDigits(formatBasisPointsAsPercent(total))}٪`;
 };
 
-const percentLabel = (value: string): string =>
-  `${formatExactDecimalForPeople(value)}٪`;
-
 const displayPolicyName = (name: string): string => toPersianDigits(name);
 
 const FALLBACK_ERROR = 'ذخیرهٔ تنظیمات مالیات انجام نشد؛ دوباره تلاش کنید.';
@@ -197,9 +185,11 @@ const usageLine = (row: TaxPolicyRow): string => {
 };
 
 type SettingsTab = 'tax' | 'currencies' | 'rounding';
+type TaxFilterId = 'all' | 'active' | 'default';
 
 export const TaxPolicySettingsPanel = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('tax');
+  const [taxFilter, setTaxFilter] = useState<TaxFilterId>('all');
   const [rows, setRows] = useState<TaxPolicyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -216,28 +206,10 @@ export const TaxPolicySettingsPanel = () => {
     message: string;
   } | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
-  const [openMoreRecordId, setOpenMoreRecordId] = useState<string | null>(null);
   const [editorBaseline, setEditorBaseline] = useState<EditorState | null>(
     null,
   );
-  // One catalog surface at a time: the ledger and the phone cards must not both sit
-  // in the accessibility tree, or a rotor hears every policy twice.
-  const [compactLayout, setCompactLayout] = useState(false);
   const deleteLatchRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') {
-      return;
-    }
-
-    const media = window.matchMedia('(max-width: 720px)');
-    const sync = () => setCompactLayout(media.matches);
-
-    sync();
-    media.addEventListener('change', sync);
-
-    return () => media.removeEventListener('change', sync);
-  }, []);
 
   const updateEditor = useCallback((next: EditorState | null) => {
     setEditor(next);
@@ -272,7 +244,6 @@ export const TaxPolicySettingsPanel = () => {
     }
 
     setRowIssue(null);
-    setOpenMoreRecordId(null);
     setEditorBaseline(next);
     updateEditor(next);
   };
@@ -321,7 +292,6 @@ export const TaxPolicySettingsPanel = () => {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setOpenMoreRecordId(null);
 
     try {
       const response = await callTaxPoliciesNestAction({
@@ -438,7 +408,6 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onSetDefault = async (row: TaxPolicyRow) => {
-    setOpenMoreRecordId(null);
     setRowIssue(null);
 
     const failure = await runAction(
@@ -453,7 +422,6 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onDeactivate = async (row: TaxPolicyRow) => {
-    setOpenMoreRecordId(null);
     setRowIssue(null);
 
     const failure = await runAction(
@@ -467,7 +435,6 @@ export const TaxPolicySettingsPanel = () => {
   };
 
   const onActivate = async (row: TaxPolicyRow) => {
-    setOpenMoreRecordId(null);
     setRowIssue(null);
 
     const failure = await runAction(
@@ -490,7 +457,6 @@ export const TaxPolicySettingsPanel = () => {
 
   const requestDelete = async (row: TaxPolicyRow) => {
     setRowIssue(null);
-    setOpenMoreRecordId(null);
 
     if (!canDeleteRow(row)) {
       const reason = row.isDefault
@@ -568,367 +534,231 @@ export const TaxPolicySettingsPanel = () => {
       ? null
       : (rows.find((row) => row.recordId === editor?.recordId) ?? null);
 
-  const statusBadge = (row: TaxPolicyRow) => {
-    if (row.isDefault) {
-      return <span className="tax-badge tax-badge-default">پیش‌فرض</span>;
-    }
+  const activeCount = rows.filter((row) => row.isActive).length;
+  const defaultCount = rows.filter((row) => row.isDefault).length;
+  const filteredRows =
+    taxFilter === 'active'
+      ? rows.filter((row) => row.isActive)
+      : taxFilter === 'default'
+        ? rows.filter((row) => row.isDefault)
+        : rows;
 
-    if (row.isActive) {
-      return <span className="tax-badge tax-badge-active">فعال</span>;
-    }
+  const ledgerRows = filteredRows.map((row) => ({
+    id: row.recordId,
+    code: row.code,
+    name: displayPolicyName(row.name),
+    ratePercent: row.ratePercent,
+    dutyRatePercent: row.dutyRatePercent,
+    accountingCode:
+      row.accountingCode.trim() === '' ? '—' : row.accountingCode,
+    isActive: row.isActive,
+    isDefault: row.isDefault,
+    quotationCount: row.quotationCount,
+  }));
 
-    return <span className="tax-badge tax-badge-off">غیرفعال</span>;
-  };
+  const findRow = (id: string) => rows.find((row) => row.recordId === id);
 
-  const renderRowActions = (row: TaxPolicyRow) => {
-    const nameText = displayPolicyName(row.name);
-    const moreOpen = openMoreRecordId === row.recordId;
-    const deleteBusy = deletingRecordId === row.recordId;
-    const menuItems = [
-      ...(row.isActive && !row.isDefault
-        ? [
-            {
-              id: 'default',
-              label: 'پیش‌فرض',
-              disabled: busy,
-              onSelect: () => {
-                void onSetDefault(row);
-              },
-            },
-          ]
-        : []),
-      row.isActive
-        ? {
-            id: 'deactivate',
-            label: 'غیرفعال',
-            disabled: busy || row.isDefault,
-            title: row.isDefault
-              ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
-              : undefined,
-            onSelect: () => {
-              void onDeactivate(row);
-            },
-          }
-        : {
-            id: 'activate',
-            label: 'فعال',
-            disabled: busy,
-            onSelect: () => {
-              void onActivate(row);
-            },
-          },
-      {
-        id: 'delete',
-        label: deleteBusy ? 'در حال حذف…' : 'حذف',
-        disabled: busy || deleteBusy || !canDeleteRow(row),
-        danger: true,
-        title: canDeleteRow(row)
-          ? undefined
-          : row.isDefault
-            ? 'سیاست پیش‌فرض حذف نمی‌شود'
-            : 'به‌دلیل استفاده در سند حذف نمی‌شود',
-        onSelect: () => {
-          void requestDelete(row);
-        },
-      },
-    ];
+  const shellTabs = [
+    {
+      id: 'tax',
+      label: 'مالیات و عوارض',
+      count: rows.length,
+    },
+    {
+      id: 'currencies',
+      label: 'ارزها',
+      count: 1,
+    },
+    {
+      id: 'rounding',
+      label: 'قواعد رُند کردن',
+      count: 0,
+    },
+  ];
 
-    return (
-      <div
-        className="tax-row-actions"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <button
-          type="button"
-          className="tax-btn"
-          aria-label={`ویرایش — ${nameText}`}
-          disabled={busy || deletingRecordId !== null}
-          onClick={() => openEditor(editorFor(row))}
-        >
-          ویرایش
-        </button>
-        <RowActionsMenu
-          label={`عملیات بیشتر — ${nameText}`}
-          open={moreOpen}
-          onOpenChange={(nextOpen) =>
-            setOpenMoreRecordId(nextOpen ? row.recordId : null)
-          }
-          disabled={busy || deletingRecordId !== null}
-          items={menuItems}
-        />
-      </div>
-    );
-  };
+  const taxStats = [
+    {
+      label: 'کل',
+      value: toPersianDigits(String(rows.length)),
+    },
+    {
+      label: 'فعال',
+      value: toPersianDigits(String(activeCount)),
+    },
+    {
+      label: 'پیش‌فرض',
+      value: toPersianDigits(String(defaultCount)),
+    },
+    {
+      label: 'نمایش',
+      value: toPersianDigits(String(filteredRows.length)),
+    },
+  ];
 
   return (
-    <div className="tax-root" style={styles.root} dir="rtl">
+    <div className="tax-root" dir="rtl">
       <style>{PANEL_CSS}</style>
-
-      <div className="tax-toolbar">
-        <nav className="tax-tabs" aria-label="بخش‌های پیش‌نیازهای حسابداری">
-          {(
-            [
-              { id: 'tax', label: 'مالیات و عوارض' },
-              { id: 'currencies', label: 'ارزها' },
-              { id: 'rounding', label: 'قواعد رُند کردن' },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              className={
-                activeTab === tab.id ? 'tax-tab tax-tab-active' : 'tax-tab'
+      <SettingsShell
+        title="پیش‌نیازهای حسابداری"
+        subtitle="سیاست مالیات، ارز عملیاتی و قواعد رُند — ساختار ثبت با ریل زمینه"
+        tabs={shellTabs}
+        activeTabId={activeTab}
+        onTabChange={(id) => setActiveTab(id as SettingsTab)}
+        railLabel={
+          activeTab === 'tax'
+            ? 'نمای مالیات'
+            : activeTab === 'currencies'
+              ? 'نمای ارز'
+              : 'نمای رُند'
+        }
+        stats={
+          activeTab === 'tax'
+            ? taxStats
+            : [
+                {
+                  label: 'فاز',
+                  value: toPersianDigits('1'),
+                },
+                {
+                  label: 'وضعیت',
+                  value: 'فعال',
+                },
+              ]
+        }
+        primaryAction={
+          activeTab === 'tax' && error === null && !loading
+            ? {
+                label:
+                  rows.length === 0 ? 'ساخت سیاست پایهٔ ۹٪' : 'سیاست جدید',
+                onClick: () => {
+                  if (rows.length === 0) {
+                    void onBootstrap();
+                  } else {
+                    openEditor(emptyEditor());
+                  }
+                },
               }
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-        {activeTab === 'tax' && rows.length > 0 && error === null ? (
-          <button
-            type="button"
-            className="tax-btn tax-btn-primary tax-add"
-            aria-label="سیاست جدید"
-            disabled={busy}
-            onClick={() => openEditor(emptyEditor())}
-          >
-            + سیاست جدید
-          </button>
-        ) : null}
-      </div>
-
-      {activeTab !== 'tax' ? null : error === null ? null : (
-        <div className="tax-page-error">
-          <p role="alert" style={styles.pageError}>
-            {error}
-          </p>
-          <button
-            type="button"
-            className="tax-btn"
-            disabled={busy || loading}
-            onClick={() => void load()}
-          >
-            تلاش مجدد
-          </button>
-        </div>
-      )}
-
-      {activeTab !== 'tax' ? null : loading ? (
-        <p role="status" style={styles.meta}>
-          در حال خواندن سیاست‌ها…
-        </p>
-      ) : null}
-
-      {activeTab !== 'tax' || loading ? null : error !== null ? null : rows.length === 0 ? (
-        <section className="tax-empty">
-          <p style={styles.emptyText}>
-            هنوز سیاست مالیات و عوارضی ثبت نشده است.
-          </p>
-          <div className="tax-empty-actions">
-            <button
-              type="button"
-              className="tax-btn tax-btn-primary"
-              disabled={busy}
-              onClick={() => void onBootstrap()}
-            >
-              {busy ? 'در حال آماده‌سازی…' : 'ساخت سیاست پایهٔ ۹٪'}
-            </button>
-            <button
-              type="button"
-              className="tax-btn"
-              disabled={busy}
-              onClick={() => openEditor(emptyEditor())}
-            >
-              سیاست جدید
-            </button>
-          </div>
-        </section>
-      ) : (
-        <div className="tax-workspace tax-workspace-closed">
-          <section className="tax-panel" aria-labelledby="tax-list-title">
-            <div className="tax-panel-toolbar">
-              <h3 id="tax-list-title" style={styles.listTitle}>
-                {toPersianDigits(String(rows.length))} سیاست
-              </h3>
-              <button
-                type="button"
-                className="tax-btn tax-btn-ghost"
-                disabled={busy || loading}
-                onClick={() => void load()}
+            : undefined
+        }
+        secondaryAction={
+          activeTab === 'tax'
+            ? {
+                label: 'بازخوانی',
+                onClick: () => {
+                  void load();
+                },
+                busy: loading || busy,
+              }
+            : undefined
+        }
+        filters={
+          activeTab === 'tax'
+            ? {
+                options: [
+                  {
+                    id: 'all',
+                    label: 'همه',
+                    count: rows.length,
+                  },
+                  {
+                    id: 'active',
+                    label: 'فعال',
+                    count: activeCount,
+                  },
+                  {
+                    id: 'default',
+                    label: 'پیش‌فرض',
+                    count: defaultCount,
+                  },
+                ],
+                value: taxFilter,
+                onChange: (id) => setTaxFilter(id as TaxFilterId),
+              }
+            : undefined
+        }
+        helpNote={
+          activeTab === 'tax' ? (
+            <>
+              <strong>حذف:</strong> سیاست پیش‌فرض یا استفاده‌شده در سند حذف
+              نمی‌شود. کد حسابداری پس از ثبت در سند قفل می‌شود.
+            </>
+          ) : activeTab === 'currencies' ? (
+            <>
+              در فاز ۱ فقط ریال ایران (IRR) فعال است. راه‌اندازی خودکار است و
+              دکمه bootstrap وجود ندارد.
+            </>
+          ) : (
+            <>
+              گام رُند باید عدد صحیح مثبت ریال باشد. ۰٫۰۰۱ فقط برای ارزهای
+              غیرریالی آینده است.
+            </>
+          )
+        }
+      >
+        {activeTab === 'tax' ? (
+          <>
+            {rowIssue === null ? null : (
+              <p
+                role={rowIssue.kind === 'notice' ? 'status' : 'alert'}
+                className={
+                  rowIssue.kind === 'notice'
+                    ? 'tax-row-notice'
+                    : 'tax-row-error'
+                }
+                style={{ marginBottom: 12 }}
               >
-                بازخوانی
-              </button>
-            </div>
-
-            {compactLayout ? (
-              <div className="tax-mobile-cards" aria-label="فهرست موبایل">
-                {rows.map((row) => {
-                  const nameText = displayPolicyName(row.name);
-                  const selected = editor?.recordId === row.recordId;
-
-                  return (
-                    <article
-                      key={`m-${row.recordId}`}
-                      className={[
-                        'tax-m-card',
-                        selected ? 'is-selected' : '',
-                        row.isDefault ? 'is-default' : '',
-                        row.isActive ? '' : 'is-inactive',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      data-record-id={row.recordId}
-                    >
-                      <div className="tax-m-top">
-                        <div>
-                          <div className="tax-name">{nameText}</div>
-                          <div className="tax-code" dir="ltr">
-                            {row.code}
-                          </div>
-                        </div>
-                        {statusBadge(row)}
-                      </div>
-                      <div className="tax-m-rates">
-                        <div>
-                          <small>مالیات</small>
-                          <strong className="tax-num">
-                            {percentLabel(row.ratePercent)}
-                          </strong>
-                        </div>
-                        <div>
-                          <small>عوارض</small>
-                          <strong className="tax-num">
-                            {percentLabel(row.dutyRatePercent)}
-                          </strong>
-                        </div>
-                        <div>
-                          <small>نرخ کل</small>
-                          <strong
-                            className={
-                              row.isExempt ? 'tax-num tax-exempt' : 'tax-num'
-                            }
-                          >
-                            {row.isExempt
-                              ? 'معاف'
-                              : percentLabel(row.totalRatePercent)}
-                          </strong>
-                        </div>
-                      </div>
-                      {rowIssue?.recordId === row.recordId ? (
-                        <p
-                          role={
-                            rowIssue.kind === 'notice' ? 'status' : 'alert'
-                          }
-                          className={
-                            rowIssue.kind === 'notice'
-                              ? 'tax-row-notice'
-                              : 'tax-row-error'
-                          }
-                        >
-                          {rowIssue.message}
-                        </p>
-                      ) : null}
-                      {renderRowActions(row)}
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="tax-table-wrap">
-                <table className="tax-ledger" aria-busy={busy}>
-                  <thead>
-                    <tr>
-                      <th scope="col">سیاست</th>
-                      <th scope="col">مالیات</th>
-                      <th scope="col">عوارض</th>
-                      <th scope="col">نرخ کل</th>
-                      <th scope="col">وضعیت</th>
-                      <th scope="col">
-                        <span className="tax-sr-only">عملیات</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => {
-                      const nameText = displayPolicyName(row.name);
-                      const selected = editor?.recordId === row.recordId;
-
-                      return (
-                        <tr
-                          key={`${row.recordId}:${row.isDefault ? 'd' : 's'}`}
-                          className={[
-                            selected ? 'is-selected' : '',
-                            row.isDefault ? 'is-default' : '',
-                            row.isActive ? '' : 'is-inactive',
-                          ]
-                            .filter(Boolean)
-                            .join(' ')}
-                          data-record-id={row.recordId}
-                        >
-                          <td className="tax-col-policy">
-                            <div className="tax-name">{nameText}</div>
-                            <div className="tax-code" dir="ltr">
-                              {row.code}
-                            </div>
-                            {rowIssue?.recordId === row.recordId ? (
-                              <p
-                                role={
-                                  rowIssue.kind === 'notice'
-                                    ? 'status'
-                                    : 'alert'
-                                }
-                                className={
-                                  rowIssue.kind === 'notice'
-                                    ? 'tax-row-notice'
-                                    : 'tax-row-error'
-                                }
-                              >
-                                {rowIssue.message}
-                              </p>
-                            ) : null}
-                          </td>
-                          <td className="tax-col-num">
-                            <span className="tax-num">
-                              {percentLabel(row.ratePercent)}
-                            </span>
-                          </td>
-                          <td className="tax-col-num">
-                            <span className="tax-num">
-                              {percentLabel(row.dutyRatePercent)}
-                            </span>
-                          </td>
-                          <td className="tax-col-num">
-                            <span
-                              className={
-                                row.isExempt
-                                  ? 'tax-num tax-exempt'
-                                  : 'tax-num tax-total'
-                              }
-                            >
-                              {row.isExempt
-                                ? 'معاف'
-                                : percentLabel(row.totalRatePercent)}
-                            </span>
-                          </td>
-                          <td className="tax-col-status">{statusBadge(row)}</td>
-                          <td className="tax-col-actions">
-                            {renderRowActions(row)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                {rowIssue.message}
+              </p>
             )}
-
-          </section>
-
-        </div>
-      )}
+            <TaxLedger
+              rows={ledgerRows}
+              loading={loading}
+              error={error}
+              emptyTitle="هنوز سیاست مالیات و عوارضی ثبت نشده است."
+              emptyBody="برای شروع سریع، سیاست پایه ۹٪ بسازید یا سیاست جدید تعریف کنید."
+              onRetry={() => {
+                void load();
+              }}
+              onCreate={() => openEditor(emptyEditor())}
+              onEdit={(id) => {
+                const row = findRow(id);
+                if (row) {
+                  openEditor(editorFor(row));
+                }
+              }}
+              onMakeDefault={(id) => {
+                const row = findRow(id);
+                if (row) {
+                  void onSetDefault(row);
+                }
+              }}
+              onToggleActive={(id) => {
+                const row = findRow(id);
+                if (!row) {
+                  return;
+                }
+                if (row.isActive) {
+                  void onDeactivate(row);
+                } else {
+                  void onActivate(row);
+                }
+              }}
+              onDelete={(id) => {
+                const row = findRow(id);
+                if (row) {
+                  void requestDelete(row);
+                }
+              }}
+            />
+          </>
+        ) : null}
+        {activeTab === 'currencies' ? (
+          <QuotationCurrencySettingsSection alwaysOpen />
+        ) : null}
+        {activeTab === 'rounding' ? (
+          <RoundingRuleSettingsSection alwaysOpen />
+        ) : null}
+      </SettingsShell>
 
       {editor === null ? null : (
         <SettingsDialog
@@ -1058,6 +888,7 @@ export const TaxPolicySettingsPanel = () => {
               dir="ltr"
               placeholder="اختیاری"
               maxLength={64}
+              disabled={(editingRow?.quotationCount ?? 0) > 0}
               onChange={(event) =>
                 updateEditor({
                   ...editor,
@@ -1065,6 +896,11 @@ export const TaxPolicySettingsPanel = () => {
                 })
               }
             />
+            {(editingRow?.quotationCount ?? 0) > 0 ? (
+              <p className="tax-hint">
+                این کد به‌دلیل ثبت در سند قفل شده است.
+              </p>
+            ) : null}
           </div>
 
           <div className="tax-computed" aria-live="polite">
@@ -1102,311 +938,23 @@ export const TaxPolicySettingsPanel = () => {
           )}
         </SettingsDialog>
       )}
-
-      {activeTab === 'currencies' ? (
-        <QuotationCurrencySettingsSection alwaysOpen />
-      ) : null}
-      {activeTab === 'rounding' ? (
-        <RoundingRuleSettingsSection alwaysOpen />
-      ) : null}
     </div>
   );
 };
 
 const PANEL_CSS = `
-.tax-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-.tax-tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--t-color-gray5);
-  border-radius: 10px;
-  background: var(--t-color-gray2);
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.tax-tab {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--t-color-gray11);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  min-height: 40px;
-  padding: 8px 14px;
-  border-radius: 9px;
-  cursor: pointer;
-}
-.tax-tab-active {
-  background: var(--t-color-gray1);
-  color: var(--t-color-gray12);
-  box-shadow: 0 1px 0 var(--t-color-gray4);
-}
-.tax-page-error {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
 .tax-root {
-  container-type: inline-size;
-  container-name: tax-settings;
   width: 100%;
-  max-width: 100%;
   min-width: 0;
-  overflow-x: clip;
-}
-.tax-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 16px;
-  align-items: start;
-  min-width: 0;
-}
-.tax-workspace-closed { grid-template-columns: minmax(0, 1fr); }
-.tax-panel {
-  background: var(--t-color-gray1);
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 10px;
-  overflow: visible;
-}
-.tax-panel-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--t-color-gray5);
-  background: var(--t-color-gray1);
-}
-.tax-btn-ghost {
-  border-color: transparent;
-  background: transparent;
-  color: var(--t-color-gray11);
-}
-.tax-btn-ghost:hover:not(:disabled) {
-  background: var(--t-color-gray3);
-  border-color: transparent;
-}
-.tax-table-wrap {
-  overflow-x: auto;
-  max-width: 100%;
-}
-.tax-ledger {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  min-width: 0;
-}
-.tax-ledger th {
-  text-align: right;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--t-color-gray10);
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--t-color-gray6);
-  background: var(--t-color-gray2);
-  white-space: nowrap;
-}
-.tax-ledger td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--t-color-gray5);
-  vertical-align: middle;
-}
-.tax-col-policy { width: 32%; }
-.tax-col-num { width: 11%; white-space: nowrap; }
-.tax-col-status { width: 12%; white-space: nowrap; }
-.tax-col-actions {
-  width: 20%;
-  white-space: nowrap;
-}
-.tax-ledger tbody tr:hover { background: var(--t-color-gray2); }
-.tax-ledger tbody tr.is-selected { background: var(--t-color-blue2); }
-.tax-ledger tbody tr.is-default td:first-child {
-  box-shadow: inset -3px 0 0 var(--t-color-blue9);
-}
-.tax-ledger tbody tr.is-inactive .tax-name { color: var(--t-color-gray10); }
-.tax-m-card.is-default {
-  box-shadow: inset -3px 0 0 var(--t-color-blue9);
-}
-.tax-name {
-  font-weight: 600;
+  min-height: 0;
+  height: 100%;
+  font-family: inherit;
   color: var(--t-color-gray12);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.tax-code {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--t-color-gray10);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-.tax-num {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  direction: ltr;
-  unicode-bidi: plaintext;
-  display: inline-block;
-}
-.tax-total { color: var(--t-color-blue11); font-size: 15px; }
-.tax-exempt { color: var(--t-color-turquoise11); }
-.tax-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.tax-badge-default {
-  background: var(--t-color-blue3);
-  color: var(--t-color-blue11);
-}
-.tax-badge-active {
-  background: var(--t-color-turquoise3);
-  color: var(--t-color-turquoise11);
-}
-.tax-badge-off {
-  background: var(--t-color-gray4);
-  color: var(--t-color-gray11);
-}
-.tax-usage {
-  display: block;
-  font-size: 13px;
-  color: var(--t-color-gray11);
-  white-space: nowrap;
-}
-.tax-usage-detail {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--t-color-gray10);
-}
-.tax-row-actions {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  position: relative;
-}
-.tax-col-actions .tax-btn {
-  flex: 0 0 auto;
-  padding: 0 10px;
-  min-height: 32px;
-}
-.tax-more { position: relative; }
-.tax-more-menu {
-  position: absolute;
-  inset-inline-end: 0;
-  top: calc(100% + 4px);
-  z-index: 20;
-  min-width: 148px;
-  padding: 4px;
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 8px;
-  background: var(--t-color-gray1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+.tax-split-2 {
   display: grid;
-  gap: 2px;
-}
-.tax-more-item {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--t-color-gray12);
-  font: inherit;
-  font-size: 13px;
-  text-align: right;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  min-height: 36px;
-}
-.tax-more-item:hover:not(:disabled) { background: var(--t-color-gray3); }
-.tax-more-item:disabled {
-  color: var(--t-color-gray9);
-  cursor: not-allowed;
-}
-.tax-more-item-danger { color: var(--t-color-red11); }
-.tax-more-item-danger:hover:not(:disabled) { background: var(--t-color-red2); }
-.tax-mobile-cards {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-}
-.tax-m-card {
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 10px;
-  padding: 12px;
-  background: var(--t-color-gray1);
-}
-.tax-m-card.is-selected {
-  border-color: var(--t-color-blue7);
-  background: var(--t-color-blue2);
-}
-.tax-m-card.is-inactive { background: var(--t-color-gray2); }
-.tax-m-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.tax-m-rates {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.tax-m-rates div {
-  background: var(--t-color-gray3);
-  border-radius: 8px;
-  padding: 8px;
-}
-.tax-m-rates small {
-  display: block;
-  color: var(--t-color-gray10);
-  font-size: 11px;
-  margin-bottom: 2px;
-}
-.tax-footnote {
-  margin: 0;
-  padding: 0 14px 14px;
-  font-size: 12px;
-  color: var(--t-color-gray10);
-}
-.tax-inspector { position: sticky; top: 16px; }
-.tax-inspector-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--t-color-gray6);
-}
-.tax-inspector-sub {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--t-color-gray10);
-}
-.tax-editor-form {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
-  padding: 14px 16px 18px;
 }
 .tax-field { display: flex; flex-direction: column; gap: 6px; }
 .tax-field label {
@@ -1415,230 +963,100 @@ const PANEL_CSS = `
   color: var(--t-color-gray11);
 }
 .tax-field input {
-  height: 32px;
+  height: 36px;
   padding: 0 12px;
   border: 1px solid var(--t-color-gray6);
   border-radius: 8px;
   background: var(--t-color-gray1);
   color: var(--t-color-gray12);
+  font: inherit;
 }
 .tax-field.is-invalid input {
-  border-color: var(--t-color-red8);
-  background: var(--t-color-red2);
+  border-color: var(--t-color-red7);
 }
 .tax-field input:focus-visible {
   outline: 2px solid var(--t-color-blue9);
   outline-offset: 1px;
 }
-.tax-split-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+.tax-field input:disabled {
+  background: var(--t-color-gray3);
+  color: var(--t-color-gray11);
+}
+.tax-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--t-color-gray11);
+  line-height: 1.6;
 }
 .tax-computed {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 8px;
-  border: 1px dashed var(--t-color-gray6);
   background: var(--t-color-gray2);
-}
-.tax-computed span {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--t-color-gray10);
+  border: 1px solid var(--t-color-gray4);
+  font-size: 13px;
 }
 .tax-computed strong {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--t-color-blue11);
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
-  direction: ltr;
-  unicode-bidi: plaintext;
 }
-.tax-hint { margin: 0; font-size: 12px; color: var(--t-color-gray10); }
 .tax-unsaved {
   margin: 0;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12.5px;
   color: var(--t-color-orange11);
 }
 .tax-field-error, .tax-row-error {
   margin: 0;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
   color: var(--t-color-red11);
 }
 .tax-row-notice {
-  margin: 4px 0 0;
-  font-size: 12px;
-  font-weight: 500;
+  margin: 0;
+  font-size: 12.5px;
   color: var(--t-color-orange11);
 }
-.tax-inspector-lifecycle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 4px;
-}
-.tax-inspector-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-.tax-foot-danger { margin-inline-start: auto; }
-.tax-empty {
-  padding: 24px;
-  border: 1px dashed var(--t-color-gray6);
-  border-radius: 10px;
-  background: var(--t-color-gray1);
-}
-.tax-empty-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .tax-btn {
-  height: 32px;
-  padding: 0 12px;
+  appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
   border: 1px solid var(--t-color-gray6);
-  border-radius: 8px;
   background: var(--t-color-gray1);
   color: var(--t-color-gray12);
   font: inherit;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 .tax-btn:hover:not(:disabled) { background: var(--t-color-gray3); }
 .tax-btn:focus-visible {
   outline: 2px solid var(--t-color-blue9);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 .tax-btn:disabled {
-  background: var(--t-color-gray2);
-  border-color: var(--t-color-gray5);
-  color: var(--t-color-gray9);
+  opacity: 0.55;
   cursor: not-allowed;
 }
 .tax-btn-primary {
-  background: var(--t-color-gray12);
-  border-color: var(--t-color-gray12);
+  background: var(--t-color-blue9);
+  border-color: var(--t-color-blue9);
   color: var(--t-color-gray1);
 }
 .tax-btn-primary:hover:not(:disabled) {
-  background: var(--t-color-gray11);
-  border-color: var(--t-color-gray11);
-}
-.tax-btn-danger {
-  border-color: var(--t-color-red7);
-  color: var(--t-color-red11);
-}
-.tax-btn-danger:hover:not(:disabled) { background: var(--t-color-red2); }
-.tax-btn-danger-solid {
-  background: var(--t-color-red11);
-  border-color: var(--t-color-red11);
-  color: var(--t-color-gray1);
-}
-.tax-btn-danger-solid:hover:not(:disabled) {
-  background: var(--t-color-red12);
-  border-color: var(--t-color-red12);
-}
-.tax-add { flex: 0 0 auto; white-space: nowrap; }
-.tax-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-@container tax-settings (max-width: 960px) {
-  .tax-workspace,
-  .tax-workspace-closed { grid-template-columns: 1fr; }
-  .tax-inspector { position: static; }
-}
-@container tax-settings (max-width: 720px) {
-  .tax-toolbar { flex-direction: column; align-items: stretch; }
-  .tax-add { width: 100%; min-height: 44px; height: 44px; }
-  .tax-tabs { width: 100%; }
-  .tax-tab { flex: 1 1 auto; text-align: center; min-height: 40px; }
-  .tax-row-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    width: 100%;
-  }
-  .tax-more { width: 100%; }
-  .tax-more .tax-btn { width: 100%; }
-  .tax-more-menu {
-    inset-inline: 0;
-    min-width: 0;
-  }
-  .tax-btn { min-height: 44px; height: 44px; width: 100%; }
-  .tax-more-item { min-height: 44px; }
-  .tax-field input { height: 44px; }
-  .tax-split-2 { grid-template-columns: 1fr; }
-}
-@media (max-width: 960px) {
-  .tax-workspace,
-  .tax-workspace-closed { grid-template-columns: 1fr; }
-  .tax-inspector { position: static; }
+  background: var(--t-color-blue10);
 }
 @media (max-width: 720px) {
-  .tax-toolbar { flex-direction: column; align-items: stretch; }
-  .tax-add { width: 100%; min-height: 44px; height: 44px; }
-  .tax-tabs { width: 100%; }
-  .tax-tab { flex: 1 1 auto; text-align: center; min-height: 40px; }
-  .tax-row-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    width: 100%;
-  }
-  .tax-btn { min-height: 44px; height: 44px; width: 100%; }
-  .tax-field input { height: 44px; }
   .tax-split-2 { grid-template-columns: 1fr; }
+  .tax-field input { height: 44px; }
+  .tax-btn { min-height: 44px; height: 44px; }
 }
 `;
 
-const styles: Record<string, CSSProperties> = {
-  root: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 0,
-    fontFamily: 'inherit',
-    color: 'var(--t-color-gray12)',
-    maxWidth: 1120,
-    width: '100%',
-    minWidth: 0,
-  },
-  listTitle: {
-    margin: 0,
-    fontSize: 13,
-    fontWeight: 600,
-    color: 'var(--t-color-gray10)',
-  },
-  meta: {
-    margin: 0,
-    fontSize: 13,
-    color: 'var(--t-color-gray10)',
-  },
-  pageError: {
-    margin: 0,
-    fontSize: 13,
-    fontWeight: 500,
-    color: 'var(--t-color-red11)',
-  },
-  emptyText: {
-    margin: 0,
-    fontSize: 14,
-    color: 'var(--t-color-gray11)',
-  },
-};

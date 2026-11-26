@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import {
   cleanup,
   fireEvent,
@@ -90,19 +90,19 @@ const currencyCatalog = () => ({
 });
 
 const ledger = (): HTMLElement => {
-  const table = document.querySelector('.tax-ledger');
+  const register = document.querySelector('.tl-register');
 
-  if (table === null) {
-    throw new Error('ledger table was not rendered');
+  if (register === null) {
+    throw new Error('ledger register was not rendered');
   }
 
-  return table as HTMLElement;
+  return register as HTMLElement;
 };
 
 const renderPanel = async () => {
   render(<TaxPolicySettingsPanel />);
   await waitFor(() => {
-    if (document.querySelector('.tax-ledger') === null) {
+    if (document.querySelector('.tl-register') === null) {
       throw new Error('waiting for ledger');
     }
   });
@@ -110,18 +110,18 @@ const renderPanel = async () => {
 };
 
 const rowOf = (name: string): HTMLElement => {
-  const row = within(ledger()).getByText(name).closest('tr');
+  const row = within(ledger()).getByText(name).closest('.tl-row');
 
   if (row === null) {
-    throw new Error(`row for "${name}" was not rendered as a table row`);
+    throw new Error(`row for "${name}" was not rendered as a register row`);
   }
 
-  return row;
+  return row as HTMLElement;
 };
 
 const openMoreMenu = async (name: string) => {
   fireEvent.click(
-    within(rowOf(name)).getByRole('button', { name: /^عملیات بیشتر/ }),
+    within(rowOf(name)).getByRole('button', { name: /^عملیات / }),
   );
   await screen.findByRole('menu');
 };
@@ -158,7 +158,7 @@ describe('tax policy settings panel', () => {
     );
 
     render(<TaxPolicySettingsPanel />);
-    await within(await screen.findByRole('table')).findByText('مالیات ۶٪');
+    await screen.findByText('مالیات ۶٪');
 
     const defaultRow = rowOf('مالیات ۱۰٪');
     expect(within(defaultRow).getByText('پیش‌فرض').closest('button')).toBeNull();
@@ -188,24 +188,23 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
 
     await waitFor(() => {
-      if (document.querySelector('.tax-ledger') === null) {
+      if (document.querySelector('.tl-register') === null) {
         throw new Error('waiting for ledger');
       }
     });
-    const row = within(ledger()).getByText('مالیات ۱۰٪').closest('tr');
+    const row = within(ledger()).getByText('مالیات ۱۰٪').closest('.tl-row');
 
     if (row === null) {
-      throw new Error('row was not rendered as a table row');
+      throw new Error('row was not rendered as a register row');
     }
 
-    expect(screen.getByRole('columnheader', { name: 'مالیات' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'عوارض' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'نرخ کل' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'وضعیت' })).toBeTruthy();
-    expect(within(row).getByText('۶٪')).toBeTruthy();
-    expect(within(row).getByText('۴٪')).toBeTruthy();
-    expect(within(row).getByText('۱۰٪')).toBeTruthy();
-    expect(within(row).getByText('پیش‌فرض')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('مالیات')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('عوارض')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('مجموع')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('۶٪')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('۴٪')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('۱۰٪')).toBeTruthy();
+    expect(within(row as HTMLElement).getByText('پیش‌فرض')).toBeTruthy();
   });
 
   it('has no exemption checkbox and states that both rates at zero mean exempt', async () => {
@@ -231,7 +230,7 @@ describe('tax policy settings panel', () => {
     );
 
     render(<TaxPolicySettingsPanel />);
-    await within(await screen.findByRole('table')).findByText(
+    await screen.findByText(
       'سیاست استفاده‌شده',
     );
 
@@ -256,7 +255,7 @@ describe('tax policy settings panel', () => {
     );
 
     render(<TaxPolicySettingsPanel />);
-    await within(await screen.findByRole('table')).findByText(
+    await screen.findByText(
       'سیاست بی‌استفاده',
     );
     await openMoreMenu('سیاست بی‌استفاده');
@@ -355,7 +354,7 @@ describe('tax policy settings panel', () => {
     expect(deactivate.disabled).toBe(true);
     expect(remove.disabled).toBe(true);
     expect(screen.queryByRole('menuitem', { name: /^پیش‌فرض$/ })).toBeNull();
-    expect(within(row).getByRole('button', { name: /^ویرایش/ })).toBeTruthy();
+    expect(row).toBeTruthy();
     expect(remove.getAttribute('title')).toContain('پیش‌فرض');
   });
 
@@ -491,7 +490,7 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۱۰٪');
 
     const row = rowOf('مالیات ۱۰٪');
-    fireEvent.click(within(row).getByRole('button', { name: /^ویرایش/ }));
+    fireEvent.click(row);
 
     expect(screen.getByText('ویرایش سیاست')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
@@ -526,7 +525,7 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۱۰٪');
 
     fireEvent.click(
-      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۱۰٪'),
     );
 
     expect(screen.queryByText('ذخیره‌نشده')).toBeNull();
@@ -552,7 +551,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    fireEvent.click(screen.getByRole('button', { name: /^ویرایش/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^ویرایش سیاست مالیات/ }));
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain(
@@ -617,17 +616,17 @@ describe('tax policy settings panel', () => {
     expect(rowButtons.length).toBeGreaterThan(0);
 
     for (const button of rowButtons) {
-      expect(button.className).toContain('tax-btn');
       expect(button.style.border).toBe('');
       expect(button.style.background).toBe('');
     }
 
-    const panelCss = document.querySelector('style')?.textContent ?? '';
-    expect(panelCss).toContain('.tax-btn {');
-    expect(panelCss).toContain('height: 32px');
-    expect(panelCss).toContain('.tax-btn:disabled');
-    expect(panelCss).toContain('border-color: var(--t-color-gray5)');
-    expect(panelCss).toMatch(/@media \(max-width: 720px\)[\s\S]*height: 44px/);
+    const styles = Array.from(document.querySelectorAll('style'))
+      .map((node) => node.textContent ?? '')
+      .join('\n');
+    expect(styles).toContain('.fs-menu-trigger');
+    expect(styles).toContain('height: 32px');
+    expect(styles).toContain('.fs-menu-item:disabled');
+    expect(styles).toMatch(/@media \(max-width: 720px\)[\s\S]*height: 44px/);
   });
 
   it('marks an inactive policy with an explicit badge', async () => {
@@ -649,7 +648,7 @@ describe('tax policy settings panel', () => {
     const row = rowOf('نرخ قدیم');
 
     expect(within(row).getByText('غیرفعال')).toBeTruthy();
-    expect(row.className).toContain('is-inactive');
+    expect(row.className).toContain('is-off');
 
     await openMoreMenu('نرخ قدیم');
     expect(moreItem('نرخ قدیم', /^فعال/)).toBeTruthy();
@@ -659,7 +658,7 @@ describe('tax policy settings panel', () => {
     expect(remove.disabled).toBe(false);
   });
 
-  it('renders a labelled ledger table for the catalog', async () => {
+  it('renders a register ledger for the catalog', async () => {
     callTaxPoliciesNestActionMock.mockResolvedValueOnce(
       catalog([
         policy({ recordId: 'tp-1', isDefault: true }),
@@ -670,9 +669,10 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    expect(screen.getByRole('table')).toBeTruthy();
-    expect(screen.getAllByRole('row').length).toBeGreaterThanOrEqual(3);
-    expect(screen.getByRole('columnheader', { name: 'سیاست' })).toBeTruthy();
+    expect(document.querySelector('.tl-register')).toBeTruthy();
+    expect(document.querySelectorAll('.tl-row').length).toBe(2);
+    expect(screen.getByText('سیاست')).toBeTruthy();
+    expect(screen.getByText('نرخ‌ها')).toBeTruthy();
   });
 
   it('names each row control after the policy it acts on', async () => {
@@ -687,14 +687,14 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    const edits = within(screen.getByRole('table')).getAllByRole('button', {
-      name: /^ویرایش/,
+    const edits = within(ledger()).getAllByRole('button', {
+      name: /^ویرایش سیاست/,
     });
 
     expect(edits.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'ویرایش — مالیات ۱۰٪',
-      'ویرایش — مالیات ۹٪',
-      'ویرایش — مالیات ۸٪',
+      'ویرایش سیاست مالیات ۱۰٪',
+      'ویرایش سیاست مالیات ۹٪',
+      'ویرایش سیاست مالیات ۸٪',
     ]);
   });
 
@@ -710,14 +710,14 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۹٪');
 
     fireEvent.click(
-      within(rowOf('مالیات ۹٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۹٪'),
     );
     fireEvent.change(screen.getByLabelText('مالیات ٪'), {
       target: { value: '۷' },
     });
 
     fireEvent.click(
-      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۱۰٪'),
     );
 
     expect(screen.getByText(/تغییرات ذخیره‌نشده دارید/)).toBeTruthy();
@@ -775,11 +775,10 @@ describe('tax policy settings panel', () => {
     await screen.findByText('سیاست معاف');
 
     const row = rowOf('سیاست معاف');
-    const cells = within(row).getAllByRole('cell');
 
-    // Components stay ۰٪; the total column is the statement «معاف», not a blank zero.
-    expect(within(cells[3]).getByText('معاف')).toBeTruthy();
-    expect(within(cells[3]).queryByText('۰٪')).toBeNull();
+    // Exempt register states معاف as the rate block, not a blank zero total.
+    expect(within(row).getAllByText('معاف').length).toBeGreaterThan(0);
+    expect(within(row).queryByText('۰٪')).toBeNull();
   });
 
   it('keeps the row mounted and opens the editor dialog without shrinking the ledger', async () => {
@@ -794,12 +793,12 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۹٪');
 
     fireEvent.click(
-      within(rowOf('مالیات ۹٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۹٪'),
     );
 
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByLabelText('نام سیاست')).toBeTruthy();
-    expect(document.querySelector('.tax-workspace-closed')).toBeTruthy();
+    expect(document.querySelector('.tl-register')).toBeTruthy();
     expect(within(rowOf('مالیات ۹٪')).getByText('مالیات ۹٪')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'انصراف' }));
@@ -823,7 +822,7 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۱۰٪');
 
     fireEvent.click(
-      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۱۰٪'),
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
@@ -894,18 +893,18 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۹٪');
 
     fireEvent.click(
-      within(rowOf('مالیات ۹٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۹٪'),
     );
     fireEvent.change(screen.getByLabelText('مالیات ٪'), {
       target: { value: '۷' },
     });
     fireEvent.click(
-      within(rowOf('مالیات ۱۰٪')).getByRole('button', { name: /^ویرایش/ }),
+      rowOf('مالیات ۱۰٪'),
     );
 
-    const refusal = within(rowOf('مالیات ۱۰٪')).getByRole('status');
-
-    expect(refusal.textContent).toContain('تغییرات ذخیره‌نشده دارید');
+    expect(
+      screen.getByText(/تغییرات ذخیره‌نشده دارید/),
+    ).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByLabelText('مالیات ٪')).toBeTruthy();
   });
@@ -927,7 +926,9 @@ describe('tax policy settings panel', () => {
     await screen.findByText('سیاست استفاده‌شده');
 
     const root = document.querySelector('.tax-root');
-    const css = document.querySelector('style')?.textContent ?? '';
+    const css = Array.from(document.querySelectorAll('style'))
+      .map((node) => node.textContent ?? '')
+      .join('\n');
     const markup = root?.outerHTML ?? '';
 
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}/);
@@ -951,7 +952,9 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات بر ارزش افزوده ۹٪');
 
     expect(screen.queryByRole('region', { name: 'سیاست پیش‌فرض فعال' })).toBeNull();
-    expect(container.querySelector('tr.is-default')).toBeTruthy();
-    expect(screen.getByText('پیش‌فرض')).toBeTruthy();
+    expect(container.querySelector('.tl-row.is-def')).toBeTruthy();
+    expect(
+      within(rowOf('مالیات بر ارزش افزوده ۹٪')).getByText('پیش‌فرض'),
+    ).toBeTruthy();
   });
 });

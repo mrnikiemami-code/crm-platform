@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
+import { RoundingList } from 'src/components/financial-settings/rounding-list';
 import { callRoundingRulesNestAction } from 'src/components/quotation-api';
-import { RowActionsMenu } from 'src/components/shared/row-actions-menu';
 import { runDestructiveConfirm } from 'src/components/shared/run-destructive-confirm';
 import { SettingsDialog } from 'src/components/shared/settings-dialog';
 import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
@@ -69,9 +69,6 @@ const emptyEditor = (): EditorState => ({
   stepRialsText: '',
   isActive: true,
 });
-
-const formatStepLabel = (stepRials: string): string =>
-  `${formatExactDecimalForPeople(stepRials)} ریال`;
 
 const canDeleteRow = (row: RoundingRuleRow): boolean =>
   !row.isDefault && row.quotationCount === 0;
@@ -307,6 +304,28 @@ export const RoundingRuleSettingsSection = ({
     }
   };
 
+  const defaultStep =
+    rows.find((row) => row.isDefault)?.stepRials ??
+    rows[0]?.stepRials ??
+    '1000';
+
+  const ladderRows = rows.map((row) => ({
+    id: row.recordId,
+    stepAmount: formatExactDecimalForPeople(row.stepRials),
+    isDefault: row.isDefault,
+    isActive: row.isActive,
+    quotationCount: row.quotationCount,
+  }));
+
+  const findRow = (id: string) => rows.find((row) => row.recordId === id);
+
+  const openCreate = () => {
+    setOpenMoreRecordId(null);
+    setEditor(emptyEditor());
+    setNameError(null);
+    setStepError(null);
+  };
+
   return (
     <section className="rounding-section" dir="rtl">
       <style>{ROUNDING_CSS}</style>
@@ -321,164 +340,43 @@ export const RoundingRuleSettingsSection = ({
       )}
 
       {opened ? (
-        <>
-          <div className="rounding-surface">
-            <div className="rounding-toolbar">
-              <span className="rounding-count">
-                {rows.length === 0 ? 'بدون قاعده' : `${rows.length} قاعده`}
-              </span>
-              <button
-                type="button"
-                className="tax-btn tax-btn-primary"
-                disabled={busy}
-                onClick={() => {
-                  setOpenMoreRecordId(null);
-                  setEditor(emptyEditor());
-                  setNameError(null);
-                  setStepError(null);
-                }}
-              >
-                + قاعده جدید
-              </button>
-            </div>
-
-            {loadError ? (
-              <div className="rounding-error-bar">
-                <p className="rounding-error">{loadError}</p>
-                <button
-                  type="button"
-                  className="tax-btn"
-                  disabled={busy}
-                  onClick={() => void ensureCatalog()}
-                >
-                  تلاش مجدد
-                </button>
-              </div>
-            ) : null}
-
-            {rows.length === 0 && !busy ? (
-              <p className="rounding-empty">هنوز قاعده‌ای ثبت نشده است.</p>
-            ) : (
-              <ul className="rounding-list">
-                {rows.map((row) => {
-                  const moreOpen = openMoreRecordId === row.recordId;
-                  const deleteBusy = deletingRecordId === row.recordId;
-
-                  return (
-                    <li
-                      key={row.recordId}
-                      className={[
-                        'rounding-row',
-                        row.isDefault ? 'is-default' : '',
-                        row.isActive ? '' : 'is-inactive',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      <div className="rounding-row-main">
-                        <div className="rounding-row-title">
-                          <strong>{row.name}</strong>
-                          {row.isDefault ? (
-                            <span className="rounding-badge">پیش‌فرض</span>
-                          ) : null}
-                          {row.isActive ? null : (
-                            <span className="rounding-badge rounding-badge-off">
-                              غیرفعال
-                            </span>
-                          )}
-                        </div>
-                        <span className="rounding-step">
-                          {formatStepLabel(row.stepRials)}
-                        </span>
-                      </div>
-                      <div className="rounding-row-actions">
-                        <button
-                          type="button"
-                          className="tax-btn"
-                          disabled={busy || deletingRecordId !== null}
-                          onClick={() => {
-                            setOpenMoreRecordId(null);
-                            setEditor({
-                              recordId: row.recordId,
-                              name: row.name,
-                              stepRialsText: row.stepRials,
-                              isActive: row.isActive,
-                            });
-                            setNameError(null);
-                            setStepError(null);
-                          }}
-                        >
-                          ویرایش
-                        </button>
-                        <RowActionsMenu
-                          label={`عملیات بیشتر — ${row.name}`}
-                          open={moreOpen}
-                          onOpenChange={(nextOpen) =>
-                            setOpenMoreRecordId(nextOpen ? row.recordId : null)
-                          }
-                          disabled={busy || deletingRecordId !== null}
-                          items={[
-                            ...(row.isDefault
-                              ? []
-                              : [
-                                  {
-                                    id: 'default',
-                                    label: 'پیش‌فرض',
-                                    disabled: busy || !row.isActive,
-                                    onSelect: () => {
-                                      void runAction(
-                                        {
-                                          action: 'set-default',
-                                          recordId: row.recordId,
-                                        },
-                                        'قاعده پیش‌فرض تغییر کرد',
-                                      );
-                                    },
-                                  },
-                                ]),
-                            ...(row.isDefault || !row.isActive
-                              ? []
-                              : [
-                                  {
-                                    id: 'deactivate',
-                                    label: 'غیرفعال',
-                                    disabled: busy,
-                                    onSelect: () => {
-                                      void runAction(
-                                        {
-                                          action: 'deactivate',
-                                          recordId: row.recordId,
-                                        },
-                                        'قاعده غیرفعال شد',
-                                      );
-                                    },
-                                  },
-                                ]),
-                            {
-                              id: 'delete',
-                              label: deleteBusy ? 'در حال حذف…' : 'حذف',
-                              disabled:
-                                busy || deleteBusy || !canDeleteRow(row),
-                              danger: true,
-                              title: canDeleteRow(row)
-                                ? undefined
-                                : row.isDefault
-                                  ? 'قاعده پیش‌فرض حذف نمی‌شود'
-                                  : 'به‌دلیل استفاده در سند حذف نمی‌شود',
-                              onSelect: () => {
-                                void requestDelete(row);
-                              },
-                            },
-                          ]}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </>
+        <RoundingList
+          rows={ladderRows}
+          defaultStep={formatExactDecimalForPeople(defaultStep)}
+          loading={busy && rows.length === 0 && loadError === null}
+          error={loadError}
+          onRetry={() => {
+            void ensureCatalog();
+          }}
+          onCreate={openCreate}
+          onEdit={(id) => {
+            const row = findRow(id);
+            if (!row) {
+              return;
+            }
+            setOpenMoreRecordId(null);
+            setEditor({
+              recordId: row.recordId,
+              name: row.name,
+              stepRialsText: row.stepRials,
+              isActive: row.isActive,
+            });
+            setNameError(null);
+            setStepError(null);
+          }}
+          onMakeDefault={(id) => {
+            void runAction(
+              { action: 'set-default', recordId: id },
+              'قاعده پیش‌فرض تغییر کرد',
+            );
+          }}
+          onDelete={(id) => {
+            const row = findRow(id);
+            if (row) {
+              void requestDelete(row);
+            }
+          }}
+        />
       ) : null}
 
       {editor === null ? null : (
@@ -569,87 +467,6 @@ export const RoundingRuleSettingsSection = ({
 };
 
 const ROUNDING_CSS = `
-.rounding-surface {
-  max-width: 720px;
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 10px;
-  background: var(--t-color-gray1);
-  overflow: visible;
-}
-.rounding-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--t-color-gray5);
-}
-.rounding-count { font-size: 13px; color: var(--t-color-gray10); font-weight: 600; }
-.rounding-error-bar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 10px 14px;
-}
-.rounding-error { margin: 0; color: var(--t-color-red11); font-size: 13px; }
-.rounding-empty { margin: 0; padding: 16px 14px; font-size: 13px; color: var(--t-color-gray10); }
-.rounding-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-}
-.rounding-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--t-color-gray5);
-  background: var(--t-color-gray1);
-}
-.rounding-row:last-child { border-bottom: 0; }
-.rounding-row.is-default {
-  box-shadow: inset -3px 0 0 var(--t-color-blue9);
-}
-.rounding-row.is-inactive strong { color: var(--t-color-gray10); }
-.rounding-row-main { display: grid; gap: 4px; min-width: 0; }
-.rounding-row-title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.rounding-step {
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--t-color-blue11);
-  direction: ltr;
-  unicode-bidi: plaintext;
-}
-.rounding-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--t-color-blue3);
-  color: var(--t-color-blue11);
-}
-.rounding-badge-off {
-  background: var(--t-color-gray4);
-  color: var(--t-color-gray11);
-}
-.rounding-row-actions {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  position: relative;
-}
 .rounding-field {
   display: grid;
   gap: 4px;
@@ -677,10 +494,30 @@ const ROUNDING_CSS = `
   gap: 8px;
   font-size: 13px;
 }
+.tax-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid var(--t-color-gray6);
+  background: var(--t-color-gray1);
+  color: var(--t-color-gray12);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tax-btn-primary {
+  background: var(--t-color-blue9);
+  border-color: var(--t-color-blue9);
+  color: var(--t-color-gray1);
+}
 @media (max-width: 720px) {
   .rounding-field input { height: 44px; }
-  .rounding-row-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-  .rounding-toolbar { flex-direction: column; align-items: stretch; }
-  .rounding-toolbar .tax-btn { min-height: 44px; }
 }
 `;
+

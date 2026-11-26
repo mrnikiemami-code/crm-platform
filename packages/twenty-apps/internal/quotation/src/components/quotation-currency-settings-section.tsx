@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
+import { CurrencyHero } from 'src/components/financial-settings/currency-hero';
 import { callQuotationCurrenciesNestAction } from 'src/components/quotation-api';
 import { SettingsDialog } from 'src/components/shared/settings-dialog';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
@@ -60,7 +61,7 @@ const toast = (
   void enqueueSnackbar({ message, variant, dedupeKey });
 };
 
-// Phase-1 IRR operational card (OpenDesign R2). Bootstrap is automatic — no button.
+// Phase-1 IRR dossier (OpenDesign DE-035). Bootstrap is automatic — no button.
 export const QuotationCurrencySettingsSection = ({
   alwaysOpen = false,
 }: QuotationCurrencySettingsSectionProps) => {
@@ -236,70 +237,32 @@ export const QuotationCurrencySettingsSection = ({
       )}
 
       {opened ? (
-        <>
-          {loadError === null ? null : (
-            <div className="currency-error-bar">
-              <p role="alert" className="currency-error">
-                {loadError}
-              </p>
-              <button
-                type="button"
-                className="tax-btn"
-                disabled={busy}
-                onClick={() => void ensureCatalog()}
-              >
-                تلاش مجدد
-              </button>
-            </div>
-          )}
-
-          {busy && operational === null ? (
-            <p className="currency-empty">در حال آماده‌سازی ارز…</p>
-          ) : null}
-
-          {operational === null && !busy && loadError === null ? (
-            <p className="currency-empty">ارز عملیاتی هنوز آماده نیست.</p>
-          ) : operational === null ? null : (
-            <article className="currency-hero" aria-label="ارز عملیاتی">
-              <div className="currency-hero-top">
-                <div>
-                  <div className="currency-hero-code" dir="ltr">
-                    {operational.code}
-                  </div>
-                  <div className="currency-hero-name">{operational.name}</div>
-                </div>
-                <div className="currency-hero-badges">
-                  {operational.isDefault ? (
-                    <span className="currency-badge currency-badge-default">
-                      پیش‌فرض
-                    </span>
-                  ) : null}
-                  <span className="currency-badge currency-badge-phase">
-                    فاز ۱
-                  </span>
-                </div>
-              </div>
-              <div className="currency-hero-account">
-                <div>
-                  <span className="currency-hero-label">کد حسابداری</span>
-                  <strong className="currency-hero-value" dir="ltr">
-                    {operational.accountingCode.trim() === ''
-                      ? '—'
-                      : operational.accountingCode}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  className="tax-btn tax-btn-primary"
-                  disabled={busy}
-                  onClick={() => openEdit(operational)}
-                >
-                  ویرایش کد
-                </button>
-              </div>
-            </article>
-          )}
-        </>
+        operational === null && !busy && loadError === null ? (
+          <p className="currency-empty">ارز عملیاتی هنوز آماده نیست.</p>
+        ) : (
+          <CurrencyHero
+            recordId={operational?.recordId ?? ''}
+            code={operational?.code ?? 'IRR'}
+            name={operational?.name ?? 'ریال ایران'}
+            accountingCode={
+              operational === null || operational.accountingCode.trim() === ''
+                ? '—'
+                : operational.accountingCode
+            }
+            isDefault={operational?.isDefault ?? true}
+            isActive={operational?.isActive ?? true}
+            loading={busy && operational === null}
+            error={loadError}
+            onRetry={() => {
+              void ensureCatalog();
+            }}
+            onEditCode={() => {
+              if (operational) {
+                openEdit(operational);
+              }
+            }}
+          />
+        )
       ) : null}
 
       {editingRow === null ? null : (
@@ -356,89 +319,12 @@ export const QuotationCurrencySettingsSection = ({
 };
 
 const CURRENCY_CSS = `
-.currency-hero {
-  max-width: 560px;
-  border: 1px solid var(--t-color-gray6);
-  border-radius: 10px;
-  background: var(--t-color-gray1);
-  overflow: hidden;
-}
-.currency-hero-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--t-color-gray5);
-}
-.currency-hero-code {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--t-color-gray12);
-}
-.currency-hero-name {
-  margin-top: 2px;
-  font-size: 13px;
-  color: var(--t-color-gray10);
-}
-.currency-hero-badges {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.currency-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.currency-badge-default {
-  background: var(--t-color-blue3);
-  color: var(--t-color-blue11);
-}
-.currency-badge-phase {
-  background: var(--t-color-gray3);
-  color: var(--t-color-gray11);
-}
-.currency-hero-account {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 14px 16px 16px;
-}
-.currency-hero-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--t-color-gray10);
-  margin-bottom: 4px;
-}
-.currency-hero-value {
-  font-size: 15px;
-  font-weight: 600;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--t-color-gray12);
-}
 .currency-empty, .currency-dialog-meta {
   margin: 0;
   font-size: 13px;
   color: var(--t-color-gray10);
 }
-.currency-error-bar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.currency-error, .currency-field-error {
+.currency-field-error {
   margin: 0;
   font-size: 13px;
   color: var(--t-color-red11);
@@ -459,9 +345,29 @@ const CURRENCY_CSS = `
   color: var(--t-color-gray12);
   font: inherit;
 }
+.tax-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid var(--t-color-gray6);
+  background: var(--t-color-gray1);
+  color: var(--t-color-gray12);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tax-btn-primary {
+  background: var(--t-color-blue9);
+  border-color: var(--t-color-blue9);
+  color: var(--t-color-gray1);
+}
 @media (max-width: 720px) {
   .currency-field input { height: 44px; }
-  .currency-hero-account .tax-btn { min-height: 44px; width: 100%; }
-  .currency-hero-account { flex-direction: column; align-items: stretch; }
 }
 `;

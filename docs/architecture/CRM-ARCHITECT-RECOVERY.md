@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 034-R2 OPENDESIGN REDESIGN → STOP_FOR_USER_UAT (2026-11-26)
+## CURRENT — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
+
+**App:** `quotation@0.1.65` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. No WS5/WS6/WS7.
+
+**OpenDesign engine repaired:** native `pnpm tools-dev` (not Docker `:7456`). Real OpenCode agent ran with free model `opencode/mimo-v2.6-flash-free`. Production run `d454f184-a0fe-4996-82ad-7a6ca31ad690` → `deliverableValid:true` (`preview/index.html` + DESIGN.md + 6 transfer components + TRANSFER-MAP). Evidence: `CRM-129-DESIGN-ENGINE-035-PROGRESS.md`, `docs/architecture/design-engine-035/`.
+
+**Product IA (measurable):** context rail + tax register / currency dossier / rounding ladder. Not spacing/color-only. Domain contracts preserved. Unit tests 31 PASS. Browser: three tabs, menus, locked accounting code, mobile 390 no overflow.
+
+**Gate:** `STOP_FOR_USER_UAT` — user must visually accept. Goal 023 stays ACTIVE until then.
+
+## PRIOR — GOAL 034-R2 OPENDESIGN REDESIGN → USER_REJECTED (2026-11-26)
 
 **App:** `quotation@0.1.64` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. No WS5/WS6/WS7.
 
