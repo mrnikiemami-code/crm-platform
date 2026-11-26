@@ -7,7 +7,7 @@ declare module 'fontkit' {
 }
 
 declare module '@react-pdf/pdfkit' {
-  export class EmbeddedFont {
-    static prototype: Record<string, unknown>;
-  }
+  // Instance methods are patched at runtime via EmbeddedFont.prototype; do not
+  // declare a static `prototype` field — Babel/lingui reject that shape.
+  export class EmbeddedFont {}
 }

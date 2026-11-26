@@ -20,7 +20,8 @@ try {
   git -C $root worktree add --detach $checkout $sha
   Check-Exit 'clean worktree'
   $created = $true
-  docker build --target twenty -f (Join-Path $checkout 'packages/twenty-docker/twenty/Dockerfile') --build-arg "APP_VERSION=$PlatformVersion" --label "org.opencontainers.image.revision=$sha" -t $image $checkout
+  # Some Dev hosts sinkhole dl-cdn.alpinelinux.org to 127.x; pin a public Fastly edge so apk can run.
+  docker build --target twenty -f (Join-Path $checkout 'packages/twenty-docker/twenty/Dockerfile') --build-arg "APP_VERSION=$PlatformVersion" --label "org.opencontainers.image.revision=$sha" --add-host 'dl-cdn.alpinelinux.org:151.101.66.132' -t $image $checkout
   Check-Exit 'Docker image build'
   $revision = (docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' $image).Trim()
   Check-Exit 'image inspect'
