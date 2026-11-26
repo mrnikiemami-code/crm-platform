@@ -35,6 +35,9 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |
 | WS7-B Product UX polish | `PARTIAL` | GOAL-036 Package D / `0.1.69`; PENDING_USER_DESIGN_APPROVAL listed |
 | GOAL-036 Package E matrix | `TECHNICALLY_VERIFIED` → gate | `goal-036/CRM-129-GOAL-036-PACKAGE-E-MATRIX.md`; **STOP_FOR_ARCHITECT_AND_USER_UAT** |
+| GOAL-036-R1 catalog/capability integrity | `BLOCKED_WITH_PRECISE_EVIDENCE` | Product A–C + `0.1.70` apply; Dev Accounting `/s` connection-list shell blocks F01/F05 browser; evidence `goal-036/CRM-129-GOAL-036-R1-EVIDENCE.md` |
+| WS5 Settings ownership (post-R1) | remains open | Do not mark ARCHITECT_ACCEPTED until F01 Dev dual-UI attested |
+| WS6 Mock/Asan shared UI (post-R1) | remains open | Capability unit PASS; live form attestation blocked by shell |
 | UX Pack A micro-repairs | `TECHNICALLY_VERIFIED` | Same product chrome; copy/RTL/ownership/timestamp; see CP-UX-REPAIR-A |
 | Pack B financial (WS2–WS4) | `TECHNICALLY_VERIFIED` on Dev | Real `:3002` form live; awaiting **USER** accept |
 | Goal 023 close | `NOT_STARTED` | **ACTIVE / NOT COMPLETE** |

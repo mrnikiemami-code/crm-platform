@@ -1,12 +1,18 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — EXECUTION CONTRACT GOAL 036-R1 (2026-11-26)
+## CURRENT — GOAL 036-R1 EXECUTED → BLOCKED_WITH_PRECISE_EVIDENCE (2026-11-26)
 
-**Canonical next task:** [CRM-129-GOAL-036-R1-ARCHITECTURE-REPAIR-TASK.md](./goal-036/CRM-129-GOAL-036-R1-ARCHITECTURE-REPAIR-TASK.md), created after the independent architecture audit. This is the **authoritative, unambiguous execution plan** for F01–F05. The prior [independent audit](./goal-036/CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md) remains `ARCHITECT_BLOCKED_ON_WS5_CONTRACT` until repair is verified.
+**Evidence:** [CRM-129-GOAL-036-R1-EVIDENCE.md](./goal-036/CRM-129-GOAL-036-R1-EVIDENCE.md). **App:** `quotation@0.1.70` applied to Dev (`accounting-settings-page` front component). **Goal 023:** ACTIVE / NOT COMPLETE. **Gate:** `STOP_FOR_ARCHITECT_AND_USER_UAT`.
 
-**Decisive rules:** (1) Only the existing role-gated Nest quotation catalog list wrappers are trusted for tax/currency catalogs in Accounting Settings; do not read those via `callAppRoute` / `/s`. (2) Failed/loading/empty catalog and active/inactive/missing reference are distinct states, without fabricated IRR success; preserve historical mappings and forbid new orphan/inactive selections. (3) Mock/Asan modes derive from server-accepted adapter identity/capabilities, with unknown adapter fail-closed; `isLive` is a display descriptor, never auth. (4) Real API/negative auth/E2E/browser evidence required, not just Vitest. (5) Single CRM OpenCode session; keep Money Domain, SQL schema, seals, PDF, outbound off and :6080 unchanged.
+**Product commits:** R1-A `df67212fbc` (Nest-only catalogs), R1-B `3a3df01098` (inactive≠orphan≠unverified), R1-C `159da0119f` (unavailable adapter fail-closed), R1-D `636a037fb2` (ledger), R1-E version/apply+evidence. Vitest full suite **776 PASS**. Financial Settings Nest catalogs verified on `:3002` (`IR_VAT_9`, `TAX_1000`, `TAX_1050`).
 
-**Git coordination:** Architect docs were committed after Goal 036 merge; fetch/merge current origin carefully before product work; never rebase/reset/force-push, and never touch unrelated untracked `twenty-shared` AI artifacts. Implement R1-A source authority → R1-B mapping lifecycle → R1-C adapter matrix → R1-D real verification → R1-E controlled Dev apply. `STOP_FOR_ARCHITECT_AND_USER_UAT`; do not claim Goal 023 complete or WS5/WS6 architect-accepted before independent review. At this checkpoint **task planned/persisted, not implemented**.
+**BLOCKER (precise):** Accounting Settings shell still loads connections via `/s` `callAppRoute(ACCOUNTING_CONNECTION_ROUTE)` and on this Dev returns `تنظیمات حسابداری خوانده نشد` / `ارتباط با سرور برقرار نشد`, so the repaired Nest catalog mapping form cannot be opened for F01 dual-UI attestation or F05 browser matrix. Auth workspace scripts / responsive 320–1440 / synthetic quotation journey remain **NOT_RUN**. Do **not** treat WS5/WS6 as architect-accepted; do not fabricate PASS.
+
+**Next allowed:** restore Accounting connection list authority (existing Nest accounting-settings actions if already present — no new invent), then re-attest F01/F05 on Dev; independent architect review + USER UAT still required.
+
+## PRIOR — EXECUTION CONTRACT GOAL 036-R1 (2026-11-26)
+
+**Canonical task:** [CRM-129-GOAL-036-R1-ARCHITECTURE-REPAIR-TASK.md](./goal-036/CRM-129-GOAL-036-R1-ARCHITECTURE-REPAIR-TASK.md). Prior [independent audit](./goal-036/CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md) was `ARCHITECT_BLOCKED_ON_WS5_CONTRACT`. Decisive rules (Nest catalog authority; Error≠Empty≠Inactive≠Missing; Mock/Asan from server capabilities) remain binding. R1 packs were implemented in-session; see CURRENT checkpoint for runtime blocker.
 
 ## PRIOR CHECKPOINT — GOAL 036 INDEPENDENT ARCHITECT AUDIT (2026-11-26)
 
