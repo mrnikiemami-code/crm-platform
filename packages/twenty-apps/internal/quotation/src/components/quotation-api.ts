@@ -145,6 +145,38 @@ export const callQuotationCurrenciesNestAction = (
 ): Promise<AppRouteResponse> =>
   callQuotationNestAction(CURRENCY_APP_ACTION_TO_NEST, body);
 
+// The accounting connection previously called the Logic Function /s route, which is not
+// served by the Dev worker. The Nest controller already owns these six operations and
+// performs the workspace/role checks. Never silently fall back to /s for financial writes.
+const ACCOUNTING_CONNECTION_APP_ACTION_TO_NEST: Record<string, string> = {
+  list: 'accounting-connection-list',
+  save: 'accounting-connection-save',
+  test: 'accounting-connection-test',
+  'set-default': 'accounting-connection-set-default',
+  deactivate: 'accounting-connection-deactivate',
+  reactivate: 'accounting-connection-reactivate',
+};
+
+export const callAccountingConnectionNestAction = (
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> => {
+  const action = typeof body.action === 'string' ? body.action : '';
+
+  if (!Object.prototype.hasOwnProperty.call(ACCOUNTING_CONNECTION_APP_ACTION_TO_NEST, action)) {
+    return Promise.resolve({
+      ok: false,
+      status: 400,
+      data: {
+        success: false,
+        code: 'INVALID_INPUT',
+        message: 'عملیات اتصال حسابداری معتبر نیست.',
+      },
+    });
+  }
+
+  return callQuotationNestAction(ACCOUNTING_CONNECTION_APP_ACTION_TO_NEST, body);
+};
+
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';
 export const SAVE_DRAFT_ROUTE = '/quotation/save-draft';
 export const SEARCH_CATALOG_ROUTE = '/quotation/search-catalog-items';
