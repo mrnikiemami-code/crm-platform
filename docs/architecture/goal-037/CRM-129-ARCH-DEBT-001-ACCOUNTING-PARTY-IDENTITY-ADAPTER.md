@@ -1,6 +1,6 @@
 # CRM-129-ARCH-DEBT-001 — Vendor-independent accounting customer identity
 
-**Status:** OPEN — architecture debt, not implemented or verified  
+**Status:** OPEN — implementation candidate 0.1.79 committed; operational verification pending  
 **Priority:** P0 (customer data integrity); blocks final acceptance of general-purpose customer synchronization  
 **Owner:** Architecture / CRM-129  
 **Parent:** Goal 037; related to active Master Goal 023, C1–C7 (preserve CRM reference-code ownership)  
@@ -40,3 +40,7 @@
 ## Gate
 
 OPEN until architect-approved implementation, build, provider/DB/HTTP/browser verification and user UAT. A PASS for the frozen 0.1.78 matrix is not evidence that this debt is closed. Do not expand the current Cursor test-only assignment or move its expected source SHA.
+
+## Remediation candidate 0.1.79
+
+The optional profile, adapter declarations, connection-owned ledger metadata, delegated write guards, sparse identity resolver, deterministic IDs and isolated 100-party fixture are implemented in source. See [verification contract](CRM-129-ACCOUNTING-PARTY-CONTRACT-079.md). This is not a PASS. Existing dataset rebind protection, concurrency and cross-connection uniqueness require explicit verification; the previous two failing unit-test identities were not included in the worker report. No live provider or Intranet write is authorized.

@@ -4,7 +4,7 @@ import {
   type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
 import { mergeSourcePartyProfile, type AccountingPartyProfile } from 'src/domain/accounting/party-profile';
-import { normalizeNationalCode, normalizeEconomicCode, partyNationalIdentity } from 'src/domain/accounting/party-identity';
+import { normalizeNationalCode, normalizeEconomicCode, normalizeIranMobile, partyNationalIdentity } from 'src/domain/accounting/party-identity';
 import { asanUnitsToCrmMicros } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
 
@@ -54,6 +54,7 @@ export type ImportWarning =
   | 'DUPLICATE_REMOTE_NAME'
   | 'DUPLICATE_REMOTE_NATIONAL_CODE'
   | 'DUPLICATE_REMOTE_ECONOMIC_CODE'
+  | 'DUPLICATE_REMOTE_MOBILE'
   | 'PRICE_UNIT_UNCONFIRMED'
   | 'NO_CRM_CANDIDATE'
   | 'REMOTE_ID_NOT_NUMERIC'
@@ -567,6 +568,7 @@ export const planPartyImport = ({
   );
 
   const remoteEconomicCounts = countBy(remoteParties.map((party) => normalizeEconomicCode(party.economicCode) ?? '').filter(Boolean));
+  const remoteMobileCounts = countBy(remoteParties.map((party) => normalizeIranMobile(party.mobile) ?? '').filter(Boolean));
   const duplicateLinks = countBy(links.flatMap((link) => link.externalPartyId ? [link.externalPartyId] : []));
   const rows: PartyImportRow[] = remoteParties.map((party) => {
     const warnings: ImportWarning[] = [];
@@ -591,6 +593,10 @@ export const planPartyImport = ({
     }
 
     const existingLink = linkByExternalId.get(party.externalPartyId) ?? null;
+    const mobile = normalizeIranMobile(party.mobile);
+    if (existingLink === null && nationalCode === '' && economicCode === null && mobile !== null && (remoteMobileCounts.get(mobile) ?? 0) > 1) {
+      return { ...party, decision: 'AMBIGUOUS_CRM_MATCH', existingLinkId: null, suggestedInternalPartyId: null, warnings: [...warnings, 'DUPLICATE_REMOTE_MOBILE'] };
+    }
 
     if (existingLink !== null) {
       const changed =

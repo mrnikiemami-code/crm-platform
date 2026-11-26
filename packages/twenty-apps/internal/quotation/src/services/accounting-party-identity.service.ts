@@ -301,6 +301,7 @@ export const enrichPartyRows = async (
     if (row.decision === 'DUPLICATE_REMOTE_CODE' || row.warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE') || row.warnings.includes('DUPLICATE_REMOTE_ECONOMIC_CODE')) {
       return { ...row, autoEligible: false, decision: 'DUPLICATE_REMOTE_CODE', suggestedInternalPartyId: null };
     }
+    if (row.warnings.includes('DUPLICATE_REMOTE_MOBILE')) return { ...row, autoEligible: false, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
     const stableId = connectionId ? stableCustomerRecordId(connectionId, row.externalPartyId) : null;
     const recovered = stableId !== null && crm.some((entry) => entry.id === stableId) ? stableId : null;
     const linkedId = row.existingLinkId !== null ? row.suggestedInternalPartyId : recovered;

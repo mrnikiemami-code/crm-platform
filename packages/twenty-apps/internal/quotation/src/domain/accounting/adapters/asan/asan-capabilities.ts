@@ -34,7 +34,7 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
     readStock: true, // GET ProductStatisticsNew/AmarKala, ProductStatisticsNew/ProductStock
   },
   parties: {
-    fields: { contractVersion: '2', identity: 'CUSTOMER_CODE', readable: ["code","fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"], writable: ["fullName","mobile","nationalCode","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"] },
+    fields: { contractVersion: '2', identity: 'CUSTOMER_CODE', readable: ["code","fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"], writable: ["fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"] },
     list: true, // GET CustomersNew/AllCustomers, CustomerWithNationalCode, LastCustomers
     read: true, // GET CustomersNew/OneCustomer?CustomerCode=
     create: true, // POST Customers/postCustomer

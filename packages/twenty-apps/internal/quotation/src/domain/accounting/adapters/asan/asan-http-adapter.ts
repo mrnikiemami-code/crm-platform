@@ -24,6 +24,7 @@ import {
   type RemotePartyInput,
   type RemoteProformaInput,
 } from 'src/domain/accounting/adapter-contract';
+import { normalizeNationalCode, partyNationalIdentity } from 'src/domain/accounting/party-identity';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 export type AsanFetchResponse = {
@@ -755,10 +756,8 @@ export class AsanHttpAdapter implements AccountingAdapter {
     // lookup is best-effort: a customer created without a national code has no documented
     // way back to its code, so the caller gets an empty id and must re-read in Asan instead
     // of storing the flag "1" as an id.
-    const assigned =
-      input.nationalCode === null || input.nationalCode.trim() === ''
-        ? null
-        : await this.findPartyByNationalCode(input.nationalCode);
+    const identity = partyNationalIdentity(input);
+    const assigned = identity === null ? null : await this.findPartyByNationalCode(identity);
 
     return accepted({
       externalPartyId: assigned?.externalPartyId ?? '',
@@ -795,11 +794,9 @@ export class AsanHttpAdapter implements AccountingAdapter {
       'Customers',
     ]);
 
-    if (records === null || records.length === 0) {
-      return parseParty(parsed.value);
-    }
-
-    return parseParty(records[0]);
+    const candidates = (records ?? [parsed.value]).map(parseParty).filter((party): party is RemoteParty => party !== null);
+    const matches = candidates.filter((party) => partyNationalIdentity(party) === normalizeNationalCode(nationalCode));
+    return matches.length === 1 ? matches[0] : null;
   }
 
   async updateParty(input: RemotePartyInput): Promise<Result<RemoteParty>> {

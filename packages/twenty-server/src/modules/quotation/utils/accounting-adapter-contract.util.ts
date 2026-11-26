@@ -35,7 +35,7 @@ const ASAN_CAPABILITIES = {
     readStock: true,
   },
   parties: {
-    fields: { contractVersion: '2', identity: 'CUSTOMER_CODE', readable: ["code","fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"], writable: ["fullName","mobile","nationalCode","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"] },
+    fields: { contractVersion: '2', identity: 'CUSTOMER_CODE', readable: ["code","fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"], writable: ["fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"] },
     list: true,
     read: true,
     create: true,

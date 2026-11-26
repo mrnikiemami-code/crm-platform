@@ -513,6 +513,7 @@ export const applyPartyImport = async (
     const existing = matchingLinks[0] ?? null;
     if (existing !== null && (!existing.internalPartyId || !existing.partyType)) { refuse('INVALID_INPUT', 'Existing customer mapping is incomplete'); continue; }
     const automatic = selection.createNew === true;
+    if (automatic && row.warnings.includes('DUPLICATE_REMOTE_MOBILE')) { refuse('INVALID_INPUT', 'Shared mobile needs manual review'); continue; }
     if (existing !== null && (!automatic || !allowRemoteVersionUpdate)) {
       refuse('ALREADY_SUCCEEDED', 'This customer is already linked');
       continue;
@@ -561,7 +562,7 @@ export const applyPartyImport = async (
         createdParties += 1;
         // A retry after link failure resolves the canonical unique code; it must
         // never create a second customer. Include this successful write in the batch index.
-        identities.push({ id: internalPartyId, partyType, name: partyDisplayName(remote), nationalCode: partyNationalIdentity(remote), economicCode: normalizeEconomicCode(remote.economicCode), mobile: remote.mobile, phones: null });
+        identities.push({ id: internalPartyId, partyType, name: partyDisplayName(remote), nationalCode: partyNationalIdentity(remote), economicCode: normalizeEconomicCode(remote.economicCode), mobile: remote.mobile ?? null, phones: null });
       } else {
         refuse('INVALID_INPUT', 'A verified CRM identity is required');
         continue;
