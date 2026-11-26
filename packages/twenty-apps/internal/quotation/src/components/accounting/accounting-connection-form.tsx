@@ -14,7 +14,8 @@ import {
   type AdapterDescriptor,
   CapabilityTable,
   CONNECTION_HEALTH_LABELS,
-  CRM_CURRENCY_CODES,
+  type CurrencyCatalogView,
+  FALLBACK_OPERATIONAL_CURRENCY_CODES,
   type FinancialModes,
   type FormState,
   type PanelData,
@@ -25,6 +26,8 @@ import {
   formatHealthCheckAt,
   parseKeyValueLines,
   parseTaxPolicyMappingsText,
+  resolveCurrencyMappingRows,
+  resolveTaxPolicyMappingRows,
   setMappingRow,
   sharedStyles as styles,
   toForm,
@@ -56,6 +59,7 @@ export const ConnectionEditForm = ({
   form,
   modes,
   policies,
+  currencies,
   canManage,
   busy,
   testResult,
@@ -69,6 +73,7 @@ export const ConnectionEditForm = ({
   form: FormState;
   modes: FinancialModes;
   policies: TaxPolicyView[];
+  currencies: CurrencyCatalogView[];
   canManage: boolean;
   busy: boolean;
   testResult: { healthState: string; message: string; detail: string } | null;
@@ -142,6 +147,15 @@ export const ConnectionEditForm = ({
   const selectedProfile = mockProfiles.find(
     (profile) => profile.id === form.mockProfile,
   );
+  const currencyMappings = parseKeyValueLines(form.currencyMappingsText);
+  const currencyRows = resolveCurrencyMappingRows({
+    currencies,
+    mappingKeys: Object.keys(currencyMappings),
+  });
+  const baseCurrencyOptions =
+    currencyRows.length > 0
+      ? currencyRows.map((row) => row.code)
+      : [...FALLBACK_OPERATIONAL_CURRENCY_CODES];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
@@ -346,7 +360,7 @@ export const ConnectionEditForm = ({
                     onChange({ ...form, baseCurrency: event.target.value })
                   }
                 >
-                  {CRM_CURRENCY_CODES.map((code) => (
+                  {baseCurrencyOptions.map((code) => (
                     <option key={code} value={code}>
                       {code}
                     </option>
@@ -398,7 +412,8 @@ export const ConnectionEditForm = ({
               label={
                 fields.currencyNameTable ? 'نام ارز در مقصد' : 'کد ارز در مقصد'
               }
-              helper="اگر نرم‌افزار حسابداری برای ارز کد یا نام می‌خواهد، همان را وارد کنید. خالی‌ماندن یک ارز، ارسال سند آن ارز را متوقف می‌کند، نه ذخیره را."
+              helper="فقط ارزهای تعریف‌شده در کاتالوگ CRM نگاشت می‌شوند. کد یا نام مقصد را وارد کنید؛ هویت ارز در CRM اینجا ساخته نمی‌شود."
+              rows={currencyRows}
               text={form.currencyMappingsText}
               canManage={canManage}
               onChange={(next) => onChange({ ...form, currencyMappingsText: next })}
@@ -418,6 +433,7 @@ export const ConnectionEditForm = ({
           ) : (
             <PolicyTaxTable
               policies={activePolicies}
+              allPolicies={policies}
               showCode={fields.taxCodeTable}
               text={form.taxPolicyMappingsText}
               catalog={modes.taxCodeCatalog}
@@ -681,12 +697,14 @@ const Field = ({
 const CurrencyMappingTable = ({
   label,
   helper,
+  rows,
   text,
   canManage,
   onChange,
 }: {
   label: string;
   helper: string;
+  rows: ReturnType<typeof resolveCurrencyMappingRows>;
   text: string;
   canManage: boolean;
   onChange: (text: string) => void;
@@ -707,21 +725,33 @@ const CurrencyMappingTable = ({
           </tr>
         </thead>
         <tbody>
-          {CRM_CURRENCY_CODES.map((code) => (
-            <tr key={code}>
+          {rows.map((row) => (
+            <tr key={row.code}>
               <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
-                {code}
+                <span style={{ display: 'block' }}>{row.code}</span>
+                <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
+                  {row.orphan
+                    ? 'در کاتالوگ CRM نیست؛ نگاشت قبلی حفظ شده'
+                    : row.inactive
+                      ? `${row.name} · غیرفعال`
+                      : row.name}
+                </span>
               </td>
               <td style={styles.cell}>
                 <input
-                  aria-label={`${label} برای ${code}`}
+                  aria-label={`${label} برای ${row.code}`}
                   style={{ ...styles.input, width: '100%' }}
-                  value={mappings[code] ?? ''}
+                  value={mappings[row.code] ?? ''}
                   disabled={!canManage}
                   onChange={(event) =>
-                    onChange(setMappingRow(text, code, event.target.value))
+                    onChange(setMappingRow(text, row.code, event.target.value))
                   }
                 />
+                {row.orphan ? (
+                  <span role="alert" style={styles.error}>
+                    این ارز دیگر در کاتالوگ نیست؛ نگاشت را اصلاح یا خالی کنید.
+                  </span>
+                ) : null}
               </td>
             </tr>
           ))}
@@ -731,8 +761,71 @@ const CurrencyMappingTable = ({
   );
 };
 
+const DestinationTaxCodeControl = ({
+  label,
+  value,
+  catalog,
+  canManage,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  catalog: TaxCodeContractView[] | undefined;
+  canManage: boolean;
+  onChange: (next: string) => void;
+}) => {
+  const catalogCodes = catalog?.map((entry) => entry.code) ?? [];
+  const usePicker = catalogCodes.length > 0;
+  const orphanDestination =
+    usePicker && value.trim() !== '' && !catalogCodes.includes(value.trim());
+
+  if (!usePicker) {
+    return (
+      <input
+        aria-label={label}
+        style={{ ...styles.input, width: '100%' }}
+        value={value}
+        disabled={!canManage}
+        inputMode="numeric"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <select
+        aria-label={label}
+        style={{ ...styles.input, width: '100%' }}
+        value={orphanDestination ? '__orphan__' : value}
+        disabled={!canManage}
+        onChange={(event) => {
+          const next = event.target.value;
+          onChange(next === '__orphan__' ? value : next);
+        }}
+      >
+        <option value="">انتخاب کد مقصد…</option>
+        {catalog?.map((entry) => (
+          <option key={entry.code} value={entry.code}>
+            {entry.label ? `${entry.label} (${entry.code})` : entry.code}
+          </option>
+        ))}
+        {orphanDestination ? (
+          <option value="__orphan__">{`نگاشت قبلی: ${value}`}</option>
+        ) : null}
+      </select>
+      {orphanDestination ? (
+        <span role="alert" style={styles.error}>
+          این کد در کاتالوگ مقصد نیست؛ یک کد معتبر انتخاب کنید.
+        </span>
+      ) : null}
+    </>
+  );
+};
+
 const PolicyTaxTable = ({
   policies,
+  allPolicies,
   showCode,
   text,
   catalog,
@@ -740,6 +833,7 @@ const PolicyTaxTable = ({
   onChange,
 }: {
   policies: TaxPolicyView[];
+  allPolicies: TaxPolicyView[];
   showCode: boolean;
   text: string;
   catalog: TaxCodeContractView[] | undefined;
@@ -747,25 +841,18 @@ const PolicyTaxTable = ({
   onChange: (text: string) => void;
 }) => {
   const mappings = parseTaxPolicyMappingsText(text);
+  const rows = resolveTaxPolicyMappingRows({
+    policies: policies.length > 0 ? policies : allPolicies.filter((row) => row.isActive),
+    mappingKeys: Object.keys(mappings),
+  });
 
-  if (policies.length === 0) {
+  if (rows.length === 0) {
     return (
       <>
         <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-          سیاست مالیات فعالی خوانده نشد؛ ابتدا در صفحهٔ «مالیات و عوارض» یک سیاست تعریف
-          کنید.
+          سیاست مالیات فعالی در کاتالوگ CRM نیست؛ ابتدا در «پیش‌نیازهای حسابداری» یک سیاست
+          تعریف کنید. هویت سیاست اینجا ساخته نمی‌شود.
         </p>
-        {showCode ? (
-          <textarea
-            aria-label="نگاشت سیاست مالیات CRM به یک کد مالیات در این اتصال"
-            style={styles.input}
-            rows={3}
-            value={text}
-            disabled={!canManage}
-            placeholder={'IR_VAT_9=64'}
-            onChange={(event) => onChange(event.target.value)}
-          />
-        ) : null}
       </>
     );
   }
@@ -774,8 +861,8 @@ const PolicyTaxTable = ({
     <>
       <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
         {showCode
-          ? 'این مقصد برای هر سیاست یک کد واحد می‌خواهد؛ همان کد کل ارزش افزوده (مالیات + عوارض) را نمایندگی می‌کند. تا کد یک سیاست وارد نشود، سند آن سیاست ارسال نمی‌شود.'
-          : 'نرخ مالیات و عوارض از همین سیاست و از نسخهٔ قطعی‌شدهٔ سند خوانده می‌شود؛ کدی لازم نیست.'}
+          ? 'سیاست از کاتالوگ CRM انتخاب شده است؛ فقط کد متناظر در نرم‌افزار حسابداری را مشخص کنید. نام و نرخ سیاست اینجا قابل تعریف نیست.'
+          : 'نرخ مالیات و عوارض از سیاست CRM و نسخهٔ قطعی سند خوانده می‌شود؛ کدی لازم نیست.'}
       </p>
       <table
         aria-label="سیاست‌های مالیات و عوارض این اتصال"
@@ -789,54 +876,69 @@ const PolicyTaxTable = ({
           </tr>
         </thead>
         <tbody>
-          {policies.map((policy) => {
-            const destinationCode = mappings[policy.code] ?? '';
-            const match = matchTaxPolicyToDestinationCode({
-              policy: {
-                taxRateBasisPoints: policy.rateBasisPoints,
-                dutyRateBasisPoints: policy.dutyRateBasisPoints,
-                totalRateBasisPoints: policy.totalRateBasisPoints,
-              },
-              destinationCode,
-              catalog,
-            });
+          {rows.map((row) => {
+            const policy = row.policy;
+            const destinationCode = mappings[row.code] ?? '';
+            const match =
+              policy === null
+                ? null
+                : matchTaxPolicyToDestinationCode({
+                    policy: {
+                      taxRateBasisPoints: policy.rateBasisPoints,
+                      dutyRateBasisPoints: policy.dutyRateBasisPoints,
+                      totalRateBasisPoints: policy.totalRateBasisPoints,
+                    },
+                    destinationCode,
+                    catalog,
+                  });
 
             return (
-              <tr key={policy.code}>
+              <tr key={row.code}>
                 <td style={styles.cell}>
-                  <span style={{ display: 'block' }}>{policy.name}</span>
+                  <span style={{ display: 'block' }}>
+                    {policy?.name ?? row.code}
+                  </span>
                   <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-                    {policy.isExempt
-                      ? 'معاف'
-                      : `مالیات ${policy.ratePercent}٪ + عوارض ${policy.dutyRatePercent || '0'}٪`}
+                    {row.orphan
+                      ? 'سیاست در کاتالوگ CRM نیست؛ نگاشت قبلی حفظ شده'
+                      : policy?.isExempt
+                        ? 'معاف'
+                        : `مالیات ${policy?.ratePercent}٪ + عوارض ${policy?.dutyRatePercent || '0'}٪`}
                   </span>
                 </td>
                 <td style={styles.cell}>
-                  {policy.isExempt ? 'معاف' : `${policy.totalRatePercent}٪`}
+                  {row.orphan
+                    ? '—'
+                    : policy?.isExempt
+                      ? 'معاف'
+                      : `${policy?.totalRatePercent}٪`}
                 </td>
                 {showCode ? (
                   <td style={styles.cell}>
-                    <input
-                      aria-label={`کد مالیات برای ${policy.name}`}
-                      style={{ ...styles.input, width: '100%' }}
+                    <DestinationTaxCodeControl
+                      label={`کد مالیات برای ${policy?.name ?? row.code}`}
                       value={destinationCode}
-                      disabled={!canManage}
-                      inputMode="numeric"
-                      onChange={(event) =>
-                        onChange(setMappingRow(text, policy.code, event.target.value))
+                      catalog={catalog}
+                      canManage={canManage}
+                      onChange={(next) =>
+                        onChange(setMappingRow(text, row.code, next))
                       }
                     />
-                    {destinationCode.trim() === '' ? (
+                    {row.orphan ? (
+                      <span role="alert" style={styles.error}>
+                        این سیاست حذف یا غیرفعال شده؛ نگاشت را اصلاح کنید.
+                      </span>
+                    ) : destinationCode.trim() === '' ? (
                       <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
                         بدون کد، سند این سیاست ارسال نمی‌شود.
                       </span>
-                    ) : match.kind === 'MISMATCH' ? (
+                    ) : match?.kind === 'MISMATCH' ? (
                       <span role="alert" style={styles.error}>
                         {match.reason === 'COMPOSITION'
                           ? 'جمع نرخ‌ها برابر است اما ترکیب مالیات و عوارض با تعریف مقصد یکی نیست؛ تا اصلاح این نگاشت، ارسال سند متوقف می‌ماند.'
                           : 'نرخ کل سیاست با نرخ اعلام‌شدهٔ این کد در مقصد یکسان نیست؛ تا اصلاح این نگاشت، ارسال سند متوقف می‌ماند.'}
                       </span>
-                    ) : match.kind === 'UNVERIFIABLE' ? (
+                    ) : match?.kind === 'UNVERIFIABLE' ? (
                       <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
                         تطابق این کد با نرخ سیاست تأیید نشده است (کاتالوگ معتبر مقصد در
                         دسترس نیست).

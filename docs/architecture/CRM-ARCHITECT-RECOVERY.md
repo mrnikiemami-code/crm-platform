@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL-036 Package A DONE → WS5 IN PROGRESS (2026-11-26)
+## CURRENT — GOAL-036 Package B/WS5 DONE → WS6 IN PROGRESS (2026-11-26)
+
+**App:** `quotation@0.1.67` on Dev `:3002`. **Goal 023 ACTIVE**. Final Gate `STOP_FOR_ARCHITECT_AND_USER_UAT`.
+
+**Package A:** `cab53037` / `0.1.66` — click isolation + operator microcopy. Evidence: `goal-036/CRM-129-GOAL-036-PACKAGE-A.md`.
+
+**Package B / WS5:** catalog-bound currency mapping (no invented USD/EUR); destination tax-code picker when catalog present; orphan maps retained + flagged; CRM tax/currency identity stays in financial settings. Tests connections **45 PASS**, settings panel **8 PASS**. Evidence: `goal-036/CRM-129-GOAL-036-PACKAGE-B-WS5.md`.
+
+**Next:** Package C / WS6 shared Mock/Asan capability-driven UI. Goal 023 not complete.
+
+## PRIOR — GOAL-036 Package A DONE → WS5 IN PROGRESS (2026-11-26)
 
 **App:** `quotation@0.1.66` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. GOAL-036 authorized continuous A→WS5→WS6→WS7-B→E; Final Gate `STOP_FOR_ARCHITECT_AND_USER_UAT`.
 

@@ -9,6 +9,7 @@ import {
   type ConnectionRecord,
   type FormState,
   type PanelData,
+  type CurrencyCatalogView,
   type TaxPolicyView,
 } from 'src/components/accounting/accounting-shared';
 import { resolveFinancialModes } from 'src/components/accounting/accounting-shared';
@@ -179,6 +180,15 @@ const policies: TaxPolicyView[] = [
   },
 ];
 
+const currencies: CurrencyCatalogView[] = [
+  {
+    code: 'IRR',
+    name: 'ریال ایران',
+    isActive: true,
+    isDefault: true,
+  },
+];
+
 const threeConnections = (): ConnectionRecord[] => [
   connection(),
   connection({
@@ -249,6 +259,7 @@ const renderSection = ({
   focus = null as 'money' | 'tax' | null,
   testResult = null,
   taxPolicies = policies,
+  currencyCatalog = currencies,
   onSelectConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSetWorkspaceDefault = vi.fn<(connection: ConnectionRecord) => void>(),
   onDeactivateConnection = vi.fn<(connection: ConnectionRecord) => void>(),
@@ -264,6 +275,7 @@ const renderSection = ({
   focus?: 'money' | 'tax' | null;
   testResult?: { healthState: string; message: string; detail: string } | null;
   taxPolicies?: TaxPolicyView[];
+  currencyCatalog?: CurrencyCatalogView[];
   onSelectConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onSetWorkspaceDefault?: ReturnType<
     typeof vi.fn<(connection: ConnectionRecord) => void>
@@ -296,6 +308,7 @@ const renderSection = ({
       form={form}
       modes={modes}
       policies={taxPolicies}
+      currencies={currencyCatalog}
       canManage
       busy={false}
       selectedConnectionId={selectedConnectionId}
@@ -635,7 +648,23 @@ describe('the currency form follows the declared contract', () => {
       screen.getByRole('table', { name: 'نگاشت ارز CRM به ارز مقصد' }),
     ).toBeTruthy();
     expect(screen.getByLabelText('کد ارز در مقصد برای IRR')).toBeTruthy();
+    expect(screen.queryByLabelText('کد ارز در مقصد برای USD')).toBeNull();
+    expect(screen.queryByLabelText('کد ارز در مقصد برای EUR')).toBeNull();
     expect(screen.queryByLabelText('ارز مقصد')).toBeNull();
+  });
+
+  it('keeps an orphan currency mapping visible without inventing CRM identity', () => {
+    const form = {
+      ...formFrom(threeConnections()[1]),
+      currencyMappingsText: 'IRR=IRR\nUSD=USD',
+    };
+
+    renderSection({ view: 'form', form });
+
+    expect(screen.getByLabelText('کد ارز در مقصد برای USD')).toBeTruthy();
+    expect(
+      screen.getByText('این ارز دیگر در کاتالوگ نیست؛ نگاشت را اصلاح یا خالی کنید.'),
+    ).toBeTruthy();
   });
 
   it('does not make a currency code mandatory for a single-currency destination', () => {
@@ -677,20 +706,39 @@ describe('the tax form shows one row and one destination code per policy', () =>
     expect(screen.getByText('مالیات ۶٪ + عوارض ۳٪')).toBeTruthy();
   });
 
-  it('writes the single destination code into the policy mapping', () => {
+  it('writes the single destination code into the policy mapping from the catalog picker', () => {
     const { onChange } = renderSection({
       view: 'form',
       form: formFrom(threeConnections()[1]),
     });
 
-    fireEvent.change(
-      screen.getByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪'),
-      { target: { value: '64' } },
-    );
+    const control = screen.getByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪');
+
+    expect(control.tagName).toBe('SELECT');
+    fireEvent.change(control, { target: { value: '64' } });
 
     const last = onChange.mock.calls.at(-1)?.[0] as FormState;
 
     expect(last.taxPolicyMappingsText).toBe('IR_VAT_9=64');
+  });
+
+  it('surfaces an orphan tax-policy mapping without deleting it', () => {
+    renderSection({
+      view: 'form',
+      form: {
+        ...formFrom(threeConnections()[1]),
+        taxPolicyMappingsText: 'IR_VAT_9=64\nGONE_POLICY=99',
+      },
+    });
+
+    expect(screen.getByText('GONE_POLICY')).toBeTruthy();
+    expect(
+      screen.getByText('این سیاست حذف یا غیرفعال شده؛ نگاشت را اصلاح کنید.'),
+    ).toBeTruthy();
+    expect(
+      (screen.getByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪') as HTMLSelectElement)
+        .value,
+    ).toBe('64');
   });
 
   it('warns when the code stands for a different total rate and says sending stops', () => {

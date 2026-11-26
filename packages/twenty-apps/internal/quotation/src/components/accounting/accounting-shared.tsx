@@ -465,10 +465,84 @@ export const CURRENCY_MODE_LABELS: Record<string, string> = {
   UNSUPPORTED: 'قرارداد ارزی نامشخص',
 };
 
-// The CRM's own currency codes. The quotation domain currently issues rial only; the list
-// exists so an operator can state the mapping for a code the destination will see later, and
-// an unknown code can still be added by typing it.
-export const CRM_CURRENCY_CODES = ['IRR', 'USD', 'EUR'] as const;
+// Phase-1 operational currency when the catalog has not loaded yet. Connection mapping
+// must not invent USD/EUR CRM identities; orphans from stored maps are surfaced separately.
+export const FALLBACK_OPERATIONAL_CURRENCY_CODES = ['IRR'] as const;
+
+/** @deprecated Prefer catalog rows from `readCurrencies`; kept for transitional imports. */
+export const CRM_CURRENCY_CODES = FALLBACK_OPERATIONAL_CURRENCY_CODES;
+
+export type CurrencyCatalogView = {
+  code: string;
+  name: string;
+  isActive: boolean;
+  isDefault: boolean;
+};
+
+export const readCurrencies = (value: unknown): CurrencyCatalogView[] =>
+  readRows(value).flatMap((row) => {
+    const code = readString(row.code);
+
+    if (code === '') {
+      return [];
+    }
+
+    return [
+      {
+        code,
+        name: readString(row.name) || code,
+        isActive: row.isActive !== false,
+        isDefault: row.isDefault === true,
+      },
+    ];
+  });
+
+export type CurrencyMappingRow = {
+  code: string;
+  name: string;
+  orphan: boolean;
+  inactive: boolean;
+};
+
+export const resolveCurrencyMappingRows = ({
+  currencies,
+  mappingKeys,
+}: {
+  currencies: CurrencyCatalogView[];
+  mappingKeys: string[];
+}): CurrencyMappingRow[] => {
+  const byCode = new Map(currencies.map((row) => [row.code, row]));
+  const rows: CurrencyMappingRow[] = currencies.map((row) => ({
+    code: row.code,
+    name: row.name,
+    orphan: false,
+    inactive: !row.isActive,
+  }));
+
+  for (const key of mappingKeys) {
+    if (key.trim() === '' || byCode.has(key)) {
+      continue;
+    }
+
+    rows.push({
+      code: key,
+      name: key,
+      orphan: true,
+      inactive: false,
+    });
+  }
+
+  if (rows.length === 0) {
+    return FALLBACK_OPERATIONAL_CURRENCY_CODES.map((code) => ({
+      code,
+      name: code === 'IRR' ? 'ریال ایران' : code,
+      orphan: false,
+      inactive: false,
+    }));
+  }
+
+  return rows;
+};
 
 export type TaxPolicyView = {
   code: string;
@@ -486,6 +560,41 @@ export type TaxPolicyView = {
   isActive: boolean;
   isDefault: boolean;
   isExempt: boolean;
+};
+
+export type TaxPolicyMappingRow = {
+  policy: TaxPolicyView | null;
+  code: string;
+  orphan: boolean;
+};
+
+export const resolveTaxPolicyMappingRows = ({
+  policies,
+  mappingKeys,
+}: {
+  policies: TaxPolicyView[];
+  mappingKeys: string[];
+}): TaxPolicyMappingRow[] => {
+  const byCode = new Map(policies.map((row) => [row.code, row]));
+  const rows: TaxPolicyMappingRow[] = policies.map((policy) => ({
+    policy,
+    code: policy.code,
+    orphan: false,
+  }));
+
+  for (const key of mappingKeys) {
+    if (key.trim() === '' || byCode.has(key)) {
+      continue;
+    }
+
+    rows.push({
+      policy: null,
+      code: key,
+      orphan: true,
+    });
+  }
+
+  return rows;
 };
 
 export const readTaxPolicies = (value: unknown): TaxPolicyView[] =>

@@ -5,6 +5,7 @@ import {
   ACCOUNTING_CONNECTION_ROUTE,
   ACCOUNTING_IMPORT_ROUTE,
   ACCOUNTING_OUTBOUND_ROUTE,
+  QUOTATION_CURRENCIES_ROUTE,
   TAX_POLICIES_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
@@ -34,10 +35,12 @@ import {
   parseTaxPolicyMappingsText,
   readRows,
   readString,
+  readCurrencies,
   readTaxPolicies,
   resolveFinancialModes,
   sharedStyles as styles,
   toForm,
+  type CurrencyCatalogView,
   type TaxPolicyView,
 } from 'src/components/accounting/accounting-shared';
 import {
@@ -139,6 +142,7 @@ export const AccountingSettingsPanel = () => {
     readStoredConnectionId,
   );
   const [policies, setPolicies] = useState<TaxPolicyView[]>([]);
+  const [currencies, setCurrencies] = useState<CurrencyCatalogView[]>([]);
   // The customers section owns its picker state; it reports the inner view label here so the
   // breadcrumb and title can name it without lifting the picker out of the section.
   const [customerView, setCustomerView] = useState<string | null>(null);
@@ -234,25 +238,36 @@ export const AccountingSettingsPanel = () => {
     }
   }, [selectedConnectionId]);
 
-  // Tax policies are needed by the tax section in every capability mode: a code-mode
-  // destination maps each policy, a rate/amount destination shows the rates it will receive.
+  // Tax policies and currencies are CRM catalog ownership for mapping rows. Connection
+  // settings only store vendor destination ids; they never invent CRM tax/currency identity.
   useEffect(() => {
     let cancelled = false;
 
-    const loadPolicies = async () => {
+    const loadCatalogs = async () => {
       try {
-        const response = await callAppRoute(TAX_POLICIES_ROUTE, { action: 'list' });
+        const [policyResponse, currencyResponse] = await Promise.all([
+          callAppRoute(TAX_POLICIES_ROUTE, { action: 'list' }),
+          callAppRoute(QUOTATION_CURRENCIES_ROUTE, { action: 'list' }),
+        ]);
 
-        if (!cancelled && response.ok && response.data.success === true) {
-          setPolicies(readTaxPolicies(response.data.policies));
+        if (!cancelled && policyResponse.ok && policyResponse.data.success === true) {
+          setPolicies(readTaxPolicies(policyResponse.data.policies));
+        }
+
+        if (
+          !cancelled &&
+          currencyResponse.ok &&
+          currencyResponse.data.success === true
+        ) {
+          setCurrencies(readCurrencies(currencyResponse.data.currencies));
         }
       } catch {
-        // A policy list that cannot be read leaves the mapping editor in manual-entry mode;
-        // it must not block the rest of the panel.
+        // Catalog read failures leave mapping editors with fallbacks; they must not block
+        // the rest of the panel.
       }
     };
 
-    void loadPolicies();
+    void loadCatalogs();
 
     return () => {
       cancelled = true;
@@ -1010,6 +1025,7 @@ export const AccountingSettingsPanel = () => {
                 form={form}
                 modes={formModes}
                 policies={policies}
+                currencies={currencies}
                 canManage={data.canManage}
                 busy={busy}
                 selectedConnectionId={selectedConnectionId}

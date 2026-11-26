@@ -18,6 +18,7 @@ import {
   type PanelData,
   connectionHealthState,
   sharedStyles as styles,
+  type CurrencyCatalogView,
   type TaxPolicyView,
 } from 'src/components/accounting/accounting-shared';
 import { orderConnections } from 'src/components/accounting/accounting-connection-rules';
@@ -38,6 +39,7 @@ export const AccountingConnectionsSection = ({
   form,
   modes,
   policies,
+  currencies,
   canManage,
   busy,
   selectedConnectionId,
@@ -59,6 +61,7 @@ export const AccountingConnectionsSection = ({
   form: FormState;
   modes: FinancialModes;
   policies: TaxPolicyView[];
+  currencies: CurrencyCatalogView[];
   canManage: boolean;
   busy: boolean;
   selectedConnectionId: string | null;
@@ -109,6 +112,7 @@ export const AccountingConnectionsSection = ({
         form={form}
         modes={modes}
         policies={policies}
+        currencies={currencies}
         canManage={canManage}
         busy={busy}
         testResult={testResult}
