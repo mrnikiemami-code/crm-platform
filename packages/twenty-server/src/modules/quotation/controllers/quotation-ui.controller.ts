@@ -29,6 +29,7 @@ import { type TaxPolicyMutationOutcome } from 'src/modules/quotation/types/tax-p
 import { type RoundingRuleMutationOutcome } from 'src/modules/quotation/types/rounding-rule.type';
 import { type QuotationCurrencyMutationOutcome } from 'src/modules/quotation/types/quotation-currency.type';
 import { type AccountingConnectionOutcome } from 'src/modules/quotation/types/accounting-connection.type';
+import { accountingAdapterContract } from 'src/modules/quotation/utils/accounting-adapter-contract.util';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
 
 type QuotationUiActionBody = {
@@ -835,6 +836,22 @@ export class QuotationUiController {
       canManage: authority !== null,
       authority,
       connections: outcome.connections,
+      // Only the server decides which adapters exist. The app supplies Persian
+      // presentation labels after verifying this id/version/live contract.
+      supportedAdapters: (['asan', 'mock'] as const).flatMap((id) => {
+        const contract = accountingAdapterContract(id);
+
+        return contract === null
+          ? []
+          : [{
+              id,
+              contractVersion: contract.contractVersion,
+              isLive: contract.isLive,
+            }];
+      }),
+      ...(outcome.affectedRecordId === undefined
+        ? {}
+        : { affectedRecordId: outcome.affectedRecordId }),
       ...(outcome.health === undefined ? {} : { health: outcome.health }),
       message: outcome.message,
     };
