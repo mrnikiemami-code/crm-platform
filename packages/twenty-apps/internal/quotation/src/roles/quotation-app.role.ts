@@ -38,10 +38,20 @@ export default defineApplicationRole({
     {
       objectUniversalIdentifier: STANDARD_OBJECT.person.universalIdentifier,
       canReadObjectRecords: true,
+      // Delegated tokens intersect app and user roles. Server query hooks confine
+      // this grant to the authorized customer synchronization field set.
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
     },
     {
       objectUniversalIdentifier: STANDARD_OBJECT.company.universalIdentifier,
       canReadObjectRecords: true,
+      // Delegated tokens intersect app and user roles. Server query hooks confine
+      // this grant to the authorized customer synchronization field set.
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
     },
     {
       objectUniversalIdentifier: CATALOG_ITEM_OBJECT_UNIVERSAL_IDENTIFIER,

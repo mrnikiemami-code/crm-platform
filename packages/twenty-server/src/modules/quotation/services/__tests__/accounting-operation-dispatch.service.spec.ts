@@ -27,6 +27,13 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
 };
 
 describe('accounting operation boundary', () => {
+  it('refuses unattended customer writes before dispatch', async () => {
+    const { service, execute } = setup('SETTINGS_ROLE');
+    const app = { type: 'application', workspace: { id: 'ws-1' }, application: { universalIdentifier: 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb' } } as WorkspaceAuthContext;
+    expect(await service.dispatch('accounting-import-apply-parties', { connectionId: 'c' }, app)).toMatchObject({ success: false, code: 'FORBIDDEN' });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('rejects unlisted actions and unprivileged global operations before execution', async () => {
     const { service, execute } = setup(null);
     expect(await service.dispatch('invented', {}, auth)).toMatchObject({ success: false, code: 'INVALID_INPUT' });

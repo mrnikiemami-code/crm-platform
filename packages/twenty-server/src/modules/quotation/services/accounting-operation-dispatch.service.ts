@@ -90,6 +90,12 @@ export class AccountingOperationDispatchService {
       return forbidden();
     }
 
+    // A customer write must always have a real workspace user. API keys and
+    // unattended app tokens have no delegated CRM authority.
+    if (operation.action === 'apply-parties' && authContext.type !== 'user') {
+      return forbidden();
+    }
+
     try {
       const quotationId = readText(input.quotationId);
       const isRecordScoped =

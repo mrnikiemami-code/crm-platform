@@ -79,9 +79,40 @@ import { RoundingRuleRestoreOnePreQueryHook } from 'src/modules/quotation/query-
 import { RoundingRuleUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-update-many.pre-query.hook';
 import { RoundingRuleUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-update-one.pre-query.hook';
 
+import { AccountingPartyWriteGuardService } from 'src/modules/quotation/services/accounting-party-write-guard.service';
+import { AccountingPersonCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-create-one.pre-query.hook';
+import { AccountingPersonCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-create-many.pre-query.hook';
+import { AccountingPersonUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-update-one.pre-query.hook';
+import { AccountingPersonUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-update-many.pre-query.hook';
+import { AccountingPersonMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-merge-many.pre-query.hook';
+import { AccountingPersonRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-restore-one.pre-query.hook';
+import { AccountingPersonRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-restore-many.pre-query.hook';
+import { AccountingCompanyCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-create-one.pre-query.hook';
+import { AccountingCompanyCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-create-many.pre-query.hook';
+import { AccountingCompanyUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-update-one.pre-query.hook';
+import { AccountingCompanyUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-update-many.pre-query.hook';
+import { AccountingCompanyMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-merge-many.pre-query.hook';
+import { AccountingCompanyRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-restore-one.pre-query.hook';
+import { AccountingCompanyRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-restore-many.pre-query.hook';
+
 @Module({
   imports: [WorkspaceCacheModule],
   providers: [
+    AccountingPartyWriteGuardService,
+    AccountingPersonCreateOnePreQueryHook,
+    AccountingPersonCreateManyPreQueryHook,
+    AccountingPersonUpdateOnePreQueryHook,
+    AccountingPersonUpdateManyPreQueryHook,
+    AccountingPersonMergeManyPreQueryHook,
+    AccountingPersonRestoreOnePreQueryHook,
+    AccountingPersonRestoreManyPreQueryHook,
+    AccountingCompanyCreateOnePreQueryHook,
+    AccountingCompanyCreateManyPreQueryHook,
+    AccountingCompanyUpdateOnePreQueryHook,
+    AccountingCompanyUpdateManyPreQueryHook,
+    AccountingCompanyMergeManyPreQueryHook,
+    AccountingCompanyRestoreOnePreQueryHook,
+    AccountingCompanyRestoreManyPreQueryHook,
     QuotationPermissionService,
     QuotationNumberService,
     QuotationRevisionService,
