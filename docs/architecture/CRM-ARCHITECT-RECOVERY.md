@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL-036 STOP_FOR_ARCHITECT_AND_USER_UAT (2026-11-26)
+## CURRENT — GOAL 036 INDEPENDENT ARCHITECT AUDIT (2026-11-26)
+
+**Verdict:** `ARCHITECT_BLOCKED_ON_WS5_CONTRACT`, NOT Goal 036 acceptance. Full evidence: [CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md](./goal-036/CRM-129-GOAL-036-INDEPENDENT-ARCHITECT-AUDIT.md). Audited source from `1c5bc757fb` to `4ccff18f5f` on reconciled branch `ad909fe3f9`. Product diff is scoped to frontend/tests/docs; no schema, Money Domain, Nest authority, PDF or sealed revisions changed in this pack.
+
+**BLOCKER F01:** WS5 accounting-settings catalog reads call `callAppRoute(TAX_POLICIES_ROUTE)` and `callAppRoute(QUOTATION_CURRENCIES_ROUTE)` on Functions/`/s`, while actual financial settings use Nest wrappers `callTaxPoliciesNestAction`/`callQuotationCurrenciesNestAction` due prior /s drift. Must align authority and prove reads.
+
+**F02:** Promise.all rejects both reads if one fails, silent catch; IRR fabricated fallback disguises failed read; base currency options include orphan/inactive codes. **F03:** existing inactive tax mappings are marked orphan because PolicyTaxTable only receives active policies. **F04:** WS6 descriptor-driven UI is improved, but unknown descriptor is treated visually like non-live and capability/gate/preview matrix not independently proven. **F05:** 142 Vitest PASS are worker-reported; full E2E, auth negatives, responsive matrix, UAT, retire/inflight and credential rotation open.
+
+**Pack decisions:** A source acceptable UAT open; B/WS5 BLOCKED; C/WS6 conditional/integration gates open; D/WS7-B PARTIAL; E incomplete E2E. Goal 023 ACTIVE. No live vendor calls, merge, force push, DB/Money mutation. Fix scoped findings, prove real Dev behavior, then independently re-audit. Latest audit documentation commit must be fetched/reconciled in working tree before further pushes; don't discard untracked `twenty-shared` artifacts.
+
+## PRIOR CHECKPOINT — GOAL-036 STOP_FOR_ARCHITECT_AND_USER_UAT (2026-11-26)
 
 **App:** `quotation@0.1.69` on Dev `:3002`. **Goal 023 ACTIVE / NOT COMPLETE**.
 
