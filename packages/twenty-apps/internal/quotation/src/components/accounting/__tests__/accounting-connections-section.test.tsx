@@ -672,10 +672,44 @@ describe('the currency form follows the declared contract', () => {
 
     renderSection({ view: 'form', form });
 
-    expect(screen.getByLabelText('کد ارز در مقصد برای USD')).toBeTruthy();
+    const usdInput = screen.getByLabelText(
+      'کد ارز در مقصد برای USD',
+    ) as HTMLInputElement;
+
+    expect(usdInput.value).toBe('USD');
+    expect(usdInput.disabled).toBe(true);
+    expect(screen.getByText('مرجع موجود نیست · نگاشت قدیمی')).toBeTruthy();
     expect(
-      screen.getByText('این ارز دیگر در کاتالوگ نیست؛ نگاشت را اصلاح یا خالی کنید.'),
+      screen.getByText(
+        'مرجع موجود نیست؛ نگاشت قدیمی فقط خواندنی است تا اصلاح صریح مجاز.',
+      ),
     ).toBeTruthy();
+  });
+
+  it('keeps inactive currency mappings visible and read-only, distinct from orphan', () => {
+    renderSection({
+      view: 'form',
+      form: {
+        ...formFrom(threeConnections()[1]),
+        currencyMappingsText: 'IRR=IRR',
+      },
+      currencyCatalog: [
+        { code: 'IRR', name: 'ریال ایران', isActive: false, isDefault: true },
+      ],
+    });
+
+    const irrInput = screen.getByLabelText(
+      'کد ارز در مقصد برای IRR',
+    ) as HTMLInputElement;
+
+    expect(irrInput.disabled).toBe(true);
+    expect(screen.getByText('ریال ایران · غیرفعال')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'این ارز غیرفعال است؛ نگاشت قبلی حفظ شده و قابل تغییر نیست.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('مرجع موجود نیست · نگاشت قدیمی')).toBeNull();
   });
 
   it('does not make a currency code mandatory for a single-currency destination', () => {
@@ -743,13 +777,45 @@ describe('the tax form shows one row and one destination code per policy', () =>
     });
 
     expect(screen.getByText('GONE_POLICY')).toBeTruthy();
+    expect(screen.getByText('مرجع موجود نیست · نگاشت قدیمی')).toBeTruthy();
     expect(
-      screen.getByText('این سیاست حذف یا غیرفعال شده؛ نگاشت را اصلاح کنید.'),
+      screen.getByText(
+        'مرجع موجود نیست؛ نگاشت قدیمی فقط خواندنی است تا اصلاح صریح مجاز.',
+      ),
     ).toBeTruthy();
     expect(
       (screen.getByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪') as HTMLSelectElement)
         .value,
     ).toBe('64');
+    expect(
+      (screen.getByLabelText('کد مالیات برای GONE_POLICY') as HTMLSelectElement)
+        .disabled,
+    ).toBe(true);
+  });
+
+  it('surfaces inactive tax policies as inactive, not orphan, and keeps maps read-only', () => {
+    renderSection({
+      view: 'form',
+      form: {
+        ...formFrom(threeConnections()[1]),
+        taxPolicyMappingsText: 'IR_VAT_9=64',
+      },
+      taxPolicies: [{ ...policies[0], isActive: false }],
+    });
+
+    const control = screen.getByLabelText(
+      'کد مالیات برای مالیات بر ارزش افزوده ۹٪',
+    ) as HTMLSelectElement;
+
+    expect(control.value).toBe('64');
+    expect(control.disabled).toBe(true);
+    expect(screen.getByText(/· غیرفعال$/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        'این سیاست غیرفعال است؛ نگاشت قبلی حفظ شده و قابل تغییر نیست.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('مرجع موجود نیست · نگاشت قدیمی')).toBeNull();
   });
 
   it('warns when the code stands for a different total rate and says sending stops', () => {

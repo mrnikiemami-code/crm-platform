@@ -25,6 +25,7 @@ import {
   type TaxPolicyView,
   connectionHealthState,
   formatHealthCheckAt,
+  mappingRowAllowsEdit,
   parseKeyValueLines,
   parseTaxPolicyMappingsText,
   resolveCurrencyMappingRows,
@@ -32,6 +33,7 @@ import {
   setMappingRow,
   sharedStyles as styles,
   toForm,
+  type CatalogReferenceStatus,
 } from 'src/components/accounting/accounting-shared';
 import {
   catalogBlocksMappingEdits,
@@ -161,24 +163,28 @@ export const ConnectionEditForm = ({
   const currencyMappings = parseKeyValueLines(form.currencyMappingsText);
   const taxCatalogBlocked = catalogBlocksMappingEdits(taxCatalog);
   const currencyCatalogBlocked = catalogBlocksMappingEdits(currencyCatalog);
-  const currencyRows = currencyCatalogBlocked
-    ? Object.keys(currencyMappings).map((code) => ({
-        code,
-        name: code,
-        orphan: true,
-        inactive: false,
-      }))
-    : resolveCurrencyMappingRows({
-        currencies,
-        mappingKeys: Object.keys(currencyMappings),
-      });
-  const baseCurrencyOptions = currencyCatalogBlocked
-    ? form.baseCurrency.trim() !== ''
-      ? [form.baseCurrency]
-      : []
-    : currencies
-        .filter((row) => row.isActive)
-        .map((row) => row.code);
+  const currencyRows = resolveCurrencyMappingRows({
+    currencies: currencyCatalogBlocked ? [] : currencies,
+    mappingKeys: Object.keys(currencyMappings),
+    catalogVerified: !currencyCatalogBlocked,
+  });
+  const activeBaseCurrencyCodes = currencyCatalogBlocked
+    ? []
+    : currencies.filter((row) => row.isActive).map((row) => row.code);
+  const savedBaseCurrency = form.baseCurrency.trim();
+  const baseCurrencyLegacyStatus: CatalogReferenceStatus | null =
+    currencyCatalogBlocked
+      ? savedBaseCurrency !== ''
+        ? 'unverified'
+        : null
+      : savedBaseCurrency === ''
+        ? null
+        : activeBaseCurrencyCodes.includes(savedBaseCurrency)
+          ? null
+          : currencies.some((row) => row.code === savedBaseCurrency)
+            ? 'inactive'
+            : 'orphan';
+  const baseCurrencyOptions = activeBaseCurrencyCodes;
   const mappingEditable = canManage && !taxCatalogBlocked && !currencyCatalogBlocked;
 
   return (
@@ -407,12 +413,30 @@ export const ConnectionEditForm = ({
                     onChange({ ...form, baseCurrency: event.target.value })
                   }
                 >
+                  {baseCurrencyLegacyStatus !== null && savedBaseCurrency !== '' ? (
+                    <option value={savedBaseCurrency}>
+                      {baseCurrencyLegacyStatus === 'unverified'
+                        ? `${savedBaseCurrency} — وضعیت مرجع در دسترس نیست`
+                        : baseCurrencyLegacyStatus === 'inactive'
+                          ? `${savedBaseCurrency} — غیرفعال (نگاشت قدیمی)`
+                          : `${savedBaseCurrency} — مرجع موجود نیست`}
+                    </option>
+                  ) : null}
                   {baseCurrencyOptions.map((code) => (
                     <option key={code} value={code}>
                       {code}
                     </option>
                   ))}
                 </select>
+                {baseCurrencyLegacyStatus !== null ? (
+                  <span role="alert" style={styles.error}>
+                    {baseCurrencyLegacyStatus === 'unverified'
+                      ? 'وضعیت مرجع در دسترس نیست؛ تا بازخوانی موفق کاتالوگ، ارز مقصد قابل تغییر نیست.'
+                      : baseCurrencyLegacyStatus === 'inactive'
+                        ? 'ارز ذخیره‌شده غیرفعال است؛ یک ارز فعال معتبر انتخاب کنید. مقدار قبلی پاک نمی‌شود تا اصلاح صریح انجام شود.'
+                        : 'ارز ذخیره‌شده در کاتالوگ نیست (نگاشت قدیمی)؛ یک ارز فعال معتبر انتخاب کنید.'}
+                  </span>
+                ) : null}
                 <FieldError message={attemptedSave ? issues.baseCurrency : undefined} />
               </Field>
             ) : null}
@@ -483,8 +507,8 @@ export const ConnectionEditForm = ({
             </InlineAlert>
           ) : (
             <PolicyTaxTable
-              policies={activePolicies}
               allPolicies={policies}
+              catalogVerified={!taxCatalogBlocked}
               showCode={fields.taxCodeTable}
               text={form.taxPolicyMappingsText}
               catalog={modes.taxCodeCatalog}
@@ -751,6 +775,22 @@ const Field = ({
 // A code table is shown only where the destination's contract reads a code. Leaving a
 // code empty never blocks the save: it is the document send that is refused, because a
 // policy with no code cannot be proven against the destination's own definition.
+const currencyReferenceCaption = (
+  status: CatalogReferenceStatus,
+  name: string,
+): string => {
+  switch (status) {
+    case 'unverified':
+      return 'وضعیت مرجع در دسترس نیست';
+    case 'orphan':
+      return 'مرجع موجود نیست · نگاشت قدیمی';
+    case 'inactive':
+      return `${name} · غیرفعال`;
+    case 'active':
+      return name;
+  }
+};
+
 const CurrencyMappingTable = ({
   label,
   helper,
@@ -782,36 +822,47 @@ const CurrencyMappingTable = ({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.code}>
-              <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
-                <span style={{ display: 'block' }}>{row.code}</span>
-                <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-                  {row.orphan
-                    ? 'در کاتالوگ CRM نیست؛ نگاشت قبلی حفظ شده'
-                    : row.inactive
-                      ? `${row.name} · غیرفعال`
-                      : row.name}
-                </span>
-              </td>
-              <td style={styles.cell}>
-                <input
-                  aria-label={`${label} برای ${row.code}`}
-                  style={{ ...styles.input, width: '100%' }}
-                  value={mappings[row.code] ?? ''}
-                  disabled={!canManage}
-                  onChange={(event) =>
-                    onChange(setMappingRow(text, row.code, event.target.value))
-                  }
-                />
-                {row.orphan ? (
-                  <span role="alert" style={styles.error}>
-                    این ارز دیگر در کاتالوگ نیست؛ نگاشت را اصلاح یا خالی کنید.
+          {rows.map((row) => {
+            const rowEditable =
+              canManage && mappingRowAllowsEdit(row.referenceStatus);
+
+            return (
+              <tr key={row.code}>
+                <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
+                  <span style={{ display: 'block' }}>{row.code}</span>
+                  <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
+                    {currencyReferenceCaption(row.referenceStatus, row.name)}
                   </span>
-                ) : null}
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td style={styles.cell}>
+                  <input
+                    aria-label={`${label} برای ${row.code}`}
+                    style={{ ...styles.input, width: '100%' }}
+                    value={mappings[row.code] ?? ''}
+                    disabled={!rowEditable}
+                    onChange={(event) =>
+                      onChange(setMappingRow(text, row.code, event.target.value))
+                    }
+                  />
+                  {row.referenceStatus === 'orphan' ? (
+                    <span role="alert" style={styles.error}>
+                      مرجع موجود نیست؛ نگاشت قدیمی فقط خواندنی است تا اصلاح صریح مجاز.
+                    </span>
+                  ) : null}
+                  {row.referenceStatus === 'inactive' ? (
+                    <span role="alert" style={styles.error}>
+                      این ارز غیرفعال است؛ نگاشت قبلی حفظ شده و قابل تغییر نیست.
+                    </span>
+                  ) : null}
+                  {row.referenceStatus === 'unverified' ? (
+                    <span role="alert" style={styles.error}>
+                      وضعیت مرجع در دسترس نیست؛ مقدار قبلی حفظ شده است.
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </>
@@ -880,17 +931,37 @@ const DestinationTaxCodeControl = ({
   );
 };
 
+const taxReferenceCaption = (
+  status: CatalogReferenceStatus,
+  policy: TaxPolicyView | null,
+): string => {
+  switch (status) {
+    case 'unverified':
+      return 'وضعیت مرجع در دسترس نیست';
+    case 'orphan':
+      return 'مرجع موجود نیست · نگاشت قدیمی';
+    case 'inactive':
+      return policy?.isExempt
+        ? 'معاف · غیرفعال'
+        : `مالیات ${policy?.ratePercent}٪ + عوارض ${policy?.dutyRatePercent || '0'}٪ · غیرفعال`;
+    case 'active':
+      return policy?.isExempt
+        ? 'معاف'
+        : `مالیات ${policy?.ratePercent}٪ + عوارض ${policy?.dutyRatePercent || '0'}٪`;
+  }
+};
+
 const PolicyTaxTable = ({
-  policies,
   allPolicies,
+  catalogVerified,
   showCode,
   text,
   catalog,
   canManage,
   onChange,
 }: {
-  policies: TaxPolicyView[];
   allPolicies: TaxPolicyView[];
+  catalogVerified: boolean;
   showCode: boolean;
   text: string;
   catalog: TaxCodeContractView[] | undefined;
@@ -899,16 +970,18 @@ const PolicyTaxTable = ({
 }) => {
   const mappings = parseTaxPolicyMappingsText(text);
   const rows = resolveTaxPolicyMappingRows({
-    policies: policies.length > 0 ? policies : allPolicies.filter((row) => row.isActive),
+    policies: catalogVerified ? allPolicies : [],
     mappingKeys: Object.keys(mappings),
+    catalogVerified,
   });
 
   if (rows.length === 0) {
     return (
       <>
         <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-          سیاست مالیات فعالی در کاتالوگ CRM نیست؛ ابتدا در «پیش‌نیازهای حسابداری» یک سیاست
-          تعریف کنید. هویت سیاست اینجا ساخته نمی‌شود.
+          {catalogVerified
+            ? 'کاتالوگ مالیات خالی است؛ ابتدا در «پیش‌نیازهای حسابداری» یک سیاست تعریف کنید. هویت سیاست اینجا ساخته نمی‌شود. نگاشت‌های تاریخی در صورت وجود جدا نگه داشته می‌شوند.'
+            : 'وضعیت مرجع در دسترس نیست؛ تا بازخوانی موفق، نگاشت مالیات فقط نمایش داده می‌شود.'}
         </p>
       </>
     );
@@ -936,8 +1009,10 @@ const PolicyTaxTable = ({
           {rows.map((row) => {
             const policy = row.policy;
             const destinationCode = mappings[row.code] ?? '';
+            const rowEditable =
+              canManage && mappingRowAllowsEdit(row.referenceStatus);
             const match =
-              policy === null
+              policy === null || row.referenceStatus !== 'active'
                 ? null
                 : matchTaxPolicyToDestinationCode({
                     policy: {
@@ -956,15 +1031,12 @@ const PolicyTaxTable = ({
                     {policy?.name ?? row.code}
                   </span>
                   <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-                    {row.orphan
-                      ? 'سیاست در کاتالوگ CRM نیست؛ نگاشت قبلی حفظ شده'
-                      : policy?.isExempt
-                        ? 'معاف'
-                        : `مالیات ${policy?.ratePercent}٪ + عوارض ${policy?.dutyRatePercent || '0'}٪`}
+                    {taxReferenceCaption(row.referenceStatus, policy)}
                   </span>
                 </td>
                 <td style={styles.cell}>
-                  {row.orphan
+                  {row.referenceStatus === 'orphan' ||
+                  row.referenceStatus === 'unverified'
                     ? '—'
                     : policy?.isExempt
                       ? 'معاف'
@@ -976,14 +1048,22 @@ const PolicyTaxTable = ({
                       label={`کد مالیات برای ${policy?.name ?? row.code}`}
                       value={destinationCode}
                       catalog={catalog}
-                      canManage={canManage}
+                      canManage={rowEditable}
                       onChange={(next) =>
                         onChange(setMappingRow(text, row.code, next))
                       }
                     />
-                    {row.orphan ? (
+                    {row.referenceStatus === 'orphan' ? (
                       <span role="alert" style={styles.error}>
-                        این سیاست حذف یا غیرفعال شده؛ نگاشت را اصلاح کنید.
+                        مرجع موجود نیست؛ نگاشت قدیمی فقط خواندنی است تا اصلاح صریح مجاز.
+                      </span>
+                    ) : row.referenceStatus === 'inactive' ? (
+                      <span role="alert" style={styles.error}>
+                        این سیاست غیرفعال است؛ نگاشت قبلی حفظ شده و قابل تغییر نیست.
+                      </span>
+                    ) : row.referenceStatus === 'unverified' ? (
+                      <span role="alert" style={styles.error}>
+                        وضعیت مرجع در دسترس نیست؛ مقدار قبلی حفظ شده است.
                       </span>
                     ) : destinationCode.trim() === '' ? (
                       <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>

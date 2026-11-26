@@ -465,12 +465,18 @@ export const CURRENCY_MODE_LABELS: Record<string, string> = {
   UNSUPPORTED: 'قرارداد ارزی نامشخص',
 };
 
-// Phase-1 operational currency when the catalog has not loaded yet. Connection mapping
-// must not invent USD/EUR CRM identities; orphans from stored maps are surfaced separately.
+// Display-only placeholder when a surface needs a known phase-1 code string. Must never be
+// injected as a verified, editable catalog row by mapping resolvers.
 export const FALLBACK_OPERATIONAL_CURRENCY_CODES = ['IRR'] as const;
 
 /** @deprecated Prefer catalog rows from `readCurrencies`; kept for transitional imports. */
 export const CRM_CURRENCY_CODES = FALLBACK_OPERATIONAL_CURRENCY_CODES;
+
+export type CatalogReferenceStatus =
+  | 'active'
+  | 'inactive'
+  | 'orphan'
+  | 'unverified';
 
 export type CurrencyCatalogView = {
   code: string;
@@ -500,6 +506,7 @@ export const readCurrencies = (value: unknown): CurrencyCatalogView[] =>
 export type CurrencyMappingRow = {
   code: string;
   name: string;
+  referenceStatus: CatalogReferenceStatus;
   orphan: boolean;
   inactive: boolean;
 };
@@ -507,17 +514,38 @@ export type CurrencyMappingRow = {
 export const resolveCurrencyMappingRows = ({
   currencies,
   mappingKeys,
+  catalogVerified = true,
 }: {
   currencies: CurrencyCatalogView[];
   mappingKeys: string[];
+  catalogVerified?: boolean;
 }): CurrencyMappingRow[] => {
+  if (!catalogVerified) {
+    return mappingKeys
+      .filter((key) => key.trim() !== '')
+      .map((code) => ({
+        code,
+        name: code,
+        referenceStatus: 'unverified' as const,
+        orphan: false,
+        inactive: false,
+      }));
+  }
+
   const byCode = new Map(currencies.map((row) => [row.code, row]));
-  const rows: CurrencyMappingRow[] = currencies.map((row) => ({
-    code: row.code,
-    name: row.name,
-    orphan: false,
-    inactive: !row.isActive,
-  }));
+  const rows: CurrencyMappingRow[] = currencies.map((row) => {
+    const referenceStatus: CatalogReferenceStatus = row.isActive
+      ? 'active'
+      : 'inactive';
+
+    return {
+      code: row.code,
+      name: row.name,
+      referenceStatus,
+      orphan: false,
+      inactive: referenceStatus === 'inactive',
+    };
+  });
 
   for (const key of mappingKeys) {
     if (key.trim() === '' || byCode.has(key)) {
@@ -527,20 +555,13 @@ export const resolveCurrencyMappingRows = ({
     rows.push({
       code: key,
       name: key,
+      referenceStatus: 'orphan',
       orphan: true,
       inactive: false,
     });
   }
 
-  if (rows.length === 0) {
-    return FALLBACK_OPERATIONAL_CURRENCY_CODES.map((code) => ({
-      code,
-      name: code === 'IRR' ? 'ریال ایران' : code,
-      orphan: false,
-      inactive: false,
-    }));
-  }
-
+  // Genuine empty catalog stays empty. Do not invent IRR/USD/EUR as verified rows.
   return rows;
 };
 
@@ -565,22 +586,45 @@ export type TaxPolicyView = {
 export type TaxPolicyMappingRow = {
   policy: TaxPolicyView | null;
   code: string;
+  referenceStatus: CatalogReferenceStatus;
   orphan: boolean;
 };
 
 export const resolveTaxPolicyMappingRows = ({
   policies,
   mappingKeys,
+  catalogVerified = true,
 }: {
   policies: TaxPolicyView[];
   mappingKeys: string[];
+  catalogVerified?: boolean;
 }): TaxPolicyMappingRow[] => {
+  if (!catalogVerified) {
+    return mappingKeys
+      .filter((key) => key.trim() !== '')
+      .map((code) => ({
+        policy: null,
+        code,
+        referenceStatus: 'unverified' as const,
+        orphan: false,
+      }));
+  }
+
+  // Caller must pass the full successful catalog (active + inactive). Filtering to
+  // active-only falsely labels inactive rows as orphans.
   const byCode = new Map(policies.map((row) => [row.code, row]));
-  const rows: TaxPolicyMappingRow[] = policies.map((policy) => ({
-    policy,
-    code: policy.code,
-    orphan: false,
-  }));
+  const rows: TaxPolicyMappingRow[] = policies.map((policy) => {
+    const referenceStatus: CatalogReferenceStatus = policy.isActive
+      ? 'active'
+      : 'inactive';
+
+    return {
+      policy,
+      code: policy.code,
+      referenceStatus,
+      orphan: false,
+    };
+  });
 
   for (const key of mappingKeys) {
     if (key.trim() === '' || byCode.has(key)) {
@@ -590,12 +634,17 @@ export const resolveTaxPolicyMappingRows = ({
     rows.push({
       policy: null,
       code: key,
+      referenceStatus: 'orphan',
       orphan: true,
     });
   }
 
   return rows;
 };
+
+export const mappingRowAllowsEdit = (
+  referenceStatus: CatalogReferenceStatus,
+): boolean => referenceStatus === 'active';
 
 export const readTaxPolicies = (value: unknown): TaxPolicyView[] =>
   readRows(value).flatMap((row) => {
