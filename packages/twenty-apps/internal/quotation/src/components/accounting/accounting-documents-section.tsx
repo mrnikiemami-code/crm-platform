@@ -51,6 +51,7 @@ export const AccountingDocumentsSection = ({
   canManage,
   outboundEnabled,
   documentExportEnabled,
+  metadataVerified,
   taxMappingCount,
   taxHandling,
   onReload,
@@ -66,6 +67,7 @@ export const AccountingDocumentsSection = ({
   canManage: boolean;
   outboundEnabled: boolean;
   documentExportEnabled: boolean;
+  metadataVerified?: boolean;
   taxMappingCount: number;
   taxHandling: string;
   onReload: () => void;
@@ -140,7 +142,9 @@ export const AccountingDocumentsSection = ({
     },
     {
       ok: !outboundDisabled,
-      label: 'ارسال به حسابداری فعال است',
+      label: metadataVerified === false
+        ? 'وضعیت اجازه ارسال به حسابداری هنوز تأیید نشده است'
+        : 'ارسال به حسابداری فعال است',
     },
   ];
 
