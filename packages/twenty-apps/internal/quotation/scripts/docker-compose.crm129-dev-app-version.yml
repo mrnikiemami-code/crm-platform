@@ -1,0 +1,13 @@
+# Local Dev-only overlays. Do not apply to Intranet.
+# - Clear invalid/non-semver baked APP_VERSION (prior Dev image left it empty).
+# - Nest executes Logic Functions in the server process; SERVER_URL is the public
+#   browser URL (host:3002) which refuses inside the container. Point the
+#   function API base at the in-container listener instead.
+services:
+  server:
+    environment:
+      APP_VERSION: ''
+      LOGIC_FUNCTION_API_URL: http://127.0.0.1:3000
+  worker:
+    environment:
+      APP_VERSION: ''
