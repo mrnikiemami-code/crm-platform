@@ -260,26 +260,33 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
   };
 };
 
-const parseParty = (raw: unknown): RemoteParty | null => {
+export const parseParty = (raw: unknown): RemoteParty | null => {
   const record = asRecord(raw);
 
   if (record === null) {
     return null;
   }
 
-  const code = readNumber(record.PersonCode);
-
-  if (code === null || !Number.isInteger(code)) {
-    return null;
-  }
-
+  const rawCode = record.PersonCode;
+  const code = typeof rawCode === 'string' ? rawCode.trim() :
+    typeof rawCode === 'number' && Number.isSafeInteger(rawCode) ? String(rawCode) : '';
+  if (!/^\d+$/.test(code) || /^0+$/.test(code)) return null;
+  const national = readString(record.PersonNationalCode) || null;
   return {
-    externalPartyId: String(code),
-    code: String(code),
+    externalPartyId: code, code,
     fullName: readString(record.PersonFullName),
     mobile: readString(record.PersonMobile) || null,
-    nationalCode: readString(record.PersonNationalCode) || null,
-    remoteVersion: hashRecord(record),
+    nationalCode: national,
+    ...(national !== null && /^\d{11}$/.test(national) ? { legalNationalId: national } : {}),
+    economicCode: readString(record.PersonEcoCode) || null,
+    address: readString(record.PersonAddress) || null,
+    firstPhone: readString(record.PersonFirstTell) || null,
+    secondPhone: readString(record.PersonSecoundTell) || null,
+    fax: readString(record.PersonFax) || null,
+    postalCode: readString(record.PersonPostalCode) || null,
+    accountGroup: readString(record.PersonAccountGroup) || null,
+    // PersonGender describes account nature, not legal person type.
+    remoteVersion: 'party-v2:' + hashRecord(record),
   };
 };
 
@@ -694,14 +701,14 @@ export class AsanHttpAdapter implements AccountingAdapter {
         personCode: null,
         fullName: input.fullName,
         mobile: input.mobile,
-        nationalCode: input.nationalCode,
+        nationalCode: input.legalNationalId ?? input.nationalCode,
         address: input.address,
-        economicCode: null,
-        postalCode: null,
-        firstPhone: null,
-        secondPhone: null,
-        fax: null,
-        accountGroup: null,
+        economicCode: input.economicCode ?? null,
+        postalCode: input.postalCode ?? null,
+        firstPhone: input.firstPhone ?? null,
+        secondPhone: input.secondPhone ?? null,
+        fax: input.fax ?? null,
+        accountGroup: input.accountGroup ?? null,
         userId: Number(this.config.remoteUserId || '0'),
       },
       { isUpdate: false },
@@ -809,14 +816,14 @@ export class AsanHttpAdapter implements AccountingAdapter {
         personCode: Number.isSafeInteger(personCode) ? personCode : null,
         fullName: input.fullName,
         mobile: input.mobile,
-        nationalCode: input.nationalCode,
+        nationalCode: input.legalNationalId ?? input.nationalCode,
         address: input.address,
-        economicCode: null,
-        postalCode: null,
-        firstPhone: null,
-        secondPhone: null,
-        fax: null,
-        accountGroup: null,
+        economicCode: input.economicCode ?? null,
+        postalCode: input.postalCode ?? null,
+        firstPhone: input.firstPhone ?? null,
+        secondPhone: input.secondPhone ?? null,
+        fax: input.fax ?? null,
+        accountGroup: input.accountGroup ?? null,
         userId: Number(this.config.remoteUserId || '0'),
       },
       { isUpdate: true },

@@ -25,7 +25,7 @@ import {
   decodeRemoteOffsetCursor,
   encodeRemoteOffsetCursor,
 } from 'src/domain/accounting/pagination';
-import { MOCK_CATALOG_ITEMS, MOCK_PARTIES } from 'src/domain/accounting/adapters/mock/mock-dataset';
+import { MOCK_CATALOG_ITEMS, MOCK_PARTIES, MOCK_PARTY_UAT_100 } from 'src/domain/accounting/adapters/mock/mock-dataset';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // A deterministic adapter used by tests and by a workspace that wants to exercise the
@@ -75,7 +75,7 @@ export class MockAccountingAdapter implements AccountingAdapter {
 
   constructor(config: MockAdapterConfig = {}) {
     this.items = [...(config.items ?? DEFAULT_ITEMS)];
-    this.parties = [...(config.parties ?? DEFAULT_PARTIES)];
+    this.parties = [...(config.parties ?? (config.profile === 'PARTY_UAT' ? MOCK_PARTY_UAT_100 : DEFAULT_PARTIES))];
     this.capabilities = mockCapabilities(
       config.readStrategy ?? 'REMOTE_UNPAGED',
       config.profile ?? DEFAULT_MOCK_PROFILE,
@@ -226,6 +226,7 @@ export class MockAccountingAdapter implements AccountingAdapter {
     }
 
     const created: RemoteParty = {
+      ...input,
       externalPartyId: input.externalPartyId ?? `mock-${this.parties.length + 101}`,
       code: input.externalPartyId ?? `mock-${this.parties.length + 101}`,
       fullName: input.fullName,
@@ -258,9 +259,8 @@ export class MockAccountingAdapter implements AccountingAdapter {
 
     const updated: RemoteParty = {
       ...this.parties[index],
-      fullName: input.fullName,
-      mobile: input.mobile,
-      nationalCode: input.nationalCode,
+      ...Object.fromEntries(Object.entries(input).filter(([key, value]) => key !== 'externalPartyId' && value !== null && value !== undefined && value !== '')),
+      externalPartyId: this.parties[index].externalPartyId,
     };
 
     this.parties[index] = updated;

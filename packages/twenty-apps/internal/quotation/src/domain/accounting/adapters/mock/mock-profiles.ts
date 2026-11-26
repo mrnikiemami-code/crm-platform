@@ -4,6 +4,7 @@ import {
   type DutyHandlingMode,
   type TaxHandlingMode,
 } from 'src/domain/accounting/capabilities';
+import { PARTY_PROFILE_FIELDS } from 'src/domain/accounting/party-profile';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
 
@@ -22,6 +23,7 @@ import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
 // a code-based destination maps ONE code per policy.
 export const MOCK_PROFILES = [
   'SIMPLE',
+  'PARTY_UAT',
   'CODED',
   'AMOUNT',
   'AGGREGATE',
@@ -77,6 +79,11 @@ export const MOCK_PROFILE_DESCRIPTIONS: Record<
     summary:
       'نرم‌افزار ساده‌ای که نرخ مالیات و نرخ عوارض را جداگانه می‌گیرد و همه مبالغ را به یک ارز ثبت می‌کند؛ کد مالیات و کد ارز نمی‌خواهد.',
   },
+  PARTY_UAT: {
+    label: 'داده آزمایشی ۱۰۰ مشتری',
+    tax: 'TAX_RATE', duty: 'DUTY_RATE', currency: 'SINGLE_CURRENCY',
+    summary: 'فقط داده ساختگی برای آزمون همگام‌سازی، بدون ارتباط با حسابداری واقعی.',
+  },
   CODED: {
     label: 'کدمحور: یک کد مالیات برای هر سیاست، کد ارز',
     tax: 'TAX_CODE',
@@ -127,6 +134,11 @@ export const mockProfileCapabilities = (
 
   return {
     ...ASAN_CAPABILITIES,
+    parties: { ...ASAN_CAPABILITIES.parties, fields: {
+      contractVersion: '2', identity: 'EXTERNAL_ID',
+      readable: ['code', 'fullName', 'mobile', 'nationalCode', ...PARTY_PROFILE_FIELDS],
+      writable: ['fullName', 'mobile', 'nationalCode', ...PARTY_PROFILE_FIELDS],
+    } },
     taxHandling: entry.tax,
     dutyHandling: entry.duty,
     currencyHandling: entry.currency,

@@ -181,3 +181,23 @@ export const MOCK_OPERATION_HISTORY_SAMPLES: readonly MockOperationHistorySample
     message: 'مقصد ثبت مستقیم را پشتیبانی نمی‌کند؛ خروجی دستی لازم است.',
   },
 ];
+
+
+// Dedicated isolated 100-customer mock fixture; never a live vendor connection.
+// Seed existing records for 1..30 and 61..80. All remaining records are new.
+export const MOCK_PARTY_UAT_100: RemoteParty[] = Array.from({ length: 100 }, (_, index) => {
+  const number = index + 1;
+  const person = number <= 60;
+  const serial = String(number).padStart(6, '0');
+  const national = number % 5 === 0 ? null : (person ? '9900' : '99000') + serial;
+  return {
+    externalPartyId: 'UAT-' + serial, code: '00-' + serial,
+    fullName: person ? 'آزمون مشتری ' + serial : 'شرکت آزمون ' + serial,
+    partyType: person ? 'PERSON' : 'COMPANY', partyTypeEvidence: 'VENDOR_EXPLICIT',
+    nationalCode: person ? national : null,
+    ...(person ? { firstName: 'آزمون', lastName: 'مشتری ' + serial } : { companyName: 'شرکت آزمون ' + serial, legalNationalId: national }),
+    economicCode: number % 5 === 0 ? '990099' + serial : null,
+    mobile: null, address: 'نشانی آزمایشی ' + serial,
+    remoteVersion: 'party-uat-v2-' + serial,
+  };
+});

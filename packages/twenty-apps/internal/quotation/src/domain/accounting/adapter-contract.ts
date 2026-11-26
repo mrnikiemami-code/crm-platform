@@ -1,3 +1,4 @@
+import { type AccountingPartyProfile } from 'src/domain/accounting/party-profile';
 import { type AdapterCapabilities } from 'src/domain/accounting/capabilities';
 import { type FinancialSettings } from 'src/domain/accounting/financial-contract';
 import { type Result } from 'src/domain/shared/result';
@@ -99,7 +100,7 @@ export type RemoteCatalogItem = {
   isActive: boolean;
 };
 
-export type RemoteParty = {
+export type RemoteParty = AccountingPartyProfile & {
   externalPartyId: string;
   code: string;
   fullName: string;
@@ -143,7 +144,7 @@ export type RemoteItemInput = {
   salesPriceUnits: number[];
 };
 
-export type RemotePartyInput = {
+export type RemotePartyInput = AccountingPartyProfile & {
   externalPartyId: string | null;
   fullName: string;
   mobile: string | null;

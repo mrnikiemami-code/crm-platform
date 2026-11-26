@@ -1,3 +1,4 @@
+import { type PartyFieldCapability } from 'src/domain/accounting/party-profile';
 import { type TaxCodeContract } from 'src/domain/accounting/tax-code-contract';
 
 // What an accounting adapter can actually do, in three groups. The grouping is not
@@ -30,6 +31,7 @@ export const ITEM_FIELD_EDIT_SCOPES = ['ALL', 'PRICE_ONLY', 'NONE'] as const;
 export type ItemFieldEditScope = (typeof ITEM_FIELD_EDIT_SCOPES)[number];
 
 export type PartyCapabilities = {
+  fields?: PartyFieldCapability;
   list: boolean;
   read: boolean;
   create: boolean;
