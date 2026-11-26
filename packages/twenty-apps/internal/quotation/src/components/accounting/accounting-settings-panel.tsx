@@ -178,7 +178,7 @@ export const AccountingSettingsPanel = () => {
     setLoadError(null);
 
     try {
-      const response = await callAccountingConnectionNestAction(, {
+      const response = await callAccountingConnectionNestAction({
         action: 'list',
       });
 
@@ -451,7 +451,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAccountingConnectionNestAction(, {
+      const response = await callAccountingConnectionNestAction({
         action: 'save',
         name: form.name,
         adapterId: form.adapterId,
@@ -558,7 +558,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAccountingConnectionNestAction(, {
+      const response = await callAccountingConnectionNestAction({
         action: 'test',
         connectionId: targetConnectionId,
       });
@@ -683,7 +683,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAccountingConnectionNestAction(, {
+      const response = await callAccountingConnectionNestAction({
         action: 'set-default',
         connectionId: entry.id,
       });
@@ -722,7 +722,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAccountingConnectionNestAction(, {
+      const response = await callAccountingConnectionNestAction({
         action: 'deactivate',
         connectionId: entry.id,
       });
@@ -774,7 +774,7 @@ export const AccountingSettingsPanel = () => {
     setBusy(true);
 
     try {
-      const response = await callAccountingConnectionNestAction(, {
+      const response = await callAccountingConnectionNestAction({
         action: 'reactivate',
         connectionId: entry.id,
       });
