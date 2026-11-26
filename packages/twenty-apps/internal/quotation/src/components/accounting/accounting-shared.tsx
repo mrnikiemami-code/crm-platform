@@ -155,6 +155,9 @@ export type PanelData = {
   adapters: AdapterDescriptor[];
   credentials: { tunnelTokenConfigured: boolean; insecureWritesApproved: boolean };
   flags: AccountingFlags;
+  // false: Nest connection authority has not attested to the separate /s
+  // secret/feature-flag environment; display "unknown", never claim configured.
+  metadataVerified?: boolean;
   canManage: boolean;
 };
 
