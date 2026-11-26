@@ -1,6 +1,12 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 036 R2 ACCOUNTING SHELL RECOVERY REQUIRED (2026-11-26)
+## CURRENT — GOAL 036-R2 ARCHITECT DIRECT SOURCE REPAIR COMMITTED (2026-11-26)
+
+**Important:** User requested direct repo changes rather than another worker task. Architect has **committed actual code** for the six accounting-connection calls to the existing authorized Nest REST quotation controller, transaction-accurate `affectedRecordId`, exact Nest→UI DTO (nested tax/special-row mappings; health), server-advertised adapter availability, truthfully unverified separate secret/flag metadata and targeted tests. **Frontend package staged as `quotation@0.1.71`; NOT deployed.** Full source/write ledger: [CRM-129-GOAL-036-R2-DIRECT-REPAIR-STATUS.md](./goal-036/CRM-129-GOAL-036-R2-DIRECT-REPAIR-STATUS.md).
+
+**Gate:** `CODE_COMMITTED / BUILD_AND_RUNTIME_NOT_RUN`. Existing R1 `quotation@0.1.70` remained `BLOCKED_WITH_PRECISE_EVIDENCE` on Dev; do not assert this commit has repaired the running `:3002` host. The Nest server must be built/reloaded in a controlled way, then the frontcomponent applied and tests actually executed. **Separate Accounting Import/Outbound `/s` dependencies remain unported**, because the Nest controller has no such allowed actions; no fake API bypass. `:6080`, Money Domain, sealed revisions, production outbound are unchanged. Goal 023 ACTIVE, WS5/WS6 not architect-accepted. Retire/inflight and credential-rotation remain open.
+
+## PRIOR CHECKPOINT — GOAL 036 R2 ACCOUNTING SHELL RECOVERY REQUIRED (2026-11-26)
 
 **Current product:** `quotation@0.1.70` product tip `33babfc0d4`; R1 A–C code with 776 Vitest PASS reported, but real Accounting Settings fails because connection-list CRUD still uses broken Functions/`/s`. **Gate:** `BLOCKED_WITH_PRECISE_EVIDENCE`, not READY. Full [R1 evidence](./goal-036/CRM-129-GOAL-036-R1-EVIDENCE.md).
 
