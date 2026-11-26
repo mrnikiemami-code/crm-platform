@@ -1,6 +1,26 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL-036 Package C/WS6 DONE → WS7-B / E NEXT (2026-11-26)
+## CURRENT — GOAL-036 STOP_FOR_ARCHITECT_AND_USER_UAT (2026-11-26)
+
+**App:** `quotation@0.1.69` on Dev `:3002`. **Goal 023 ACTIVE / NOT COMPLETE**.
+
+**Pages:**  
+- Financial settings: http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d  
+- Accounting settings: sidebar «تنظیمات حسابداری»
+
+| Pack | Commit | App | Evidence |
+| --- | --- | --- | --- |
+| A UI/microcopy | `cab53037` | 0.1.66 | `goal-036/CRM-129-GOAL-036-PACKAGE-A.md` |
+| B WS5 ownership | `09c8c5b3` | 0.1.67 | `goal-036/CRM-129-GOAL-036-PACKAGE-B-WS5.md` |
+| C WS6 capabilities | `33ced3c9` | 0.1.68 | `goal-036/CRM-129-GOAL-036-PACKAGE-C-WS6.md` |
+| D WS7-B bounded | (HEAD) | 0.1.69 | `goal-036/CRM-129-GOAL-036-PACKAGE-D-WS7B.md` |
+| E matrix | (HEAD) | 0.1.69 | `goal-036/CRM-129-GOAL-036-PACKAGE-E-MATRIX.md` |
+
+**Regression this session:** vitest financial+accounting suites **142 PASS**. Browser Package A isolation PASS. Money Domain / `:6080` / main worker / outbound unchanged. Open risks: retire/inflight send, credential rotation; WS7-B PENDING_USER_DESIGN_APPROVAL items listed in Package D.
+
+**Gate:** architect review + user UAT required. Do not merge / force-push / declare Goal 023 complete.
+
+## PRIOR — GOAL-036 Package C/WS6 DONE → WS7-B / E NEXT (2026-11-26)
 
 **App:** `quotation@0.1.68` on Dev `:3002`. **Goal 023 ACTIVE**. Final Gate `STOP_FOR_ARCHITECT_AND_USER_UAT`.
 
