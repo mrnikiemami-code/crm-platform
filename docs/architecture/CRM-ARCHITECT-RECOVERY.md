@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL 036-R1 EXECUTED → BLOCKED_WITH_PRECISE_EVIDENCE (2026-11-26)
+## CURRENT — GOAL 036 R2 ACCOUNTING SHELL RECOVERY REQUIRED (2026-11-26)
+
+**Current product:** `quotation@0.1.70` product tip `33babfc0d4`; R1 A–C code with 776 Vitest PASS reported, but real Accounting Settings fails because connection-list CRUD still uses broken Functions/`/s`. **Gate:** `BLOCKED_WITH_PRECISE_EVIDENCE`, not READY. Full [R1 evidence](./goal-036/CRM-129-GOAL-036-R1-EVIDENCE.md).
+
+**Source independently verified:** Existing server `packages/twenty-server/src/modules/quotation/controllers/quotation-ui.controller.ts` ALREADY implements `accounting-connection-list/save/test/set-default/deactivate/reactivate` using `AccountingConnectionAuthorityService` and server role/workspace guards. Front `accounting-settings-panel.tsx` still calls `callAppRoute(ACCOUNTING_CONNECTION_ROUTE)` for all six through /s. This is not a missing Nest service.
+
+**Critical DTO mismatch, NOT a blind URL replacement:** Nest `connections[]` use `recordId`, save returns full `connections` list (not singular `connection` or explicit created id), test returns nested `health` (not top-level health), and Nest list does not include legacy `adapters/credentials/flags` from /s. Missing metadata must be sourced from authoritative trusted contracts or marked unavailable, not fabricated. Other `ACCOUNTING_IMPORT_ROUTE` and `ACCOUNTING_OUTBOUND_ROUTE` remain separate /s dependencies; do not silently port to non-existent Nest actions. For new save require explicit authoritative affectedRecordId, not choose by list order/name. No server capability/permission bypass or actual vendor send.
+
+**Canonical executable task:** [CRM-129-GOAL-036-R2-ACCOUNTING-SHELL-RECOVERY-TASK.md](./goal-036/CRM-129-GOAL-036-R2-ACCOUNTING-SHELL-RECOVERY-TASK.md). Follow sequential Nest-transport → response normalization / metadata → safe operation matrix → actual Dev browser, auth, Mock, F01/F05 proof → controlled apply. One CRM session, no `:6080`, main worker restart, schema/Money/Seals, forced Git or real Asan outbound. R1 catalog inactive/orphan/unverified fixes remain protected. **This recovery entry is DOCUMENTATION ONLY; no R2 source edits/tests/deploy claimed.** Goal 023 ACTIVE; WS5/WS6 still not architect-accepted until independently attested.
+
+## PRIOR CHECKPOINT — GOAL 036-R1 EXECUTED → BLOCKED_WITH_PRECISE_EVIDENCE (2026-11-26)
 
 **Evidence:** [CRM-129-GOAL-036-R1-EVIDENCE.md](./goal-036/CRM-129-GOAL-036-R1-EVIDENCE.md). **App:** `quotation@0.1.70` applied to Dev (`accounting-settings-page` front component). **Goal 023:** ACTIVE / NOT COMPLETE. **Gate:** `STOP_FOR_ARCHITECT_AND_USER_UAT`.
 
