@@ -60,6 +60,9 @@ export type AccountingConnectionOutcome =
       kind: 'OK';
       connections: AccountingConnectionView[];
       message: string;
+      // The authoritative id of the row created/updated by a save; a new record
+      // must never be selected by matching its name or by list position.
+      affectedRecordId?: string;
       health?: AccountingHealthView;
     }
   | { kind: 'REFUSED'; code: string; message: string };
