@@ -38,9 +38,7 @@ import {
   type FormState,
   type OperationRow,
   type PanelData,
-  CONNECTION_HEALTH_LABELS,
   EMPTY_FORM,
-  connectionHealthState,
   parseKeyValueLines,
   parseTaxPolicyMappingsText,
   readRows,
@@ -827,8 +825,6 @@ export const AccountingSettingsPanel = () => {
   const taxMappingCount = Object.keys(
     connection?.settings.taxPolicyMappings ?? {},
   ).length;
-  const connectionHealth =
-    connection === null ? null : connectionHealthState(connection);
   const formModes = resolveFinancialModes({
     adapterId: form.adapterId,
     adapters: data.adapters,
@@ -921,17 +917,6 @@ export const AccountingSettingsPanel = () => {
         }
       `}</style>
 
-      {data.metadataVerified === false ? (
-        <div role="status" style={{
-          border: '1px solid var(--t-border-color-medium)',
-          borderRadius: 'var(--t-border-radius-sm)',
-          padding: 'var(--t-spacing-2)',
-          fontSize: 'var(--t-font-size-sm)',
-        }}>
-          وضعیت ارسال و تنظیمات امنیتی هنوز از سرور تأیید نشده‌اند؛
-          ارسال سند از این صفحه فعال نمی‌شود.
-        </div>
-      ) : null}
       <header style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {/* The rail marks aria-current, but a screen reader gets no confirmation that the
             view under it changed: this is that confirmation, and it does not move focus. */}
@@ -956,7 +941,6 @@ export const AccountingSettingsPanel = () => {
                   : `ویرایش اتصال: ${form.name}`
                 : breadcrumbLabel}
             </h2>
-            <p style={styles.meta}>{sectionCopy.description}</p>
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             <Badge
@@ -966,23 +950,7 @@ export const AccountingSettingsPanel = () => {
                 ? 'نیازمند انتخاب مقصد پیش‌فرض'
                 : `پیش‌فرض فضای کاری: ${workspaceDefaultConnection.name}`}
             </Badge>
-            <Badge
-              tone={
-                connectionHealth === null
-                  ? 'warning'
-                  : connectionHealth === 'LIVE_VERIFIED'
-                    ? 'success'
-                    : connectionHealth === 'FAILED'
-                      ? 'danger'
-                      : connectionHealth === 'INCOMPLETE'
-                        ? 'warning'
-                        : 'neutral'
-              }
-            >
-              {connection === null || connectionHealth === null
-                ? 'بدون اتصال پیش‌فرض'
-                : `${connection.name} — ${CONNECTION_HEALTH_LABELS[connectionHealth]}`}
-            </Badge>
+
           </div>
         </div>
       </header>
@@ -990,31 +958,6 @@ export const AccountingSettingsPanel = () => {
       <div className="acct-body">
         <aside className="acct-rail" aria-label="ناوبری حسابداری">
           <SectionNav sections={sections} activeId={section} onSelect={(id) => goTo(id as SectionId)} />
-          <div
-            className="acct-rail-extra"
-            style={{
-              border: '1px solid var(--t-border-color-light)',
-              borderRadius: 'var(--t-border-radius-sm)',
-              padding: 'var(--t-spacing-2)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-            }}
-          >
-            <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-              ارسال سند به حسابداری
-            </span>
-            <span style={{ fontSize: 'var(--t-font-size-sm)' }}>
-              {data.metadataVerified === false
-                ? 'وضعیت این قابلیت از سرور تأیید نشده است'
-                : data.flags.documentExportEnabled
-                  ? 'فعال'
-                  : 'در این نسخه غیرفعال است'}
-            </span>
-            <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-              این صفحه هیچ سندی ارسال نمی‌کند.
-            </span>
-          </div>
         </aside>
 
         <main className="acct-main">

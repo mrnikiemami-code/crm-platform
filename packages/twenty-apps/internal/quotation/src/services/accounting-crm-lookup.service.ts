@@ -1,4 +1,5 @@
 import { buildMappingCrmItemsQuery, MAPPING_LOOKUP_MAX_IDS } from 'src/data/mapping-queries';
+import { selectCurrentPriceExact } from 'src/domain/catalog/price-snapshot';
 import { executeRecordGraphql } from 'src/data/record-api';
 import {
   buildCrmItemIndex,
@@ -49,33 +50,15 @@ const readEdges = (
   });
 };
 
-// The newest price whose start date is latest. A price without a start date is the least
-// specific candidate and only wins when it is the only one.
-const readItemPriceMicros = (node: Record<string, unknown>): string | null => {
-  const edges = asRecord(node.prices)?.edges;
-
-  if (!Array.isArray(edges)) {
-    return null;
-  }
-
-  let best: { validFrom: string; unitPriceExact: string } | null = null;
-
-  for (const edge of edges) {
-    const price = asRecord(asRecord(edge)?.node);
-    const unitPriceExact = readString(price?.unitPriceExact);
-
-    if (unitPriceExact === '') {
-      continue;
-    }
-
-    const validFrom = readString(price?.validFrom);
-
-    if (best === null || validFrom >= best.validFrom) {
-      best = { validFrom, unitPriceExact };
-    }
-  }
-
-  return best?.unitPriceExact ?? null;
+// Compare only prices from the workspace's default IRR list on today's date.
+const readItemPriceMicros = (node: Record<string, unknown>, priceListId: string | null): string | null => {
+  if (priceListId === null) return null;
+  const prices = readEdges(node, 'prices').flatMap((price) => {
+    if (readString(asRecord(price.priceList)?.id) !== priceListId) return [];
+    return [{ unitPriceExact: readString(price.unitPriceExact), validFrom: readNullableString(price.validFrom), validTo: readNullableString(price.validTo) }];
+  });
+  const current = selectCurrentPriceExact(prices);
+  return current.ok ? current.value : null;
 };
 
 export const readCrmItemMatches = (
@@ -93,7 +76,7 @@ export const readCrmItemMatches = (
         id,
         name: readString(node.name),
         sku: readNullableString(node.sku),
-        priceMicros: readItemPriceMicros(node),
+        priceMicros: readItemPriceMicros(node, readNullableString(readEdges(payload, 'priceLists')[0]?.id)),
       },
     ];
   });

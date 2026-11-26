@@ -108,6 +108,7 @@ export const AccountingDocumentsSection = ({
   canManage,
   outboundEnabled,
   documentExportEnabled,
+  metadataVerified,
   onReload,
   onGoToConnections,
 }: {
@@ -139,7 +140,7 @@ export const AccountingDocumentsSection = ({
   const [inFlightIds, setInFlightIds] = useState<Set<string>>(new Set());
 
   const connectionId = connection?.id ?? null;
-  const outboundDisabled = !outboundEnabled && !documentExportEnabled;
+  const outboundDisabled = metadataVerified === false || !outboundEnabled || !documentExportEnabled;
 
   const loadQueue = useCallback(async () => {
     if (connectionId === null) {
@@ -151,25 +152,30 @@ export const AccountingDocumentsSection = ({
     setError(null);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_OUTBOUND_ROUTE, {
-        action: 'list-exportable-quotations',
-        connectionId,
-        pageSize: 50,
-      });
-
-      if (!response.ok || response.data.success !== true) {
-        setError(
-          toPersianUiMessage(
-            readString(response.data.message),
-            'خواندن صف اسناد انجام نشد.',
-          ),
-        );
-        return;
+      const collected = new Map<string, ExportableRow>();
+      const seen = new Set<string>();
+      let cursor: string | null = null;
+      for (;;) {
+        const response = await callAppRoute(ACCOUNTING_OUTBOUND_ROUTE, {
+          action: 'list-exportable-quotations', connectionId, cursor, pageSize: 50,
+        });
+        if (!response.ok || response.data.success !== true) {
+          setRows([]);
+          setError(toPersianUiMessage(readString(response.data.message), 'خواندن صف اسناد انجام نشد.'));
+          return;
+        }
+        const page = asRecord(response.data.page);
+        if (!Array.isArray(page?.rows)) throw new Error('Invalid document queue');
+        for (const row of parseExportableRows(page)) collected.set(row.quotationId, row);
+        if (page?.hasNextPage !== true) break;
+        const next = readString(page.nextCursor);
+        if (!next || seen.has(next) || seen.size >= 1000) throw new Error('Incomplete document queue');
+        seen.add(next); cursor = next;
       }
-
-      setRows(parseExportableRows(response.data.page));
+      setRows([...collected.values()]);
     } catch {
-      setError('ارتباط با سرور برقرار نشد.');
+      setRows([]);
+      setError('خواندن کامل صف اسناد انجام نشد.');
     } finally {
       setLoading(false);
     }
@@ -228,7 +234,7 @@ export const AccountingDocumentsSection = ({
   };
 
   const sendQuotations = async (quotationIds: string[]) => {
-    if (connectionId === null || quotationIds.length === 0 || sending) {
+    if (connectionId === null || quotationIds.length === 0 || sending || outboundDisabled || !canManage) {
       return;
     }
 
@@ -335,7 +341,7 @@ export const AccountingDocumentsSection = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
       {outboundDisabled ? (
         <InlineAlert tone="info">
-          ارسال واقعی به آسان در این محیط غیرفعال است؛ Adapter آزمایشی ایزوله استفاده می‌شود.
+          ارسال اسناد به حسابداری غیرفعال است.
         </InlineAlert>
       ) : null}
 
@@ -412,7 +418,7 @@ export const AccountingDocumentsSection = ({
           <SecondaryButton
             label={sending ? 'در حال ارسال…' : 'ارسال همه'}
             onClick={sendAllPending}
-            disabled={!canManage || sending || loading}
+            disabled={!canManage || sending || loading || outboundDisabled}
           />
         ) : null}
         {tab === 'PENDING' && selected.size > 0 ? (
@@ -423,7 +429,7 @@ export const AccountingDocumentsSection = ({
                 : `ارسال انتخاب‌شده‌ها (${selected.size.toLocaleString('fa-IR')})`
             }
             onClick={sendSelected}
-            disabled={!canManage || sending}
+            disabled={!canManage || sending || outboundDisabled}
           />
         ) : null}
       </div>
@@ -451,7 +457,7 @@ export const AccountingDocumentsSection = ({
                     type="checkbox"
                     checked={allSelected}
                     disabled={
-                      !canManage || selectableRows.length === 0 || sending
+                      !canManage || selectableRows.length === 0 || sending || outboundDisabled
                     }
                     aria-label="انتخاب همه اسناد مجاز"
                     onChange={togglePage}
@@ -483,7 +489,7 @@ export const AccountingDocumentsSection = ({
                       <input
                         type="checkbox"
                         checked={checked}
-                        disabled={!canManage || !canSend || sending}
+                        disabled={!canManage || !canSend || sending || outboundDisabled}
                         aria-label={`انتخاب ${row.quotationNumber}`}
                         onChange={() => {
                           setSelected((current) => {
@@ -533,7 +539,7 @@ export const AccountingDocumentsSection = ({
                     {tab === 'PENDING' && canSend ? (
                       <SecondaryButton
                         label="ارسال"
-                        disabled={!canManage || sending || inFlightIds.has(row.quotationId)}
+                        disabled={!canManage || sending || outboundDisabled || inFlightIds.has(row.quotationId)}
                         onClick={() => void sendQuotations([row.quotationId])}
                       />
                     ) : row.externalDocumentId !== null ? (

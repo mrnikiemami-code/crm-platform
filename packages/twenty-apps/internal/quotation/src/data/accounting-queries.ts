@@ -146,10 +146,14 @@ const OPERATION_FIELDS = `
 export const buildAccountingOperationsQuery = ({
   connectionId,
   internalEntityId,
+  internalEntityIds,
+  afterCursor = null,
   limit = 100,
 }: {
   connectionId: string;
   internalEntityId?: string;
+  internalEntityIds?: string[];
+  afterCursor?: string | null;
   limit?: number;
 }): string => {
   const clauses = [`connectionId: { eq: ${toGraphqlLiteral(connectionId)} }`];
@@ -160,13 +164,16 @@ export const buildAccountingOperationsQuery = ({
     );
   }
 
+  if (internalEntityIds !== undefined) clauses.push(`internalEntityId: { in: ${toGraphqlLiteral(internalEntityIds)} }`);
+
   return `query AccountingOperations {
     accountingSyncOperations(
       filter: { ${clauses.join(', ')} }
       orderBy: [{ createdAt: DescNullsLast }]
-      first: ${limit}
+      first: ${limit}${afterCursor === null ? '' : `, after: ${toGraphqlLiteral(afterCursor)}`}
     ) {
       edges { node { ${OPERATION_FIELDS} } }
+      pageInfo { hasNextPage endCursor }
     }
   }`;
 };

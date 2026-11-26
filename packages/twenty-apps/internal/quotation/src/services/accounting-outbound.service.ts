@@ -1132,12 +1132,23 @@ export const listExportableQuotations = async (
     return { rows: [], nextCursor: null, hasNextPage: false };
   }
 
-  const [revisionsData, operationsData] = await Promise.all([
-    execute(
-      buildIssuedRevisionsForQuotationsQuery(quotations.map((row) => row.id)),
-    ),
-    execute(buildAccountingOperationsQuery({ connectionId, limit: 200 })),
-  ]);
+  const quotationIds = quotations.map((row) => row.id);
+  const revisionsData = await execute(buildIssuedRevisionsForQuotationsQuery(quotationIds));
+  const operationRows: Record<string, unknown>[] = [];
+  let operationCursor: string | null = null;
+  const operationCursors = new Set<string>();
+  for (;;) {
+    const operationsData = await execute(buildAccountingOperationsQuery({ connectionId, internalEntityIds: quotationIds, limit: 100, afterCursor: operationCursor }));
+    if (!Array.isArray(asRecord(operationsData.accountingSyncOperations)?.edges)) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Document operation history unavailable');
+    }
+    operationRows.push(...readRows(operationsData, 'accountingSyncOperations'));
+    const page = asRecord(asRecord(operationsData.accountingSyncOperations)?.pageInfo);
+    if (page?.hasNextPage !== true) break;
+    const next = readString(page.endCursor);
+    if (!next || operationCursors.has(next) || operationCursors.size >= 1000) throw new RecordApiError('INVALID_RESPONSE', 'Incomplete document operation history');
+    operationCursors.add(next); operationCursor = next;
+  }
 
   const revisionByQuotation = new Map<
     string,
@@ -1155,8 +1166,6 @@ export const listExportableQuotations = async (
     });
   }
 
-  const operationRows = readRows(operationsData, 'accountingSyncOperations');
-
   const rows: ExportableQuotationRow[] = [];
   for (const quotation of quotations) {
     const revision = revisionByQuotation.get(quotation.id);
@@ -1167,7 +1176,8 @@ export const listExportableQuotations = async (
     const matching = operationRows.filter(
       (operation) =>
         readString(operation.kind) === 'QUOTATION_REVISION_PUSH' &&
-        readString(operation.internalEntityId) === quotation.id,
+        readString(operation.internalEntityId) === quotation.id &&
+        readNumber(operation.internalRevision) === revision.version,
     );
 
     const succeeded = matching.find(

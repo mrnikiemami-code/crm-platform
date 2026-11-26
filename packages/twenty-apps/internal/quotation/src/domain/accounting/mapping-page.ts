@@ -45,6 +45,7 @@ export const buildCrmItemIndex = (matches: CrmItemMatch[]): CrmItemIndex => {
   const index = emptyIndex();
 
   for (const match of matches) {
+    if (index.byId.has(match.id)) continue;
     index.byId.set(match.id, match);
 
     const sku = match.sku?.trim() ?? '';
