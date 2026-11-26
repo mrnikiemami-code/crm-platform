@@ -23,11 +23,14 @@ try {
   # Some Dev hosts sinkhole package CDNs to 127.x inside the Docker DNS path; pin public edges.
   docker build --target twenty -f (Join-Path $checkout 'packages/twenty-docker/twenty/Dockerfile') --build-arg "APP_VERSION=$PlatformVersion" --label "org.opencontainers.image.revision=$sha" --add-host 'dl-cdn.alpinelinux.org:151.101.66.132' --add-host 'registry.npmjs.org:104.16.4.34' --add-host 'registry.yarnpkg.com:104.16.7.34' -t $image $checkout
   Check-Exit 'Docker image build'
-  $revision = (docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' $image).Trim()
+  # PowerShell mangles nested quotes in Go templates; read labels via JSON instead.
+  $inspected = docker image inspect $image | ConvertFrom-Json
   Check-Exit 'image inspect'
-  if ($revision -ne $sha) { throw 'Image revision mismatch' }
-  docker image inspect --format 'image={{.Id}}' $image
-  Check-Exit 'image ID'
+  $revision = [string]$inspected[0].Config.Labels.'org.opencontainers.image.revision'
+  if ($revision -ne $sha) { throw "Image revision mismatch: $revision" }
+  $imageId = [string]$inspected[0].Id
+  if ([string]::IsNullOrWhiteSpace($imageId)) { throw 'Missing image ID' }
+  Write-Output "image=$imageId"
   Write-Output "CRM129_DEV_IMAGE=$image"
 } finally {
   if ($created) {
