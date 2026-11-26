@@ -42,6 +42,7 @@ import {
   parseTaxPolicyMappingsText,
   readRows,
   readString,
+  resolveAdapterContractAvailability,
   resolveFinancialModes,
   sharedStyles as styles,
   toForm,
@@ -394,9 +395,23 @@ export const AccountingSettingsPanel = () => {
       return;
     }
 
-    const selectedAdapter =
-      data?.adapters.find((entry) => entry.id === form.adapterId) ?? null;
-    const needsServiceAddress = selectedAdapter?.isLive === true;
+    const adapterAvailability = resolveAdapterContractAvailability({
+      adapterId: form.adapterId,
+      adapters: data?.adapters ?? [],
+    });
+
+    if (adapterAvailability.status === 'unavailable') {
+      await enqueueSnackbar({
+        message:
+          'آداپتور انتخاب‌شده در فهرست معتبر سرور نیست؛ ذخیره ممکن نیست و به‌عنوان آزمایشی فرض نمی‌شود.',
+        variant: 'error',
+      });
+      return;
+    }
+
+    const selectedAdapter = adapterAvailability.descriptor;
+    // isLive is display metadata for whether a service address is required — not authorization.
+    const needsServiceAddress = selectedAdapter.isLive === true;
     // Resolved from what the server declared for this adapter/profile, so a row-code block
     // the form is not showing is not silently sent either.
     const savingModes = resolveFinancialModes({

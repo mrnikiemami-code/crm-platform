@@ -876,6 +876,35 @@ describe('the tax form shows one row and one destination code per policy', () =>
     ).toBeNull();
   });
 
+  it('keeps an unknown adapter read-only and never treats it as mock', () => {
+    renderSection({
+      view: 'form',
+      form: {
+        ...formFrom(threeConnections()[0]),
+        adapterId: 'sepidar-gone',
+      },
+    });
+
+    expect(screen.getByText('آداپتور در دسترس نیست')).toBeTruthy();
+    expect(
+      screen.getByText(/به‌عنوان آزمایشی فرض نمی‌شود/),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText('این اتصال به سرور بیرونی وصل نمی‌شود؛ آدرس و ورود لازم نیست.'),
+    ).toBeNull();
+    expect(
+      (screen.getByRole('button', { name: 'ذخیرهٔ تنظیمات' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'آزمایش اتصال ذخیره‌شده',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+  });
+
   it('switches mock profile fields through capabilities, not provider name checks', () => {
     const coded = formFrom(threeConnections()[1]);
     const { rerender } = render(

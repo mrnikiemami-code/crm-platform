@@ -28,6 +28,7 @@ import {
   mappingRowAllowsEdit,
   parseKeyValueLines,
   parseTaxPolicyMappingsText,
+  resolveAdapterContractAvailability,
   resolveCurrencyMappingRows,
   resolveTaxPolicyMappingRows,
   setMappingRow,
@@ -100,8 +101,16 @@ export const ConnectionEditForm = ({
   const moneyRef = useRef<HTMLDivElement | null>(null);
   const taxRef = useRef<HTMLDivElement | null>(null);
 
+  const adapterAvailability = resolveAdapterContractAvailability({
+    adapterId: form.adapterId,
+    adapters: data.adapters,
+  });
   const descriptor: AdapterDescriptor | null =
-    data.adapters.find((entry) => entry.id === form.adapterId) ?? null;
+    adapterAvailability.status === 'available'
+      ? adapterAvailability.descriptor
+      : null;
+  const adapterUnavailable = adapterAvailability.status === 'unavailable';
+  // isLive is display metadata from the trusted descriptor only — never authorization.
   const adapterIsLive = descriptor?.isLive === true;
   const fields = connectionFormFields(modes);
   const activePolicies = policies.filter((policy) => policy.isActive);
@@ -120,7 +129,8 @@ export const ConnectionEditForm = ({
   const draftDiffersFromSaved =
     savedConnection !== null &&
     JSON.stringify(toForm(savedConnection)) !== JSON.stringify(form);
-  const canTestSavedRecord = form.id !== null;
+  const canTestSavedRecord = form.id !== null && !adapterUnavailable;
+  const effectiveCanManage = canManage && !adapterUnavailable;
 
   const issues = validateConnectionForm({
     form,
@@ -156,7 +166,9 @@ export const ConnectionEditForm = ({
   }, [focus, form.id]);
 
   const mockProfiles = descriptor?.testProfiles ?? [];
-  const hasTestProfiles = mockProfiles.length > 0;
+  // Profile picker is display-only for descriptors that publish profiles (mock). It is not
+  // authorization and must not appear when the adapter contract itself is unavailable.
+  const hasTestProfiles = !adapterUnavailable && mockProfiles.length > 0;
   const selectedProfile = mockProfiles.find(
     (profile) => profile.id === form.mockProfile,
   );
@@ -185,7 +197,8 @@ export const ConnectionEditForm = ({
             ? 'inactive'
             : 'orphan';
   const baseCurrencyOptions = activeBaseCurrencyCodes;
-  const mappingEditable = canManage && !taxCatalogBlocked && !currencyCatalogBlocked;
+  const mappingEditable =
+    effectiveCanManage && !taxCatalogBlocked && !currencyCatalogBlocked;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
@@ -198,6 +211,14 @@ export const ConnectionEditForm = ({
         }
         onBack={onBack}
       />
+
+      {adapterUnavailable ? (
+        <InlineAlert tone="danger" title="آداپتور در دسترس نیست">
+          {adapterAvailability.reason === 'missing'
+            ? 'نرم‌افزار ذخیره‌شده در فهرست آداپتورهای معتبر سرور نیست. اتصال فقط خواندنی است؛ ذخیره، آزمایش و ارسال مجاز نیست و به‌عنوان آزمایشی فرض نمی‌شود.'
+            : 'قرارداد قابلیت این آداپتور از سرور قابل تأیید نیست. اتصال فقط خواندنی است؛ ذخیره، آزمایش و ارسال مجاز نیست.'}
+        </InlineAlert>
+      ) : null}
 
       {!canManage ? (
         <InlineAlert tone="warning">
@@ -253,7 +274,7 @@ export const ConnectionEditForm = ({
             <input
               style={styles.input}
               value={form.name}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               aria-invalid={attemptedSave && issues.name !== undefined}
               onChange={(event) => onChange({ ...form, name: event.target.value })}
             />
@@ -264,13 +285,18 @@ export const ConnectionEditForm = ({
             <select
               style={styles.input}
               value={form.adapterId}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               onChange={(event) =>
                 // Switching the destination keeps everything already typed: it changes the
                 // contract, never the draft.
                 onChange({ ...form, adapterId: event.target.value })
               }
             >
+              {adapterUnavailable && form.adapterId.trim() !== '' ? (
+                <option value={form.adapterId}>
+                  {`${form.adapterId} — در دسترس نیست`}
+                </option>
+              ) : null}
               {data.adapters.map((adapter) => (
                 <option key={adapter.id} value={adapter.id}>
                   {adapterDisplayLabel(adapter)}
@@ -285,7 +311,7 @@ export const ConnectionEditForm = ({
             <select
               style={styles.input}
               value={form.mockProfile}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               onChange={(event) =>
                 onChange({ ...form, mockProfile: event.target.value })
               }
@@ -304,12 +330,16 @@ export const ConnectionEditForm = ({
           </Field>
         ) : null}
 
-        {adapterIsLive ? (
+        {adapterUnavailable ? (
+          <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-sm)' }}>
+            تا تأیید آداپتور معتبر از سرور، مشخصات اتصال فقط برای مشاهده است.
+          </p>
+        ) : adapterIsLive ? (
           <Field label="آدرس سرویس">
             <input
               style={{ ...styles.input, direction: 'ltr', textAlign: 'left' }}
               value={form.baseUrl}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               aria-invalid={attemptedSave && issues.baseUrl !== undefined}
               placeholder="https://accounting.example.ir/api"
               onChange={(event) =>
@@ -324,17 +354,17 @@ export const ConnectionEditForm = ({
           </p>
         )}
 
-        {adapterIsLive ? (
+        {adapterUnavailable ? null : adapterIsLive && descriptor !== null ? (
           <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-sm)' }}>
-            {descriptor?.summary?.trim() ||
+            {descriptor.summary?.trim() ||
               'آدرس سرویس را طبق مستند مقصد وارد کنید؛ اطلاعات حساس در گزارش‌ها نمایش داده نمی‌شود.'}
           </p>
-        ) : (
+        ) : descriptor !== null ? (
           <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-sm)' }}>
             هیچ تماس واقعی با نرم‌افزار حسابداری انجام نمی‌شود و نتیجهٔ آزمایش، شبیه‌سازی
             است.
           </p>
-        )}
+        ) : null}
 
         {adapterIsLive &&
         !data.credentials.tunnelTokenConfigured &&
@@ -391,7 +421,7 @@ export const ConnectionEditForm = ({
               <select
                 style={styles.input}
                 value={form.moneyUnit}
-                disabled={!canManage}
+                disabled={!effectiveCanManage}
                 onChange={(event) =>
                   onChange({ ...form, moneyUnit: event.target.value })
                 }
@@ -446,7 +476,7 @@ export const ConnectionEditForm = ({
                 <input
                   style={{ ...styles.input, direction: 'ltr', textAlign: 'left' }}
                   value={form.conversionRate}
-                  disabled={!canManage}
+                  disabled={!effectiveCanManage}
                   inputMode="decimal"
                   placeholder="1"
                   aria-invalid={
@@ -542,7 +572,7 @@ export const ConnectionEditForm = ({
             <input
               style={styles.input}
               value={form.remoteUserId}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               inputMode="numeric"
               onChange={(event) =>
                 onChange({ ...form, remoteUserId: event.target.value })
@@ -553,7 +583,7 @@ export const ConnectionEditForm = ({
             <input
               style={styles.input}
               value={form.defaultStorageId}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               inputMode="numeric"
               onChange={(event) =>
                 onChange({ ...form, defaultStorageId: event.target.value })
@@ -579,7 +609,7 @@ export const ConnectionEditForm = ({
                 enabled={form.discount}
                 code={form.specialDiscountCode}
                 placeholder={ASAN_SPECIAL_ITEM_CODES.discount}
-                canManage={canManage}
+                canManage={effectiveCanManage}
                 onToggle={(checked) => onChange({ ...form, discount: checked })}
                 onChange={(value) =>
                   onChange({ ...form, specialDiscountCode: value })
@@ -590,7 +620,7 @@ export const ConnectionEditForm = ({
                 enabled={form.duty}
                 code={form.specialDutyCode}
                 placeholder={ASAN_SPECIAL_ITEM_CODES.duty}
-                canManage={canManage}
+                canManage={effectiveCanManage}
                 onToggle={(checked) => onChange({ ...form, duty: checked })}
                 onChange={(value) => onChange({ ...form, specialDutyCode: value })}
               />
@@ -599,7 +629,7 @@ export const ConnectionEditForm = ({
                 enabled={form.tax}
                 code={form.specialTaxCode}
                 placeholder={ASAN_SPECIAL_ITEM_CODES.tax}
-                canManage={canManage}
+                canManage={effectiveCanManage}
                 onToggle={(checked) => onChange({ ...form, tax: checked })}
                 onChange={(value) => onChange({ ...form, specialTaxCode: value })}
               />
@@ -612,7 +642,7 @@ export const ConnectionEditForm = ({
             <input
               type="checkbox"
               checked={form.transportApproved}
-              disabled={!canManage}
+              disabled={!effectiveCanManage}
               onChange={(event) =>
                 onChange({ ...form, transportApproved: event.target.checked })
               }
@@ -667,22 +697,26 @@ export const ConnectionEditForm = ({
 
               onSave();
             }}
-            disabled={busy || !canManage || !mappingEditable}
+            disabled={busy || !effectiveCanManage || !mappingEditable}
           />
           <SecondaryButton
             label={busy ? 'در حال اجرا…' : 'آزمایش اتصال ذخیره‌شده'}
             onClick={onTest}
-            disabled={busy || !canTestSavedRecord || !canManage}
+            disabled={busy || !canTestSavedRecord || !effectiveCanManage}
           />
         </div>
 
-        {!mappingEditable && canManage ? (
+        {adapterUnavailable ? (
+          <p style={styles.meta}>
+            تا تأیید آداپتور معتبر سرور، ذخیره و آزمایش ممکن نیست.
+          </p>
+        ) : !mappingEditable && canManage ? (
           <p style={styles.meta}>
             تا تأیید کاتالوگ مالیات و ارز، ذخیرهٔ نگاشت‌ها ممکن نیست.
           </p>
         ) : null}
 
-        {!canTestSavedRecord ? (
+        {adapterUnavailable ? null : !canTestSavedRecord ? (
           <p style={styles.meta}>
             این اتصال هنوز ذخیره نشده است؛ ابتدا ذخیره کنید، سپس آزمایش بزنید.
           </p>

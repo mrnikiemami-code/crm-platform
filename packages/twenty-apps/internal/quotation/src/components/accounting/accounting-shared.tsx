@@ -380,6 +380,41 @@ export type FinancialModes = {
   taxCodeCatalog?: TaxCodeContractView[];
 };
 
+export type AdapterContractAvailability =
+  | { status: 'available'; descriptor: AdapterDescriptor }
+  | { status: 'unavailable'; reason: 'missing' | 'undeclared' };
+
+// Display/authorization gate for a selected adapterId against the server-returned
+// descriptor list. Absence is UNAVAILABLE — never a silent Mock/`isLive=false` stand-in.
+export const resolveAdapterContractAvailability = ({
+  adapterId,
+  adapters,
+}: {
+  adapterId: string;
+  adapters: AdapterDescriptor[];
+}): AdapterContractAvailability => {
+  const trimmed = adapterId.trim();
+  const descriptor =
+    trimmed === ''
+      ? null
+      : (adapters.find((entry) => entry.id === trimmed) ?? null);
+
+  if (descriptor === null) {
+    return { status: 'unavailable', reason: 'missing' };
+  }
+
+  const hasTopLevelContract =
+    typeof descriptor.taxHandling === 'string' &&
+    typeof descriptor.currencyHandling === 'string';
+  const hasTestProfiles = (descriptor.testProfiles?.length ?? 0) > 0;
+
+  if (!hasTopLevelContract && !hasTestProfiles) {
+    return { status: 'unavailable', reason: 'undeclared' };
+  }
+
+  return { status: 'available', descriptor };
+};
+
 export const resolveFinancialModes = ({
   adapterId,
   adapters,
@@ -389,10 +424,25 @@ export const resolveFinancialModes = ({
   adapters: AdapterDescriptor[];
   financial: ConnectionFinancialSettings | undefined;
 }): FinancialModes => {
-  const descriptor = adapters.find((entry) => entry.id === adapterId) ?? null;
+  const availability = resolveAdapterContractAvailability({
+    adapterId,
+    adapters,
+  });
+
+  if (availability.status === 'unavailable') {
+    // Fail closed: unknown/undeclared adapters never inherit Mock or Asan contracts.
+    return {
+      taxHandling: 'UNSUPPORTED',
+      dutyHandling: 'UNSUPPORTED',
+      currencyHandling: 'UNSUPPORTED',
+      baseCurrency: '',
+      requiresSpecialItemCodes: false,
+    };
+  }
+
+  const descriptor = availability.descriptor;
 
   if (
-    descriptor !== null &&
     typeof descriptor.taxHandling === 'string' &&
     typeof descriptor.currencyHandling === 'string'
   ) {
@@ -408,11 +458,14 @@ export const resolveFinancialModes = ({
     };
   }
 
+  // Mock (and any future profile-driven adapter): profile is display data that must still
+  // come from the trusted descriptor list. Persistence of mockProfile remains adapter-id
+  // gated on save (`adapterId === 'mock'`), not by `isLive`.
   const profile =
-    descriptor?.testProfiles?.find(
+    descriptor.testProfiles?.find(
       (entry) => entry.id === (financial?.mockProfile ?? ''),
     ) ??
-    descriptor?.testProfiles?.[0] ??
+    descriptor.testProfiles?.[0] ??
     null;
 
   if (profile !== null && profile !== undefined) {
@@ -428,12 +481,11 @@ export const resolveFinancialModes = ({
     };
   }
 
-  // Nothing declared: the same fail-closed reading the domain uses.
   return {
     taxHandling: 'UNSUPPORTED',
     dutyHandling: 'UNSUPPORTED',
-    currencyHandling: 'SINGLE_CURRENCY',
-    baseCurrency: 'IRR',
+    currencyHandling: 'UNSUPPORTED',
+    baseCurrency: '',
     requiresSpecialItemCodes: false,
   };
 };
@@ -792,7 +844,7 @@ export const adapterDisplayLabel = (
   adapter: Pick<AdapterDescriptor, 'id' | 'label' | 'isLive'> | null | undefined,
 ): string => {
   if (adapter === null || adapter === undefined) {
-    return 'نرم‌افزار حسابداری';
+    return 'آداپتور نامعتبر یا در دسترس نیست';
   }
 
   if (!adapter.isLive) {
@@ -806,7 +858,13 @@ export const adapterDisplayLabel = (
 
 export const adapterBadgeTone = (
   adapter: Pick<AdapterDescriptor, 'isLive'> | null | undefined,
-): 'info' | 'neutral' => (adapter?.isLive === true ? 'neutral' : 'info');
+): 'info' | 'neutral' | 'danger' => {
+  if (adapter === null || adapter === undefined) {
+    return 'danger';
+  }
+
+  return adapter.isLive === true ? 'neutral' : 'info';
+};
 
 export const SEPIDAR_UNAVAILABLE = {
   id: 'sepidar',
