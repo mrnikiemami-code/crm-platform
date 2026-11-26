@@ -255,3 +255,66 @@ export const buildQuotationRevisionForAccountingQuery = (
       edges { node { id version snapshotJson snapshotHash totalExact issuedAt } }
     }
   }`;
+
+export const buildExportableQuotationsQuery = ({
+  statuses,
+  first = 50,
+  afterCursor = null,
+}: {
+  statuses: string[];
+  first?: number;
+  afterCursor?: string | null;
+}): string => {
+  const afterArg =
+    afterCursor === null || afterCursor === ''
+      ? ''
+      : `after: ${toGraphqlLiteral(afterCursor)}, `;
+
+  return `query ExportableQuotations {
+    quotations(
+      filter: { status: { in: ${toGraphqlLiteral(statuses)} } }
+      orderBy: [{ createdAt: DescNullsLast }]
+      ${afterArg}first: ${first}
+    ) {
+      edges {
+        cursor
+        node {
+          id
+          name
+          status
+          quotationNumber
+          person { id name { firstName lastName } }
+          company { id name }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+    }
+  }`;
+};
+
+export const buildIssuedRevisionsForQuotationsQuery = (
+  quotationIds: string[],
+): string =>
+  `query IssuedRevisionsForQuotations {
+    quotationRevisions(
+      filter: {
+        and: [
+          { quotationId: { in: ${toGraphqlLiteral(quotationIds)} } }
+          { status: { eq: "ISSUED" } }
+        ]
+      }
+      orderBy: [{ version: DescNullsLast }]
+      first: ${Math.max(quotationIds.length * 3, 50)}
+    ) {
+      edges {
+        node {
+          id
+          version
+          quotationId
+          totalExact
+          issuedAt
+          status
+        }
+      }
+    }
+  }`;

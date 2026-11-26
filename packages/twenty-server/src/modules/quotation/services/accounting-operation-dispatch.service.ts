@@ -28,6 +28,7 @@ const OPERATIONS = {
   'accounting-outbound-execute-item-push': { function: 'outbound', action: 'execute-item-push' },
   'accounting-outbound-preview-quotation-export': { function: 'outbound', action: 'preview-quotation-export' },
   'accounting-outbound-execute-quotation-export': { function: 'outbound', action: 'execute-quotation-export' },
+  'accounting-outbound-list-exportable-quotations': { function: 'outbound', action: 'list-exportable-quotations' },
 } as const;
 
 export const ACCOUNTING_OPERATION_ACTIONS = Object.keys(OPERATIONS);

@@ -7,7 +7,6 @@ import {
   InlineAlert,
   PrimaryButton,
   SearchField,
-  SecondaryButton,
 } from 'src/components/accounting/accounting-business-ui';
 import { ConnectionEditForm } from 'src/components/accounting/accounting-connection-form';
 import {
@@ -21,22 +20,15 @@ import {
   type FormState,
   type PanelData,
   connectionHealthState,
+  formatHealthCheckAt,
   sharedStyles as styles,
   type CurrencyCatalogView,
   type TaxPolicyView,
 } from 'src/components/accounting/accounting-shared';
-import { orderConnections } from 'src/components/accounting/accounting-connection-rules';
+import { RowMenu } from 'src/components/financial-settings/row-menu';
 
-// Connections: a list a person can scan, and one form that opens as an inner view.
-//
-// The list answers "which software am I connected to, and is it working?". The selected
-// connection is pinned first and marked, and SELECTING it is a separate action from editing
-// it: choosing which destination the rest of the CRM talks to must not open a form, and must
-// not look like an edit.
-//
-// The edit form itself lives in `accounting-connection-form`, because it is one business
-// form shared by every adapter: only the connection details and credentials differ, while
-// currency, tax and advanced settings keep the same structure everywhere.
+// Connections list: workspace-default destination only. Catalog/customers/documents always
+// read that default from the server — there is no temporary browser-local working view.
 
 export const AccountingConnectionsSection = ({
   data,
@@ -49,16 +41,15 @@ export const AccountingConnectionsSection = ({
   onRetryCatalogs,
   canManage,
   busy,
-  selectedConnectionId,
   testResult,
   view,
   focus,
   onOpenList,
-  onSelectConnection,
   onSetWorkspaceDefault,
   onDeactivateConnection,
   onReactivateConnection,
   onEditConnection,
+  onTestConnection,
   onChange,
   onSave,
   onTest,
@@ -74,22 +65,23 @@ export const AccountingConnectionsSection = ({
   onRetryCatalogs: () => void;
   canManage: boolean;
   busy: boolean;
-  selectedConnectionId: string | null;
   testResult: { healthState: string; message: string; detail: string } | null;
   view: 'list' | 'form';
   focus: 'money' | 'tax' | null;
   onOpenList: () => void;
-  onSelectConnection: (connection: ConnectionRecord) => void;
   onSetWorkspaceDefault: (connection: ConnectionRecord) => void;
   onDeactivateConnection: (connection: ConnectionRecord) => void;
   onReactivateConnection: (connection: ConnectionRecord) => void;
   onEditConnection: (connection: ConnectionRecord) => void;
+  onTestConnection: (connection: ConnectionRecord) => void;
   onChange: (form: FormState) => void;
   onSave: () => void;
   onTest: () => void;
   onStartNew: () => void;
 }) => {
   const [query, setQuery] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
 
@@ -107,15 +99,18 @@ export const AccountingConnectionsSection = ({
         connection.settings.baseUrl,
       ].some((field) => field.toLowerCase().includes(needle));
     });
-  }, [data.connections, query]);
+  }, [data.adapters, data.connections, query]);
 
-  // Selected first, everything else in the order the server returned it. The badge and the
-  // row styling are decided by id, not by position, so a refresh cannot silently move the
-  // "selected" word onto a different destination.
-  const ordered = useMemo(
-    () => orderConnections(filtered, selectedConnectionId),
-    [filtered, selectedConnectionId],
-  );
+  const ordered = useMemo(() => {
+    const defaults = filtered.filter(
+      (entry) => entry.isDefault === true && entry.isActive === true,
+    );
+    const rest = filtered.filter(
+      (entry) => !(entry.isDefault === true && entry.isActive === true),
+    );
+
+    return [...defaults, ...rest];
+  }, [filtered]);
 
   if (view === 'form') {
     return (
@@ -141,7 +136,14 @@ export const AccountingConnectionsSection = ({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}
+      onPointerDown={() => {
+        if (openMenuId !== null) {
+          setOpenMenuId(null);
+        }
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -175,7 +177,7 @@ export const AccountingConnectionsSection = ({
       {data.connections.length === 0 ? (
         <EmptyState
           title="هنوز اتصالی ساخته نشده است"
-          description="برای دیدن کالاها و مشتریان حسابداری، ابتدا یک اتصال بسازید. با اتصال آزمایشی می‌توانید بدون تماس واقعی تمرین کنید."
+          description="برای دیدن کالاها و مشتریان حسابداری، ابتدا یک اتصال بسازید."
           action={
             <PrimaryButton
               label="ساخت اولین اتصال"
@@ -189,28 +191,32 @@ export const AccountingConnectionsSection = ({
           <div style={{ overflowX: 'auto' }}>
             <table
               aria-label="اتصال‌های حسابداری"
-              style={{ ...styles.table, minWidth: '720px' }}
+              style={{ ...styles.table, minWidth: '760px' }}
             >
               <thead>
                 <tr>
-                  <th style={styles.cell}>اتصال</th>
-                  <th style={styles.cell}>نرم‌افزار و مقصد</th>
+                  <th style={styles.cell}>نرم‌افزار حسابداری</th>
+                  <th style={styles.cell}>نام اتصال</th>
                   <th style={styles.cell}>وضعیت</th>
-                  <th style={styles.cell}>اقدام</th>
+                  <th style={styles.cell}>آخرین آزمایش</th>
+                  <th style={styles.cell}>اتصال پیش‌فرض</th>
+                  <th style={styles.cell}>عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 {ordered.map((entry) => {
-                  const selected = entry.id === selectedConnectionId;
                   const health = connectionHealthState(entry);
+                  const isWorkspaceDefault =
+                    entry.isDefault === true && entry.isActive === true;
+                  const lastCheck = formatHealthCheckAt(entry.lastHealthCheckAt);
 
                   return (
                     <tr
                       key={entry.id}
                       data-connection-id={entry.id}
-                      data-selected={selected ? 'true' : 'false'}
+                      data-default={isWorkspaceDefault ? 'true' : 'false'}
                       style={
-                        selected
+                        isWorkspaceDefault
                           ? {
                               background:
                                 'color-mix(in srgb, var(--t-color-blue) 9%, transparent)',
@@ -218,65 +224,22 @@ export const AccountingConnectionsSection = ({
                           : undefined
                       }
                     >
-                      <td
-                        style={{
-                          ...styles.cell,
-                          borderInlineStart: selected
-                            ? '3px solid var(--t-color-blue)'
-                            : undefined,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: selected
-                              ? 'var(--t-font-weight-semi-bold)'
-                              : undefined,
-                            display: 'block',
-                          }}
-                        >
-                          {entry.name}
-                        </span>
-                        <span
-                          style={{
-                            display: 'flex',
-                            gap: '4px',
-                            flexWrap: 'wrap',
-                            marginTop: '4px',
-                          }}
-                        >
-                          {entry.isActive === false ? (
-                            <Badge tone="neutral">بازنشسته</Badge>
-                          ) : (
-                            <Badge tone="info">فعال</Badge>
-                          )}
-                          {entry.isDefault && entry.isActive ? (
-                            <Badge tone="success">پیش‌فرض فضای کاری</Badge>
-                          ) : null}
-                          {selected ? (
-                            <Badge tone="info">نمای موقت</Badge>
-                          ) : null}
-                        </span>
+                      <td style={styles.cell}>
+                        {adapterDisplayLabel(
+                          data.adapters.find(
+                            (adapter) => adapter.id === entry.adapterId,
+                          ),
+                        )}
                       </td>
                       <td style={styles.cell}>
-                        <span style={{ display: 'block' }}>
-                          {adapterDisplayLabel(
-                            data.adapters.find((adapter) => adapter.id === entry.adapterId),
-                          )}
+                        <span style={{ display: 'block', fontWeight: 600 }}>
+                          {entry.name}
                         </span>
-                        <span
-                          style={{
-                            ...styles.meta,
-                            display: 'block',
-                            fontSize: 'var(--t-font-size-xs)',
-                            direction: 'ltr',
-                            textAlign: 'right',
-                          }}
-                        >
-                          {(data.adapters.find((adapter) => adapter.id === entry.adapterId)
-                            ?.isLive ?? false)
-                            ? entry.settings.baseUrl || 'آدرس سرویس ثبت نشده'
-                            : 'بدون سرور بیرونی'}
-                        </span>
+                        {entry.isActive === false ? (
+                          <Badge tone="neutral">غیرفعال</Badge>
+                        ) : (
+                          <Badge tone="info">فعال</Badge>
+                        )}
                       </td>
                       <td style={styles.cell}>
                         <Badge tone={healthTone(health)}>
@@ -284,64 +247,77 @@ export const AccountingConnectionsSection = ({
                         </Badge>
                       </td>
                       <td style={styles.cell}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: '4px',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <SecondaryButton
-                            label={
-                              selected ? 'نمای موقت فعال' : 'انتخاب نمای موقت'
-                            }
-                            disabled={
-                              selected ||
-                              busy ||
-                              entry.isActive === false
-                            }
-                            onClick={() => onSelectConnection(entry)}
-                          />
-                          <SecondaryButton
-                            label={
-                              entry.isDefault && entry.isActive
-                                ? 'پیش‌فرض فضای کاری'
-                                : 'تنظیم به‌عنوان پیش‌فرض'
-                            }
-                            disabled={
-                              busy ||
-                              !canManage ||
-                              entry.isDefault ||
-                              entry.isActive === false
-                            }
-                            onClick={() => onSetWorkspaceDefault(entry)}
-                          />
-                          {entry.isActive === false ? (
-                            <SecondaryButton
-                              label="فعال‌سازی مجدد"
-                              disabled={!canManage || busy}
-                              onClick={() => onReactivateConnection(entry)}
-                            />
-                          ) : (
-                            <SecondaryButton
-                              label="بازنشسته‌کردن"
-                              disabled={!canManage || busy}
-                              onClick={() => onDeactivateConnection(entry)}
-                            />
-                          )}
-                          <SecondaryButton
-                            label="ویرایش تنظیمات"
-                            disabled={!canManage || busy}
-                            onClick={() => onEditConnection(entry)}
-                          />
-                        </div>
+                        {lastCheck ?? '—'}
+                      </td>
+                      <td style={styles.cell}>
+                        {isWorkspaceDefault ? (
+                          <Badge tone="success">پیش‌فرض</Badge>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={styles.cell}>
+                        <RowMenu
+                          label={`عملیات ${entry.name}`}
+                          open={openMenuId === entry.id}
+                          onOpenChange={(next) =>
+                            setOpenMenuId(next ? entry.id : null)
+                          }
+                          items={[
+                            {
+                              id: 'edit',
+                              label: 'ویرایش',
+                              disabled: !canManage || busy,
+                              onSelect: () => onEditConnection(entry),
+                            },
+                            {
+                              id: 'test',
+                              label: 'آزمایش اتصال',
+                              disabled: busy || entry.isActive === false,
+                              disabledReason:
+                                entry.isActive === false
+                                  ? 'اتصال غیرفعال را نمی‌توان آزمایش کرد.'
+                                  : undefined,
+                              onSelect: () => onTestConnection(entry),
+                            },
+                            {
+                              id: 'default',
+                              label: 'تنظیم به‌عنوان پیش‌فرض',
+                              disabled:
+                                busy ||
+                                !canManage ||
+                                isWorkspaceDefault ||
+                                entry.isActive === false,
+                              disabledReason: isWorkspaceDefault
+                                ? 'این اتصال هم‌اکنون پیش‌فرض است.'
+                                : entry.isActive === false
+                                  ? 'اتصال غیرفعال را نمی‌توان پیش‌فرض کرد.'
+                                  : undefined,
+                              onSelect: () => onSetWorkspaceDefault(entry),
+                            },
+                            entry.isActive === false
+                              ? {
+                                  id: 'activate',
+                                  label: 'فعال کردن',
+                                  disabled: !canManage || busy,
+                                  onSelect: () => onReactivateConnection(entry),
+                                }
+                              : {
+                                  id: 'deactivate',
+                                  label: 'غیرفعال کردن',
+                                  disabled: !canManage || busy,
+                                  danger: true,
+                                  onSelect: () => onDeactivateConnection(entry),
+                                },
+                          ]}
+                        />
                       </td>
                     </tr>
                   );
                 })}
                 {ordered.length === 0 ? (
                   <tr>
-                    <td style={styles.cell} colSpan={4}>
+                    <td style={styles.cell} colSpan={6}>
                       {`اتصالی با «${query}» پیدا نشد.`}
                     </td>
                   </tr>
@@ -349,13 +325,6 @@ export const AccountingConnectionsSection = ({
               </tbody>
             </table>
           </div>
-          <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', marginTop: '6px' }}>
-            «نمای موقت» فقط همین صفحه را برای نگاشت کالا و مشتری تغییر می‌دهد و پیش‌فرض فضای
-            کاری را عوض نمی‌کند. «بازنشسته‌کردن» اتصال را از مقصدهای جدید کنار می‌گذارد ولی
-            سوابق و نگاشت‌ها را نگه می‌دارد؛ «فعال‌سازی مجدد» آن را دوباره قابل استفاده می‌کند
-            بدون اینکه خودکار پیش‌فرض شود. اتصال بازنشسته را نمی‌توان به‌عنوان نمای موقت یا
-            پیش‌فرض انتخاب کرد.
-          </p>
         </Card>
       )}
     </div>

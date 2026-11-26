@@ -2,7 +2,9 @@ import { asRecord, readString } from 'src/components/accounting/accounting-share
 import {
   formatMicrosExact,
   parseMicrosExact,
+  MICROS_PER_UNIT,
 } from 'src/domain/money/micros';
+import { formatExactDecimalForPeople } from 'src/domain/money/display-format';
 
 // The wire shape of one page of the accounting screens, parsed once so a malformed response
 // produces an empty page instead of a crash halfway through rendering a table.
@@ -344,8 +346,11 @@ export const formatMicrosForDisplay = (micros: string | null): string => {
     return '—';
   }
 
-  // Micros can exceed Number.MAX_SAFE_INTEGER, so the conversion stays exact.
+  // Display is whole rials with Persian digits; storage stays exact micros.
   const parsed = parseMicrosExact(micros);
-
-  return parsed.ok ? formatMicrosExact(parsed.value) : '—';
+  if (!parsed.ok) {
+    return '—';
+  }
+  const wholeRials = parsed.value / MICROS_PER_UNIT;
+  return formatExactDecimalForPeople(`${wholeRials}.000000`);
 };

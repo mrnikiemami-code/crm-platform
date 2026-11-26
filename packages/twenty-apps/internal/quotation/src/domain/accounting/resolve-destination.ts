@@ -1,8 +1,7 @@
 // Shared destination pick for settings, mappings, and quotation preview.
 //
 // Workspace default comes from the server `isDefault` flag on an active connection.
-// Temporary UI selection is a separate concern owned by the settings panel (localStorage);
-// this module never reads storage and never falls back to "first row" or "first active".
+// This module never falls back to "first row" or "first active".
 
 export type AccountingDestinationCandidate = {
   id: string;
@@ -76,27 +75,4 @@ export const resolveAccountingDestination = ({
     connectionId: workspaceDefault.id,
     source: 'workspace-default',
   };
-};
-
-// Temporary working context for the settings shell: remembered selection if still present
-// and still active, else the workspace default, else null. A retired connection left in
-// localStorage must not become the working destination after refresh.
-export const resolveTemporaryWorkingConnectionId = ({
-  connections,
-  rememberedConnectionId,
-}: {
-  connections: readonly AccountingDestinationCandidate[];
-  rememberedConnectionId: string | null;
-}): string | null => {
-  if (rememberedConnectionId !== null) {
-    const remembered = connections.find(
-      (row) => row.id === rememberedConnectionId,
-    );
-
-    if (remembered !== undefined && remembered.isActive === true) {
-      return remembered.id;
-    }
-  }
-
-  return findValidWorkspaceDefaultConnection(connections)?.id ?? null;
 };

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 
 import { RowMenu } from 'src/components/financial-settings/row-menu';
 
@@ -47,7 +47,7 @@ const CSS = `
 .rl-badge-off { background: var(--t-color-gray4); color: var(--t-color-gray11); }
 .rl-used { font-size: 12.5px; color: var(--t-color-gray11); }
 .rl-step-tail { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
-.rl-edit { height: 32px; min-height: 32px; padding: 0 12px; font-size: 13px; margin-top: 0; }
+.rl-menu-dismiss { position: fixed; inset: 0; z-index: 35; background: transparent; }
 .rl-empty { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); padding: 48px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .rl-empty h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--t-color-gray12); }
 .rl-empty p { margin: 0; font-size: 14px; color: var(--t-color-gray11); max-width: 440px; line-height: 1.7; }
@@ -72,7 +72,6 @@ const CSS = `
 @media (max-width: 720px) {
   .rl-step { grid-template-columns: 30px minmax(0, 1fr); padding: 14px 16px; }
   .rl-step-tail { grid-column: 2; padding-top: 0; flex-wrap: wrap; }
-  .rl-edit { min-height: 36px; height: 36px; }
   .rl-marker { width: 26px; height: 26px; font-size: 12px; }
   .rl-step-num { font-size: 20px; }
 }
@@ -130,8 +129,19 @@ export const RoundingList = ({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   return (
-    <div className="rl-root" dir="rtl">
+    <div
+      className="rl-root"
+      dir="rtl"
+      onPointerDown={() => {
+        if (openMenuId !== null) {
+          setOpenMenuId(null);
+        }
+      }}
+    >
       <style>{CSS}</style>
+      {openMenuId !== null ? (
+        <div className="rl-menu-dismiss" aria-hidden="true" />
+      ) : null}
 
       <div className="rl-banner">
         {infoIcon}
@@ -222,14 +232,6 @@ export const RoundingList = ({
                   </span>
                 </div>
                 <div className="rl-step-tail">
-                  <button
-                    type="button"
-                    className="rl-btn rl-btn-ghost rl-edit"
-                    aria-label={`ویرایش — ${row.stepAmount} ریال`}
-                    onClick={() => onEdit(row.id)}
-                  >
-                    ویرایش
-                  </button>
                   <RowMenu
                     label={`عملیات قاعده ${row.stepAmount}`}
                     open={openMenuId === row.id}

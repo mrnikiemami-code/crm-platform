@@ -209,7 +209,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         canManage: true,
         message:
           action === 'deactivate'
-            ? 'اتصال بازنشسته شد'
+            ? 'اتصال غیرفعال شد'
             : 'اتصال دوباره فعال شد',
       };
     }

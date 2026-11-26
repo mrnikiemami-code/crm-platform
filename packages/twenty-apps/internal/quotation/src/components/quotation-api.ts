@@ -202,6 +202,7 @@ const ACCOUNTING_OUTBOUND_ACTIONS: Record<string, string> = {
   'execute-item-push': 'accounting-outbound-execute-item-push',
   'preview-quotation-export': 'accounting-outbound-preview-quotation-export',
   'execute-quotation-export': 'accounting-outbound-execute-quotation-export',
+  'list-exportable-quotations': 'accounting-outbound-list-exportable-quotations',
 };
 
 export const callAccountingOperationNestAction = (

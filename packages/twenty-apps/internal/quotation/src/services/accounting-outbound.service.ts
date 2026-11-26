@@ -7,6 +7,8 @@ import {
   buildCreateAccountingOperationMutation,
   buildQuotationForAccountingQuery,
   buildQuotationRevisionForAccountingQuery,
+  buildExportableQuotationsQuery,
+  buildIssuedRevisionsForQuotationsQuery,
   buildUpdateAccountingItemLinkMutation,
   buildUpdateAccountingOperationMutation,
 } from 'src/data/accounting-queries';
@@ -25,6 +27,7 @@ import {
 import {
   planItemPush,
   planQuotationExport,
+  QUOTATION_EXPORTABLE_STATUSES,
   type ItemPushDecision,
   type OperationSnapshot,
   type QuotationExportDecision,
@@ -1048,3 +1051,174 @@ export const outboundFailureMessage = (error: unknown): string => {
 
 export const asMoneyUnit = (value: unknown): AccountingMoneyUnit =>
   value === 'RIAL' || value === 'TOMAN' ? value : 'UNCONFIRMED';
+
+
+export type ExportableQuotationRow = {
+  quotationId: string;
+  quotationNumber: string;
+  status: string;
+  customerName: string;
+  issuedAt: string | null;
+  totalExact: string | null;
+  revisionVersion: number | null;
+  sendState: 'PENDING' | 'SENT' | 'IN_FLIGHT' | 'FAILED';
+  lastErrorCode: string | null;
+  externalDocumentId: string | null;
+};
+
+const readCustomerName = (node: Record<string, unknown>): string => {
+  const company = asRecord(node.company);
+  if (company !== null) {
+    const name = readString(company.name);
+    if (name !== '') {
+      return name;
+    }
+  }
+  const person = asRecord(node.person);
+  if (person !== null) {
+    const name = asRecord(person.name);
+    const full = `${readString(name?.firstName)} ${readString(name?.lastName)}`.trim();
+    if (full !== '') {
+      return full;
+    }
+  }
+  return readString(node.name) || '-';
+};
+
+export const listExportableQuotations = async (
+  {
+    connectionId,
+    cursor = null,
+    pageSize = 25,
+  }: {
+    connectionId: string;
+    cursor?: string | null;
+    pageSize?: number;
+  },
+  dependencies: OutboundDependencies = {},
+): Promise<{
+  rows: ExportableQuotationRow[];
+  nextCursor: string | null;
+  hasNextPage: boolean;
+}> => {
+  const execute = dependencies.execute ?? executeRecordGraphql;
+  const statuses = [...QUOTATION_EXPORTABLE_STATUSES];
+  const listed = await execute(
+    buildExportableQuotationsQuery({
+      statuses,
+      first: pageSize,
+      afterCursor: cursor,
+    }),
+  );
+
+  const quotationRoot = asRecord(listed.quotations);
+  const edges = Array.isArray(quotationRoot?.edges) ? quotationRoot.edges : [];
+  const pageInfo = asRecord(quotationRoot?.pageInfo);
+
+  const quotations = edges.flatMap((edge) => {
+    const record = asRecord(edge);
+    const node = record === null ? null : asRecord(record.node);
+    if (node === null) {
+      return [] as { id: string; node: Record<string, unknown> }[];
+    }
+    const id = readString(node.id);
+    if (id === '') {
+      return [];
+    }
+    return [{ id, node }];
+  });
+
+  if (quotations.length === 0) {
+    return { rows: [], nextCursor: null, hasNextPage: false };
+  }
+
+  const [revisionsData, operationsData] = await Promise.all([
+    execute(
+      buildIssuedRevisionsForQuotationsQuery(quotations.map((row) => row.id)),
+    ),
+    execute(buildAccountingOperationsQuery({ connectionId, limit: 200 })),
+  ]);
+
+  const revisionByQuotation = new Map<
+    string,
+    { version: number; totalExact: string | null; issuedAt: string | null }
+  >();
+  for (const node of readRows(revisionsData, 'quotationRevisions')) {
+    const quotationId = readString(node.quotationId);
+    if (quotationId === '' || revisionByQuotation.has(quotationId)) {
+      continue;
+    }
+    revisionByQuotation.set(quotationId, {
+      version: readNumber(node.version) ?? 0,
+      totalExact: readString(node.totalExact) || null,
+      issuedAt: readString(node.issuedAt) || null,
+    });
+  }
+
+  const operationRows = readRows(operationsData, 'accountingSyncOperations');
+
+  const rows: ExportableQuotationRow[] = [];
+  for (const quotation of quotations) {
+    const revision = revisionByQuotation.get(quotation.id);
+    if (revision === undefined) {
+      continue;
+    }
+
+    const matching = operationRows.filter(
+      (operation) =>
+        readString(operation.kind) === 'QUOTATION_REVISION_PUSH' &&
+        readString(operation.internalEntityId) === quotation.id,
+    );
+
+    const succeeded = matching.find(
+      (operation) => readString(operation.state) === 'SUCCEEDED',
+    );
+    const inFlight = matching.find((operation) => {
+      const state = readString(operation.state);
+      return state === 'IN_FLIGHT' || state === 'PENDING';
+    });
+    const failed = matching.find((operation) => {
+      const state = readString(operation.state);
+      return (
+        state === 'FAILED_RETRYABLE' ||
+        state === 'FAILED_FINAL' ||
+        state === 'MANUAL_EXPORT_REQUIRED'
+      );
+    });
+
+    let sendState: ExportableQuotationRow['sendState'] = 'PENDING';
+    if (succeeded !== undefined) {
+      sendState = 'SENT';
+    } else if (inFlight !== undefined) {
+      sendState = 'IN_FLIGHT';
+    } else if (failed !== undefined) {
+      sendState = 'FAILED';
+    }
+
+    rows.push({
+      quotationId: quotation.id,
+      quotationNumber:
+        readString(quotation.node.quotationNumber) ||
+        readString(quotation.node.name) ||
+        quotation.id.slice(0, 8),
+      status: readString(quotation.node.status),
+      customerName: readCustomerName(quotation.node),
+      issuedAt: revision.issuedAt,
+      totalExact: revision.totalExact,
+      revisionVersion: revision.version,
+      sendState,
+      lastErrorCode:
+        failed === undefined ? null : readString(failed.errorCode) || null,
+      externalDocumentId:
+        succeeded === undefined
+          ? null
+          : readString(succeeded.externalDocumentId) || null,
+    });
+  }
+
+  return {
+    rows,
+    nextCursor: readString(pageInfo?.endCursor) || null,
+    hasNextPage: pageInfo?.hasNextPage === true,
+  };
+};

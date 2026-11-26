@@ -1,4 +1,8 @@
-﻿export type CurrencyHeroProps = {
+import { useState } from 'react';
+
+import { RowMenu } from 'src/components/financial-settings/row-menu';
+
+export type CurrencyHeroProps = {
   recordId: string;
   code: string;
   name: string;
@@ -14,6 +18,7 @@
 
 const CSS = `
 .ch-root { direction: rtl; }
+.ch-menu-dismiss { position: fixed; inset: 0; z-index: 35; background: transparent; }
 .ch-dossier { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); overflow: hidden; }
 .ch-top { padding: 26px 28px 22px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; justify-content: space-between; }
 .ch-id { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -53,7 +58,6 @@ const CSS = `
 .ch-skel-block { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); padding: 26px; }
 .ch-skel { background: var(--t-color-gray4); border-radius: 6px; animation: ch-pulse 1.2s ease-in-out infinite alternate; }
 @keyframes ch-pulse { from { opacity: 1; } to { opacity: 0.45; } }
-.ch-pencil { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 720px) {
   .ch-top { padding: 20px 18px 16px; }
   .ch-name { font-size: 23px; }
@@ -67,12 +71,6 @@ const CSS = `
   .ch-skel, .ch-skel-note svg { animation: none !important; }
 }
 `;
-
-const PencilIcon = () => (
-  <svg className="ch-pencil" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-  </svg>
-);
 
 const InfoIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -111,9 +109,21 @@ export const CurrencyHero = ({
   error = null,
   onRetry,
   onEditCode,
-}: CurrencyHeroProps) => (
-  <div className="ch-root" dir="rtl">
+}: CurrencyHeroProps) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+  <div
+    className="ch-root"
+    dir="rtl"
+    onPointerDown={() => {
+      if (menuOpen) {
+        setMenuOpen(false);
+      }
+    }}
+  >
     <style>{CSS}</style>
+    {menuOpen ? <div className="ch-menu-dismiss" aria-hidden="true" /> : null}
 
     {loading && (
       <>
@@ -163,14 +173,18 @@ export const CurrencyHero = ({
             <span className="ch-cap">کد حسابداری</span>
             <div className="ch-acct">
               <span className="ch-acct-val">{accountingCode}</span>
-              <button
-                type="button"
-                className="ch-btn ch-btn-ghost"
-                onClick={() => onEditCode(recordId)}
-              >
-                <PencilIcon />
-                ویرایش
-              </button>
+              <RowMenu
+                label={`عملیات ${name}`}
+                open={menuOpen}
+                onOpenChange={setMenuOpen}
+                items={[
+                  {
+                    id: 'edit',
+                    label: 'ویرایش',
+                    onSelect: () => onEditCode(recordId),
+                  },
+                ]}
+              />
             </div>
             <span className="ch-sub">در اسناد مالی با این کد ثبت می‌شود</span>
           </div>
@@ -201,4 +215,5 @@ export const CurrencyHero = ({
       </div>
     )}
   </div>
-);
+  );
+};

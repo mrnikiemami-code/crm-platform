@@ -62,6 +62,14 @@ const MOCK_PROFILE_SHORT_LABELS: Record<string, string> = {
   NO_TAX: 'بدون مالیات و عوارض',
 };
 
+// UX-037 hides money/tax/advanced from the connection form. Tests that still
+// assert those contracts can flip this for the duration of a describe block.
+export let SHOW_CONNECTION_FINANCIAL_UI = false;
+
+export const setShowConnectionFinancialUiForTests = (visible: boolean): void => {
+  SHOW_CONNECTION_FINANCIAL_UI = visible;
+};
+
 export const ConnectionEditForm = ({
   data,
   form,
@@ -270,27 +278,26 @@ export const ConnectionEditForm = ({
         />
 
         <div style={styles.row}>
-          <Field label="نام اتصال">
-            <input
-              style={styles.input}
-              value={form.name}
-              disabled={!effectiveCanManage}
-              aria-invalid={attemptedSave && issues.name !== undefined}
-              onChange={(event) => onChange({ ...form, name: event.target.value })}
-            />
-            <FieldError message={attemptedSave ? issues.name : undefined} />
-          </Field>
-
           <Field label="نرم‌افزار حسابداری">
             <select
               style={styles.input}
               value={form.adapterId}
               disabled={!effectiveCanManage}
-              onChange={(event) =>
-                // Switching the destination keeps everything already typed: it changes the
-                // contract, never the draft.
-                onChange({ ...form, adapterId: event.target.value })
-              }
+              onChange={(event) => {
+                const nextAdapterId = event.target.value;
+                const nextAdapter = data.adapters.find(
+                  (adapter) => adapter.id === nextAdapterId,
+                );
+                const nextName =
+                  form.id === null
+                    ? `اتصال ${adapterDisplayLabel(nextAdapter)}`
+                    : form.name;
+                onChange({
+                  ...form,
+                  adapterId: nextAdapterId,
+                  name: nextName,
+                });
+              }}
             >
               {adapterUnavailable && form.adapterId.trim() !== '' ? (
                 <option value={form.adapterId}>
@@ -304,9 +311,22 @@ export const ConnectionEditForm = ({
               ))}
             </select>
           </Field>
+
+          <Field label="نام اتصال">
+            <input
+              style={styles.input}
+              value={form.name}
+              disabled
+              readOnly
+              aria-label="نام اتصال سیستمی"
+            />
+            <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
+              نام اتصال را سیستم می‌سازد.
+            </span>
+          </Field>
         </div>
 
-        {hasTestProfiles ? (
+        {SHOW_CONNECTION_FINANCIAL_UI && hasTestProfiles ? (
           <Field label="حالت آزمایشی">
             <select
               style={styles.input}
@@ -420,6 +440,8 @@ export const ConnectionEditForm = ({
         </div>
       </Card>
 
+      {SHOW_CONNECTION_FINANCIAL_UI ? (
+        <>
       <div ref={moneyRef} data-form-section="money" tabIndex={-1}>
         <Card>
           <SectionHeading index="۲" title="ارز و واحد پول" />
@@ -692,12 +714,14 @@ export const ConnectionEditForm = ({
 
         <span>{`نرم‌افزار سپیدار: ${SEPIDAR_UNAVAILABLE.summary}`}</span>
       </Details>
+        </>
+      ) : null}
 
       <Card>
-        <SectionHeading index="" title="ذخیره و آزمایش اتصال" />
+        <SectionHeading index="" title="ذخیره" />
         <div style={{ display: 'flex', gap: 'var(--t-spacing-2)', flexWrap: 'wrap' }}>
           <PrimaryButton
-            label="ذخیرهٔ تنظیمات"
+            label="ذخیره"
             onClick={() => {
               setAttemptedSave(true);
 
@@ -707,10 +731,15 @@ export const ConnectionEditForm = ({
 
               onSave();
             }}
-            disabled={busy || !effectiveCanManage || !mappingEditable}
+            disabled={
+              busy ||
+              !effectiveCanManage ||
+              (SHOW_CONNECTION_FINANCIAL_UI && !mappingEditable)
+            }
           />
+          <SecondaryButton label="انصراف" onClick={onBack} disabled={busy} />
           <SecondaryButton
-            label={busy ? 'در حال اجرا…' : 'آزمایش اتصال ذخیره‌شده'}
+            label={busy ? 'در حال اجرا…' : 'آزمایش اتصال'}
             onClick={onTest}
             disabled={busy || !canTestSavedRecord || !effectiveCanManage}
           />

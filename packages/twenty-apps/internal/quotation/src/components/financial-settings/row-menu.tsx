@@ -1,4 +1,4 @@
-﻿import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 export type RowMenuItem = {
   id: string;
@@ -18,11 +18,12 @@ export type RowMenuProps = {
 };
 
 const CSS = `
-.fs-menu-root { position: relative; display: flex; justify-content: flex-start; }
+.fs-menu-root { position: relative; display: flex; justify-content: flex-start; z-index: 0; }
+.fs-menu-root.is-open { z-index: 40; }
 .fs-menu-trigger { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; background: transparent; border-radius: 6px; color: var(--t-color-gray11); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
 .fs-menu-trigger:hover { background: var(--t-color-gray4); color: var(--t-color-gray12); }
 .fs-menu-trigger:focus-visible { outline: 2px solid var(--t-color-blue9); outline-offset: 2px; }
-.fs-menu { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 30; min-width: 210px; background: var(--t-color-gray1); border: 1px solid var(--t-color-gray5); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); padding: 5px; animation: fs-menu-in 0.15s ease-out; }
+.fs-menu { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 41; min-width: 210px; background: var(--t-color-gray1); border: 1px solid var(--t-color-gray5); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05); padding: 5px; animation: fs-menu-in 0.15s ease-out; }
 .fs-menu.flip { top: auto; bottom: calc(100% + 6px); }
 @keyframes fs-menu-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 .fs-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 8px 10px; border-radius: 5px; font: inherit; font-size: 13.5px; font-weight: 500; color: var(--t-color-gray12); cursor: pointer; text-align: start; transition: background 0.15s ease; }
@@ -49,11 +50,16 @@ const DotsIcon = () => (
 
 // Anchor-relative absolute menu: position:fixed + viewport coordinates land at the
 // wrong place under host transforms, so the menu shares its trigger's containing block.
+// Outside-close is owned by parents via React onPointerDown; this root stops
+// propagation so item/trigger presses do not dismiss.
 export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
   const menuId = useId();
   const [flip, setFlip] = useState(false);
+
+  onOpenChangeRef.current = onOpenChange;
 
   useEffect(() => {
     if (!open || triggerRef.current === null) return;
@@ -66,22 +72,10 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
   useEffect(() => {
     if (!open) return;
 
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (
-        triggerRef.current?.contains(target) ||
-        menuRef.current?.contains(target)
-      ) {
-        return;
-      }
-      onOpenChange(false);
-    };
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onOpenChange(false);
+        onOpenChangeRef.current(false);
         triggerRef.current?.focus();
         return;
       }
@@ -106,13 +100,9 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
       menuItems[nextIndex]?.focus();
     };
 
-    document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [onOpenChange, open]);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   const disabledNote = items.find(
     (item) => item.disabled && item.disabledReason,
@@ -120,7 +110,9 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
 
   return (
     <div
-      className="fs-menu-root"
+      className={open ? 'fs-menu-root is-open' : 'fs-menu-root'}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >

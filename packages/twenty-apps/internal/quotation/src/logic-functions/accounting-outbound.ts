@@ -11,6 +11,7 @@ import { formatMicrosExact } from 'src/domain/money/micros';
 import {
   executeItemPush,
   executeQuotationExport,
+  listExportableQuotations,
   loadOperations,
   outboundFailureMessage,
   previewItemPush,
@@ -349,6 +350,19 @@ const handler = async (event: RoutePayload<unknown>) => {
       }
 
       return { success: true, outcome: outcome.value };
+    }
+
+    if (action === 'list-exportable-quotations') {
+      const page = await listExportableQuotations({
+        connectionId,
+        cursor: readString(body.cursor) || null,
+        pageSize:
+          typeof body.pageSize === 'number' && body.pageSize > 0
+            ? Math.min(body.pageSize, 50)
+            : 25,
+      });
+
+      return { success: true, page };
     }
 
     return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));

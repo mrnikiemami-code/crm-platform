@@ -231,98 +231,40 @@ describe('the selected destination is the one every section talks about', () => 
     ).toBe(false);
   });
 
-  it('starts on the workspace default and names it separately from temporary view', async () => {
+  it('starts on the workspace default with no temporary view', async () => {
     render(<AccountingSettingsPanel />);
 
     expect(
       await screen.findByText(/پیش‌فرض فضای کاری: آسان کارخانه/),
     ).toBeTruthy();
-    expect(screen.getByText(/نمای موقت: آسان کارخانه — /)).toBeTruthy();
+    expect(screen.getByText(/آسان کارخانه — /)).toBeTruthy();
+    expect(screen.queryByText(/نمای موقت/)).toBeNull();
   });
 
-  it('keeps the temporary connection first and marked after choosing another', async () => {
+  it('keeps catalog on the workspace default after opening another connection for edit', async () => {
     render(<AccountingSettingsPanel />);
     const table = await openConnections();
 
     fireEvent.click(
-      within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
+      within(rowFor(table, 'conn-3')).getByRole('button', { name: /^عملیات / }),
     );
-
-    const rows = within(
-      screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
-    ).getAllByRole('row');
-
-    expect(rows[1].getAttribute('data-connection-id')).toBe('conn-3');
-    expect(rows[1].getAttribute('data-selected')).toBe('true');
-    expect(screen.getByText(/نمای موقت: آزمایشی کدمحور — /)).toBeTruthy();
-    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
-  });
-
-  it('selects a temporary view without opening the edit form', async () => {
-    render(<AccountingSettingsPanel />);
-    const table = await openConnections();
-
-    fireEvent.click(
-      within(rowFor(table, 'conn-2')).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
-    );
-
-    expect(screen.getByText(/نمای موقت: آزمایشی ساده — /)).toBeTruthy();
-    expect(screen.queryByText(/در حال ویرایش/)).toBeNull();
-    expect(screen.getByRole('heading', { name: 'اتصال‌ها' })).toBeTruthy();
-  });
-
-  it('opens the edit form of a connection without making it the selected one', async () => {
-    render(<AccountingSettingsPanel />);
-    const table = await openConnections();
-
-    fireEvent.click(
-      within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'ویرایش تنظیمات',
-      }),
-    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'ویرایش' }));
 
     expect(await screen.findByText('در حال ویرایش: آزمایشی کدمحور')).toBeTruthy();
-    // Temporary view stays on the workspace default until the operator opts in.
-    expect(screen.getByText(/نمای موقت: آسان کارخانه — /)).toBeTruthy();
-  });
-
-  it('remembers the temporary selection across a reload without changing the default', async () => {
-    render(<AccountingSettingsPanel />);
-    const table = await openConnections();
-
-    fireEvent.click(
-      within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
-    );
-
-    expect(window.localStorage.getItem(CONNECTION_STORAGE_KEY)).toBe('conn-3');
-
-    cleanup();
-    render(<AccountingSettingsPanel />);
-
-    expect(await screen.findByText(/نمای موقت: آزمایشی کدمحور — /)).toBeTruthy();
     expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
-
-    const reloaded = await openConnections();
-    const rows = within(reloaded).getAllByRole('row');
-
-    expect(rows[1].getAttribute('data-connection-id')).toBe('conn-3');
+    expect(screen.queryByText(/نمای موقت/)).toBeNull();
   });
 
-  it('names the same destination in another section', async () => {
+  it('does not persist a temporary connection id in localStorage', async () => {
     render(<AccountingSettingsPanel />);
-    const table = await openConnections();
+    await openConnections();
 
-    fireEvent.click(
-      within(rowFor(table, 'conn-2')).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
-    );
+    expect(window.localStorage.getItem(CONNECTION_STORAGE_KEY)).toBeNull();
+  });
+
+  it('keeps the workspace default name when switching to overview', async () => {
+    render(<AccountingSettingsPanel />);
+    await openConnections();
 
     const overviewButton = screen
       .getAllByRole('button', { name: /نمای کلی/ })
@@ -331,64 +273,22 @@ describe('the selected destination is the one every section talks about', () => 
     fireEvent.click(overviewButton as HTMLElement);
 
     expect(await screen.findByRole('heading', { name: 'نمای کلی' })).toBeTruthy();
-    expect(screen.getByText(/نمای موقت: آزمایشی ساده — /)).toBeTruthy();
+    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
+    expect(screen.queryByText(/نمای موقت/)).toBeNull();
   });
 });
 
 describe('deep links from the readiness list', () => {
-  it('opens the selected connection at its currency section', async () => {
+  it('opens the workspace-default connection for edit from the connections menu', async () => {
     render(<AccountingSettingsPanel />);
     const table = await openConnections();
 
-    // A destination whose money unit is not confirmed is the one this button fixes.
     fireEvent.click(
-      within(rowFor(table, 'conn-2')).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
+      within(rowFor(table, 'conn-1')).getByRole('button', { name: /^عملیات / }),
     );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'ویرایش' }));
 
-    const documentsButton = screen
-      .getAllByRole('button', { name: /اسناد/ })
-      .find((button) => button.getAttribute('aria-current') !== 'true');
-
-    fireEvent.click(documentsButton as HTMLElement);
-
-    const fixMoney = await screen.findByRole('button', { name: 'تعیین واحد پول' });
-
-    fireEvent.click(fixMoney);
-
-    expect(
-      await screen.findByText('در حال ویرایش: آزمایشی ساده'),
-    ).toBeTruthy();
-    expect(document.querySelector('[data-form-section="money"]')).not.toBeNull();
-  });
-
-  it('opens the selected connection at its tax section', async () => {
-    render(<AccountingSettingsPanel />);
-    const table = await openConnections();
-
-    // A code-based destination with no mapping yet is the one this button fixes.
-    fireEvent.click(
-      within(rowFor(table, 'conn-3')).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
-    );
-
-    const documentsButton = screen
-      .getAllByRole('button', { name: /اسناد/ })
-      .find((button) => button.getAttribute('aria-current') !== 'true');
-
-    fireEvent.click(documentsButton as HTMLElement);
-
-    const fixTax = await screen.findByRole('button', {
-      name: 'تنظیم مالیات حسابداری',
-    });
-
-    fireEvent.click(fixTax);
-
-    expect(
-      await screen.findByText('در حال ویرایش: آزمایشی کدمحور'),
-    ).toBeTruthy();
-    expect(document.querySelector('[data-form-section="tax"]')).not.toBeNull();
+    expect(await screen.findByText(/در حال ویرایش:/)).toBeTruthy();
+    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
   });
 });

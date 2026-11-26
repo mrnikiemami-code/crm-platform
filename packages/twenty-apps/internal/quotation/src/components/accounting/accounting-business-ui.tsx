@@ -128,19 +128,51 @@ export const StatCard = ({
   value,
   hint,
   tone = 'neutral',
+  onClick,
 }: {
   label: string;
   value: string;
   hint?: string;
   tone?: Tone;
+  onClick?: () => void;
 }) => (
   <Card tone={tone}>
-    <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{label}</span>
-    <span style={{ fontSize: 'var(--t-font-size-lg)', fontWeight: 'var(--t-font-weight-semi-bold)' }}>
-      {value}
-    </span>
-    {hint === undefined ? null : (
-      <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{hint}</span>
+    {onClick === undefined ? (
+      <>
+        <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{label}</span>
+        <span style={{ fontSize: 'var(--t-font-size-lg)', fontWeight: 'var(--t-font-weight-semi-bold)' }}>
+          {value}
+        </span>
+        {hint === undefined ? null : (
+          <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{hint}</span>
+        )}
+      </>
+    ) : (
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          width: '100%',
+          textAlign: 'right',
+          background: 'transparent',
+          border: 0,
+          padding: 0,
+          cursor: 'pointer',
+          font: 'inherit',
+          color: 'inherit',
+        }}
+      >
+        <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{label}</span>
+        <span style={{ fontSize: 'var(--t-font-size-lg)', fontWeight: 'var(--t-font-weight-semi-bold)' }}>
+          {value}
+        </span>
+        {hint === undefined ? null : (
+          <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{hint}</span>
+        )}
+      </button>
     )}
   </Card>
 );

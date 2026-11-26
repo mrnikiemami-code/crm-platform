@@ -68,16 +68,37 @@ const readPartySelections = (value: unknown): PartyApplySelection[] => {
     return [];
   }
 
-  return value.flatMap((entry) => {
+  const selections: PartyApplySelection[] = [];
+
+  for (const entry of value) {
     const row = asRecord(entry);
     const externalPartyId = readString(row.externalPartyId);
+    if (externalPartyId === '') {
+      continue;
+    }
     const internalPartyId = readString(row.internalPartyId);
-    const partyType = readString(row.partyType) === 'PERSON' ? 'PERSON' : 'COMPANY';
+    const createNew = row?.createNew === true;
+    const partyTypeRaw = readString(row.partyType);
+    const partyType =
+      partyTypeRaw === 'PERSON' || partyTypeRaw === 'COMPANY'
+        ? partyTypeRaw
+        : undefined;
 
-    return externalPartyId === '' || internalPartyId === ''
-      ? []
-      : [{ externalPartyId, internalPartyId, partyType }];
-  });
+    if (createNew) {
+      selections.push({
+        externalPartyId,
+        createNew: true,
+        ...(partyType === undefined ? {} : { partyType }),
+      });
+      continue;
+    }
+
+    if (internalPartyId !== '' && partyType !== undefined) {
+      selections.push({ externalPartyId, internalPartyId, partyType });
+    }
+  }
+
+  return selections;
 };
 
 const handler = async (event: RoutePayload<unknown>) => {
@@ -228,10 +249,27 @@ const handler = async (event: RoutePayload<unknown>) => {
     }
 
     if (action === 'apply-parties') {
+      const selections = readPartySelections(body.selections);
+      const needsRemote = selections.some(
+        (selection) => selection.createNew === true,
+      );
+      const remoteList = needsRemote
+        ? await adapter.value.listParties()
+        : null;
+
       const outcome = await applyPartyImport({
         connectionId,
-        selections: readPartySelections(body.selections),
+        selections,
         allowRemoteVersionUpdate: body.allowRemoteVersionUpdate === true,
+        remoteParties:
+          remoteList !== null && remoteList.ok
+            ? remoteList.value.map((party) => ({
+                externalPartyId: party.externalPartyId,
+                fullName: party.fullName,
+                nationalCode: party.nationalCode,
+                mobile: party.mobile,
+              }))
+            : [],
       });
 
       return { success: true, outcome };

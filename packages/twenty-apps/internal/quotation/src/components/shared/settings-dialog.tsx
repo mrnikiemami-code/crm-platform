@@ -95,18 +95,35 @@ export const SettingsDialog = ({
     };
   }, [busy]);
 
+  const requestClose = () => {
+    if (!busy) {
+      onCloseRef.current();
+    }
+  };
+
   return (
-    <div className="fs-dialog-root" dir="rtl">
+    <div
+      className="fs-dialog-root"
+      dir="rtl"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          requestClose();
+        }
+      }}
+    >
       <style>{DIALOG_CSS}</style>
       <button
         type="button"
         className="fs-dialog-backdrop"
         aria-label="بستن"
         disabled={busy}
-        onClick={() => {
-          if (!busy) {
-            onCloseRef.current();
-          }
+        onMouseDown={(event) => {
+          event.preventDefault();
+          requestClose();
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          requestClose();
         }}
       />
       <div
@@ -118,6 +135,7 @@ export const SettingsDialog = ({
         aria-modal="true"
         aria-labelledby={titleId}
         style={styles.panel}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="fs-dialog-head">
           <h3 id={titleId} className="fs-dialog-title">

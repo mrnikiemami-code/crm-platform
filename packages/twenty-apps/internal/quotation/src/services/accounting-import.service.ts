@@ -7,6 +7,7 @@ import {
   buildUpdateAccountingItemLinkMutation,
   buildUpdateAccountingPartyLinkMutation,
 } from 'src/data/accounting-queries';
+import { toGraphqlLiteral } from 'src/data/graphql-literal';
 import {
   buildCreateCatalogItemMutation,
   buildCreatePriceMutation,
@@ -401,8 +402,56 @@ export const previewPartyImport = async (
 
 export type PartyApplySelection = {
   externalPartyId: string;
-  internalPartyId: string;
-  partyType: 'PERSON' | 'COMPANY';
+  internalPartyId?: string;
+  partyType?: 'PERSON' | 'COMPANY';
+  // Create a CRM person/company from the remote party when no unique match exists.
+  // Party kind is resolved server-side from the national identifier contract.
+  createNew?: boolean;
+};
+
+const partyTypeFromNationalCode = (
+  nationalCode: string | null | undefined,
+): 'PERSON' | 'COMPANY' | null => {
+  const digits = (nationalCode ?? '').replace(/\D/g, '');
+  if (digits.length === 10) {
+    return 'PERSON';
+  }
+  if (digits.length === 11) {
+    return 'COMPANY';
+  }
+  return null;
+};
+
+const buildCreatePersonMutation = (data: {
+  firstName: string;
+  lastName: string;
+}): string =>
+  `mutation CreatePersonFromAccounting {
+    createPerson(data: ${toGraphqlLiteral({
+      name: { firstName: data.firstName, lastName: data.lastName },
+    })}) { id }
+  }`;
+
+const buildCreateCompanyMutation = (name: string): string =>
+  `mutation CreateCompanyFromAccounting {
+    createCompany(data: ${toGraphqlLiteral({ name })}) { id }
+  }`;
+
+const splitPersonName = (
+  fullName: string,
+): { firstName: string; lastName: string } => {
+  const trimmed = fullName.trim();
+  const parts = trimmed.split(/\s+/).filter((part) => part.length > 0);
+  if (parts.length === 0) {
+    return { firstName: 'بدون‌نام', lastName: '-' };
+  }
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '-' };
+  }
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
 };
 
 export const applyPartyImport = async (
@@ -410,15 +459,23 @@ export const applyPartyImport = async (
     connectionId,
     selections,
     allowRemoteVersionUpdate,
+    remoteParties = [],
   }: {
     connectionId: string;
     selections: PartyApplySelection[];
     allowRemoteVersionUpdate: boolean;
+    remoteParties?: {
+      externalPartyId: string;
+      fullName: string;
+      nationalCode: string | null;
+      mobile: string | null;
+    }[];
   },
   dependencies: ImportDependencies = {},
 ): Promise<{
   createdLinks: number;
   updatedLinks: number;
+  createdParties: number;
   refused: { externalPartyId: string; code: string; detail: string }[];
 }> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
@@ -430,13 +487,70 @@ export const applyPartyImport = async (
       )
       .map((link) => [link.externalPartyId, link]),
   );
+  const remoteById = new Map(
+    remoteParties.map((party) => [party.externalPartyId, party]),
+  );
 
   let createdLinks = 0;
   let updatedLinks = 0;
+  let createdParties = 0;
   const refused: { externalPartyId: string; code: string; detail: string }[] = [];
 
   for (const selection of selections) {
     const existing = byExternalId.get(selection.externalPartyId) ?? null;
+    let internalPartyId = selection.internalPartyId?.trim() ?? '';
+    let partyType = selection.partyType;
+
+    if (selection.createNew === true && internalPartyId === '') {
+      const remote = remoteById.get(selection.externalPartyId);
+      if (remote === undefined || remote.fullName.trim() === '') {
+        refused.push({
+          externalPartyId: selection.externalPartyId,
+          code: 'INSUFFICIENT_PARTY_DATA',
+          detail: 'remote party data is missing for create',
+        });
+        continue;
+      }
+      const resolvedType = partyTypeFromNationalCode(remote.nationalCode);
+      if (resolvedType === null) {
+        refused.push({
+          externalPartyId: selection.externalPartyId,
+          code: 'PARTY_KIND_UNKNOWN',
+          detail:
+            'person/company cannot be inferred without a valid national identifier',
+        });
+        continue;
+      }
+      partyType = resolvedType;
+      if (resolvedType === 'PERSON') {
+        const names = splitPersonName(remote.fullName);
+        const created = await execute(buildCreatePersonMutation(names));
+        internalPartyId = readString(asRecord(created.createPerson)?.id);
+      } else {
+        const created = await execute(
+          buildCreateCompanyMutation(remote.fullName.trim()),
+        );
+        internalPartyId = readString(asRecord(created.createCompany)?.id);
+      }
+      if (internalPartyId === '') {
+        refused.push({
+          externalPartyId: selection.externalPartyId,
+          code: 'PARTY_CREATE_FAILED',
+          detail: 'CRM create returned no id',
+        });
+        continue;
+      }
+      createdParties += 1;
+    }
+
+    if (internalPartyId === '' || partyType === undefined) {
+      refused.push({
+        externalPartyId: selection.externalPartyId,
+        code: 'INVALID_INPUT',
+        detail: 'internal party id and type are required',
+      });
+      continue;
+    }
 
     if (existing !== null) {
       if (!allowRemoteVersionUpdate) {
@@ -450,8 +564,8 @@ export const applyPartyImport = async (
 
       await execute(
         buildUpdateAccountingPartyLinkMutation(existing.linkId, {
-          internalPartyId: selection.internalPartyId,
-          partyType: selection.partyType,
+          internalPartyId,
+          partyType,
           lastSyncedAt: new Date().toISOString(),
           syncStatus: 'LINKED',
         }),
@@ -462,12 +576,12 @@ export const applyPartyImport = async (
 
     await execute(
       buildCreateAccountingPartyLinkMutation({
-        name: `${selection.internalPartyId.slice(0, 8)} @ ${connectionId.slice(0, 8)}`,
+        name: `${internalPartyId.slice(0, 8)} @ ${connectionId.slice(0, 8)}`,
         externalPartyId: selection.externalPartyId,
         externalCode: selection.externalPartyId,
         syncStatus: 'LINKED',
-        partyType: selection.partyType,
-        internalPartyId: selection.internalPartyId,
+        partyType,
+        internalPartyId,
         lastSyncedAt: new Date().toISOString(),
         connectionId,
       }),
@@ -475,7 +589,7 @@ export const applyPartyImport = async (
     createdLinks += 1;
   }
 
-  return { createdLinks, updatedLinks, refused };
+  return { createdLinks, updatedLinks, createdParties, refused };
 };
 
 export const importFailureMessage = (error: unknown): string => {

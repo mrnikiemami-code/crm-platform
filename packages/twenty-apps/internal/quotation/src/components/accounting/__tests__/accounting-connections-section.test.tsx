@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AccountingConnectionsSection } from 'src/components/accounting/accounting-connections-section';
+import { setShowConnectionFinancialUiForTests } from 'src/components/accounting/accounting-connection-form';
 import type { CatalogReadState } from 'src/components/accounting/accounting-catalog-read';
 import {
   EMPTY_FORM,
@@ -259,32 +260,42 @@ const formFrom = (record: ConnectionRecord): FormState => ({
   mockProfile: record.settings.financial?.mockProfile ?? 'SIMPLE',
 });
 
+const openRowMenu = async (connectionId: string) => {
+  const row = within(
+    screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
+  )
+    .getAllByRole('row')
+    .find((entry) => entry.getAttribute('data-connection-id') === connectionId);
+
+  fireEvent.click(
+    within(row as HTMLElement).getByRole('button', { name: /^عملیات / }),
+  );
+  await screen.findByRole('menu');
+};
+
 const renderSection = ({
   connections = threeConnections(),
   form = formFrom(threeConnections()[0]),
-  selectedConnectionId = 'conn-1',
   view = 'list' as 'list' | 'form',
   focus = null as 'money' | 'tax' | null,
   testResult = null,
   taxPolicies = policies,
   currencyCatalog = currencies,
-  onSelectConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSetWorkspaceDefault = vi.fn<(connection: ConnectionRecord) => void>(),
   onDeactivateConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onReactivateConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onEditConnection = vi.fn<(connection: ConnectionRecord) => void>(),
+  onTestConnection = vi.fn<(connection: ConnectionRecord) => void>(),
   onSave = vi.fn<() => void>(),
   onChange = vi.fn<(form: FormState) => void>(),
 }: {
   connections?: ConnectionRecord[];
   form?: FormState;
-  selectedConnectionId?: string | null;
   view?: 'list' | 'form';
   focus?: 'money' | 'tax' | null;
   testResult?: { healthState: string; message: string; detail: string } | null;
   taxPolicies?: TaxPolicyView[];
   currencyCatalog?: CurrencyCatalogView[];
-  onSelectConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onSetWorkspaceDefault?: ReturnType<
     typeof vi.fn<(connection: ConnectionRecord) => void>
   >;
@@ -295,6 +306,7 @@ const renderSection = ({
     typeof vi.fn<(connection: ConnectionRecord) => void>
   >;
   onEditConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
+  onTestConnection?: ReturnType<typeof vi.fn<(connection: ConnectionRecord) => void>>;
   onSave?: ReturnType<typeof vi.fn<() => void>>;
   onChange?: ReturnType<typeof vi.fn<(form: FormState) => void>>;
 } = {}) => {
@@ -322,16 +334,15 @@ const renderSection = ({
       onRetryCatalogs={vi.fn()}
       canManage
       busy={false}
-      selectedConnectionId={selectedConnectionId}
       testResult={testResult}
       view={view}
       focus={focus}
       onOpenList={vi.fn()}
-      onSelectConnection={onSelectConnection}
       onSetWorkspaceDefault={onSetWorkspaceDefault}
       onDeactivateConnection={onDeactivateConnection}
       onReactivateConnection={onReactivateConnection}
       onEditConnection={onEditConnection}
+      onTestConnection={onTestConnection}
       onChange={onChange}
       onSave={onSave}
       onTest={vi.fn()}
@@ -340,11 +351,11 @@ const renderSection = ({
   );
 
   return {
-    onSelectConnection,
     onSetWorkspaceDefault,
     onDeactivateConnection,
     onReactivateConnection,
     onEditConnection,
+    onTestConnection,
     onSave,
     onChange,
   };
@@ -363,140 +374,119 @@ describe('choosing between several connections', () => {
     expect(tableRows()).toHaveLength(4);
   });
 
-  it('pins the selected connection to the first row and marks it', () => {
-    renderSection({ selectedConnectionId: 'conn-2' });
+  it('pins the workspace default connection first and marks it', () => {
+    renderSection({
+      connections: [
+        connection({ id: 'conn-1', name: 'اول' }),
+        connection({ id: 'conn-2', name: 'پیش‌فرض', isDefault: true }),
+        connection({ id: 'conn-3', name: 'سوم' }),
+      ],
+    });
 
     const [, first, ...rest] = tableRows();
 
     expect(first.getAttribute('data-connection-id')).toBe('conn-2');
-    expect(first.getAttribute('data-selected')).toBe('true');
-    // The badge and the disabled action both say the row is the temporary view.
-    expect(within(first).getAllByText('نمای موقت').length).toBeGreaterThan(0);
-    expect(within(first).getByRole('button', { name: 'نمای موقت فعال' })).toBeTruthy();
+    expect(first.getAttribute('data-default')).toBe('true');
+    expect(
+      within(first).getAllByText('پیش‌فرض', { exact: true }).length,
+    ).toBeGreaterThan(0);
     expect(rest.map((row) => row.getAttribute('data-connection-id'))).toEqual([
       'conn-1',
       'conn-3',
     ]);
-    expect(rest.some((row) => within(row).queryByText('نمای موقت'))).toBe(false);
+    expect(
+      rest.some(
+        (row) =>
+          within(row).queryAllByText('پیش‌فرض', { exact: true }).length > 0,
+      ),
+    ).toBe(false);
+    expect(screen.queryByText('نمای موقت')).toBeNull();
   });
 
-  it('marks only one row, even when the server returned another active record', () => {
-    renderSection({ selectedConnectionId: 'conn-3' });
+  it('keeps every row action inside the overflow menu', async () => {
+    renderSection();
 
-    const marked = tableRows().filter(
-      (row) => row.getAttribute('data-selected') === 'true',
-    );
+    expect(screen.queryByRole('button', { name: 'ویرایش' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'غیرفعال کردن' })).toBeNull();
 
-    expect(marked).toHaveLength(1);
-    expect(marked[0].getAttribute('data-connection-id')).toBe('conn-3');
+    await openRowMenu('conn-2');
+
+    expect(screen.getByRole('menuitem', { name: 'ویرایش' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'آزمایش اتصال' })).toBeTruthy();
+    expect(
+      screen.getByRole('menuitem', { name: 'تنظیم به‌عنوان پیش‌فرض' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'غیرفعال کردن' })).toBeTruthy();
   });
 
-  it('selects a temporary working connection without opening its edit form', () => {
-    const { onSelectConnection, onEditConnection, onSetWorkspaceDefault } =
-      renderSection();
+  it('sets the workspace default from the row menu', async () => {
+    const { onSetWorkspaceDefault, onEditConnection } = renderSection();
 
-    const row = within(
-      screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
-    )
-      .getAllByRole('row')
-      .find((entry) => entry.getAttribute('data-connection-id') === 'conn-2');
-
+    await openRowMenu('conn-2');
     fireEvent.click(
-      within(row as HTMLElement).getByRole('button', {
-        name: 'انتخاب نمای موقت',
-      }),
-    );
-
-    expect(onSelectConnection).toHaveBeenCalledTimes(1);
-    expect(onSelectConnection.mock.calls[0][0].id).toBe('conn-2');
-    expect(onEditConnection).not.toHaveBeenCalled();
-    expect(onSetWorkspaceDefault).not.toHaveBeenCalled();
-  });
-
-  it('sets the workspace default without changing temporary selection alone', () => {
-    const { onSelectConnection, onSetWorkspaceDefault } = renderSection();
-
-    const row = within(
-      screen.getByRole('table', { name: 'اتصال‌های حسابداری' }),
-    )
-      .getAllByRole('row')
-      .find((entry) => entry.getAttribute('data-connection-id') === 'conn-2');
-
-    fireEvent.click(
-      within(row as HTMLElement).getByRole('button', {
-        name: 'تنظیم به‌عنوان پیش‌فرض',
-      }),
+      screen.getByRole('menuitem', { name: 'تنظیم به‌عنوان پیش‌فرض' }),
     );
 
     expect(onSetWorkspaceDefault).toHaveBeenCalledTimes(1);
     expect(onSetWorkspaceDefault.mock.calls[0][0].id).toBe('conn-2');
-    expect(onSelectConnection).not.toHaveBeenCalled();
+    expect(onEditConnection).not.toHaveBeenCalled();
   });
 
-  it('opens the edit form without changing the selection', () => {
-    const { onSelectConnection, onEditConnection } = renderSection();
+  it('opens the edit form from the row menu', async () => {
+    const { onEditConnection } = renderSection();
 
-    fireEvent.click(
-      screen.getAllByRole('button', { name: 'ویرایش تنظیمات' })[1],
-    );
+    await openRowMenu('conn-2');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'ویرایش' }));
 
     expect(onEditConnection).toHaveBeenCalledTimes(1);
-    expect(onSelectConnection).not.toHaveBeenCalled();
+    expect(onEditConnection.mock.calls[0][0].id).toBe('conn-2');
   });
 
-  it('does not offer temporary selection on the row already selected', () => {
-    renderSection({ selectedConnectionId: 'conn-1' });
-
-    const buttons = screen.getAllByRole('button', { name: 'نمای موقت فعال' });
-
-    expect(buttons).toHaveLength(1);
-    expect((buttons[0] as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('shows the workspace-default badge and disables promoting that row again', () => {
+  it('disables promoting the current workspace default again', async () => {
     renderSection({
       connections: [
         connection({ id: 'conn-1', isDefault: true }),
         connection({ id: 'conn-2', name: 'دوم' }),
       ],
-      selectedConnectionId: 'conn-2',
     });
 
-    expect(screen.getAllByText('پیش‌فرض فضای کاری').length).toBeGreaterThan(0);
+    expect(screen.getByText('پیش‌فرض')).toBeTruthy();
+
+    await openRowMenu('conn-1');
     expect(
       (
-        screen.getByRole('button', {
-          name: 'پیش‌فرض فضای کاری',
+        screen.getByRole('menuitem', {
+          name: 'تنظیم به‌عنوان پیش‌فرض',
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
   });
 
-  it('offers retire on an active row and reactivate on a retired row', () => {
+  it('offers deactivate on an active row and activate on an inactive row', async () => {
     const { onDeactivateConnection, onReactivateConnection } = renderSection({
       connections: [
         connection({ id: 'conn-1', isActive: true }),
-        connection({ id: 'conn-2', name: 'بازنشسته', isActive: false }),
+        connection({ id: 'conn-2', name: 'غیرفعال', isActive: false }),
       ],
-      selectedConnectionId: 'conn-1',
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'بازنشسته‌کردن' }));
+    await openRowMenu('conn-1');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'غیرفعال کردن' }));
     expect(onDeactivateConnection).toHaveBeenCalledTimes(1);
     expect(onDeactivateConnection.mock.calls[0][0].id).toBe('conn-1');
 
-    fireEvent.click(screen.getByRole('button', { name: 'فعال‌سازی مجدد' }));
+    await openRowMenu('conn-2');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'فعال کردن' }));
     expect(onReactivateConnection).toHaveBeenCalledTimes(1);
     expect(onReactivateConnection.mock.calls[0][0].id).toBe('conn-2');
   });
 
-  it('blocks temporary selection of a retired connection', () => {
+  it('labels inactive connections without offering a temporary view', async () => {
     renderSection({
       connections: [
         connection({ id: 'conn-1' }),
         connection({ id: 'conn-2', name: 'اتصال قدیمی', isActive: false }),
       ],
-      selectedConnectionId: 'conn-1',
     });
 
     const retiredRow = within(
@@ -506,19 +496,21 @@ describe('choosing between several connections', () => {
       .find((entry) => entry.getAttribute('data-connection-id') === 'conn-2');
 
     expect(
+      within(retiredRow as HTMLElement).getAllByText('غیرفعال').length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText('نمای موقت')).toBeNull();
+    expect(screen.queryByText('بازنشسته')).toBeNull();
+
+    await openRowMenu('conn-2');
+    expect(
       (
-        within(retiredRow as HTMLElement).getByRole('button', {
-          name: 'انتخاب نمای موقت',
-        }) as HTMLButtonElement
+        screen.getByRole('menuitem', { name: 'آزمایش اتصال' }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
-    expect(
-      within(retiredRow as HTMLElement).getAllByText('بازنشسته').length,
-    ).toBeGreaterThan(0);
   });
 
   it('labels a mock destination as simulated, never as a real connection', () => {
-    renderSection({ selectedConnectionId: 'conn-2' });
+    renderSection();
 
     const table = screen.getByRole('table', { name: 'اتصال‌های حسابداری' });
     const mockRow = within(table)
@@ -540,7 +532,6 @@ describe('honest health states in the list', () => {
       connections: [
         connection({ healthState: 'UNKNOWN', verificationState: 'LIVE_UNVERIFIED' }),
       ],
-      selectedConnectionId: 'conn-1',
     });
 
     expect(screen.getByText('تنظیم‌شده، بررسی‌نشده')).toBeTruthy();
@@ -551,7 +542,6 @@ describe('honest health states in the list', () => {
       connections: [
         connection({ healthState: 'FAILED', verificationState: 'LIVE_UNVERIFIED' }),
       ],
-      selectedConnectionId: 'conn-1',
     });
 
     expect(screen.getByText('ارتباط برقرار نشد')).toBeTruthy();
@@ -562,7 +552,6 @@ describe('honest health states in the list', () => {
       connections: [
         connection({ settings: settings({ moneyUnit: 'UNCONFIRMED' }) }),
       ],
-      selectedConnectionId: 'conn-1',
     });
 
     expect(screen.getByText('تنظیمات ناقص')).toBeTruthy();
@@ -570,6 +559,13 @@ describe('honest health states in the list', () => {
 });
 
 describe('the form is one structure for every adapter', () => {
+  beforeEach(() => {
+    setShowConnectionFinancialUiForTests(true);
+  });
+  afterEach(() => {
+    setShowConnectionFinancialUiForTests(false);
+  });
+
   it('shows the four business sections and no technical mode selector', () => {
     renderSection({ view: 'form' });
 
@@ -643,6 +639,13 @@ describe('the form is one structure for every adapter', () => {
 });
 
 describe('the currency form follows the declared contract', () => {
+  beforeEach(() => {
+    setShowConnectionFinancialUiForTests(true);
+  });
+  afterEach(() => {
+    setShowConnectionFinancialUiForTests(false);
+  });
+
   it('asks a single-currency destination for a currency and no code', () => {
     renderSection({ view: 'form' });
 
@@ -715,7 +718,7 @@ describe('the currency form follows the declared contract', () => {
   it('does not make a currency code mandatory for a single-currency destination', () => {
     const { onSave } = renderSection({ view: 'form' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ذخیرهٔ تنظیمات' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('alert')).toBeNull();
@@ -723,6 +726,13 @@ describe('the currency form follows the declared contract', () => {
 });
 
 describe('the tax form shows one row and one destination code per policy', () => {
+  beforeEach(() => {
+    setShowConnectionFinancialUiForTests(true);
+  });
+  afterEach(() => {
+    setShowConnectionFinancialUiForTests(false);
+  });
+
   it('shows the CRM rate to a rate destination and asks for no code', () => {
     const form = formFrom(threeConnections()[2]);
 
@@ -893,13 +903,13 @@ describe('the tax form shows one row and one destination code per policy', () =>
       screen.queryByText('این اتصال به سرور بیرونی وصل نمی‌شود؛ آدرس و ورود لازم نیست.'),
     ).toBeNull();
     expect(
-      (screen.getByRole('button', { name: 'ذخیرهٔ تنظیمات' }) as HTMLButtonElement)
+      (screen.getByRole('button', { name: 'ذخیره' }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
     expect(
       (
         screen.getByRole('button', {
-          name: 'آزمایش اتصال ذخیره‌شده',
+          name: 'آزمایش اتصال',
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);
@@ -928,12 +938,10 @@ describe('the tax form shows one row and one destination code per policy', () =>
         onRetryCatalogs={vi.fn()}
         canManage
         busy={false}
-        selectedConnectionId="conn-2"
         testResult={null}
         view="form"
         focus={null}
         onOpenList={vi.fn()}
-        onSelectConnection={vi.fn()}
         onSetWorkspaceDefault={vi.fn()}
         onDeactivateConnection={vi.fn()}
         onReactivateConnection={vi.fn()}
@@ -941,6 +949,7 @@ describe('the tax form shows one row and one destination code per policy', () =>
         onChange={vi.fn()}
         onSave={vi.fn()}
         onTest={vi.fn()}
+        onTestConnection={vi.fn()}
         onStartNew={vi.fn()}
       />,
     );
@@ -971,12 +980,10 @@ describe('the tax form shows one row and one destination code per policy', () =>
         onRetryCatalogs={vi.fn()}
         canManage
         busy={false}
-        selectedConnectionId="conn-2"
         testResult={null}
         view="form"
         focus={null}
         onOpenList={vi.fn()}
-        onSelectConnection={vi.fn()}
         onSetWorkspaceDefault={vi.fn()}
         onDeactivateConnection={vi.fn()}
         onReactivateConnection={vi.fn()}
@@ -984,6 +991,7 @@ describe('the tax form shows one row and one destination code per policy', () =>
         onChange={vi.fn()}
         onSave={vi.fn()}
         onTest={vi.fn()}
+        onTestConnection={vi.fn()}
         onStartNew={vi.fn()}
       />,
     );
@@ -998,6 +1006,13 @@ describe('the tax form shows one row and one destination code per policy', () =>
 });
 
 describe('the special tax row code', () => {
+  beforeEach(() => {
+    setShowConnectionFinancialUiForTests(true);
+  });
+  afterEach(() => {
+    setShowConnectionFinancialUiForTests(false);
+  });
+
   it('is asked for only when the destination identifies tax by a row code', () => {
     renderSection({ view: 'form' });
 
@@ -1014,6 +1029,13 @@ describe('the special tax row code', () => {
 });
 
 describe('deep links from the documents readiness list', () => {
+  beforeEach(() => {
+    setShowConnectionFinancialUiForTests(true);
+  });
+  afterEach(() => {
+    setShowConnectionFinancialUiForTests(false);
+  });
+
   it('lands on the currency section of the selected connection', () => {
     renderSection({ view: 'form', form: formFrom(threeConnections()[1]), focus: 'money' });
 
@@ -1054,22 +1076,22 @@ describe('deep links from the documents readiness list', () => {
 });
 
 describe('saving from the form', () => {
-  it('reports a missing name next to the field and refuses to save', () => {
-    const { onSave } = renderSection({
+  it('keeps the connection name system-managed and read-only', () => {
+    renderSection({
       view: 'form',
-      form: { ...formFrom(threeConnections()[0]), name: '' },
+      form: formFrom(threeConnections()[0]),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ذخیرهٔ تنظیمات' }));
-
-    expect(screen.getByRole('alert').textContent).toBe('نام اتصال را وارد کنید.');
-    expect(onSave).not.toHaveBeenCalled();
+    const nameInput = screen.getByLabelText('نام اتصال سیستمی') as HTMLInputElement;
+    expect(nameInput.readOnly).toBe(true);
+    expect(nameInput.disabled).toBe(true);
+    expect(nameInput.value).toBe('آسان کارخانه');
   });
 
   it('saves once the form is complete', () => {
     const { onSave } = renderSection({ view: 'form' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'ذخیرهٔ تنظیمات' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
     expect(onSave).toHaveBeenCalledTimes(1);
   });
@@ -1098,7 +1120,6 @@ describe('the result of a probe is reported without borrowing a live claim', () 
     renderSection({
       connections: [unverified],
       form: formFrom(unverified),
-      selectedConnectionId: 'conn-unverified',
       view: 'form',
       testResult: { healthState: 'OK', message: 'پاسخ داد', detail: '' },
     });
@@ -1126,7 +1147,7 @@ describe('probing only ever targets a saved record', () => {
     });
 
     const button = screen.getByRole('button', {
-      name: 'آزمایش اتصال ذخیره‌شده',
+      name: 'آزمایش اتصال',
     });
 
     expect((button as HTMLButtonElement).disabled).toBe(true);

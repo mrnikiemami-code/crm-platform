@@ -224,6 +224,7 @@ describe('Nest action transport (no Functions /s fallback)', () => {
       [ACCOUNTING_OUTBOUND_ROUTE, 'execute-item-push', 'accounting-outbound-execute-item-push'],
       [ACCOUNTING_OUTBOUND_ROUTE, 'preview-quotation-export', 'accounting-outbound-preview-quotation-export'],
       [ACCOUNTING_OUTBOUND_ROUTE, 'execute-quotation-export', 'accounting-outbound-execute-quotation-export'],
+      [ACCOUNTING_OUTBOUND_ROUTE, 'list-exportable-quotations', 'accounting-outbound-list-exportable-quotations'],
     ] as const) {
       await callAppRoute(path, { action, connectionId: 'conn-1' });
       const [url, request] = transport.mock.calls.at(-1)!;

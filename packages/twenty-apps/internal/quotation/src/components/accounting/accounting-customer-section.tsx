@@ -7,10 +7,8 @@ import {
 } from 'src/components/quotation-api';
 import {
   Badge,
-  Details,
   EmptyState,
   InlineAlert,
-  LimitNotice,
   Pager,
   PrimaryButton,
   SearchField,
@@ -30,7 +28,6 @@ import {
 } from 'src/components/accounting/accounting-mapping-types';
 import {
   DECISION_LABELS,
-  WARNING_LABELS,
   asRecord,
   readString,
   sharedStyles as styles,
@@ -39,21 +36,14 @@ import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 const PAGE_SIZE = 25;
 const CANDIDATE_PAGE_SIZE = 10;
+const APPLY_BATCH_SIZE = 25;
+const TRANSFER_ALL_PAGE_CAP = 40;
 
 type PartySelection = {
-  internalPartyId: string;
-  partyType: 'PERSON' | 'COMPANY';
+  internalPartyId?: string;
+  partyType?: 'PERSON' | 'COMPANY';
   label: string;
-};
-
-const PARTY_HELP: Record<string, string> = {
-  NEEDS_CRM_RECORD: 'برای این مشتری هنوز رکورد CRM انتخاب نشده است؛ با دکمهٔ روبه‌رو انتخاب کنید.',
-  AMBIGUOUS_CRM_MATCH:
-    'چند مشتری CRM با این نام وجود دارد. خودتان یکی را انتخاب کنید تا سند به نام اشتباه ثبت نشود.',
-  DUPLICATE_REMOTE_CODE:
-    'دو مشتری در حسابداری همین شناسه را دارند؛ تا اصلاح شناسه، اتصال ممکن نیست.',
-  LINK_SUGGESTED: 'مشتری مشابهی در CRM پیدا شد؛ با تأیید شما وصل می‌شود.',
-  REMOTE_CHANGED: 'اطلاعات این مشتری در حسابداری تغییر کرده است.',
+  createNew?: boolean;
 };
 
 type PartyFilter = 'ALL' | 'NEEDS_PICK' | 'DUPLICATE' | 'LINKED';
@@ -82,13 +72,41 @@ const matchesPartyFilter = (row: PartyMappingRow, filter: PartyFilter): boolean 
   );
 };
 
-// Customers: the destination's list on one side, and an explicit, searched choice from the
-// CRM on the other.
-//
-// No name matching happens here on purpose. A wrong attachment does not show up as a wrong
-// label — it shows up as one customer's quotation filed under another customer's tax
-// record. The person therefore picks the record, and the CRM search behind the picker is a
-// bounded server query, one page at a time.
+// Auto-link only when the domain already suggested a unique CRM match.
+const isAutoTransferable = (row: PartyMappingRow): boolean =>
+  row.decision === 'LINK_SUGGESTED' &&
+  typeof row.suggestedInternalPartyId === 'string' &&
+  row.suggestedInternalPartyId.trim() !== '';
+
+// Iranian national identifiers: 10 digits = person (کد ملی), 11 = company (شناسه ملی).
+const partyTypeFromNationalCode = (
+  nationalCode: string | null,
+): 'PERSON' | 'COMPANY' | null => {
+  const digits = (nationalCode ?? '').replace(/\D/g, '');
+  if (digits.length === 10) {
+    return 'PERSON';
+  }
+  if (digits.length === 11) {
+    return 'COMPANY';
+  }
+  return null;
+};
+
+const selectionFromSuggested = (row: PartyMappingRow): PartySelection | null => {
+  if (!isAutoTransferable(row) || row.suggestedInternalPartyId === null) {
+    return null;
+  }
+  const partyType = partyTypeFromNationalCode(row.nationalCode);
+  if (partyType === null) {
+    return null;
+  }
+  return {
+    internalPartyId: row.suggestedInternalPartyId,
+    partyType,
+    label: row.fullName,
+  };
+};
+
 export const AccountingCustomerSection = ({
   connectionId,
   canManage,
@@ -100,8 +118,6 @@ export const AccountingCustomerSection = ({
   canManage: boolean;
   onPendingCountChange?: (count: number) => void;
   onGoToConnections?: () => void;
-  // Lets the panel name the inner view in the breadcrumb and title; the picker's own state
-  // stays here so the list keeps its page, filter and selections while the picker is open.
   onSubViewChange?: (label: string | null) => void;
 }) => {
   const [page, setPage] = useState<PartyMappingPage | null>(null);
@@ -187,42 +203,87 @@ export const AccountingCustomerSection = ({
     void loadPage({ atCursor: null, search: term });
   };
 
-  const applySelection = async () => {
-    if (connectionId === null || selected.size === 0 || applying) {
+  const visibleRows = useMemo(
+    () => (page === null ? [] : page.rows.filter((row) => matchesPartyFilter(row, filter))),
+    [page, filter],
+  );
+
+  const pageSelectable = useMemo(
+    () =>
+      visibleRows.filter(
+        (row) =>
+          selected.has(row.externalPartyId) ||
+          isAutoTransferable(row) ||
+          row.decision === 'NEEDS_CRM_RECORD' ||
+          row.decision === 'AMBIGUOUS_CRM_MATCH',
+      ),
+    [visibleRows, selected],
+  );
+
+  const toggleRow = (row: PartyMappingRow) => {
+    setSelected((current) => {
+      const next = new Map(current);
+      if (next.has(row.externalPartyId)) {
+        next.delete(row.externalPartyId);
+        return next;
+      }
+      const suggested = selectionFromSuggested(row);
+      if (suggested !== null) {
+        next.set(row.externalPartyId, suggested);
+        return next;
+      }
+      // Ambiguous / needs record require an explicit CRM pick first.
+      return current;
+    });
+  };
+
+  const applySelections = async (entries: Map<string, PartySelection>) => {
+    if (connectionId === null || entries.size === 0 || applying) {
       return;
     }
 
     setApplying(true);
+    let createdLinks = 0;
+    let refused = 0;
 
     try {
-      const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
-        action: 'apply-parties',
-        connectionId,
-        selections: [...selected.entries()].map(([externalPartyId, selection]) => ({
-          externalPartyId,
-          internalPartyId: selection.internalPartyId,
-          partyType: selection.partyType,
-        })),
-      });
-
-      if (!response.ok || response.data.success !== true) {
-        await enqueueSnackbar({
-          message: toPersianUiMessage(
-            readString(response.data.message),
-            'ثبت اتصال مشتریان انجام نشد.',
-          ),
-          variant: 'error',
+      const all = [...entries.entries()];
+      for (let index = 0; index < all.length; index += APPLY_BATCH_SIZE) {
+        const batch = all.slice(index, index + APPLY_BATCH_SIZE);
+        const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
+          action: 'apply-parties',
+          connectionId,
+          selections: batch.map(([externalPartyId, selection]) => ({
+            externalPartyId,
+            ...(selection.createNew === true
+              ? { createNew: true }
+              : {
+                  internalPartyId: selection.internalPartyId,
+                  partyType: selection.partyType,
+                }),
+          })),
         });
-        return;
+
+        if (!response.ok || response.data.success !== true) {
+          await enqueueSnackbar({
+            message: toPersianUiMessage(
+              readString(response.data.message),
+              'انتقال مشتریان انجام نشد.',
+            ),
+            variant: 'error',
+          });
+          return;
+        }
+
+        const outcome = asRecord(response.data.outcome);
+        createdLinks +=
+          typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
+        refused += Array.isArray(outcome?.refused) ? outcome.refused.length : 0;
       }
 
-      const outcome = asRecord(response.data.outcome);
-      const createdLinks =
-        typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
-
       await enqueueSnackbar({
-        message: `ثبت شد: ${createdLinks} اتصال مشتری.`,
-        variant: 'success',
+        message: `موفق: ${createdLinks.toLocaleString('fa-IR')} · ردشده: ${refused.toLocaleString('fa-IR')}`,
+        variant: refused > 0 && createdLinks === 0 ? 'warning' : 'success',
       });
       setSelected(new Map());
       setPickerFor(null);
@@ -237,16 +298,118 @@ export const AccountingCustomerSection = ({
     }
   };
 
-  const visibleRows = useMemo(
-    () => (page === null ? [] : page.rows.filter((row) => matchesPartyFilter(row, filter))),
-    [page, filter],
-  );
+  const transferSelected = () => {
+    if (selected.size === 0) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `انتقال ${selected.size.toLocaleString('fa-IR')} مشتری انتخاب‌شده انجام شود؟`,
+      )
+    ) {
+      return;
+    }
+    void applySelections(selected);
+  };
+
+  const transferAllEligible = async () => {
+    if (connectionId === null || applying || !canManage) {
+      return;
+    }
+
+    setApplying(true);
+    try {
+      const collected = new Map<string, PartySelection>();
+      let atCursor: string | null = null;
+      let pages = 0;
+      let skipped = 0;
+
+      while (pages < TRANSFER_ALL_PAGE_CAP) {
+        const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
+          action: 'preview-parties-page',
+          connectionId,
+          cursor: atCursor,
+          pageSize: PAGE_SIZE,
+          search: '',
+          refresh: pages === 0,
+        });
+
+        if (!response.ok || response.data.success !== true) {
+          await enqueueSnackbar({
+            message: toPersianUiMessage(
+              readString(response.data.message),
+              'خواندن فهرست مشتریان برای انتقال همه انجام نشد.',
+            ),
+            variant: 'error',
+          });
+          return;
+        }
+
+        const mapped = parsePartyMappingPage(response.data.page);
+        for (const row of mapped.rows) {
+          const suggested = selectionFromSuggested(row);
+          if (suggested !== null) {
+            collected.set(row.externalPartyId, suggested);
+          } else if (
+            row.decision === 'NEEDS_CRM_RECORD' &&
+            partyTypeFromNationalCode(row.nationalCode) !== null &&
+            row.fullName.trim() !== ''
+          ) {
+            collected.set(row.externalPartyId, {
+              label: row.fullName,
+              createNew: true,
+            });
+          } else if (
+            row.decision === 'NEEDS_CRM_RECORD' ||
+            row.decision === 'AMBIGUOUS_CRM_MATCH' ||
+            row.decision === 'DUPLICATE_REMOTE_CODE'
+          ) {
+            skipped += 1;
+          }
+        }
+
+        pages += 1;
+        if (!mapped.hasNextPage || mapped.nextCursor === null) {
+          break;
+        }
+        atCursor = mapped.nextCursor;
+      }
+
+      if (collected.size === 0) {
+        await enqueueSnackbar({
+          message:
+            skipped > 0
+              ? 'مشتری واجد شرایط خودکار نیست؛ موارد مبهم یا فاقد رکورد نیازمند تصمیم دستی‌اند.'
+              : 'مشتری واجد شرایطی برای انتقال نیست.',
+          variant: 'info',
+        });
+        return;
+      }
+
+      if (
+        !window.confirm(
+          `انتقال همه: ${collected.size.toLocaleString('fa-IR')} مشتری با تطابق یکتا. موارد نیازمند بررسی دستی: ${skipped.toLocaleString('fa-IR')}. ادامه؟`,
+        )
+      ) {
+        return;
+      }
+
+      setApplying(false);
+      await applySelections(collected);
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+      setApplying(false);
+    }
+  };
 
   if (connectionId === null) {
     return (
       <EmptyState
-        title="ابتدا یک اتصال انتخاب کنید"
-        description="مشتریان از نرم‌افزار حسابداری خوانده می‌شوند. در بخش «اتصال‌ها» یک اتصال بسازید یا انتخاب کنید، سپس به اینجا برگردید."
+        title="اتصال پیش‌فرض معتبر نیست"
+        description="برای انتقال مشتری، ابتدا یک اتصال پیش‌فرض فعال در بخش اتصال‌ها تنظیم کنید."
         action={
           onGoToConnections === undefined ? undefined : (
             <PrimaryButton label="رفتن به اتصال‌ها" onClick={onGoToConnections} />
@@ -265,9 +428,6 @@ export const AccountingCustomerSection = ({
     onSubViewChange?.(null);
   };
 
-  // An inner view replaces the list instead of stacking under it: the reader lands on the
-  // picker, not on row 14 of a table scrolled past it, and the bar's back action is the way
-  // out. The section stays mounted, so page, filter and selections survive the round trip.
   if (pickerFor !== null) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
@@ -295,8 +455,6 @@ export const AccountingCustomerSection = ({
     );
   }
 
-  const snapshot = page?.snapshot;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
       <div
@@ -305,38 +463,35 @@ export const AccountingCustomerSection = ({
           flexWrap: 'wrap',
           gap: 'var(--t-spacing-2)',
           alignItems: 'flex-end',
-          justifyContent: 'space-between',
         }}
       >
         <form
-          style={{ display: 'flex', gap: 'var(--t-spacing-2)', alignItems: 'flex-end', flex: '1 1 260px' }}
+          style={{
+            display: 'flex',
+            gap: 'var(--t-spacing-2)',
+            alignItems: 'flex-end',
+            flex: '1 1 240px',
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             applySearch(searchDraft.trim());
           }}
         >
-          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div style={{ flex: '1 1 180px', minWidth: 0 }}>
             <SearchField
-              label="جست‌وجو در مشتریان حسابداری"
+              label="جست‌وجو"
               value={searchDraft}
-              placeholder="نام، کد ملی یا شناسهٔ مشتری"
+              placeholder="نام، کد ملی یا شناسه"
               onChange={setSearchDraft}
             />
           </div>
           <SecondaryButton
             label="جست‌وجو"
             onClick={() => applySearch(searchDraft.trim())}
-            disabled={loading}
+            disabled={loading || applying}
           />
         </form>
-        <SecondaryButton
-          label={loading ? 'در حال خواندن…' : 'خواندن دوباره از حسابداری'}
-          onClick={() => setReloadToken((token) => token + 1)}
-          disabled={loading}
-        />
-      </div>
 
-      {page !== null ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {PARTY_FILTERS.map((entry) => (
             <button
@@ -352,33 +507,39 @@ export const AccountingCustomerSection = ({
               {entry.label}
             </button>
           ))}
-          <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', alignSelf: 'center' }}>
-            {filter === 'ALL'
-              ? 'همهٔ مشتریان این صفحه نمایش داده می‌شوند.'
-              : 'این فیلتر فقط روی مشتریان همین صفحه اعمال می‌شود.'}
-          </span>
         </div>
-      ) : null}
+
+        <SecondaryButton
+          label={loading ? 'در حال خواندن…' : 'بازخوانی'}
+          onClick={() => setReloadToken((token) => token + 1)}
+          disabled={loading || applying}
+        />
+        <SecondaryButton
+          label={applying ? 'در حال انتقال…' : 'انتقال همه'}
+          onClick={() => void transferAllEligible()}
+          disabled={!canManage || applying || loading}
+        />
+        {selected.size > 0 ? (
+          <PrimaryButton
+            label={
+              applying
+                ? 'در حال انتقال…'
+                : `انتقال انتخاب‌شده‌ها (${selected.size.toLocaleString('fa-IR')})`
+            }
+            onClick={transferSelected}
+            disabled={!canManage || applying}
+          />
+        ) : null}
+      </div>
 
       {error !== null ? (
         <InlineAlert tone="danger" title="خواندن مشتریان انجام نشد">
           {error}
-          <span style={{ display: 'block', marginTop: '6px' }}>
-            <SecondaryButton
-              label="تلاش دوباره"
-              onClick={() => setReloadToken((token) => token + 1)}
-              disabled={loading}
-            />
-          </span>
         </InlineAlert>
       ) : null}
 
       {loading && page === null ? (
-        <StateBlock
-          state="loading"
-          title="در حال خواندن مشتریان…"
-          description="یک صفحه از نرم‌افزار حسابداری خوانده می‌شود."
-        />
+        <StateBlock state="loading" title="در حال خواندن مشتریان…" description="" />
       ) : null}
 
       {page !== null ? (
@@ -386,15 +547,17 @@ export const AccountingCustomerSection = ({
           <div style={{ overflowX: 'auto' }}>
             <table
               aria-label="مشتریان نرم‌افزار حسابداری"
-              style={{ ...styles.table, minWidth: '680px' }}
+              style={{ ...styles.table, minWidth: '720px' }}
             >
               <thead>
                 <tr>
-                  <th style={styles.cell}>مشتری در حسابداری</th>
-                  <th style={styles.cell}>شناسهٔ مقصد</th>
-                  <th style={styles.cell}>مشتری CRM</th>
-                  <th style={styles.cell}>وضعیت و دلیل</th>
                   <th style={styles.cell}>انتخاب</th>
+                  <th style={styles.cell}>شناسه حسابداری</th>
+                  <th style={styles.cell}>نام مشتری</th>
+                  <th style={styles.cell}>کد ملی یا شناسه ملی</th>
+                  <th style={styles.cell}>مشتری CRM</th>
+                  <th style={styles.cell}>وضعیت</th>
+                  <th style={styles.cell}>عملیات نگاشت</th>
                 </tr>
               </thead>
               <tbody>
@@ -402,44 +565,32 @@ export const AccountingCustomerSection = ({
                   const selection = selected.get(row.externalPartyId);
                   const linked =
                     row.decision === 'IN_SYNC' || row.decision === 'REMOTE_CHANGED';
-                  const help = PARTY_HELP[row.decision];
+                  const canCheck =
+                    isAutoTransferable(row) || selection !== undefined;
 
                   return (
                     <tr key={row.externalPartyId}>
                       <td style={styles.cell}>
-                        {row.fullName}
-                        {row.nationalCode === null ? null : (
-                          <span
-                            style={{
-                              display: 'block',
-                              ...styles.meta,
-                              fontSize: 'var(--t-font-size-xs)',
-                            }}
-                          >
-                            {`کد ملی ${row.nationalCode}`}
-                          </span>
-                        )}
-                        {row.warnings.map((warning) => (
-                          <span
-                            key={warning}
-                            style={{
-                              display: 'block',
-                              ...styles.meta,
-                              fontSize: 'var(--t-font-size-xs)',
-                            }}
-                          >
-                            {WARNING_LABELS[warning] ?? warning}
-                          </span>
-                        ))}
+                        <input
+                          type="checkbox"
+                          checked={selection !== undefined}
+                          disabled={!canManage || applying || linked || !canCheck}
+                          aria-label={`انتخاب ${row.fullName}`}
+                          onChange={() => toggleRow(row)}
+                        />
                       </td>
                       <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
                         {row.externalPartyId}
+                      </td>
+                      <td style={styles.cell}>{row.fullName}</td>
+                      <td style={styles.cell}>
+                        {row.nationalCode === null ? '—' : row.nationalCode}
                       </td>
                       <td style={styles.cell}>
                         {selection === undefined
                           ? linked
                             ? 'وصل‌شده'
-                            : 'انتخاب نشده'
+                            : '—'
                           : selection.label}
                       </td>
                       <td style={styles.cell}>
@@ -448,31 +599,18 @@ export const AccountingCustomerSection = ({
                             DECISION_LABELS[row.decision] ??
                             row.decision}
                         </Badge>
-                        {help === undefined ? null : (
-                          <span
-                            style={{
-                              display: 'block',
-                              ...styles.meta,
-                              fontSize: 'var(--t-font-size-xs)',
-                            }}
-                          >
-                            {help}
-                          </span>
-                        )}
                       </td>
                       <td style={styles.cell}>
                         {linked ? (
-                          <span style={styles.meta}>—</span>
+                          '—'
                         ) : row.decision === 'DUPLICATE_REMOTE_CODE' ? (
-                          <span style={styles.meta}>
-                            ابتدا شناسهٔ تکراری را در حسابداری اصلاح کنید.
-                          </span>
+                          '—'
                         ) : (
                           <SecondaryButton
                             label={
-                              selection === undefined ? 'انتخاب مشتری CRM' : 'تغییر انتخاب'
+                              selection === undefined ? 'انتخاب CRM' : 'تغییر'
                             }
-                            disabled={!canManage}
+                            disabled={!canManage || applying}
                             onClick={() => openPicker(row.externalPartyId)}
                           />
                         )}
@@ -487,29 +625,11 @@ export const AccountingCustomerSection = ({
           {visibleRows.length === 0 ? (
             <EmptyState
               title={
-                filter === 'ALL'
-                  ? submittedSearch === ''
-                    ? 'مشتری‌ای در نرم‌افزار حسابداری نیست'
-                    : `مشتری‌ای با «${submittedSearch}» پیدا نشد`
-                  : 'مشتری‌ای با این فیلتر در این صفحه نیست'
+                submittedSearch === ''
+                  ? 'مشتری‌ای برای نمایش نیست'
+                  : `مشتری‌ای با «${submittedSearch}» پیدا نشد`
               }
-              description={
-                filter === 'ALL'
-                  ? 'جست‌وجو را پاک کنید یا در بخش «اتصال‌ها» وضعیت اتصال را بررسی کنید.'
-                  : 'فیلتر را روی «همه» بگذارید تا بقیهٔ مشتریان این صفحه دیده شوند.'
-              }
-              action={
-                <SecondaryButton
-                  label={filter === 'ALL' ? 'پاک کردن جست‌وجو' : 'نمایش همهٔ این صفحه'}
-                  onClick={() => {
-                    if (filter === 'ALL') {
-                      applySearch('');
-                      return;
-                    }
-                    setFilter('ALL');
-                  }}
-                />
-              }
+              description=""
             />
           ) : null}
 
@@ -518,13 +638,12 @@ export const AccountingCustomerSection = ({
             totalKnown={page.totalKnown}
             hasNextPage={page.hasNextPage}
             hasPreviousPage={pageIndex > 0}
-            busy={loading}
+            busy={loading || applying}
             rowCount={page.rows.length}
             onNext={() => {
               if (page.nextCursor === null) {
                 return;
               }
-
               setCursorStack((current) => [...current, page.nextCursor]);
               void loadPage({
                 atCursor: page.nextCursor,
@@ -534,72 +653,16 @@ export const AccountingCustomerSection = ({
             onPrevious={() => {
               const nextStack = cursorStack.slice(0, -1);
               const at = nextStack[nextStack.length - 1] ?? null;
-
               setCursorStack(nextStack);
               void loadPage({ atCursor: at, search: submittedSearch });
             }}
           />
-
-          {selected.size > 0 ? (
-            <div
-              style={{
-                position: 'sticky',
-                bottom: 0,
-                background: 'var(--t-background-primary)',
-                borderTop: '1px solid var(--t-border-color-light)',
-                padding: 'var(--t-spacing-2) 0',
-                display: 'flex',
-                gap: 'var(--t-spacing-2)',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
-              <span style={styles.meta}>
-                {`${selected.size.toLocaleString('fa-IR')} مشتری انتخاب شده است (در جست‌وجو و صفحه‌های دیگر حفظ می‌شود).`}
-              </span>
-              <PrimaryButton
-                label={applying ? 'در حال ثبت…' : 'ثبت اتصال مشتریان انتخاب‌شده'}
-                onClick={() => void applySelection()}
-                disabled={applying || !canManage}
-              />
-              <SecondaryButton
-                label="پاک کردن انتخاب"
-                onClick={() => setSelected(new Map())}
-                disabled={applying}
-              />
-            </div>
-          ) : null}
-
-          {snapshot === undefined ? null : (
-            <Details summary="جزئیات فنی: منبع فهرست، محدودیت و وضعیت همگام‌سازی">
-              <LimitNotice
-                truncated={snapshot.truncation.kind === 'BOUNDED'}
-                taken={
-                  snapshot.truncation.kind === 'BOUNDED'
-                    ? snapshot.truncation.taken
-                    : 0
-                }
-                limit={
-                  snapshot.truncation.kind === 'BOUNDED'
-                    ? snapshot.truncation.limit
-                    : 0
-                }
-                declaredTotal={snapshot.truncation.declaredTotal}
-                vendorCannotPage={snapshot.vendorPagination === 'NONE'}
-                syncStatus={snapshot.syncStatus}
-                degradedReason={snapshot.degradedReason}
-              />
-            </Details>
-          )}
         </>
       ) : null}
     </div>
   );
 };
 
-// The CRM side of the choice: a bounded server search, paged with the cursor the server
-// issued. Nothing is preloaded, so a CRM with a million customers answers this as fast as
-// one with ten.
 const CustomerPicker = ({
   connectionId,
   onPick,
@@ -653,7 +716,7 @@ const CustomerPicker = ({
         setLoading(false);
       }
     },
-    [],
+    [connectionId],
   );
 
   useEffect(() => {
@@ -672,11 +735,6 @@ const CustomerPicker = ({
         background: 'var(--t-background-secondary)',
       }}
     >
-      <p style={styles.subtitle}>
-        شرکت یا شخص موردنظر را در CRM پیدا کنید. نام یا ایمیل او را بنویسید؛ فقط همان چیزی
-        که جست‌وجو می‌کنید از CRM خوانده می‌شود.
-      </p>
-
       <div style={styles.row}>
         <label style={{ ...styles.label, display: 'flex', alignItems: 'center', gap: '4px' }}>
           <input
@@ -697,7 +755,12 @@ const CustomerPicker = ({
       </div>
 
       <form
-        style={{ display: 'flex', gap: 'var(--t-spacing-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}
+        style={{
+          display: 'flex',
+          gap: 'var(--t-spacing-2)',
+          alignItems: 'flex-end',
+          flexWrap: 'wrap',
+        }}
         onSubmit={(event) => {
           event.preventDefault();
           void search({ term: draft.trim(), atCursor: null, type: partyType });
@@ -713,7 +776,9 @@ const CustomerPicker = ({
         </div>
         <SecondaryButton
           label="جست‌وجو"
-          onClick={() => void search({ term: draft.trim(), atCursor: null, type: partyType })}
+          onClick={() =>
+            void search({ term: draft.trim(), atCursor: null, type: partyType })
+          }
           disabled={loading}
         />
       </form>
@@ -725,15 +790,12 @@ const CustomerPicker = ({
       ) : null}
 
       {loading && page === null ? (
-        <StateBlock state="loading" title="در حال جست‌وجو…" description="یک لحظه صبر کنید." />
+        <StateBlock state="loading" title="در حال جست‌وجو…" description="" />
       ) : null}
 
       {page !== null ? (
         page.rows.length === 0 ? (
-          <EmptyState
-            title="مشتری‌ای پیدا نشد"
-            description="بخش «شرکت» یا «شخص» را عوض کنید یا بخشی از نام را جست‌وجو کنید."
-          />
+          <EmptyState title="مشتری‌ای پیدا نشد" description="" />
         ) : (
           <ul
             style={{
@@ -759,11 +821,6 @@ const CustomerPicker = ({
               >
                 <span style={{ fontSize: 'var(--t-font-size-sm)' }}>
                   {candidate.label}
-                  {candidate.detail === null ? null : (
-                    <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-                      {` — ${candidate.detail}`}
-                    </span>
-                  )}
                 </span>
                 <PrimaryButton
                   label="انتخاب"

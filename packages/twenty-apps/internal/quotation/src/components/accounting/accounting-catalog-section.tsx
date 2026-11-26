@@ -7,10 +7,8 @@ import {
 } from 'src/components/quotation-api';
 import {
   Badge,
-  Details,
   EmptyState,
   InlineAlert,
-  LimitNotice,
   Pager,
   PrimaryButton,
   SearchField,
@@ -27,7 +25,6 @@ import {
 } from 'src/components/accounting/accounting-mapping-types';
 import {
   DECISION_LABELS,
-  WARNING_LABELS,
   asRecord,
   readString,
   sharedStyles as styles,
@@ -35,20 +32,10 @@ import {
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 const PAGE_SIZE = 25;
+const APPLY_BATCH_SIZE = 25;
+const TRANSFER_ALL_PAGE_CAP = 40;
 
 type Selection = { internalItemId: string | null };
-
-// One Persian sentence per decision, written for the person fixing the row rather than the
-// person who wrote the matcher. The badge already says «کد تکراری»; this says what to do.
-const DECISION_HELP: Record<string, string> = {
-  DUPLICATE_REMOTE_CODE:
-    'دو کالا در نرم‌افزار حسابداری همین کد را دارند. تا وقتی کد یکی اصلاح نشود، اتصال ممکن نیست.',
-  IN_SYNC: 'این کالا قبلاً به CRM وصل شده است.',
-  LINK_SUGGESTED: 'کالای مشابه در CRM پیدا شد؛ با تأیید شما وصل می‌شود.',
-  LINK_AMBIGUOUS: 'چند کالای هم‌کد در CRM هست؛ باید دستی یکی را انتخاب کنید.',
-  CREATE: 'کالای متناظر در CRM نیست؛ با ثبت، ساخته می‌شود.',
-  REMOTE_CHANGED: 'اطلاعات این کالا در حسابداری تغییر کرده است؛ پس از بررسی، دوباره وصل کنید.',
-};
 
 type RowFilter = 'ALL' | 'NEEDS_ACTION' | 'UNLINKED' | 'DUPLICATE';
 
@@ -76,15 +63,24 @@ const matchesFilter = (row: ItemMappingRow, filter: RowFilter): boolean => {
   );
 };
 
-// Products and services: what the destination has, and how it attaches to the CRM catalog.
-//
-// Everything visible here is ONE page. The list is asked for with a cursor, the search runs
-// on the server, and the destination rows are read once into a bounded snapshot whose limit
-// is stated on screen. Selections live outside the page, so choosing a row, searching for
-// another, and paging do not lose what was already chosen.
-//
-// The status filter is client-side and says so, because the destination reader has no status
-// parameter; shipping a chip row that silently searched only the current page would be a lie.
+const isSelectableItem = (row: ItemMappingRow): boolean =>
+  row.decision === 'CREATE' ||
+  row.decision === 'LINK_SUGGESTED' ||
+  row.decision === 'REMOTE_CHANGED';
+
+const selectionForRow = (row: ItemMappingRow): Selection => ({
+  internalItemId: row.suggestedInternalItemId,
+});
+
+const formatOutcomeReport = (outcome: Record<string, unknown> | null): string => {
+  const createdLinks =
+    typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
+  const createdItems =
+    typeof outcome?.createdItems === 'number' ? outcome.createdItems : 0;
+  const refused = Array.isArray(outcome?.refused) ? outcome.refused.length : 0;
+  return `موفق: ${(createdItems + createdLinks).toLocaleString('fa-IR')} · ردشده: ${refused.toLocaleString('fa-IR')}`;
+};
+
 export const AccountingCatalogSection = ({
   connectionId,
   canManage,
@@ -104,8 +100,6 @@ export const AccountingCatalogSection = ({
   const [searchDraft, setSearchDraft] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [rowFilter, setRowFilter] = useState<RowFilter>('ALL');
-  // A stack of the cursors that produced each visited page, so "previous" is exact and does
-  // not need a reverse cursor the destination does not provide.
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Map<string, Selection>>(new Map());
   const [applying, setApplying] = useState(false);
@@ -184,65 +178,103 @@ export const AccountingCatalogSection = ({
   const toggleSelection = (row: ItemMappingRow) => {
     setSelected((current) => {
       const next = new Map(current);
-
       if (next.has(row.externalItemId)) {
         next.delete(row.externalItemId);
         return next;
       }
-
-      // A row that is already linked, or that the destination reports as a duplicate code,
-      // cannot be applied; offering a checkbox would promise a write that will be refused.
-      if (row.decision === 'IN_SYNC' || row.decision === 'DUPLICATE_REMOTE_CODE') {
+      if (!isSelectableItem(row)) {
         return current;
       }
-
-      next.set(row.externalItemId, {
-        internalItemId: row.suggestedInternalItemId,
-      });
-
+      next.set(row.externalItemId, selectionForRow(row));
       return next;
     });
   };
 
-  const applySelection = async () => {
-    if (connectionId === null || selected.size === 0 || applying) {
+  const visibleRows = useMemo(
+    () => (page === null ? [] : page.rows.filter((row) => matchesFilter(row, rowFilter))),
+    [page, rowFilter],
+  );
+
+  const pageSelectable = useMemo(
+    () => visibleRows.filter(isSelectableItem),
+    [visibleRows],
+  );
+
+  const allPageSelected =
+    pageSelectable.length > 0 &&
+    pageSelectable.every((row) => selected.has(row.externalItemId));
+
+  const togglePageSelection = () => {
+    setSelected((current) => {
+      const next = new Map(current);
+      if (allPageSelected) {
+        for (const row of pageSelectable) {
+          next.delete(row.externalItemId);
+        }
+        return next;
+      }
+      for (const row of pageSelectable) {
+        next.set(row.externalItemId, selectionForRow(row));
+      }
+      return next;
+    });
+  };
+
+  const applySelections = async (entries: Map<string, Selection>) => {
+    if (connectionId === null || entries.size === 0 || applying) {
       return;
     }
 
     setApplying(true);
+    let createdLinks = 0;
+    let createdItems = 0;
+    let refused = 0;
 
     try {
-      const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
-        action: 'apply-items',
-        connectionId,
-        selections: [...selected.entries()].map(([externalItemId, selection]) => ({
-          externalItemId,
-          ...(selection.internalItemId === null
-            ? {}
-            : { internalItemId: selection.internalItemId }),
-        })),
-      });
-
-      if (!response.ok || response.data.success !== true) {
-        await enqueueSnackbar({
-          message: toPersianUiMessage(
-            readString(response.data.message),
-            'ثبت اتصال کالاها انجام نشد.',
-          ),
-          variant: 'error',
-        });
-        return;
+      const batches: [string, Selection][][] = [];
+      const all = [...entries.entries()];
+      for (let index = 0; index < all.length; index += APPLY_BATCH_SIZE) {
+        batches.push(all.slice(index, index + APPLY_BATCH_SIZE));
       }
 
-      const outcome = asRecord(response.data.outcome);
-      const createdLinks =
-        typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
-      const createdItems =
-        typeof outcome?.createdItems === 'number' ? outcome.createdItems : 0;
+      for (const batch of batches) {
+        const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
+          action: 'apply-items',
+          connectionId,
+          selections: batch.map(([externalItemId, selection]) => ({
+            externalItemId,
+            ...(selection.internalItemId === null
+              ? {}
+              : { internalItemId: selection.internalItemId }),
+          })),
+        });
+
+        if (!response.ok || response.data.success !== true) {
+          await enqueueSnackbar({
+            message: toPersianUiMessage(
+              readString(response.data.message),
+              'انتقال کالاها انجام نشد.',
+            ),
+            variant: 'error',
+          });
+          return;
+        }
+
+        const outcome = asRecord(response.data.outcome);
+        createdLinks +=
+          typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
+        createdItems +=
+          typeof outcome?.createdItems === 'number' ? outcome.createdItems : 0;
+        refused += Array.isArray(outcome?.refused) ? outcome.refused.length : 0;
+      }
 
       await enqueueSnackbar({
-        message: `ثبت شد: ${createdItems} کالای جدید در CRM و ${createdLinks} اتصال.`,
-        variant: 'success',
+        message: formatOutcomeReport({
+          createdLinks,
+          createdItems,
+          refused: Array.from({ length: refused }),
+        }),
+        variant: refused > 0 && createdLinks + createdItems === 0 ? 'warning' : 'success',
       });
       setSelected(new Map());
       void loadPage({ atCursor: cursor, search: submittedSearch, refresh: true });
@@ -256,16 +288,108 @@ export const AccountingCatalogSection = ({
     }
   };
 
-  const visibleRows = useMemo(
-    () => (page === null ? [] : page.rows.filter((row) => matchesFilter(row, rowFilter))),
-    [page, rowFilter],
-  );
+  const transferSelected = () => {
+    if (selected.size === 0) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `انتقال ${selected.size.toLocaleString('fa-IR')} کالای انتخاب‌شده انجام شود؟`,
+      )
+    ) {
+      return;
+    }
+    void applySelections(selected);
+  };
+
+  const transferAllEligible = async () => {
+    if (connectionId === null || applying || !canManage) {
+      return;
+    }
+
+    setApplying(true);
+    try {
+      // Transfer-all always ignores the active search and walks the full eligible set.
+      const collected = new Map<string, Selection>();
+      let atCursor: string | null = null;
+      let pages = 0;
+      let blocked = 0;
+
+      while (pages < TRANSFER_ALL_PAGE_CAP) {
+        const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
+          action: 'preview-items-page',
+          connectionId,
+          cursor: atCursor,
+          pageSize: PAGE_SIZE,
+          search: '',
+          refresh: pages === 0,
+        });
+
+        if (!response.ok || response.data.success !== true) {
+          await enqueueSnackbar({
+            message: toPersianUiMessage(
+              readString(response.data.message),
+              'خواندن فهرست کالاها برای انتقال همه انجام نشد.',
+            ),
+            variant: 'error',
+          });
+          return;
+        }
+
+        const mapped = parseItemMappingPage(response.data.page);
+        for (const row of mapped.rows) {
+          if (isSelectableItem(row)) {
+            collected.set(row.externalItemId, selectionForRow(row));
+          } else if (
+            row.decision === 'DUPLICATE_REMOTE_CODE' ||
+            row.decision === 'LINK_AMBIGUOUS'
+          ) {
+            blocked += 1;
+          }
+        }
+
+        pages += 1;
+        if (!mapped.hasNextPage || mapped.nextCursor === null) {
+          break;
+        }
+        atCursor = mapped.nextCursor;
+      }
+
+      if (collected.size === 0) {
+        await enqueueSnackbar({
+          message:
+            blocked > 0
+              ? 'کالای واجد شرایطی برای انتقال نیست؛ موارد دارای تعارض منتقل نمی‌شوند.'
+              : 'کالای واجد شرایطی برای انتقال نیست.',
+          variant: 'info',
+        });
+        return;
+      }
+
+      if (
+        !window.confirm(
+          `انتقال همه: ${collected.size.toLocaleString('fa-IR')} کالا (جست‌وجوی فعال نادیده گرفته می‌شود). موارد دارای تعارض: ${blocked.toLocaleString('fa-IR')}. ادامه؟`,
+        )
+      ) {
+        return;
+      }
+
+      setApplying(false);
+      await applySelections(collected);
+    } catch {
+      await enqueueSnackbar({
+        message: 'ارتباط با سرور برقرار نشد.',
+        variant: 'error',
+      });
+      setApplying(false);
+    }
+  };
 
   if (connectionId === null) {
     return (
       <EmptyState
-        title="ابتدا یک اتصال انتخاب کنید"
-        description="کالاها از نرم‌افزار حسابداری خوانده می‌شوند. در بخش «اتصال‌ها» یک اتصال بسازید یا انتخاب کنید، سپس به اینجا برگردید."
+        title="اتصال پیش‌فرض معتبر نیست"
+        description="برای انتقال کالا، ابتدا یک اتصال پیش‌فرض فعال در بخش اتصال‌ها تنظیم کنید."
         action={
           onGoToConnections === undefined ? undefined : (
             <PrimaryButton label="رفتن به اتصال‌ها" onClick={onGoToConnections} />
@@ -275,9 +399,6 @@ export const AccountingCatalogSection = ({
     );
   }
 
-  const snapshot = page?.snapshot;
-  const truncated = snapshot?.truncation.kind === 'BOUNDED';
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
       <div
@@ -286,19 +407,23 @@ export const AccountingCatalogSection = ({
           flexWrap: 'wrap',
           gap: 'var(--t-spacing-2)',
           alignItems: 'flex-end',
-          justifyContent: 'space-between',
         }}
       >
         <form
-          style={{ display: 'flex', gap: 'var(--t-spacing-2)', alignItems: 'flex-end', flex: '1 1 260px' }}
+          style={{
+            display: 'flex',
+            gap: 'var(--t-spacing-2)',
+            alignItems: 'flex-end',
+            flex: '1 1 240px',
+          }}
           onSubmit={(event) => {
             event.preventDefault();
             applySearch(searchDraft.trim());
           }}
         >
-          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div style={{ flex: '1 1 180px', minWidth: 0 }}>
             <SearchField
-              label="جست‌وجو در کالاهای حسابداری"
+              label="جست‌وجو"
               value={searchDraft}
               placeholder="نام یا کد کالا"
               onChange={setSearchDraft}
@@ -307,81 +432,58 @@ export const AccountingCatalogSection = ({
           <SecondaryButton
             label="جست‌وجو"
             onClick={() => applySearch(searchDraft.trim())}
-            disabled={loading}
+            disabled={loading || applying}
           />
         </form>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {ROW_FILTERS.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              aria-pressed={rowFilter === filter.id ? 'true' : 'false'}
+              style={{
+                ...styles.button,
+                ...(rowFilter === filter.id ? styles.buttonPrimary : {}),
+              }}
+              onClick={() => setRowFilter(filter.id)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
         <SecondaryButton
-          label={loading ? 'در حال خواندن…' : 'خواندن دوباره از حسابداری'}
+          label={loading ? 'در حال خواندن…' : 'بازخوانی'}
           onClick={() => setReloadToken((token) => token + 1)}
-          disabled={loading}
+          disabled={loading || applying}
         />
+        <SecondaryButton
+          label={applying ? 'در حال انتقال…' : 'انتقال همه'}
+          onClick={() => void transferAllEligible()}
+          disabled={!canManage || applying || loading}
+        />
+        {selected.size > 0 ? (
+          <PrimaryButton
+            label={
+              applying
+                ? 'در حال انتقال…'
+                : `انتقال انتخاب‌شده‌ها (${selected.size.toLocaleString('fa-IR')})`
+            }
+            onClick={transferSelected}
+            disabled={!canManage || applying}
+          />
+        ) : null}
       </div>
-
-      {page !== null ? (
-        <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {ROW_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                type="button"
-                aria-pressed={rowFilter === filter.id ? 'true' : 'false'}
-                style={{
-                  ...styles.button,
-                  ...(rowFilter === filter.id ? styles.buttonPrimary : {}),
-                }}
-                onClick={() => setRowFilter(filter.id)}
-              >
-                {filter.label}
-              </button>
-            ))}
-            <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)', alignSelf: 'center' }}>
-              {rowFilter === 'ALL'
-                ? 'همهٔ کالاهای این صفحه نمایش داده می‌شوند.'
-                : 'این فیلتر فقط روی کالاهای همین صفحه اعمال می‌شود؛ برای دیدن بقیه، صفحه را عوض کنید یا جست‌وجو کنید.'}
-            </span>
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-              gap: 'var(--t-spacing-2)',
-            }}
-          >
-            <SummaryChip label="وصل‌شده" value={page.summary.linked ?? 0} tone="success" />
-            <SummaryChip label="وصل‌نشده" value={page.summary.unlinked ?? 0} />
-            <SummaryChip label="کد تکراری" value={page.summary.blocked ?? 0} tone="danger" />
-            <SummaryChip
-              label="نیازمند بررسی"
-              value={page.summary.needsAttention ?? 0}
-              tone="warning"
-            />
-          </div>
-        </>
-      ) : null}
 
       {error !== null ? (
         <InlineAlert tone="danger" title="خواندن کالاها انجام نشد">
           {error}
-          <span style={{ display: 'block', marginTop: '6px' }}>
-            اتصال را در بخش «اتصال‌ها» آزمایش کنید و دوباره تلاش کنید.
-          </span>
-          <span style={{ display: 'block', marginTop: '6px' }}>
-            <SecondaryButton
-              label="تلاش دوباره"
-              onClick={() => setReloadToken((token) => token + 1)}
-              disabled={loading}
-            />
-          </span>
         </InlineAlert>
       ) : null}
 
       {loading && page === null ? (
-        <StateBlock
-          state="loading"
-          title="در حال خواندن کالاها…"
-          description="یک صفحه از نرم‌افزار حسابداری خوانده می‌شود."
-        />
+        <StateBlock state="loading" title="در حال خواندن کالاها…" description="" />
       ) : null}
 
       {page !== null ? (
@@ -393,22 +495,30 @@ export const AccountingCatalogSection = ({
             >
               <thead>
                 <tr>
-                  <th style={styles.cell}>انتخاب</th>
-                  <th style={styles.cell}>کد</th>
-                  <th style={styles.cell}>نام در حسابداری</th>
+                  <th style={styles.cell}>
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      disabled={!canManage || pageSelectable.length === 0 || applying}
+                      aria-label="انتخاب همه کالاهای مجاز این صفحه"
+                      onChange={togglePageSelection}
+                    />
+                  </th>
+                  <th style={styles.cell}>کد کالا</th>
+                  <th style={styles.cell}>نام کالا</th>
                   <th style={styles.cell}>قیمت حسابداری</th>
                   <th style={styles.cell}>کالای CRM</th>
-                  <th style={styles.cell}>تفاوت قیمت</th>
-                  <th style={styles.cell}>وضعیت و دلیل</th>
+                  <th style={styles.cell}>وضعیت</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map((row) => {
                   const checked = selected.has(row.externalItemId);
-                  const selectable =
-                    row.decision !== 'IN_SYNC' &&
-                    row.decision !== 'DUPLICATE_REMOTE_CODE';
-                  const help = DECISION_HELP[row.decision];
+                  const selectable = isSelectableItem(row);
+                  const priceLabel =
+                    row.priceMicros === null
+                      ? row.planPrice
+                      : `${formatMicrosForDisplay(row.priceMicros)} ${moneyUnitLabel}`;
 
                   return (
                     <tr key={row.externalItemId}>
@@ -416,7 +526,7 @@ export const AccountingCatalogSection = ({
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={!canManage || !selectable}
+                          disabled={!canManage || !selectable || applying}
                           aria-label={`انتخاب ${row.name}`}
                           onChange={() => toggleSelection(row)}
                         />
@@ -424,35 +534,12 @@ export const AccountingCatalogSection = ({
                       <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
                         {row.code}
                       </td>
-                      <td style={styles.cell}>
-                        {row.name}
-                        {row.warnings.map((warning) => (
-                          <span
-                            key={warning}
-                            style={{
-                              display: 'block',
-                              ...styles.meta,
-                              fontSize: 'var(--t-font-size-xs)',
-                            }}
-                          >
-                            {WARNING_LABELS[warning] ?? warning}
-                          </span>
-                        ))}
-                      </td>
-                      <td style={styles.cell}>
-                        {row.priceMicros === null
-                          ? row.planPrice
-                          : `${formatMicrosForDisplay(row.priceMicros)} ${moneyUnitLabel}`}
-                      </td>
+                      <td style={styles.cell}>{row.name}</td>
+                      <td style={styles.cell}>{priceLabel}</td>
                       <td style={styles.cell}>
                         {row.suggestedInternalItemName === null
                           ? '—'
                           : row.suggestedInternalItemName}
-                      </td>
-                      <td style={styles.cell}>
-                        {row.priceDifferenceMicros === null
-                          ? '—'
-                          : `${formatMicrosForDisplay(row.priceDifferenceMicros)} ${moneyUnitLabel}`}
                       </td>
                       <td style={styles.cell}>
                         <Badge tone={itemStatusTone(row.decision)}>
@@ -460,17 +547,6 @@ export const AccountingCatalogSection = ({
                             DECISION_LABELS[row.decision] ??
                             row.decision}
                         </Badge>
-                        {help === undefined ? null : (
-                          <span
-                            style={{
-                              display: 'block',
-                              ...styles.meta,
-                              fontSize: 'var(--t-font-size-xs)',
-                            }}
-                          >
-                            {help}
-                          </span>
-                        )}
                       </td>
                     </tr>
                   );
@@ -482,29 +558,11 @@ export const AccountingCatalogSection = ({
           {visibleRows.length === 0 ? (
             <EmptyState
               title={
-                rowFilter === 'ALL'
-                  ? submittedSearch === ''
-                    ? 'کالایی در نرم‌افزار حسابداری نیست'
-                    : `کالایی با «${submittedSearch}» پیدا نشد`
-                  : 'کالایی با این فیلتر در این صفحه نیست'
+                submittedSearch === ''
+                  ? 'کالایی برای نمایش نیست'
+                  : `کالایی با «${submittedSearch}» پیدا نشد`
               }
-              description={
-                rowFilter === 'ALL'
-                  ? 'جست‌وجو را پاک کنید یا در بخش «اتصال‌ها» وضعیت اتصال را بررسی کنید.'
-                  : 'فیلتر را روی «همه» بگذارید تا بقیهٔ کالاهای این صفحه دیده شوند.'
-              }
-              action={
-                <SecondaryButton
-                  label={rowFilter === 'ALL' ? 'پاک کردن جست‌وجو' : 'نمایش همهٔ این صفحه'}
-                  onClick={() => {
-                    if (rowFilter === 'ALL') {
-                      applySearch('');
-                      return;
-                    }
-                    setRowFilter('ALL');
-                  }}
-                />
-              }
+              description=""
             />
           ) : null}
 
@@ -513,13 +571,12 @@ export const AccountingCatalogSection = ({
             totalKnown={page.totalKnown}
             hasNextPage={page.hasNextPage}
             hasPreviousPage={pageIndex > 0}
-            busy={loading}
+            busy={loading || applying}
             rowCount={page.rows.length}
             onNext={() => {
               if (page.nextCursor === null) {
                 return;
               }
-
               setCursorStack((current) => [...current, page.nextCursor]);
               void loadPage({
                 atCursor: page.nextCursor,
@@ -529,110 +586,12 @@ export const AccountingCatalogSection = ({
             onPrevious={() => {
               const nextStack = cursorStack.slice(0, -1);
               const at = nextStack[nextStack.length - 1] ?? null;
-
               setCursorStack(nextStack);
               void loadPage({ atCursor: at, search: submittedSearch });
             }}
           />
-
-          {selected.size > 0 ? (
-            <div
-              style={{
-                position: 'sticky',
-                bottom: 0,
-                background: 'var(--t-background-primary)',
-                borderTop: '1px solid var(--t-border-color-light)',
-                padding: 'var(--t-spacing-2) 0',
-                display: 'flex',
-                gap: 'var(--t-spacing-2)',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
-              <span style={styles.meta}>
-                {`${selected.size.toLocaleString('fa-IR')} مورد انتخاب شده است (در جست‌وجو و صفحه‌های دیگر حفظ می‌شود).`}
-              </span>
-              <PrimaryButton
-                label={applying ? 'در حال ثبت…' : 'ثبت اتصال موارد انتخاب‌شده'}
-                onClick={() => void applySelection()}
-                disabled={applying || !canManage}
-              />
-              <SecondaryButton
-                label="پاک کردن انتخاب"
-                onClick={() => setSelected(new Map())}
-                disabled={applying}
-              />
-            </div>
-          ) : null}
-
-          {snapshot === undefined ? null : (
-            <Details
-              summary={`جزئیات فنی: منبع فهرست، محدودیت${truncated ? ' و ناقص‌بودن' : ''}، وضعیت همگام‌سازی`}
-            >
-              <LimitNotice
-                truncated={truncated}
-                taken={
-                  snapshot.truncation.kind === 'BOUNDED'
-                    ? snapshot.truncation.taken
-                    : 0
-                }
-                limit={
-                  snapshot.truncation.kind === 'BOUNDED'
-                    ? snapshot.truncation.limit
-                    : 0
-                }
-                declaredTotal={snapshot.truncation.declaredTotal}
-                vendorCannotPage={snapshot.vendorPagination === 'NONE'}
-                syncStatus={snapshot.syncStatus}
-                degradedReason={snapshot.degradedReason}
-              />
-              <span>
-                {snapshot.reused
-                  ? `فهرست مقصد از بارگذاری قبلی استفاده شد (${Math.max(
-                      1,
-                      Math.round(snapshot.ageMs / 60000),
-                    )} دقیقه پیش).`
-                  : 'فهرست مقصد همین حالا خوانده شد.'}
-              </span>
-            </Details>
-          )}
         </>
       ) : null}
     </div>
   );
 };
-
-const SummaryChip = ({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: 'success' | 'warning' | 'danger';
-}) => (
-  <div
-    style={{
-      border: '1px solid var(--t-border-color-light)',
-      borderTopWidth: tone === undefined ? '1px' : '3px',
-      borderTopColor:
-        tone === 'success'
-          ? 'var(--t-color-green)'
-          : tone === 'warning'
-            ? 'var(--t-color-yellow)'
-            : tone === 'danger'
-              ? 'var(--t-color-red)'
-              : 'var(--t-border-color-light)',
-      borderRadius: 'var(--t-border-radius-sm)',
-      padding: 'var(--t-spacing-2)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '2px',
-    }}
-  >
-    <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>{label}</span>
-    <span style={{ fontWeight: 'var(--t-font-weight-semi-bold)' }}>
-      {value.toLocaleString('fa-IR')}
-    </span>
-  </div>
-);

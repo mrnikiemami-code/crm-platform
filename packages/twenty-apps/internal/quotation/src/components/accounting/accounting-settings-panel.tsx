@@ -57,7 +57,7 @@ import {
   parsePartyMappingPage,
   type SnapshotView,
 } from 'src/components/accounting/accounting-mapping-types';
-import { resolveTemporaryWorkingConnectionId } from 'src/domain/accounting/resolve-destination';
+import { findValidWorkspaceDefaultConnection } from 'src/domain/accounting/resolve-destination';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 type SectionId = 'overview' | 'connections' | 'catalog' | 'customers' | 'documents';
@@ -82,20 +82,6 @@ const MOCK_SERVICE_ADDRESS = 'http://mock.invalid';
 
 const ACCOUNTING_GUIDE_STORAGE_KEY = 'quotation:accounting:section';
 
-// Temporary working context for this browser only — not the workspace default destination.
-// Workspace default lives on the server (`isDefault`). This key only remembers which row
-// the operator is inspecting for catalog/customers while staying on the page.
-const ACCOUNTING_CONNECTION_STORAGE_KEY = 'quotation:accounting:working-connection';
-
-const readStoredConnectionId = (): string | null => {
-  try {
-    const stored = window.localStorage.getItem(ACCOUNTING_CONNECTION_STORAGE_KEY);
-
-    return stored === null || stored.trim() === '' ? null : stored;
-  } catch {
-    return null;
-  }
-};
 
 const SECTION_COPY: Record<SectionId, { label: string; description: string }> = {
   overview: {
@@ -140,15 +126,9 @@ export const AccountingSettingsPanel = () => {
   const [connectionView, setConnectionView] = useState<'list' | 'form'>('list');
   // The sub-section a deep link asked for («تعیین واحد پول» / «تنظیم مالیات حسابداری»).
   const [connectionFocus, setConnectionFocus] = useState<'money' | 'tax' | null>(null);
-  // The selected destination is the state every section reads. Editing it is a different,
-  // deliberately separate action; opening the form must not change the selection and
-  // selecting must not open the form.
-  //
-  // Initialized from storage, not written to it, so the remembered destination is present
-  // before the first load resolves: an effect that cleared storage while the selection was
-  // still null would erase the choice on every reload.
+  // Workspace default only — catalog/customers/documents never use a browser-local override.
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
-    readStoredConnectionId,
+    null,
   );
   const [taxCatalog, setTaxCatalog] = useState<CatalogReadState<TaxPolicyView>>(
     emptyCatalogState,
@@ -196,14 +176,10 @@ export const AccountingSettingsPanel = () => {
 
       setData(parsed);
 
-      // Temporary working context: remembered id if still present, else workspace default,
-      // else null. Never invents a destination from row order.
-      setSelectedConnectionId((current) =>
-        resolveTemporaryWorkingConnectionId({
-          connections: parsed.connections,
-          rememberedConnectionId: current ?? readStoredConnectionId(),
-        }),
-      );
+      // Never invent a destination from row order: only a valid workspace default qualifies.
+      const workspaceDefaultId =
+        findValidWorkspaceDefaultConnection(parsed.connections)?.id ?? null;
+      setSelectedConnectionId(workspaceDefaultId);
 
       // The edit draft follows the record it belongs to; a draft that was never saved stays
       // exactly as the person left it.
@@ -216,12 +192,9 @@ export const AccountingSettingsPanel = () => {
           return refreshed === undefined ? current : toForm(refreshed);
         }
 
-        const workingId = resolveTemporaryWorkingConnectionId({
-          connections: parsed.connections,
-          rememberedConnectionId: readStoredConnectionId(),
-        });
         const initial =
-          parsed.connections.find((entry) => entry.id === workingId) ?? null;
+          parsed.connections.find((entry) => entry.id === workspaceDefaultId) ??
+          null;
 
         return initial === null ? current : toForm(initial);
       });
@@ -233,23 +206,6 @@ export const AccountingSettingsPanel = () => {
   useEffect(() => {
     void loadPanel();
   }, [loadPanel]);
-
-  useEffect(() => {
-    try {
-      if (selectedConnectionId === null) {
-        window.localStorage.removeItem(ACCOUNTING_CONNECTION_STORAGE_KEY);
-        return;
-      }
-
-      window.localStorage.setItem(
-        ACCOUNTING_CONNECTION_STORAGE_KEY,
-        selectedConnectionId,
-      );
-    } catch {
-      // Storage can be unavailable in a sandboxed host; the selection still works for this
-      // visit, it just will not survive a reload.
-    }
-  }, [selectedConnectionId]);
 
   // Catalog ownership for mapping rows: Nest list actions only (same as Financial Settings).
   // Independent settled reads so one failure never clears the other or masquerades as empty.
@@ -436,9 +392,12 @@ export const AccountingSettingsPanel = () => {
       savingModes.currencyHandling === 'CURRENCY_CODE_AND_RATE' ||
       savingModes.currencyHandling === 'SINGLE_CURRENCY';
 
+    // UX-037 hides financial fields; connectivity saves must not be blocked by catalog reads.
+    const SHOW_CONNECTION_FINANCIAL_UI_GATE = false;
     if (
-      (fieldsNeedTaxCatalog && catalogBlocksMappingEdits(taxCatalog)) ||
-      (fieldsNeedCurrencyCatalog && catalogBlocksMappingEdits(currencyCatalog))
+      SHOW_CONNECTION_FINANCIAL_UI_GATE &&
+      ((fieldsNeedTaxCatalog && catalogBlocksMappingEdits(taxCatalog)) ||
+        (fieldsNeedCurrencyCatalog && catalogBlocksMappingEdits(currencyCatalog)))
     ) {
       await enqueueSnackbar({
         message:
@@ -456,47 +415,41 @@ export const AccountingSettingsPanel = () => {
         name: form.name,
         adapterId: form.adapterId,
         ...(form.id === null ? {} : { recordId: form.id }),
-        settings: {
+        settings: (() => {
+        const existing =
+          form.id === null
+            ? null
+            : (data?.connections.find((row) => row.id === form.id) ?? null);
+        const preserveFinancialFromExisting = existing?.settings;
+        return {
           baseUrl:
             !needsServiceAddress && form.baseUrl.trim() === ''
               ? MOCK_SERVICE_ADDRESS
               : form.baseUrl,
           remoteUserId: form.remoteUserId,
           defaultStorageId: form.defaultStorageId,
-          moneyUnit: form.moneyUnit,
-          transportApproved: form.transportApproved,
-          specialCodes: {
+          moneyUnit:
+            preserveFinancialFromExisting?.moneyUnit ?? form.moneyUnit,
+          transportApproved:
+            preserveFinancialFromExisting?.transportApproved ??
+            form.transportApproved,
+          specialCodes: preserveFinancialFromExisting?.specialCodes ?? {
             discount: form.discount,
             duty: form.duty,
             tax: form.tax,
           },
-          taxPolicyMappings: parseTaxPolicyMappingsText(
-            form.taxPolicyMappingsText,
-          ),
+          taxPolicyMappings:
+            preserveFinancialFromExisting?.taxPolicyMappings ??
+            parseTaxPolicyMappingsText(form.taxPolicyMappingsText),
           // The installation's row codes. Sent only when the destination posts non-product
           // amounts as their own rows; a mock has no such rows, and sending them would look
           // like a claim about an installation that does not exist.
-          ...(savingModes.requiresSpecialItemCodes
-            ? {
-                specialItemCodes: {
-                  ...(form.specialDiscountCode.trim() === ''
-                    ? {}
-                    : { discount: form.specialDiscountCode.trim() }),
-                  ...(form.specialDutyCode.trim() === ''
-                    ? {}
-                    : { duty: form.specialDutyCode.trim() }),
-                  ...(form.specialTaxCode.trim() === ''
-                    ? {}
-                    : { tax: form.specialTaxCode.trim() }),
-                },
-              }
-            : {}),
           // Only the destination's own declared contract reads these. Storing them on every
           // connection keeps a switch of test profile from silently erasing what was typed.
           // The mock profile is a statement about capabilities, so it is sent only to the
           // mock: the server refuses it on a live adapter, and a live save must not fail
           // because of a field nobody reads.
-          financial: {
+          financial: preserveFinancialFromExisting?.financial ?? {
             baseCurrency: form.baseCurrency,
             currencyMappings: parseKeyValueLines(form.currencyMappingsText),
             conversionRate: form.conversionRate,
@@ -504,7 +457,25 @@ export const AccountingSettingsPanel = () => {
               ? { mockProfile: form.mockProfile }
               : {}),
           },
-        },
+          ...(preserveFinancialFromExisting?.specialItemCodes !== undefined
+            ? { specialItemCodes: preserveFinancialFromExisting.specialItemCodes }
+            : savingModes.requiresSpecialItemCodes
+              ? {
+                  specialItemCodes: {
+                    ...(form.specialDiscountCode.trim() === ''
+                      ? {}
+                      : { discount: form.specialDiscountCode.trim() }),
+                    ...(form.specialDutyCode.trim() === ''
+                      ? {}
+                      : { duty: form.specialDutyCode.trim() }),
+                    ...(form.specialTaxCode.trim() === ''
+                      ? {}
+                      : { tax: form.specialTaxCode.trim() }),
+                  },
+                }
+              : {}),
+        };
+      })(),
       });
 
       if (!response.ok || response.data.success !== true) {
@@ -520,9 +491,8 @@ export const AccountingSettingsPanel = () => {
 
       const savedRecord = savedAccountingRecordFromNest(response.data, form.id);
       setForm(toForm(savedRecord));
-      // The server identifies the exact created/edited row, including duplicate names.
-      // Never select a "last" connection or guess from its position in the list.
-      setSelectedConnectionId(savedRecord.id);
+      // Saving never promotes a connection to workspace default; loadPanel re-resolves
+      // the default from the server so catalog/customers stay on the real destination.
       setTestResult(null);
       await enqueueSnackbar({
         message: 'تنظیمات اتصال ذخیره شد؛ اکنون «آزمایش اتصال» را بزنید.',
@@ -646,7 +616,7 @@ export const AccountingSettingsPanel = () => {
   // A new destination starts empty. Saving it is the same authority-checked route as an
   // edit, so "create" is not a second write path.
   const startNewConnection = () => {
-    setForm({ ...EMPTY_FORM, name: 'اتصال آزمایشی جدید', adapterId: 'mock' });
+    setForm({ ...EMPTY_FORM, name: 'اتصال آزمایشی', adapterId: 'mock' });
     setTestResult(null);
     setOperations([]);
     setConnectionFocus(null);
@@ -662,17 +632,6 @@ export const AccountingSettingsPanel = () => {
     setConnectionFocus(null);
     goTo('connections');
     setConnectionView('form');
-  };
-
-  // Temporary working context only — does not change the workspace default destination.
-  // Retired connections cannot become the working destination.
-  const selectConnection = (entry: ConnectionRecord) => {
-    if (entry.isActive === false) {
-      return;
-    }
-
-    setSelectedConnectionId(entry.id);
-    setTestResult(null);
   };
 
   const setWorkspaceDefault = async (entry: ConnectionRecord) => {
@@ -731,27 +690,17 @@ export const AccountingSettingsPanel = () => {
         await enqueueSnackbar({
           message: toPersianUiMessage(
             readString(response.data.message),
-            'بازنشسته‌کردن اتصال انجام نشد.',
+            'غیرفعال کردن اتصال انجام نشد.',
           ),
           variant: 'error',
         });
         return;
       }
 
-      // A retired id must not remain the temporary working destination.
-      if (selectedConnectionId === entry.id) {
-        setSelectedConnectionId(null);
-        try {
-          window.localStorage.removeItem(ACCOUNTING_CONNECTION_STORAGE_KEY);
-        } catch {
-          // Storage may be unavailable; selection state above still clears.
-        }
-      }
-
       await enqueueSnackbar({
         message: toPersianUiMessage(
           readString(response.data.message),
-          'اتصال بازنشسته شد؛ سوابق حفظ شدند.',
+          'اتصال غیرفعال شد؛ سوابق حفظ شدند.',
         ),
         variant: 'success',
       });
@@ -1031,8 +980,8 @@ export const AccountingSettingsPanel = () => {
               }
             >
               {connection === null || connectionHealth === null
-                ? 'نمای موقت: اتصالی انتخاب نشده'
-                : `نمای موقت: ${connection.name} — ${CONNECTION_HEALTH_LABELS[connectionHealth]}`}
+                ? 'بدون اتصال پیش‌فرض'
+                : `${connection.name} — ${CONNECTION_HEALTH_LABELS[connectionHealth]}`}
             </Badge>
           </div>
         </div>
@@ -1101,7 +1050,6 @@ export const AccountingSettingsPanel = () => {
                 }}
                 canManage={data.canManage}
                 busy={busy}
-                selectedConnectionId={selectedConnectionId}
                 testResult={testResult}
                 view={connectionView}
                 focus={connectionFocus}
@@ -1109,7 +1057,6 @@ export const AccountingSettingsPanel = () => {
                   setConnectionView('list');
                   setConnectionFocus(null);
                 }}
-                onSelectConnection={selectConnection}
                 onSetWorkspaceDefault={(entry) => void setWorkspaceDefault(entry)}
                 onDeactivateConnection={(entry) =>
                   void deactivateConnection(entry)
@@ -1118,6 +1065,7 @@ export const AccountingSettingsPanel = () => {
                   void reactivateConnection(entry)
                 }
                 onEditConnection={editConnection}
+                onTestConnection={(entry) => void test(entry.id)}
                 onChange={(next) => {
                   // A previous probe's verdict belongs to the saved values; editing the
                   // draft makes it stale, so it is cleared instead of lingering.

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 
 import { RowMenu } from 'src/components/financial-settings/row-menu';
 
@@ -60,7 +60,7 @@ const CSS = `
 .tl-lock { width: 13px; height: 13px; stroke: var(--t-color-orange11); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .tl-used { font-size: 12.5px; color: var(--t-color-gray11); }
 .tl-actions { display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
-.tl-edit { height: 32px; min-height: 32px; padding: 0 12px; font-size: 13px; margin-top: 0; }
+.tl-menu-dismiss { position: fixed; inset: 0; z-index: 35; background: transparent; }
 .tl-empty { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); padding: 52px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .tl-empty-ic { width: 46px; height: 46px; border-radius: 12px; background: var(--t-color-gray4); display: flex; align-items: center; justify-content: center; color: var(--t-color-gray11); margin-bottom: 4px; }
 .tl-empty-ic svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -91,7 +91,6 @@ const CSS = `
   .tl-row { grid-template-columns: 1fr auto; gap: 8px 10px; padding: 14px 16px; align-items: start; }
   .tl-ident { grid-column: 1; grid-row: 1; }
   .tl-actions { grid-column: 2; grid-row: 1; justify-self: end; flex-direction: column; align-items: stretch; }
-  .tl-edit { width: 100%; min-height: 36px; height: 36px; }
   .tl-trio, .tl-exempt { grid-column: 1 / -1; grid-row: 2; background: var(--t-color-gray2); border: 1px solid var(--t-color-gray4); border-radius: 8px; padding: 10px 12px; }
   .tl-st { padding-inline: 8px; }
   .tl-st-num { font-size: 20px; }
@@ -222,8 +221,19 @@ export const TaxLedger = ({
   };
 
   return (
-    <div className="tl-root" dir="rtl">
+    <div
+      className="tl-root"
+      dir="rtl"
+      onPointerDown={() => {
+        if (openMenuId !== null) {
+          setOpenMenuId(null);
+        }
+      }}
+    >
       <style>{CSS}</style>
+      {openMenuId !== null ? (
+        <div className="tl-menu-dismiss" aria-hidden="true" />
+      ) : null}
 
       {loading && (
         <>
@@ -349,17 +359,7 @@ export const TaxLedger = ({
                   </span>
                 </div>
 
-                <div className="tl-actions">
-                  <button
-                    type="button"
-                    className="tl-btn tl-btn-ghost tl-edit"
-                    aria-label={`ویرایش — ${row.name}`}
-                    onClick={() => onEdit(row.id)}
-                  >
-                    ویرایش
-                  </button>
-                  {menuFor(row)}
-                </div>
+                <div className="tl-actions">{menuFor(row)}</div>
               </div>
             );
           })}
