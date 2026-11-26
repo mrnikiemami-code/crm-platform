@@ -33,7 +33,8 @@ import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 const PAGE_SIZE = 25;
 const APPLY_BATCH_SIZE = 25;
-const TRANSFER_ALL_PAGE_CAP = 40;
+const TRANSFER_ALL_PAGE_CAP = 1000;
+const BULK_PAGE_SIZE = 100;
 
 type Selection = { internalItemId: string | null };
 
@@ -75,10 +76,10 @@ const selectionForRow = (row: ItemMappingRow): Selection => ({
 const formatOutcomeReport = (outcome: Record<string, unknown> | null): string => {
   const createdLinks =
     typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
-  const createdItems =
-    typeof outcome?.createdItems === 'number' ? outcome.createdItems : 0;
+  const updatedLinks =
+    typeof outcome?.updatedLinks === 'number' ? outcome.updatedLinks : 0;
   const refused = Array.isArray(outcome?.refused) ? outcome.refused.length : 0;
-  return `موفق: ${(createdItems + createdLinks).toLocaleString('fa-IR')} · ردشده: ${refused.toLocaleString('fa-IR')}`;
+  return `موفق: ${(updatedLinks + createdLinks).toLocaleString('fa-IR')} · ردشده: ${refused.toLocaleString('fa-IR')}`;
 };
 
 export const AccountingCatalogSection = ({
@@ -227,7 +228,7 @@ export const AccountingCatalogSection = ({
 
     setApplying(true);
     let createdLinks = 0;
-    let createdItems = 0;
+    let updatedLinks = 0;
     let refused = 0;
 
     try {
@@ -241,6 +242,8 @@ export const AccountingCatalogSection = ({
         const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
           action: 'apply-items',
           connectionId,
+          allowRemoteVersionUpdate: true,
+          applyPrices: true,
           selections: batch.map(([externalItemId, selection]) => ({
             externalItemId,
             ...(selection.internalItemId === null
@@ -263,21 +266,22 @@ export const AccountingCatalogSection = ({
         const outcome = asRecord(response.data.outcome);
         createdLinks +=
           typeof outcome?.createdLinks === 'number' ? outcome.createdLinks : 0;
-        createdItems +=
-          typeof outcome?.createdItems === 'number' ? outcome.createdItems : 0;
+        updatedLinks +=
+          typeof outcome?.updatedLinks === 'number' ? outcome.updatedLinks : 0;
         refused += Array.isArray(outcome?.refused) ? outcome.refused.length : 0;
       }
 
       await enqueueSnackbar({
         message: formatOutcomeReport({
           createdLinks,
-          createdItems,
+          updatedLinks,
           refused: Array.from({ length: refused }),
         }),
-        variant: refused > 0 && createdLinks + createdItems === 0 ? 'warning' : 'success',
+        variant: refused > 0 && createdLinks + updatedLinks === 0 ? 'warning' : 'success',
       });
       setSelected(new Map());
-      void loadPage({ atCursor: cursor, search: submittedSearch, refresh: true });
+      setCursorStack([null]);
+      void loadPage({ atCursor: null, search: submittedSearch, refresh: true });
     } catch {
       await enqueueSnackbar({
         message: 'ارتباط با سرور برقرار نشد.',
@@ -314,13 +318,14 @@ export const AccountingCatalogSection = ({
       let atCursor: string | null = null;
       let pages = 0;
       let blocked = 0;
+      let completed = false;
 
       while (pages < TRANSFER_ALL_PAGE_CAP) {
         const response = await callAppRoute(ACCOUNTING_IMPORT_ROUTE, {
           action: 'preview-items-page',
           connectionId,
           cursor: atCursor,
-          pageSize: PAGE_SIZE,
+          pageSize: BULK_PAGE_SIZE,
           search: '',
           refresh: pages === 0,
         });
@@ -337,6 +342,9 @@ export const AccountingCatalogSection = ({
         }
 
         const mapped = parseItemMappingPage(response.data.page);
+        if (mapped.snapshot.syncStatus !== 'COMPLETE' || mapped.snapshot.degradedReason !== null) {
+          await enqueueSnackbar({ message: 'فهرست کامل و تازه نیست؛ انتقال همه متوقف شد.', variant: 'error' }); return;
+        }
         for (const row of mapped.rows) {
           if (isSelectableItem(row)) {
             collected.set(row.externalItemId, selectionForRow(row));
@@ -349,12 +357,12 @@ export const AccountingCatalogSection = ({
         }
 
         pages += 1;
-        if (!mapped.hasNextPage || mapped.nextCursor === null) {
-          break;
-        }
+        if (!mapped.hasNextPage) { completed = true; break; }
+        if (mapped.nextCursor === null || mapped.nextCursor === atCursor) break;
         atCursor = mapped.nextCursor;
       }
 
+      if (!completed) { await enqueueSnackbar({ message: 'فهرست کامل خوانده نشد؛ انتقال همه انجام نشد.', variant: 'error' }); return; }
       if (collected.size === 0) {
         await enqueueSnackbar({
           message:
@@ -381,6 +389,7 @@ export const AccountingCatalogSection = ({
         message: 'ارتباط با سرور برقرار نشد.',
         variant: 'error',
       });
+    } finally {
       setApplying(false);
     }
   };

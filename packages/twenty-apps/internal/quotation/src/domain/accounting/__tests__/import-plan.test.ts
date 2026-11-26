@@ -309,9 +309,9 @@ describe('party import preview', () => {
 
   it('suggests a single CRM party matching the national code', () => {
     const preview = planPartyImport({
-      remoteParties: [party({ externalPartyId: '101', nationalCode: '12345' })],
+      remoteParties: [party({ externalPartyId: '101', nationalCode: '0012345678' })],
       links: [],
-      crmParties: [{ id: 'p-1', name: 'شرکت الف', nationalCode: '12345' }],
+      crmParties: [{ id: 'p-1', name: 'شرکت الف', nationalCode: '0012345678' }],
     });
 
     expect(preview.rows[0]).toMatchObject({
@@ -322,11 +322,11 @@ describe('party import preview', () => {
 
   it('reports an ambiguous national-code match without choosing', () => {
     const preview = planPartyImport({
-      remoteParties: [party({ externalPartyId: '101', nationalCode: '12345' })],
+      remoteParties: [party({ externalPartyId: '101', nationalCode: '0012345678' })],
       links: [],
       crmParties: [
-        { id: 'p-1', name: 'الف', nationalCode: '12345' },
-        { id: 'p-2', name: 'ب', nationalCode: '12345' },
+        { id: 'p-1', name: 'الف', nationalCode: '0012345678' },
+        { id: 'p-2', name: 'ب', nationalCode: '0012345678' },
       ],
     });
 

@@ -166,6 +166,7 @@ describe('item import apply', () => {
         return { createAccountingItemLink: { id: 'link-new' } };
       }
 
+      if (query.includes('AccountingItemPrices')) return edges('prices', []);
       if (query.includes('createPrice')) {
         writes.push('price');
 
@@ -193,7 +194,7 @@ describe('item import apply', () => {
       updatedLinks: 0,
       refused: [],
     });
-    expect(writes).toEqual(['catalogItem', 'link', 'price']);
+    expect(writes).toEqual(['catalogItem', 'price', 'link']);
   });
 
   it('does not create a price when no price list exists', async () => {
@@ -221,7 +222,8 @@ describe('item import apply', () => {
     );
 
     expect(outcome.createdPrices).toBe(0);
-    expect(outcome.refused).toEqual([]);
+    expect(outcome.createdItems).toBe(0);
+    expect(outcome.refused).toHaveLength(1);
   });
 
   it('refuses an unconfirmed unit row instead of writing a converted price', async () => {
@@ -313,6 +315,8 @@ describe('item import apply', () => {
     expect(refused.refused[0].detail).toContain('confirm the version update');
 
     const execute = fakeExecute((query) => {
+      if (query.includes('CatalogItemById')) return { catalogItem: { id: 'crm-1', name: 'نام قبلی', sku: '2001' } };
+      if (query.includes('updateCatalogItem')) return { updateCatalogItem: { id: 'crm-1' } };
       expect(query).toContain('updateAccountingItemLink');
 
       return { updateAccountingItemLink: { id: 'link-1' } };

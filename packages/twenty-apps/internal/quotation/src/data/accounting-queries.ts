@@ -47,15 +47,17 @@ export const buildAccountingConnectionsQuery = ({
 
 export const buildAccountingItemLinksQuery = ({
   connectionId,
-  limit = 200,
+  limit = 100,
+  afterCursor = null,
 }: {
   connectionId: string;
   limit?: number;
+  afterCursor?: string | null;
 }): string =>
   `query AccountingItemLinks {
     accountingItemLinks(
       filter: { connectionId: { eq: ${toGraphqlLiteral(connectionId)} } }
-      first: ${limit}
+      first: ${limit}${afterCursor === null ? '' : `, after: ${toGraphqlLiteral(afterCursor)}`}
     ) {
       edges {
         node {
@@ -69,6 +71,7 @@ export const buildAccountingItemLinksQuery = ({
           item { id }
         }
       }
+      pageInfo { hasNextPage endCursor }
     }
   }`;
 

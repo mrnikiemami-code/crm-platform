@@ -213,6 +213,9 @@ export const buildPartySnapshot = ({
     crmCandidates: [],
   });
 
+  const partyRows = preview.rows.slice(0, kept.length);
+  const partySummary: Record<string, number> = Object.fromEntries(Object.keys(preview.summary).map((key) => [key, 0]));
+  for (const row of partyRows) partySummary[row.decision] += 1;
   return accepted({
     meta: {
       snapshotId,
@@ -222,10 +225,7 @@ export const buildPartySnapshot = ({
       readStrategy,
       ...syncStatusFor(declaredTotal, kept.length),
     },
-    itemRows: [],
-    partyRows: preview.rows.slice(0, kept.length),
-    itemSummary: {},
-    partySummary: preview.summary,
+    itemRows: [], partyRows, itemSummary: {}, partySummary,
   });
 };
 

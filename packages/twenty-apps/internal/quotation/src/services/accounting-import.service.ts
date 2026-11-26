@@ -10,6 +10,8 @@ import {
 } from 'src/data/accounting-queries';
 import { toGraphqlLiteral } from 'src/data/graphql-literal';
 import {
+  buildCatalogItemByIdQuery,
+  buildUpdateCatalogItemMutation,
   buildCreateCatalogItemMutation,
   buildCreatePriceMutation,
   buildDefaultPriceListQuery,
@@ -39,6 +41,8 @@ import { loadCrmItemIndex } from 'src/services/accounting-crm-lookup.service';
 import { crmPartyFields, enrichPartyRows, loadCrmPartyIdentities, resolvePartyIdentity } from 'src/services/accounting-party-identity.service';
 import { normalizeNationalCode, partyTypeFromNationalCode } from 'src/domain/accounting/party-identity';
 import { verifyCustomerRecord } from 'src/services/customer-picker.service';
+import { isPriceValidOnDay } from 'src/domain/catalog/price-snapshot';
+import { parseMicrosExact } from 'src/domain/money/micros';
 import { accepted, type Result } from 'src/domain/shared/result';
 
 export type ImportDependencies = {
@@ -86,25 +90,25 @@ export const loadItemLinks = async (
   dependencies: ImportDependencies = {},
 ): Promise<ExistingItemLink[]> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(buildAccountingItemLinksQuery({ connectionId }));
-
-  return readRows(data, 'accountingItemLinks').flatMap((node) => {
-    const linkId = readString(node.id);
-
-    if (linkId === '') {
-      return [];
-    }
-
-    return [
-      {
-        linkId,
-        externalItemId: readString(node.externalItemId) || null,
+  const links: ExistingItemLink[] = [];
+  let afterCursor: string | null = null;
+  const seen = new Set<string>();
+  for (;;) {
+    const data = await execute(buildAccountingItemLinksQuery({ connectionId, afterCursor }));
+    for (const node of readRows(data, 'accountingItemLinks')) {
+      const linkId = readString(node.id);
+      if (!linkId) continue;
+      links.push({ linkId, externalItemId: readString(node.externalItemId) || null,
         internalItemId: readString(asRecord(node.item)?.id) || null,
-        remoteVersion: readString(node.remoteVersion) || null,
-        syncStatus: readString(node.syncStatus) || 'LINKED',
-      },
-    ];
-  });
+        remoteVersion: readString(node.remoteVersion) || null, syncStatus: readString(node.syncStatus) || 'LINKED' });
+    }
+    const page = asRecord(asRecord(data.accountingItemLinks)?.pageInfo);
+    if (page?.hasNextPage !== true) break;
+    const next = readString(page.endCursor);
+    if (!next || seen.has(next) || seen.size >= 1000) throw new RecordApiError('INVALID_RESPONSE', 'Incomplete item links');
+    seen.add(next); afterCursor = next;
+  }
+  return links;
 };
 
 export const loadPartyLinks = async (
@@ -257,6 +261,53 @@ const resolvePriceListId = async (
   return edge === undefined ? null : readString(edge.id) || null;
 };
 
+// Stable IDs are scoped to the workspace database and source connection.
+const stableImportId = (...parts: string[]): string => {
+  const hex = createHash('sha256').update('quotation/accounting-import:' + JSON.stringify(parts)).digest('hex');
+  return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-5' + hex.slice(13, 16) + '-8' + hex.slice(17, 20) + '-' + hex.slice(20, 32);
+};
+
+const syncAccountingItemPrice = async (
+  execute: (query: string) => Promise<Record<string, unknown>>,
+  itemId: string, priceListId: string, amount: string,
+): Promise<boolean> => {
+  const day = new Date().toISOString().slice(0, 10);
+  const prices: { id: string; unitPriceExact: string; validFrom: string | null; validTo: string | null }[] = [];
+  let cursor: string | null = null;
+  const seen = new Set<string>();
+  for (;;) {
+    const after: string = cursor === null ? '' : `, after: ${toGraphqlLiteral(cursor)}`;
+    const data = await execute(`query AccountingItemPrices { prices(first: 100${after}, filter: { itemId: { eq: ${toGraphqlLiteral(itemId)} }, priceListId: { eq: ${toGraphqlLiteral(priceListId)} } }) { edges { node { id unitPriceExact validFrom validTo } } pageInfo { hasNextPage endCursor } } }`);
+    if (!Array.isArray(asRecord(data.prices)?.edges)) throw new RecordApiError('INVALID_RESPONSE', 'Missing price records');
+    for (const node of readRows(data, 'prices')) {
+      prices.push({ id: readString(node.id), unitPriceExact: readString(node.unitPriceExact), validFrom: readString(node.validFrom) || null, validTo: readString(node.validTo) || null });
+    }
+    const page = asRecord(asRecord(data.prices)?.pageInfo);
+    if (page?.hasNextPage !== true) break;
+    const next = readString(page.endCursor);
+    if (!next || seen.has(next) || seen.size >= 100) throw new RecordApiError('INVALID_RESPONSE', 'Incomplete price history');
+    seen.add(next); cursor = next;
+  }
+  const active = prices.filter((price) => isPriceValidOnDay(price, day)).sort((a,b) => (b.validFrom ?? '').localeCompare(a.validFrom ?? ''));
+  const current = active[0];
+  const sameDay = active.filter((price) => price.validFrom?.slice(0, 10) === day);
+  const proposed = parseMicrosExact(amount);
+  if (!proposed.ok) throw new RecordApiError('INVALID_RESPONSE', 'Invalid accounting price');
+  if (sameDay.length > 1) throw new RecordApiError('QUERY_ERROR', 'Ambiguous current price');
+  const existing = current ? parseMicrosExact(current.unitPriceExact) : null;
+  if (existing?.ok && existing.value === proposed.value) return false;
+  if (sameDay.length === 1) {
+    const id = sameDay[0].id;
+    if (!id) throw new RecordApiError('INVALID_RESPONSE', 'Price identity missing');
+    const result = await execute(`mutation UpdateAccountingPrice { updatePrice(id: ${toGraphqlLiteral(id)}, data: { unitPriceExact: ${toGraphqlLiteral(amount)} }) { id } }`);
+    if (readCreatedId(result, 'updatePrice') !== id) throw new RecordApiError('QUERY_ERROR', 'Price update not confirmed');
+    return true;
+  }
+  const result = await execute(buildCreatePriceMutation({ id: stableImportId('price', itemId, priceListId, day), itemId, priceListId, unitPriceExact: amount, validFrom: day }));
+  if (!readCreatedId(result, 'createPrice')) throw new RecordApiError('QUERY_ERROR', 'Price creation not confirmed');
+  return true;
+};
+
 export const applyItemImport = async (
   {
     connectionId,
@@ -290,91 +341,76 @@ export const applyItemImport = async (
 
   const priceListId = applyPrices ? await resolvePriceListId(execute) : null;
 
+  const processed = new Set<string>();
   for (const row of plan.rows) {
-    if (row.action === 'UPDATE_LINK_VERSION') {
-      const linkId = preview.rows.find(
-        (previewRow) => previewRow.externalItemId === row.externalItemId,
-      )?.existingLinkId;
-
-      if (linkId === null || linkId === undefined) {
-        outcome.refused.push({
-          externalItemId: row.externalItemId,
-          code: 'TARGET_NOT_LINKED',
-          detail: 'the link disappeared between preview and apply',
-        });
-        continue;
+    const refuse = (code: string, detail: string) => outcome.refused.push({ externalItemId: row.externalItemId, code, detail });
+    if (processed.has(row.externalItemId)) { refuse('ALREADY_SUCCEEDED', 'Duplicate selection'); continue; }
+    processed.add(row.externalItemId);
+    if (applyPrices && row.priceMicros !== null && priceListId === null) {
+      refuse('INVALID_INPUT', 'Default IRR price list is required'); continue;
+    }
+    const previewRow = preview.rows.find((candidate) => candidate.externalItemId === row.externalItemId);
+    const linkId = previewRow?.existingLinkId ?? null;
+    if (linkId !== null && row.action !== 'UPDATE_LINK_VERSION') {
+      refuse('INVALID_INPUT', 'Existing mapping cannot be reassigned'); continue;
+    }
+    try {
+      let itemId = row.internalItemId;
+      if (row.action === 'CREATE_CATALOG_ITEM') {
+        const created = await execute(buildCreateCatalogItemMutation({
+          id: stableImportId('item', connectionId, row.externalItemId),
+          name: row.name, sku: row.code, unit: 'عدد',
+          description: row.secondaryName, kind: 'PRODUCT', isActive: true,
+        }));
+        itemId = readCreatedId(created, 'createCatalogItem');
+        if (!itemId) { refuse('QUERY_ERROR', 'Catalog creation not confirmed'); continue; }
+        outcome.createdItems += 1;
+      } else {
+        if (!itemId || (row.action === 'UPDATE_LINK_VERSION' && linkId === null)) {
+          refuse('INVALID_INPUT', 'Mapped item is missing'); continue;
+        }
+        const data = await execute(buildCatalogItemByIdQuery(itemId));
+        const current = asRecord(data.catalogItem);
+        if (current === null || readString(current.id) !== itemId ||
+            (row.action === 'CREATE_LINK' && readString(current.sku) !== row.code.trim())) {
+          refuse('INVALID_INPUT', 'Catalog identity could not be verified'); continue;
+        }
+        if (readString(current.name) !== row.name.trim()) {
+          const changed = await execute(buildUpdateCatalogItemMutation(itemId, { name: row.name }));
+          if (readCreatedId(changed, 'updateCatalogItem') !== itemId) {
+            refuse('QUERY_ERROR', 'Catalog update not confirmed'); continue;
+          }
+        }
       }
-
-      await execute(
-        buildUpdateAccountingItemLinkMutation(linkId, {
-          remoteVersion: row.remoteVersion,
-          lastSyncedAt: new Date().toISOString(),
-          syncStatus: 'LINKED',
-        }),
-      );
-      outcome.updatedLinks += 1;
-      continue;
-    }
-
-    let itemId = row.internalItemId;
-
-    if (row.action === 'CREATE_CATALOG_ITEM') {
-      const created = await execute(
-        buildCreateCatalogItemMutation({
-          name: row.name,
-          sku: row.code,
-          unit: 'عدد',
-          description: row.secondaryName,
-          kind: 'PRODUCT',
-          isActive: true,
-        }),
-      );
-      itemId = readCreatedId(created, 'createCatalogItem');
-
-      if (itemId === '') {
-        outcome.refused.push({
-          externalItemId: row.externalItemId,
-          code: 'QUERY_ERROR',
-          detail: 'the catalog item was not created',
-        });
-        continue;
+      if (!itemId) { refuse('INVALID_INPUT', 'Missing CRM item'); continue; }
+      // Commit the price before advancing the mapping version. A failed price
+      // write remains retryable; historical price records are not deleted.
+      if (applyPrices && priceListId !== null && row.priceMicros !== null) {
+        if (await syncAccountingItemPrice(execute, itemId, priceListId, row.priceMicros)) outcome.createdPrices += 1;
       }
-
-      outcome.createdItems += 1;
-    }
-
-    if (itemId === null || itemId.trim() === '') {
-      outcome.refused.push({
-        externalItemId: row.externalItemId,
-        code: 'INVALID_INPUT',
-        detail: 'no CRM item was chosen for this row',
-      });
-      continue;
-    }
-
-    await execute(
-      buildCreateAccountingItemLinkMutation({
-        name: `${row.name} @ ${connectionId.slice(0, 8)}`,
-        externalItemId: row.externalItemId,
-        externalCode: row.code,
-        remoteVersion: row.remoteVersion,
-        lastSyncedAt: new Date().toISOString(),
-        syncStatus: 'LINKED',
-        itemId,
-        connectionId,
-      }),
-    );
-    outcome.createdLinks += 1;
-
-    if (applyPrices && priceListId !== null && row.priceMicros !== null) {
-      await execute(
-        buildCreatePriceMutation({
-          itemId,
-          priceListId,
-          unitPriceExact: row.priceMicros,
-        }),
-      );
-      outcome.createdPrices += 1;
+      const linkFields = {
+        externalCode: row.code, remoteVersion: row.remoteVersion,
+        lastSyncedAt: new Date().toISOString(), syncStatus: 'LINKED',
+      };
+      if (linkId !== null) {
+        const result = await execute(buildUpdateAccountingItemLinkMutation(linkId, linkFields));
+        if (readCreatedId(result, 'updateAccountingItemLink') !== linkId) {
+          refuse('QUERY_ERROR', 'Mapping update not confirmed'); continue;
+        }
+        outcome.updatedLinks += 1;
+      } else {
+        const result = await execute(buildCreateAccountingItemLinkMutation({
+          id: stableImportId('item-link', connectionId, row.externalItemId),
+          name: row.name + ' @ ' + connectionId.slice(0, 8),
+          externalItemId: row.externalItemId, itemId, connectionId, ...linkFields,
+        }));
+        if (!readCreatedId(result, 'createAccountingItemLink')) {
+          refuse('QUERY_ERROR', 'Mapping create not confirmed'); continue;
+        }
+        outcome.createdLinks += 1;
+      }
+    } catch (error) {
+      refuse(error instanceof RecordApiError ? error.code : 'QUERY_ERROR', 'Catalog synchronization not confirmed');
     }
   }
 
@@ -472,6 +508,7 @@ export const applyPartyImport = async (
       continue;
     }
     const existing = matchingLinks[0] ?? null;
+    if (existing !== null && (!existing.internalPartyId || !existing.partyType)) { refuse('INVALID_INPUT', 'Existing customer mapping is incomplete'); continue; }
     const automatic = selection.createNew === true;
     if (existing !== null && (!automatic || !allowRemoteVersionUpdate)) {
       refuse('ALREADY_SUCCEEDED', 'This customer is already linked');

@@ -10,5 +10,6 @@ export default defineField({
   description: 'شناسه هویتی مشتری برای تطبیق یکتای CRM و حسابداری.',
   icon: 'IconId',
   isNullable: true,
+  defaultValue: null,
   isUnique: true,
 });

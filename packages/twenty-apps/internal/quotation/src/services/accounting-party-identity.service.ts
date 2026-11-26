@@ -129,7 +129,8 @@ export const loadCrmPartyIdentities = async (
 export type PartyIdentityDecision =
   | { kind: 'MATCH'; target: CrmPartyIdentity }
   | { kind: 'CREATE'; partyType: Kind; nationalCode: string }
-  | { kind: 'CONFLICT' | 'MISSING_IDENTITY' };
+  | { kind: 'CONFLICT' }
+  | { kind: 'MISSING_IDENTITY' };
 
 export const resolvePartyIdentity = (
   remote: IdentityInput,
@@ -209,12 +210,14 @@ export const enrichPartyRows = async (
   rows: PartyImportRow[],
   execute: Execute = executeRecordGraphql,
 ): Promise<PartyImportRow[]> => {
-  const crm = await loadCrmPartyIdentities(rows, rows.flatMap((row) => row.suggestedInternalPartyId ? [row.suggestedInternalPartyId] : []), execute);
+  const eligible = rows.filter((row) => row.decision !== 'DUPLICATE_REMOTE_CODE' && normalizeNationalCode(row.nationalCode) !== null && row.fullName.trim() !== '');
+  const crm = await loadCrmPartyIdentities(eligible, eligible.flatMap((row) => row.suggestedInternalPartyId ? [row.suggestedInternalPartyId] : []), execute);
   return rows.map((row) => {
     if (row.decision === 'DUPLICATE_REMOTE_CODE' || row.warnings.includes('DUPLICATE_REMOTE_NATIONAL_CODE')) {
       return { ...row, decision: 'DUPLICATE_REMOTE_CODE', suggestedInternalPartyId: null };
     }
     const linkedId = row.existingLinkId !== null ? row.suggestedInternalPartyId : null;
+    if (row.existingLinkId !== null && linkedId === null) return { ...row, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
     const decision = resolvePartyIdentity(row, crm, linkedId);
     if (decision.kind === 'CONFLICT') return { ...row, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
     if (decision.kind === 'MISSING_IDENTITY') {

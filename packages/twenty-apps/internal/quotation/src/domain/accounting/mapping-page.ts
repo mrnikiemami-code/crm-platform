@@ -112,32 +112,18 @@ export const enrichItemPage = ({
         ? (index.byId.get(row.suggestedInternalItemId) ?? null)
         : null;
 
-    const matches =
-      comparable !== null
-        ? []
-        : (index.bySku.get(row.code.trim()) ?? []);
-
-    const suggestion =
-      comparable !== null
-        ? comparable
-        : matches.length === 1
-          ? matches[0]
-          : null;
-
+    const matches = row.existingLinkId !== null ? [] : (index.bySku.get(row.code.trim()) ?? []);
+    const suggestion = comparable ?? (matches.length === 1 ? matches[0] : null);
     const crmPriceMicros = suggestion?.priceMicros ?? null;
-
-    // A row that is already linked keeps its planned decision even when the linked record
-    // was not returned by the batched lookup (deleted or out of permission): turning
-    // "already linked" into "create a new one" is how duplicates are born. A duplicate
-    // vendor code is likewise a fact about the destination that a SKU match cannot improve.
-    const decision =
-      row.existingLinkId !== null || row.decision === 'DUPLICATE_REMOTE_CODE'
-        ? row.decision
-        : matches.length === 1
-          ? 'LINK_SUGGESTED'
-          : matches.length > 1
-            ? 'LINK_AMBIGUOUS'
-            : 'CREATE';
+    const difference = priceDifference(row.priceMicros, crmPriceMicros);
+    const decision: ItemImportDecision =
+      row.decision === 'DUPLICATE_REMOTE_CODE' ? row.decision :
+      row.existingLinkId !== null
+        ? comparable === null ? 'LINK_AMBIGUOUS'
+          : row.decision === 'REMOTE_CHANGED' || row.name.trim() !== comparable.name.trim() ||
+            (row.priceMicros !== null && (difference === null || difference !== formatMicrosExact(0n)))
+            ? 'REMOTE_CHANGED' : 'IN_SYNC'
+        : matches.length === 1 ? 'LINK_SUGGESTED' : matches.length > 1 ? 'LINK_AMBIGUOUS' : 'CREATE';
 
     return {
       ...row,

@@ -145,6 +145,7 @@ export const planItemImport = ({
   }
 
   const remoteCodeCounts = countBy(remoteItems.map((item) => item.code));
+  const remoteIdCounts = countBy(remoteItems.map((item) => item.externalItemId));
   const remoteNameCounts = countBy(
     remoteItems.map((item) => normalizeName(item.name)),
   );
@@ -225,7 +226,7 @@ export const planItemImport = ({
         : (crmPriceById.get(comparableInternalItemId) ?? null);
     const priceDifferenceMicros = priceDifference(priceMicros, crmPriceMicros);
 
-    if ((remoteCodeCounts.get(item.code) ?? 0) > 1) {
+    if ((remoteCodeCounts.get(item.code) ?? 0) > 1 || (remoteIdCounts.get(item.externalItemId) ?? 0) > 1) {
       return {
         externalItemId: item.externalItemId,
         remoteVersion: item.remoteVersion,
@@ -246,7 +247,6 @@ export const planItemImport = ({
 
     if (existingLink !== null) {
       const changed =
-        existingLink.remoteVersion !== null &&
         existingLink.remoteVersion !== item.remoteVersion;
 
       return {

@@ -38,7 +38,8 @@ import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 const PAGE_SIZE = 25;
 const CANDIDATE_PAGE_SIZE = 10;
 const APPLY_BATCH_SIZE = 25;
-const TRANSFER_ALL_PAGE_CAP = 40;
+const TRANSFER_ALL_PAGE_CAP = 1000;
+const BULK_PAGE_SIZE = 100;
 
 type PartySelection = {
   internalPartyId?: string;
@@ -322,7 +323,7 @@ export const AccountingCustomerSection = ({
           action: 'preview-parties-page',
           connectionId,
           cursor: atCursor,
-          pageSize: PAGE_SIZE,
+          pageSize: BULK_PAGE_SIZE,
           search: '',
           refresh: pages === 0,
         });
@@ -339,6 +340,9 @@ export const AccountingCustomerSection = ({
         }
 
         const mapped = parsePartyMappingPage(response.data.page);
+        if (mapped.snapshot.syncStatus !== 'COMPLETE' || mapped.snapshot.degradedReason !== null) {
+          await enqueueSnackbar({ message: 'فهرست کامل و تازه نیست؛ انتقال همه متوقف شد.', variant: 'error' }); return;
+        }
         for (const row of mapped.rows) {
           const suggested = selectionFromSuggested(row);
           if (suggested !== null) {
