@@ -129,13 +129,24 @@ export const savedAccountingRecordFromNest = (
     throw new Error('ACCOUNTING_SAVED_ID_MISSING_OR_CHANGED');
   }
 
-  const matches = parseAccountingNestConnections(data.connections).filter(
-    (row) => row.id === affectedId,
-  );
-
-  if (matches.length !== 1) {
+  if (!Array.isArray(data.connections)) {
     throw new Error('ACCOUNTING_SAVED_ROW_NOT_FOUND');
   }
+
+  // An unrelated legacy record may be invalid; it must not cause a correct,
+  // transaction-identified save to be associated with another record.
+  const matchedRaw = data.connections.filter((node) => {
+    const row = asRecord(node);
+
+    return readString(row?.recordId) === affectedId ||
+      readString(row?.id) === affectedId;
+  });
+
+  if (matchedRaw.length !== 1) {
+    throw new Error('ACCOUNTING_SAVED_ROW_NOT_FOUND');
+  }
+
+  const matches = parseAccountingNestConnections(matchedRaw);
 
   return matches[0];
 };
