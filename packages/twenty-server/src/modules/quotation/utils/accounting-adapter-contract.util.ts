@@ -35,6 +35,7 @@ const ASAN_CAPABILITIES = {
     readStock: true,
   },
   parties: {
+    fields: { contractVersion: '2', identity: 'CUSTOMER_CODE', readable: ["code","fullName","mobile","nationalCode","legalNationalId","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"], writable: ["fullName","mobile","nationalCode","firstPhone","secondPhone","fax","economicCode","address","postalCode","accountGroup"] },
     list: true,
     read: true,
     create: true,
@@ -93,6 +94,7 @@ const MOCK_PROFILE_CAPABILITIES: Record<
     currencyHandling: SINGLE_CURRENCY,
     baseCurrency: 'IRR',
   },
+  PARTY_UAT: { taxHandling: 'TAX_RATE', dutyHandling: 'DUTY_RATE', currencyHandling: SINGLE_CURRENCY, baseCurrency: 'IRR' },
   CODED: {
     // ONE code per policy. The code stands for the whole value-added treatment, so duty has
     // no field of its own and no second code is ever requested.
@@ -158,6 +160,7 @@ const mockCapabilities = (profile: unknown): Record<string, unknown> => {
 
   return {
     ...ASAN_CAPABILITIES,
+    parties: { ...ASAN_CAPABILITIES.parties, fields: { contractVersion: '2', identity: 'EXTERNAL_ID', readable: ["code","fullName","mobile","nationalCode","partyType","firstName","lastName","companyName","tradeName","legalNationalId","economicCode","registrationNumber","crmCustomerCode","accountingCode","generalLedgerCode","subsidiaryLedgerCode","detailLedgerCode","accountGroup","firstPhone","secondPhone","fax","email","address","postalCode","country","state","city","contactName","paymentTermsCode","settlementDays","creditLimitExact","creditLimitCurrency","isActive"], writable: ["fullName","mobile","nationalCode","partyType","firstName","lastName","companyName","tradeName","legalNationalId","economicCode","registrationNumber","crmCustomerCode","accountingCode","generalLedgerCode","subsidiaryLedgerCode","detailLedgerCode","accountGroup","firstPhone","secondPhone","fax","email","address","postalCode","country","state","city","contactName","paymentTermsCode","settlementDays","creditLimitExact","creditLimitCurrency","isActive"] } },
     // A mock destination has no vendor installation, so it declares no special-row codes:
     // those belong to Asan's documented payload, not to a test profile.
     requiresSpecialItemCodes: false,

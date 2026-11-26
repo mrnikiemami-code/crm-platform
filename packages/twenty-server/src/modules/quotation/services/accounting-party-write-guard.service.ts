@@ -6,8 +6,8 @@ import { QuotationQueryValidationException, QuotationQueryValidationExceptionCod
 const QUOTATION_APP = 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb';
 const COMMON = ['name', 'nationalCode', 'economicCode', 'accountingPhone', 'accountingSecondPhone', 'accountingFax'];
 const FIELDS = {
-  person: new Set([...COMMON, 'phones', 'accountingAddress', 'accountingPostalCode']),
-  company: new Set([...COMMON, 'accountingMobile', 'address', 'registrationNumber']),
+  person: new Set([...COMMON, 'phones', 'emails', 'address']),
+  company: new Set([...COMMON, 'accountingMobile', 'address', 'registrationNumber', 'accountingEmail']),
 };
 
 @Injectable()
@@ -20,7 +20,7 @@ export class AccountingPartyWriteGuardService {
     const data = payload.data;
     if (auth.type !== 'user' ||
         (action !== 'createOne' && action !== 'updateOne') ||
-        payload.upsert === true || payload.shareWith !== undefined ||
+        payload.upsert === true || (payload.shareWith != null && (!Array.isArray(payload.shareWith) || payload.shareWith.length > 0)) ||
         data === null || typeof data !== 'object' || Array.isArray(data) ||
         Object.keys(data).some((key) => !FIELDS[object].has(key) && !(key === 'id' && action === 'createOne')) ||
         await this.permissions.resolveSettingsAuthority(auth, 'accountingConnection') === null) {

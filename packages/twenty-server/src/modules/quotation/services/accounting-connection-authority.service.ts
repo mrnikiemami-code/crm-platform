@@ -150,6 +150,7 @@ const readFinancialSettings = (
       profile === 'AGGREGATE' ||
       profile === 'TAX_ONLY' ||
       profile === 'NO_TAX' ||
+      profile === 'PARTY_UAT' ||
       profile === 'SIMPLE'
         ? profile
         : 'SIMPLE',

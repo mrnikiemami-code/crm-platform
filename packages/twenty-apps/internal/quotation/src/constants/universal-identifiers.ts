@@ -222,6 +222,7 @@ export const ACCOUNTING_ITEM_LINK_FIELDS = {
 } as const;
 
 export const ACCOUNTING_PARTY_LINK_FIELDS = {
+  sourceProfile: 'c43aa18e-70d4-5d76-9db8-df758d99b8a0',
   name: 'b4d8f2e6-7c30-5d59-ae21-5a9f3b8c7d42',
   externalPartyId: 'c5e9a3f7-8d41-5e6a-bf32-6b0a4c9d8e53',
   externalCode: 'd6f0b4a8-9e52-5f7b-8a43-7c1b5d0e9f64',

@@ -65,6 +65,16 @@ export default defineObject({
       isNullable: true,
     },
     {
+      universalIdentifier: ACCOUNTING_PARTY_LINK_FIELDS.sourceProfile,
+      type: FieldType.TEXT,
+      name: 'sourceProfile',
+      label: 'اطلاعات اختصاصی مقصد حسابداری',
+      description: 'Optional vendor-owned ledger and commercial attributes, connection scoped. Not the CRM accountingCode.',
+      icon: 'IconFileText',
+      isNullable: true,
+      defaultValue: null,
+    },
+    {
       universalIdentifier: ACCOUNTING_PARTY_LINK_FIELDS.remoteVersion,
       type: FieldType.TEXT,
       name: 'remoteVersion',

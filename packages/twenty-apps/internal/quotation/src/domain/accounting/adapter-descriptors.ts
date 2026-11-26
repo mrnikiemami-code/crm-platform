@@ -30,6 +30,7 @@ export type AdapterDescriptor = {
   id: AccountingAdapterId;
   label: string;
   vendor: string;
+  partyFieldContract?: import('src/domain/accounting/party-profile').PartyFieldCapability;
   contractVersion: string;
   isLive: boolean;
   transportIsSecure: boolean;
@@ -70,6 +71,7 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
     id: 'asan',
     label: 'آسان (LinqToAsan)',
     vendor: 'آسان',
+    partyFieldContract: ASAN_CAPABILITIES.parties.fields,
     contractVersion: ACCOUNTING_ADAPTER_CONTRACT_VERSION,
     isLive: true,
     transportIsSecure: false,
@@ -97,6 +99,7 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
     id: 'mock',
     label: 'آزمایشی، بدون ارتباط واقعی',
     vendor: '—',
+    partyFieldContract: mockProfileCapabilities(DEFAULT_MOCK_PROFILE).parties.fields,
     contractVersion: ACCOUNTING_ADAPTER_CONTRACT_VERSION,
     isLive: false,
     transportIsSecure: true,

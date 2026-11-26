@@ -106,6 +106,7 @@ export const buildAccountingPartyLinksQuery = ({
           name
           externalPartyId
           externalCode
+          sourceProfile
           remoteVersion
           lastSyncedAt
           syncStatus
