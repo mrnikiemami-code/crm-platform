@@ -22,7 +22,7 @@ export class AccountingPartyWriteGuardService {
         (action !== 'createOne' && action !== 'updateOne') ||
         payload.upsert === true || (payload.shareWith != null && (!Array.isArray(payload.shareWith) || payload.shareWith.length > 0)) ||
         data === null || typeof data !== 'object' || Array.isArray(data) ||
-        Object.keys(data).some((key) => !FIELDS[object].has(key) && !(key === 'id' && action === 'createOne')) ||
+        Object.keys(data).some((key) => !FIELDS[object].has(key) && !(action === 'createOne' && (key === 'id' || (key === 'position' && typeof (data as Record<string, unknown>).position === 'number' && Number.isFinite((data as Record<string, unknown>).position))))) ||
         await this.permissions.resolveSettingsAuthority(auth, 'accountingConnection') === null) {
       throw new QuotationQueryValidationException(
         'ACCOUNTING_PARTY_WRITE_FORBIDDEN: delegated accounting customer write required',

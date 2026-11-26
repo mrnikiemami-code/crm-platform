@@ -196,8 +196,10 @@ export const MOCK_PARTY_UAT_100: RemoteParty[] = Array.from({ length: 100 }, (_,
     partyType: person ? 'PERSON' : 'COMPANY', partyTypeEvidence: 'VENDOR_EXPLICIT',
     nationalCode: person ? national : null,
     ...(person ? { firstName: 'آزمون', lastName: 'مشتری ' + serial } : { companyName: 'شرکت آزمون ' + serial, legalNationalId: national }),
-    economicCode: number % 5 === 0 ? '990099' + serial : null,
-    mobile: null, address: 'نشانی آزمایشی ' + serial,
+    economicCode: number % 5 === 0 && number % 10 !== 0 ? '990099' + serial : null,
+    mobile: number % 10 === 0 && ((number > 30 && number <= 60) || number > 80) ? null : '091299' + String(number).padStart(5, '0'),
+    accountingCode: 'V-' + serial, generalLedgerCode: '001', subsidiaryLedgerCode: '0012', detailLedgerCode: '00-' + serial,
+    address: 'نشانی آزمایشی ' + serial,
     remoteVersion: 'party-uat-v2-' + serial,
   };
 });

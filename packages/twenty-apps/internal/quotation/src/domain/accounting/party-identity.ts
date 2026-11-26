@@ -60,5 +60,5 @@ export const resolvePartyKind = (party: PartyIdentityAttributes): PartyKind | nu
     partyTypeFromNationalCode(partyNationalIdentity(party));
 
 export const partyDisplayName = (party: PartyIdentityAttributes): string =>
-  (party.partyType === 'COMPANY' ? party.companyName?.trim() : [party.firstName?.trim(), party.lastName?.trim()].filter(Boolean).join(' ')) ||
-  party.fullName.trim() || party.companyName?.trim() || '';
+  (party.partyType === 'COMPANY' ? party.companyName?.trim() : party.firstName?.trim() && party.lastName?.trim() ? [party.firstName.trim(), party.lastName.trim()].join(' ') : '') ||
+  party.fullName.trim() || party.companyName?.trim() || [party.firstName?.trim(), party.lastName?.trim()].filter(Boolean).join(' ');

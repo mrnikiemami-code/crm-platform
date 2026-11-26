@@ -37,6 +37,15 @@ export type CrmPartyIdentity = {
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 const text = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
+const jsonArray = (value: unknown): GraphqlValue[] => {
+  if (value == null || value === '') return [];
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { throw new RecordApiError('INVALID_RESPONSE', 'Unreadable CRM contact collection'); }
+  }
+  if (!Array.isArray(parsed)) throw new RecordApiError('INVALID_RESPONSE', 'Unreadable CRM contact collection');
+  return parsed as GraphqlValue[];
+};
 const unique = (values: string[]): string[] => [...new Set(values.filter(Boolean))];
 const variants = (digits: string): string[] => [
   digits,
@@ -114,13 +123,13 @@ export const loadCrmPartyIdentities = async (
             name: kind === 'PERSON' ? [text(fullName?.firstName), text(fullName?.lastName)].filter(Boolean).join(' ') : text(node.name),
             nationalCode: text(node.nationalCode) || null,
             economicCode: text(node.economicCode) || null,
-            profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','emails'].includes(key))) as Record<string, GraphqlValue>,
+            profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['name','accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','emails'].includes(key))) as Record<string, GraphqlValue>,
             mobile: kind === 'PERSON' ? text(phone?.primaryPhoneNumber) || null : text(node.accountingMobile) || null,
             phones: phone === null ? null : {
               primaryPhoneNumber: text(phone.primaryPhoneNumber),
               primaryPhoneCallingCode: text(phone.primaryPhoneCallingCode),
               primaryPhoneCountryCode: text(phone.primaryPhoneCountryCode),
-              additionalPhones: Array.isArray(phone.additionalPhones) ? phone.additionalPhones as GraphqlValue : [],
+              additionalPhones: jsonArray(phone.additionalPhones),
             },
           };
           results.set(kind + ':' + identity.id, identity);
@@ -203,10 +212,16 @@ export const crmPartyFields = (
   const code = partyNationalIdentity(remote);
   if (code !== null && existing?.nationalCode !== code) fields.nationalCode = code;
   const name = partyDisplayName(remote);
-  if (name !== '' && (existing === null || normalizePartyName(existing.name) !== normalizePartyName(name))) {
-    fields.name = partyType === 'PERSON'
-      ? (remote.firstName?.trim() && remote.lastName?.trim() ? { firstName: remote.firstName.trim(), lastName: remote.lastName.trim() } : splitPartyPersonName(name))
-      : name;
+  if (partyType === 'PERSON' && (remote.firstName?.trim() || remote.lastName?.trim())) {
+    const previous = record(existing?.profile?.name);
+    const fallback = splitPartyPersonName(existing?.name || remote.fullName || '');
+    const firstName = remote.firstName?.trim() || text(previous?.firstName) || fallback.firstName;
+    const lastName = remote.lastName?.trim() || text(previous?.lastName) || fallback.lastName;
+    if (existing === null || normalizePartyName(existing.name) !== normalizePartyName([firstName, lastName].filter(Boolean).join(' '))) {
+      fields.name = { firstName, lastName };
+    }
+  } else if (name !== '' && (existing === null || normalizePartyName(existing.name) !== normalizePartyName(name))) {
+    fields.name = partyType === 'PERSON' ? splitPartyPersonName(name) : name;
   }
   const economic = normalizeEconomicCode(remote.economicCode);
   if (economic !== null && existing?.economicCode !== economic) fields.economicCode = economic;
@@ -225,7 +240,7 @@ export const crmPartyFields = (
     const previous = record(profile.emails);
     const email = remote.email.trim();
     const primary = text(previous?.primaryEmail);
-    const additional = Array.isArray(previous?.additionalEmails) ? previous.additionalEmails.filter((value): value is string => typeof value === 'string') : [];
+    const additional = jsonArray(previous?.additionalEmails).filter((value): value is string => typeof value === 'string');
     if (!primary) fields.emails = { primaryEmail: email, additionalEmails: additional };
     else if (primary.toLowerCase() !== email.toLowerCase() && !additional.some((value) => value.toLowerCase() === email.toLowerCase())) {
       fields.emails = { primaryEmail: primary, additionalEmails: [...additional, email] };
@@ -251,7 +266,7 @@ export const crmPartyFields = (
       // Keep existing additional phone entries and preserve the old primary
       // when a valid new primary arrives from accounting.
       const previous = existing?.phones;
-      const additional = Array.isArray(previous?.additionalPhones) ? [...previous.additionalPhones] : [];
+      const additional = [...jsonArray(previous?.additionalPhones)];
       if (previous?.primaryPhoneNumber && previous.primaryPhoneCountryCode && previous.primaryPhoneCallingCode &&
           !additional.some((value) => record(value)?.number === previous.primaryPhoneNumber)) {
         additional.push({

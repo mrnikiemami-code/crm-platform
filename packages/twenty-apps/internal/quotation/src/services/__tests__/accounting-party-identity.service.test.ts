@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crmPartyFields, resolvePartyIdentity, type CrmPartyIdentity } from 'src/services/accounting-party-identity.service';
+import { crmPartyFields, resolvePartyIdentity, stableCustomerRecordId, type CrmPartyIdentity } from 'src/services/accounting-party-identity.service';
 import { normalizeNationalCode } from 'src/domain/accounting/party-identity';
 
 const remote = { fullName: 'علی احمدی', nationalCode: '۰۰۱۲۳۴۵۶۷۸', mobile: '09121234567' };
@@ -25,6 +25,22 @@ describe('accounting CRM identity authority', () => {
     expect(resolvePartyIdentity(remote, [person, { ...person, id: 'other' }])).toEqual({ kind: 'CONFLICT' });
     expect(resolvePartyIdentity(remote, [{ ...person, nationalCode: '1234567890' }], person.id)).toEqual({ kind: 'CONFLICT' });
     expect(resolvePartyIdentity({ ...remote, nationalCode: null }, [])).toEqual({ kind: 'MISSING_IDENTITY' });
+  });
+  it('supports sparse explicit identities, connection-scoped retries, and economic identity', () => {
+    const sparse = { fullName: 'مشتری آزمایشی', partyType: 'PERSON' as const, externalPartyId: 'A-001' };
+    expect(resolvePartyIdentity(sparse, [])).toEqual({ kind: 'CREATE', partyType: 'PERSON', nationalCode: null });
+    expect(resolvePartyIdentity(sparse, [person], person.id, 'PERSON').kind).toBe('MATCH');
+    const economic = { ...person, economicCode: '990099001234' };
+    expect(resolvePartyIdentity({ ...sparse, economicCode: economic.economicCode }, [economic])).toEqual({ kind: 'MATCH', target: economic });
+    expect(stableCustomerRecordId('a', 'A-001')).toBe(stableCustomerRecordId('a', 'A-001'));
+    expect(stableCustomerRecordId('a', 'A-001')).not.toBe(stableCustomerRecordId('b', 'A-001'));
+  });
+  it('preserves missing names, contact data and address components', () => {
+    const existing = { ...person, profile: { name: { firstName: 'علی', lastName: 'قدیمی' }, address: { addressStreet1: 'خانه', addressCity: 'تهران' } } };
+    expect(crmPartyFields({ fullName: '', firstName: 'رضا', city: 'شیراز' }, 'PERSON', existing)).toEqual({
+      name: { firstName: 'رضا', lastName: 'قدیمی' }, address: { addressStreet1: 'خانه', addressCity: 'شیراز' },
+    });
+    expect(crmPartyFields({ fullName: '' }, 'PERSON', existing)).toEqual({});
   });
   it('does not auto-attach a legacy record by name alone', () => {
     expect(resolvePartyIdentity(remote, [{ ...person, name: remote.fullName, nationalCode: null, mobile: null }])).toEqual({ kind: 'CONFLICT' });

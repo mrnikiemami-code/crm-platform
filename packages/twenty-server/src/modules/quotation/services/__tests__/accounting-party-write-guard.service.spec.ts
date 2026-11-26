@@ -7,10 +7,11 @@ const machine = { type: 'application', application: app } as WorkspaceAuthContex
 describe('accounting customer scoped writes', () => {
   it('requires a delegated settings user and refuses unrelated fields and bulk mutations', async () => {
     const guard = new AccountingPartyWriteGuardService({ resolveSettingsAuthority: jest.fn(async () => 'SETTINGS_ROLE') } as never);
-    await expect(guard.assertAllowed(user, 'person', 'createOne', { data: { name: { firstName: 'Test' }, nationalCode: '0012345678' } })).resolves.toBeUndefined();
+    await expect(guard.assertAllowed(user, 'person', 'createOne', { data: { name: { firstName: 'Test' }, nationalCode: '0012345678', position: 0 } })).resolves.toBeUndefined();
     await expect(guard.assertAllowed(machine, 'person', 'createOne', { data: { name: {} } })).rejects.toThrow('ACCOUNTING_PARTY_WRITE_FORBIDDEN');
     await expect(guard.assertAllowed(user, 'company', 'updateOne', { data: { accountOwnerId: 'other' } })).rejects.toThrow('ACCOUNTING_PARTY_WRITE_FORBIDDEN');
     await expect(guard.assertAllowed(user, 'person', 'mergeMany', {})).rejects.toThrow('ACCOUNTING_PARTY_WRITE_FORBIDDEN');
+    await expect(guard.assertAllowed(user, 'person', 'updateOne', { data: { position: 0 } })).rejects.toThrow('ACCOUNTING_PARTY_WRITE_FORBIDDEN');
     const limited = new AccountingPartyWriteGuardService({ resolveSettingsAuthority: jest.fn(async () => null) } as never);
     await expect(limited.assertAllowed(user, 'person', 'updateOne', { data: { name: {} } })).rejects.toThrow('ACCOUNTING_PARTY_WRITE_FORBIDDEN');
   });
