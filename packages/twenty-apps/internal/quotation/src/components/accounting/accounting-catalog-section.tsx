@@ -458,11 +458,15 @@ export const AccountingCatalogSection = ({
           onClick={() => setReloadToken((token) => token + 1)}
           disabled={loading || applying}
         />
-        <SecondaryButton
+      </div>
+      <div role="group" aria-label="عملیات گروهی" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--t-spacing-2)' }}>
+        {selected.size === 0 ? (
+          <PrimaryButton
           label={applying ? 'در حال انتقال…' : 'انتقال همه'}
           onClick={() => void transferAllEligible()}
           disabled={!canManage || applying || loading}
-        />
+          />
+        ) : null}
         {selected.size > 0 ? (
           <PrimaryButton
             label={
