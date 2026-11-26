@@ -1,6 +1,16 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — GOAL-036 Package B/WS5 DONE → WS6 IN PROGRESS (2026-11-26)
+## CURRENT — GOAL-036 Package C/WS6 DONE → WS7-B / E NEXT (2026-11-26)
+
+**App:** `quotation@0.1.68` on Dev `:3002`. **Goal 023 ACTIVE**. Final Gate `STOP_FOR_ARCHITECT_AND_USER_UAT`.
+
+**Package A:** `cab53037` / `0.1.66` — click isolation + microcopy.  
+**Package B / WS5:** `09c8c5b3` / `0.1.67` — catalog-bound maps.  
+**Package C / WS6:** capability/`isLive`-driven labels; mock profile UI via `testProfiles`; connections **46 PASS**. Evidence: `goal-036/CRM-129-GOAL-036-PACKAGE-C-WS6.md`.
+
+**Next:** Package D WS7-B (approved surfaces only) + Package E matrix → STOP_FOR_ARCHITECT_AND_USER_UAT. Goal 023 not complete.
+
+## PRIOR — GOAL-036 Package B/WS5 DONE → WS6 IN PROGRESS (2026-11-26)
 
 **App:** `quotation@0.1.67` on Dev `:3002`. **Goal 023 ACTIVE**. Final Gate `STOP_FOR_ARCHITECT_AND_USER_UAT`.
 

@@ -739,6 +739,26 @@ export const DOCUMENT_WARNING_LABELS: Record<string, string> = {
 // Display-only readiness of a vendor the app has no operational adapter for. It is not an
 // adapter entry: it exists so the selector can say "unavailable" instead of pretending a
 // destination is ready.
+export const adapterDisplayLabel = (
+  adapter: Pick<AdapterDescriptor, 'id' | 'label' | 'isLive'> | null | undefined,
+): string => {
+  if (adapter === null || adapter === undefined) {
+    return 'نرم‌افزار حسابداری';
+  }
+
+  if (!adapter.isLive) {
+    return 'آزمایشی، بدون ارتباط واقعی';
+  }
+
+  const trimmed = adapter.label.trim();
+
+  return trimmed === '' ? 'نرم‌افزار حسابداری' : trimmed;
+};
+
+export const adapterBadgeTone = (
+  adapter: Pick<AdapterDescriptor, 'isLive'> | null | undefined,
+): 'info' | 'neutral' => (adapter?.isLive === true ? 'neutral' : 'info');
+
 export const SEPIDAR_UNAVAILABLE = {
   id: 'sepidar',
   label: 'سپیدار',

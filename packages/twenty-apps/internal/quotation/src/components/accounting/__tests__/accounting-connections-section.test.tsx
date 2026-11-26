@@ -798,6 +798,91 @@ describe('the tax form shows one row and one destination code per policy', () =>
       screen.queryByRole('table', { name: 'سیاست‌های مالیات و عوارض این اتصال' }),
     ).toBeNull();
   });
+
+  it('switches mock profile fields through capabilities, not provider name checks', () => {
+    const coded = formFrom(threeConnections()[1]);
+    const { rerender } = render(
+      <AccountingConnectionsSection
+        data={panelData(threeConnections())}
+        form={coded}
+        modes={resolveFinancialModes({
+          adapterId: coded.adapterId,
+          adapters: panelData(threeConnections()).adapters,
+          financial: {
+            baseCurrency: coded.baseCurrency,
+            currencyMappings: {},
+            conversionRate: coded.conversionRate,
+            mockProfile: 'CODED',
+          },
+        })}
+        policies={policies}
+        currencies={currencies}
+        canManage
+        busy={false}
+        selectedConnectionId="conn-2"
+        testResult={null}
+        view="form"
+        focus={null}
+        onOpenList={vi.fn()}
+        onSelectConnection={vi.fn()}
+        onSetWorkspaceDefault={vi.fn()}
+        onDeactivateConnection={vi.fn()}
+        onReactivateConnection={vi.fn()}
+        onEditConnection={vi.fn()}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        onTest={vi.fn()}
+        onStartNew={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪')).toBeTruthy();
+
+    const noTax = { ...coded, mockProfile: 'NO_TAX' };
+    const data = panelData(threeConnections());
+
+    rerender(
+      <AccountingConnectionsSection
+        data={data}
+        form={noTax}
+        modes={resolveFinancialModes({
+          adapterId: noTax.adapterId,
+          adapters: data.adapters,
+          financial: {
+            baseCurrency: noTax.baseCurrency,
+            currencyMappings: {},
+            conversionRate: noTax.conversionRate,
+            mockProfile: 'NO_TAX',
+          },
+        })}
+        policies={policies}
+        currencies={currencies}
+        canManage
+        busy={false}
+        selectedConnectionId="conn-2"
+        testResult={null}
+        view="form"
+        focus={null}
+        onOpenList={vi.fn()}
+        onSelectConnection={vi.fn()}
+        onSetWorkspaceDefault={vi.fn()}
+        onDeactivateConnection={vi.fn()}
+        onReactivateConnection={vi.fn()}
+        onEditConnection={vi.fn()}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+        onTest={vi.fn()}
+        onStartNew={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('مالیات و عوارض در این مقصد پشتیبانی نمی‌شود'),
+    ).toBeTruthy();
+    expect(
+      screen.queryByLabelText('کد مالیات برای مالیات بر ارزش افزوده ۹٪'),
+    ).toBeNull();
+  });
 });
 
 describe('the special tax row code', () => {

@@ -8,6 +8,7 @@ import {
   StatGrid,
 } from 'src/components/accounting/accounting-business-ui';
 import {
+  adapterDisplayLabel,
   type ConnectionRecord,
   type PanelData,
   HEALTH_LABELS,
@@ -302,9 +303,9 @@ export const AccountingOverviewSection = ({
           <>
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
               <Badge tone="neutral">
-                {connection.adapterId === 'mock'
-                  ? 'نوع اتصال: حسابداری آزمایشی'
-                  : 'نوع اتصال: آسان'}
+                {`نوع اتصال: ${adapterDisplayLabel(
+                  data.adapters.find((adapter) => adapter.id === connection.adapterId),
+                )}`}
               </Badge>
               <Badge
                 tone={

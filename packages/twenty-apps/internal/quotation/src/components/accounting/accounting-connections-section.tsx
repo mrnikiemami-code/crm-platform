@@ -12,6 +12,7 @@ import {
 import { ConnectionEditForm } from 'src/components/accounting/accounting-connection-form';
 import {
   CONNECTION_HEALTH_LABELS,
+  adapterDisplayLabel,
   type ConnectionRecord,
   type FinancialModes,
   type FormState,
@@ -87,14 +88,16 @@ export const AccountingConnectionsSection = ({
       return data.connections;
     }
 
-    return data.connections.filter((connection) =>
-      [
+    return data.connections.filter((connection) => {
+      const adapter = data.adapters.find((entry) => entry.id === connection.adapterId);
+
+      return [
         connection.name,
-        connection.adapterId === 'mock' ? 'آزمایشی' : 'آسان',
+        adapterDisplayLabel(adapter),
         CONNECTION_HEALTH_LABELS[connectionHealthState(connection)],
         connection.settings.baseUrl,
-      ].some((field) => field.toLowerCase().includes(needle)),
-    );
+      ].some((field) => field.toLowerCase().includes(needle));
+    });
   }, [data.connections, query]);
 
   // Selected first, everything else in the order the server returned it. The badge and the
@@ -244,9 +247,9 @@ export const AccountingConnectionsSection = ({
                       </td>
                       <td style={styles.cell}>
                         <span style={{ display: 'block' }}>
-                          {entry.adapterId === 'mock'
-                            ? 'آزمایشی، بدون ارتباط واقعی'
-                            : 'نرم‌افزار حسابداری آسان'}
+                          {adapterDisplayLabel(
+                            data.adapters.find((adapter) => adapter.id === entry.adapterId),
+                          )}
                         </span>
                         <span
                           style={{
@@ -257,9 +260,10 @@ export const AccountingConnectionsSection = ({
                             textAlign: 'right',
                           }}
                         >
-                          {entry.adapterId === 'mock'
-                            ? 'بدون سرور بیرونی'
-                            : entry.settings.baseUrl || 'آدرس سرویس ثبت نشده'}
+                          {(data.adapters.find((adapter) => adapter.id === entry.adapterId)
+                            ?.isLive ?? false)
+                            ? entry.settings.baseUrl || 'آدرس سرویس ثبت نشده'
+                            : 'بدون سرور بیرونی'}
                         </span>
                       </td>
                       <td style={styles.cell}>

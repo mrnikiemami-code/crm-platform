@@ -31,7 +31,7 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | P0 Financial settings recovery | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-FINANCIAL-SETTINGS-RECOVERY-PROGRESS.md`](./CRM-129-FINANCIAL-SETTINGS-RECOVERY-PROGRESS.md); Nest tax/currency/rounding + tabs; **STOP_FOR_USER_UAT** |
 | GOAL-036 Package A (DE-035 click/microcopy) | `TECHNICALLY_VERIFIED` | `quotation@0.1.66`; evidence `goal-036/CRM-129-GOAL-036-PACKAGE-A.md` |
 | WS5 Settings ownership | `TECHNICALLY_VERIFIED` | GOAL-036 Package B / `0.1.67`; evidence `goal-036/CRM-129-GOAL-036-PACKAGE-B-WS5.md` |
-| WS6 Mock/Asan shared UI | `IN_PROGRESS` | GOAL-036 Package C — capability-driven shared UI |
+| WS6 Mock/Asan shared UI | `TECHNICALLY_VERIFIED` | GOAL-036 Package C / `0.1.68`; evidence `goal-036/CRM-129-GOAL-036-PACKAGE-C-WS6.md` |
 | WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |
 | WS7-B Product UX polish | `IN_PROGRESS` | GOAL-036 Package D — only approved contract surfaces |
 | UX Pack A micro-repairs | `TECHNICALLY_VERIFIED` | Same product chrome; copy/RTL/ownership/timestamp; see CP-UX-REPAIR-A |

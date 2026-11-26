@@ -14,6 +14,8 @@ import {
   type AdapterDescriptor,
   CapabilityTable,
   CONNECTION_HEALTH_LABELS,
+  adapterBadgeTone,
+  adapterDisplayLabel,
   type CurrencyCatalogView,
   FALLBACK_OPERATIONAL_CURRENCY_CODES,
   type FinancialModes,
@@ -90,7 +92,6 @@ export const ConnectionEditForm = ({
   const descriptor: AdapterDescriptor | null =
     data.adapters.find((entry) => entry.id === form.adapterId) ?? null;
   const adapterIsLive = descriptor?.isLive === true;
-  const isMock = form.adapterId === 'mock';
   const fields = connectionFormFields(modes);
   const activePolicies = policies.filter((policy) => policy.isActive);
   const savedConnection =
@@ -144,6 +145,7 @@ export const ConnectionEditForm = ({
   }, [focus, form.id]);
 
   const mockProfiles = descriptor?.testProfiles ?? [];
+  const hasTestProfiles = mockProfiles.length > 0;
   const selectedProfile = mockProfiles.find(
     (profile) => profile.id === form.mockProfile,
   );
@@ -186,11 +188,9 @@ export const ConnectionEditForm = ({
           index="۱"
           title="مشخصات اتصال"
           aside={
-            isMock ? (
-              <Badge tone="info">آزمایشی، بدون ارتباط واقعی</Badge>
-            ) : (
-              <Badge tone="neutral">آسان</Badge>
-            )
+            <Badge tone={adapterBadgeTone(descriptor)}>
+              {adapterDisplayLabel(descriptor)}
+            </Badge>
           }
         />
 
@@ -219,16 +219,14 @@ export const ConnectionEditForm = ({
             >
               {data.adapters.map((adapter) => (
                 <option key={adapter.id} value={adapter.id}>
-                  {adapter.id === 'mock'
-                    ? 'آزمایشی، بدون ارتباط واقعی'
-                    : 'نرم‌افزار حسابداری آسان'}
+                  {adapterDisplayLabel(adapter)}
                 </option>
               ))}
             </select>
           </Field>
         </div>
 
-        {isMock ? (
+        {hasTestProfiles ? (
           <Field label="حالت آزمایشی">
             <select
               style={styles.input}
@@ -272,14 +270,15 @@ export const ConnectionEditForm = ({
           </p>
         )}
 
-        {isMock ? (
+        {adapterIsLive ? (
           <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-sm)' }}>
-            هیچ تماس واقعی با نرم‌افزار حسابداری انجام نمی‌شود و نتیجهٔ آزمایش، شبیه‌سازی
-            است.
+            {descriptor?.summary?.trim() ||
+              'آدرس سرویس را طبق مستند مقصد وارد کنید؛ اطلاعات حساس در گزارش‌ها نمایش داده نمی‌شود.'}
           </p>
         ) : (
           <p style={{ ...styles.meta, fontSize: 'var(--t-font-size-sm)' }}>
-            طبق مستند سرویس آسان، نام کاربری و توکن API لازم نیست؛ آدرس سرویس کافی است.
+            هیچ تماس واقعی با نرم‌افزار حسابداری انجام نمی‌شود و نتیجهٔ آزمایش، شبیه‌سازی
+            است.
           </p>
         )}
 
@@ -617,9 +616,9 @@ export const ConnectionEditForm = ({
             tone={testResult.healthState === 'OK' ? 'success' : 'warning'}
             title={
               testResult.healthState === 'OK'
-                ? form.adapterId === 'mock'
-                  ? 'آزمایش شبیه‌سازی‌شده موفق بود'
-                  : 'پاسخ سرور دریافت شد (اتصال واقعی تأیید نشده)'
+                ? adapterIsLive
+                  ? 'پاسخ سرور دریافت شد (اتصال واقعی تأیید نشده)'
+                  : 'آزمایش شبیه‌سازی‌شده موفق بود'
                 : 'آزمایش اتصال موفق نبود'
             }
           >
