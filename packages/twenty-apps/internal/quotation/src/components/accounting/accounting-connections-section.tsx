@@ -138,11 +138,6 @@ export const AccountingConnectionsSection = ({
   return (
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}
-      onPointerDown={() => {
-        if (openMenuId !== null) {
-          setOpenMenuId(null);
-        }
-      }}
     >
       <div
         style={{
