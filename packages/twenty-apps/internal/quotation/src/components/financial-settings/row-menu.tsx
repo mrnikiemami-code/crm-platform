@@ -53,6 +53,7 @@ const DotsIcon = () => (
 // Outside-close is owned by parents via React onPointerDown; this root stops
 // propagation so item/trigger presses do not dismiss.
 export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const onOpenChangeRef = useRef(onOpenChange);
@@ -100,8 +101,17 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
       menuItems[nextIndex]?.focus();
     };
 
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    const onOutsidePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
+        onOpenChangeRef.current(false);
+      }
+    };
+    document.addEventListener('pointerdown', onOutsidePointerDown, true);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', onOutsidePointerDown, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
   }, [open]);
 
   const disabledNote = items.find(
@@ -110,6 +120,7 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
 
   return (
     <div
+      ref={rootRef}
       className={open ? 'fs-menu-root is-open' : 'fs-menu-root'}
       onPointerDown={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
