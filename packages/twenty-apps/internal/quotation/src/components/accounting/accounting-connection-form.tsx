@@ -660,11 +660,13 @@ export const ConnectionEditForm = ({
         </div>
 
         <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-          {`توکن تونل امن: ${
-            data.credentials.tunnelTokenConfigured ? 'تنظیم‌شده' : 'تنظیم‌نشده'
-          } — تأیید انتقال ناامن: ${
-            data.credentials.insecureWritesApproved ? 'دارد' : 'ندارد'
-          }`}
+          {data.metadataVerified === false
+            ? 'وضعیت تنظیمات امنیتی از سرور تأیید نشده است.'
+            : `توکن تونل امن: ${
+                data.credentials.tunnelTokenConfigured ? 'تنظیم‌شده' : 'تنظیم‌نشده'
+              } — تأیید انتقال ناامن: ${
+                data.credentials.insecureWritesApproved ? 'دارد' : 'ندارد'
+              }`}
         </span>
         <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
           رمزها و توکن‌ها فقط در متغیرهای محرمانهٔ برنامه نگهداری می‌شوند و در این صفحه،
