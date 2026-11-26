@@ -95,6 +95,7 @@ const buildController = ({
     quotationCurrencyAuthorityService as never,
     { resolveSettingsAuthority: jest.fn(async () => authority) } as never,
     {} as never,
+    {} as never,
   );
 
   return { controller, taxPolicyAuthorityService, quotationCurrencyAuthorityService };

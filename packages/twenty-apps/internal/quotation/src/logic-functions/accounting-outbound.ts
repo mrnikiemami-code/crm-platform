@@ -364,9 +364,4 @@ export default defineLogicFunction({
     'پیش‌نمایش و ارسال کالا/خدمت و ثبت پیش‌فاکتور تأییدشده در نرم‌افزار حسابداری',
   timeoutSeconds: 60,
   handler,
-  httpRouteTriggerSettings: {
-    path: '/quotation/accounting-outbound',
-    httpMethod: 'POST',
-    isAuthRequired: true,
-  },
 });

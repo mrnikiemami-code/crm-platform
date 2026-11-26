@@ -304,12 +304,4 @@ export default defineLogicFunction({
     'مدیریت اتصال حسابداری: فهرست، ذخیره، پیش‌فرض، بازنشستگی، فعال‌سازی مجدد و آزمایش اتصال',
   timeoutSeconds: 30,
   handler,
-  httpRouteTriggerSettings: {
-    path: '/quotation/accounting-connection',
-    httpMethod: 'POST',
-    isAuthRequired: true,
-    // The server boundary checks the human caller's workspace role, so the route must
-    // hand the caller's own authorization header over.
-    forwardedRequestHeaders: ['authorization'],
-  },
 });

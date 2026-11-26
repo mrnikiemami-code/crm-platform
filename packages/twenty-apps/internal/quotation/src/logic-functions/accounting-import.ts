@@ -259,9 +259,4 @@ export default defineLogicFunction({
     'پیش‌نمایش صفحه‌به‌صفحه و اعمال دریافت کالا، خدمت، قیمت و مشتری از نرم‌افزار حسابداری',
   timeoutSeconds: 60,
   handler,
-  httpRouteTriggerSettings: {
-    path: '/quotation/accounting-import',
-    httpMethod: 'POST',
-    isAuthRequired: true,
-  },
 });

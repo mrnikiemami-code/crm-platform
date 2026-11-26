@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { LogicFunctionExecutorModule } from 'src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.module';
+import { AccountingOperationDispatchService } from 'src/modules/quotation/services/accounting-operation-dispatch.service';
 import { AuthModule } from 'src/engine/core-modules/auth/auth.module';
 import { WorkspaceCacheStorageModule } from 'src/engine/workspace-cache-storage/workspace-cache-storage.module';
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
@@ -20,6 +22,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
 @Module({
   imports: [
     AuthModule,
+    LogicFunctionExecutorModule,
     WorkspaceCacheModule,
     WorkspaceCacheStorageModule,
     QuotationQueryHookModule,
@@ -37,6 +40,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
     QuotationCurrencyAuthorityService,
     AccountingDestinationProbeService,
     AccountingConnectionAuthorityService,
+    AccountingOperationDispatchService,
   ],
 })
 export class QuotationModule {}

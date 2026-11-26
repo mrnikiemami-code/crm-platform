@@ -32,6 +32,15 @@ export const callAppRoute = async (
   path: string,
   body: Record<string, unknown>,
 ): Promise<AppRouteResponse> => {
+  // The old route constants remain stable call-site identifiers, not HTTP URLs
+  // for accounting. There is no Functions fallback for these operations.
+  if (path === ACCOUNTING_CONNECTION_ROUTE) {
+    return callAccountingConnectionNestAction(body);
+  }
+  if (path === ACCOUNTING_IMPORT_ROUTE || path === ACCOUNTING_OUTBOUND_ROUTE) {
+    return callAccountingOperationNestAction(path, body);
+  }
+
   const baseUrl = resolveFunctionsBaseUrl(undefined, undefined);
   const token =
     process.env.TWENTY_APP_ACCESS_TOKEN ?? process.env.TWENTY_API_KEY;
@@ -175,6 +184,41 @@ export const callAccountingConnectionNestAction = (
   }
 
   return callQuotationNestAction(ACCOUNTING_CONNECTION_APP_ACTION_TO_NEST, body);
+};
+
+const ACCOUNTING_IMPORT_ACTIONS: Record<string, string> = {
+  'preview-items-page': 'accounting-import-preview-items-page',
+  'preview-parties-page': 'accounting-import-preview-parties-page',
+  'search-party-candidates': 'accounting-import-search-party-candidates',
+  'preview-items': 'accounting-import-preview-items',
+  'apply-items': 'accounting-import-apply-items',
+  'preview-parties': 'accounting-import-preview-parties',
+  'apply-parties': 'accounting-import-apply-parties',
+};
+const ACCOUNTING_OUTBOUND_ACTIONS: Record<string, string> = {
+  'operations': 'accounting-outbound-operations',
+  'preview-item-push': 'accounting-outbound-preview-item-push',
+  'execute-item-push': 'accounting-outbound-execute-item-push',
+  'preview-quotation-export': 'accounting-outbound-preview-quotation-export',
+  'execute-quotation-export': 'accounting-outbound-execute-quotation-export',
+};
+
+export const callAccountingOperationNestAction = (
+  path: string,
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> => {
+  const actions = path === ACCOUNTING_IMPORT_ROUTE
+    ? ACCOUNTING_IMPORT_ACTIONS
+    : path === ACCOUNTING_OUTBOUND_ROUTE ? ACCOUNTING_OUTBOUND_ACTIONS : null;
+  const action = typeof body.action === 'string' ? body.action : '';
+  if (actions === null || !Object.prototype.hasOwnProperty.call(actions, action)) {
+    return Promise.resolve({
+      ok: false,
+      status: 400,
+      data: { success: false, code: 'INVALID_INPUT', message: 'عملیات حسابداری معتبر نیست.' },
+    });
+  }
+  return callQuotationNestAction(actions, body);
 };
 
 export const SAVE_CATALOG_ROUTE = '/quotation/save-catalog-item';

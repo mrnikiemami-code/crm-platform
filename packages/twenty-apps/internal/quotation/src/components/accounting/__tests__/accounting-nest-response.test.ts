@@ -6,7 +6,7 @@ import {
   readAccountingNestHealth,
   savedAccountingRecordFromNest,
 } from 'src/components/accounting/accounting-nest-response';
-import { callAccountingConnectionNestAction } from 'src/components/quotation-api';
+import { callAccountingConnectionNestAction, callAppRoute, ACCOUNTING_IMPORT_ROUTE, ACCOUNTING_OUTBOUND_ROUTE } from 'src/components/quotation-api';
 import { ADAPTER_DESCRIPTORS } from 'src/domain/accounting/adapter-descriptors';
 
 const advertised = ADAPTER_DESCRIPTORS.map((adapter) => ({
@@ -194,5 +194,44 @@ describe('Nest action transport (no Functions /s fallback)', () => {
     expect(response.ok).toBe(false);
     expect(response.status).toBe(400);
     expect(transport).not.toHaveBeenCalled();
+  });
+});
+
+ describe('Accounting operations transport', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it('routes every existing import/outbound action through Nest even with a configured Functions URL', async () => {
+    vi.stubEnv('TWENTY_API_URL', 'http://localhost:3002');
+    vi.stubEnv('TWENTY_FUNCTIONS_URL', 'https://legacy.invalid/s');
+    vi.stubEnv('TWENTY_APP_ACCESS_TOKEN', 'test-token');
+    const transport = vi.fn(async (_url: string, _request: RequestInit) => ({
+      ok: true, status: 200, text: async () => '{"success":true}',
+    }));
+    vi.stubGlobal('fetch', transport);
+    for (const [path, action, expected] of [
+      [ACCOUNTING_IMPORT_ROUTE, 'preview-items-page', 'accounting-import-preview-items-page'],
+      [ACCOUNTING_IMPORT_ROUTE, 'preview-parties-page', 'accounting-import-preview-parties-page'],
+      [ACCOUNTING_IMPORT_ROUTE, 'search-party-candidates', 'accounting-import-search-party-candidates'],
+      [ACCOUNTING_IMPORT_ROUTE, 'preview-items', 'accounting-import-preview-items'],
+      [ACCOUNTING_IMPORT_ROUTE, 'apply-items', 'accounting-import-apply-items'],
+      [ACCOUNTING_IMPORT_ROUTE, 'preview-parties', 'accounting-import-preview-parties'],
+      [ACCOUNTING_IMPORT_ROUTE, 'apply-parties', 'accounting-import-apply-parties'],
+      [ACCOUNTING_OUTBOUND_ROUTE, 'operations', 'accounting-outbound-operations'],
+      [ACCOUNTING_OUTBOUND_ROUTE, 'preview-item-push', 'accounting-outbound-preview-item-push'],
+      [ACCOUNTING_OUTBOUND_ROUTE, 'execute-item-push', 'accounting-outbound-execute-item-push'],
+      [ACCOUNTING_OUTBOUND_ROUTE, 'preview-quotation-export', 'accounting-outbound-preview-quotation-export'],
+      [ACCOUNTING_OUTBOUND_ROUTE, 'execute-quotation-export', 'accounting-outbound-execute-quotation-export'],
+    ] as const) {
+      await callAppRoute(path, { action, connectionId: 'conn-1' });
+      const [url, request] = transport.mock.calls.at(-1)!;
+      expect(url).toBe('http://localhost:3002/rest/quotation/actions');
+      expect(JSON.parse(String(request.body))).toEqual({ action: expected, connectionId: 'conn-1' });
+    }
+    const count = transport.mock.calls.length;
+    expect((await callAppRoute(ACCOUNTING_IMPORT_ROUTE, { action: 'invented' })).status).toBe(400);
+    expect(transport).toHaveBeenCalledTimes(count);
   });
 });

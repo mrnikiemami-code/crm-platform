@@ -16,6 +16,7 @@ import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters
 import { JwtAuthGuard } from 'src/engine/guards/jwt-auth.guard';
 import { WorkspaceAuthGuard } from 'src/engine/guards/workspace-auth.guard';
 import { QuotationCustomerLinkService } from 'src/modules/quotation/services/quotation-customer-link.service';
+import { AccountingOperationDispatchService, ACCOUNTING_OPERATION_ACTIONS } from 'src/modules/quotation/services/accounting-operation-dispatch.service';
 import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
 import { QuotationDraftPersistenceService } from 'src/modules/quotation/services/quotation-draft-persistence.service';
 import { QuotationPdfService } from 'src/modules/quotation/services/quotation-pdf.service';
@@ -56,6 +57,7 @@ type QuotationUiActionBody = {
 };
 
 const ALLOWED_ACTIONS = new Set([
+  ...ACCOUNTING_OPERATION_ACTIONS,
   'get-lifecycle',
   'transition',
   'generate-pdf',
@@ -131,6 +133,7 @@ export class QuotationUiController {
     private readonly quotationCurrencyAuthorityService: QuotationCurrencyAuthorityService,
     private readonly quotationPermissionService: QuotationPermissionService,
     private readonly accountingConnectionAuthorityService: AccountingConnectionAuthorityService,
+    private readonly accountingOperationDispatchService: AccountingOperationDispatchService,
   ) {}
 
   @Post('actions')
@@ -167,6 +170,10 @@ export class QuotationUiController {
     // on a refusal, and every write route re-checks on its own.
     if (action === 'accounting-settings-authority') {
       return this.handleAccountingSettingsAuthority(authContext);
+    }
+
+    if (ACCOUNTING_OPERATION_ACTIONS.includes(action)) {
+      return this.accountingOperationDispatchService.dispatch(action, body, authContext);
     }
 
     if (action.startsWith('accounting-connection-')) {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { enqueueSnackbar, useSelectedRecordIds } from 'twenty-sdk/front-component';
 
 import {
-  ACCOUNTING_CONNECTION_ROUTE,
+  callAccountingConnectionNestAction,
   ACCOUNTING_OUTBOUND_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
@@ -15,11 +15,11 @@ import {
   OperationTable,
   VERIFICATION_LABELS,
   asRecord,
-  parsePanelData,
   readRows,
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
+import { parseAccountingNestPanel } from 'src/components/accounting/accounting-nest-response';
 import { findValidWorkspaceDefaultConnection } from 'src/domain/accounting/resolve-destination';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
@@ -58,7 +58,7 @@ export const AccountingConnectionPanel = () => {
     setLoadError(null);
 
     try {
-      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      const response = await callAccountingConnectionNestAction({
         action: 'list',
       });
 
@@ -72,7 +72,7 @@ export const AccountingConnectionPanel = () => {
         return;
       }
 
-      setData(parsePanelData(response.data));
+      setData(parseAccountingNestPanel(response.data));
     } catch {
       setLoadError('ارتباط با سرور برقرار نشد.');
     }
