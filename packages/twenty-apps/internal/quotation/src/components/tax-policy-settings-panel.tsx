@@ -600,7 +600,7 @@ export const TaxPolicySettingsPanel = () => {
       <style>{PANEL_CSS}</style>
       <SettingsShell
         title="پیش‌نیازهای حسابداری"
-        subtitle="سیاست مالیات، ارز عملیاتی و قواعد رُند — ساختار ثبت با ریل زمینه"
+        subtitle="سیاست مالیات، ارز عملیاتی و قواعد رُند"
         tabs={shellTabs}
         activeTabId={activeTab}
         onTabChange={(id) => setActiveTab(id as SettingsTab)}
@@ -616,8 +616,8 @@ export const TaxPolicySettingsPanel = () => {
             ? taxStats
             : [
                 {
-                  label: 'فاز',
-                  value: toPersianDigits('1'),
+                  label: 'ارز',
+                  value: 'ریال',
                 },
                 {
                   label: 'وضعیت',
@@ -680,17 +680,17 @@ export const TaxPolicySettingsPanel = () => {
           activeTab === 'tax' ? (
             <>
               <strong>حذف:</strong> سیاست پیش‌فرض یا استفاده‌شده در سند حذف
-              نمی‌شود. کد حسابداری پس از ثبت در سند قفل می‌شود.
+              نمی‌شود. کد حسابداری استفاده‌شده در پیش‌فاکتور قابل تغییر نیست.
             </>
           ) : activeTab === 'currencies' ? (
             <>
-              در فاز ۱ فقط ریال ایران (IRR) فعال است. راه‌اندازی خودکار است و
-              دکمه bootstrap وجود ندارد.
+              فعلاً فقط ریال ایران فعال است. کد حسابداری ارز را می‌توانید از همین
+              صفحه ویرایش کنید.
             </>
           ) : (
             <>
-              گام رُند باید عدد صحیح مثبت ریال باشد. ۰٫۰۰۱ فقط برای ارزهای
-              غیرریالی آینده است.
+              گام رُند باید عدد صحیح مثبت ریال باشد. قاعده پیش‌فرض یا استفاده‌شده
+              در سند حذف نمی‌شود.
             </>
           )
         }
@@ -898,7 +898,7 @@ export const TaxPolicySettingsPanel = () => {
             />
             {(editingRow?.quotationCount ?? 0) > 0 ? (
               <p className="tax-hint">
-                این کد به‌دلیل ثبت در سند قفل شده است.
+                این کد قبلاً در پیش‌فاکتور استفاده شده و قابل تغییر نیست.
               </p>
             ) : null}
           </div>

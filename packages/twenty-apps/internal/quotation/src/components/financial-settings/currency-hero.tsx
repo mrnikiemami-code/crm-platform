@@ -106,7 +106,7 @@ export const CurrencyHero = ({
   accountingCode,
   isDefault,
   isActive,
-  phaseLabel = 'فاز ۱',
+  phaseLabel = 'عملیاتی',
   loading = false,
   error = null,
   onRetry,
@@ -177,26 +177,26 @@ export const CurrencyHero = ({
           <div className="ch-cell">
             <span className="ch-cap">دامنه عملیاتی</span>
             <span className="ch-val">فقط {name}</span>
-            <span className="ch-sub">ارزهای دیگر به فازهای بعدی منتقل می‌شوند</span>
+            <span className="ch-sub">مبالغ پیش‌فاکتور فقط با این ارز ثبت می‌شوند</span>
           </div>
           <div className="ch-cell">
             <span className="ch-cap">وضعیت پیش‌فرض</span>
             <span className="ch-val">ارز پیش‌فرض صورتحساب</span>
-            <span className="ch-sub">تغییر پیش‌فرض توسط سرور مدیریت می‌شود</span>
+            <span className="ch-sub">برای اسناد جدید به‌صورت خودکار انتخاب می‌شود</span>
           </div>
         </div>
 
         <div className="ch-note">
           <InfoIcon />
           <span>
-            راه‌اندازی ارز پایه به‌صورت خودکار و بدون دکمه جداگانه انجام می‌شود؛
-            پس از اولین بارگذاری، این ارز آماده استفاده است.
+            ارز پایه آماده استفاده است. کد حسابداری را در صورت نیاز ویرایش کنید؛
+            پس از ثبت در سند، کد قفل می‌شود.
           </span>
         </div>
 
         <div className="ch-future">
-          <span>ارز بعدی:</span>
-          <span className="ch-ghost-row">در فاز ۱ اضافه نمی‌شود — منتظر پشتیبانی چندارزی</span>
+          <span>ارزهای دیگر:</span>
+          <span className="ch-ghost-row">فعلاً در دسترس نیست</span>
         </div>
       </div>
     )}

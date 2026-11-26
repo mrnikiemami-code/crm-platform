@@ -26,12 +26,11 @@ export type RoundingListProps = {
 const CSS = `
 .rl-root { direction: rtl; display: flex; flex-direction: column; gap: 18px; }
 .rl-ladder { display: flex; flex-direction: column; gap: 0; counter-reset: rl-step; }
-.rl-step { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 16px 18px 16px 18px; background: var(--t-color-gray1); border: 1px solid var(--t-color-gray5); border-top: 0; cursor: pointer; transition: background 0.15s ease; }
+.rl-step { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 16px 18px 16px 18px; background: var(--t-color-gray1); border: 1px solid var(--t-color-gray5); border-top: 0; transition: background 0.15s ease; }
 .rl-step:first-child { border-top: 1px solid var(--t-color-gray5); border-radius: 8px 8px 0 0; }
 .rl-step:last-child { border-radius: 0 0 8px 8px; }
 .rl-step:only-child { border-radius: 8px; border-top: 1px solid var(--t-color-gray5); }
 .rl-step:hover { background: var(--t-color-gray2); }
-.rl-step:focus-visible { outline: 2px solid var(--t-color-blue9); outline-offset: -2px; border-radius: 2px; }
 .rl-step.is-def { background: var(--t-color-turquoise2); border-color: var(--t-color-turquoise6); }
 .rl-step.is-def:hover { background: var(--t-color-turquoise3); }
 .rl-step.is-off .rl-step-num { color: var(--t-color-gray9); }
@@ -47,7 +46,8 @@ const CSS = `
 .rl-badge-on::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--t-color-turquoise9); }
 .rl-badge-off { background: var(--t-color-gray4); color: var(--t-color-gray11); }
 .rl-used { font-size: 12.5px; color: var(--t-color-gray11); }
-.rl-step-tail { display: flex; align-items: center; gap: 10px; padding-top: 2px; }
+.rl-step-tail { display: flex; align-items: center; gap: 8px; padding-top: 2px; }
+.rl-edit { height: 32px; min-height: 32px; padding: 0 12px; font-size: 13px; margin-top: 0; }
 .rl-empty { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); padding: 48px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .rl-empty h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--t-color-gray12); }
 .rl-empty p { margin: 0; font-size: 14px; color: var(--t-color-gray11); max-width: 440px; line-height: 1.7; }
@@ -71,7 +71,8 @@ const CSS = `
 .rl-banner svg { width: 16px; height: 16px; stroke: var(--t-color-orange11); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-top: 3px; flex: none; }
 @media (max-width: 720px) {
   .rl-step { grid-template-columns: 30px minmax(0, 1fr); padding: 14px 16px; }
-  .rl-step-tail { grid-column: 2; padding-top: 0; }
+  .rl-step-tail { grid-column: 2; padding-top: 0; flex-wrap: wrap; }
+  .rl-edit { min-height: 36px; height: 36px; }
   .rl-marker { width: 26px; height: 26px; font-size: 12px; }
   .rl-step-num { font-size: 20px; }
 }
@@ -117,7 +118,7 @@ const plusIcon = (
 export const RoundingList = ({
   rows,
   defaultStep,
-  currencyNote = 'این قواعد فقط روی ریال اعمال می‌شوند؛ 0.001 برای ارزهای دیگر در آینده.',
+  currencyNote = 'مبالغ پیش‌فاکتور به نزدیک‌ترین مضرب این قاعده رُند می‌شوند.',
   loading = false,
   error = null,
   onRetry,
@@ -135,8 +136,7 @@ export const RoundingList = ({
       <div className="rl-banner">
         {infoIcon}
         <span>
-          مبلغ نهایی هر سند به مضربی از <strong>{faDigits(defaultStep)} ریال</strong> نزدیک
-          می‌شود. {currencyNote}
+          قاعده پیش‌فرض فعلی: <strong>{faDigits(defaultStep)} ریال</strong>. {currencyNote}
         </span>
       </div>
 
@@ -190,15 +190,13 @@ export const RoundingList = ({
         <div className="rl-ladder">
           {rows.map((row, index) => {
             const guard = row.isDefault
-              ? 'قاعده پیش‌فرض قابل حذف نیست'
+              ? 'این قاعده پیش‌فرض است و نمی‌توان آن را حذف کرد.'
               : row.quotationCount > 0
-                ? `در ${faDigits(row.quotationCount)} سند استفاده شده`
+                ? 'این قاعده در پیش‌فاکتور استفاده شده و حذف نمی‌شود.'
                 : undefined;
             return (
               <div
                 key={row.id}
-                role="button"
-                tabIndex={0}
                 className={[
                   'rl-step',
                   row.isDefault ? 'is-def' : '',
@@ -206,14 +204,7 @@ export const RoundingList = ({
                 ]
                   .filter(Boolean)
                   .join(' ')}
-                aria-label={`ویرایش قاعده ${row.stepAmount} ریال`}
-                onClick={() => onEdit(row.id)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onEdit(row.id);
-                  }
-                }}
+                data-record-id={row.id}
               >
                 <span className="rl-marker" aria-hidden="true">{faDigits(index + 1)}</span>
                 <div className="rl-step-body">
@@ -230,10 +221,15 @@ export const RoundingList = ({
                       : 'بدون سند'}
                   </span>
                 </div>
-                <div
-                  className="rl-step-tail"
-                  onClick={(event) => event.stopPropagation()}
-                >
+                <div className="rl-step-tail">
+                  <button
+                    type="button"
+                    className="rl-btn rl-btn-ghost rl-edit"
+                    aria-label={`ویرایش — ${row.stepAmount} ریال`}
+                    onClick={() => onEdit(row.id)}
+                  >
+                    ویرایش
+                  </button>
                   <RowMenu
                     label={`عملیات قاعده ${row.stepAmount}`}
                     open={openMenuId === row.id}
@@ -242,8 +238,11 @@ export const RoundingList = ({
                       { id: 'edit', label: 'ویرایش', onSelect: () => onEdit(row.id) },
                       {
                         id: 'default',
-                        label: 'پیش‌فرض کردن',
+                        label: 'پیش‌فرض',
                         disabled: row.isDefault,
+                        disabledReason: row.isDefault
+                          ? 'این قاعده هم‌اکنون پیش‌فرض است.'
+                          : undefined,
                         onSelect: () => onMakeDefault(row.id),
                       },
                       {
@@ -252,6 +251,7 @@ export const RoundingList = ({
                         danger: true,
                         disabled: Boolean(guard),
                         disabledReason: guard,
+                        title: guard,
                         onSelect: () => onDelete(row.id),
                       },
                     ]}

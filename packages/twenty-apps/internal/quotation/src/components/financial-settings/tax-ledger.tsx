@@ -30,11 +30,10 @@ export type TaxLedgerProps = {
 
 const CSS = `
 .tl-register { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); }
-.tl-head { display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(230px, 1.6fr) minmax(150px, 1fr) 44px; gap: 12px; padding: 9px 18px; border-bottom: 1px solid var(--t-color-gray4); background: var(--t-color-gray2); border-radius: 7px 7px 0 0; font-size: 11.5px; font-weight: 600; color: var(--t-color-gray11); }
-.tl-row { position: relative; display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(230px, 1.6fr) minmax(150px, 1fr) 44px; gap: 12px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--t-color-gray4); cursor: pointer; transition: background 0.15s ease; }
+.tl-head { display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(230px, 1.6fr) minmax(150px, 1fr) auto; gap: 12px; padding: 9px 18px; border-bottom: 1px solid var(--t-color-gray4); background: var(--t-color-gray2); border-radius: 7px 7px 0 0; font-size: 11.5px; font-weight: 600; color: var(--t-color-gray11); }
+.tl-row { position: relative; display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(230px, 1.6fr) minmax(150px, 1fr) auto; gap: 12px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--t-color-gray4); transition: background 0.15s ease; }
 .tl-row:last-child { border-bottom: 0; }
 .tl-row:hover { background: var(--t-color-gray2); }
-.tl-row:focus-visible { outline: 2px solid var(--t-color-blue9); outline-offset: -2px; border-radius: 2px; }
 .tl-row.is-def::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 3px; background: var(--t-color-turquoise9); border-radius: 0 3px 3px 0; }
 .tl-row.is-off .tl-name { color: var(--t-color-gray11); }
 .tl-ident { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
@@ -60,7 +59,8 @@ const CSS = `
 .tl-acct-chip { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; background: var(--t-color-gray3); border: 1px solid var(--t-color-gray4); border-radius: 4px; padding: 3px 8px; font-size: 13px; color: var(--t-color-gray12); direction: ltr; unicode-bidi: isolate; font-family: var(--t-code-font-family, ui-monospace, monospace); }
 .tl-lock { width: 13px; height: 13px; stroke: var(--t-color-orange11); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .tl-used { font-size: 12.5px; color: var(--t-color-gray11); }
-.tl-state { display: flex; flex-direction: column; gap: 6px; }
+.tl-actions { display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
+.tl-edit { height: 32px; min-height: 32px; padding: 0 12px; font-size: 13px; margin-top: 0; }
 .tl-empty { border: 1px solid var(--t-color-gray5); border-radius: 8px; background: var(--t-color-gray1); padding: 52px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .tl-empty-ic { width: 46px; height: 46px; border-radius: 12px; background: var(--t-color-gray4); display: flex; align-items: center; justify-content: center; color: var(--t-color-gray11); margin-bottom: 4px; }
 .tl-empty-ic svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -90,7 +90,8 @@ const CSS = `
   .tl-head { display: none; }
   .tl-row { grid-template-columns: 1fr auto; gap: 8px 10px; padding: 14px 16px; align-items: start; }
   .tl-ident { grid-column: 1; grid-row: 1; }
-  .tl-row > .fs-menu-root { grid-column: 2; grid-row: 1; justify-self: end; }
+  .tl-actions { grid-column: 2; grid-row: 1; justify-self: end; flex-direction: column; align-items: stretch; }
+  .tl-edit { width: 100%; min-height: 36px; height: 36px; }
   .tl-trio, .tl-exempt { grid-column: 1 / -1; grid-row: 2; background: var(--t-color-gray2); border: 1px solid var(--t-color-gray4); border-radius: 8px; padding: 10px 12px; }
   .tl-st { padding-inline: 8px; }
   .tl-st-num { font-size: 20px; }
@@ -176,9 +177,9 @@ export const TaxLedger = ({
 
   const menuFor = (row: TaxPolicyView) => {
     const guard = row.isDefault
-      ? 'سیاست پیش‌فرض حذف نمی‌شود'
+      ? 'این سیاست پیش‌فرض است و نمی‌توان آن را حذف کرد.'
       : row.quotationCount > 0
-        ? 'به‌دلیل استفاده در سند حذف نمی‌شود'
+        ? 'این کد قبلاً در پیش‌فاکتور استفاده شده و قابل حذف نیست.'
         : undefined;
     return (
       <RowMenu
@@ -202,7 +203,7 @@ export const TaxLedger = ({
             disabled: row.isActive && row.isDefault,
             disabledReason:
               row.isActive && row.isDefault
-                ? 'پیش‌فرض را نمی‌توان غیرفعال کرد'
+                ? 'سیاست پیش‌فرض را نمی‌توان غیرفعال کرد.'
                 : undefined,
             onSelect: () => onToggleActive(row.id),
           },
@@ -291,8 +292,6 @@ export const TaxLedger = ({
             return (
               <div
                 key={row.id}
-                role="button"
-                tabIndex={0}
                 className={[
                   'tl-row',
                   row.isDefault ? 'is-def' : '',
@@ -300,14 +299,7 @@ export const TaxLedger = ({
                 ]
                   .filter(Boolean)
                   .join(' ')}
-                aria-label={`ویرایش سیاست ${row.name}`}
-                onClick={() => onEdit(row.id)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onEdit(row.id);
-                  }
-                }}
+                data-record-id={row.id}
               >
                 <div className="tl-ident">
                   <p className="tl-name">{row.name}</p>
@@ -357,7 +349,15 @@ export const TaxLedger = ({
                   </span>
                 </div>
 
-                <div className="tl-state" onClick={(event) => event.stopPropagation()}>
+                <div className="tl-actions">
+                  <button
+                    type="button"
+                    className="tl-btn tl-btn-ghost tl-edit"
+                    aria-label={`ویرایش — ${row.name}`}
+                    onClick={() => onEdit(row.id)}
+                  >
+                    ویرایش
+                  </button>
                   {menuFor(row)}
                 </div>
               </div>

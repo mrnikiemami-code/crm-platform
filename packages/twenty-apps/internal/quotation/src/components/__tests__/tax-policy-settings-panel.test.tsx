@@ -126,6 +126,12 @@ const openMoreMenu = async (name: string) => {
   await screen.findByRole('menu');
 };
 
+const editRow = (name: string) => {
+  fireEvent.click(
+    within(rowOf(name)).getByRole('button', { name: new RegExp(`^ویرایش — ${name}`) }),
+  );
+};
+
 const moreItem = (_name: string, itemName: RegExp | string) =>
   screen.getByRole('menuitem', { name: itemName });
 
@@ -238,7 +244,7 @@ describe('tax policy settings panel', () => {
     const deleteButton = moreItem('سیاست استفاده‌شده', /^حذف/);
 
     expect((deleteButton as HTMLButtonElement).disabled).toBe(true);
-    expect(deleteButton.getAttribute('title')).toContain('استفاده در سند');
+    expect(deleteButton.getAttribute('title')).toContain('پیش‌فاکتور');
   });
 
   it('opens the shared confirm dialog on delete and cancels without touching the server', async () => {
@@ -473,7 +479,7 @@ describe('tax policy settings panel', () => {
     ).toBe('مالیات ۷٫۶٪');
   });
 
-  it('opens the inspector on the row being edited and saves it back', async () => {
+  it('opens the inspector from the dedicated edit control and saves it back', async () => {
     callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(catalog([policy({ recordId: 'tp-1' })]))
       .mockResolvedValueOnce({
@@ -489,8 +495,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    const row = rowOf('مالیات ۱۰٪');
-    fireEvent.click(row);
+    editRow('مالیات ۱۰٪');
 
     expect(screen.getByText('ویرایش سیاست')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
@@ -524,9 +529,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    fireEvent.click(
-      rowOf('مالیات ۱۰٪'),
-    );
+    editRow('مالیات ۱۰٪');
 
     expect(screen.queryByText('ذخیره‌نشده')).toBeNull();
 
@@ -551,7 +554,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    fireEvent.click(screen.getByRole('button', { name: /^ویرایش سیاست مالیات/ }));
+    editRow('مالیات ۱۰٪');
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain(
@@ -688,14 +691,34 @@ describe('tax policy settings panel', () => {
     await screen.findByText('مالیات ۹٪');
 
     const edits = within(ledger()).getAllByRole('button', {
-      name: /^ویرایش سیاست/,
+      name: /^ویرایش — /,
     });
 
     expect(edits.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'ویرایش سیاست مالیات ۱۰٪',
-      'ویرایش سیاست مالیات ۹٪',
-      'ویرایش سیاست مالیات ۸٪',
+      'ویرایش — مالیات ۱۰٪',
+      'ویرایش — مالیات ۹٪',
+      'ویرایش — مالیات ۸٪',
     ]);
+  });
+
+  it('does not open the edit dialog when the more menu is opened', async () => {
+    callTaxPoliciesNestActionMock.mockResolvedValueOnce(
+      catalog([
+        policy({ recordId: 'tp-1', isDefault: true }),
+        policy({ recordId: 'tp-2', code: 'TAX_900', name: 'مالیات ۹٪' }),
+      ]),
+    );
+
+    render(<TaxPolicySettingsPanel />);
+    await screen.findByText('مالیات ۹٪');
+
+    fireEvent.click(rowOf('مالیات ۹٪'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    await openMoreMenu('مالیات ۹٪');
+    expect(screen.getByRole('menu')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByLabelText('نام سیاست')).toBeNull();
   });
 
   it('refuses to replace an editor holding typed numbers and says why', async () => {
@@ -709,16 +732,12 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    fireEvent.click(
-      rowOf('مالیات ۹٪'),
-    );
+    editRow('مالیات ۹٪');
     fireEvent.change(screen.getByLabelText('مالیات ٪'), {
       target: { value: '۷' },
     });
 
-    fireEvent.click(
-      rowOf('مالیات ۱۰٪'),
-    );
+    editRow('مالیات ۱۰٪');
 
     expect(screen.getByText(/تغییرات ذخیره‌نشده دارید/)).toBeTruthy();
     expect(
@@ -792,9 +811,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    fireEvent.click(
-      rowOf('مالیات ۹٪'),
-    );
+    editRow('مالیات ۹٪');
 
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByLabelText('نام سیاست')).toBeTruthy();
@@ -821,9 +838,7 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۱۰٪');
 
-    fireEvent.click(
-      rowOf('مالیات ۱۰٪'),
-    );
+    editRow('مالیات ۱۰٪');
 
     fireEvent.click(screen.getByRole('button', { name: 'ذخیره' }));
 
@@ -892,15 +907,11 @@ describe('tax policy settings panel', () => {
     render(<TaxPolicySettingsPanel />);
     await screen.findByText('مالیات ۹٪');
 
-    fireEvent.click(
-      rowOf('مالیات ۹٪'),
-    );
+    editRow('مالیات ۹٪');
     fireEvent.change(screen.getByLabelText('مالیات ٪'), {
       target: { value: '۷' },
     });
-    fireEvent.click(
-      rowOf('مالیات ۱۰٪'),
-    );
+    editRow('مالیات ۱۰٪');
 
     expect(
       screen.getByText(/تغییرات ذخیره‌نشده دارید/),

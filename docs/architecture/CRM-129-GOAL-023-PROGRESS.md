@@ -29,10 +29,11 @@ Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` 
 | GOAL-031 Quotation UX completion | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-031-STOP-FOR-USER-UAT.md`](./CRM-129-GOAL-031-STOP-FOR-USER-UAT.md); app **0.1.57** |
 | GOAL-032 Named payable rounding rules | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-GOAL-032-PROGRESS.md`](./CRM-129-GOAL-032-PROGRESS.md); app **0.1.59** then recovery **0.1.60** |
 | P0 Financial settings recovery | `TECHNICALLY_VERIFIED` → gate | [`CRM-129-FINANCIAL-SETTINGS-RECOVERY-PROGRESS.md`](./CRM-129-FINANCIAL-SETTINGS-RECOVERY-PROGRESS.md); Nest tax/currency/rounding + tabs; **STOP_FOR_USER_UAT** |
-| WS5 Settings ownership | `IN_PROGRESS` | **Frozen** until user UAT of real form |
-| WS6 Mock/Asan shared UI | `IN_PROGRESS` | **Frozen** until user UAT of real form |
+| GOAL-036 Package A (DE-035 click/microcopy) | `TECHNICALLY_VERIFIED` | `quotation@0.1.66`; evidence `goal-036/CRM-129-GOAL-036-PACKAGE-A.md` |
+| WS5 Settings ownership | `IN_PROGRESS` | GOAL-036 Package B authorized — ownership audit + mapping UI |
+| WS6 Mock/Asan shared UI | `IN_PROGRESS` | GOAL-036 Package C after WS5 evidence |
 | WS7-A Design frames | `CANCELLED_AS_PRODUCT_PATH` | Static HTML under `docs/design/crm-129-goal-023-ws7a/` is **non-binding reference only** — not Design of Record; do not ship into product |
-| WS7-B Product UX polish | `NOT_STARTED` | After **`STOP_FOR_USER_UAT`** pass |
+| WS7-B Product UX polish | `IN_PROGRESS` | GOAL-036 Package D — only approved contract surfaces |
 | UX Pack A micro-repairs | `TECHNICALLY_VERIFIED` | Same product chrome; copy/RTL/ownership/timestamp; see CP-UX-REPAIR-A |
 | Pack B financial (WS2–WS4) | `TECHNICALLY_VERIFIED` on Dev | Real `:3002` form live; awaiting **USER** accept |
 | Goal 023 close | `NOT_STARTED` | **ACTIVE / NOT COMPLETE** |

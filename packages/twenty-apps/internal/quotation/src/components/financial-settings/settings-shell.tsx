@@ -64,7 +64,7 @@ const CSS = `
 .fs-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fs-stat { background: var(--t-color-gray2); border: 1px solid var(--t-color-gray4); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 .fs-stat-cap { display: block; font-size: 11.5px; color: var(--t-color-gray11); margin-bottom: 2px; }
-.fs-stat-val { display: block; font-size: 22px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--t-color-gray12); }
+.fs-stat-val { display: block; font-size: 20px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--t-color-gray12); }
 .fs-rail-actions { display: flex; flex-direction: column; gap: 8px; }
 .fs-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 6px; border: 1px solid transparent; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease; }
 .fs-btn:active { transform: scale(0.98); }
@@ -84,7 +84,7 @@ const CSS = `
 .fs-help { font-size: 12.5px; line-height: 1.6; color: var(--t-color-gray11); background: var(--t-color-gray2); border: 1px solid var(--t-color-gray4); border-radius: 8px; padding: 10px 12px; margin-top: auto; }
 .fs-help strong { color: var(--t-color-gray12); font-weight: 600; }
 .fs-content { overflow-y: auto; overscroll-behavior: contain; padding: 20px 24px 36px; min-width: 0; }
-.fs-content-inner { max-width: 960px; }
+.fs-content-inner { max-width: 1080px; }
 .fs-icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 720px) {
   .fs-split { display: flex; flex-direction: column; }

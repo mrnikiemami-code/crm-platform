@@ -1,6 +1,14 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
+## CURRENT — GOAL-036 Package A DONE → WS5 IN PROGRESS (2026-11-26)
+
+**App:** `quotation@0.1.66` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. GOAL-036 authorized continuous A→WS5→WS6→WS7-B→E; Final Gate `STOP_FOR_ARCHITECT_AND_USER_UAT`.
+
+**Package A (PASS technical):** row click isolation (non-interactive register/ladder + dedicated Edit + RowMenu stopPropagation); operator microcopy (no ریل زمینه / bootstrap / فاز ۱ / ۰٫۰۰۱ future); shell density polish; vitest **32 PASS**; browser verified menu≠edit dialog and locked accounting-code hint. Evidence: `docs/architecture/goal-036/CRM-129-GOAL-036-PACKAGE-A.md`.
+
+**Next:** Package B / WS5 accounting ownership + mapping (C1–C7/F7). Do not treat Goal 023 as complete.
+
+## PRIOR — DESIGN-ENGINE-035 REAL OD AGENT → IMPLEMENTED → STOP_FOR_USER_UAT (2026-11-26)
 
 **App:** `quotation@0.1.65` on Dev `:3002`. **Page:** http://localhost:3002/page/3eb639f7-d39c-4705-9685-c0330b1c7c0d. **Goal 023 ACTIVE**. No WS5/WS6/WS7.
 

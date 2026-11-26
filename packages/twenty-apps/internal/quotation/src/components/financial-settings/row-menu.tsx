@@ -34,6 +34,9 @@ const CSS = `
 .fs-menu-sep { height: 1px; background: var(--t-color-gray4); margin: 5px 8px; }
 .fs-menu-note { font-size: 11.5px; color: var(--t-color-gray11); padding: 4px 10px 6px; margin: 0; line-height: 1.5; }
 .fs-menu-icon { width: 15px; height: 15px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 720px) {
+  .fs-menu-trigger { width: 44px; height: 44px; }
+}
 `;
 
 const DotsIcon = () => (
@@ -116,7 +119,11 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
   )?.disabledReason;
 
   return (
-    <div className="fs-menu-root">
+    <div
+      className="fs-menu-root"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
       <style>{CSS}</style>
       <button
         ref={triggerRef}
@@ -126,7 +133,10 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={label}
-        onClick={() => onOpenChange(!open)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenChange(!open);
+        }}
       >
         <DotsIcon />
       </button>
