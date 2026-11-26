@@ -226,7 +226,7 @@ export const AccountingSettingsPanel = () => {
         return initial === null ? current : toForm(initial);
       });
     } catch {
-      setLoadError('ارتباط با سرور برقرار نشد. اتصال شبکه را بررسی و دوباره تلاش کنید.');
+      setLoadError('تنظیمات اتصال حسابداری از سرور دریافت نشد یا پاسخ آن معتبر نبود. دوباره تلاش کنید.');
     }
   }, []);
 
@@ -455,7 +455,7 @@ export const AccountingSettingsPanel = () => {
         action: 'save',
         name: form.name,
         adapterId: form.adapterId,
-        ...(form.id === null ? {} : { id: form.id }),
+        ...(form.id === null ? {} : { recordId: form.id }),
         settings: {
           baseUrl:
             !needsServiceAddress && form.baseUrl.trim() === ''
@@ -531,7 +531,7 @@ export const AccountingSettingsPanel = () => {
       await loadPanel();
     } catch {
       await enqueueSnackbar({
-        message: 'ارتباط با سرور برقرار نشد.',
+        message: 'ذخیره یا تأیید شناسه اتصال انجام نشد؛ دوباره بررسی کنید.',
         variant: 'error',
       });
     } finally {
@@ -972,6 +972,17 @@ export const AccountingSettingsPanel = () => {
         }
       `}</style>
 
+      {data.metadataVerified === false ? (
+        <div role="status" style={{
+          border: '1px solid var(--t-border-color-medium)',
+          borderRadius: 'var(--t-border-radius-sm)',
+          padding: 'var(--t-spacing-2)',
+          fontSize: 'var(--t-font-size-sm)',
+        }}>
+          وضعیت ارسال و تنظیمات امنیتی هنوز از سرور تأیید نشده‌اند؛
+          ارسال سند از این صفحه فعال نمی‌شود.
+        </div>
+      ) : null}
       <header style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {/* The rail marks aria-current, but a screen reader gets no confirmation that the
             view under it changed: this is that confirmation, and it does not move focus. */}
