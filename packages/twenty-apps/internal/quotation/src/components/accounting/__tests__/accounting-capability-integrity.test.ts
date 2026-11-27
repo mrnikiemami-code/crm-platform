@@ -128,6 +128,13 @@ describe('resolveFinancialModes capability authority', () => {
     expect(connectionFormFields(noTax).taxCodeTable).toBe(false);
   });
 
+  it('uses the SIMPLE financial contract for the isolated 100-customer dataset', () => {
+    const settings = { baseCurrency: '', currencyMappings: {}, conversionRate: '' };
+    expect(resolveFinancialModes({ adapterId: 'mock', adapters, financial: { ...settings, mockProfile: 'PARTY_UAT' } })).toEqual(
+      resolveFinancialModes({ adapterId: 'mock', adapters, financial: { ...settings, mockProfile: 'SIMPLE' } }),
+    );
+  });
+
   it('covers every published mock profile without inventing unsupported ones', () => {
     const mock = adapters.find((entry) => entry.id === 'mock');
     const profiles = mock?.testProfiles ?? [];

@@ -39,11 +39,12 @@ describe('accounting CRM identity authority', () => {
     expect(stableCustomerRecordId('a', 'A-001')).not.toBe(stableCustomerRecordId('b', 'A-001'));
   });
   it('preserves missing names, contact data and address components', () => {
-    const existing = { ...person, profile: { name: { firstName: 'علی', lastName: 'قدیمی' }, address: { addressStreet1: 'خانه', addressCity: 'تهران' } } };
+    const existing = { ...person, profile: { name: { firstName: 'علی', lastName: 'قدیمی' }, accountingAddress: { addressStreet1: 'خانه', addressCity: 'تهران' } } };
     expect(crmPartyFields({ fullName: '', firstName: 'رضا', city: 'شیراز' }, 'PERSON', existing)).toEqual({
-      name: { firstName: 'رضا', lastName: 'قدیمی' }, address: { addressStreet1: 'خانه', addressCity: 'شیراز' },
+      name: { firstName: 'رضا', lastName: 'قدیمی' }, accountingAddress: { addressStreet1: 'خانه', addressCity: 'شیراز' },
     });
     expect(crmPartyFields({ fullName: '' }, 'PERSON', existing)).toEqual({});
+    expect(crmPartyFields({ fullName: 'شرکت نمونه', address: 'نشانی شرکت' }, 'COMPANY', null)).toEqual({ name: 'شرکت نمونه', address: { addressStreet1: 'نشانی شرکت' } });
   });
   it('keeps connection ledger data without overwriting absent values and has an isolated sparse 100-row fixture', () => {
     const previous = mergeSourcePartyProfile({ accountingCode: '0001', subsidiaryLedgerCode: '002' }, null);

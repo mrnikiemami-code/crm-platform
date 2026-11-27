@@ -52,6 +52,13 @@ describe('parseAccountingBaseUrl', () => {
 });
 
 describe('parseAccountingConnectionSettings', () => {
+  it('accepts the isolated customer dataset only for mock; refuses invented profiles', () => {
+    const settings = { baseUrl: 'https://mock.invalid', financial: { mockProfile: 'PARTY_UAT' } };
+    expect(parseAccountingConnectionSettings(settings, { adapterId: 'mock' })).toMatchObject({ ok: true, value: { financial: { mockProfile: 'PARTY_UAT' } } });
+    expect(parseAccountingConnectionSettings(settings, { adapterId: 'asan' })).toMatchObject({ ok: false, code: 'MOCK_PROFILE_NOT_ALLOWED' });
+    expect(parseAccountingConnectionSettings({ ...settings, financial: { mockProfile: 'UNKNOWN_FIXTURE' } }, { adapterId: 'mock' })).toMatchObject({ ok: false, code: 'MOCK_PROFILE_UNKNOWN' });
+  });
+
   it('keeps the safe defaults and normalizes an unknown unit to UNCONFIRMED', () => {
     const parsed = parseAccountingConnectionSettings({
       baseUrl: 'https://asan.example.ir',

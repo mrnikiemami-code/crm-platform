@@ -465,9 +465,10 @@ export const resolveFinancialModes = ({
   // Mock (and any future profile-driven adapter): profile is display data that must still
   // come from the trusted descriptor list. Persistence of mockProfile remains adapter-id
   // gated on save (`adapterId === 'mock'`), not by `isLive`.
+  const requestedProfile = adapterId === 'mock' && financial?.mockProfile === 'PARTY_UAT' ? 'SIMPLE' : financial?.mockProfile ?? '';
   const profile =
     descriptor.testProfiles?.find(
-      (entry) => entry.id === (financial?.mockProfile ?? ''),
+      (entry) => entry.id === requestedProfile,
     ) ??
     descriptor.testProfiles?.[0] ??
     null;
