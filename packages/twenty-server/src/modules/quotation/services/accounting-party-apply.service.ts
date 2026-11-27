@@ -13,14 +13,16 @@ import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/wo
 import { buildObjectIdByNameMaps } from 'src/engine/metadata-modules/flat-object-metadata/utils/build-object-id-by-name-maps.util';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
+import { AccountingPartyWriteGuardException, ACCOUNTING_PARTY_CUSTOMER_FIELDS, withAccountingPartyWriteScope } from 'src/modules/quotation/services/accounting-party-write-guard.service';
+import { PermissionsException } from 'src/engine/metadata-modules/permissions/permissions.exception';
+import { TwentyOrmException } from 'src/engine/twenty-orm/exceptions/twenty-orm.exception';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 
 const APP_ID = 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const COMMON_FIELDS = ['name', 'nationalCode', 'economicCode', 'accountingPhone', 'accountingSecondPhone', 'accountingFax'];
 const CUSTOMER_FIELDS = {
-  PERSON: new Set([...COMMON_FIELDS, 'phones', 'emails', 'accountingAddress']),
-  COMPANY: new Set([...COMMON_FIELDS, 'accountingMobile', 'address', 'registrationNumber', 'accountingEmail']),
+  PERSON: ACCOUNTING_PARTY_CUSTOMER_FIELDS.person,
+  COMPANY: ACCOUNTING_PARTY_CUSTOMER_FIELDS.company,
 };
 const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -149,7 +151,7 @@ export class AccountingPartyApplyService {
 
     // The original authenticated user is still in-process. Retain the installed
     // application's role as an additional restriction, not as a substitute.
-    const delegated: WorkspaceAuthContext = { ...authContext, application: app };
+    const delegated: Extract<WorkspaceAuthContext, { type: 'user' }> = { ...authContext, application: app };
     const roles = [...new Set([userRoleId, app.defaultRoleId])];
     const { flatObjectMetadataMaps, flatFieldMetadataMapsOrm, flatIndexMaps } = await this.cache.getOrRecompute(authContext.workspace.id, [
       'flatObjectMetadataMaps', 'flatFieldMetadataMapsOrm', 'flatIndexMaps',
@@ -178,7 +180,8 @@ export class AccountingPartyApplyService {
               JSON.stringify(['accounting-party-customer', authContext.workspace.id, row.partyType, row.internalPartyId]),
             ].sort();
             for (const key of lockKeys) await transactionScope.executeRawQuery('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
-            const customerContext = { ...(row.partyType === 'PERSON' ? person : company), transactionScope };
+            const customerObject = row.partyType === 'PERSON' ? 'person' : 'company';
+            const customerContext = { ...(customerObject === 'person' ? person : company), transactionScope };
             const linkContext = { ...link, transactionScope };
 
             stage = 'MAPPING_READ';
@@ -202,7 +205,8 @@ export class AccountingPartyApplyService {
             let created = false;
             if (row.createCustomer) {
               stage = 'CUSTOMER_CREATE';
-              const result = await this.createOne.execute({ data: { ...row.customerFields, id: row.internalPartyId } as Partial<ObjectRecord>, selectedFields: { id: true } }, customerContext);
+              const result = await withAccountingPartyWriteScope({ authContext: delegated, object: customerObject, action: 'createOne', recordId: row.internalPartyId },
+                () => this.createOne.execute({ data: { ...row.customerFields, id: row.internalPartyId } as Partial<ObjectRecord>, selectedFields: { id: true } }, customerContext));
               if (result.results.id !== row.internalPartyId) throw new RowFailure('QUERY_ERROR', stage);
               created = true;
             } else {
@@ -215,7 +219,8 @@ export class AccountingPartyApplyService {
               if (row.alreadySynchronized) return { created: false, link: 'NONE' as const };
               if (Object.keys(row.customerFields).length > 0) {
                 stage = 'CUSTOMER_UPDATE';
-                const result = await this.updateOne.execute({ id: row.internalPartyId, data: row.customerFields as Partial<ObjectRecord>, selectedFields: { id: true } }, customerContext);
+                const result = await withAccountingPartyWriteScope({ authContext: delegated, object: customerObject, action: 'updateOne', recordId: row.internalPartyId },
+                  () => this.updateOne.execute({ id: row.internalPartyId, data: row.customerFields as Partial<ObjectRecord>, selectedFields: { id: true } }, customerContext));
                 if (result.results.id !== row.internalPartyId) throw new RowFailure('QUERY_ERROR', stage);
               }
             }
@@ -242,8 +247,17 @@ export class AccountingPartyApplyService {
         // Stable stage/code, no JWT, personal information, vendor body or query string.
         const rawCode = record(error)?.code;
         const code = error instanceof RowFailure ? error.code :
-          rawCode === 'FORBIDDEN' || rawCode === 'PERMISSION_DENIED' || rawCode === 'RECORD_NOT_FOUND' ? 'FORBIDDEN' : 'QUERY_ERROR';
-        refused.push({ externalPartyId: row.externalPartyId, code, detail: 'CRM synchronization not confirmed: ' + (error instanceof RowFailure ? error.stage : stage) });
+          rawCode === 'FORBIDDEN' || rawCode === 'PERMISSION_DENIED' || rawCode === 'RECORD_NOT_FOUND' || rawCode === 'RLS_VALIDATION_FAILED' ? 'FORBIDDEN' : 'QUERY_ERROR';
+        const reason = error instanceof AccountingPartyWriteGuardException ? 'GUARD_' + error.reason :
+          error instanceof RowFailure ? error.code :
+          error instanceof PermissionsException ? (
+            error.message.includes('not writable through the API') ? 'ORM_METADATA_WRITABILITY' :
+            error.message.includes('no permission to write field') ? 'ORM_FIELD_WRITE_DENIED' :
+            error.message.includes('no permission to read field') ? 'ORM_FIELD_READ_DENIED' :
+            error.message.includes('attached to is not writable') ? 'ORM_PARENT_WRITE_DENIED' : 'ORM_PERMISSION_DENIED'
+          ) : error instanceof TwentyOrmException ? 'ORM_' + error.code :
+          error instanceof CommonQueryRunnerException ? 'RUNNER_' + error.code : 'UNCLASSIFIED';
+        refused.push({ externalPartyId: row.externalPartyId, code, detail: 'CRM synchronization not confirmed: ' + (error instanceof RowFailure ? error.stage : stage) + ': ' + reason });
       }
     }
     return { success: true as const, outcome: { createdParties, createdLinks, updatedLinks, refused } };

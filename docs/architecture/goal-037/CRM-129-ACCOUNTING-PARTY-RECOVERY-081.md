@@ -23,3 +23,7 @@ Build and deploy exact candidate source (the SHA provided by architect) to Dev o
 4. Full prior accounting and quotation regression including catalog price, queue revision, PDF and all previous blocked cases. Outbound disabled, live writes 0, Intranet :6080 untouched.
 5. If failing, report exact sanitized native refusal stage/code, test name/stack and row counts; do not classify a JWT as app-only merely from its token type. Commit evidence only under docs/architecture/goal-037/verification-081/. STOP_FOR_ARCHITECT after full executable matrix. No closure until architect and user UAT.
 
+
+## 0.1.81 operational result — 2026-11-27
+
+FAIL_WITH_PRECISE_EVIDENCE (reported by worker): image and app sync successful, Vitest 781 and Jest 362; authorized native writes fail in CUSTOMER_CREATE and CUSTOMER_UPDATE; zero customers or links. The reported evidence commit f776c6a576 was not readable from the remote at architect inspection. Source-proven common defect: wildcard actor hooks run before the object-specific accounting guard, which rejects both generated actor fields. Superseded by [recovery 082](CRM-129-ACCOUNTING-PARTY-RECOVERY-082.md).

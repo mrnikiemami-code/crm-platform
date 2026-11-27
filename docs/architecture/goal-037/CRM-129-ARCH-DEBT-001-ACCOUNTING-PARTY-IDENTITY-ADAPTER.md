@@ -48,3 +48,7 @@ The optional profile, adapter declarations, connection-owned ledger metadata, de
 ## Recovery 0.1.81 — OPEN
 
 0.1.80 install and 100-row preview passed, customer application still failed. 0.1.81 moves the write boundary into Nest with the original authenticated user, explicit user/app role intersection, native query runners, per-row transaction and stale-plan checks. Adapter contract and identity policy remain intact. See [architect recovery 081](CRM-129-ACCOUNTING-PARTY-RECOVERY-081.md). No closure claim until clean build and operational evidence.
+
+## Recovery 0.1.82 — OPEN
+
+0.1.81 failed at native customer write despite green build and tests. The wildcard actor audit hooks precede the object-specific guard; both generated audit fields were incorrectly treated as external business input. Keep the role intersection; restrict the corrected guard to the exact native command scope and authenticate actor stamps. See [recovery 082](CRM-129-ACCOUNTING-PARTY-RECOVERY-082.md). No operational acceptance yet.
