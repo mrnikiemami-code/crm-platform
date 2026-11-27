@@ -16,3 +16,7 @@ Status: SOURCE REMEDIATION, NOT RUNTIME PASS. Evidence 083 reviewed directly: e3
 4. On fresh workspace complete entire 083 customer verification contract, including clean 100-row 50 existing/50 new, 100 links, zero unexpected refusals, repeat zero new, deliberate deleted-record/mapping cases, stale/concurrent and mapping rollback. Separate fixtures and count evidence; all remaining security/catalog/quotation regression. Intranet untouched and outbound disabled. If an individual scenario cannot execute, identify exact reason; do not classify it PASS. No new source edits or hot patch.
 5. Evidence under verification-084, push full commit SHA, include actual manifests/DDL result, counts and sanitized logs. STOP_FOR_ARCHITECT after all executable tests; goal 037 and debt stay OPEN until operational acceptance.
 
+
+## Architect disposition
+
+Installability blocker CLOSED. Demonstrated Dev Mock sync accepted, 100 IN_SYNC, 50 new, repeat zero new. Remaining certification gates (notably real mapping rollback) remain unverified. See [architect acceptance](CRM-129-ACCOUNTING-ARCHITECT-ACCEPTANCE-084.md).

@@ -1,6 +1,6 @@
 # CRM-129-ARCH-DEBT-001 — Vendor-independent accounting customer identity
 
-**Status:** OPEN — implementation candidate 0.1.79 committed; operational verification pending  
+**Status:** PARTIALLY VERIFIED — 0.1.84 Dev Mock operational acceptance; remaining vendor conformance and certification evidence OPEN  
 **Priority:** P0 (customer data integrity); blocks final acceptance of general-purpose customer synchronization  
 **Owner:** Architecture / CRM-129  
 **Parent:** Goal 037; related to active Master Goal 023, C1–C7 (preserve CRM reference-code ownership)  
@@ -60,3 +60,7 @@ The optional profile, adapter declarations, connection-owned ledger metadata, de
 ## Recovery 0.1.84 — OPEN
 
 0.1.83 resolved the focused unit regressions but first install failed due to older quotation metadata. Recovery 084 repairs required unique TEXT default contracts without changing key identity, uniqueness or nullability, including the core update validator contradiction. Fresh install and upgrade gates are mandatory. No customer-matrix acceptance yet.
+
+## Architect disposition 0.1.84 — 2026-11-27
+
+Installation/upgrade and the demonstrated Mock customer sync path are accepted. See [acceptance record](CRM-129-ACCOUNTING-ARCHITECT-ACCEPTANCE-084.md) for precise proved outcomes and remaining evidence gaps. No unrestricted debt closure or production release.
