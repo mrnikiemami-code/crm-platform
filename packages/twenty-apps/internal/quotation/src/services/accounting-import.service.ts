@@ -540,10 +540,15 @@ export const preparePartyImport = async (
       const stableId = stableCustomerRecordId(connectionId, externalPartyId);
       const recovered = identities.some((entry) => entry.id === stableId) ? stableId : null;
       const resolved = resolvePartyIdentity(remote, identities, existing?.internalPartyId ?? recovered, existing?.partyType);
+      if (resolved.kind === 'DELETED_CUSTOMER') {
+        refuse('CRM_CUSTOMER_DELETED', 'Customer was deleted in CRM; review and restore through normal CRM workflow before retrying');
+        continue;
+      }
       const sourceProfile = mergeSourcePartyProfile(remote, existing?.sourceProfile);
       let target = resolved.kind === 'MATCH' ? resolved.target : null;
       if (!automatic) {
         const selected = identities.find((entry) => entry.id === selection.internalPartyId && entry.partyType === selection.partyType);
+        if (selected?.deletedAt) { refuse('CRM_CUSTOMER_DELETED', 'Deleted customer requires CRM recovery'); continue; }
         if (!selected || resolvePartyIdentity(remote, identities, selected.id, selected.partyType).kind !== 'MATCH') {
           refuse('INVALID_INPUT', 'Selected CRM identity conflicts with accounting');
           continue;

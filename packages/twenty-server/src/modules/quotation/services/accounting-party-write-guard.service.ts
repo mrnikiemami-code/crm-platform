@@ -1,5 +1,4 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { isDeepStrictEqual } from 'node:util';
 import { Injectable } from '@nestjs/common';
 
 import { buildCreatedByFromFullNameMetadata } from 'src/engine/core-modules/actor/utils/build-created-by-from-full-name-metadata.util';
@@ -30,6 +29,22 @@ export const withAccountingPartyWriteScope = <T>(
   scope: NativeWriteScope,
   work: () => Promise<T>,
 ): Promise<T> => nativeWriteScope.run(scope, work);
+
+// Compare the actor's data contract, not realm-specific prototypes. Jest's
+// structuredClone can produce objects from a different realm. No missing,
+// additional or altered stamp fields are accepted.
+export const matchesAccountingActorStamp = (value: unknown, expected: ReturnType<typeof buildCreatedByFromFullNameMetadata>): boolean => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const actual = value as Record<string, unknown>;
+  const keys = Object.keys(actual);
+  const expectedKeys = Object.keys(expected);
+  if (keys.length !== expectedKeys.length || expectedKeys.some((key) => !Object.prototype.hasOwnProperty.call(actual, key))) return false;
+  const context = actual.context;
+  return actual.workspaceMemberId === expected.workspaceMemberId &&
+    actual.name === expected.name && actual.source === expected.source &&
+    context !== null && typeof context === 'object' && !Array.isArray(context) &&
+    Object.keys(context).length === 0;
+};
 
 type GuardReason =
   | 'NATIVE_SCOPE_REQUIRED'
@@ -88,7 +103,7 @@ export class AccountingPartyWriteGuardService {
     for (const [key, value] of Object.entries(fields)) {
       if (ACCOUNTING_PARTY_CUSTOMER_FIELDS[object].has(key)) continue;
       if (key === 'updatedBy' || (key === 'createdBy' && action === 'createOne')) {
-        if (!isDeepStrictEqual(value, expectedActor)) throw new AccountingPartyWriteGuardException('ACTOR_MISMATCH');
+        if (!matchesAccountingActorStamp(value, expectedActor)) throw new AccountingPartyWriteGuardException('ACTOR_MISMATCH');
         continue;
       }
       if (action === 'createOne' && (key === 'id' ||

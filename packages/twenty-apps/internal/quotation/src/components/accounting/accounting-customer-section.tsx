@@ -273,7 +273,7 @@ export const AccountingCustomerSection = ({
 
       await enqueueSnackbar({
         message: `موفق: ${createdLinks.toLocaleString('fa-IR')} · ردشده: ${refused.toLocaleString('fa-IR')}`,
-        variant: refused > 0 && createdLinks === 0 ? 'warning' : 'success',
+        variant: refused > 0 ? 'warning' : 'success',
       });
       setSelected(new Map());
       setPickerFor(null);
@@ -564,8 +564,8 @@ export const AccountingCustomerSection = ({
                   const selection = selected.get(row.externalPartyId);
                   const linked =
                     row.decision === 'IN_SYNC' || row.decision === 'REMOTE_CHANGED';
-                  const canCheck =
-                    isAutoTransferable(row) || selection !== undefined;
+                  const deletedCustomer = row.warnings.includes('CRM_CUSTOMER_DELETED');
+                  const canCheck = !deletedCustomer && (isAutoTransferable(row) || selection !== undefined);
 
                   return (
                     <tr key={row.externalPartyId}>
@@ -593,14 +593,14 @@ export const AccountingCustomerSection = ({
                           : selection.label}
                       </td>
                       <td style={styles.cell}>
-                        <Badge tone={partyStatusTone(row.decision)}>
-                          {PARTY_STATUS_LABELS[row.decision] ??
+                        <Badge tone={deletedCustomer ? 'warning' : partyStatusTone(row.decision)}>
+                          {deletedCustomer ? 'مشتری حذف‌شده؛ بررسی در CRM' : (PARTY_STATUS_LABELS[row.decision] ??
                             DECISION_LABELS[row.decision] ??
-                            row.decision}
+                            row.decision)}
                         </Badge>
                       </td>
                       <td style={styles.cell}>
-                        {linked || isAutoTransferable(row) ? (
+                        {deletedCustomer || linked || isAutoTransferable(row) ? (
                           '—'
                         ) : row.decision === 'DUPLICATE_REMOTE_CODE' ? (
                           '—'

@@ -30,6 +30,7 @@ export type CrmPartyIdentity = {
   name: string;
   nationalCode: string | null;
   updatedAt?: string | null;
+  deletedAt?: string | null;
   economicCode?: string | null;
   profile?: Record<string, GraphqlValue>;
   mobile: string | null;
@@ -96,7 +97,7 @@ export const loadCrmPartyIdentities = async (
       }
       if (!clauses.length) continue;
       const addressFields = '{ addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry addressLat addressLng }';
-      const common = 'id updatedAt nationalCode economicCode accountingPhone accountingSecondPhone accountingFax ' + (kind === 'PERSON' ? 'accountingAddress ' : 'address ') + addressFields;
+      const common = 'id updatedAt deletedAt nationalCode economicCode accountingPhone accountingSecondPhone accountingFax ' + (kind === 'PERSON' ? 'accountingAddress ' : 'address ') + addressFields;
       const fields = kind === 'PERSON'
         ? common + ' name { firstName lastName } phones { primaryPhoneNumber primaryPhoneCountryCode primaryPhoneCallingCode additionalPhones } emails { primaryEmail additionalEmails }'
         : common + ' name accountingMobile registrationNumber accountingEmail';
@@ -105,7 +106,7 @@ export const loadCrmPartyIdentities = async (
       for (;;) {
         const after: string = cursor === null ? '' : `, after: ${toGraphqlLiteral(cursor)}`;
         const response = await execute(`query AccountingPartyIdentities {
-          ${root}(first: 100, filter: ${toGraphqlLiteral({ or: clauses })}${after}) {
+          ${root}(first: 100, filter: {and: [${toGraphqlLiteral({ or: clauses })}, {or: [{deletedAt: {is: NULL}}, {deletedAt: {is: NOT_NULL}}]}]}${after}) {
             edges { node { ${fields} } }
             pageInfo { hasNextPage endCursor }
           }
@@ -125,6 +126,7 @@ export const loadCrmPartyIdentities = async (
             name: kind === 'PERSON' ? [text(fullName?.firstName), text(fullName?.lastName)].filter(Boolean).join(' ') : text(node.name),
             nationalCode: text(node.nationalCode) || null,
             updatedAt: text(node.updatedAt) || null,
+            deletedAt: text(node.deletedAt) || null,
             economicCode: text(node.economicCode) || null,
             profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['name','accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','accountingAddress','emails'].includes(key))) as Record<string, GraphqlValue>,
             mobile: kind === 'PERSON' ? text(phone?.primaryPhoneNumber) || null : text(node.accountingMobile) || null,
@@ -161,6 +163,7 @@ export type PartyIdentityDecision =
   | { kind: 'MATCH'; target: CrmPartyIdentity }
   | { kind: 'CREATE'; partyType: Kind; nationalCode: string | null }
   | { kind: 'CONFLICT' }
+  | { kind: 'DELETED_CUSTOMER' }
   | { kind: 'MISSING_IDENTITY' };
 
 export const resolvePartyIdentity = (
@@ -181,6 +184,10 @@ export const resolvePartyIdentity = (
     (kind === null || target.partyType === kind) &&
     (code === null || !target.nationalCode || normalizeNationalCode(target.nationalCode) === code) &&
     (economic === null || !target.economicCode || normalizeEconomicCode(target.economicCode) === economic);
+  // Deleted records retain unique identity keys. Never silently restore,
+  // reassign or create over them; require explicit recovery in CRM.
+  if (exact.some((entry) => !!entry.deletedAt) ||
+      (linkedId !== null && crm.some((entry) => entry.id === linkedId && !!entry.deletedAt))) return { kind: 'DELETED_CUSTOMER' };
   if (exact.length > 1 || exact.some((entry) => !compatible(entry))) return { kind: 'CONFLICT' };
   if (linkedId !== null) {
     const targets = crm.filter((entry) => entry.id === linkedId && (linkedKind === undefined || entry.partyType === linkedKind));
@@ -195,6 +202,7 @@ export const resolvePartyIdentity = (
     (name !== '' && normalizePartyName(entry.name) === name) ||
     (mobile !== null && normalizeIranMobile(entry.mobile) === mobile),
   );
+  if (possible.some((entry) => !!entry.deletedAt)) return { kind: 'DELETED_CUSTOMER' };
   if (possible.length === 1) {
     const candidate = possible[0];
     if (compatible(candidate) && mobile !== null && normalizeIranMobile(candidate.mobile) === mobile &&
@@ -311,6 +319,7 @@ export const enrichPartyRows = async (
     const linkedId = row.existingLinkId !== null ? row.suggestedInternalPartyId : recovered;
     if (row.existingLinkId !== null && linkedId === null) return { ...row, autoEligible: false, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
     const decision = resolvePartyIdentity(row, crm, linkedId);
+    if (decision.kind === 'DELETED_CUSTOMER') return { ...row, autoEligible: false, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null, warnings: [...row.warnings, 'CRM_CUSTOMER_DELETED'] };
     if (decision.kind === 'CONFLICT') return { ...row, autoEligible: false, decision: 'AMBIGUOUS_CRM_MATCH', suggestedInternalPartyId: null };
     if (decision.kind === 'MISSING_IDENTITY') return { ...row, autoEligible: false, decision: 'NEEDS_CRM_RECORD', suggestedInternalPartyId: null };
     if (decision.kind === 'CREATE') return { ...row, autoEligible: true, decision: 'NEEDS_CRM_RECORD', suggestedInternalPartyId: null };

@@ -118,8 +118,8 @@ export const parseAccountingPartyPlan = (value: unknown, connectionId: string, s
     if (!row || !text(row.externalPartyId) || !requested.has(row.externalPartyId) || seen.has(row.externalPartyId) || !text(row.code)) return null;
     seen.add(row.externalPartyId);
     // The worker's vendor/GraphQL error text is never exposed to the browser.
-    const code = ['ALREADY_SUCCEEDED', 'INVALID_INPUT', 'FORBIDDEN', 'QUERY_ERROR'].includes(row.code) ? row.code : 'QUERY_ERROR';
-    refused.push({ externalPartyId: row.externalPartyId, code, detail: 'Customer identity or plan not confirmed' });
+    const code = ['ALREADY_SUCCEEDED', 'INVALID_INPUT', 'FORBIDDEN', 'QUERY_ERROR', 'CRM_CUSTOMER_DELETED'].includes(row.code) ? row.code : 'QUERY_ERROR';
+    refused.push({ externalPartyId: row.externalPartyId, code, detail: code === 'CRM_CUSTOMER_DELETED' ? 'مشتری در CRM حذف شده است؛ ابتدا در CRM بررسی شود.' : 'Customer identity or plan not confirmed' });
   }
   return { rows, refused };
 };
@@ -175,7 +175,12 @@ export class AccountingPartyApplyService {
           () => this.orm.runInWorkspaceTransaction(async (transactionScope) => {
             // Fixed lexical order avoids lock inversion. Scope keys by workspace,
             // connection/vendor identity and CRM identity. Locks never grant permissions.
+            const identityKeys = ['nationalCode', 'economicCode'].flatMap((field) => {
+              const value = row.customerFields[field];
+              return typeof value === 'string' && value.trim() !== '' ? [JSON.stringify(['accounting-party-identity', authContext.workspace.id, field, value])] : [];
+            });
             const lockKeys = [
+              ...identityKeys,
               JSON.stringify(['accounting-party-source', authContext.workspace.id, connectionId, row.externalPartyId]),
               JSON.stringify(['accounting-party-customer', authContext.workspace.id, row.partyType, row.internalPartyId]),
             ].sort();
@@ -202,6 +207,36 @@ export class AccountingPartyApplyService {
             const other = await findLink({ connectionId: { eq: connectionId }, internalPartyId: { eq: row.internalPartyId }, partyType: { eq: row.partyType } });
             if (other && other.externalPartyId !== row.externalPartyId) throw new RowFailure('INVALID_INPUT', stage);
 
+            // Recheck strong identifiers under the same transaction after locking.
+            // Both active and soft-deleted customers occupy identity keys.
+            stage = 'CUSTOMER_IDENTITY_RECHECK';
+            const identityClauses = ['nationalCode', 'economicCode'].flatMap((field) => {
+              const value = row.customerFields[field];
+              if (typeof value !== 'string' || !value.trim()) return [];
+              const variants = [...new Set([value, value.replace(/\\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]), value.replace(/\\d/g, (digit) => '٠١٢٣٤٥٦٧٨٩'[Number(digit)])])];
+              return [{ [field]: { in: variants } }];
+            });
+            for (const candidateContext of [{ ...person, transactionScope }, { ...company, transactionScope }]) {
+              const sameKind = candidateContext.flatObjectMetadata.nameSingular === customerObject;
+              const clauses = [...identityClauses, ...(sameKind ? [{ id: { eq: row.internalPartyId } }] : [])];
+              if (!clauses.length) continue;
+              try {
+                const deleted = await this.findOne.execute({ filter: { and: [{ or: clauses }, { deletedAt: { is: 'NOT_NULL' } }] }, selectedFields: { id: true } }, candidateContext);
+                if (deleted.results.id) throw new RowFailure('CRM_CUSTOMER_DELETED', stage);
+              } catch (error) {
+                if (!(error instanceof CommonQueryRunnerException && error.code === CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND)) throw error;
+              }
+              if (identityClauses.length === 0 && !row.createCustomer) continue;
+              // The target itself is allowed for updates; every other active
+              // identity hit is a conflict, not authorization to merge records.
+              const activeFilter = { and: [{ or: clauses }, ...(sameKind && !row.createCustomer ? [{ id: { neq: row.internalPartyId } }] : [])] };
+              try {
+                const existing = await this.findOne.execute({ filter: activeFilter, selectedFields: { id: true } }, candidateContext);
+                if (existing.results.id) throw new RowFailure('ACCOUNTING_PARTY_PLAN_STALE', stage);
+              } catch (error) {
+                if (!(error instanceof CommonQueryRunnerException && error.code === CommonQueryRunnerExceptionCode.RECORD_NOT_FOUND)) throw error;
+              }
+            }
             let created = false;
             if (row.createCustomer) {
               stage = 'CUSTOMER_CREATE';
@@ -247,6 +282,7 @@ export class AccountingPartyApplyService {
         // Stable stage/code, no JWT, personal information, vendor body or query string.
         const rawCode = record(error)?.code;
         const code = error instanceof RowFailure ? error.code :
+          rawCode === 'DUPLICATE_ENTRY_DETECTED' || rawCode === '23505' ? 'ACCOUNTING_PARTY_IDENTITY_CONFLICT' :
           rawCode === 'FORBIDDEN' || rawCode === 'PERMISSION_DENIED' || rawCode === 'RECORD_NOT_FOUND' || rawCode === 'RLS_VALIDATION_FAILED' ? 'FORBIDDEN' : 'QUERY_ERROR';
         const reason = error instanceof AccountingPartyWriteGuardException ? 'GUARD_' + error.reason :
           error instanceof RowFailure ? error.code :
