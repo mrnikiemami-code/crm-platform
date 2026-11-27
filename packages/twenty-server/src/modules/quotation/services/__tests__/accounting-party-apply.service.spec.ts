@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { AccountingPartyWriteGuardService } from 'src/modules/quotation/services/accounting-party-write-guard.service';
+import { buildCreatedByFromFullNameMetadata } from 'src/engine/core-modules/actor/utils/build-created-by-from-full-name-metadata.util';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { CommonQueryRunnerException, CommonQueryRunnerExceptionCode } from 'src/engine/api/common/common-query-runners/errors/common-query-runner.exception';
 import { AccountingPartyApplyService, parseAccountingPartyPlan, parseAccountingPartySelections } from 'src/modules/quotation/services/accounting-party-apply.service';
@@ -11,7 +13,7 @@ const stableId = (prefix: string) => {
   return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-5' + hex.slice(13, 16) + '-8' + hex.slice(17, 20) + '-' + hex.slice(20, 32);
 };
 const app = { id: 'app-id', universalIdentifier: 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb', defaultRoleId: 'app-role' };
-const authContext = { type: 'user', workspace: { id: 'workspace' }, user: { id: 'user' }, userWorkspaceId: 'membership', workspaceMemberId: 'member', workspaceMember: { id: 'member' } } as WorkspaceAuthContext;
+const authContext = { type: 'user', workspace: { id: 'workspace' }, user: { id: 'user' }, userWorkspaceId: 'membership', workspaceMemberId: 'member', workspaceMember: { id: 'member', name: { firstName: 'Fixture', lastName: 'User' } } } as WorkspaceAuthContext;
 const selections = parseAccountingPartySelections([{ externalPartyId, createNew: true }])!;
 const row = {
   externalPartyId, partyType: 'PERSON', internalPartyId: stableId('quotation/accounting-customer:'),
@@ -34,8 +36,24 @@ const setup = (authority = 'SETTINGS_ROLE') => {
     if (context.flatObjectMetadata.nameSingular === 'accountingPartyLink') throw notFound();
     return { results: { id: existingCustomer, updatedAt: new Date('2026-11-27T00:00:00.123Z') } };
   }) };
-  const create = { execute: jest.fn(async (args: { data: { id: string } }, _context: unknown) => ({ results: { id: args.data.id } })) };
-  const update = { execute: jest.fn(async (args: { id: string }, _context: unknown) => ({ results: { id: args.id } })) };
+  const guard = new AccountingPartyWriteGuardService({ resolveSettingsAuthority: jest.fn(async () => authority || null) } as never);
+  type RunnerContext = { authContext: WorkspaceAuthContext; flatObjectMetadata: { nameSingular: string } };
+  const check = async (args: { id?: string; data: Record<string, unknown> }, context: RunnerContext, action: 'createOne' | 'updateOne') => {
+    const object = context.flatObjectMetadata.nameSingular;
+    if (object !== 'person' && object !== 'company') return;
+    const auth = context.authContext;
+    if (auth.type !== 'user') throw new Error('Expected user');
+    const actor = buildCreatedByFromFullNameMetadata({ fullNameMetadata: auth.workspaceMember.name, workspaceMemberId: auth.workspaceMemberId });
+    await guard.assertAllowed(auth, object, action, { ...args, data: { ...args.data, ...(action === 'createOne' ? { createdBy: actor } : {}), updatedBy: actor } });
+  };
+  const create = { execute: jest.fn(async (args: { data: { id: string } }, context: RunnerContext) => {
+    await check(args, context, 'createOne');
+    return { results: { id: args.data.id } };
+  }) };
+  const update = { execute: jest.fn(async (args: { id: string; data: Record<string, unknown> }, context: RunnerContext) => {
+    await check(args, context, 'updateOne');
+    return { results: { id: args.id } };
+  }) };
   const service = new AccountingPartyApplyService(cache as never, orm as never, { resolveSettingsAuthority: jest.fn(async () => authority || null), resolveRoleId: jest.fn(async () => 'user-role') } as never, find as never, create as never, update as never);
   const input = { connectionId, selections, allowUpdate: true, plan: { rows: [row], refused: [] }, authContext, app: app as never };
   return { service, input, create, update, find, commits };
@@ -45,6 +63,7 @@ describe('native accounting customer apply', () => {
     expect(parseAccountingPartySelections([{ externalPartyId, createNew: true }, { externalPartyId, createNew: true }])).toBeNull();
     expect(parseAccountingPartyPlan({ rows: [{ ...row, customerFields: { accountOwnerId: existingCustomer } }], refused: [] }, connectionId, selections, true)).toBeNull();
     expect(parseAccountingPartyPlan({ rows: [{ ...row, internalPartyId: existingCustomer }], refused: [] }, connectionId, selections, true)).toBeNull();
+    expect(parseAccountingPartyPlan({ rows: [{ ...row, customerFields: { ...row.customerFields, createdBy: { name: 'forged' } } }], refused: [] }, connectionId, selections, true)).toBeNull();
   });
   it('requires a user and settings authority', async () => {
     const { service, input, create } = setup('');
