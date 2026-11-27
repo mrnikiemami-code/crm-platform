@@ -479,6 +479,7 @@ export type PreparedPartyWrite = {
   partyType: 'PERSON' | 'COMPANY';
   internalPartyId: string;
   createCustomer: boolean;
+  expectedCustomerUpdatedAt: string | null;
   customerFields: Record<string, GraphqlValue>;
   existingLinkId: string | null;
   linkId: string;
@@ -578,6 +579,7 @@ export const preparePartyImport = async (
       claimed.add(identityKey);
       rows.push({
         externalPartyId, partyType, internalPartyId, createCustomer, customerFields,
+        expectedCustomerUpdatedAt: target?.updatedAt ?? null,
         existingLinkId: existing?.linkId ?? null,
         linkId: existing?.linkId ?? partyLinkRecordId(connectionId, externalPartyId),
         expectedRemoteVersion: existing?.remoteVersion ?? null,

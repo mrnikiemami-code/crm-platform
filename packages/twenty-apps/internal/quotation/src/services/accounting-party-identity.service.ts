@@ -29,6 +29,7 @@ export type CrmPartyIdentity = {
   partyType: Kind;
   name: string;
   nationalCode: string | null;
+  updatedAt?: string | null;
   economicCode?: string | null;
   profile?: Record<string, GraphqlValue>;
   mobile: string | null;
@@ -95,7 +96,7 @@ export const loadCrmPartyIdentities = async (
       }
       if (!clauses.length) continue;
       const addressFields = '{ addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry addressLat addressLng }';
-      const common = 'id nationalCode economicCode accountingPhone accountingSecondPhone accountingFax ' + (kind === 'PERSON' ? 'accountingAddress ' : 'address ') + addressFields;
+      const common = 'id updatedAt nationalCode economicCode accountingPhone accountingSecondPhone accountingFax ' + (kind === 'PERSON' ? 'accountingAddress ' : 'address ') + addressFields;
       const fields = kind === 'PERSON'
         ? common + ' name { firstName lastName } phones { primaryPhoneNumber primaryPhoneCountryCode primaryPhoneCallingCode additionalPhones } emails { primaryEmail additionalEmails }'
         : common + ' name accountingMobile registrationNumber accountingEmail';
@@ -123,6 +124,7 @@ export const loadCrmPartyIdentities = async (
             partyType: kind,
             name: kind === 'PERSON' ? [text(fullName?.firstName), text(fullName?.lastName)].filter(Boolean).join(' ') : text(node.name),
             nationalCode: text(node.nationalCode) || null,
+            updatedAt: text(node.updatedAt) || null,
             economicCode: text(node.economicCode) || null,
             profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['name','accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','accountingAddress','emails'].includes(key))) as Record<string, GraphqlValue>,
             mobile: kind === 'PERSON' ? text(phone?.primaryPhoneNumber) || null : text(node.accountingMobile) || null,

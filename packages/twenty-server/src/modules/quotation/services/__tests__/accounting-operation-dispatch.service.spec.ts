@@ -18,12 +18,13 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
     executeInWorkspaceContext: jest.fn(async (work: () => Promise<unknown>) => work()),
     getRepository: jest.fn(() => ({ findOne: jest.fn(async () => visible ? { id: 'q-1' } : null) })),
   };
+  const apply = jest.fn(async () => ({ success: true, outcome: { createdParties: 1 } }));
   const service = new AccountingOperationDispatchService(
     cache as never, { execute } as never,
     { resolveSettingsAuthority: jest.fn(async () => authority), resolveRoleId: jest.fn(async () => 'role-1') } as never,
-    manager as never,
+    manager as never, { apply } as never,
   );
-  return { service, execute, manager };
+  return { service, execute, manager, apply };
 };
 
 describe('accounting operation boundary', () => {
@@ -34,6 +35,18 @@ describe('accounting operation boundary', () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it('uses the private read-only planner and original Nest caller for customer writes', async () => {
+    const { service, execute, apply } = setup('SETTINGS_ROLE');
+    const plan = { rows: [], refused: [] };
+    execute.mockResolvedValueOnce({ status: 'SUCCESS', data: { success: true, plan } } as never);
+    await expect(service.dispatch('accounting-import-apply-parties', {
+      connectionId: 'c', selections: [{ externalPartyId: '001', createNew: true }], plan: { injected: true },
+    }, auth)).resolves.toMatchObject({ success: true, outcome: { createdParties: 1 } });
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({ payload: expect.objectContaining({ body: {
+      connectionId: 'c', selections: [{ externalPartyId: '001', createNew: true }], allowRemoteVersionUpdate: false, action: 'prepare-parties',
+    } }) }));
+    expect(apply).toHaveBeenCalledWith(expect.objectContaining({ authContext: auth, plan }));
+  });
   it('rejects unlisted actions and unprivileged global operations before execution', async () => {
     const { service, execute } = setup(null);
     expect(await service.dispatch('invented', {}, auth)).toMatchObject({ success: false, code: 'INVALID_INPUT' });

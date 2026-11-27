@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { CoreCommonApiModule } from 'src/engine/api/common/core-common-api.module';
+import { AccountingPartyApplyService } from 'src/modules/quotation/services/accounting-party-apply.service';
 
 import { LogicFunctionExecutorModule } from 'src/engine/core-modules/logic-function/logic-function-executor/logic-function-executor.module';
 import { AccountingOperationDispatchService } from 'src/modules/quotation/services/accounting-operation-dispatch.service';
@@ -22,6 +24,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
 @Module({
   imports: [
     AuthModule,
+    CoreCommonApiModule,
     LogicFunctionExecutorModule,
     WorkspaceCacheModule,
     WorkspaceCacheStorageModule,
@@ -41,6 +44,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
     AccountingDestinationProbeService,
     AccountingConnectionAuthorityService,
     AccountingOperationDispatchService,
+    AccountingPartyApplyService,
   ],
 })
 export class QuotationModule {}

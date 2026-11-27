@@ -5,6 +5,7 @@ import { LogicFunctionExecutorService } from 'src/engine/core-modules/logic-func
 import { LogicFunctionExecutionStatus } from 'src/engine/metadata-modules/logic-function/dtos/logic-function-execution-result.dto';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
+import { AccountingPartyApplyService, parseAccountingPartySelections } from 'src/modules/quotation/services/accounting-party-apply.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 
 // These are the installed Quotation application's existing, stable metadata identifiers.
@@ -58,6 +59,7 @@ export class AccountingOperationDispatchService {
     private readonly executor: LogicFunctionExecutorService,
     private readonly permissions: QuotationPermissionService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
+    private readonly partyApply: AccountingPartyApplyService,
   ) {}
 
   async dispatch(
@@ -95,6 +97,9 @@ export class AccountingOperationDispatchService {
     if (operation.action === 'apply-parties' && authContext.type !== 'user') {
       return forbidden();
     }
+
+    const partySelections = operation.action === 'apply-parties' ? parseAccountingPartySelections(input.selections) : null;
+    if (operation.action === 'apply-parties' && partySelections === null) return invalid();
 
     try {
       const quotationId = readText(input.quotationId);
@@ -167,7 +172,9 @@ export class AccountingOperationDispatchService {
           ? { userId: authContext.user.id, userWorkspaceId: authContext.userWorkspaceId }
           : {}),
         payload: {
-          body: { ...input, action: operation.action },
+          body: operation.action === 'apply-parties'
+            ? { connectionId: readText(input.connectionId), selections: partySelections, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-parties' }
+            : { ...input, action: operation.action },
           headers: {},
           pathParameters: {},
           queryStringParameters: {},
@@ -180,6 +187,11 @@ export class AccountingOperationDispatchService {
       const data = asRecord(result.data);
       if (result.status !== LogicFunctionExecutionStatus.SUCCESS || result.error || data === null || typeof data.success !== 'boolean') {
         return unavailable();
+      }
+      if (operation.action === 'apply-parties' && data.success === true) {
+        if (!app || !partySelections) return unavailable();
+        return await this.partyApply.apply({ connectionId: readText(input.connectionId), selections: partySelections,
+          allowUpdate: input.allowRemoteVersionUpdate === true, plan: data.plan, authContext, app });
       }
       return data;
     } catch {
