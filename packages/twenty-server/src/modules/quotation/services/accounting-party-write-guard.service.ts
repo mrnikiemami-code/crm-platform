@@ -6,7 +6,7 @@ import { QuotationQueryValidationException, QuotationQueryValidationExceptionCod
 const QUOTATION_APP = 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb';
 const COMMON = ['name', 'nationalCode', 'economicCode', 'accountingPhone', 'accountingSecondPhone', 'accountingFax'];
 const FIELDS = {
-  person: new Set([...COMMON, 'phones', 'emails', 'address']),
+  person: new Set([...COMMON, 'phones', 'emails', 'accountingAddress']),
   company: new Set([...COMMON, 'accountingMobile', 'address', 'registrationNumber', 'accountingEmail']),
 };
 

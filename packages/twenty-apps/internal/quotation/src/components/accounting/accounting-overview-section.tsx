@@ -79,7 +79,7 @@ export const AccountingOverviewSection = ({
           <span style={styles.subtitle}>
             {connection === null
               ? 'نرم‌افزار حسابداری فعال تعیین نشده'
-              : adapterDisplayLabel(adapter)}
+              : `${connection.name} — ${adapterDisplayLabel(adapter)}`}
           </span>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
             <Badge
@@ -98,11 +98,7 @@ export const AccountingOverviewSection = ({
                 : (HEALTH_LABELS[connection.healthState] ?? connection.healthState)}
             </Badge>
             {isMock ? <Badge tone="info">آزمایشی</Badge> : null}
-            {connection?.name ? (
-              <span style={{ ...styles.meta, fontSize: 'var(--t-font-size-xs)' }}>
-                {connection.name}
-              </span>
-            ) : null}
+
           </div>
         </div>
         <PrimaryButton

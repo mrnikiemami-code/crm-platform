@@ -169,6 +169,10 @@ describe('QuotationRevisionService', () => {
           documentDiscountExact: true,
           taxExact: true,
           totalExact: true,
+          // WS3 seals these three columns as well; dropping them loses the tax split.
+          taxPolicy: true,
+          taxRateBasisPoints: true,
+          dutyRateBasisPoints: true,
         },
       }),
     );

@@ -115,7 +115,8 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
     currencyHandling: null,
     baseCurrency: '',
     requiresSpecialItemCodes: ASAN_CAPABILITIES.requiresSpecialItemCodes,
-    testProfiles: MOCK_PROFILES.map((profile) => ({
+    // PARTY_UAT selects isolated test data, not an additional financial capability.
+    testProfiles: MOCK_PROFILES.filter((profile) => profile !== 'PARTY_UAT').map((profile) => ({
       id: profile,
       label: MOCK_PROFILE_DESCRIPTIONS[profile].label,
       summary: MOCK_PROFILE_DESCRIPTIONS[profile].summary,

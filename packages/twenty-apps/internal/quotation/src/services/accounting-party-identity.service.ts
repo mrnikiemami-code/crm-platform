@@ -94,7 +94,8 @@ export const loadCrmPartyIdentities = async (
         if (mobiles.length) clauses.push({ accountingMobile: { in: mobiles } });
       }
       if (!clauses.length) continue;
-      const common = 'id nationalCode economicCode accountingPhone accountingSecondPhone accountingFax address { addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry addressLat addressLng }';
+      const addressFields = '{ addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry addressLat addressLng }';
+      const common = 'id nationalCode economicCode accountingPhone accountingSecondPhone accountingFax ' + (kind === 'PERSON' ? 'accountingAddress ' : 'address ') + addressFields;
       const fields = kind === 'PERSON'
         ? common + ' name { firstName lastName } phones { primaryPhoneNumber primaryPhoneCountryCode primaryPhoneCallingCode additionalPhones } emails { primaryEmail additionalEmails }'
         : common + ' name accountingMobile registrationNumber accountingEmail';
@@ -123,7 +124,7 @@ export const loadCrmPartyIdentities = async (
             name: kind === 'PERSON' ? [text(fullName?.firstName), text(fullName?.lastName)].filter(Boolean).join(' ') : text(node.name),
             nationalCode: text(node.nationalCode) || null,
             economicCode: text(node.economicCode) || null,
-            profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['name','accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','emails'].includes(key))) as Record<string, GraphqlValue>,
+            profile: Object.fromEntries(Object.entries(node).filter(([key]) => ['name','accountingPhone','accountingSecondPhone','accountingFax','registrationNumber','accountingEmail','address','accountingAddress','emails'].includes(key))) as Record<string, GraphqlValue>,
             mobile: kind === 'PERSON' ? text(phone?.primaryPhoneNumber) || null : text(node.accountingMobile) || null,
             phones: phone === null ? null : {
               primaryPhoneNumber: text(phone.primaryPhoneNumber),
@@ -246,7 +247,8 @@ export const crmPartyFields = (
       fields.emails = { primaryEmail: primary, additionalEmails: [...additional, email] };
     }
   }
-  const currentAddress = record(profile.address);
+  const addressKey = partyType === 'PERSON' ? 'accountingAddress' : 'address';
+  const currentAddress = record(profile[addressKey] ?? profile.address);
   const nextAddress: Record<string, GraphqlValue> = {};
   for (const key of ['addressStreet1','addressStreet2','addressCity','addressState','addressPostcode','addressCountry','addressLat','addressLng']) {
     const value = currentAddress?.[key];
@@ -257,7 +259,7 @@ export const crmPartyFields = (
     const next = value?.trim();
     if (next && nextAddress[key] !== next) { nextAddress[key] = next; addressChanged = true; }
   }
-  if (addressChanged) fields.address = nextAddress;
+  if (addressChanged) fields[addressKey] = nextAddress;
   const mobile = normalizeIranMobile(remote.mobile);
   if (mobile !== null && normalizeIranMobile(existing?.mobile) !== mobile) {
     if (partyType === 'COMPANY') {

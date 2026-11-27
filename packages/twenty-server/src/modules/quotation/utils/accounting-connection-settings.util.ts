@@ -20,6 +20,7 @@ export type AccountingMoneyUnit = (typeof ACCOUNTING_MONEY_UNITS)[number];
 // of these profiles, and the server expands it into the capabilities it stores.
 export const MOCK_PROFILES = [
   'SIMPLE',
+  'PARTY_UAT', // Internal fixture dataset; same financial contract as SIMPLE.
   'CODED',
   'AMOUNT',
   'AGGREGATE',
