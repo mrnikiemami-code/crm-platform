@@ -640,7 +640,11 @@ export const readSnapshotPage = async <TRow>({
 
   // A cursor from another snapshot restarts the list rather than guessing: guessing is what
   // produces "row 5 of page 3" pointing at a different record.
-  const offset =
+  const numbered = request.pageNumber !== undefined;
+  const requestedPage = numbered && request.snapshotId === snapshotId
+    ? Math.min(request.pageNumber ?? 1, Math.max(1, Math.ceil(rowCount / request.pageSize)))
+    : 1;
+  const offset = numbered ? (requestedPage - 1) * request.pageSize :
     position === null || position.snapshotId !== snapshotId
       ? 0
       : Math.min(Math.max(position.offset, 0), rowCount);
@@ -665,10 +669,14 @@ export const readSnapshotPage = async <TRow>({
       nextCursor: hasNextPage ? encodeSnapshotCursor(snapshotId, end) : null,
       hasNextPage,
       totalKnown: rowCount,
+      ...(numbered ? { pageNumber: requestedPage } : {}),
     };
   }
 
   const collected: TRow[] = [];
+  // Keep only one extra bounded page for out-of-range searches; never load
+  // intermediate pages or the entire dataset into memory.
+  const firstPage: TRow[] = [];
   let matches = 0;
   const totalChunks = chunkCount(rowCount);
 
@@ -682,6 +690,7 @@ export const readSnapshotPage = async <TRow>({
         continue;
       }
 
+      if (numbered && firstPage.length < pageSize) firstPage.push(row);
       if (matches >= offset && collected.length < pageSize) {
         collected.push(row);
       }
@@ -690,15 +699,19 @@ export const readSnapshotPage = async <TRow>({
     }
   }
 
-  const hasNextPage = matches > offset + collected.length;
+  const reset = numbered && offset >= matches && offset > 0;
+  const rows = reset ? firstPage : collected;
+  const actualOffset = reset ? 0 : offset;
+  const hasNextPage = matches > actualOffset + rows.length;
 
   return {
-    rows: collected,
+    rows,
     nextCursor: hasNextPage
-      ? encodeSnapshotCursor(snapshotId, offset + collected.length)
+      ? encodeSnapshotCursor(snapshotId, actualOffset + rows.length)
       : null,
     hasNextPage,
     totalKnown: matches,
+    ...(numbered ? { pageNumber: reset ? 1 : requestedPage } : {}),
   };
 };
 

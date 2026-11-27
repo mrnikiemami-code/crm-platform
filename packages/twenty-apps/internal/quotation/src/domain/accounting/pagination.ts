@@ -25,12 +25,16 @@ export type PagedRows<TRow> = {
   // `null` means "this source cannot say". A guessed total is worse than an honest
   // unknown: it turns into "صفحه ۱ از ۴۰" on a list that has 40 000 rows.
   totalKnown: number | null;
+  // Server-confirmed page for numbered snapshot navigation.
+  pageNumber?: number;
 };
 
 export type PageRequest = {
   cursor: string | null;
   pageSize: number;
   search: string;
+  pageNumber?: number;
+  snapshotId?: string;
 };
 
 export const clampPageSize = (value: unknown): number => {
@@ -55,6 +59,8 @@ export const readPageRequest = (
       : null,
   pageSize: clampPageSize(body.pageSize),
   search: typeof body.search === 'string' ? body.search.trim() : '',
+  ...(typeof body.pageNumber === 'number' && Number.isSafeInteger(body.pageNumber) && body.pageNumber >= 1 && body.pageNumber <= 1_000_000 ? { pageNumber: body.pageNumber } : {}),
+  ...(typeof body.snapshotId === 'string' && body.snapshotId.length <= 128 ? { snapshotId: body.snapshotId } : {}),
 });
 
 // A cursor names a position inside one immutable snapshot. Encoding the snapshot id into it

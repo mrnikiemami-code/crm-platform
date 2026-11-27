@@ -75,6 +75,7 @@ export type MappingPage<TRow> = {
   nextCursor: string | null;
   hasNextPage: boolean;
   totalKnown: number | null;
+  pageNumber?: number;
   search: string;
   pageSize: number;
   snapshot: SnapshotView;
@@ -182,6 +183,7 @@ const basePage = (value: unknown): MappingPage<never> => {
     hasNextPage: record?.hasNextPage === true,
     totalKnown:
       typeof record?.totalKnown === 'number' ? record.totalKnown : null,
+    ...(typeof record?.pageNumber === 'number' && Number.isSafeInteger(record.pageNumber) && record.pageNumber >= 1 ? { pageNumber: record.pageNumber } : {}),
     search: readString(record?.search),
     pageSize: readNumber(record?.pageSize),
     snapshot: parseSnapshot(record?.snapshot),

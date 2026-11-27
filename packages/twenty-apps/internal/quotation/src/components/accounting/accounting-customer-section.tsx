@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import {
@@ -107,23 +107,32 @@ export const AccountingCustomerSection = ({
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  const pageIndex = cursorStack.length - 1;
-  const cursor = cursorStack[pageIndex] ?? null;
+  const sizeRef = useRef(PAGE_SIZE);
+  const requestId = useRef(0);
+  const pageIndex = page?.pageNumber !== undefined ? page.pageNumber - 1 : cursorStack.length - 1;
+  const numbered = page?.snapshot.readStrategy === 'REMOTE_UNPAGED' && page.totalKnown !== null && page.snapshot.snapshotId !== '';
 
   const loadPage = useCallback(
     async ({
       atCursor,
       search,
       refresh = false,
+      targetPage,
+      snapshotId,
+      size = sizeRef.current,
     }: {
       atCursor: string | null;
       search: string;
       refresh?: boolean;
+      targetPage?: number;
+      snapshotId?: string;
+      size?: number;
     }) => {
       if (connectionId === null) {
         return;
       }
 
+      const id = ++requestId.current;
       setLoading(true);
       setError(null);
 
@@ -132,11 +141,13 @@ export const AccountingCustomerSection = ({
           action: 'preview-parties-page',
           connectionId,
           cursor: atCursor,
-          pageSize: PAGE_SIZE,
+          pageSize: size,
           search,
           refresh,
+          ...(targetPage === undefined ? {} : { pageNumber: targetPage, snapshotId }),
         });
 
+        if (id !== requestId.current) return;
         if (!response.ok || response.data.success !== true) {
           setError(
             toPersianUiMessage(
@@ -147,11 +158,13 @@ export const AccountingCustomerSection = ({
           return;
         }
 
-        setPage(parsePartyMappingPage(response.data.page));
+        const result = parsePartyMappingPage(response.data.page);
+        sizeRef.current = size;
+        setPage(result);
       } catch {
-        setError('ارتباط با سرور برقرار نشد.');
+        if (id === requestId.current) setError('ارتباط با سرور برقرار نشد.');
       } finally {
-        setLoading(false);
+        if (id === requestId.current) setLoading(false);
       }
     },
     [connectionId],
@@ -165,11 +178,18 @@ export const AccountingCustomerSection = ({
     setFilter('ALL');
     setSelected(new Map());
     void loadPage({ atCursor: null, search: '' });
+    return () => { requestId.current++; };
   }, [connectionId, loadPage, reloadToken]);
 
   useEffect(() => {
     onPendingCountChange?.(page?.summary.NEEDS_CRM_RECORD ?? 0);
   }, [onPendingCountChange, page?.summary.NEEDS_CRM_RECORD]);
+
+  const goToPage = (targetPage: number, size = sizeRef.current) => {
+    if (!numbered || !page || loading || applying) return;
+    setCursorStack([null]);
+    void loadPage({ atCursor: null, search: submittedSearch, targetPage, snapshotId: page.snapshot.snapshotId, size });
+  };
 
   const applySearch = (term: string) => {
     setSubmittedSearch(term);
@@ -639,7 +659,11 @@ export const AccountingCustomerSection = ({
             hasPreviousPage={pageIndex > 0}
             busy={loading || applying}
             rowCount={page.rows.length}
+            pageSize={numbered ? sizeRef.current : undefined}
+            onPageChange={numbered ? goToPage : undefined}
+            onPageSizeChange={numbered ? (size) => goToPage(1, size) : undefined}
             onNext={() => {
+              if (numbered) { goToPage(pageIndex + 2); return; }
               if (page.nextCursor === null) {
                 return;
               }
@@ -650,6 +674,7 @@ export const AccountingCustomerSection = ({
               });
             }}
             onPrevious={() => {
+              if (numbered) { goToPage(pageIndex); return; }
               const nextStack = cursorStack.slice(0, -1);
               const at = nextStack[nextStack.length - 1] ?? null;
               setCursorStack(nextStack);

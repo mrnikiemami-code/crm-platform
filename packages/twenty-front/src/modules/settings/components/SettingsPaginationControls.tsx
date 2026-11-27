@@ -79,7 +79,7 @@ const NumberedPagination = ({ page, pageCount, onPageChange, isLoading, numbered
       {numbered.total > 0 && pages.map((index, i) => (
         <span key={index} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           {i > 0 && index - pages[i - 1] > 1 && <span aria-hidden="true">…</span>}
-          <Button size="sm" variant={index === page ? 'primary' : 'outline'} disabled={isLoading || index === page} onClick={() => go(index)}>{format(index + 1)}</Button>
+          <Button size="sm" variant={index === page ? 'solid' : 'outline'} disabled={isLoading || index === page} onClick={() => go(index)}>{format(index + 1)}</Button>
         </span>
       ))}
       <Button size="sm" variant="outline" disabled={page >= last || isLoading} onClick={() => go(page + 1)}>{fa ? 'بعدی' : t`Next`}</Button>

@@ -570,6 +570,9 @@ export const Pager = ({
   onPrevious,
   busy,
   rowCount,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
 }: {
   pageNumber: number;
   totalKnown: number | null;
@@ -579,9 +582,13 @@ export const Pager = ({
   onPrevious: () => void;
   busy: boolean;
   rowCount: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 }) => {
   // An unknown total is SAID, not estimated. "صفحه ۳" with no "از ۴۰" is the honest shape
   // when the destination cannot count.
+  const numbered = totalKnown !== null && pageSize !== undefined && onPageChange !== undefined && onPageSizeChange !== undefined;
   const position =
     totalKnown === null
       ? `صفحهٔ ${pageNumber}`
@@ -589,6 +596,19 @@ export const Pager = ({
 
   return (
     <div
+      className={numbered ? 'twenty-native-settings-pager' : undefined}
+      title={numbered ? JSON.stringify({ page: pageNumber, total: totalKnown, size: pageSize, busy }) : undefined}
+      onClick={numbered ? (event) => {
+        // Host-native SettingsPaginationControls emits a bounded presentation
+        // event over the existing remote HTML event serialization.
+        const value = (event.target as { value?: unknown }).value;
+        if (busy || typeof value !== 'string') return;
+        const match = /^(page|size):(\d+)$/.exec(value);
+        if (!match) return;
+        const next = Number(match[2]);
+        if (match[1] === 'page' && Number.isSafeInteger(next) && next >= 1 && next <= Math.max(1, Math.ceil(totalKnown! / pageSize!))) onPageChange?.(next);
+        if (match[1] === 'size' && [25, 50, 100].includes(next)) onPageSizeChange?.(next);
+      } : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',

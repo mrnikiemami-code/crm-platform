@@ -73,6 +73,7 @@ export type MappingPagePayload<TRow> = {
   nextCursor: string | null;
   hasNextPage: boolean;
   totalKnown: number | null;
+  pageNumber?: number;
   search: string;
   pageSize: number;
   snapshot: SnapshotMeta & {
@@ -323,6 +324,7 @@ export const loadItemMappingPage = async (
     nextCursor: page.nextCursor,
     hasNextPage: page.hasNextPage,
     totalKnown: page.totalKnown,
+    ...(page.pageNumber === undefined ? {} : { pageNumber: page.pageNumber }),
     search: input.request.search,
     pageSize: input.request.pageSize,
     snapshot: {
@@ -477,6 +479,7 @@ export const loadPartyMappingPage = async (
     nextCursor: page.nextCursor,
     hasNextPage: page.hasNextPage,
     totalKnown: page.totalKnown,
+    ...(page.pageNumber === undefined ? {} : { pageNumber: page.pageNumber }),
     search: input.request.search,
     pageSize: input.request.pageSize,
     snapshot: {
