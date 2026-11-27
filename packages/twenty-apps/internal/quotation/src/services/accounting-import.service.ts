@@ -532,16 +532,23 @@ export const preparePartyImport = async (
     if (existing !== null && (!existing.internalPartyId || !existing.partyType)) { refuse('INVALID_INPUT', 'Existing customer mapping is incomplete'); continue; }
     const automatic = selection.createNew === true;
     if (automatic && row.warnings.includes('DUPLICATE_REMOTE_MOBILE')) { refuse('INVALID_INPUT', 'Shared mobile needs manual review'); continue; }
-    if (existing !== null && (!automatic || !allowRemoteVersionUpdate)) {
-      refuse('ALREADY_SUCCEEDED', 'This customer is already linked');
-      continue;
-    }
     try {
       const stableId = stableCustomerRecordId(connectionId, externalPartyId);
       const recovered = identities.some((entry) => entry.id === stableId) ? stableId : null;
       const resolved = resolvePartyIdentity(remote, identities, existing?.internalPartyId ?? recovered, existing?.partyType);
       if (resolved.kind === 'DELETED_CUSTOMER') {
         refuse('CRM_CUSTOMER_DELETED', 'Customer was deleted in CRM; review and restore through normal CRM workflow before retrying');
+        continue;
+      }
+      if (existing !== null && (!automatic || !allowRemoteVersionUpdate)) {
+        // A historic link is not a success if its CRM target disappeared,
+        // changed identity, or conflicts with the caller's explicit selection.
+        if (resolved.kind !== 'MATCH' || (!automatic &&
+            (selection.internalPartyId !== resolved.target.id || selection.partyType !== resolved.target.partyType))) {
+          refuse('INVALID_INPUT', 'Existing customer mapping needs review');
+        } else {
+          refuse('ALREADY_SUCCEEDED', 'This customer is already linked');
+        }
         continue;
       }
       const sourceProfile = mergeSourcePartyProfile(remote, existing?.sourceProfile);

@@ -34,6 +34,7 @@ describe('accounting CRM identity authority', () => {
     expect(resolvePartyIdentity(remote, [deleted])).toEqual({ kind: 'DELETED_CUSTOMER' });
     expect(resolvePartyIdentity({ ...remote, nationalCode: null }, [deleted], deleted.id)).toEqual({ kind: 'DELETED_CUSTOMER' });
     expect(resolvePartyIdentity(remote, [])).toEqual({ kind: 'CREATE', partyType: 'PERSON', nationalCode: '0012345678' });
+    expect(resolvePartyIdentity({ ...remote, nationalCode: null, mobile: null, fullName: deleted.name }, [{ ...deleted, nationalCode: null }])).toEqual({ kind: 'CONFLICT' });
     expect(resolvePartyIdentity({ ...remote, nationalCode: null, economicCode: '990099001234' }, [{ ...deleted, economicCode: '990099001234' }])).toEqual({ kind: 'DELETED_CUSTOMER' });
   });
   it('requests deleted records explicitly and excludes them from automatic transfer', async () => {

@@ -90,6 +90,13 @@ export const loadCrmPartyIdentities = async (
           const parts = splitPartyPersonName(name);
           clauses.push({ name: { firstName: { eq: parts.firstName }, lastName: { eq: parts.lastName } } });
         }
+        // Preserve vendor-supplied multi-word given names instead of assuming
+        // the first whitespace always separates the two CRM name components.
+        for (const row of batch) {
+          if (row.firstName?.trim() && row.lastName?.trim()) {
+            clauses.push({ name: { firstName: { eq: row.firstName.trim() }, lastName: { eq: row.lastName.trim() } } });
+          }
+        }
         if (mobiles.length) clauses.push({ phones: { primaryPhoneNumber: { in: mobiles } } });
       } else {
         if (names.length) clauses.push({ name: { in: names } });
@@ -202,11 +209,12 @@ export const resolvePartyIdentity = (
     (name !== '' && normalizePartyName(entry.name) === name) ||
     (mobile !== null && normalizeIranMobile(entry.mobile) === mobile),
   );
-  if (possible.some((entry) => !!entry.deletedAt)) return { kind: 'DELETED_CUSTOMER' };
   if (possible.length === 1) {
     const candidate = possible[0];
     if (compatible(candidate) && mobile !== null && normalizeIranMobile(candidate.mobile) === mobile &&
-        name !== '' && normalizePartyName(candidate.name) === name) return { kind: 'MATCH', target: candidate };
+        name !== '' && normalizePartyName(candidate.name) === name) {
+      return candidate.deletedAt ? { kind: 'DELETED_CUSTOMER' } : { kind: 'MATCH', target: candidate };
+    }
   }
   if (possible.length > 0) return { kind: 'CONFLICT' };
   return kind !== null && name !== '' && (code !== null || economic !== null || !!remote.externalPartyId?.trim())

@@ -215,7 +215,7 @@ export class AccountingPartyApplyService {
             const identityClauses = ['nationalCode', 'economicCode'].flatMap((field) => {
               const value = row.customerFields[field];
               if (typeof value !== 'string' || !value.trim()) return [];
-              const variants = [...new Set([value, value.replace(/\\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]), value.replace(/\\d/g, (digit) => '٠١٢٣٤٥٦٧٨٩'[Number(digit)])])];
+              const variants = [...new Set([value, value.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]), value.replace(/\d/g, (digit) => '٠١٢٣٤٥٦٧٨٩'[Number(digit)])])];
               return [{ [field]: { in: variants } }];
             });
             for (const candidateContext of [{ ...person, transactionScope }, { ...company, transactionScope }]) {
