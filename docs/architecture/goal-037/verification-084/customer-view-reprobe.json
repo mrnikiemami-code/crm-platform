@@ -1,0 +1,24 @@
+{
+  "quotationId": "09051c1f-617e-4f60-a6e2-b1bd5e990a18",
+  "hashPrefix": "a0784f5fc25c",
+  "usedHost": "p083mwyesfva.localhost:3002",
+  "valid": {
+    "httpStatus": 200,
+    "hasPayable": true,
+    "echoedToken": false,
+    "snippet": "<!DOCTYPE html> <html lang=\"fa\" dir=\"rtl\"> <head> <meta charset=\"utf-8\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /> <title>084-num-A-1795749582644</ti"
+  },
+  "revoke": {
+    "success": true
+  },
+  "afterRevoke": {
+    "httpStatus": 410,
+    "hasRevokeCopy": true,
+    "snippet": "<!DOCTYPE html> <html lang=\"fa\" dir=\"rtl\"> <head> <meta charset=\"utf-8\" /> <meta name=\"viewport\" content=\"width=device-w"
+  },
+  "afterExpiry": {
+    "httpStatus": 410,
+    "hasExpiryCopy": true,
+    "snippet": "<!DOCTYPE html> <html lang=\"fa\" dir=\"rtl\"> <head> <meta charset=\"utf-8\" /> <meta name=\"viewport\" content=\"width=device-w"
+  }
+}

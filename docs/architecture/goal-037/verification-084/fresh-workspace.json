@@ -1,0 +1,121 @@
+{
+  "apiBase": "http://localhost:3002",
+  "email": "party083.mwyesfva@local.test",
+  "password": "REDACTED",
+  "stamp": "mwyesfva",
+  "subdomain": "p083mwyesfva",
+  "steps": {
+    "signUp": {
+      "errors": null,
+      "hasToken": true
+    },
+    "signUpInNewWorkspace": {
+      "errors": null,
+      "workspaceId": "d0fdd306-57d6-4dba-8454-6088b5b6bf45",
+      "displayName": null,
+      "urls": {
+        "subdomainUrl": "http://p083mwyesfva.localhost:3002/",
+        "customUrl": null
+      }
+    },
+    "exchange": {
+      "errors": [
+        "Workspace not found"
+      ],
+      "hasToken": false
+    },
+    "signInFresh": {
+      "errors": null,
+      "loginTokenPresent": true,
+      "workspaceIds": [
+        "d0fdd306-57d6-4dba-8454-6088b5b6bf45"
+      ]
+    },
+    "exchange:http://p083mwyesfva.localhost:3002": {
+      "errors": null,
+      "hasToken": true
+    },
+    "me": {
+      "errors": null,
+      "user": {
+        "id": "a2ace9a9-8888-47d8-b592-d4fa35044c53",
+        "email": "party083.mwyesfva@local.test"
+      },
+      "workspace": {
+        "id": "d0fdd306-57d6-4dba-8454-6088b5b6bf45"
+      }
+    },
+    "activate": {
+      "errors": null,
+      "workspace": {
+        "id": "d0fdd306-57d6-4dba-8454-6088b5b6bf45",
+        "activationStatus": "ACTIVE"
+      }
+    },
+    "activationPoll": {
+      "i": 0,
+      "activationStatus": "ACTIVE",
+      "roleCount": 2,
+      "errors": null
+    },
+    "roles": [
+      {
+        "id": "a4172d8e-bd14-456e-959f-af3aa32a71fb",
+        "label": "Admin",
+        "canUpdateAllSettings": true,
+        "canBeAssignedToApiKeys": true
+      },
+      {
+        "id": "f24e0a0a-8c71-4aba-926c-48ac3972f148",
+        "label": "Member",
+        "canUpdateAllSettings": false,
+        "canBeAssignedToApiKeys": false
+      }
+    ],
+    "rolesProbe": {
+      "rolesErrors": null,
+      "rolesAltErrors": null,
+      "rolesData": {
+        "getRoles": [
+          {
+            "id": "a4172d8e-bd14-456e-959f-af3aa32a71fb",
+            "label": "Admin",
+            "canUpdateAllSettings": true,
+            "canBeAssignedToApiKeys": true
+          },
+          {
+            "id": "f24e0a0a-8c71-4aba-926c-48ac3972f148",
+            "label": "Member",
+            "canUpdateAllSettings": false,
+            "canBeAssignedToApiKeys": false
+          }
+        ]
+      }
+    },
+    "selectedRole": {
+      "id": "a4172d8e-bd14-456e-959f-af3aa32a71fb",
+      "label": "Admin",
+      "canUpdateAllSettings": true,
+      "canBeAssignedToApiKeys": true
+    },
+    "createApiKey": {
+      "errors": null,
+      "id": "eee4f593-de3b-4331-b37a-7d31cb836534"
+    },
+    "mintAttempt": {
+      "errors": [
+        "Variable \"$apiKeyId\" of type \"String!\" used in position expecting type \"UUID!\".",
+        "Variable \"$expiresAt\" of type \"DateTime!\" used in position expecting type \"String!\"."
+      ],
+      "dataKeys": null
+    },
+    "generateApiKeyToken": {
+      "errors": null,
+      "hasToken": true
+    }
+  },
+  "workspaceId": "d0fdd306-57d6-4dba-8454-6088b5b6bf45",
+  "accessToken": "REDACTED_ACCESS_TOKEN_PRESENT",
+  "origin": "http://p083mwyesfva.localhost:3002",
+  "apiKeyToken": "REDACTED_API_KEY_TOKEN_PRESENT"
+}

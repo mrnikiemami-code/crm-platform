@@ -1,0 +1,1310 @@
+{
+  "apiBase": "http://localhost:3002",
+  "workspaceId": "d0fdd306-57d6-4dba-8454-6088b5b6bf45",
+  "email": "party083.mwyesfva@local.test",
+  "startedAt": "2026-11-27T03:22:26.981Z",
+  "precondition": {
+    "strongCodeActiveHits": 1,
+    "strongCodeDeletedHits": 0,
+    "accountingPartyLinks": 0,
+    "linkErrors": null
+  },
+  "connection": {
+    "success": true,
+    "connectionId": "0a237d89-c85c-49c2-ae5a-8d2972eff4de",
+    "name": "PARTY_UAT 084 747771",
+    "code": null,
+    "message": "اتصال حسابداری ثبت شد؛ ارسال مالی همچنان غیرفعال است",
+    "profile": "PARTY_UAT"
+  },
+  "seed": {
+    "people": 30,
+    "companies": 20,
+    "errors": []
+  },
+  "fourOps": {
+    "personUpdate": {
+      "label": "Person update",
+      "success": true,
+      "outcome": {
+        "createdLinks": 1,
+        "updatedLinks": 0,
+        "createdParties": 0,
+        "refusedCount": 0,
+        "refusedCodes": {},
+        "refusedReasons": {},
+        "sampleRefused": []
+      },
+      "refused": null
+    },
+    "companyUpdate": {
+      "label": "Company update",
+      "success": true,
+      "outcome": {
+        "createdLinks": 1,
+        "updatedLinks": 0,
+        "createdParties": 0,
+        "refusedCount": 0,
+        "refusedCodes": {},
+        "refusedReasons": {},
+        "sampleRefused": []
+      },
+      "refused": null
+    },
+    "personCreate": {
+      "label": "Person create",
+      "success": true,
+      "outcome": {
+        "createdLinks": 1,
+        "updatedLinks": 0,
+        "createdParties": 1,
+        "refusedCount": 0,
+        "refusedCodes": {},
+        "refusedReasons": {},
+        "sampleRefused": []
+      },
+      "refused": null
+    },
+    "companyCreate": {
+      "label": "Company create",
+      "success": true,
+      "outcome": {
+        "createdLinks": 1,
+        "updatedLinks": 0,
+        "createdParties": 1,
+        "refusedCount": 0,
+        "refusedCodes": {},
+        "refusedReasons": {},
+        "sampleRefused": []
+      },
+      "refused": null
+    }
+  },
+  "preview": {
+    "rowCount": 100,
+    "decisions": {
+      "LINK_SUGGESTED": 50,
+      "NEEDS_CRM_RECORD": 50
+    },
+    "error": null,
+    "selectionCount": 100
+  },
+  "apply1": {
+    "batches": [
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 24,
+          "updatedLinks": 0,
+          "createdParties": 0,
+          "refusedCount": 1,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 1
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 1
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000001",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      },
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 23,
+          "updatedLinks": 0,
+          "createdParties": 18,
+          "refusedCount": 2,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 2
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 2
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000031",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000032",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      },
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 24,
+          "updatedLinks": 0,
+          "createdParties": 10,
+          "refusedCount": 1,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 1
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 1
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000061",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      },
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 24,
+          "updatedLinks": 0,
+          "createdParties": 19,
+          "refusedCount": 1,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 1
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 1
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000081",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      }
+    ],
+    "totals": {
+      "createdLinks": 95,
+      "updatedLinks": 0,
+      "createdParties": 47,
+      "refused": [
+        {
+          "externalPartyId": "UAT-000001",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000031",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000032",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000061",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000081",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        }
+      ],
+      "refusedCount": 5,
+      "refusedCodes": {
+        "ALREADY_SUCCEEDED": 5
+      },
+      "refusedReasons": {
+        "CRM customer already synchronized": 5
+      },
+      "sampleRefused": [
+        {
+          "externalPartyId": "UAT-000001",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000031",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000032",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000061",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000081",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        }
+      ]
+    }
+  },
+  "apply2": {
+    "batches": [
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 0,
+          "updatedLinks": 0,
+          "createdParties": 0,
+          "refusedCount": 25,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 25
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 25
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000001",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000002",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000003",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000004",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000005",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000006",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000007",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000008",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000009",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000010",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000011",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000012",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      },
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 0,
+          "updatedLinks": 0,
+          "createdParties": 0,
+          "refusedCount": 25,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 25
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 25
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000026",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000027",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000028",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000029",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000030",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000031",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000032",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000033",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000034",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000035",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000036",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000037",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      },
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 0,
+          "updatedLinks": 0,
+          "createdParties": 0,
+          "refusedCount": 25,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 25
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 25
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000051",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000052",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000053",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000054",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000055",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000056",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000057",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000058",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000059",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000060",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000061",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000062",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      },
+      {
+        "size": 25,
+        "success": true,
+        "outcome": {
+          "createdLinks": 0,
+          "updatedLinks": 0,
+          "createdParties": 0,
+          "refusedCount": 25,
+          "refusedCodes": {
+            "ALREADY_SUCCEEDED": 25
+          },
+          "refusedReasons": {
+            "CRM customer already synchronized": 25
+          },
+          "sampleRefused": [
+            {
+              "externalPartyId": "UAT-000076",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000077",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000078",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000079",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000080",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000081",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000082",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000083",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000084",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000085",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000086",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            },
+            {
+              "externalPartyId": "UAT-000087",
+              "code": "ALREADY_SUCCEEDED",
+              "detail": "CRM customer already synchronized"
+            }
+          ]
+        }
+      }
+    ],
+    "totals": {
+      "createdLinks": 0,
+      "updatedLinks": 0,
+      "createdParties": 0,
+      "refused": [
+        {
+          "externalPartyId": "UAT-000001",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000002",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000003",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000004",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000005",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000006",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000007",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000008",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000009",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000010",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000011",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000012",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000013",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000014",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000015",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000016",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000017",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000018",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000019",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000020",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000021",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000022",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000023",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000024",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000025",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000026",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000027",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000028",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000029",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000030",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000031",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000032",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000033",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000034",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000035",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000036",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000037",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000038",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000039",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000040",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000041",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000042",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000043",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000044",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000045",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000046",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000047",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000048",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000049",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000050",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000051",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000052",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000053",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000054",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000055",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000056",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000057",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000058",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000059",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000060",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000061",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000062",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000063",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000064",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000065",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000066",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000067",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000068",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000069",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000070",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000071",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000072",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000073",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000074",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000075",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000076",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000077",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000078",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000079",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000080",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000081",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000082",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000083",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000084",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000085",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000086",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000087",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000088",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000089",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000090",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000091",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000092",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000093",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000094",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000095",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000096",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000097",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000098",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000099",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000100",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        }
+      ],
+      "refusedCount": 100,
+      "refusedCodes": {
+        "ALREADY_SUCCEEDED": 100
+      },
+      "refusedReasons": {
+        "CRM customer already synchronized": 100
+      },
+      "sampleRefused": [
+        {
+          "externalPartyId": "UAT-000001",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000002",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000003",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000004",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000005",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000006",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000007",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000008",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000009",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000010",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000011",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        },
+        {
+          "externalPartyId": "UAT-000012",
+          "code": "ALREADY_SUCCEEDED",
+          "detail": "CRM customer already synchronized"
+        }
+      ]
+    }
+  },
+  "concurrent": {
+    "target": "UAT-000032",
+    "c1": {
+      "createdLinks": 1,
+      "updatedLinks": 0,
+      "createdParties": 1,
+      "refusedCount": 0,
+      "refusedCodes": {},
+      "refusedReasons": {},
+      "sampleRefused": []
+    },
+    "c2": {
+      "createdLinks": 0,
+      "updatedLinks": 0,
+      "createdParties": 0,
+      "refusedCount": 1,
+      "refusedCodes": {
+        "ACCOUNTING_PARTY_PLAN_STALE": 1
+      },
+      "refusedReasons": {
+        "ACCOUNTING_PARTY_PLAN_STALE": 1
+      },
+      "sampleRefused": [
+        {
+          "externalPartyId": "UAT-000032",
+          "code": "ACCOUNTING_PARTY_PLAN_STALE",
+          "detail": "CRM synchronization not confirmed: MAPPING_READ: ACCOUNTING_PARTY_PLAN_STALE"
+        }
+      ]
+    }
+  },
+  "stalePlan": {
+    "note": "Nest discards caller plan and re-prepares; outcome recorded as observed.",
+    "success": true,
+    "outcome": {
+      "createdLinks": 0,
+      "updatedLinks": 1,
+      "createdParties": 0,
+      "refusedCount": 0,
+      "refusedCodes": {},
+      "refusedReasons": {},
+      "sampleRefused": []
+    }
+  },
+  "tombstone": {
+    "externalPartyId": "UAT-000044",
+    "previewDecision": "AMBIGUOUS_CRM_MATCH",
+    "previewFlags": {
+      "deleted": false
+    },
+    "apply": {
+      "createdLinks": 0,
+      "updatedLinks": 0,
+      "createdParties": 0,
+      "refusedCount": 1,
+      "refusedCodes": {
+        "CRM_CUSTOMER_DELETED": 1
+      },
+      "refusedReasons": {
+        "مشتری در CRM حذف شده است؛ ابتدا در CRM بررسی شود.": 1
+      },
+      "sampleRefused": [
+        {
+          "externalPartyId": "UAT-000044",
+          "code": "CRM_CUSTOMER_DELETED",
+          "detail": "مشتری در CRM حذف شده است؛ ابتدا در CRM بررسی شود."
+        }
+      ]
+    },
+    "refused": {
+      "externalPartyId": "UAT-000044",
+      "code": "CRM_CUSTOMER_DELETED",
+      "detail": "مشتری در CRM حذف شده است؛ ابتدا در CRM بررسی شود."
+    }
+  },
+  "rollback": {
+    "createSucceeded": true,
+    "note": "Per-row transaction rollback covered by Jest; operational mapping-ID collision not forced without unsafe DB surgery."
+  },
+  "security": {
+    "outbound": {
+      "success": false,
+      "code": "FORBIDDEN",
+      "message": "برای این عملیات حسابداری دسترسی کافی ندارید."
+    },
+    "browserPlanInject": {
+      "success": true,
+      "outcome": {
+        "createdLinks": 0,
+        "updatedLinks": 0,
+        "createdParties": 0,
+        "refusedCount": 1,
+        "refusedCodes": {
+          "ALREADY_SUCCEEDED": 1
+        },
+        "refusedReasons": {
+          "Customer identity or plan not confirmed": 1
+        },
+        "sampleRefused": [
+          {
+            "externalPartyId": "UAT-000041",
+            "code": "ALREADY_SUCCEEDED",
+            "detail": "Customer identity or plan not confirmed"
+          }
+        ]
+      }
+    }
+  },
+  "persistence": {},
+  "counts": {
+    "before": {
+      "people": 35,
+      "companies": 25
+    },
+    "afterApply1": {
+      "people": 65,
+      "companies": 45,
+      "peopleDelta": 30,
+      "companiesDelta": 20
+    },
+    "mappingsAfterApply1": 100,
+    "afterApply2": {
+      "people": 65,
+      "companies": 45,
+      "peopleDeltaVsMid": 0,
+      "companiesDeltaVsMid": 0
+    }
+  },
+  "regression": {
+    "catalog": {
+      "success": true,
+      "summary": {
+        "linked": 0,
+        "unlinked": 31,
+        "blocked": 2,
+        "needsAttention": 6
+      }
+    },
+    "documents": {
+      "success": true,
+      "rows": 4
+    }
+  },
+  "previewFresh": {
+    "rowCount": 100,
+    "decisions": {
+      "IN_SYNC": 4,
+      "LINK_SUGGESTED": 48,
+      "NEEDS_CRM_RECORD": 48
+    },
+    "selectionCount": 100
+  },
+  "previewAfter": {
+    "rowCount": 100,
+    "decisions": {
+      "IN_SYNC": 100
+    }
+  },
+  "finishedAt": "2026-11-27T03:22:38.752Z"
+}

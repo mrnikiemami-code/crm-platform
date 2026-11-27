@@ -1,0 +1,39 @@
+{
+  "label": "existing",
+  "workspaceId": "afc7afb6-94ef-4142-872b-52a81b3e91dd",
+  "schema": "workspace_aemygqnvl0yhlv0fg3qwjt525",
+  "columns": [
+    {
+      "table_name": "_quotationSequence",
+      "column_name": "scopeKey",
+      "is_nullable": "NO",
+      "column_default": null,
+      "data_type": "text"
+    },
+    {
+      "table_name": "_quotationCustomerLink",
+      "column_name": "tokenHash",
+      "is_nullable": "NO",
+      "column_default": null,
+      "data_type": "text"
+    }
+  ],
+  "indexes": [
+    {
+      "index_name": "IDX_UNIQUE_2c2b6236eb8247c6aa34dd230a0",
+      "table_name": "_quotationSequence",
+      "column_name": "scopeKey",
+      "indisunique": true,
+      "indisprimary": false
+    },
+    {
+      "index_name": "IDX_UNIQUE_2d05888ee5b817eb64dbdeb9397",
+      "table_name": "_quotationCustomerLink",
+      "column_name": "tokenHash",
+      "indisunique": true,
+      "indisprimary": false
+    }
+  ],
+  "columnQueryError": null,
+  "indexQueryError": null
+}

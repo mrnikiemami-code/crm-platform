@@ -1,0 +1,39 @@
+{
+  "label": "fresh",
+  "errors": null,
+  "objectNames": [
+    "quotationSequence",
+    "quotationCustomerLink"
+  ],
+  "checks": {
+    "quotationSequence": {
+      "nameOk": true,
+      "typeOk": true,
+      "uniqueOk": true,
+      "nullableOk": true,
+      "defaultNullOk": true,
+      "universalIdOk": true,
+      "universalIdentifier": "2f19974c-36c1-56ae-a157-15ccd468772f",
+      "id": "182357a1-d186-4b4c-b605-e00058460510",
+      "defaultValue": null,
+      "type": "TEXT",
+      "isUnique": true,
+      "isNullable": false
+    },
+    "quotationCustomerLink": {
+      "nameOk": true,
+      "typeOk": true,
+      "uniqueOk": true,
+      "nullableOk": true,
+      "defaultNullOk": true,
+      "universalIdOk": true,
+      "universalIdentifier": "1c16db88-0015-5441-8ee5-599154e7d563",
+      "id": "c6098b8d-bfec-4ee6-b812-0d93f3e62e03",
+      "defaultValue": null,
+      "type": "TEXT",
+      "isUnique": true,
+      "isNullable": false
+    }
+  },
+  "allPass": true
+}

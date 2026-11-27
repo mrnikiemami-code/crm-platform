@@ -1,0 +1,221 @@
+{
+  "startedAt": "2026-11-27T03:19:42.578Z",
+  "schema": "workspace_cdf5hcf9jhvle5ny43t2hpkxx",
+  "workspaceId": "d0fdd306-57d6-4dba-8454-6088b5b6bf45",
+  "taxBefore": {
+    "success": true,
+    "count": 1
+  },
+  "currencyBefore": {
+    "success": true,
+    "count": 0
+  },
+  "currencyBootstrap": {
+    "success": true,
+    "code": null,
+    "message": "ارز پایهٔ ریال ساخته شد",
+    "count": 1
+  },
+  "personId": "7a93d1e5-3f74-4945-8a65-d7f996083f72",
+  "drafts": {
+    "d1": {
+      "success": true,
+      "quotationId": "09051c1f-617e-4f60-a6e2-b1bd5e990a18",
+      "code": null,
+      "message": "پیش‌نویس پیش‌فاکتور ذخیره شد"
+    },
+    "d2": {
+      "success": true,
+      "quotationId": "a55645d8-5156-4dd9-9dab-3925ce770450",
+      "code": null,
+      "message": "پیش‌نویس پیش‌فاکتور ذخیره شد"
+    },
+    "d3": {
+      "success": true,
+      "quotationId": "a1306673-33ee-4b2e-8355-1420a84898c2"
+    }
+  },
+  "concurrentAdvance": {
+    "a": {
+      "status": "READY_TO_SEND",
+      "number": "QT-1405-000001",
+      "stepsOk": true,
+      "steps": [
+        {
+          "toStatus": "PENDING_INTERNAL_APPROVAL",
+          "success": true,
+          "code": null,
+          "message": "ارسال برای تأیید انجام شد.",
+          "number": null,
+          "version": 2
+        },
+        {
+          "toStatus": "READY_TO_SEND",
+          "success": true,
+          "code": null,
+          "message": "تأیید و آماده ارسال انجام شد.",
+          "number": null,
+          "version": 3
+        }
+      ]
+    },
+    "b": {
+      "status": "READY_TO_SEND",
+      "number": "QT-1405-000002",
+      "stepsOk": true,
+      "steps": [
+        {
+          "toStatus": "PENDING_INTERNAL_APPROVAL",
+          "success": true,
+          "code": null,
+          "message": "ارسال برای تأیید انجام شد.",
+          "number": null,
+          "version": 2
+        },
+        {
+          "toStatus": "READY_TO_SEND",
+          "success": true,
+          "code": null,
+          "message": "تأیید و آماده ارسال انجام شد.",
+          "number": null,
+          "version": 3
+        }
+      ]
+    },
+    "distinctNumbers": true,
+    "neitherBlank": true
+  },
+  "sequential": {
+    "steps": [
+      {
+        "toStatus": "PENDING_INTERNAL_APPROVAL",
+        "success": true,
+        "code": null,
+        "message": "ارسال برای تأیید انجام شد.",
+        "number": null,
+        "version": 2
+      },
+      {
+        "toStatus": "READY_TO_SEND",
+        "success": true,
+        "code": null,
+        "message": "تأیید و آماده ارسال انجام شد.",
+        "number": null,
+        "version": 3
+      }
+    ],
+    "quotation": {
+      "id": "a1306673-33ee-4b2e-8355-1420a84898c2",
+      "status": "READY_TO_SEND",
+      "quotationNumber": "QT-1405-000003",
+      "version": 3
+    },
+    "errors": null
+  },
+  "customerLink": {
+    "quotationId": "09051c1f-617e-4f60-a6e2-b1bd5e990a18",
+    "draftBlocked": {
+      "success": false,
+      "code": "CUSTOMER_LINK_STATUS_FORBIDDEN",
+      "message": "فقط برای پیش‌فاکتورهای آماده ارسال یا ارسال‌شده می‌توان لینک ساخت.",
+      "expectedFail": true
+    },
+    "mint": {
+      "success": true,
+      "code": null,
+      "message": "لینک مشتری صادر شد. این لینک را فقط یک‌بار کپی کنید.",
+      "linkId": "05eb9642-b4eb-4822-b201-46479688ec1f",
+      "rawTokenPresent": true,
+      "rawTokenLength": 43,
+      "viewUrlPresent": true,
+      "hashPrefix": "0d384117b05b"
+    },
+    "validRead": {
+      "httpStatus": 404,
+      "hasPayable": false,
+      "echoedToken": false
+    },
+    "stored": {
+      "id": "05eb9642-b4eb-4822-b201-46479688ec1f",
+      "hashMatches": true,
+      "hasExpiresAt": true,
+      "revokedAt": null
+    },
+    "revoke": {
+      "success": true,
+      "code": null,
+      "message": "لینک مشتری لغو شد."
+    },
+    "afterRevoke": {
+      "httpStatus": 404,
+      "hasRevokeCopy": false
+    },
+    "expiryMint": {
+      "success": true,
+      "linkId": "16fbbd4c-de55-44a0-884e-de27e6d4996b",
+      "rawTokenPresent": true
+    },
+    "forceExpiry": {
+      "ok": true,
+      "errors": null
+    },
+    "afterExpiry": {
+      "httpStatus": 404,
+      "hasExpiryCopy": false
+    },
+    "anonymousMint": {
+      "status": 403,
+      "unauthorized": true
+    }
+  },
+  "sequences": {
+    "count": 1,
+    "rows": [
+      {
+        "scopeKey": "QUOTATION:1405",
+        "lastIssued": 3,
+        "width": 6,
+        "blankKey": false
+      }
+    ],
+    "errors": null
+  },
+  "pgNullInsert": {
+    "stdout": "BEGIN\nDO\nROLLBACK\nnull-refused-ok",
+    "stderr": "",
+    "exitCode": 0,
+    "refusedOk": true
+  },
+  "pgDuplicateInsert": {
+    "stdout": "BEGIN\nDO\nROLLBACK\ndup-refused-ok",
+    "stderr": "",
+    "exitCode": 0,
+    "refusedOk": true
+  },
+  "pgLeftoverTestRows": "0",
+  "finishedAt": "2026-11-27T03:19:43.622Z",
+  "customerLinkPublicReprobe": {
+    "quotationId": "09051c1f-617e-4f60-a6e2-b1bd5e990a18",
+    "hashPrefix": "a0784f5fc25c",
+    "usedHost": "p083mwyesfva.localhost:3002",
+    "valid": {
+      "httpStatus": 200,
+      "hasPayable": true,
+      "echoedToken": false,
+      "snippet": "<!DOCTYPE html> <html lang=\"fa\" dir=\"rtl\"> <head> <meta charset=\"utf-8\" /> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /> <title>084-num-A-1795749582644</ti"
+    },
+    "revoke": {
+      "success": true
+    },
+    "afterRevoke": {
+      "httpStatus": 410,
+      "hasRevokeCopy": true,
+      "snippet": "<!DOCTYPE html> <html lang=\"fa\" dir=\"rtl\"> <head> <meta charset=\"utf-8\" /> <meta name=\"viewport\" content=\"width=device-w"
+    },
+    "afterExpiry": {
+      "httpStatus": 410,
+      "hasExpiryCopy": true,
+      "snippet": "<!DOCTYPE html> <html lang=\"fa\" dir=\"rtl\"> <head> <meta charset=\"utf-8\" /> <meta name=\"viewport\" content=\"width=device-w"
+    }
+  }
+}
