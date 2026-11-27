@@ -1,4 +1,5 @@
 import { forwardRef, type CSSProperties, type ReactNode, type ElementType } from 'react';
+import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { SettingsPaginationControls } from '@/settings/components/SettingsPaginationControls';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableBody } from '@/ui/layout/table/components/TableBody';
@@ -8,9 +9,9 @@ import { TableCell } from '@/ui/layout/table/components/TableCell';
 
 type Props = { children?: ReactNode; style?: CSSProperties; id?: string; title?: string; 'aria-label'?: string; 'data-connection-id'?: string; 'data-default'?: string; onClick?: (event: unknown) => void; colSpan?: number | string; };
 const NativeTable = forwardRef<HTMLDivElement, Props>(({ children, style, ...props }, ref) => <Table ref={ref} role="table" aria-label={props['aria-label']} style={{ minWidth: style?.minWidth }}>{children}</Table>);
-const NativeHead = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <div ref={ref} role="rowgroup" style={{ position: 'sticky', top: 0, background: 'var(--t-background-primary)', zIndex: 1 }}>{children}</div>);
+const NativeHead = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <div ref={ref} role="rowgroup" style={{ position: 'sticky', top: 0, background: themeCssVariables.background.primary, zIndex: 1 }}>{children}</div>);
 const NativeBody = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <TableBody ref={ref} role="rowgroup">{children}</TableBody>);
-const NativeRow = forwardRef<HTMLDivElement, Props>(({ children, style, ...props }, ref) => <TableRow ref={ref} id={props.id} role="row" data-connection-id={props['data-connection-id']} data-default={props['data-default']} gridTemplateColumns={style?.gridTemplateColumns} style={style}>{children}</TableRow>);
+const NativeRow = forwardRef<HTMLDivElement, Props>(({ children, style, ...props }, ref) => <TableRow ref={ref} id={props.id} role="row" dataAttributes={{ ...(typeof props['data-connection-id'] === 'string' ? { 'data-connection-id': props['data-connection-id'] } : {}), ...(typeof props['data-default'] === 'string' ? { 'data-default': props['data-default'] } : {}) }} gridTemplateColumns={style?.gridTemplateColumns} style={style}>{children}</TableRow>);
 const NativeHeader = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <TableHeader ref={ref} role="columnheader">{children}</TableHeader>);
 const NativeCell = forwardRef<HTMLDivElement, Props>(({ children, style, colSpan }, ref) => <TableCell ref={ref} role="cell" height="auto" minWidth="0" style={{ minHeight: 32, direction: style?.direction, gridColumn: Number(colSpan) > 1 ? 'span ' + Number(colSpan) : undefined }}>{children}</TableCell>);
 

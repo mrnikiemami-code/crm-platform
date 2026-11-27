@@ -1,7 +1,9 @@
+import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useMemo, useState } from 'react';
 
 import {
   Badge,
+  Pager,
   Card,
   EmptyState,
   InlineAlert,
@@ -79,6 +81,8 @@ export const AccountingConnectionsSection = ({
   onTest: () => void;
   onStartNew: () => void;
 }) => {
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [query, setQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -111,6 +115,9 @@ export const AccountingConnectionsSection = ({
 
     return [...defaults, ...rest];
   }, [filtered]);
+
+  const currentPage = Math.min(pageNumber, Math.max(1, Math.ceil(ordered.length / pageSize)));
+  const pageRows = ordered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (view === 'form') {
     return (
@@ -153,7 +160,7 @@ export const AccountingConnectionsSection = ({
             label="جست‌وجو در اتصال‌ها"
             value={query}
             placeholder="نام اتصال یا نرم‌افزار"
-            onChange={setQuery}
+            onChange={(value) => { setQuery(value); setPageNumber(1); setOpenMenuId(null); }}
           />
         </div>
         <PrimaryButton
@@ -183,30 +190,30 @@ export const AccountingConnectionsSection = ({
         />
       ) : (
         <Card>
-          <div style={{ overflowX: 'auto' }}>
-            <table
+          <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+            <NativeSettingsTable columns="minmax(120px, 1fr) minmax(160px, 1.4fr) minmax(100px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr) 90px"
               aria-label="اتصال‌های حسابداری"
               style={{ ...styles.table, minWidth: '760px' }}
             >
-              <thead>
-                <tr>
-                  <th style={styles.cell}>نرم‌افزار حسابداری</th>
-                  <th style={styles.cell}>نام اتصال</th>
-                  <th style={styles.cell}>وضعیت</th>
-                  <th style={styles.cell}>آخرین آزمایش</th>
-                  <th style={styles.cell}>اتصال پیش‌فرض</th>
-                  <th style={styles.cell}>عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ordered.map((entry) => {
+              <NativeSettingsHead>
+                <NativeSettingsRow>
+                  <NativeSettingsHeader style={styles.cell}>نرم‌افزار حسابداری</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>نام اتصال</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>وضعیت</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>آخرین آزمایش</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>اتصال پیش‌فرض</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>عملیات</NativeSettingsHeader>
+                </NativeSettingsRow>
+              </NativeSettingsHead>
+              <NativeSettingsBody>
+                {pageRows.map((entry) => {
                   const health = connectionHealthState(entry);
                   const isWorkspaceDefault =
                     entry.isDefault === true && entry.isActive === true;
                   const lastCheck = formatHealthCheckAt(entry.lastHealthCheckAt);
 
                   return (
-                    <tr
+                    <NativeSettingsRow
                       key={entry.id}
                       data-connection-id={entry.id}
                       data-default={isWorkspaceDefault ? 'true' : 'false'}
@@ -219,14 +226,14 @@ export const AccountingConnectionsSection = ({
                           : undefined
                       }
                     >
-                      <td style={styles.cell}>
+                      <NativeSettingsCell style={styles.cell}>
                         {adapterDisplayLabel(
                           data.adapters.find(
                             (adapter) => adapter.id === entry.adapterId,
                           ),
                         )}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         <span style={{ display: 'block', fontWeight: 600 }}>
                           {entry.name}
                         </span>
@@ -235,23 +242,23 @@ export const AccountingConnectionsSection = ({
                         ) : (
                           <Badge tone="info">فعال</Badge>
                         )}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         <Badge tone={healthTone(health)}>
                           {CONNECTION_HEALTH_LABELS[health]}
                         </Badge>
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         {lastCheck ?? '—'}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         {isWorkspaceDefault ? (
                           <Badge tone="success">پیش‌فرض</Badge>
                         ) : (
                           '—'
                         )}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         <RowMenu
                           label={`عملیات ${entry.name}`}
                           open={openMenuId === entry.id}
@@ -306,20 +313,26 @@ export const AccountingConnectionsSection = ({
                                 },
                           ]}
                         />
-                      </td>
-                    </tr>
+                      </NativeSettingsCell>
+                    </NativeSettingsRow>
                   );
                 })}
                 {ordered.length === 0 ? (
-                  <tr>
-                    <td style={styles.cell} colSpan={6}>
+                  <NativeSettingsRow>
+                    <NativeSettingsCell style={styles.cell} colSpan={6}>
                       {`اتصالی با «${query}» پیدا نشد.`}
-                    </td>
-                  </tr>
+                    </NativeSettingsCell>
+                  </NativeSettingsRow>
                 ) : null}
-              </tbody>
-            </table>
+              </NativeSettingsBody>
+            </NativeSettingsTable>
           </div>
+          <Pager pageNumber={currentPage} totalKnown={ordered.length} pageSize={pageSize} rowCount={pageRows.length}
+            busy={busy} hasPreviousPage={currentPage > 1} hasNextPage={currentPage * pageSize < ordered.length}
+            onNext={() => { setPageNumber(currentPage + 1); setOpenMenuId(null); }}
+            onPrevious={() => { setPageNumber(currentPage - 1); setOpenMenuId(null); }}
+            onPageChange={(next) => { setPageNumber(next); setOpenMenuId(null); }}
+            onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); setOpenMenuId(null); }} />
         </Card>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
@@ -561,25 +562,25 @@ export const AccountingCustomerSection = ({
 
       {page !== null ? (
         <>
-          <div style={{ overflowX: 'auto' }}>
-            <table
+          <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+            <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(150px, 1.5fr) minmax(110px, 1fr) minmax(100px, 1fr) minmax(140px, 1.2fr) minmax(100px, 1fr)"
               aria-label="مشتریان نرم‌افزار حسابداری"
               style={{ ...styles.table, minWidth: '720px' }}
             >
-              <thead>
-                <tr>
-                  <th style={styles.cell}>
+              <NativeSettingsHead>
+                <NativeSettingsRow>
+                  <NativeSettingsHeader style={styles.cell}>
                     <input type="checkbox" aria-label="انتخاب مشتریان این صفحه" checked={allPageSelected} disabled={!canManage || applying || pageSelectable.length === 0} onChange={togglePage} />
-                  </th>
-                  <th style={styles.cell}>شناسه حسابداری</th>
-                  <th style={styles.cell}>نام مشتری</th>
-                  <th style={styles.cell}>کد ملی یا شناسه ملی</th>
-                  <th style={styles.cell}>مشتری CRM</th>
-                  <th style={styles.cell}>وضعیت</th>
-                  <th style={styles.cell}>عملیات نگاشت</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>شناسه حسابداری</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>نام مشتری</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>کد ملی یا شناسه ملی</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>مشتری CRM</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>وضعیت</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>عملیات نگاشت</NativeSettingsHeader>
+                </NativeSettingsRow>
+              </NativeSettingsHead>
+              <NativeSettingsBody>
                 {visibleRows.map((row) => {
                   const selection = selected.get(row.externalPartyId);
                   const linked =
@@ -588,8 +589,8 @@ export const AccountingCustomerSection = ({
                   const canCheck = !deletedCustomer && (isAutoTransferable(row) || selection !== undefined);
 
                   return (
-                    <tr key={row.externalPartyId}>
-                      <td style={styles.cell}>
+                    <NativeSettingsRow key={row.externalPartyId}>
+                      <NativeSettingsCell style={styles.cell}>
                         <input
                           type="checkbox"
                           checked={selection !== undefined}
@@ -597,29 +598,29 @@ export const AccountingCustomerSection = ({
                           aria-label={`انتخاب ${row.fullName}`}
                           onChange={() => toggleRow(row)}
                         />
-                      </td>
-                      <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
                         {row.externalPartyId}
-                      </td>
-                      <td style={styles.cell}>{row.fullName}</td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>{row.fullName}</NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         {row.nationalCode === null ? '—' : row.nationalCode}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         {selection === undefined
                           ? linked
                             ? 'وصل‌شده'
                             : '—'
                           : selection.label}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         <Badge tone={deletedCustomer ? 'warning' : partyStatusTone(row.decision)}>
                           {deletedCustomer ? 'مشتری حذف‌شده؛ بررسی در CRM' : (PARTY_STATUS_LABELS[row.decision] ??
                             DECISION_LABELS[row.decision] ??
                             row.decision)}
                         </Badge>
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         {deletedCustomer || linked || isAutoTransferable(row) ? (
                           '—'
                         ) : row.decision === 'DUPLICATE_REMOTE_CODE' ? (
@@ -633,12 +634,12 @@ export const AccountingCustomerSection = ({
                             onClick={() => openPicker(row.externalPartyId)}
                           />
                         )}
-                      </td>
-                    </tr>
+                      </NativeSettingsCell>
+                    </NativeSettingsRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </NativeSettingsBody>
+            </NativeSettingsTable>
           </div>
 
           {visibleRows.length === 0 ? (
@@ -652,6 +653,7 @@ export const AccountingCustomerSection = ({
             />
           ) : null}
 
+          {filter !== 'ALL' ? <span style={styles.meta}>فیلتر وضعیت فقط روی این صفحه اعمال می‌شود؛ تعداد و صفحه‌بندی بر اساس کل نتیجهٔ جست‌وجو است.</span> : null}
           <Pager
             pageNumber={pageIndex + 1}
             totalKnown={page.totalKnown}

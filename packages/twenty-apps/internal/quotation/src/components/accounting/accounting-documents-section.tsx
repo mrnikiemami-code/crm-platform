@@ -1,3 +1,4 @@
+import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
@@ -7,6 +8,7 @@ import {
 } from 'src/components/quotation-api';
 import {
   Badge,
+  Pager,
   EmptyState,
   InlineAlert,
   PrimaryButton,
@@ -128,6 +130,8 @@ export const AccountingDocumentsSection = ({
   onFixTax?: () => void;
   onTestConnection?: () => void;
 }) => {
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [tab, setTab] = useState<QueueTab>('PENDING');
   const [rows, setRows] = useState<ExportableRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -204,13 +208,17 @@ export const AccountingDocumentsSection = ({
     });
   }, [rows, tab, submittedSearch]);
 
+  const currentPage = Math.min(pageNumber, Math.max(1, Math.ceil(visibleRows.length / pageSize)));
+  const pageRows = useMemo(() => visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize), [visibleRows, currentPage, pageSize]);
+  useEffect(() => { setPageNumber(1); }, [connectionId, tab, submittedSearch, reloadToken]);
+
   const selectableRows = useMemo(
     () =>
-      visibleRows.filter(
+      pageRows.filter(
         (row) =>
           row.sendState === 'PENDING' || row.sendState === 'FAILED',
       ),
-    [visibleRows],
+    [pageRows],
   );
 
   const allSelected =
@@ -444,14 +452,14 @@ export const AccountingDocumentsSection = ({
         <StateBlock state="loading" title="در حال خواندن صف اسناد…" description="" />
       ) : null}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table
+      <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+        <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(100px, 1fr) minmax(130px, 1.3fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr)"
           aria-label="صف اسناد حسابداری"
           style={{ ...styles.table, minWidth: '760px' }}
         >
-          <thead>
-            <tr>
-              <th style={styles.cell}>
+          <NativeSettingsHead>
+            <NativeSettingsRow>
+              <NativeSettingsHeader style={styles.cell}>
                 {tab === 'PENDING' ? (
                   <input
                     type="checkbox"
@@ -459,21 +467,21 @@ export const AccountingDocumentsSection = ({
                     disabled={
                       !canManage || selectableRows.length === 0 || sending || outboundDisabled
                     }
-                    aria-label="انتخاب همه اسناد مجاز"
+                    aria-label="انتخاب همه اسناد مجاز این صفحه"
                     onChange={togglePage}
                   />
                 ) : null}
-              </th>
-              <th style={styles.cell}>شماره پیش‌فاکتور</th>
-              <th style={styles.cell}>تاریخ صدور</th>
-              <th style={styles.cell}>مشتری</th>
-              <th style={styles.cell}>مبلغ کل</th>
-              <th style={styles.cell}>وضعیت ارسال</th>
-              <th style={styles.cell}>عملیات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleRows.map((row) => {
+              </NativeSettingsHeader>
+              <NativeSettingsHeader style={styles.cell}>شماره پیش‌فاکتور</NativeSettingsHeader>
+              <NativeSettingsHeader style={styles.cell}>تاریخ صدور</NativeSettingsHeader>
+              <NativeSettingsHeader style={styles.cell}>مشتری</NativeSettingsHeader>
+              <NativeSettingsHeader style={styles.cell}>مبلغ کل</NativeSettingsHeader>
+              <NativeSettingsHeader style={styles.cell}>وضعیت ارسال</NativeSettingsHeader>
+              <NativeSettingsHeader style={styles.cell}>عملیات</NativeSettingsHeader>
+            </NativeSettingsRow>
+          </NativeSettingsHead>
+          <NativeSettingsBody>
+            {pageRows.map((row) => {
               const checked = selected.has(row.quotationId);
               const canSend =
                 row.sendState === 'PENDING' || row.sendState === 'FAILED';
@@ -483,8 +491,8 @@ export const AccountingDocumentsSection = ({
                   : formatExactAmountWithCurrency(row.totalExact, 'IRR');
 
               return (
-                <tr key={row.quotationId}>
-                  <td style={styles.cell}>
+                <NativeSettingsRow key={row.quotationId}>
+                  <NativeSettingsCell style={styles.cell}>
                     {tab === 'PENDING' ? (
                       <input
                         type="checkbox"
@@ -504,12 +512,12 @@ export const AccountingDocumentsSection = ({
                         }}
                       />
                     ) : null}
-                  </td>
-                  <td style={styles.cell}>{row.quotationNumber}</td>
-                  <td style={styles.cell}>{formatIssuedAt(row.issuedAt)}</td>
-                  <td style={styles.cell}>{row.customerName}</td>
-                  <td style={styles.cell}>{amount}</td>
-                  <td style={styles.cell}>
+                  </NativeSettingsCell>
+                  <NativeSettingsCell style={styles.cell}>{row.quotationNumber}</NativeSettingsCell>
+                  <NativeSettingsCell style={styles.cell}>{formatIssuedAt(row.issuedAt)}</NativeSettingsCell>
+                  <NativeSettingsCell style={styles.cell}>{row.customerName}</NativeSettingsCell>
+                  <NativeSettingsCell style={styles.cell}>{amount}</NativeSettingsCell>
+                  <NativeSettingsCell style={styles.cell}>
                     <Badge
                       tone={
                         row.sendState === 'SENT'
@@ -534,8 +542,8 @@ export const AccountingDocumentsSection = ({
                         {row.lastErrorCode}
                       </span>
                     )}
-                  </td>
-                  <td style={styles.cell}>
+                  </NativeSettingsCell>
+                  <NativeSettingsCell style={styles.cell}>
                     {tab === 'PENDING' && canSend ? (
                       <SecondaryButton
                         label="ارسال"
@@ -547,13 +555,18 @@ export const AccountingDocumentsSection = ({
                     ) : (
                       '—'
                     )}
-                  </td>
-                </tr>
+                  </NativeSettingsCell>
+                </NativeSettingsRow>
               );
             })}
-          </tbody>
-        </table>
+          </NativeSettingsBody>
+        </NativeSettingsTable>
       </div>
+      <Pager pageNumber={currentPage} totalKnown={visibleRows.length} pageSize={pageSize}
+        rowCount={pageRows.length} busy={loading || sending} hasPreviousPage={currentPage > 1}
+        hasNextPage={currentPage * pageSize < visibleRows.length} onNext={() => setPageNumber(currentPage + 1)}
+        onPrevious={() => setPageNumber(currentPage - 1)} onPageChange={setPageNumber}
+        onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }} />
 
       {visibleRows.length === 0 && !loading ? (
         <EmptyState

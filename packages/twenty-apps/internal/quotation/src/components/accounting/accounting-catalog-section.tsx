@@ -1,3 +1,4 @@
+import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
@@ -522,14 +523,14 @@ export const AccountingCatalogSection = ({
 
       {page !== null ? (
         <>
-          <div style={{ overflowX: 'auto' }}>
-            <table
+          <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+            <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(160px, 1.5fr) minmax(110px, 1fr) minmax(140px, 1.3fr) minmax(120px, 1fr)"
               aria-label="کالاهای نرم‌افزار حسابداری"
               style={{ ...styles.table, minWidth: '720px' }}
             >
-              <thead>
-                <tr>
-                  <th style={styles.cell}>
+              <NativeSettingsHead>
+                <NativeSettingsRow>
+                  <NativeSettingsHeader style={styles.cell}>
                     <input
                       type="checkbox"
                       checked={allPageSelected}
@@ -537,15 +538,15 @@ export const AccountingCatalogSection = ({
                       aria-label="انتخاب همه کالاهای مجاز این صفحه"
                       onChange={togglePageSelection}
                     />
-                  </th>
-                  <th style={styles.cell}>کد کالا</th>
-                  <th style={styles.cell}>نام کالا</th>
-                  <th style={styles.cell}>قیمت حسابداری</th>
-                  <th style={styles.cell}>کالای CRM</th>
-                  <th style={styles.cell}>وضعیت</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>کد کالا</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>نام کالا</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>قیمت حسابداری</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>کالای CRM</NativeSettingsHeader>
+                  <NativeSettingsHeader style={styles.cell}>وضعیت</NativeSettingsHeader>
+                </NativeSettingsRow>
+              </NativeSettingsHead>
+              <NativeSettingsBody>
                 {visibleRows.map((row) => {
                   const checked = selected.has(row.externalItemId);
                   const selectable = isSelectableItem(row);
@@ -555,8 +556,8 @@ export const AccountingCatalogSection = ({
                       : `${formatMicrosForDisplay(row.priceMicros)} ${moneyUnitLabel}`;
 
                   return (
-                    <tr key={row.externalItemId}>
-                      <td style={styles.cell}>
+                    <NativeSettingsRow key={row.externalItemId}>
+                      <NativeSettingsCell style={styles.cell}>
                         <input
                           type="checkbox"
                           checked={checked}
@@ -564,29 +565,29 @@ export const AccountingCatalogSection = ({
                           aria-label={`انتخاب ${row.name}`}
                           onChange={() => toggleSelection(row)}
                         />
-                      </td>
-                      <td style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
                         {row.code}
-                      </td>
-                      <td style={styles.cell}>{row.name}</td>
-                      <td style={styles.cell}>{priceLabel}</td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>{row.name}</NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>{priceLabel}</NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         {row.suggestedInternalItemName === null
                           ? '—'
                           : row.suggestedInternalItemName}
-                      </td>
-                      <td style={styles.cell}>
+                      </NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
                         <Badge tone={itemStatusTone(row.decision)}>
                           {ITEM_STATUS_LABELS[row.decision] ??
                             DECISION_LABELS[row.decision] ??
                             row.decision}
                         </Badge>
-                      </td>
-                    </tr>
+                      </NativeSettingsCell>
+                    </NativeSettingsRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </NativeSettingsBody>
+            </NativeSettingsTable>
           </div>
 
           {visibleRows.length === 0 ? (
@@ -600,6 +601,7 @@ export const AccountingCatalogSection = ({
             />
           ) : null}
 
+          {rowFilter !== 'ALL' ? <span style={styles.meta}>فیلتر وضعیت فقط روی این صفحه اعمال می‌شود؛ تعداد و صفحه‌بندی بر اساس کل نتیجهٔ جست‌وجو است.</span> : null}
           <Pager
             pageNumber={pageIndex + 1}
             totalKnown={page.totalKnown}

@@ -58,8 +58,7 @@ const StyledTableRow = styled.div<{
 type TableRowProps = {
   id?: string;
   role?: 'row';
-  'data-connection-id'?: string;
-  'data-default'?: string;
+  dataAttributes?: Record<`data-${string}`, string>;
   isSelected?: boolean;
   isExpanded?: boolean;
   isClickable?: boolean;
@@ -80,8 +79,7 @@ type TableRowProps = {
 export const TableRow = forwardRef<HTMLDivElement, React.PropsWithChildren<TableRowProps>>(({
   id,
   role,
-  'data-connection-id': connectionId,
-  'data-default': defaultConnection,
+  dataAttributes,
   isSelected,
   isExpanded,
   isClickable,
@@ -103,8 +101,7 @@ export const TableRow = forwardRef<HTMLDivElement, React.PropsWithChildren<Table
     id={id}
     ref={ref}
     role={role}
-    data-connection-id={connectionId}
-    data-default={defaultConnection}
+    {...dataAttributes}
     isSelected={isSelected}
     isExpanded={isExpanded}
     onClick={onClick}

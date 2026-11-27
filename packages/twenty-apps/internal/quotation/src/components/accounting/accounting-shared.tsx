@@ -1,3 +1,4 @@
+import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { type CSSProperties, type ReactNode } from 'react';
 
 import { type QuotationDocumentPreview } from 'src/domain/accounting/document-preview';
@@ -1126,22 +1127,22 @@ export const CapabilityTable = ({ connection }: { connection: ConnectionRecord }
       قابلیت‌ها پس از ذخیرهٔ اتصال و بارگذاری مجدد نمایش داده می‌شوند.
     </p>
   ) : (
-    <table aria-label="قابلیت‌های این اتصال" style={sharedStyles.table}>
-      <thead>
-        <tr>
-          <th style={sharedStyles.cell}>قابلیت</th>
-          <th style={sharedStyles.cell}>وضعیت</th>
-        </tr>
-      </thead>
-      <tbody>
+    <NativeSettingsTable columns="repeat(2, minmax(0, 1fr))" aria-label="قابلیت‌های این اتصال" style={sharedStyles.table}>
+      <NativeSettingsHead>
+        <NativeSettingsRow>
+          <NativeSettingsHeader style={sharedStyles.cell}>قابلیت</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>وضعیت</NativeSettingsHeader>
+        </NativeSettingsRow>
+      </NativeSettingsHead>
+      <NativeSettingsBody>
         {connection.capabilityRows.map((row) => (
-          <tr key={`${row.area}-${row.key}`}>
-            <td style={sharedStyles.cell}>{row.label}</td>
-            <td style={sharedStyles.cell}>{row.value}</td>
-          </tr>
+          <NativeSettingsRow key={`${row.area}-${row.key}`}>
+            <NativeSettingsCell style={sharedStyles.cell}>{row.label}</NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>{row.value}</NativeSettingsCell>
+          </NativeSettingsRow>
         ))}
-      </tbody>
-    </table>
+      </NativeSettingsBody>
+    </NativeSettingsTable>
   );
 
 // Exact micros text with the six-digit fraction removed only when it is zero, so a nonzero
@@ -1171,24 +1172,24 @@ export const DocumentPreviewPanel = ({
         preview.outboundEnabled ? 'فعال' : 'خاموش (همین نسخه)'
       } — ثبت سند مالی: ${preview.documentExportEnabled ? 'فعال' : 'خاموش'}`}
     </p>
-    <table aria-label="بررسی‌های آمادگی سند" style={sharedStyles.table}>
-      <thead>
-        <tr>
-          <th style={sharedStyles.cell}>بررسی</th>
-          <th style={sharedStyles.cell}>نتیجه</th>
-        </tr>
-      </thead>
-      <tbody>
+    <NativeSettingsTable columns="repeat(2, minmax(0, 1fr))" aria-label="بررسی‌های آمادگی سند" style={sharedStyles.table}>
+      <NativeSettingsHead>
+        <NativeSettingsRow>
+          <NativeSettingsHeader style={sharedStyles.cell}>بررسی</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>نتیجه</NativeSettingsHeader>
+        </NativeSettingsRow>
+      </NativeSettingsHead>
+      <NativeSettingsBody>
         {preview.checks.map((check) => (
-          <tr key={check.code}>
-            <td style={sharedStyles.cell}>
+          <NativeSettingsRow key={check.code}>
+            <NativeSettingsCell style={sharedStyles.cell}>
               {DOCUMENT_CHECK_LABELS[check.code] ?? check.code}
-            </td>
-            <td style={sharedStyles.cell}>{check.ok ? 'برقرار' : 'نقص دارد'}</td>
-          </tr>
+            </NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>{check.ok ? 'برقرار' : 'نقص دارد'}</NativeSettingsCell>
+          </NativeSettingsRow>
         ))}
-      </tbody>
-    </table>
+      </NativeSettingsBody>
+    </NativeSettingsTable>
 
     {preview.warnings.length === 0 ? null : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1200,36 +1201,36 @@ export const DocumentPreviewPanel = ({
       </div>
     )}
 
-    <p style={sharedStyles.subtitle}>نگاشت ردیف‌های سند</p>    <table aria-label="نگاشت ردیف‌های سند" style={sharedStyles.table}>
-      <thead>
-        <tr>
-          <th style={sharedStyles.cell}>شرح</th>
-          <th style={sharedStyles.cell}>کد کالای مقصد</th>
-          <th style={sharedStyles.cell}>تعداد</th>
-          <th style={sharedStyles.cell}>مبلغ ردیف</th>
-          <th style={sharedStyles.cell}>مالیات</th>
-          <th style={sharedStyles.cell}>وضعیت</th>
-        </tr>
-      </thead>
-      <tbody>
+    <p style={sharedStyles.subtitle}>نگاشت ردیف‌های سند</p>    <NativeSettingsTable columns="repeat(6, minmax(0, 1fr))" aria-label="نگاشت ردیف‌های سند" style={sharedStyles.table}>
+      <NativeSettingsHead>
+        <NativeSettingsRow>
+          <NativeSettingsHeader style={sharedStyles.cell}>شرح</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>کد کالای مقصد</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>تعداد</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>مبلغ ردیف</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>مالیات</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>وضعیت</NativeSettingsHeader>
+        </NativeSettingsRow>
+      </NativeSettingsHead>
+      <NativeSettingsBody>
         {preview.lines.map((line) => (
-          <tr key={line.lineId}>
-            <td style={sharedStyles.cell}>{line.description}</td>
-            <td style={{ ...sharedStyles.cell, direction: 'ltr' }}>
+          <NativeSettingsRow key={line.lineId}>
+            <NativeSettingsCell style={sharedStyles.cell}>{line.description}</NativeSettingsCell>
+            <NativeSettingsCell style={{ ...sharedStyles.cell, direction: 'ltr' }}>
               {line.externalItemId ?? '—'}
-            </td>
-            <td style={sharedStyles.cell}>{line.quantity ?? '—'}</td>
-            <td style={sharedStyles.cell}>{displayExact(line.totalMicros)}</td>
-            <td style={sharedStyles.cell}>{displayExact(line.taxMicros)}</td>
-            <td style={sharedStyles.cell}>
+            </NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>{line.quantity ?? '—'}</NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>{displayExact(line.totalMicros)}</NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>{displayExact(line.taxMicros)}</NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>
               {line.problem === null
                 ? 'نگاشت شده'
                 : WARNING_LABELS[line.problem] ?? line.problem}
-            </td>
-          </tr>
+            </NativeSettingsCell>
+          </NativeSettingsRow>
         ))}
-      </tbody>
-    </table>
+      </NativeSettingsBody>
+    </NativeSettingsTable>
 
     {preview.document === null ? (
       <p style={sharedStyles.warning}>
@@ -1247,30 +1248,30 @@ export const DocumentPreviewPanel = ({
             preview.document.FactorNumber
           })`}
         </p>
-        <table aria-label="ردیف‌های سند حسابداری" style={sharedStyles.table}>
-          <thead>
-            <tr>
-              <th style={sharedStyles.cell}>کد کالا</th>
-              <th style={sharedStyles.cell}>تعداد</th>
-              <th style={sharedStyles.cell}>مبلغ</th>
-              <th style={sharedStyles.cell}>انبار</th>
-              <th style={sharedStyles.cell}>شرح</th>
-            </tr>
-          </thead>
-          <tbody>
+        <NativeSettingsTable columns="repeat(5, minmax(0, 1fr))" aria-label="ردیف‌های سند حسابداری" style={sharedStyles.table}>
+          <NativeSettingsHead>
+            <NativeSettingsRow>
+              <NativeSettingsHeader style={sharedStyles.cell}>کد کالا</NativeSettingsHeader>
+              <NativeSettingsHeader style={sharedStyles.cell}>تعداد</NativeSettingsHeader>
+              <NativeSettingsHeader style={sharedStyles.cell}>مبلغ</NativeSettingsHeader>
+              <NativeSettingsHeader style={sharedStyles.cell}>انبار</NativeSettingsHeader>
+              <NativeSettingsHeader style={sharedStyles.cell}>شرح</NativeSettingsHeader>
+            </NativeSettingsRow>
+          </NativeSettingsHead>
+          <NativeSettingsBody>
             {preview.document.FactorDetails.map((detail, index) => (
-              <tr key={`${detail.ProductID}-${index}`}>
-                <td style={{ ...sharedStyles.cell, direction: 'ltr' }}>
+              <NativeSettingsRow key={`${detail.ProductID}-${index}`}>
+                <NativeSettingsCell style={{ ...sharedStyles.cell, direction: 'ltr' }}>
                   {detail.ProductID}
-                </td>
-                <td style={sharedStyles.cell}>{detail.Count}</td>
-                <td style={sharedStyles.cell}>{detail.Price}</td>
-                <td style={sharedStyles.cell}>{detail.StorageID}</td>
-                <td style={sharedStyles.cell}>{detail.Description ?? '—'}</td>
-              </tr>
+                </NativeSettingsCell>
+                <NativeSettingsCell style={sharedStyles.cell}>{detail.Count}</NativeSettingsCell>
+                <NativeSettingsCell style={sharedStyles.cell}>{detail.Price}</NativeSettingsCell>
+                <NativeSettingsCell style={sharedStyles.cell}>{detail.StorageID}</NativeSettingsCell>
+                <NativeSettingsCell style={sharedStyles.cell}>{detail.Description ?? '—'}</NativeSettingsCell>
+              </NativeSettingsRow>
             ))}
-          </tbody>
-        </table>
+          </NativeSettingsBody>
+        </NativeSettingsTable>
         <p style={sharedStyles.notice}>
           این سند فقط پیش‌نمایش در حافظه است؛ هیچ درخواستی به آسان یا سپیدار
           فرستاده نشده و ثبت واقعی سند مالی در این نسخه غیرفعال است.
@@ -1284,28 +1285,28 @@ export const OperationTable = ({ operations }: { operations: OperationRow[] }) =
   operations.length === 0 ? (
     <p style={sharedStyles.meta}>عملیاتی ثبت نشده است.</p>
   ) : (
-    <table aria-label="سوابق عملیات حسابداری" style={sharedStyles.table}>
-      <thead>
-        <tr>
-          <th style={sharedStyles.cell}>نوع</th>
-          <th style={sharedStyles.cell}>وضعیت</th>
-          <th style={sharedStyles.cell}>تلاش</th>
-          <th style={sharedStyles.cell}>شناسهٔ سند مقصد</th>
-        </tr>
-      </thead>
-      <tbody>
+    <NativeSettingsTable columns="repeat(4, minmax(0, 1fr))" aria-label="سوابق عملیات حسابداری" style={sharedStyles.table}>
+      <NativeSettingsHead>
+        <NativeSettingsRow>
+          <NativeSettingsHeader style={sharedStyles.cell}>نوع</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>وضعیت</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>تلاش</NativeSettingsHeader>
+          <NativeSettingsHeader style={sharedStyles.cell}>شناسهٔ سند مقصد</NativeSettingsHeader>
+        </NativeSettingsRow>
+      </NativeSettingsHead>
+      <NativeSettingsBody>
         {operations.map((operation) => (
-          <tr key={operation.id}>
-            <td style={sharedStyles.cell}>{operation.kind}</td>
-            <td style={sharedStyles.cell}>
+          <NativeSettingsRow key={operation.id}>
+            <NativeSettingsCell style={sharedStyles.cell}>{operation.kind}</NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>
               {OPERATION_STATE_LABELS[operation.state] ?? operation.state}
-            </td>
-            <td style={sharedStyles.cell}>{operation.attempts}</td>
-            <td style={{ ...sharedStyles.cell, direction: 'ltr' }}>
+            </NativeSettingsCell>
+            <NativeSettingsCell style={sharedStyles.cell}>{operation.attempts}</NativeSettingsCell>
+            <NativeSettingsCell style={{ ...sharedStyles.cell, direction: 'ltr' }}>
               {operation.externalDocumentId ?? '—'}
-            </td>
-          </tr>
+            </NativeSettingsCell>
+          </NativeSettingsRow>
         ))}
-      </tbody>
-    </table>
+      </NativeSettingsBody>
+    </NativeSettingsTable>
   );
