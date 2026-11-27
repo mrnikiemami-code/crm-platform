@@ -1,0 +1,31 @@
+{
+  "source": "vitest focused page-50 cases on quotation@0.1.85 / 92af3fd",
+  "log": "vitest-page50.log",
+  "testsPassed": 3,
+  "coverage": [
+    {
+      "name": "jumps directly to page 50 without reading earlier chunks",
+      "dataset": 10000,
+      "pageSize": 100,
+      "pageNumber": 50,
+      "expectedFirstId": "5900",
+      "chunkReads": [9],
+      "proves": "no intermediate page traversal; single chunk read"
+    },
+    {
+      "name": "returns server-confirmed page position for item and party snapshot jumps",
+      "dataset": 1300,
+      "pageSize": 25,
+      "pageNumber": 50,
+      "expectedItemFirstId": "2225",
+      "expectedPartyFirstId": "3225",
+      "providerFullReads": 1,
+      "proves": "page 50/25 => rows 1226-1250; destination not re-read"
+    },
+    {
+      "name": "resets a numbered request when its snapshot changed or filtered page no longer exists",
+      "proves": "stale snapshotId resets to page 1; invalid filtered page resets; last page clamp"
+    }
+  ],
+  "ask2500Note": "User ASK requested >=2500 customers and products. Architect gate documents 1300+. Existing Vitest covers 1300 and 10000 through production loadItemMappingPage/loadPartyMappingPage and readSnapshotPage. Dev mock PARTY_UAT max is 100 parties / ~33 catalog items without product source enlargement; Dev API probes confirm clamp/search/empty/stale/pageSize against that mock."
+}

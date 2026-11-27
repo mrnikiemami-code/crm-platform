@@ -1,0 +1,12 @@
+{
+  "expected": "0.1.85",
+  "packageJsonVersion": "0.1.85",
+  "sourceSha": "92af3fd63e9d621965f5350d08d0946f5c826039",
+  "applyLog": "apply.log",
+  "applyResult": "Synced پیش‌فاکتور (43 files); frontComponent accounting-settings-page + accounting-connection-panel + accounting-import-action updated",
+  "idempotentReapply": "No changes. Twenty metadata matches your manifest.",
+  "image": "twenty-dev/crm129:92af3fd63e9d621965f5350d08d0946f5c826039",
+  "imageDigest": "sha256:d3c4338f86453673d9fbf68ec84f4f2668fb225194dfe3429072e3dade8aba63",
+  "appVersionEnv": "1.0.0",
+  "logicFunctionApiUrlOverlay": "http://127.0.0.1:3000 (verification-only; SERVER_URL remains http://localhost:3002)"
+}

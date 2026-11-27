@@ -1,0 +1,34 @@
+{
+  "workspace": "glorious-aqua-whale",
+  "page": "accounting settings",
+  "url": "http://glorious-aqua-whale.localhost:3001/page/20c28688-fc16-42f8-a231-9d5735d1b2c2",
+  "observedAt": "2026-11-27T09:16:00Z",
+  "customers": {
+    "htmlTables": 0,
+    "htmlThead": 0,
+    "htmlTr": 0,
+    "roleTable": 1,
+    "roleRow": 26,
+    "roleColumnheader": 7,
+    "roleCell": 175,
+    "stickyHeads": 1,
+    "hostTableTag": "DIV",
+    "hostChildRoles": ["rowgroup", "row", "columnheader"],
+    "persianDigits": true,
+    "dir": "rtl",
+    "pagerCopyIncludes": "نمایش ۱ تا ۲۵ از ۱۰۰ رکورد",
+    "pagerControls": ["اولین", "قبلی", "بعدی", "آخرین", "۲۵", "۵۰", "۱۰۰", "برو به صفحه"],
+    "verdict": "PASS_NATIVE_NOT_HTML_FALLBACK"
+  },
+  "products": { "htmlTables": 0, "roleTable": 2, "roleRow": 52, "sticky": true, "pager": true },
+  "connections": { "htmlTables": 0, "roleTable": 3, "roleRow": 77, "sticky": true, "pager": true },
+  "documents": { "htmlTables": 0, "roleTable": 4, "roleRow": 98, "sticky": true, "pager": true },
+  "responsive360": {
+    "innerWidth": 360,
+    "htmlTables": 0,
+    "roleTable": 4,
+    "parentOverflowX": "auto",
+    "note": "Device metrics override applied; no HTML <table> fallback at 360px"
+  },
+  "notes": "Marker CSS classes are consumed by the host resolver; native proof is role=table DIV host primitives with zero HTML table/thead/tr nodes."
+}

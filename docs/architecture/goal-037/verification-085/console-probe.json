@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-11-27T09:16:45Z",
+  "session": "CDP browser after LOGIC_FUNCTION_API_URL overlay",
+  "blockingConsoleErrors": 0,
+  "queryErrorAfterOverlay": false,
+  "notes": [
+    "Pre-overlay preview/docs showed QUERY_ERROR when LF GraphQL targeted localhost:3002 from container",
+    "Post-overlay (127.0.0.1:3000) customers/products/connections/documents lists rendered without QUERY_ERROR"
+  ]
+}

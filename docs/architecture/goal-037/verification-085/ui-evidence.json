@@ -1,0 +1,35 @@
+{
+  "observedAt": "2026-11-27T09:16:30Z",
+  "workspace": "glorious-aqua-whale",
+  "rtl": true,
+  "persianDigitsInPager": true,
+  "stickyTableHeader": true,
+  "responsive360": {
+    "innerWidth": 360,
+    "htmlTables": 0,
+    "roleTable": 4,
+    "parentOverflowX": "auto"
+  },
+  "desktop": {
+    "pagerControls": ["اولین", "قبلی", "بعدی", "آخرین", "۲۵", "۵۰", "۱۰۰", "برو به صفحه"],
+    "rangeCopySample": "نمایش ۱ تا ۲۵ از ۱۰۰ رکورد"
+  },
+  "rowMenuAffordances": {
+    "customers": ["نگاشت", "انتقال"],
+    "bulk": ["انتقال همه"]
+  },
+  "selectionPersistence": {
+    "api": "snapshotId retained across pageNumber changes; selection keys held client-side across numbered jumps (Vitest + pager DOM)",
+    "devBrowser": "checkbox column present on native role=row; cross-page persistence covered by product snapshot contract tests"
+  },
+  "console": {
+    "method": "browser CDP session during native/multi-tab/360 probes",
+    "blockingErrors": 0,
+    "note": "No QUERY_ERROR after LOGIC_FUNCTION_API_URL overlay"
+  },
+  "keyboard": {
+    "pagerButtonsFocusable": true,
+    "goToPageControlPresent": true
+  },
+  "screenshotsUsedForPass": false
+}

@@ -1,0 +1,9 @@
+# Verification-only: LF runs inside the container and must reach Nest on :3000,
+# while SERVER_URL stays the browser-facing http://localhost:3002.
+services:
+  server:
+    environment:
+      LOGIC_FUNCTION_API_URL: http://127.0.0.1:3000
+  worker:
+    environment:
+      LOGIC_FUNCTION_API_URL: http://127.0.0.1:3000
