@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm';
 import { FieldMetadataType } from 'twenty-shared/types';
 import { CommonQueryNames } from 'src/engine/api/common/types/common-query-args.type';
 import { WorkspaceQueryHookStorage } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-hook/storage/workspace-query-hook.storage';
@@ -12,7 +13,7 @@ import { AccountingPersonCreateOnePreQueryHook } from 'src/modules/quotation/que
 import { AccountingPersonUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-person-update-one.pre-query.hook';
 import { AccountingCompanyCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-create-one.pre-query.hook';
 import { AccountingCompanyUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/accounting-company-update-one.pre-query.hook';
-import { AccountingPartyWriteGuardService, withAccountingPartyWriteScope } from 'src/modules/quotation/services/accounting-party-write-guard.service';
+import { AccountingPartyWriteGuardService, matchesAccountingActorStamp, withAccountingPartyWriteScope } from 'src/modules/quotation/services/accounting-party-write-guard.service';
 
 const app = { id: 'app-id', universalIdentifier: 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb' };
 const user = { type: 'user', application: app, workspace: { id: 'workspace' }, userWorkspaceId: 'membership',
@@ -61,6 +62,17 @@ const pipeline = () => {
 };
 
 describe('accounting customer scoped writes', () => {
+  it('validates the complete actor data across VM/structuredClone realms without accepting altered stamps', () => {
+    const foreignActor: unknown = runInNewContext('JSON.parse(input)', { input: JSON.stringify(actor) });
+    expect(matchesAccountingActorStamp(foreignActor, actor)).toBe(true);
+    expect(matchesAccountingActorStamp(structuredClone(actor), actor)).toBe(true);
+    expect(matchesAccountingActorStamp({ ...actor, context: { extra: true } }, actor)).toBe(false);
+    expect(matchesAccountingActorStamp({ ...actor, context: new Date() }, actor)).toBe(false);
+    expect(matchesAccountingActorStamp({ ...actor, name: 'Forged' }, actor)).toBe(false);
+    expect(matchesAccountingActorStamp({ ...actor, source: 'API' }, actor)).toBe(false);
+    expect(matchesAccountingActorStamp({ ...actor, extra: true }, actor)).toBe(false);
+    expect(matchesAccountingActorStamp({ ...actor, workspaceMemberId: 'other' }, actor)).toBe(false);
+  });
   it.each(['person', 'company'] as const)('accepts real core-generated audit fields on %s create and update', async (object) => {
     const hooks = pipeline();
     const name = object === 'person' ? { firstName: 'Fixture', lastName: 'Only' } : 'Fixture Company';

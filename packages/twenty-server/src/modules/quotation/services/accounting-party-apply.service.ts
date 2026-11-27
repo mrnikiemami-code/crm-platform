@@ -190,7 +190,7 @@ export class AccountingPartyApplyService {
             const linkContext = { ...link, transactionScope };
 
             stage = 'MAPPING_READ';
-            const findLink = async (filter: { connectionId: { eq: string }; externalPartyId?: { eq: string }; internalPartyId?: { eq: string }; partyType?: { eq: PartyKind } }) => {
+            const findLink = async (filter: { connectionId: { eq: string }; externalPartyId?: { eq: string }; internalPartyId?: { eq: string }; partyType?: { eq: PartyKind }; deletedAt?: { is: 'NOT_NULL' } }) => {
               try {
                 return (await this.findOne.execute({ filter, selectedFields: { id: true, externalPartyId: true, internalPartyId: true, partyType: true, remoteVersion: true } }, linkContext)).results;
               } catch (error) {
@@ -198,6 +198,8 @@ export class AccountingPartyApplyService {
                 throw error;
               }
             };
+            const deletedMapping = await findLink({ connectionId: { eq: connectionId }, externalPartyId: { eq: row.externalPartyId }, deletedAt: { is: 'NOT_NULL' } });
+            if (deletedMapping) throw new RowFailure('ACCOUNTING_PARTY_MAPPING_DELETED', stage);
             const current = await findLink({ connectionId: { eq: connectionId }, externalPartyId: { eq: row.externalPartyId } });
             if (row.existingLinkId === null ? current !== null :
                 !current || current.id !== row.existingLinkId || current.internalPartyId !== row.internalPartyId ||

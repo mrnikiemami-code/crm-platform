@@ -23,3 +23,7 @@ Status: source remediation candidate; operational acceptance pending. Previous s
 
 Exact source SHA supplied by architect, quotation@0.1.82. Clean build, typecheck, all Vitest/Jest, Sync, matching server/worker. First verify ONE existing Person update, ONE existing Company update, ONE new Person and ONE new Company through the canonical Nest operation, including actual persisted actor fields and mapping. Record exact stage/reason on any failure; no generic FORBIDDEN-only report. Then execute the full 100-customer, rollback, stale/concurrency, security and regression matrix in recovery 081 and contract 079. Use isolated fixture and clean precondition counts; no live writes, no outbound enablement, no Intranet changes, no source edits, no hot patches, no permission bypass or test skipping. Commit evidence only under verification-082. STOP_FOR_ARCHITECT after all executable checks. Debt remains OPEN until operational proof.
 
+
+## 0.1.82 result — 2026-11-27
+
+Worker report: actual native create/update for both Person and Company succeeded, actor stamps persisted, 50 creates and 53 mappings on first apply. Full clean fixture failed: 40 unique collisions against soft-deleted customers; 55/100 mappings. Two Jest ACTOR_MISMATCH failures; rollback, stale and concurrent scenarios not cleanly attested. Evidence commit c3c815ca5b unavailable from remote during audit. Superseded by recovery 083. No acceptance or security widening.

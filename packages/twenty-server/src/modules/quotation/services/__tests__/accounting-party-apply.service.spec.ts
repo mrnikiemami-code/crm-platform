@@ -32,8 +32,8 @@ const setup = (authority = 'SETTINGS_ROLE') => {
       try { const result = await work(tx); commits.push('COMMIT'); return result; }
       catch (error) { commits.push('ROLLBACK'); throw error; }
     }) };
-  const find = { execute: jest.fn(async (_args: unknown, context: { flatObjectMetadata: { nameSingular: string } }) => {
-    if (context.flatObjectMetadata.nameSingular === 'accountingPartyLink') throw notFound();
+  const find = { execute: jest.fn(async (args: { filter?: Record<string, unknown> }, context: { flatObjectMetadata: { nameSingular: string } }) => {
+    if (context.flatObjectMetadata.nameSingular === 'accountingPartyLink' || !args.filter?.id) throw notFound();
     return { results: { id: existingCustomer, updatedAt: new Date('2026-11-27T00:00:00.123Z') } };
   }) };
   const guard = new AccountingPartyWriteGuardService({ resolveSettingsAuthority: jest.fn(async () => authority || null) } as never);
@@ -85,6 +85,28 @@ describe('native accounting customer apply', () => {
     const { service, input, create, commits } = setup();
     create.execute.mockResolvedValueOnce({ results: { id: row.internalPartyId } }).mockRejectedValueOnce(new Error('mapping failed'));
     await expect(service.apply(input)).resolves.toMatchObject({ success: true, outcome: { createdParties: 0, createdLinks: 0, refused: [{ detail: expect.stringContaining('MAPPING_WRITE') }] } });
+    expect(commits).toEqual(['ROLLBACK']);
+  });
+  it('refuses a deleted identity discovered after planning without writing customer or mapping', async () => {
+    const { service, input, create, update, find, commits } = setup();
+    find.execute.mockRejectedValueOnce(notFound()).mockRejectedValueOnce(notFound())
+      .mockRejectedValueOnce(notFound())
+      .mockResolvedValueOnce({ results: { id: existingCustomer, updatedAt: new Date() } });
+    await expect(service.apply(input)).resolves.toMatchObject({ success: true, outcome: {
+      createdParties: 0, createdLinks: 0, refused: [{ code: 'CRM_CUSTOMER_DELETED' }],
+    } });
+    expect(create.execute).not.toHaveBeenCalled();
+    expect(update.execute).not.toHaveBeenCalled();
+    expect(commits).toEqual(['ROLLBACK']);
+  });
+  it('refuses a stale existing customer revision before changing fields or mapping', async () => {
+    const { service, input, create, update, commits } = setup();
+    const existing = { ...row, createCustomer: false, internalPartyId: existingCustomer, expectedCustomerUpdatedAt: '2026-11-27T00:00:00.122Z' };
+    await expect(service.apply({ ...input, plan: { rows: [existing], refused: [] } })).resolves.toMatchObject({ success: true, outcome: {
+      createdParties: 0, createdLinks: 0, refused: [{ code: 'ACCOUNTING_PARTY_PLAN_STALE' }],
+    } });
+    expect(create.execute).not.toHaveBeenCalled();
+    expect(update.execute).not.toHaveBeenCalled();
     expect(commits).toEqual(['ROLLBACK']);
   });
   it('updates an existing customer without discarding timestamp milliseconds', async () => {

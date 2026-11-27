@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crmPartyFields, resolvePartyIdentity, stableCustomerRecordId, type CrmPartyIdentity } from 'src/services/accounting-party-identity.service';
+import { crmPartyFields, enrichPartyRows, loadCrmPartyIdentities, resolvePartyIdentity, stableCustomerRecordId, type CrmPartyIdentity } from 'src/services/accounting-party-identity.service';
 import { mergeSourcePartyProfile } from 'src/domain/accounting/party-profile';
 import { MOCK_PARTY_UAT_100 } from 'src/domain/accounting/adapters/mock/mock-dataset';
 import { planPartyImport } from 'src/domain/accounting/import-plan';
@@ -28,6 +28,27 @@ describe('accounting CRM identity authority', () => {
     expect(resolvePartyIdentity(remote, [person, { ...person, id: 'other' }])).toEqual({ kind: 'CONFLICT' });
     expect(resolvePartyIdentity(remote, [{ ...person, nationalCode: '1234567890' }], person.id)).toEqual({ kind: 'CONFLICT' });
     expect(resolvePartyIdentity({ ...remote, nationalCode: null }, [])).toEqual({ kind: 'MISSING_IDENTITY' });
+  });
+  it('distinguishes deleted strong identities, deleted links and truly new customers', () => {
+    const deleted = { ...person, deletedAt: '2026-11-26T12:00:00Z' };
+    expect(resolvePartyIdentity(remote, [deleted])).toEqual({ kind: 'DELETED_CUSTOMER' });
+    expect(resolvePartyIdentity({ ...remote, nationalCode: null }, [deleted], deleted.id)).toEqual({ kind: 'DELETED_CUSTOMER' });
+    expect(resolvePartyIdentity(remote, [])).toEqual({ kind: 'CREATE', partyType: 'PERSON', nationalCode: '0012345678' });
+    expect(resolvePartyIdentity({ ...remote, nationalCode: null, economicCode: '990099001234' }, [{ ...deleted, economicCode: '990099001234' }])).toEqual({ kind: 'DELETED_CUSTOMER' });
+  });
+  it('requests deleted records explicitly and excludes them from automatic transfer', async () => {
+    const queries: string[] = [];
+    const execute = async (query: string) => {
+      queries.push(query);
+      return { people: { edges: [{ node: { id: person.id, name: { firstName: 'علی', lastName: 'قدیمی' }, nationalCode: person.nationalCode, deletedAt: '2026-11-26T12:00:00Z' } }], pageInfo: { hasNextPage: false } },
+        companies: { edges: [], pageInfo: { hasNextPage: false } } };
+    };
+    const identities = await loadCrmPartyIdentities([remote], [], execute);
+    expect(queries.every((query) => query.includes('deletedAt: {is: NOT_NULL}') && query.includes('deletedAt: {is: NULL}'))).toBe(true);
+    expect(identities).toMatchObject([{ id: person.id, deletedAt: '2026-11-26T12:00:00Z' }]);
+    const preview = planPartyImport({ remoteParties: [{ ...MOCK_PARTY_UAT_100[0], ...remote, legalNationalId: null }], links: [], crmParties: [] });
+    const rows = await enrichPartyRows(preview.rows, execute, 'test-connection');
+    expect(rows).toMatchObject([{ decision: 'AMBIGUOUS_CRM_MATCH', autoEligible: false, warnings: expect.arrayContaining(['CRM_CUSTOMER_DELETED']) }]);
   });
   it('supports sparse explicit identities, connection-scoped retries, and economic identity', () => {
     const sparse = { fullName: 'مشتری آزمایشی', partyType: 'PERSON' as const, externalPartyId: 'A-001' };

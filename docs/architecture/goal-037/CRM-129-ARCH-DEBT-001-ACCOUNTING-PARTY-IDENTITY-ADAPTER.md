@@ -52,3 +52,7 @@ The optional profile, adapter declarations, connection-owned ledger metadata, de
 ## Recovery 0.1.82 — OPEN
 
 0.1.81 failed at native customer write despite green build and tests. The wildcard actor audit hooks precede the object-specific guard; both generated audit fields were incorrectly treated as external business input. Keep the role intersection; restrict the corrected guard to the exact native command scope and authenticate actor stamps. See [recovery 082](CRM-129-ACCOUNTING-PARTY-RECOVERY-082.md). No operational acceptance yet.
+
+## Recovery 0.1.83 — OPEN
+
+0.1.82 resolved the production authorization block. 0.1.83 explicitly includes soft-deleted identity records in matching, refuses deleted/conflicting records and mappings without automatic restoration, rechecks identity under transaction and canonical role permissions, and compares actor stamp values across runtimes. Clean-workspace acceptance and distinct tombstone negative case required. See recovery 083. Cross-workflow concurrency and production provider proof remain unverified.

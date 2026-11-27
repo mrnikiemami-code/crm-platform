@@ -43,7 +43,7 @@ export const matchesAccountingActorStamp = (value: unknown, expected: ReturnType
   return actual.workspaceMemberId === expected.workspaceMemberId &&
     actual.name === expected.name && actual.source === expected.source &&
     context !== null && typeof context === 'object' && !Array.isArray(context) &&
-    Object.keys(context).length === 0;
+    Object.prototype.toString.call(context) === '[object Object]' && Reflect.ownKeys(context).length === 0;
 };
 
 type GuardReason =
