@@ -1,12 +1,13 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 // A guard against the class of defect this task exists to remove: a screen that asks the
 // server for everything and filters in the browser. It reads the source, so a new component
 // cannot quietly reintroduce it.
-const SRC_ROOT = join(process.cwd(), 'src');
+const SRC_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 const sourceFiles = (directory: string): string[] =>
   readdirSync(directory).flatMap((entry) => {

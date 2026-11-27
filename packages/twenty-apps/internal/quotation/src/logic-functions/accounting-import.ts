@@ -8,7 +8,7 @@ import { persianAccountingMessage } from 'src/domain/accounting/errors';
 import { readPageRequest } from 'src/domain/accounting/pagination';
 import {
   applyItemImport,
-  applyPartyImport,
+  preparePartyImport,
   importFailureMessage,
   previewItemImport,
   previewPartyImport,
@@ -248,7 +248,7 @@ const handler = async (event: RoutePayload<unknown>) => {
       return { success: true, preview: preview.value };
     }
 
-    if (action === 'apply-parties') {
+    if (action === 'prepare-parties') {
       const selections = readPartySelections(body.selections);
       if (selections.length > 25) {
         return failure('INVALID_INPUT', 'حداکثر ۲۵ مشتری در هر درخواست قابل انتقال است.');
@@ -257,14 +257,14 @@ const handler = async (event: RoutePayload<unknown>) => {
       if (!remoteList.ok) {
         return failure(remoteList.refusal.code, persianAccountingMessage(remoteList.refusal.code));
       }
-      const outcome = await applyPartyImport({
+      const plan = await preparePartyImport({
         connectionId,
         selections,
         allowRemoteVersionUpdate: body.allowRemoteVersionUpdate === true,
         remoteParties: remoteList.value,
       });
 
-      return { success: true, outcome };
+      return { success: true, plan };
     }
 
     return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));

@@ -8,7 +8,7 @@ import {
   buildUpdateAccountingItemLinkMutation,
   buildUpdateAccountingPartyLinkMutation,
 } from 'src/data/accounting-queries';
-import { toGraphqlLiteral } from 'src/data/graphql-literal';
+import { type GraphqlValue, toGraphqlLiteral } from 'src/data/graphql-literal';
 import {
   buildCatalogItemByIdQuery,
   buildUpdateCatalogItemMutation,
@@ -16,7 +16,7 @@ import {
   buildCreatePriceMutation,
   buildDefaultPriceListQuery,
 } from 'src/data/quotation-queries';
-import { RecordApiError, executeCallerRecordGraphql, executeRecordGraphql } from 'src/data/record-api';
+import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import {
   type AccountingAdapter,
   type AccountingMoneyUnit,
@@ -466,22 +466,38 @@ const partyLinkRecordId = (connectionId: string, externalPartyId: string): strin
   return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-5' + hex.slice(13, 16) + '-8' + hex.slice(17, 20) + '-' + hex.slice(20, 32);
 };
 
-export const applyPartyImport = async (
-  { connectionId, selections, allowRemoteVersionUpdate, remoteParties }: {
-    connectionId: string;
-    selections: PartyApplySelection[];
-    allowRemoteVersionUpdate: boolean;
-    remoteParties: RemoteParty[];
-  },
+export type PartyImportRequest = {
+  connectionId: string;
+  selections: PartyApplySelection[];
+  allowRemoteVersionUpdate: boolean;
+  remoteParties: RemoteParty[];
+};
+
+type PartyRefusal = { externalPartyId: string; code: string; detail: string };
+export type PreparedPartyWrite = {
+  externalPartyId: string;
+  partyType: 'PERSON' | 'COMPANY';
+  internalPartyId: string;
+  createCustomer: boolean;
+  customerFields: Record<string, GraphqlValue>;
+  existingLinkId: string | null;
+  linkId: string;
+  expectedRemoteVersion: string | null;
+  externalCode: string;
+  remoteVersion: string | null;
+  sourceProfile: string | null;
+  name: string;
+  alreadySynchronized: boolean;
+};
+export type PreparedPartyImport = { rows: PreparedPartyWrite[]; refused: PartyRefusal[] };
+
+// The private logic function is a reader/planner, not a CRM customer writer.
+// Only Nest, which still holds the authenticated request, can apply this plan.
+export const preparePartyImport = async (
+  { connectionId, selections, allowRemoteVersionUpdate, remoteParties }: PartyImportRequest,
   dependencies: ImportDependencies = {},
-): Promise<{
-  createdLinks: number;
-  updatedLinks: number;
-  createdParties: number;
-  refused: { externalPartyId: string; code: string; detail: string }[];
-}> => {
+): Promise<PreparedPartyImport> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const executeCustomer = dependencies.executeCustomer ?? dependencies.execute ?? executeCallerRecordGraphql;
   const links = await loadPartyLinks(connectionId, dependencies);
   const requested = new Set(selections.map((selection) => selection.externalPartyId));
   const selectedRemote = remoteParties.filter((party) => requested.has(party.externalPartyId));
@@ -492,18 +508,19 @@ export const applyPartyImport = async (
       ...selectedRemote.map((party) => stableCustomerRecordId(connectionId, party.externalPartyId))],
     execute,
   );
-  const plan = planPartyImport({ remoteParties, links, crmParties: [] });
-  let createdLinks = 0;
-  let updatedLinks = 0;
-  let createdParties = 0;
-  const refused: { externalPartyId: string; code: string; detail: string }[] = [];
+  const preview = planPartyImport({ remoteParties, links, crmParties: [] });
+  const rows: PreparedPartyWrite[] = [];
+  const refused: PartyRefusal[] = [];
   const processed = new Set<string>();
+  // Reserve each chosen CRM identity within the planning batch. Distinct vendor
+  // rows must not accidentally map to the same record merely via a shared phone.
+  const claimed = new Set<string>();
   for (const selection of selections) {
     const externalPartyId = selection.externalPartyId;
     const refuse = (code: string, detail: string) => refused.push({ externalPartyId, code, detail });
     if (processed.has(externalPartyId)) { refuse('ALREADY_SUCCEEDED', 'Duplicate selection'); continue; }
     processed.add(externalPartyId);
-    const row = plan.rows.find((candidate) => candidate.externalPartyId === externalPartyId);
+    const row = preview.rows.find((candidate) => candidate.externalPartyId === externalPartyId);
     const remote = selectedRemote.find((candidate) => candidate.externalPartyId === externalPartyId);
     const matchingLinks = links.filter((link) => link.externalPartyId === externalPartyId);
     if (!row || !remote || row.decision === 'DUPLICATE_REMOTE_CODE' || matchingLinks.length > 1) {
@@ -526,7 +543,6 @@ export const applyPartyImport = async (
       let target = resolved.kind === 'MATCH' ? resolved.target : null;
       if (!automatic) {
         const selected = identities.find((entry) => entry.id === selection.internalPartyId && entry.partyType === selection.partyType);
-        // Explicit selection cannot override a contradictory strong identifier.
         if (!selected || resolvePartyIdentity(remote, identities, selected.id, selected.partyType).kind !== 'MATCH') {
           refuse('INVALID_INPUT', 'Selected CRM identity conflicts with accounting');
           continue;
@@ -538,65 +554,88 @@ export const applyPartyImport = async (
       }
       let partyType: 'PERSON' | 'COMPANY';
       let internalPartyId: string;
+      let customerFields: Record<string, GraphqlValue>;
+      let createCustomer = false;
       if (target !== null) {
         partyType = target.partyType;
         internalPartyId = target.id;
-        const visible = await verifyCustomerRecord({ customerType: partyType, recordId: internalPartyId }, { execute: executeCustomer });
-        if (!visible.ok) { refuse(visible.refusal.code, 'Customer is not visible to caller'); continue; }
-        const fields = crmPartyFields(remote, partyType, target);
-        if (Object.keys(fields).length > 0) {
-          const root = partyType === 'PERSON' ? 'updatePerson' : 'updateCompany';
-          const updated = await executeCustomer(`mutation SyncAccountingParty { ${root}(id: ${toGraphqlLiteral(internalPartyId)}, data: ${toGraphqlLiteral(fields)}) { id } }`);
-          if (readCreatedId(updated, root) !== internalPartyId) { refuse('QUERY_ERROR', 'CRM update not confirmed'); continue; }
-        } else if (existing !== null && existing.remoteVersion === remote.remoteVersion && (existing.sourceProfile ?? null) === sourceProfile) {
-          refuse('ALREADY_SUCCEEDED', 'CRM customer already synchronized');
-          continue;
-        }
+        customerFields = crmPartyFields(remote, partyType, target);
       } else if (automatic && resolved.kind === 'CREATE' && partyDisplayName(remote)) {
         partyType = resolved.partyType;
-        const root = partyType === 'PERSON' ? 'createPerson' : 'createCompany';
-        const fields = { ...crmPartyFields(remote, partyType, null), id: stableId };
-        const created = await executeCustomer(`mutation CreateAccountingCustomer { ${root}(data: ${toGraphqlLiteral(fields)}) { id } }`);
-        internalPartyId = readCreatedId(created, root);
-        if (!internalPartyId) { refuse('QUERY_ERROR', 'CRM create not confirmed'); continue; }
-        createdParties += 1;
-        // A retry after link failure resolves the canonical unique code; it must
-        // never create a second customer. Include this successful write in the batch index.
-        identities.push({ id: internalPartyId, partyType, name: partyDisplayName(remote), nationalCode: partyNationalIdentity(remote), economicCode: normalizeEconomicCode(remote.economicCode), mobile: remote.mobile ?? null, phones: null });
+        internalPartyId = stableId;
+        createCustomer = true;
+        customerFields = crmPartyFields(remote, partyType, null);
       } else {
         refuse('INVALID_INPUT', 'A verified CRM identity is required');
         continue;
       }
-      const linkFields = {
-        externalCode: remote.code,
-        ...(sourceProfile === null ? {} : { sourceProfile }),
-        remoteVersion: remote.remoteVersion,
-        lastSyncedAt: new Date().toISOString(),
-        syncStatus: 'LINKED',
-        partyType,
-        internalPartyId,
-      };
-      if (existing !== null) {
-        const updated = await execute(buildUpdateAccountingPartyLinkMutation(existing.linkId, linkFields));
-        if (readCreatedId(updated, 'updateAccountingPartyLink') !== existing.linkId) {
-          refuse('QUERY_ERROR', 'Mapping update not confirmed');
-          continue;
-        }
-        updatedLinks += 1;
+      const identityKey = partyType + ':' + internalPartyId;
+      if (claimed.has(identityKey) || links.some((link) => link.externalPartyId !== externalPartyId &&
+          link.internalPartyId === internalPartyId && (!link.partyType || link.partyType === partyType))) {
+        refuse('INVALID_INPUT', 'CRM customer is already mapped to another destination identity');
+        continue;
+      }
+      claimed.add(identityKey);
+      rows.push({
+        externalPartyId, partyType, internalPartyId, createCustomer, customerFields,
+        existingLinkId: existing?.linkId ?? null,
+        linkId: existing?.linkId ?? partyLinkRecordId(connectionId, externalPartyId),
+        expectedRemoteVersion: existing?.remoteVersion ?? null,
+        externalCode: remote.code, remoteVersion: remote.remoteVersion, sourceProfile,
+        name: partyDisplayName(remote) || target?.name || remote.code,
+        alreadySynchronized: existing !== null && !createCustomer && Object.keys(customerFields).length === 0 &&
+          existing.remoteVersion === remote.remoteVersion && (existing.sourceProfile ?? null) === sourceProfile,
+      });
+    } catch (error) {
+      refuse(error instanceof RecordApiError ? error.code : 'QUERY_ERROR', 'CRM synchronization plan not confirmed');
+    }
+  }
+  return { rows, refused };
+};
+
+// Dependency-injected harness for existing adapter/domain tests only. No production
+// handler can call this without an explicit record executor; production writes are
+// owned by AccountingPartyApplyService in Nest.
+export const applyPartyImport = async (
+  request: PartyImportRequest,
+  dependencies: ImportDependencies & { execute: (query: string) => Promise<Record<string, unknown>> },
+) => {
+  const execute = dependencies.execute;
+  const executeCustomer = dependencies.executeCustomer ?? execute;
+  const plan = await preparePartyImport(request, dependencies);
+  let createdLinks = 0, updatedLinks = 0, createdParties = 0;
+  const refused = [...plan.refused];
+  for (const row of plan.rows) {
+    const refuse = (code: string, detail: string) => refused.push({ externalPartyId: row.externalPartyId, code, detail });
+    try {
+      if (row.createCustomer) {
+        const root = row.partyType === 'PERSON' ? 'createPerson' : 'createCompany';
+        const created = await executeCustomer(`mutation CreateAccountingCustomer { ${root}(data: ${toGraphqlLiteral({ ...row.customerFields, id: row.internalPartyId })}) { id } }`);
+        if (readCreatedId(created, root) !== row.internalPartyId) { refuse('QUERY_ERROR', 'CRM create not confirmed'); continue; }
+        createdParties++;
       } else {
-        const created = await execute(buildCreateAccountingPartyLinkMutation({
-          id: partyLinkRecordId(connectionId, externalPartyId),
-          name: remote.fullName + ' @ ' + connectionId.slice(0, 8),
-          externalPartyId,
-          connectionId,
-          ...linkFields,
-        }));
-        if (!readCreatedId(created, 'createAccountingPartyLink')) { refuse('QUERY_ERROR', 'Mapping create not confirmed'); continue; }
-        createdLinks += 1;
+        const visible = await verifyCustomerRecord({ customerType: row.partyType, recordId: row.internalPartyId }, { execute: executeCustomer });
+        if (!visible.ok) { refuse(visible.refusal.code, 'Customer is not visible to caller'); continue; }
+        if (row.alreadySynchronized) { refuse('ALREADY_SUCCEEDED', 'CRM customer already synchronized'); continue; }
+        if (Object.keys(row.customerFields).length > 0) {
+          const root = row.partyType === 'PERSON' ? 'updatePerson' : 'updateCompany';
+          const updated = await executeCustomer(`mutation SyncAccountingParty { ${root}(id: ${toGraphqlLiteral(row.internalPartyId)}, data: ${toGraphqlLiteral(row.customerFields)}) { id } }`);
+          if (readCreatedId(updated, root) !== row.internalPartyId) { refuse('QUERY_ERROR', 'CRM update not confirmed'); continue; }
+        }
+      }
+      const fields = { externalCode: row.externalCode, remoteVersion: row.remoteVersion,
+        ...(row.sourceProfile === null ? {} : { sourceProfile: row.sourceProfile }),
+        lastSyncedAt: new Date().toISOString(), syncStatus: 'LINKED', partyType: row.partyType, internalPartyId: row.internalPartyId };
+      if (row.existingLinkId !== null) {
+        const result = await execute(buildUpdateAccountingPartyLinkMutation(row.existingLinkId, fields));
+        if (readCreatedId(result, 'updateAccountingPartyLink') !== row.existingLinkId) { refuse('QUERY_ERROR', 'Mapping update not confirmed'); continue; }
+        updatedLinks++;
+      } else {
+        const result = await execute(buildCreateAccountingPartyLinkMutation({ ...fields, id: row.linkId, name: row.name + ' @ ' + request.connectionId.slice(0, 8), externalPartyId: row.externalPartyId, connectionId: request.connectionId }));
+        if (!readCreatedId(result, 'createAccountingPartyLink')) { refuse('QUERY_ERROR', 'Mapping create not confirmed'); continue; }
+        createdLinks++;
       }
     } catch (error) {
-      // A refused row must not abort the rest of the batch. Never echo tokens,
-      // national identifiers, GraphQL bodies or vendor errors to the browser.
       refuse(error instanceof RecordApiError ? error.code : 'QUERY_ERROR', 'CRM synchronization not confirmed');
     }
   }
