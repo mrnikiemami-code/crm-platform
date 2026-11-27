@@ -346,7 +346,7 @@ export const AccountingDocumentsSection = ({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
+    <div className="acct-list-section" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
       {outboundDisabled ? (
         <InlineAlert tone="info">
           ارسال اسناد به حسابداری غیرفعال است.
@@ -452,7 +452,7 @@ export const AccountingDocumentsSection = ({
         <StateBlock state="loading" title="در حال خواندن صف اسناد…" description="" />
       ) : null}
 
-      <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+      <div className="acct-table-scroll">
         <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(100px, 1fr) minmax(130px, 1.3fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr)"
           aria-label="صف اسناد حسابداری"
           style={{ ...styles.table, minWidth: '760px' }}
@@ -561,12 +561,6 @@ export const AccountingDocumentsSection = ({
             })}
           </NativeSettingsBody>
         </NativeSettingsTable>
-      </div>
-      <Pager pageNumber={currentPage} totalKnown={visibleRows.length} pageSize={pageSize}
-        rowCount={pageRows.length} busy={loading || sending} hasPreviousPage={currentPage > 1}
-        hasNextPage={currentPage * pageSize < visibleRows.length} onNext={() => setPageNumber(currentPage + 1)}
-        onPrevious={() => setPageNumber(currentPage - 1)} onPageChange={setPageNumber}
-        onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }} />
 
       {visibleRows.length === 0 && !loading ? (
         <EmptyState
@@ -584,7 +578,7 @@ export const AccountingDocumentsSection = ({
         {operations.length === 0 ? (
           <EmptyState title="هنوز عملیاتی ثبت نشده است" description="" />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ minWidth: 480 }}>
             <OperationTable operations={operations} />
           </div>
         )}
@@ -603,6 +597,12 @@ export const AccountingDocumentsSection = ({
           </div>
         ) : null}
       </div>
+      </div>
+      <Pager pageNumber={currentPage} totalKnown={visibleRows.length} pageSize={pageSize}
+        rowCount={pageRows.length} busy={loading || sending} hasPreviousPage={currentPage > 1}
+        hasNextPage={currentPage * pageSize < visibleRows.length} onNext={() => setPageNumber(currentPage + 1)}
+        onPrevious={() => setPageNumber(currentPage - 1)} onPageChange={setPageNumber}
+        onPageSizeChange={(size) => { setPageSize(size); setPageNumber(1); }} />
     </div>
   );
 };

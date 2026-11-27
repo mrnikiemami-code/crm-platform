@@ -68,11 +68,14 @@ export const Badge = ({
 export const Card = ({
   children,
   tone = 'neutral',
+  className,
 }: {
   children: ReactNode;
   tone?: Tone;
+  className?: string;
 }) => (
   <div
+    className={className}
     style={{
       border: '1px solid var(--t-border-color-medium)',
       borderTopWidth: tone === 'neutral' ? '1px' : '3px',

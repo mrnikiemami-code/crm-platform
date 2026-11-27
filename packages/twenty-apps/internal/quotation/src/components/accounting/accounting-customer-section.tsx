@@ -470,7 +470,7 @@ export const AccountingCustomerSection = ({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
+    <div className="acct-list-section" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
       <div
         style={{
           display: 'flex',
@@ -562,7 +562,7 @@ export const AccountingCustomerSection = ({
 
       {page !== null ? (
         <>
-          <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+          <div className="acct-table-scroll">
             <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(150px, 1.5fr) minmax(110px, 1fr) minmax(100px, 1fr) minmax(140px, 1.2fr) minmax(100px, 1fr)"
               aria-label="مشتریان نرم‌افزار حسابداری"
               style={{ ...styles.table, minWidth: '720px' }}

@@ -856,8 +856,12 @@ export const AccountingSettingsPanel = () => {
         : null;
   const breadcrumbLabel = innerViewLabel ?? sectionCopy.label;
 
+  const listMode = section === 'catalog' || section === 'documents' ||
+    (section === 'connections' && connectionView === 'list') ||
+    (section === 'customers' && customerView === null);
+
   return (
-    <div className="acct-root" ref={rootRef} style={styles.root} dir="rtl">
+    <div className={listMode ? 'acct-root acct-list-mode' : 'acct-root'} ref={rootRef} style={styles.root} dir="rtl">
       {/* Media queries and a visible focus ring are the two things inline styles cannot
           express. Everything else stays inline, next to the markup it belongs to. */}
       <style>{`
@@ -882,6 +886,33 @@ export const AccountingSettingsPanel = () => {
         .acct-rail { position: sticky; top: 0; display: flex; flex-direction: column; gap: var(--acct-gap); }
         .acct-main { min-width: 0; display: flex; flex-direction: column; gap: var(--acct-gap); }
         .acct-mobile-bar { display: none; }
+        /* List screens have exactly one vertical scroll owner, the table viewport.
+           The flex chain uses the actual host height (not a guessed vh cap). */
+        .acct-root.acct-list-mode { overflow: hidden !important; min-height: 0; }
+        .acct-list-mode > header, .acct-list-mode > .acct-mobile-bar { flex: 0 0 auto; }
+        .acct-list-mode .acct-body { flex: 1 1 0; min-height: 0; align-items: stretch; }
+        .acct-list-mode .acct-main { min-height: 0; }
+        .acct-list-mode .acct-list-panel { flex: 1 1 0; min-height: 0; min-width: 0; flex-direction: column; }
+        .acct-list-mode .acct-list-section, .acct-list-mode .acct-list-card {
+          flex: 1 1 0; min-height: 0; min-width: 0;
+          display: flex; flex-direction: column;
+        }
+        .acct-list-mode .acct-list-section > :not(.acct-table-scroll):not(.acct-list-card),
+        .acct-list-mode .acct-list-card > :not(.acct-table-scroll) { flex-shrink: 0; }
+        .acct-list-mode .acct-table-scroll {
+          flex: 1 1 0; min-height: 0; min-width: 0;
+          overflow: auto; overscroll-behavior: contain;
+        }
+        .acct-root .acct-numbered-pagination button,
+        .acct-root .acct-numbered-pagination input { min-height: 30px; }
+        /* Very short surfaces: preserve access to wrapped toolbar and footer.
+           Release the inner vertical scroll and let the outer panel alone scroll. */
+        @media (max-height: 620px) {
+          .acct-root.acct-list-mode { overflow-y: auto !important; overflow-x: hidden !important; }
+          .acct-list-mode .acct-body, .acct-list-mode .acct-list-panel,
+          .acct-list-mode .acct-list-section, .acct-list-mode .acct-list-card { flex: 0 0 auto; }
+          .acct-list-mode .acct-table-scroll { flex: 0 0 auto; overflow-x: auto; overflow-y: visible; }
+        }
         @media (max-width: 860px) {
           .acct-body { grid-template-columns: minmax(0, 1fr); padding-bottom: 12px; }
           .acct-rail { display: none; }
@@ -978,7 +1009,7 @@ export const AccountingSettingsPanel = () => {
             ) : null}
           </div>
 
-          <div style={{ display: section === 'connections' ? 'block' : 'none' }}>
+          <div className="acct-list-panel" style={{ display: section === 'connections' ? (connectionView === 'list' ? 'flex' : 'block') : 'none' }}>
             {visited.has('connections') ? (
               <AccountingConnectionsSection
                 data={data}
@@ -1022,7 +1053,7 @@ export const AccountingSettingsPanel = () => {
             ) : null}
           </div>
 
-          <div style={{ display: section === 'catalog' ? 'block' : 'none' }}>
+          <div className="acct-list-panel" style={{ display: section === 'catalog' ? (true ? 'flex' : 'block') : 'none' }}>
             {visited.has('catalog') ? (
               <AccountingCatalogSection
                 connectionId={activeConnectionId}
@@ -1034,7 +1065,7 @@ export const AccountingSettingsPanel = () => {
             ) : null}
           </div>
 
-          <div style={{ display: section === 'customers' ? 'block' : 'none' }}>
+          <div className="acct-list-panel" style={{ display: section === 'customers' ? (customerView === null ? 'flex' : 'block') : 'none' }}>
             {visited.has('customers') ? (
               <AccountingCustomerSection
                 connectionId={activeConnectionId}
@@ -1046,7 +1077,7 @@ export const AccountingSettingsPanel = () => {
             ) : null}
           </div>
 
-          <div style={{ display: section === 'documents' ? 'block' : 'none' }}>
+          <div className="acct-list-panel" style={{ display: section === 'documents' ? (true ? 'flex' : 'block') : 'none' }}>
             {visited.has('documents') ? (
               <AccountingDocumentsSection
                 connection={connection}

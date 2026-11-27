@@ -143,7 +143,7 @@ export const AccountingConnectionsSection = ({
   }
 
   return (
-    <div
+    <div className="acct-list-section"
       style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}
     >
       <div
@@ -189,8 +189,8 @@ export const AccountingConnectionsSection = ({
           }
         />
       ) : (
-        <Card>
-          <div style={{ overflow: 'auto', maxHeight: 'min(65vh, 720px)' }}>
+        <Card className="acct-list-card">
+          <div className="acct-table-scroll">
             <NativeSettingsTable columns="minmax(120px, 1fr) minmax(160px, 1.4fr) minmax(100px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr) 90px"
               aria-label="اتصال‌های حسابداری"
               style={{ ...styles.table, minWidth: '760px' }}

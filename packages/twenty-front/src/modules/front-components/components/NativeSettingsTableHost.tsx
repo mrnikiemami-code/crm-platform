@@ -12,8 +12,8 @@ const NativeTable = forwardRef<HTMLDivElement, Props>(({ children, style, ...pro
 const NativeHead = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <div ref={ref} role="rowgroup" style={{ position: 'sticky', top: 0, background: themeCssVariables.background.primary, zIndex: 1 }}>{children}</div>);
 const NativeBody = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <TableBody ref={ref} role="rowgroup">{children}</TableBody>);
 const NativeRow = forwardRef<HTMLDivElement, Props>(({ children, style, ...props }, ref) => <TableRow ref={ref} id={props.id} role="row" dataAttributes={{ ...(typeof props['data-connection-id'] === 'string' ? { 'data-connection-id': props['data-connection-id'] } : {}), ...(typeof props['data-default'] === 'string' ? { 'data-default': props['data-default'] } : {}) }} gridTemplateColumns={style?.gridTemplateColumns} style={style}>{children}</TableRow>);
-const NativeHeader = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <TableHeader ref={ref} role="columnheader">{children}</TableHeader>);
-const NativeCell = forwardRef<HTMLDivElement, Props>(({ children, style, colSpan }, ref) => <TableCell ref={ref} role="cell" height="auto" minWidth="0" style={{ minHeight: 32, direction: style?.direction, gridColumn: Number(colSpan) > 1 ? 'span ' + Number(colSpan) : undefined }}>{children}</TableCell>);
+const NativeHeader = forwardRef<HTMLDivElement, Props>(({ children }, ref) => <TableHeader ref={ref} role="columnheader" style={{ justifyContent: 'flex-start', textAlign: 'start', minWidth: 0 }}>{children}</TableHeader>);
+const NativeCell = forwardRef<HTMLDivElement, Props>(({ children, style, colSpan }, ref) => <TableCell ref={ref} role="cell" height="auto" minWidth="0" style={{ minHeight: 32, direction: style?.direction, justifyContent: style?.direction === 'ltr' ? 'flex-end' : 'flex-start', textAlign: 'right', gridColumn: Number(colSpan) > 1 ? 'span ' + Number(colSpan) : undefined }}>{children}</TableCell>);
 
 // The worker sends presentation-only state through an existing remote HTML
 // event. It cannot call CRM functions or choose a native component dynamically.
@@ -26,7 +26,7 @@ const NativePager = forwardRef<HTMLDivElement, Props>(({ title, onClick }, ref) 
       typeof size !== 'number' || ![25, 50, 100].includes(size) ||
       page > Math.max(1, Math.ceil(total / size))) return null;
   const send = (value: string) => onClick?.({ type: 'click', target: { value } });
-  return <div ref={ref}><SettingsPaginationControls page={page - 1} pageCount={Math.max(1, Math.ceil(total / size))} isLoading={busy === true}
+  return <div ref={ref} style={{ flexShrink: 0, minWidth: 0, width: '100%' }}><SettingsPaginationControls page={page - 1} pageCount={Math.max(1, Math.ceil(total / size))} isLoading={busy === true}
     onPageChange={(index) => send('page:' + (index + 1))}
     numbered={{ total, pageSize: size, locale: 'fa-IR', onPageSizeChange: (next) => send('size:' + next) }} /></div>;
 });

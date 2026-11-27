@@ -2,7 +2,8 @@ import { styled } from '@linaria/react';
 import { useState } from 'react';
 import { useLingui } from '@lingui/react/macro';
 import { isDefined } from 'twenty-shared/utils';
-import { Button } from 'twenty-ui/primitives/input';
+import { Button, Input, Select } from 'twenty-ui/primitives/input';
+import { getNumberedPageWindow, normalizePageDigits, parsePageJump } from '@/settings/utils/numberedPagination';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
 type SettingsPaginationControlsProps = {
@@ -58,41 +59,97 @@ export const SettingsPaginationControls = ({
   );
 };
 
+const NumberedFooter = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid ${themeCssVariables.border.color.light};
+  background: ${themeCssVariables.background.primary};
+  min-width: 0;
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr 1fr;
+    .pagination-center { grid-column: 1 / -1; grid-row: 1; }
+  }
+  @media (max-width: 480px) {
+    gap: 4px;
+    grid-template-columns: minmax(0, 1fr);
+    .pagination-center { grid-column: 1; }
+    .pagination-count, .pagination-size { justify-self: center; }
+  }
+`;
+const CenterGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+`;
+const ControlGroup = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+`;
+
 const NumberedPagination = ({ page, pageCount, onPageChange, isLoading, numbered }: Required<Pick<SettingsPaginationControlsProps, 'page' | 'pageCount' | 'onPageChange' | 'isLoading' | 'numbered'>>) => {
   const { t } = useLingui();
   const [jump, setJump] = useState('');
   const fa = numbered.locale?.startsWith('fa') === true;
   const format = (n: number) => n.toLocaleString(numbered.locale ?? 'en-US');
   const last = Math.max(0, pageCount - 1);
-  const pages = [...new Set([0, page - 2, page - 1, page, page + 1, page + 2, last].filter((n) => n >= 0 && n <= last))].sort((a, b) => a - b);
-  const parse = (value: string) => Number(value.trim().replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit))).replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit))));
-  const target = parse(jump);
-  const validJump = Number.isSafeInteger(target) && target >= 1 && target <= pageCount;
-  const go = (index: number) => { if (!isLoading && index >= 0 && index < pageCount) onPageChange(index); };
+  const pages = getNumberedPageWindow(page, numbered.total === 0 ? 0 : pageCount);
+  const target = parsePageJump(jump, numbered.total === 0 ? 0 : pageCount);
+  const go = (index: number) => {
+    if (!isLoading && numbered.total > 0 && index >= 0 && index < pageCount) {
+      onPageChange(index);
+      setJump('');
+    }
+  };
+  const jumpLabel = fa ? 'برو به صفحه' : t`Go to page`;
+  const sizeLabel = fa ? 'تعداد در صفحه' : t`Rows per page`;
   return (
-    <StyledContainer aria-label={fa ? 'صفحه‌بندی جدول' : t`Table pagination`}>
-      <span aria-live="polite">{numbered.total === 0 ? (fa ? '۰ رکورد' : t`No records`) : fa
-        ? 'نمایش ' + format(page * numbered.pageSize + 1) + ' تا ' + format(Math.min((page + 1) * numbered.pageSize, numbered.total)) + ' از ' + format(numbered.total) + ' رکورد'
-        : t`Page ${page + 1} of ${pageCount}` + ' · ' + format(numbered.total)}</span>
-      <Button size="sm" variant="outline" disabled={page === 0 || isLoading} onClick={() => go(0)}>{fa ? 'اولین' : t`First`}</Button>
-      <Button size="sm" variant="outline" disabled={page === 0 || isLoading} onClick={() => go(page - 1)}>{fa ? 'قبلی' : t`Previous`}</Button>
-      {numbered.total > 0 && pages.map((index, i) => (
-        <span key={index} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          {i > 0 && index - pages[i - 1] > 1 && <span aria-hidden="true">…</span>}
-          <Button size="sm" variant={index === page ? 'solid' : 'outline'} disabled={isLoading || index === page} onClick={() => go(index)}>{format(index + 1)}</Button>
-        </span>
-      ))}
-      <Button size="sm" variant="outline" disabled={page >= last || isLoading} onClick={() => go(page + 1)}>{fa ? 'بعدی' : t`Next`}</Button>
-      <Button size="sm" variant="outline" disabled={page >= last || isLoading} onClick={() => go(last)}>{fa ? 'آخرین' : t`Last`}</Button>
-      <label>{fa ? 'تعداد در صفحه' : t`Rows per page`}{' '}
-        <select aria-label={fa ? 'تعداد در صفحه' : t`Rows per page`} disabled={isLoading} value={numbered.pageSize} onChange={(event) => numbered.onPageSizeChange(Number(event.target.value))}>
-          {[25, 50, 100].map((size) => <option key={size} value={size}>{format(size)}</option>)}
-        </select>
-      </label>
-      <label>{fa ? 'برو به صفحه' : t`Go to page`}{' '}
-        <input aria-label={fa ? 'برو به صفحه' : t`Go to page`} value={jump} inputMode="numeric" style={{ width: 64 }} disabled={isLoading} onChange={(event) => setJump(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && validJump) go(target - 1); }} />
-      </label>
-      <Button size="sm" variant="outline" disabled={!validJump || isLoading} onClick={() => go(target - 1)}>{fa ? 'برو' : t`Go`}</Button>
-    </StyledContainer>
+    <NumberedFooter className="acct-numbered-pagination" dir={fa ? 'rtl' : undefined} aria-label={fa ? 'صفحه‌بندی جدول' : t`Table pagination`}>
+      <span className="pagination-count" aria-live="polite" style={{ justifySelf: 'start', color: themeCssVariables.font.color.secondary }}>
+        {numbered.total === 0 ? (fa ? '۰ رکورد' : t`No records`) : fa
+          ? 'نمایش ' + format(page * numbered.pageSize + 1) + ' تا ' + format(Math.min((page + 1) * numbered.pageSize, numbered.total)) + ' از ' + format(numbered.total) + ' رکورد'
+          : t`Page ${page + 1} of ${pageCount}` + ' · ' + format(numbered.total)}
+      </span>
+      <CenterGroup className="pagination-center">
+        <ControlGroup>
+          <Button size="sm" variant="outline" aria-label={fa ? 'اولین صفحه' : t`First page`} title={fa ? 'اولین صفحه' : t`First page`} disabled={page === 0 || isLoading} onClick={() => go(0)}>{fa ? '»' : '«'}</Button>
+          <Button size="sm" variant="outline" aria-label={fa ? 'صفحه قبلی' : t`Previous page`} title={fa ? 'صفحه قبلی' : t`Previous page`} disabled={page === 0 || isLoading} onClick={() => go(page - 1)}>{fa ? '›' : '‹'}</Button>
+          {pages.map((index) => (
+            <Button key={index} size="sm" variant={index === page ? 'solid' : 'outline'} aria-current={index === page ? 'page' : undefined} disabled={isLoading} onClick={() => { if (index !== page) go(index); }} style={{ minWidth: 30 }}>{format(index + 1)}</Button>
+          ))}
+          <Button size="sm" variant="outline" aria-label={fa ? 'صفحه بعدی' : t`Next page`} title={fa ? 'صفحه بعدی' : t`Next page`} disabled={page >= last || isLoading} onClick={() => go(page + 1)}>{fa ? '‹' : '›'}</Button>
+          <Button size="sm" variant="outline" aria-label={fa ? 'آخرین صفحه' : t`Last page`} title={fa ? 'آخرین صفحه' : t`Last page`} disabled={page >= last || isLoading} onClick={() => go(last)}>{fa ? '«' : '»'}</Button>
+        </ControlGroup>
+        <ControlGroup>
+          <span>{jumpLabel}</span>
+          <Input size="sm" aria-label={jumpLabel} value={jump} placeholder={format(page + 1)} inputMode="numeric" style={{ width: 68, textAlign: 'center' }}
+            disabled={isLoading || numbered.total === 0}
+            onChange={(event) => {
+              const value = normalizePageDigits(event.target.value);
+              if (!/^\d{0,12}$/.test(value)) return;
+              setJump(fa ? value.replace(/\d/g, (digit) => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]) : value);
+            }}
+            onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (target !== null) go(target); } }} />
+          <Button size="sm" variant="outline" disabled={target === null || isLoading} onClick={() => { if (target !== null) go(target); }}>{fa ? 'برو' : t`Go`}</Button>
+        </ControlGroup>
+      </CenterGroup>
+      <ControlGroup className="pagination-size" style={{ justifySelf: 'end' }}>
+        <span>{sizeLabel}</span>
+        <Select.Root value={String(numbered.pageSize)} disabled={isLoading} onValueChange={(value) => { const size = Number(value); if ([25, 50, 100].includes(size)) { setJump(''); numbered.onPageSizeChange(size); } }}>
+          <Select.Trigger size="sm" aria-label={sizeLabel}><Select.Value>{format(numbered.pageSize)}</Select.Value></Select.Trigger>
+          <Select.Popup side="top">
+            {[25, 50, 100].map((size) => <Select.Item key={size} value={String(size)}>{format(size)}</Select.Item>)}
+          </Select.Popup>
+        </Select.Root>
+      </ControlGroup>
+    </NumberedFooter>
   );
 };
