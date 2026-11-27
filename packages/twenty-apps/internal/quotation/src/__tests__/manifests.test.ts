@@ -13,6 +13,13 @@ import quotationLine from 'src/objects/quotation-line.object';
 import quotationRevision from 'src/objects/quotation-revision.object';
 import quotationSequence from 'src/objects/quotation-sequence.object';
 import quotationShare from 'src/objects/quotation-share.object';
+import quotationCurrency from 'src/objects/quotation-currency.object';
+import roundingRule from 'src/objects/rounding-rule.object';
+import taxPolicy from 'src/objects/tax-policy.object';
+import companyEconomicCode from 'src/fields/company-economic-code.field';
+import companyNationalCode from 'src/fields/company-national-code.field';
+import personEconomicCode from 'src/fields/person-economic-code.field';
+import personNationalCode from 'src/fields/person-national-code.field';
 import applicationConfig from 'src/application.config';
 import companyQuotations from 'src/fields/company-quotations.field';
 import opportunityQuotations from 'src/fields/opportunity-quotations.field';
@@ -46,6 +53,20 @@ const allManifests: { name: string; manifest: Manifest }[] = [
 ];
 
 describe('object manifests', () => {
+  it('keeps all current unique TEXT keys compatible with the server index validator', () => {
+    type Field = { name: string; type?: string; isUnique?: boolean; isNullable?: boolean; defaultValue?: unknown };
+    const fields: Field[] = [
+      ...allManifests.flatMap(({ manifest }) => manifest.config.fields ?? []),
+      ...[quotationCurrency, roundingRule, taxPolicy].flatMap((manifest) => (manifest.config.fields ?? []) as Field[]),
+      ...[companyEconomicCode, companyNationalCode, personEconomicCode, personNationalCode].map((manifest) => manifest.config as Field),
+    ];
+    const unique = fields.filter((field) => field.type === 'TEXT' && field.isUnique === true);
+    expect(unique.map((field) => field.name).sort()).toEqual(['economicCode', 'economicCode', 'nationalCode', 'nationalCode', 'quotationNumber', 'scopeKey', 'tokenHash']);
+    expect(unique.filter((field) => field.defaultValue != null)).toEqual([]);
+    for (const name of ['scopeKey', 'tokenHash']) {
+      expect(unique.find((field) => field.name === name)).toMatchObject({ isUnique: true, isNullable: false, defaultValue: null });
+    }
+  });
   it.each(allManifests.map(({ name, manifest }) => [name, manifest] as const))(
     '%s validates with no errors',
     (_name, manifest) => {

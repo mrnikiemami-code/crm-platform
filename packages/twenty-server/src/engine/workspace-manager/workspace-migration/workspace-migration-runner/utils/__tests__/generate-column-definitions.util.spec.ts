@@ -325,6 +325,15 @@ describe('Generate Column Definitions', () => {
   });
 
   describe('Default Value Schema Generation', () => {
+    it.each(['tokenHash', 'scopeKey'])('keeps required unique %s non-nullable with no implicit text default', (name) => {
+      const field = getFlatFieldMetadataMock({
+        universalIdentifier: name, objectMetadataId: mockObjectId,
+        type: FieldMetadataType.TEXT, name, isNullable: false, isUnique: true, defaultValue: null,
+      });
+      expect(generateColumnDefinitions({ flatFieldMetadata: field, flatObjectMetadata: mockObjectMetadata, workspaceId })).toEqual([
+        expect.objectContaining({ name, type: 'text', isNullable: false, default: 'NULL' }),
+      ]);
+    });
     it('should handle null and undefined default values safely', () => {
       const textField = getFlatFieldMetadataMock({
         universalIdentifier: 'description',

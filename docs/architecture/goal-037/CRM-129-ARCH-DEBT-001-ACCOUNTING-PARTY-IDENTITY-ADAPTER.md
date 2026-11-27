@@ -56,3 +56,7 @@ The optional profile, adapter declarations, connection-owned ledger metadata, de
 ## Recovery 0.1.83 — OPEN
 
 0.1.82 resolved the production authorization block. 0.1.83 explicitly includes soft-deleted identity records in matching, refuses deleted/conflicting records and mappings without automatic restoration, rechecks identity under transaction and canonical role permissions, and compares actor stamp values across runtimes. Clean-workspace acceptance and distinct tombstone negative case required. See recovery 083. Cross-workflow concurrency and production provider proof remain unverified.
+
+## Recovery 0.1.84 — OPEN
+
+0.1.83 resolved the focused unit regressions but first install failed due to older quotation metadata. Recovery 084 repairs required unique TEXT default contracts without changing key identity, uniqueness or nullability, including the core update validator contradiction. Fresh install and upgrade gates are mandatory. No customer-matrix acceptance yet.

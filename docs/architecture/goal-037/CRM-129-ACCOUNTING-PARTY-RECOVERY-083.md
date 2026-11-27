@@ -18,3 +18,7 @@ Status: source remediation; no operational PASS. Previous verified runtime 0.1.8
 5. Record exact initial and final counts by workspace and connection, all per-row refusal codes and native stage, actual test names/logs. Evidence under docs/architecture/goal-037/verification-083/. Push evidence commit to a distinct evidence branch or fast-forward source branch with docs only; ensure architect can fetch exact full SHA. No product source changes, no live outbound, no Intranet, no destructive reset. STOP_FOR_ARCHITECT only after all executable tests.
 
 Debt remains OPEN until operational verification and user UAT. Prior incomplete runs do not prove rollback/stale/concurrency or real vendor behavior.
+
+## 0.1.83 outcome — 2026-11-27
+
+Evidence commit e39fc01c6cae2c0bc08dce0145f737ce67cdfa88 (independently fetched). Focused identity/actor/apply green; Vitest 783 passed/3 skipped and Jest 368 passed/4 skipped. Fresh workspace active but first manifest sync rejected unique TEXT defaults on tokenHash and scopeKey. The customer operational matrix was not run. Superseded by [recovery 084](CRM-129-ACCOUNTING-PARTY-RECOVERY-084.md).

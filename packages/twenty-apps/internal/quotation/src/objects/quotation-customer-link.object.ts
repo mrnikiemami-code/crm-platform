@@ -49,7 +49,9 @@ export default defineObject({
       icon: 'IconFingerprint',
       isNullable: false,
       isUnique: true,
-      defaultValue: "''",
+      // The mint service supplies the hash. A required unique key must
+      // never acquire an implicit empty string.
+      defaultValue: null,
     },
     {
       universalIdentifier: QUOTATION_CUSTOMER_LINK_FIELDS.expiresAt,

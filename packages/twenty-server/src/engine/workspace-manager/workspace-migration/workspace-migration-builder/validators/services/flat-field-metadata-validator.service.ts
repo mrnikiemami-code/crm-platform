@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { msg } from '@lingui/core/macro';
 import { ALL_METADATA_NAME } from 'twenty-shared/metadata';
-import { isFieldMetadataTypeWithDefaultValue } from 'twenty-shared/types';
+import { FieldMetadataType, isFieldMetadataTypeWithDefaultValue } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
 
 import { FieldMetadataExceptionCode } from 'src/engine/metadata-modules/field-metadata/field-metadata.exception';
@@ -234,7 +234,14 @@ export class FlatFieldMetadataValidatorService {
     if (
       isFieldMetadataTypeWithDefaultValue(flatFieldMetadataToValidate.type) &&
       flatFieldMetadataToValidate.isNullable === false &&
-      flatFieldMetadataToValidate.defaultValue === null
+      flatFieldMetadataToValidate.defaultValue === null &&
+      // Index creation already forbids a default for unique scalar TEXT.
+      // A required unique TEXT column can legitimately have no default:
+      // callers must explicitly supply a value, and PostgreSQL still
+      // enforces NOT NULL and uniqueness. Match the fresh-create contract
+      // on upgrade; do not relax any other field type or system-field rule.
+      !(flatFieldMetadataToValidate.type === FieldMetadataType.TEXT &&
+        flatFieldMetadataToValidate.isUnique === true)
     ) {
       validationResult.errors.push({
         code: FieldMetadataExceptionCode.INVALID_FIELD_INPUT,
