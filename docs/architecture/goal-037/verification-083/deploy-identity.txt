@@ -1,0 +1,10 @@
+SHA=09c96b6e508a85596e1f5c92edba28d345882d67
+server_image=twenty-dev/crm129:09c96b6e508a85596e1f5c92edba28d345882d67
+worker_image=twenty-dev/crm129:09c96b6e508a85596e1f5c92edba28d345882d67
+server_id=sha256:475d00a32740546347dda150dbdc8d3ea42cd2978e21819820bcf4fb590cec24
+worker_id=sha256:475d00a32740546347dda150dbdc8d3ea42cd2978e21819820bcf4fb590cec24
+intranet_started=2026-11-25T15:50:23.255735299Z
+fresh_workspace=9b4c41e6-d936-401c-9d5d-90b8e3c2f17d
+fresh_subdomain=p083mwydw5jc
+app_registration_owner=9b4c41e6-d936-401c-9d5d-90b8e3c2f17d
+apply_error=INDEX_FIELD_INVALID_DEFAULT_VALUE tokenHash/scopeKey

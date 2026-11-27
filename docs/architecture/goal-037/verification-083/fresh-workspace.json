@@ -1,0 +1,118 @@
+{
+  "apiBase": "http://localhost:3002",
+  "email": "party083.mwydw5jc@local.test",
+  "stamp": "mwydw5jc",
+  "subdomain": "p083mwydw5jc",
+  "steps": {
+    "signUp": {
+      "errors": null,
+      "hasToken": true
+    },
+    "signUpInNewWorkspace": {
+      "errors": null,
+      "workspaceId": "9b4c41e6-d936-401c-9d5d-90b8e3c2f17d",
+      "displayName": null,
+      "urls": {
+        "subdomainUrl": "http://p083mwydw5jc.localhost:3002/",
+        "customUrl": null
+      }
+    },
+    "exchange": {
+      "errors": [
+        "Workspace not found"
+      ],
+      "hasToken": false
+    },
+    "signInFresh": {
+      "errors": null,
+      "loginTokenPresent": true,
+      "workspaceIds": [
+        "9b4c41e6-d936-401c-9d5d-90b8e3c2f17d"
+      ]
+    },
+    "exchange:http://p083mwydw5jc.localhost:3002": {
+      "errors": null,
+      "hasToken": true
+    },
+    "me": {
+      "errors": null,
+      "user": {
+        "id": "d3530db6-d69f-4a36-b068-6d491272b8f6",
+        "email": "party083.mwydw5jc@local.test"
+      },
+      "workspace": {
+        "id": "9b4c41e6-d936-401c-9d5d-90b8e3c2f17d"
+      }
+    },
+    "rolesProbe": {
+      "rolesErrors": null,
+      "rolesAltErrors": null,
+      "rolesData": {
+        "getRoles": [
+          {
+            "id": "ae94375d-29cb-483e-8775-70a424f72679",
+            "label": "Admin",
+            "canUpdateAllSettings": true,
+            "canBeAssignedToApiKeys": true
+          },
+          {
+            "id": "7713f786-4df4-48a2-8bd9-d39159c9b16f",
+            "label": "Member",
+            "canUpdateAllSettings": false,
+            "canBeAssignedToApiKeys": false
+          }
+        ]
+      }
+    },
+    "selectedRole": {
+      "id": "ae94375d-29cb-483e-8775-70a424f72679",
+      "label": "Admin",
+      "canUpdateAllSettings": true,
+      "canBeAssignedToApiKeys": true
+    },
+    "activate": {
+      "errors": null,
+      "workspace": {
+        "id": "9b4c41e6-d936-401c-9d5d-90b8e3c2f17d",
+        "activationStatus": "ACTIVE"
+      }
+    },
+    "activationPoll": {
+      "i": 0,
+      "activationStatus": "ACTIVE",
+      "roleCount": 2,
+      "errors": null
+    },
+    "roles": [
+      {
+        "id": "ae94375d-29cb-483e-8775-70a424f72679",
+        "label": "Admin",
+        "canUpdateAllSettings": true,
+        "canBeAssignedToApiKeys": true
+      },
+      {
+        "id": "7713f786-4df4-48a2-8bd9-d39159c9b16f",
+        "label": "Member",
+        "canUpdateAllSettings": false,
+        "canBeAssignedToApiKeys": false
+      }
+    ],
+    "createApiKey": {
+      "errors": null,
+      "id": "45033099-9f5d-4084-9f5e-e0d0a5877179"
+    },
+    "mintAttempt": {
+      "errors": [
+        "Variable \"$apiKeyId\" of type \"String!\" used in position expecting type \"UUID!\".",
+        "Variable \"$expiresAt\" of type \"DateTime!\" used in position expecting type \"String!\"."
+      ],
+      "dataKeys": null
+    },
+    "generateApiKeyToken": {
+      "errors": null,
+      "hasToken": true
+    }
+  },
+  "workspaceId": "9b4c41e6-d936-401c-9d5d-90b8e3c2f17d",
+  "origin": "http://p083mwydw5jc.localhost:3002"
+}
