@@ -1053,7 +1053,7 @@ export const AccountingSettingsPanel = () => {
             ) : null}
           </div>
 
-          <div className="acct-list-panel" style={{ display: section === 'catalog' ? (true ? 'flex' : 'block') : 'none' }}>
+          <div className="acct-list-panel" style={{ display: section === 'catalog' ? 'flex' : 'none' }}>
             {visited.has('catalog') ? (
               <AccountingCatalogSection
                 connectionId={activeConnectionId}
@@ -1077,7 +1077,7 @@ export const AccountingSettingsPanel = () => {
             ) : null}
           </div>
 
-          <div className="acct-list-panel" style={{ display: section === 'documents' ? (true ? 'flex' : 'block') : 'none' }}>
+          <div className="acct-list-panel" style={{ display: section === 'documents' ? 'flex' : 'none' }}>
             {visited.has('documents') ? (
               <AccountingDocumentsSection
                 connection={connection}

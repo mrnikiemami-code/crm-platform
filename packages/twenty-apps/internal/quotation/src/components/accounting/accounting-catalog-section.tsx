@@ -523,7 +523,7 @@ export const AccountingCatalogSection = ({
 
       {page !== null ? (
         <>
-          <div className="acct-table-scroll">
+          <div className="acct-table-scroll" key={`${page.snapshot.snapshotId}:${pageIndex}:${sizeRef.current}:${submittedSearch}`}>
             <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(160px, 1.5fr) minmax(110px, 1fr) minmax(140px, 1.3fr) minmax(120px, 1fr)"
               aria-label="کالاهای نرم‌افزار حسابداری"
               style={{ ...styles.table, minWidth: '720px' }}

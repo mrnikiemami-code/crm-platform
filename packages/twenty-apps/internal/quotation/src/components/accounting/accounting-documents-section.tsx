@@ -452,7 +452,7 @@ export const AccountingDocumentsSection = ({
         <StateBlock state="loading" title="در حال خواندن صف اسناد…" description="" />
       ) : null}
 
-      <div className="acct-table-scroll">
+      <div className="acct-table-scroll" key={`${currentPage}:${pageSize}:${tab}:${submittedSearch}`}>
         <NativeSettingsTable columns="40px minmax(100px, 1fr) minmax(100px, 1fr) minmax(130px, 1.3fr) minmax(110px, 1fr) minmax(120px, 1fr) minmax(100px, 1fr)"
           aria-label="صف اسناد حسابداری"
           style={{ ...styles.table, minWidth: '760px' }}

@@ -68,6 +68,8 @@ const NumberedFooter = styled.div`
   border-top: 1px solid ${themeCssVariables.border.color.light};
   background: ${themeCssVariables.background.primary};
   min-width: 0;
+  .pagination-count { justify-self: start; }
+  .pagination-size { justify-self: end; }
   @media (max-width: 1100px) {
     grid-template-columns: 1fr 1fr;
     .pagination-center { grid-column: 1 / -1; grid-row: 1; }
@@ -113,7 +115,7 @@ const NumberedPagination = ({ page, pageCount, onPageChange, isLoading, numbered
   const sizeLabel = fa ? 'تعداد در صفحه' : t`Rows per page`;
   return (
     <NumberedFooter className="acct-numbered-pagination" dir={fa ? 'rtl' : undefined} aria-label={fa ? 'صفحه‌بندی جدول' : t`Table pagination`}>
-      <span className="pagination-count" aria-live="polite" style={{ justifySelf: 'start', color: themeCssVariables.font.color.secondary }}>
+      <span className="pagination-count" aria-live="polite" style={{ color: themeCssVariables.font.color.secondary }}>
         {numbered.total === 0 ? (fa ? '۰ رکورد' : t`No records`) : fa
           ? 'نمایش ' + format(page * numbered.pageSize + 1) + ' تا ' + format(Math.min((page + 1) * numbered.pageSize, numbered.total)) + ' از ' + format(numbered.total) + ' رکورد'
           : t`Page ${page + 1} of ${pageCount}` + ' · ' + format(numbered.total)}
@@ -141,7 +143,7 @@ const NumberedPagination = ({ page, pageCount, onPageChange, isLoading, numbered
           <Button size="sm" variant="outline" disabled={target === null || isLoading} onClick={() => { if (target !== null) go(target); }}>{fa ? 'برو' : t`Go`}</Button>
         </ControlGroup>
       </CenterGroup>
-      <ControlGroup className="pagination-size" style={{ justifySelf: 'end' }}>
+      <ControlGroup className="pagination-size">
         <span>{sizeLabel}</span>
         <Select.Root value={String(numbered.pageSize)} disabled={isLoading} onValueChange={(value) => { const size = Number(value); if ([25, 50, 100].includes(size)) { setJump(''); numbered.onPageSizeChange(size); } }}>
           <Select.Trigger size="sm" aria-label={sizeLabel}><Select.Value>{format(numbered.pageSize)}</Select.Value></Select.Trigger>
