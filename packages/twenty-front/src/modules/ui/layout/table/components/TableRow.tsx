@@ -1,4 +1,5 @@
 import { styled } from '@linaria/react';
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { MOBILE_VIEWPORT, themeCssVariables } from 'twenty-ui/theme-constants';
 
@@ -56,6 +57,9 @@ const StyledTableRow = styled.div<{
 
 type TableRowProps = {
   id?: string;
+  role?: 'row';
+  'data-connection-id'?: string;
+  'data-default'?: string;
   isSelected?: boolean;
   isExpanded?: boolean;
   isClickable?: boolean;
@@ -73,8 +77,11 @@ type TableRowProps = {
   hoverBackgroundColor?: string;
 };
 
-export const TableRow = ({
+export const TableRow = forwardRef<HTMLDivElement, React.PropsWithChildren<TableRowProps>>(({
   id,
+  role,
+  'data-connection-id': connectionId,
+  'data-default': defaultConnection,
   isSelected,
   isExpanded,
   isClickable,
@@ -91,9 +98,13 @@ export const TableRow = ({
   height,
   cursor,
   hoverBackgroundColor,
-}: React.PropsWithChildren<TableRowProps>) => (
+}, ref) => (
   <StyledTableRow
     id={id}
+    ref={ref}
+    role={role}
+    data-connection-id={connectionId}
+    data-default={defaultConnection}
     isSelected={isSelected}
     isExpanded={isExpanded}
     onClick={onClick}
@@ -114,4 +125,4 @@ export const TableRow = ({
   >
     {children}
   </StyledTableRow>
-);
+));

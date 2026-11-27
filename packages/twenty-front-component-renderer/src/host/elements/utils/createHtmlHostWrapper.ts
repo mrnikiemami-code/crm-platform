@@ -26,7 +26,9 @@ const CARET_PRESERVING_TAGS = new Set(['input', 'textarea']);
 
 type WrapperProps = { children?: React.ReactNode } & Record<string, unknown>;
 
-export const createHtmlHostWrapper = (htmlTag: string) => {
+export type HostElementResolver = (props: Readonly<Record<string, unknown>>) => React.ElementType | undefined;
+
+export const createHtmlHostWrapper = (htmlTag: string, resolveElement?: HostElementResolver) => {
   const isVoid = VOID_ELEMENTS.has(htmlTag);
 
   if (!CARET_PRESERVING_TAGS.has(htmlTag)) {
@@ -36,6 +38,7 @@ export const createHtmlHostWrapper = (htmlTag: string) => {
 
       return createPlainHostElement({
         htmlTag,
+        elementType: resolveElement?.(reactBindableProps),
         isVoid,
         reactBindableProps,
         hostEnforcedProps,

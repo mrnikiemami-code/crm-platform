@@ -4,6 +4,7 @@ import { type ElementRefCallback } from '@/host/elements/types/ElementRefCallbac
 
 type CreatePlainHostElementParams = {
   htmlTag: string;
+  elementType?: React.ElementType;
   isVoid: boolean;
   reactBindableProps: Record<string, unknown>;
   hostEnforcedProps: Record<string, unknown>;
@@ -13,6 +14,7 @@ type CreatePlainHostElementParams = {
 
 export const createPlainHostElement = ({
   htmlTag,
+  elementType,
   isVoid,
   reactBindableProps,
   hostEnforcedProps,
@@ -20,7 +22,7 @@ export const createPlainHostElement = ({
   children,
 }: CreatePlainHostElementParams) =>
   React.createElement(
-    htmlTag,
+    elementType ?? htmlTag,
     {
       ...reactBindableProps,
       ...hostEnforcedProps,

@@ -16,13 +16,15 @@ import { type FrontComponentExecutionContext } from 'twenty-sdk/front-component'
 import {
   type RemoteReceiver,
   RemoteRootRenderer,
+  createRemoteComponentRenderer,
 } from '@remote-dom/react/host';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ThemeProvider } from 'twenty-ui/theme-constants';
 import { FrontComponentWorkerEffect } from '@/host/effect-components/FrontComponentWorkerEffect';
+import { createHtmlHostWrapper, type HostElementResolver } from '@/host/elements/utils/createHtmlHostWrapper';
 import { componentRegistry } from '@/host/generated/host-component-registry';
 import { createFallbackComponentRegistry } from '@/host/utils/createFallbackComponentRegistry';
 import { FrontComponentErrorBox } from '@/host/components/FrontComponentErrorBox';
@@ -45,6 +47,7 @@ type FrontComponentRendererProps = {
   onError: (error?: Error) => void;
   colorScheme: 'light' | 'dark';
   loadingFallback?: ReactNode;
+  hostElementResolvers?: Readonly<Record<string, HostElementResolver>>;
 };
 
 export const FrontComponentRenderer = ({
@@ -62,6 +65,7 @@ export const FrontComponentRenderer = ({
   onError,
   colorScheme,
   loadingFallback,
+  hostElementResolvers,
 }: FrontComponentRendererProps) => {
   const [receiver, setReceiver] = useState<RemoteReceiver | null>(null);
   const [thread, setThread] = useState<FrontComponentThread | null>(null);
@@ -69,6 +73,18 @@ export const FrontComponentRenderer = ({
   const [isExecutionContextInitialized, setIsExecutionContextInitialized] =
     useState(false);
   const [geometryTracker] = useState(() => createGeometryTracker());
+
+  // Host-owned opt-in UI extensions retain the existing HTML wrapper's
+  // sanitation, event serialization and geometry handling.
+  const resolvedRegistry = useMemo(() => {
+    if (!hostElementResolvers) return fallbackComponentRegistry;
+    const registry = new Map(componentRegistry);
+    for (const [tag, resolve] of Object.entries(hostElementResolvers)) {
+      if (!componentRegistry.has('html-' + tag)) continue;
+      registry.set('html-' + tag, createRemoteComponentRenderer(createHtmlHostWrapper(tag, resolve)));
+    }
+    return createFallbackComponentRegistry(registry);
+  }, [hostElementResolvers]);
 
   const isReady = isDefined(receiver) && isExecutionContextInitialized;
 
@@ -146,7 +162,7 @@ export const FrontComponentRenderer = ({
             >
               <RemoteRootRenderer
                 receiver={receiver}
-                components={fallbackComponentRegistry}
+                components={resolvedRegistry}
               />
             </ErrorBoundary>
           </ThemeProvider>

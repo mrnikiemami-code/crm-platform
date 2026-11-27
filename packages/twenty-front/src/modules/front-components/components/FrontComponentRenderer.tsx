@@ -1,3 +1,4 @@
+import { nativeSettingsTableResolvers } from '@/front-components/components/NativeSettingsTableHost';
 import { FrontComponentApplicationTokenPairEffect } from '@/front-components/components/FrontComponentApplicationTokenPairEffect';
 import { FrontComponentLoadErrorToastEffect } from '@/front-components/components/FrontComponentLoadErrorToastEffect';
 import { FrontComponentRendererProvider } from '@/front-components/components/FrontComponentRendererProvider';
@@ -207,6 +208,7 @@ const FrontComponentRendererContent = ({
             storageNamespace={storageNamespace}
             onError={handleError}
             loadingFallback={loadingFallback}
+            hostElementResolvers={nativeSettingsTableResolvers}
           />
         </FrontComponentRendererProvider>
       )}
