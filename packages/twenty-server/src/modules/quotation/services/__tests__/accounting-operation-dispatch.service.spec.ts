@@ -45,6 +45,7 @@ describe('accounting operation boundary', () => {
     expect(execute).toHaveBeenCalledWith(expect.objectContaining({ payload: expect.objectContaining({ body: {
       connectionId: 'c', selections: [{ externalPartyId: '001', createNew: true }], allowRemoteVersionUpdate: false, action: 'prepare-parties',
     } }) }));
+    expect(execute).not.toHaveBeenCalledWith(expect.objectContaining({ userId: expect.anything() }));
     expect(apply).toHaveBeenCalledWith(expect.objectContaining({ authContext: auth, plan }));
   });
   it('rejects unlisted actions and unprivileged global operations before execution', async () => {

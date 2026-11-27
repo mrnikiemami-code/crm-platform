@@ -26,6 +26,7 @@ const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 const id = (value: unknown): value is string => typeof value === 'string' && UUID.test(value);
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
+const timestamp = (value: unknown): number => value instanceof Date ? value.valueOf() : typeof value === 'string' ? Date.parse(value) : NaN;
 const nullableText = (value: unknown): value is string | null => value === null || typeof value === 'string';
 const stableId = (namespace: string, connectionId: string, externalPartyId: string): string => {
   const hex = createHash('sha256').update(namespace + JSON.stringify([connectionId, externalPartyId])).digest('hex');
@@ -181,7 +182,7 @@ export class AccountingPartyApplyService {
             const linkContext = { ...link, transactionScope };
 
             stage = 'MAPPING_READ';
-            const findLink = async (filter: { connectionId: { eq: string }; externalPartyId?: { eq: string }; internalPartyId?: { eq: string } }) => {
+            const findLink = async (filter: { connectionId: { eq: string }; externalPartyId?: { eq: string }; internalPartyId?: { eq: string }; partyType?: { eq: PartyKind } }) => {
               try {
                 return (await this.findOne.execute({ filter, selectedFields: { id: true, externalPartyId: true, internalPartyId: true, partyType: true, remoteVersion: true } }, linkContext)).results;
               } catch (error) {
@@ -195,7 +196,7 @@ export class AccountingPartyApplyService {
                 current.partyType !== row.partyType || (current.remoteVersion ?? null) !== row.expectedRemoteVersion) {
               throw new RowFailure('ACCOUNTING_PARTY_PLAN_STALE', stage);
             }
-            const other = await findLink({ connectionId: { eq: connectionId }, internalPartyId: { eq: row.internalPartyId } });
+            const other = await findLink({ connectionId: { eq: connectionId }, internalPartyId: { eq: row.internalPartyId }, partyType: { eq: row.partyType } });
             if (other && other.externalPartyId !== row.externalPartyId) throw new RowFailure('INVALID_INPUT', stage);
 
             let created = false;
@@ -208,7 +209,7 @@ export class AccountingPartyApplyService {
               stage = 'CUSTOMER_READ';
               const visible = await this.findOne.execute({ filter: { id: { eq: row.internalPartyId } }, selectedFields: { id: true, updatedAt: true } }, customerContext);
               if (visible.results.id !== row.internalPartyId) throw new RowFailure('FORBIDDEN', stage);
-              if (new Date(String(visible.results.updatedAt)).valueOf() !== Date.parse(row.expectedCustomerUpdatedAt ?? '')) {
+              if (timestamp(visible.results.updatedAt) !== timestamp(row.expectedCustomerUpdatedAt)) {
                 throw new RowFailure('ACCOUNTING_PARTY_PLAN_STALE', stage);
               }
               if (row.alreadySynchronized) return { created: false, link: 'NONE' as const };

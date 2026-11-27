@@ -168,7 +168,7 @@ export class AccountingOperationDispatchService {
       const result = await this.executor.execute({
         logicFunctionId: fn.id,
         workspaceId,
-        ...(authContext.type === 'user'
+        ...(authContext.type === 'user' && operation.action !== 'apply-parties'
           ? { userId: authContext.user.id, userWorkspaceId: authContext.userWorkspaceId }
           : {}),
         payload: {
@@ -180,7 +180,7 @@ export class AccountingOperationDispatchService {
           queryStringParameters: {},
           isBase64Encoded: false,
           requestContext: { http: { method: 'POST', path: '/rest/quotation/actions' } },
-          userWorkspaceId: authContext.type === 'user' ? authContext.userWorkspaceId : null,
+          userWorkspaceId: authContext.type === 'user' && operation.action !== 'apply-parties' ? authContext.userWorkspaceId : null,
         },
       });
 

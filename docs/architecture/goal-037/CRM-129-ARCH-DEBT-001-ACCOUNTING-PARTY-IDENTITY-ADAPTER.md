@@ -44,3 +44,7 @@ OPEN until architect-approved implementation, build, provider/DB/HTTP/browser ve
 ## Remediation candidate 0.1.79
 
 The optional profile, adapter declarations, connection-owned ledger metadata, delegated write guards, sparse identity resolver, deterministic IDs and isolated 100-party fixture are implemented in source. See [verification contract](CRM-129-ACCOUNTING-PARTY-CONTRACT-079.md). This is not a PASS. Existing dataset rebind protection, concurrency and cross-connection uniqueness require explicit verification; the previous two failing unit-test identities were not included in the worker report. No live provider or Intranet write is authorized.
+
+## Recovery 0.1.81 — OPEN
+
+0.1.80 install and 100-row preview passed, customer application still failed. 0.1.81 moves the write boundary into Nest with the original authenticated user, explicit user/app role intersection, native query runners, per-row transaction and stale-plan checks. Adapter contract and identity policy remain intact. See [architect recovery 081](CRM-129-ACCOUNTING-PARTY-RECOVERY-081.md). No closure claim until clean build and operational evidence.

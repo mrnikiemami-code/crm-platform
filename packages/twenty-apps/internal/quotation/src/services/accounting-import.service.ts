@@ -39,7 +39,7 @@ import {
 } from 'src/domain/accounting/mapping-page';
 import { loadCrmItemIndex } from 'src/services/accounting-crm-lookup.service';
 import { crmPartyFields, enrichPartyRows, loadCrmPartyIdentities, resolvePartyIdentity, stableCustomerRecordId } from 'src/services/accounting-party-identity.service';
-import { partyDisplayName, partyNationalIdentity, normalizeEconomicCode } from 'src/domain/accounting/party-identity';
+import { partyDisplayName } from 'src/domain/accounting/party-identity';
 import { mergeSourcePartyProfile } from 'src/domain/accounting/party-profile';
 import { verifyCustomerRecord } from 'src/services/customer-picker.service';
 import { isPriceValidOnDay } from 'src/domain/catalog/price-snapshot';
