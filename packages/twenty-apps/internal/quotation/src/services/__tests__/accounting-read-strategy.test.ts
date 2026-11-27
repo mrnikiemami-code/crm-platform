@@ -133,6 +133,34 @@ describe('remote read strategies', () => {
     expect(page.nextCursor).not.toBeNull();
   });
 
+  it('returns server-confirmed page position for item and party snapshot jumps', async () => {
+    const adapter = new MockAccountingAdapter({
+      items: items(1300),
+      parties: Array.from({ length: 1300 }, (_, index) => party(index)),
+      readStrategy: 'REMOTE_UNPAGED',
+    });
+    const listItems = vi.spyOn(adapter, 'listItems');
+    const listParties = vi.spyOn(adapter, 'listParties');
+    const dependencies = { execute, storage: storage() };
+    const firstItems = await loadItemMappingPage(itemInput(adapter), dependencies);
+    const firstParties = await loadPartyMappingPage(partyInput(adapter), dependencies);
+    const target = { cursor: null, pageSize: 25, search: '', pageNumber: 50 };
+    const nextItems = await loadItemMappingPage(itemInput(adapter, {
+      request: { ...target, snapshotId: firstItems.snapshot.snapshotId },
+    }), dependencies);
+    const nextParties = await loadPartyMappingPage(partyInput(adapter, {
+      request: { ...target, snapshotId: firstParties.snapshot.snapshotId },
+    }), dependencies);
+    expect(nextItems.pageNumber).toBe(50);
+    expect(nextParties.pageNumber).toBe(50);
+    expect(nextItems.rows).toHaveLength(25);
+    expect(nextParties.rows).toHaveLength(25);
+    expect(nextItems.rows[0]?.externalItemId).toBe('2225');
+    expect(nextParties.rows[0]?.externalPartyId).toBe('3225');
+    expect(listItems).toHaveBeenCalledTimes(1);
+    expect(listParties).toHaveBeenCalledTimes(1);
+  });
+
   it('reuses the stored snapshot on a later invocation instead of re-reading the destination', async () => {
     const adapter = new MockAccountingAdapter({
       items: items(60),

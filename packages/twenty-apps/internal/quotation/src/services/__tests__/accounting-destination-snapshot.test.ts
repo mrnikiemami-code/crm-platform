@@ -299,6 +299,57 @@ describe('destination snapshot', () => {
       expect(Math.ceil(entry.itemRowCount / SNAPSHOT_CHUNK_ROWS)).toBe(20);
     });
 
+    it('jumps directly to page 50 without reading earlier chunks', async () => {
+      const { storage, entry } = await storedItems(10_000);
+      const reads: number[] = [];
+      const counting: SnapshotStorage = {
+        ...storage,
+        readChunk: async (key, snapshotId, resource, chunkIndex) => {
+          reads.push(chunkIndex);
+          return storage.readChunk(key, snapshotId, resource, chunkIndex);
+        },
+      };
+
+      const result = await readSnapshotPage<ItemImportRow>({
+        storage: counting,
+        key: entry.key,
+        revision: entry,
+        request: { cursor: null, pageSize: 100, search: '', pageNumber: 50, snapshotId: entry.meta.snapshotId },
+        resource: 'ITEMS',
+        haystack: itemRowHaystack,
+      });
+      expect(result.pageNumber).toBe(50);
+      expect(result.totalKnown).toBe(10_000);
+      expect(result.rows).toHaveLength(100);
+      expect(result.rows[0]?.externalItemId).toBe('5900');
+      expect(result.rows[99]?.externalItemId).toBe('5999');
+      expect(reads).toEqual([9]);
+    });
+
+    it('resets a numbered request when its snapshot changed or filtered page no longer exists', async () => {
+      const { storage, entry } = await storedItems(300);
+      const read = (snapshotId: string, search: string, pageNumber: number) =>
+        readSnapshotPage<ItemImportRow>({
+          storage,
+          key: entry.key,
+          revision: entry,
+          request: { cursor: null, pageSize: 25, search, pageNumber, snapshotId },
+          resource: 'ITEMS',
+          haystack: itemRowHaystack,
+        });
+      const stale = await read('another-snapshot', '', 8);
+      expect(stale.pageNumber).toBe(1);
+      expect(stale.rows[0]?.externalItemId).toBe('1000');
+      const filtered = await read(entry.meta.snapshotId, 'کالای 25', 5);
+      expect(filtered.pageNumber).toBe(1);
+      expect(filtered.totalKnown).toBe(11);
+      expect(filtered.rows).toHaveLength(11);
+      const last = await read(entry.meta.snapshotId, '', 50);
+      expect(last.pageNumber).toBe(12);
+      expect(last.rows).toHaveLength(25);
+      expect(last.hasNextPage).toBe(false);
+    });
+
     it('finds a destination row by code or name and pages the result', async () => {
       const storage = createMemorySnapshotStorage();
       const snapshot = unwrapSnapshot(
