@@ -212,6 +212,27 @@ export default defineObject({
       isNullable: true,
     },
     {
+      // Stable IDs owned by finance lane; consolidated in metadata registry at integration.
+      universalIdentifier: '5f3a1d02-951c-56c5-8d5b-0105c4304001',
+      type: FieldType.TEXT,
+      name: 'payloadFingerprint',
+      label: 'اثر انگشت درخواست',
+      description: 'SHA-256 of the exact sealed request and destination binding; immutable after claim.',
+      icon: 'IconFingerprint',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
+      universalIdentifier: '5f3a1d02-951c-56c5-8d5b-0105c4304002',
+      type: FieldType.TEXT,
+      name: 'payloadSnapshot',
+      label: 'نسخه درخواست حسابداری',
+      description: 'Canonical request evidence without tokens or credentials, retained for reconciliation.',
+      icon: 'IconFileInvoice',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: ACCOUNTING_SYNC_OPERATION_FIELDS.connection,
       type: FieldType.RELATION,
       name: 'connection',

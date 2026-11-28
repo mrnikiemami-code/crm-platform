@@ -1,4 +1,4 @@
-import { toGraphqlLiteral } from 'src/data/graphql-literal';
+import { toGraphqlLiteral, type GraphqlValue } from 'src/data/graphql-literal';
 
 // Export-only queries are separate from inbound catalog mapping queries.
 export const buildExportHeaderAndLinesQuery = (quotationId: string, after: string | null = null): string =>
@@ -35,3 +35,17 @@ export const buildExportLinksQuery = ({
       pageInfo { hasNextPage endCursor }
     } }`;
 };
+
+const CLAIM_RECEIPT = 'id kind state internalEntityId internalRevision attempts externalDocumentId errorCode correlationId payloadFingerprint connection { id }';
+export const buildQuotationClaimMutation = (data: Record<string, GraphqlValue>): string =>
+  `mutation CreateQuotationClaim { createAccountingSyncOperation(data: ${toGraphqlLiteral(data)}) { ${CLAIM_RECEIPT} } }`;
+export const buildQuotationFinishMutation = (id: string, data: Record<string, GraphqlValue>): string =>
+  `mutation FinishQuotationClaim { updateAccountingSyncOperation(id: ${toGraphqlLiteral(id)}, data: ${toGraphqlLiteral(data)}) { ${CLAIM_RECEIPT} } }`;
+export const buildSealedRevisionListQuery = (quotationIds: string[]): string =>
+  `query IssuedRevisionsForQuotations {
+    quotationRevisions(filter: { quotationId: { in: ${toGraphqlLiteral(quotationIds)} }, status: { eq: "ISSUED" } },
+      first: ${Math.max(50, quotationIds.length * 2)}) {
+      edges { node { id version quotationId snapshotJson snapshotHash issuedAt status } }
+      pageInfo { hasNextPage endCursor }
+    }
+  }`;

@@ -17,6 +17,7 @@ import {
   type AsanFactorViewModel,
   mapRevisionToAsanFactor,
   scaledQuantityToAsanCount,
+  validateAsanDocumentPayable,
 } from 'src/domain/accounting/adapters/asan/asan-factor';
 import { QUOTATION_EXPORTABLE_STATUSES } from 'src/domain/accounting/outbound-plan';
 import { formatMicrosExact } from 'src/domain/money/micros';
@@ -55,6 +56,8 @@ export type DocumentPreviewInput = {
   revision: QuotationRevisionSnapshot | null;
   quotationStatus: string;
   quotationName: string;
+  descriptionOverride?: string;
+  asanWire?: boolean;
   settings: ConnectionSettings;
   capabilities: AdapterCapabilities;
   flags: { outboundEnabled: boolean; documentExportEnabled: boolean };
@@ -117,7 +120,8 @@ export const buildQuotationDocumentPreview = (
   const storageId =
     settings.defaultStorageId.trim() === ''
       ? null
-      : toVendorId(settings.defaultStorageId);
+      : /^(0|[1-9]\d*)$/.test(settings.defaultStorageId.trim()) && Number(settings.defaultStorageId) <= 2147483647
+        ? Number(settings.defaultStorageId) : null;
   const taxTotal = revision?.totals.taxMicros ?? '0';
   const dutyTotal = revision?.totals.dutyMicros ?? '0';
   const discountTotal = revision?.totals.discountMicros ?? '0';
@@ -265,6 +269,10 @@ export const buildQuotationDocumentPreview = (
     };
   }
 
+  if (!multiTaxReady) {
+    return { ...base, document: null, documentError: { code: 'MULTI_TAX_UNSUPPORTED', detail: '' } };
+  }
+
   if (customerCode === null) {
     return {
       ...base,
@@ -342,12 +350,18 @@ export const buildQuotationDocumentPreview = (
       ? {}
       : { specialItemCodes: settings.specialItemCodes }),
     dutyHandling: capabilities.dutyHandling,
-    ...(taxVendorCode.trim() === '' ? {} : { taxVendorCode }),
-    description: input.quotationName === '' ? revision.quotationNumber : input.quotationName,
+    ...(input.asanWire || taxVendorCode.trim() === '' ? {} : { taxVendorCode }),
+    description: input.descriptionOverride ?? (input.quotationName === '' ? revision.quotationNumber : input.quotationName),
     ...(storageId === null ? {} : { storageId }),
     moneyUnit: settings.moneyUnit,
   });
 
+  if (factor.ok && input.asanWire) {
+    const integrity = validateAsanDocumentPayable({ factor: factor.value, revision,
+      moneyUnit: settings.moneyUnit, productCodeByLineId,
+      ...(settings.specialItemCodes === undefined ? {} : { specialItemCodes: settings.specialItemCodes }) });
+    if (!integrity.ok) return { ...base, document: null, documentError: integrity.refusal };
+  }
   return factor.ok
     ? { ...base, document: factor.value, documentError: null }
     : {

@@ -102,8 +102,9 @@ const quotationExecute = ({
   quotationId = 'q-1',
   companyId = 'company-1',
   personId = null,
-}: QuotationFixture = {}) =>
-  vi.fn(async (query: string) => {
+}: QuotationFixture = {}) => {
+  let claimed: Record<string, unknown> | null = null;
+  return vi.fn(async (query: string) => {
     if (query.includes('QuotationForAccounting')) {
       return {
         quotation: {
@@ -164,16 +165,20 @@ const quotationExecute = ({
       return accountingConnections(connectionNode());
     }
 
-    if (query.includes('createAccountingSyncOperation')) {
-      return { createAccountingSyncOperation: { id: 'op-1' } };
+    if (query.includes('CreateQuotationClaim')) {
+      const id = /id: "([^"]+)"/.exec(query)?.[1];
+      const fingerprint = /payloadFingerprint: "([^"]+)"/.exec(query)?.[1];
+      claimed = { id, kind: 'QUOTATION_REVISION_PUSH', state: 'IN_FLIGHT',
+        internalEntityId: quotationId, internalRevision: 2, attempts: 1, correlationId: id,
+        connection: { id: 'conn-1' }, externalDocumentId: null, errorCode: null, payloadFingerprint: fingerprint };
+      return { createAccountingSyncOperation: claimed };
     }
-
-    if (query.includes('updateAccountingSyncOperation')) {
-      return { updateAccountingSyncOperation: { id: 'op-1' } };
+    if (query.includes('FinishQuotationClaim')) {
+      return { updateAccountingSyncOperation: { ...claimed, state: 'SUCCEEDED', externalDocumentId: '500', errorCode: null } };
     }
-
     return {};
   });
+};
 
 const item = {
   code: '1001',

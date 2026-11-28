@@ -1,15 +1,15 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
   buildAccountingItemLinksQuery,
   buildAccountingOperationsQuery,
   buildCreateAccountingOperationMutation,
   buildExportableQuotationsQuery,
-  buildIssuedRevisionsForQuotationsQuery,
   buildUpdateAccountingItemLinkMutation,
   buildUpdateAccountingOperationMutation,
 } from 'src/data/accounting-queries';
-import { buildExportHeaderAndLinesQuery, buildExportIssuedRevisionQuery, buildExportLinksQuery } from 'src/data/quotation-export-queries';
+import { buildExportHeaderAndLinesQuery, buildExportIssuedRevisionQuery, buildExportLinksQuery,
+  buildQuotationClaimMutation, buildQuotationFinishMutation, buildSealedRevisionListQuery } from 'src/data/quotation-export-queries';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import { requireActiveAccountingConnection } from 'src/services/accounting-connection.service';
 import {
@@ -17,7 +17,7 @@ import {
   type AccountingMoneyUnit,
 } from 'src/domain/accounting/adapter-contract';
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
-import { mapRevisionToAsanFactor, validateAsanDocumentPayable } from 'src/domain/accounting/adapters/asan/asan-factor';
+import { type AsanFactorViewModel } from 'src/domain/accounting/adapters/asan/asan-factor';
 import {
   type QuotationDocumentPreview,
   buildQuotationDocumentPreview,
@@ -36,9 +36,9 @@ import {
   type AccountingOperationState,
 } from 'src/domain/accounting/sync-operation';
 import { type ConnectionSettings } from 'src/domain/accounting/adapter-contract';
-import { hashQuotationRevision, validateRevisionFinancialFacts, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { canonicalizeForHash, hashQuotationRevision, parseRevisionMicros, validateRevisionFinancialFacts, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
-import { parseMicrosExact } from 'src/domain/money/micros';
+import { formatMicrosExact, parseMicrosExact } from 'src/domain/money/micros';
 
 export type OutboundDependencies = {
   execute?: (query: string) => Promise<Record<string, unknown>>;
@@ -869,6 +869,8 @@ export type QuotationExportPreview = {
   revisionVersion: number | null;
   lineItemIds: { lineId: string; itemId: string | null }[];
   documentPreview: QuotationDocumentPreview;
+  // Internal claim inputs, removed from public preview at the route boundary.
+  claim: { fingerprint: string; snapshot: string; payload: AsanFactorViewModel } | null;
 };
 
 export const previewQuotationExport = async (
@@ -904,7 +906,7 @@ export const previewQuotationExport = async (
     lineId: line.lineId, externalItemId: line.binding?.externalId ?? null,
   }));
 
-  const decision = planQuotationExport({
+  let decision = planQuotationExport({
     connectionId,
     quotation: context.value.quotation,
     revision: context.value.revision,
@@ -923,7 +925,13 @@ export const previewQuotationExport = async (
   const documentPreview = buildQuotationDocumentPreview({
     revision: context.value.revision?.snapshot ?? null,
     quotationStatus: context.value.quotation.status,
-    quotationName: context.value.quotation.name,
+    quotationName: context.value.revision?.snapshot.documentTitle ?? context.value.quotation.name,
+    asanWire: adapter.id === 'asan',
+    ...(context.value.revision && adapter.id === 'asan' ? {
+      descriptionOverride: (context.value.revision.snapshot.documentTitle || context.value.revision.snapshot.quotationNumber) +
+        ' [CRM:' + buildAccountingOperationId({ connectionId, kind: 'QUOTATION_REVISION_PUSH',
+          internalEntityId: quotationId, internalRevision: context.value.revision.version }) + ']',
+    } : {}),
     settings,
     capabilities: adapter.capabilities,
     flags: {
@@ -934,13 +942,45 @@ export const previewQuotationExport = async (
     lineLinks,
   });
 
+  const sealed = context.value.revision;
+  if ((decision.kind === 'READY' || decision.kind === 'RETRY') && adapter.isLive && sealed?.snapshot.schemaVersion !== 2) {
+    decision = { kind: 'BLOCKED', code: 'REVISION_MISMATCH', detail: 'historical seal has no complete item/customer identity; reissue before live export', operationId: decision.operationId };
+  }
+  if ((decision.kind === 'READY' || decision.kind === 'RETRY') && documentPreview.document === null) {
+    decision = { kind: 'BLOCKED', code: documentPreview.documentError?.code ?? 'INVALID_INPUT',
+      detail: documentPreview.documentError?.detail ?? 'no exact vendor payload', operationId: decision.operationId };
+  }
+  const payload = documentPreview.document;
+  const snapshot = sealed && payload ? canonicalizeForHash({
+    schemaVersion: 1, connectionId, adapterId: adapter.id, adapterVersion: adapter.contractVersion,
+    baseUrl: settings.baseUrl, remoteUserId: settings.remoteUserId, moneyUnit: settings.moneyUnit,
+    revisionNumber: sealed.version, revisionHash: sealed.snapshotHash,
+    party: bindings.party, lineBindings: bindings.lineBindings, payload,
+  }) : null;
+  const claim = snapshot && payload ? {
+    snapshot, payload, fingerprint: createHash('sha256').update(snapshot, 'utf8').digest('hex'),
+  } : null;
+
   return accepted({
     decision,
     quotationStatus: context.value.quotation.status,
     revisionVersion: context.value.revision?.version ?? null,
     lineItemIds: context.value.lineItemIds,
     documentPreview,
+    claim,
   });
+};
+
+type QuotationClaimIdentity = { id: string; connectionId: string; quotationId: string; revisionNumber: number; fingerprint: string };
+
+const verifyClaimReceipt = (node: unknown, claim: QuotationClaimIdentity, state: AccountingOperationState,
+  externalDocumentId: string | null, errorCode: string | null): boolean => {
+  const row = asRecord(node);
+  return !!row && row.id === claim.id && row.kind === 'QUOTATION_REVISION_PUSH' &&
+    row.internalEntityId === claim.quotationId && row.internalRevision === claim.revisionNumber &&
+    row.state === state && row.attempts === 1 && row.externalDocumentId === externalDocumentId &&
+    row.errorCode === errorCode && row.correlationId === claim.id &&
+    row.payloadFingerprint === claim.fingerprint && asRecord(row.connection)?.id === claim.connectionId;
 };
 
 export const executeQuotationExport = async (
@@ -1000,179 +1040,63 @@ export const executeQuotationExport = async (
     return refused('OPERATION_IN_PROGRESS', 'the document is already in flight');
   }
 
+  // There is no documented Asan idempotency, and a generic update is not a
+  // compare-and-swap claim. Never replay an uncertain document on a browser assertion.
+  if (decision.kind === 'RETRY') return refused('RECONCILIATION_REQUIRED', 'a previous attempt requires authorized reconciliation; no automatic replay');
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const context = await loadQuotationContext(quotationId, execute);
-
-  if (!context.ok) {
-    return context;
+  const initial = preview.value.claim;
+  const revisionNumber = preview.value.revisionVersion;
+  if (initial === null || revisionNumber === null) return refused('REVISION_MISMATCH', 'no verified payload to claim');
+  const fresh = await previewQuotationExport({ connectionId, quotationId, adapter, settings, flags }, dependencies);
+  if (!fresh.ok) return fresh;
+  if (fresh.value.decision.kind !== 'READY' || fresh.value.decision.operationId !== decision.operationId ||
+      fresh.value.revisionVersion !== revisionNumber || fresh.value.claim?.fingerprint !== initial.fingerprint) {
+    return refused('REVISION_MISMATCH', 'document or destination binding changed before claim');
   }
-
-  if (context.value.revision === null) {
-    return refused(
-      'REVISION_NOT_FOUND',
-      'no sealed revision exists; the export path needs an issued revision',
-    );
+  const claim: QuotationClaimIdentity = {
+    id: decision.operationId, connectionId, quotationId, revisionNumber, fingerprint: initial.fingerprint,
+  };
+  // The deterministic primary key gives a single insert winner. There is NO
+  // second write path and no update-in-place retry for an uncertain request.
+  try {
+    const created = await execute(buildQuotationClaimMutation({
+      id: claim.id, connectionId, name: operationName({ kind: 'QUOTATION_REVISION_PUSH', internalEntityId: quotationId, revision: revisionNumber }),
+      kind: 'QUOTATION_REVISION_PUSH', internalEntityId: quotationId, internalRevision: revisionNumber,
+      state: 'IN_FLIGHT', attempts: 1, correlationId: claim.id, externalDocumentId: null, errorCode: null,
+      payloadFingerprint: initial.fingerprint, payloadSnapshot: initial.snapshot,
+    }));
+    if (!verifyClaimReceipt(created.createAccountingSyncOperation, claim, 'IN_FLIGHT', null, null)) {
+      return refused('RECONCILIATION_REQUIRED', 'claim persistence not confirmed; no vendor call made');
+    }
+  } catch {
+    return refused('RECONCILIATION_REQUIRED', 'operation claim not confirmed; do not replay');
   }
-
-  // Never use the operation identity from one revision with a later payload.
-  const revision = context.value.revision;
-  const snapshot = revision.snapshot;
-  if (preview.value.revisionVersion !== revision.version ||
-      (snapshot.schemaVersion === 2 && snapshot.revisionNumber !== revision.version) || snapshot.quotationId !== quotationId ||
-      context.value.quotation.id !== quotationId ||
-      !QUOTATION_EXPORTABLE_STATUSES.has(context.value.quotation.status) ||
-      decision.operationId !== buildAccountingOperationId({ connectionId, kind: 'QUOTATION_REVISION_PUSH',
-        internalEntityId: quotationId, internalRevision: revision.version })) {
-    return refused('REVISION_MISMATCH', 'the approved revision changed during export planning');
-  }
-  if (adapter.isLive && (!revision.snapshotHash || hashQuotationRevision(snapshot) !== revision.snapshotHash)) {
-    return refused('REVISION_IMMUTABLE', 'the stored revision seal could not be verified');
-  }
-
-  if (adapter.isLive && snapshot.schemaVersion !== 2) {
-    return refused('REVISION_MISMATCH', 'historical revision has no sealed item/customer identity; reissue before live export');
-  }
-  const bindings = await selectExportBindings(connectionId, context.value, execute);
-  const productCodeByLineId: Record<string, number> = {};
-  for (const line of bindings.lineBindings) {
-    if (line.binding === null) return refused('LINE_HAS_NO_PRODUCT_LINK', 'line has no unique active accounting link');
-    productCodeByLineId[line.lineId] = Number(line.binding.externalId);
-  }
-  if (bindings.party === null) return refused('CUSTOMER_NOT_LINKED', 'customer has no unique active accounting link');
-  const customerCode = Number(bindings.party.externalId);
-
-  const userId = Number(settings.remoteUserId);
-
-  if (!Number.isSafeInteger(userId) || userId <= 0) {
-    return refused(
-      'ADAPTER_NOT_CONFIGURED',
-      'the vendor user id is required for document registration',
-    );
-  }
-
-  const snapshotPolicyCode = context.value.revision.snapshot.taxPolicy ?? '';
-  const taxVendorCode = settings.taxPolicyMappings[snapshotPolicyCode];
-  const factor = mapRevisionToAsanFactor({
-    revision: context.value.revision.snapshot,
-    customerCode,
-    userId,
-    productCodeByLineId,
-    specialCodesInUse: settings.specialCodes,
-    ...(settings.specialItemCodes === undefined
-      ? {}
-      : { specialItemCodes: settings.specialItemCodes }),
-    dutyHandling: adapter.capabilities.dutyHandling,
-    ...(adapter.id === 'asan' || taxVendorCode === undefined ? {} : { taxVendorCode }),
-    description: (context.value.quotation.name === ''
-        ? context.value.quotation.id
-        : context.value.quotation.name) +
-      (adapter.id === 'asan' ? ' [CRM:' + decision.operationId + ']' : ''),
-    ...(settings.defaultStorageId === ''
-      ? {}
-      : { storageId: Number(settings.defaultStorageId) }),
-    moneyUnit: settings.moneyUnit,
-  });
-
-  if (!factor.ok) {
-    return factor;
-  }
-
-  if (adapter.id === 'asan') {
-    const integrity = validateAsanDocumentPayable({ factor: factor.value, revision: context.value.revision.snapshot, moneyUnit: settings.moneyUnit, ...(settings.specialItemCodes === undefined ? {} : { specialItemCodes: settings.specialItemCodes }) });
-    if (!integrity.ok) return integrity;
-  }
-
-  const operationId = decision.operationId;
-  const attempts =
-    (await loadOperations(connectionId, dependencies, quotationId)).find(
-      (operation) => operation.id === operationId,
-    )?.attempts ?? 0;
-
-  const started = await beginOperation({
-    id: operationId,
-    connectionId,
-    kind: 'QUOTATION_REVISION_PUSH',
-    internalEntityId: quotationId,
-    internalRevision: context.value.revision.version,
-    attempts: attempts + 1,
-    isNew: decision.kind !== 'RETRY',
-    requireExactReceipt: adapter.isLive,
-    execute,
-  });
-
-  if (!started.ok) {
-    return started;
-  }
-
+  const finish = async (state: AccountingOperationState, externalDocumentId: string | null, errorCode: string | null) => {
+    const result = await execute(buildQuotationFinishMutation(claim.id, { state, externalDocumentId, errorCode }));
+    if (!verifyClaimReceipt(result.updateAccountingSyncOperation, claim, state, externalDocumentId, errorCode)) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Accounting document outcome persistence not confirmed');
+    }
+  };
+  const operationId = claim.id;
   const vendorResult = await adapter.registerProforma({
-    payload: factor.value,
-    description: context.value.quotation.name,
+    payload: initial.payload,
+    description: initial.payload.Description,
   });
 
   if (!vendorResult.ok) {
-    // A documented "did not register" is retryable as-is. A timeout or transport failure is
-    // too, but only through the reconciliation gate in the planner, because Asan has no
-    // idempotency key and the document may already exist.
-    const retryable =
-      vendorResult.refusal.code === 'ASAN_DOCUMENT_NOT_REGISTERED' ||
-      vendorResult.refusal.code === 'TIMEOUT' ||
-      vendorResult.refusal.code === 'TRANSPORT_ERROR' ||
-      vendorResult.refusal.code === 'INVALID_RESPONSE';
-
-    const state: AccountingOperationState =
-      adapter.isLive && !adapter.capabilities.documents.remoteIdempotency
-        ? 'MANUAL_EXPORT_REQUIRED'
-        : retryable && attempts + 1 < flags.maxAttempts
-          ? 'FAILED_RETRYABLE'
-          : 'FAILED_FINAL';
-
-    await finishOperation({
-      id: operationId,
-      connectionId,
-      kind: 'QUOTATION_REVISION_PUSH',
-      internalEntityId: quotationId,
-      internalRevision: context.value.revision.version,
-      state,
-      attempts: attempts + 1,
-      externalDocumentId: null,
-      errorCode: vendorResult.refusal.code,
-      requireExactReceipt: adapter.isLive,
-      execute,
-    });
-
+    // Preserve the exact claim and force reconciliation after any uncertain result.
+    await finish('MANUAL_EXPORT_REQUIRED', null, vendorResult.refusal.code);
     return vendorResult;
   }
 
-  // The live vendor's positive code or recent-report identity match is not
-  // proof of posted monetary semantics. Preserve the candidate number and
-  // stop for reconciliation rather than marking a fiscal success or replaying.
-  if (adapter.id === 'asan') {
+  if (adapter.isLive) {
     const evidence = vendorResult.value.registrationEvidence;
-    await finishOperation({
-      id: operationId, connectionId, kind: 'QUOTATION_REVISION_PUSH',
-      internalEntityId: quotationId, internalRevision: context.value.revision.version,
-      state: 'MANUAL_EXPORT_REQUIRED', attempts: attempts + 1,
-      externalDocumentId: vendorResult.value.externalDocumentId,
-      errorCode: evidence === 'IDENTITY_OBSERVED' ? 'ASAN_FISCAL_READBACK_REQUIRED' : 'ASAN_DOCUMENT_READBACK_REQUIRED',
-      requireExactReceipt: adapter.isLive,
-      execute,
-    });
+    await finish('MANUAL_EXPORT_REQUIRED', vendorResult.value.externalDocumentId,
+      evidence === 'IDENTITY_OBSERVED' ? 'ASAN_FISCAL_READBACK_REQUIRED' : 'ASAN_DOCUMENT_READBACK_REQUIRED');
     return refused('RECONCILIATION_REQUIRED', 'the acknowledged document number is retained for authorized reconciliation; do not replay');
   }
 
-  await finishOperation({
-    id: operationId,
-    connectionId,
-    kind: 'QUOTATION_REVISION_PUSH',
-    internalEntityId: quotationId,
-    internalRevision: context.value.revision.version,
-    state: 'SUCCEEDED',
-    attempts: attempts + 1,
-    externalDocumentId: vendorResult.value.externalDocumentId,
-    errorCode: null,
-      requireExactReceipt: adapter.isLive,
-    execute,
-  });
+  await finish('SUCCEEDED', vendorResult.value.externalDocumentId, null);
 
   return accepted({
     operationId,
@@ -1275,7 +1199,9 @@ export const listExportableQuotations = async (
   }
 
   const quotationIds = quotations.map((row) => row.id);
-  const revisionsData = await execute(buildIssuedRevisionsForQuotationsQuery(quotationIds));
+  const revisionsData = await execute(buildSealedRevisionListQuery(quotationIds));
+  const revisionPage = completePage(revisionsData, 'quotationRevisions');
+  if (revisionPage.hasNextPage) throw new RecordApiError('INVALID_RESPONSE', 'Incomplete issued revision list');
   const operationRows: Record<string, unknown>[] = [];
   let operationCursor: string | null = null;
   const operationCursors = new Set<string>();
@@ -1296,14 +1222,18 @@ export const listExportableQuotations = async (
     string,
     { version: number; totalExact: string | null; issuedAt: string | null }
   >();
-  for (const node of readRows(revisionsData, 'quotationRevisions')) {
+  for (const node of revisionPage.rows) {
     const quotationId = readString(node.quotationId);
-    if (quotationId === '' || revisionByQuotation.has(quotationId)) {
-      continue;
+    if (!quotationIds.includes(quotationId) || revisionByQuotation.has(quotationId)) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Repeated or unexpected issued revision');
     }
+    const seal = parseSnapshot(node.snapshotJson);
+    if (!seal || seal.quotationId !== quotationId || hashQuotationRevision(seal) !== readString(node.snapshotHash) ||
+        !validateRevisionFinancialFacts(seal).ok) throw new RecordApiError('INVALID_RESPONSE', 'Issued revision seal is invalid');
+    const total = parseRevisionMicros(seal.totals.totalMicros);
     revisionByQuotation.set(quotationId, {
       version: readNumber(node.version) ?? 0,
-      totalExact: readString(node.totalExact) || null,
+      totalExact: total.ok ? formatMicrosExact(total.value) : null,
       issuedAt: readString(node.issuedAt) || null,
     });
   }

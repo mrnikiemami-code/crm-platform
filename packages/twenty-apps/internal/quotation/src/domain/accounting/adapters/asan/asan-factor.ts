@@ -9,7 +9,7 @@ import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { toAsanFactorDate } from 'src/domain/accounting/adapters/asan/jalali';
 import { QUANTITY_SCALE } from 'src/domain/money/quantity';
-import { decodeRevisionLine, parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { decodeRevisionLine, parseRevisionMicros, validateRevisionFinancialFacts, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Maps a sealed quotation revision onto Asan's `FactorViewModel`.
@@ -324,13 +324,16 @@ const appendSpecialLines = ({
 // Live Asan pre-dispatch gate. Independently reconstruct the payable from the
 // wire rows; a rounding difference or omitted fiscal amount must not post.
 export const validateAsanDocumentPayable = ({
-  factor, revision, moneyUnit, specialItemCodes,
+  factor, revision, moneyUnit, specialItemCodes, productCodeByLineId,
 }: {
   factor: AsanFactorViewModel;
   revision: QuotationRevisionSnapshot;
   moneyUnit: AccountingMoneyUnit;
   specialItemCodes?: AsanSpecialItemCodeOverrides;
+  productCodeByLineId?: Record<string, number>;
 }): Result<true> => {
+  const financial = validateRevisionFinancialFacts(revision);
+  if (!financial.ok) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', financial.refusal.detail);
   const validInt = (value: number) => Number.isInteger(value) && value > 0 && value <= 2147483647;
   if (!validInt(factor.CustomerID) || !validInt(factor.UserID) || factor.FactorNumber !== 0 || factor.FactorDetails.length === 0) return refused('ASAN_DOCUMENT_ID_INVALID', 'customer/user id or document numbering is invalid');
   const codes = Object.fromEntries((['discount', 'duty', 'tax'] as const).map((kind) => [kind, (specialItemCodes?.[kind] ?? '').trim() || ASAN_SPECIAL_ITEM_CODES[kind]])) as Record<'discount' | 'duty' | 'tax', string>;
@@ -347,6 +350,32 @@ export const validateAsanDocumentPayable = ({
       seen.add(detail.ProductID);
     } else if (special) return refused('ASAN_SPECIAL_CODE_INVALID', 'ordinary product row uses a reserved special code');
     payable += BigInt(detail.Price) * (detail.Count === 0 && detail.ProductID === Number(codes.discount) ? -1n : 1n);
+  }
+  // An equal grand total is not sufficient: each fiscal component and product row
+  // must match the seal independently. No undocumented rounding row is invented.
+  const ordinary = factor.FactorDetails.filter(row => row.Count !== 0);
+  if (ordinary.length !== revision.lines.length) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'product row count differs from seal');
+  for (let i = 0; i < revision.lines.length; i++) {
+    const line = revision.lines[i];
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return decoded;
+    const quantity = scaledQuantityToAsanCount(decoded.value.quantity);
+    const gross = crmMicrosToAsanUnits(decoded.value.gross, moneyUnit);
+    if (!quantity.ok || !gross.ok || ordinary[i].Count !== quantity.value || ordinary[i].Price !== gross.value ||
+        (productCodeByLineId !== undefined && ordinary[i].ProductID !== productCodeByLineId[line.lineId])) {
+      return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'product row differs from sealed gross, quantity or mapped identity');
+    }
+  }
+  const tax = parseRevisionMicros(revision.totals.taxMicros);
+  const duty = parseRevisionMicros(revision.totals.dutyMicros ?? '0');
+  const discount = parseRevisionMicros(revision.totals.discountMicros);
+  if (!tax.ok || !duty.ok || !discount.ok) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'invalid sealed fiscal components');
+  for (const [kind, micros] of [['discount', discount.value], ['duty', duty.value], ['tax', tax.value - duty.value]] as const) {
+    const expected = crmMicrosToAsanUnits(micros, moneyUnit);
+    const row = factor.FactorDetails.find(detail => detail.Count === 0 && detail.ProductID === Number(codes[kind]));
+    if (!expected.ok || (expected.value === 0 ? row !== undefined : row?.Price !== expected.value)) {
+      return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'special fiscal row differs from sealed ' + kind);
+    }
   }
   const total = parseRevisionMicros(revision.totals.totalMicros);
   if (!total.ok) return total;
