@@ -97,7 +97,7 @@ export const parseConnectionRecord = (
     name: readString(node.name),
     adapterId: readString(node.adapterId),
     adapterVersion: readString(node.adapterVersion) || null,
-    isActive: readBoolean(node.isActive, true),
+    isActive: node.isActive === true,
     isDefault: node.isDefault === true,
     settings: connectionSettingsFromRecord(node),
     capabilities: node.capabilities ?? null,
@@ -112,11 +112,34 @@ export const loadConnections = async (
   dependencies: ConnectionDependencies = {},
 ): Promise<AccountingConnectionRecord[]> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(buildAccountingConnectionsQuery());
-
-  return readRows(data, 'accountingConnections')
-    .map(parseConnectionRecord)
-    .filter((record): record is AccountingConnectionRecord => record !== null);
+  const result: AccountingConnectionRecord[] = [];
+  const ids = new Set<string>();
+  const cursors = new Set<string>();
+  let afterCursor: string | null = null;
+  for (;;) {
+    const data = await execute(buildAccountingConnectionsQuery({ afterCursor }));
+    const root = asRecord(data.accountingConnections);
+    const rows = readRows(data, 'accountingConnections');
+    const page = asRecord(root?.pageInfo);
+    if (!Array.isArray(root?.edges) || root.edges.length !== rows.length || typeof page?.hasNextPage !== 'boolean') {
+      throw new RecordApiError('INVALID_RESPONSE', 'Incomplete accounting connection listing');
+    }
+    for (const row of rows) {
+      const parsed = parseConnectionRecord(row);
+      if (!parsed || ids.has(parsed.id) || typeof row.isActive !== 'boolean') {
+        throw new RecordApiError('INVALID_RESPONSE', 'Invalid or duplicate accounting connection identity');
+      }
+      ids.add(parsed.id);
+      result.push(parsed);
+    }
+    if (!page.hasNextPage) return result;
+    const next = readString(page.endCursor);
+    if (!next || cursors.has(next) || cursors.size >= 100) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Incomplete accounting connection listing');
+    }
+    cursors.add(next);
+    afterCursor = next;
+  }
 };
 
 // Load a stored connection by id for history / ledger reads. Retired rows are returned
@@ -136,7 +159,14 @@ export const loadConnectionByIdForHistory = async (
   const connections = readRows(data, 'accountingConnections')
     .map(parseConnectionRecord)
     .filter((record): record is AccountingConnectionRecord => record !== null);
-  const selected = connections.find((connection) => connection.id === id) ?? null;
+  const root = asRecord(data.accountingConnections);
+  const page = asRecord(root?.pageInfo);
+  // A scoped query may return zero or exactly one matching row, never an arbitrary first match.
+  if (!Array.isArray(root?.edges) || root.edges.length !== connections.length ||
+      page?.hasNextPage === true || connections.length > 1) {
+    return refused('INVALID_RESPONSE', 'connection identity is incomplete or ambiguous');
+  }
+  const selected = connections.length === 1 && connections[0].id === id ? connections[0] : null;
 
   if (selected === null) {
     return refused('CONNECTION_NOT_FOUND', 'no accounting connection is configured');
@@ -176,13 +206,12 @@ export const resolveConnection = async (
   dependencies: ConnectionDependencies = {},
 ): Promise<Result<AccountingConnectionRecord>> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  // Always load the full set when resolving the workspace default: a filtered single-id
-  // query cannot see whether another row is the default, and "first active" is forbidden.
-  const data = await execute(buildAccountingConnectionsQuery({}));
-
-  const connections = readRows(data, 'accountingConnections')
-    .map(parseConnectionRecord)
-    .filter((record): record is AccountingConnectionRecord => record !== null);
+  const explicit = connectionId?.trim();
+  if (explicit) return requireActiveAccountingConnection(explicit, { execute });
+  // Default resolution needs a complete list, not the first page.
+  let connections: AccountingConnectionRecord[];
+  try { connections = await loadConnections({ execute }); }
+  catch { return refused('INVALID_RESPONSE', 'default destination could not be resolved from a complete connection list'); }
 
   const resolved = resolveAccountingDestination({ connections, connectionId });
 
