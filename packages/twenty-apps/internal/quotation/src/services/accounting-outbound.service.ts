@@ -19,7 +19,7 @@ import {
   type AccountingMoneyUnit,
 } from 'src/domain/accounting/adapter-contract';
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
-import { mapRevisionToAsanFactor } from 'src/domain/accounting/adapters/asan/asan-factor';
+import { mapRevisionToAsanFactor, validateAsanDocumentPayable } from 'src/domain/accounting/adapters/asan/asan-factor';
 import {
   type QuotationDocumentPreview,
   buildQuotationDocumentPreview,
@@ -371,7 +371,8 @@ export const previewItemPush = async (
       observedRemoteVersion,
       existingOperations: operations,
       maxAttempts: flags.maxAttempts,
-      reconciled: flags.reconciled,
+      // A browser assertion is not vendor reconciliation evidence.
+      reconciled: adapter.isLive && !adapter.capabilities.documents.remoteIdempotency ? false : flags.reconciled,
     }),
   });
 };
@@ -558,7 +559,9 @@ export const executeItemPush = async (
 
   if (!vendorResult.ok) {
     const state: AccountingOperationState =
-      attempts + 1 >= flags.maxAttempts ? 'FAILED_FINAL' : 'FAILED_RETRYABLE';
+      adapter.isLive && !adapter.capabilities.documents.remoteIdempotency
+        ? 'MANUAL_EXPORT_REQUIRED'
+        : attempts + 1 >= flags.maxAttempts ? 'FAILED_FINAL' : 'FAILED_RETRYABLE';
 
     await finishOperation({
       id: decision.operationId,
@@ -782,7 +785,8 @@ export const previewQuotationExport = async (
     documentExportEnabled: flags.documentExportEnabled,
     existingOperations: operations,
     maxAttempts: flags.maxAttempts,
-    reconciled: flags.reconciled,
+    // A browser assertion is not vendor reconciliation evidence.
+      reconciled: adapter.isLive && !adapter.capabilities.documents.remoteIdempotency ? false : flags.reconciled,
   });
 
   const documentPreview = buildQuotationDocumentPreview({
@@ -947,7 +951,7 @@ export const executeQuotationExport = async (
       ? {}
       : { specialItemCodes: settings.specialItemCodes }),
     dutyHandling: adapter.capabilities.dutyHandling,
-    ...(taxVendorCode === undefined ? {} : { taxVendorCode }),
+    ...(adapter.id === 'asan' || taxVendorCode === undefined ? {} : { taxVendorCode }),
     description:
       context.value.quotation.name === ''
         ? context.value.quotation.id
@@ -960,6 +964,11 @@ export const executeQuotationExport = async (
 
   if (!factor.ok) {
     return factor;
+  }
+
+  if (adapter.id === 'asan') {
+    const integrity = validateAsanDocumentPayable({ factor: factor.value, revision: context.value.revision.snapshot, moneyUnit: settings.moneyUnit, ...(settings.specialItemCodes === undefined ? {} : { specialItemCodes: settings.specialItemCodes }) });
+    if (!integrity.ok) return integrity;
   }
 
   const operationId = decision.operationId;
@@ -999,9 +1008,11 @@ export const executeQuotationExport = async (
       vendorResult.refusal.code === 'INVALID_RESPONSE';
 
     const state: AccountingOperationState =
-      retryable && attempts + 1 < flags.maxAttempts
-        ? 'FAILED_RETRYABLE'
-        : 'FAILED_FINAL';
+      adapter.isLive && !adapter.capabilities.documents.remoteIdempotency
+        ? 'MANUAL_EXPORT_REQUIRED'
+        : retryable && attempts + 1 < flags.maxAttempts
+          ? 'FAILED_RETRYABLE'
+          : 'FAILED_FINAL';
 
     await finishOperation({
       id: operationId,

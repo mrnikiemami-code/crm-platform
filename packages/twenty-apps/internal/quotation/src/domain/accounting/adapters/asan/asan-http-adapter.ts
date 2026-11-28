@@ -247,9 +247,15 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
     return null;
   }
 
-  const salesPrices = Array.isArray(record.SalesPrice)
-    ? record.SalesPrice.map(readNumber).filter((price): price is number => price !== null)
-    : [];
+  const salesPrices: number[] = [];
+  if (record.SalesPrice !== undefined && record.SalesPrice !== null) {
+    if (!Array.isArray(record.SalesPrice)) return null;
+    for (const value of record.SalesPrice) {
+      const price = readNumber(value);
+      if (price === null || !Number.isInteger(price) || price < 0 || price > 4294967295) return null;
+      salesPrices.push(price);
+    }
+  }
 
   return {
     externalItemId: String(code),

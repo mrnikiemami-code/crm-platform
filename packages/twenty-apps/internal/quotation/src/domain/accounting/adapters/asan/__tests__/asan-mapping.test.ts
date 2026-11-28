@@ -5,6 +5,7 @@ import {
   ASAN_AUTO_FACTOR_NUMBER,
   MICROS_PER_ASAN_UNIT,
   mapRevisionToAsanFactor,
+  validateAsanDocumentPayable,
   microsToAsanMoney,
   scaledQuantityToAsanCount,
   type AsanMappingInput,
@@ -249,6 +250,10 @@ describe('discount and tax special codes', () => {
     // Separate discount must be subtracted once from gross, not net.
     expect(factor.FactorDetails[0].Price).toBe(10_000_000);
     expect(factor.FactorDetails[0].Price - specials[0].Price + specials[1].Price).toBe(9_810_000);
+    expect(validateAsanDocumentPayable({ factor, revision: discountedRevision, moneyUnit: 'RIAL' }).ok).toBe(true);
+    const wrong = { ...factor, FactorDetails: [{ ...factor.FactorDetails[0], Price: 9_000_000 }, ...factor.FactorDetails.slice(1)] };
+    expect(refusalCodeOf(validateAsanDocumentPayable({ factor: wrong, revision: discountedRevision, moneyUnit: 'RIAL' }))).toBe('ASAN_DOCUMENT_TOTAL_MISMATCH');
+    expect(refusalCodeOf(validateAsanDocumentPayable({ factor, revision: { ...discountedRevision, totals: { ...discountedRevision.totals, totalMicros: '9810001.000000' } }, moneyUnit: 'RIAL' }))).toBe('ASAN_DOCUMENT_TOTAL_MISMATCH');
   });
 
   it('does not append a special line when the installation lacks the code', () => {

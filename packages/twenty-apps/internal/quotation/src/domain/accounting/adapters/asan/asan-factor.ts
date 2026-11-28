@@ -360,3 +360,39 @@ const appendSpecialLines = ({
 
   return accepted(details);
 };
+
+
+// Live Asan pre-dispatch gate. Independently reconstruct the payable from the
+// wire rows; a rounding difference or omitted fiscal amount must not post.
+export const validateAsanDocumentPayable = ({
+  factor, revision, moneyUnit, specialItemCodes,
+}: {
+  factor: AsanFactorViewModel;
+  revision: QuotationRevisionSnapshot;
+  moneyUnit: AccountingMoneyUnit;
+  specialItemCodes?: AsanSpecialItemCodeOverrides;
+}): Result<true> => {
+  const validInt = (value: number) => Number.isInteger(value) && value > 0 && value <= 2147483647;
+  if (!validInt(factor.CustomerID) || !validInt(factor.UserID) || factor.FactorNumber !== 0 || factor.FactorDetails.length === 0) return refused('ASAN_DOCUMENT_ID_INVALID', 'customer/user id or document numbering is invalid');
+  const codes = Object.fromEntries((['discount', 'duty', 'tax'] as const).map((kind) => [kind, (specialItemCodes?.[kind] ?? '').trim() || ASAN_SPECIAL_ITEM_CODES[kind]])) as Record<'discount' | 'duty' | 'tax', string>;
+  if (Object.values(codes).some((code) => !/^\d+$/.test(code) || !validInt(Number(code))) || new Set(Object.values(codes).map(Number)).size !== 3) return refused('ASAN_SPECIAL_CODE_INVALID', 'special codes must be distinct positive int identifiers');
+  const reserved = new Set(Object.values(codes).map(Number));
+  const seen = new Set<number>();
+  let payable = 0n;
+  for (const detail of factor.FactorDetails) {
+    if (!validInt(detail.ProductID) || !Number.isInteger(detail.StorageID) || detail.StorageID < 0 || detail.StorageID > 2147483647 ||
+      !Number.isFinite(detail.Count) || detail.Count < 0 || !Number.isSafeInteger(detail.Price) || detail.Price < 0) return refused('ASAN_DOCUMENT_ROW_INVALID', 'invalid row amount, quantity or identifier');
+    const special = reserved.has(detail.ProductID);
+    if (detail.Count === 0) {
+      if (!special || seen.has(detail.ProductID)) return refused('ASAN_SPECIAL_CODE_INVALID', 'unrecognized or repeated special row');
+      seen.add(detail.ProductID);
+    } else if (special) return refused('ASAN_SPECIAL_CODE_INVALID', 'ordinary product row uses a reserved special code');
+    payable += BigInt(detail.Price) * (detail.Count === 0 && detail.ProductID === Number(codes.discount) ? -1n : 1n);
+  }
+  const total = parseExactToMicros(revision.totals.totalMicros);
+  if (!total.ok) return total;
+  const expected = crmMicrosToAsanUnits(total.value, moneyUnit);
+  if (!expected.ok) return expected;
+  if (payable !== BigInt(expected.value)) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'wire payable differs from sealed CRM total; no undocumented rounding or missing amount may be posted');
+  return accepted(true);
+};
