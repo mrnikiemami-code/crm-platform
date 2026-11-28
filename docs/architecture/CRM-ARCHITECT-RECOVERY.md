@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 040 round 2 parallel closure START (2026-11-28)
+
+User authorized second parallel split after merge. [Binding round 2 charter](goal-040/PARALLEL-CLOSURE-ROUND-2.md). Product baseline `e906c3816be4f94d9bf8d134ef65df774040b1c1`. Architect lane `feat/crm129-g040-final-finance-security` owns F06/F07/U03/U05 outbound/security/reconciliation; Cursor lane `feat/crm129-g040-final-commercial-catalog` owns U04 and residual U01/U02/P05 commercial/price/unit/catalog with targeted local verification. Shared seams converge centrally; no branch cross-writes, no deployment/real vendor/version bump. Prior source partial gates remain; neither lane has started implementation yet. One final integrated phase 3 after source completion. G1/G2 NOT_AUTHORIZED.
+
 ## CURRENT — Goal 040 architect convergence STOP / SOURCE_PARTIAL (2026-11-28)
 
 User requested architect execution and stop. Source/test checkpoint `9f4fc19af209ad055e1be897e1731a6384da919e`, 46 commits and 41 paths after previous integration ledger tip 698899b9e5e415f8e4a2400b91673ce0f7fefc26. All changes on feat/crm-129-quotation after verified merge 6bf4298d3a52dafa0ad073aad10ea99bb60403d5; no lane rewrites.
