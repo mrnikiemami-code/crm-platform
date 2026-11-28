@@ -22,6 +22,7 @@ import {
 } from 'src/data/accounting-settings-api';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 import { type AccountingAdapter } from 'src/domain/accounting/adapter-contract';
+import { createApprovedAsanReadTransport, matchesAsanReadBinding, type AsanReadBinding } from 'src/domain/accounting/adapters/asan/asan-approved-transport';
 import { resolveAccountingDestination } from 'src/domain/accounting/resolve-destination';
 
 export type AccountingConnectionRecord = {
@@ -46,6 +47,7 @@ export type ConnectionDependencies = {
 export type AdapterSecrets = {
   tunnelToken?: string;
   allowInsecureTransport: boolean;
+  approvedRead?: AsanReadBinding;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -205,6 +207,9 @@ export const readAdapterSecrets = (env: Record<string, string | undefined>): Ada
     ? {}
     : { tunnelToken: env.ASAN_TUNNEL_TOKEN }),
   allowInsecureTransport: env.ASAN_TRANSPORT_APPROVED === 'true',
+  ...(env.ASAN_APPROVED_READ_CONNECTION_ID && env.ASAN_APPROVED_READ_BASE_URL && env.ASAN_APPROVED_READ_IPV4
+    ? { approvedRead: { connectionId: env.ASAN_APPROVED_READ_CONNECTION_ID,
+      baseUrl: env.ASAN_APPROVED_READ_BASE_URL, ipv4: env.ASAN_APPROVED_READ_IPV4 } } : {}),
 });
 
 export const describeSecretStatus = (secrets: AdapterSecrets): {
@@ -218,15 +223,17 @@ export const describeSecretStatus = (secrets: AdapterSecrets): {
 export const buildAdapter = (
   record: AccountingConnectionRecord,
   secrets: AdapterSecrets,
-): Result<AccountingAdapter> =>
-  createAccountingAdapter({
+): Result<AccountingAdapter> => {
+  const binding = secrets.approvedRead;
+  const approved = record.adapterId === 'asan' && record.isActive && binding !== undefined &&
+    matchesAsanReadBinding(binding, record.id, record.settings.baseUrl);
+  return createAccountingAdapter({
     adapterId: record.adapterId,
     settings: record.settings,
-    ...(secrets.tunnelToken === undefined
-      ? {}
-      : { tunnelToken: secrets.tunnelToken }),
-    allowInsecureTransport: secrets.allowInsecureTransport,
+    ...(approved && secrets.tunnelToken !== undefined ? { tunnelToken: secrets.tunnelToken } : {}),
+    ...(approved && binding !== undefined ? { fetchImpl: createApprovedAsanReadTransport(binding) } : {}),
   });
+};
 
 export type SaveConnectionInput = {
   id?: string | null;

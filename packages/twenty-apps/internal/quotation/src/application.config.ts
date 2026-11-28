@@ -49,12 +49,29 @@ export default defineApplication({
         'Bearer token added to Asan requests by the approved tunnel. Secret; empty when the tunnel needs no token.',
       isSecret: true,
     },
-    // The second, environment-level approval that lets a write use a plain-HTTP Asan
-    // address. The connection record has its own switch; both must agree.
+    // Legacy variable retained so existing installations are not destructively changed.
+    // It does not authorize cleartext or any real write.
     ASAN_TRANSPORT_APPROVED: {
       universalIdentifier: 'e0b1c2d3-0006-4000-8000-000000000006',
       description:
-        'Set to true only after a TLS tunnel is confirmed in front of Asan. Without it, no write leaves the CRM over clear text.',
+        'Legacy approval flag; does not authorize cleartext or actual vendor writes.',
+      isSecret: false,
+    },
+    // Explicit read-only rollout binding. All three must match the saved connection.
+    // No default values; installation alone never enables vendor traffic.
+    ASAN_APPROVED_READ_CONNECTION_ID: {
+      universalIdentifier: 'e0b1c2d3-0008-4000-8000-000000000008',
+      description: 'Exact approved accounting connection id for Asan read-only access.',
+      isSecret: false,
+    },
+    ASAN_APPROVED_READ_BASE_URL: {
+      universalIdentifier: 'e0b1c2d3-0009-4000-8000-000000000009',
+      description: 'Exact approved HTTPS gateway base address for Asan read-only access.',
+      isSecret: false,
+    },
+    ASAN_APPROVED_READ_IPV4: {
+      universalIdentifier: 'e0b1c2d3-0010-4000-8000-000000000010',
+      description: 'Explicit public IPv4 pin for the approved HTTPS gateway; private egress is not enabled.',
       isSecret: false,
     },
     // Registering a pro-forma in accounting is a fiscal act, so it has its own switch
