@@ -134,6 +134,7 @@ const PERSIAN_MESSAGES: Record<string, string> = {
     'برای ویرایش مشتری، کد حسابداری موجود آن لازم است.',
   ASAN_PERSON_CODE_TOO_SMALL:
     'کد مشتری کمتر از حد مجاز نرم‌افزار حسابداری است.',
+  ASAN_PRODUCT_ALREADY_EXISTS: 'کد کالا در آسان از قبل وجود دارد؛ به همان کالا متصل کنید یا تعارض را بررسی کنید.',
   ASAN_PRODUCT_CODE_INVALID: 'کد کالا برای ثبت در حسابداری معتبر نیست.',
   ASAN_PRODUCT_NAME_MISSING: 'نام کالا برای ثبت در حسابداری لازم است.',
   ASAN_SELL_PRICE_INVALID: 'قیمت فروش باید عددی مثبت به واحد کامل باشد.',

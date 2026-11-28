@@ -334,6 +334,17 @@ describe('item push execution', () => {
     expect(events).toEqual(['begin', 'vendor', 'finish-succeeded']);
   });
 
+  it('never calls a live vendor if the persistence authority returns the wrong claim identity', async () => {
+    const { execute } = ledgerExecute();
+    const adapter = new MockAccountingAdapter();
+    Object.defineProperty(adapter, 'isLive', { value: true });
+    const create = vi.spyOn(adapter, 'createItem');
+    const outcome = await executeItemPush({ connectionId: 'conn-1', internalItemId: 'item-1',
+      changedFields: ['price'], adapter, settings: settings(), flags: flags(), item }, { execute });
+    expect(outcome).toMatchObject({ ok: false, refusal: { code: 'INVALID_RESPONSE' } });
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('refuses before any write when outbound is off', async () => {
     const execute = vi.fn(async (query: string) =>
       query.includes('accountingConnections')

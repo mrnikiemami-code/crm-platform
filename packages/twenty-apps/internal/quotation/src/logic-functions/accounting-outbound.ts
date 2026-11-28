@@ -281,11 +281,13 @@ const handler = async (event: RoutePayload<unknown>) => {
 
       if (externalItemId !== null) {
         loaded.item.externalItemId = externalItemId;
-        loaded.item.salesPriceMicros = await preserveSalesPriceTiers({
-          adapter,
-          externalItemId,
-          moneyUnit: activeConnection.settings.moneyUnit,
-        });
+        // Asan's own exact single-item read owns the two tier positions.
+        // Only legacy mock fixtures use the full-catalog helper.
+        if (adapter.value.id !== 'asan') {
+          loaded.item.salesPriceMicros = await preserveSalesPriceTiers({
+            adapter, externalItemId, moneyUnit: activeConnection.settings.moneyUnit,
+          });
+        }
       }
 
       const outcome = await executeItemPush({

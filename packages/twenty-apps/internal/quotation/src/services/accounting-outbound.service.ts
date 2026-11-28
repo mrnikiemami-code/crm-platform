@@ -196,6 +196,7 @@ const recordOperation = async (
     errorCode,
     correlationId,
     isNew,
+    requireExactReceipt = false,
   }: {
     id: string;
     connectionId: string;
@@ -208,6 +209,7 @@ const recordOperation = async (
     errorCode: string | null;
     correlationId: string;
     isNew: boolean;
+    requireExactReceipt?: boolean;
   },
   execute: (query: string) => Promise<Record<string, unknown>>,
 ): Promise<void> => {
@@ -224,14 +226,22 @@ const recordOperation = async (
     connectionId,
   };
 
-  if (isNew) {
-    await execute(
-      buildCreateAccountingOperationMutation({ ...data, id }),
-    );
-    return;
+  const mutation = isNew ? 'createAccountingSyncOperation' : 'updateAccountingSyncOperation';
+  const result = await execute(isNew
+    ? buildCreateAccountingOperationMutation({ ...data, id })
+    : buildUpdateAccountingOperationMutation(id, data));
+  // A transport success is not a durable claim. Live writes must see the
+  // precise identity and state returned by the persistence authority.
+  if (requireExactReceipt) {
+    const receipt = asRecord(result[mutation]);
+    if (receipt === null || receipt.id !== id || receipt.kind !== kind ||
+        receipt.internalEntityId !== internalEntityId || receipt.internalRevision !== internalRevision ||
+        receipt.state !== state || receipt.attempts !== attempts ||
+        receipt.externalDocumentId !== externalDocumentId || receipt.errorCode !== errorCode ||
+        receipt.correlationId !== correlationId) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Accounting operation persistence receipt differs from the intended claim');
+    }
   }
-
-  await execute(buildUpdateAccountingOperationMutation(id, data));
 };
 
 // The operation row exists BEFORE the vendor call, so a crash mid-write leaves an IN_FLIGHT
@@ -246,6 +256,7 @@ const beginOperation = async ({
   attempts,
   isNew,
   execute,
+  requireExactReceipt = false,
 }: {
   id: string;
   connectionId: string;
@@ -255,6 +266,7 @@ const beginOperation = async ({
   attempts: number;
   isNew: boolean;
   execute: (query: string) => Promise<Record<string, unknown>>;
+  requireExactReceipt?: boolean;
 }): Promise<Result<true>> => {
   try {
     await recordOperation(
@@ -270,6 +282,7 @@ const beginOperation = async ({
         errorCode: null,
         correlationId: randomUUID(),
         isNew,
+        requireExactReceipt,
       },
       execute,
     );
@@ -308,6 +321,7 @@ const finishOperation = async ({
   externalDocumentId,
   errorCode,
   execute,
+  requireExactReceipt = false,
 }: {
   id: string;
   connectionId: string;
@@ -319,6 +333,7 @@ const finishOperation = async ({
   externalDocumentId: string | null;
   errorCode: string | null;
   execute: (query: string) => Promise<Record<string, unknown>>;
+  requireExactReceipt?: boolean;
 }): Promise<void> => {
   await recordOperation(
     {
@@ -333,6 +348,7 @@ const finishOperation = async ({
       errorCode,
       correlationId: randomUUID(),
       isNew: false,
+      requireExactReceipt,
     },
     execute,
   );
@@ -365,7 +381,7 @@ export const previewItemPush = async (
   const execute = dependencies.execute ?? executeRecordGraphql;
   const [links, operations] = await Promise.all([
     loadItemLinks(connectionId, execute),
-    loadOperations(connectionId, dependencies),
+    loadOperations(connectionId, dependencies, internalItemId),
   ]);
 
   const link =
@@ -489,7 +505,7 @@ export const executeItemPush = async (
   const operationKind =
     decision.kind === 'CREATE' ? 'CATALOG_ITEM_CREATE' : 'CATALOG_ITEM_UPDATE';
   const attempts =
-    (await loadOperations(connectionId, dependencies)).find(
+    (await loadOperations(connectionId, dependencies, internalItemId)).find(
       (operation) => operation.id === decision.operationId,
     )?.attempts ?? 0;
 
@@ -501,6 +517,7 @@ export const executeItemPush = async (
     internalRevision: null,
     attempts: attempts + 1,
     isNew: decision.kind !== 'RETRY',
+    requireExactReceipt: adapter.isLive,
     execute: dependencies.execute ?? executeRecordGraphql,
   });
 
@@ -529,6 +546,7 @@ export const executeItemPush = async (
       attempts: attempts + 1,
       externalDocumentId: null,
       errorCode: !unreadableAmount.ok ? unreadableAmount.refusal.code : null,
+      requireExactReceipt: adapter.isLive,
       execute: dependencies.execute ?? executeRecordGraphql,
     });
 
@@ -559,6 +577,7 @@ export const executeItemPush = async (
       attempts: attempts + 1,
       externalDocumentId: null,
       errorCode: !conversionFailure.ok ? conversionFailure.refusal.code : null,
+      requireExactReceipt: adapter.isLive,
       execute: dependencies.execute ?? executeRecordGraphql,
     });
 
@@ -599,6 +618,7 @@ export const executeItemPush = async (
       attempts: attempts + 1,
       externalDocumentId: null,
       errorCode: vendorResult.refusal.code,
+      requireExactReceipt: adapter.isLive,
       execute,
     });
 
@@ -629,6 +649,7 @@ export const executeItemPush = async (
     attempts: attempts + 1,
     externalDocumentId: vendorResult.value.externalItemId || null,
     errorCode: null,
+      requireExactReceipt: adapter.isLive,
     execute,
   });
 
@@ -770,7 +791,7 @@ export const previewQuotationExport = async (
       await execute(buildAccountingPartyLinksQuery({ connectionId })),
       'accountingPartyLinks',
     ),
-    loadOperations(connectionId, dependencies),
+    loadOperations(connectionId, dependencies, quotationId),
   ]);
 
   const linkByInternalItemId = new Map(
@@ -1020,7 +1041,7 @@ export const executeQuotationExport = async (
 
   const operationId = decision.operationId;
   const attempts =
-    (await loadOperations(connectionId, dependencies)).find(
+    (await loadOperations(connectionId, dependencies, quotationId)).find(
       (operation) => operation.id === operationId,
     )?.attempts ?? 0;
 
@@ -1032,6 +1053,7 @@ export const executeQuotationExport = async (
     internalRevision: context.value.revision.version,
     attempts: attempts + 1,
     isNew: decision.kind !== 'RETRY',
+    requireExactReceipt: adapter.isLive,
     execute,
   });
 
@@ -1071,6 +1093,7 @@ export const executeQuotationExport = async (
       attempts: attempts + 1,
       externalDocumentId: null,
       errorCode: vendorResult.refusal.code,
+      requireExactReceipt: adapter.isLive,
       execute,
     });
 
@@ -1088,6 +1111,7 @@ export const executeQuotationExport = async (
       state: 'MANUAL_EXPORT_REQUIRED', attempts: attempts + 1,
       externalDocumentId: vendorResult.value.externalDocumentId,
       errorCode: evidence === 'IDENTITY_OBSERVED' ? 'ASAN_FISCAL_READBACK_REQUIRED' : 'ASAN_DOCUMENT_READBACK_REQUIRED',
+      requireExactReceipt: adapter.isLive,
       execute,
     });
     return refused('RECONCILIATION_REQUIRED', 'the acknowledged document number is retained for authorized reconciliation; do not replay');
@@ -1103,6 +1127,7 @@ export const executeQuotationExport = async (
     attempts: attempts + 1,
     externalDocumentId: vendorResult.value.externalDocumentId,
     errorCode: null,
+      requireExactReceipt: adapter.isLive,
     execute,
   });
 
