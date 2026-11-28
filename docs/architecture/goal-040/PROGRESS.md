@@ -25,3 +25,6 @@ A handoff `b09f4098788d701817cefd69c6af9efc56082745`; source/doc tip `41701449a6
 
 ## Convergence checkpoint
 Merged exact A and B tips in `6bf4298d3a52dafa0ad073aad10ea99bb60403d5` with all 76 changed paths and reviewed additive unit query merge. B 15+34 targeted tests reported in checked logs; integrated tests NOT_RUN. Phase 1/2 IN_PROGRESS (source only), mandatory P05 atomicity and U01 line/lock seam plus U03/U04/U05/F06/F07 remain. Phase 3 NOT_RUN; phase 4 NOT_AUTHORIZED. No Dev or vendor traffic. Architect continues on feat/crm-129-quotation, not either lane; preserve merge and avoid repeated Cursor goals.
+
+## Architect integration stop — 2026-11-28
+Source/test tip `9f4fc19af209ad055e1be897e1731a6384da919e`; 46 commits/41 paths after integration ledger. U01 primary unit selection, server line/seal snapshots and monotonic first-use lock implemented in source. P05 private prepare-items + Nest 25-row atomic batch source and UI explicit version/unit/kind selection implemented; source fixtures added, runtime NOT_RUN. User requested stop. SOURCE_PARTIAL / NOT_ACCEPTED: U03/U04/U05/F06/F07 plus remaining U01/U02/P05 real PG/concurrency and unit equivalence gates unresolved. Local bridge internal error. P01–P15 NOT_RUN; G1/G2 NOT_AUTHORIZED. No Dev/intranet apply, version bump or vendor calls. Recovery document authoritative for next continuation.
