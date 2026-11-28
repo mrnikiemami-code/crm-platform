@@ -227,6 +227,7 @@ export const ACCOUNTING_CONNECTION_FIELDS = {
   healthState: '602b4e57-917c-5486-8fd7-c05182b3a447',
   lastHealthMessage: '713c5f68-a28d-5597-9ae8-d16293c4b558',
   verificationState: '824d6079-b39e-56a8-8bf9-e273a4d5c669',
+  datasetBindingId: '665a06f2-6df1-5f11-9f84-81d79d1b38a3',
 } as const;
 
 export const ACCOUNTING_ITEM_LINK_FIELDS = {
