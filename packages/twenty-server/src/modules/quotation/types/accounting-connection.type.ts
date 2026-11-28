@@ -21,6 +21,7 @@ export type WorkspaceAccountingConnectionRow = {
   lastHealthCheckAt: string | null;
   lastHealthMessage: string | null;
   verificationState: string | null;
+  datasetBindingId?: string | null;
 };
 
 export type AccountingConnectionView = {
