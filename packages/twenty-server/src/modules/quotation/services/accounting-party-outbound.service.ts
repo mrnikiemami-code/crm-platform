@@ -177,7 +177,7 @@ export class AccountingPartyOutboundService {
     // a conflict code, never another customer's identity to this caller.
     if (profile?.nationalCode) {
       const code = profile.nationalCode;
-      const variants = [...new Set([code, code.replace(/\\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]), code.replace(/\\d/g, d => '٠١٢٣٤٥٦٧٨٩'[Number(d)])])];
+      const variants = [...new Set([code, code.replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]), code.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[Number(d)])])];
       for (const object of ['person', 'company']) {
         const rows = await scope.getRepository<{ id: string; nationalCode: string }>(object, { shouldBypassPermissionChecks: true })
           .find({ where: variants.map(nationalCode => ({ nationalCode })), withDeleted: true, take: 3, select: { id: true } });
