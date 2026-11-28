@@ -1079,26 +1079,65 @@ export const executeQuotationExport = async (
       throw new RecordApiError('INVALID_RESPONSE', 'Accounting document outcome persistence not confirmed');
     }
   };
+  // Re-read the claimed revision, links and operation ledger after the insert.
+  // A claim alone does not authorize dispatch if the document or destination moved.
+  // This is a fail-closed source guard, not an atomic connection/dispatch lock.
+  try {
+    const claimedPreview = await previewQuotationExport({ connectionId, quotationId, adapter, settings, flags }, dependencies);
+    if (!claimedPreview.ok || claimedPreview.value.decision.kind !== 'IN_PROGRESS' ||
+        claimedPreview.value.decision.operationId !== claim.id ||
+        claimedPreview.value.revisionVersion !== revisionNumber ||
+        claimedPreview.value.claim?.fingerprint !== claim.fingerprint ||
+        !claimedPreview.value.documentPreview.checks.every(check => check.ok)) {
+      await finish('CANCELLED', null, 'REVISION_MISMATCH');
+      return refused('REVISION_MISMATCH', 'document or claim changed after persistence; no vendor call made');
+    }
+    const cutoff = await requireActiveAccountingConnection(connectionId, { execute });
+    if (!cutoff.ok) {
+      await finish('CANCELLED', null, cutoff.refusal.code);
+      return cutoff;
+    }
+    if (cutoff.value.adapterId !== active.value.adapterId ||
+        cutoff.value.adapterVersion !== active.value.adapterVersion ||
+        canonicalizeForHash(cutoff.value.settings) !== canonicalizeForHash(active.value.settings)) {
+      await finish('CANCELLED', null, 'CONNECTION_CHANGED');
+      return refused('RECONCILIATION_REQUIRED', 'destination settings changed after claim; no vendor call made');
+    }
+  } catch {
+    return refused('RECONCILIATION_REQUIRED', 'pre-dispatch authority could not be confirmed; no vendor call made');
+  }
+
   const operationId = claim.id;
-  const vendorResult = await adapter.registerProforma({
-    payload: initial.payload,
-    description: initial.payload.Description,
-  });
-
-  if (!vendorResult.ok) {
-    // Preserve the exact claim and force reconciliation after any uncertain result.
-    await finish('MANUAL_EXPORT_REQUIRED', null, vendorResult.refusal.code);
-    return vendorResult;
+  let vendorResult: Awaited<ReturnType<AccountingAdapter['registerProforma']>>;
+  try {
+    vendorResult = await adapter.registerProforma({
+      payload: initial.payload,
+      description: initial.payload.Description,
+    });
+  } catch {
+    // A thrown transport error may occur after the remote write. Never replay.
+    try { await finish('MANUAL_EXPORT_REQUIRED', null, 'ASAN_DOCUMENT_READBACK_REQUIRED'); } catch { /* retain durable IN_FLIGHT claim */ }
+    return refused('RECONCILIATION_REQUIRED', 'document registration outcome is unknown; do not replay');
   }
 
-  if (adapter.isLive) {
-    const evidence = vendorResult.value.registrationEvidence;
-    await finish('MANUAL_EXPORT_REQUIRED', vendorResult.value.externalDocumentId,
-      evidence === 'IDENTITY_OBSERVED' ? 'ASAN_FISCAL_READBACK_REQUIRED' : 'ASAN_DOCUMENT_READBACK_REQUIRED');
-    return refused('RECONCILIATION_REQUIRED', 'the acknowledged document number is retained for authorized reconciliation; do not replay');
-  }
+  try {
+    if (!vendorResult.ok) {
+      // Preserve the exact claim and force reconciliation after any uncertain result.
+      await finish('MANUAL_EXPORT_REQUIRED', null, vendorResult.refusal.code);
+      return vendorResult;
+    }
 
-  await finish('SUCCEEDED', vendorResult.value.externalDocumentId, null);
+    if (adapter.isLive) {
+      const evidence = vendorResult.value.registrationEvidence;
+      await finish('MANUAL_EXPORT_REQUIRED', vendorResult.value.externalDocumentId,
+        evidence === 'IDENTITY_OBSERVED' ? 'ASAN_FISCAL_READBACK_REQUIRED' : 'ASAN_DOCUMENT_READBACK_REQUIRED');
+      return refused('RECONCILIATION_REQUIRED', 'the acknowledged document number is retained for authorized reconciliation; do not replay');
+    }
+
+    await finish('SUCCEEDED', vendorResult.value.externalDocumentId, null);
+  } catch {
+    return refused('RECONCILIATION_REQUIRED', 'document outcome persistence not confirmed; do not replay');
+  }
 
   return accepted({
     operationId,
