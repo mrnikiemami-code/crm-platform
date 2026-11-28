@@ -20,6 +20,7 @@ const CONNECTION_FIELDS = `
   lastHealthCheckAt
   lastHealthMessage
   verificationState
+  datasetBindingId
 `;
 
 export const buildAccountingConnectionsQuery = ({
