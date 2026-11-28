@@ -189,8 +189,11 @@ const quotationExecute = ({
       const state = /state: "([^"]+)"/.exec(query)?.[1];
       const externalDocumentId = /externalDocumentId: "([^"]+)"/.exec(query)?.[1] ?? null;
       const errorCode = /errorCode: "([^"]+)"/.exec(query)?.[1] ?? null;
+      if (claimed?.state !== 'IN_FLIGHT') return { updateAccountingSyncOperations: [] };
+      expect(query).toContain('state: { eq: "IN_FLIGHT" }');
+      expect(query).toContain('payloadFingerprint: { eq:');
       claimed = { ...claimed, state, externalDocumentId, errorCode };
-      return { updateAccountingSyncOperation: claimed };
+      return { updateAccountingSyncOperations: [claimed] };
     }
     return {};
   });
