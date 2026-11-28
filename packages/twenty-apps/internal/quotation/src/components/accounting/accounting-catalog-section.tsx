@@ -1,6 +1,8 @@
 import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
+import { SettingsDialog } from 'src/components/shared/settings-dialog';
+import { UnitCombobox, type UnitOption } from 'src/components/shared/unit-combobox';
 import { confirmAccountingAction } from 'src/components/accounting/confirm-accounting-action';
 
 import {
@@ -77,10 +79,12 @@ const isSelectableItem = (row: ItemMappingRow): boolean =>
   row.decision === 'LINK_SUGGESTED' ||
   row.decision === 'REMOTE_CHANGED';
 
+const effectiveUnitId = (row: ItemMappingRow, choice?: UnitChoice): string => row.decision === 'CREATE' ? choice?.unitRecordId ?? '' : row.suggestedUnitRecordId ?? '';
+
 const selectionForRow = (row: ItemMappingRow, choice?: UnitChoice): Selection => ({
   internalItemId: row.suggestedInternalItemId,
   expectedRemoteVersion: row.remoteVersion ?? '',
-  ...(choice?.unitRecordId ? { unitRecordId: choice.unitRecordId } : {}),
+  ...(effectiveUnitId(row, choice) ? { unitRecordId: effectiveUnitId(row, choice) } : {}),
   ...(choice?.kind ? { kind: choice.kind } : {}),
 });
 
@@ -94,11 +98,9 @@ const crmUnitCompatible = (
   units: { id: string; name: string }[],
   choice?: UnitChoice,
 ): boolean => {
-  if (!choice?.unitRecordId) {
-    return row.decision !== 'CREATE';
-  }
-
-  const crmUnit = units.find((unit) => unit.id === choice.unitRecordId);
+  const id = effectiveUnitId(row, choice);
+  if (!id) return false;
+  const crmUnit = units.find((unit) => unit.id === id);
 
   if (!crmUnit) {
     return false;
@@ -210,7 +212,9 @@ export const AccountingCatalogSection = ({
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [rowFilter, setRowFilter] = useState<RowFilter>('ALL');
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
-  const [units, setUnits] = useState<{ id: string; name: string }[]>([]);
+  const [units, setUnits] = useState<UnitOption[]>([]);
+  const [unitsState, setUnitsState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [mappingRow, setMappingRow] = useState<ItemMappingRow | null>(null);
   const [unitChoices, setUnitChoices] = useState<Map<string, UnitChoice>>(new Map());
   const [selected, setSelected] = useState<Map<string, Selection>>(new Map());
   const [applying, setApplying] = useState(false);
@@ -294,17 +298,21 @@ export const AccountingCatalogSection = ({
     let cancelled = false;
     setUnitChoices(new Map());
     setUnits([]);
+    setUnitsState('loading');
+    setMappingRow(null);
     void callAppRoute(QUOTATION_UNITS_ROUTE, { action: 'list' }).then(response => {
-      if (cancelled || !response.ok || response.data.success !== true) return;
+      if (cancelled) return;
+      if (!response.ok || response.data.success !== true || !Array.isArray(response.data.units)) { setUnitsState('error'); return; }
       const rows = Array.isArray(response.data.units) ? response.data.units : [];
       setUnits(rows.flatMap(raw => {
         const row = asRecord(raw);
         return row?.isActive === true && readString(row.recordId) && readString(row.name)
-          ? [{ id: readString(row.recordId), name: readString(row.name) }] : [];
+          ? [{ id: readString(row.recordId), name: readString(row.name), accountingCode: readString(row.accountingCode) }] : [];
       }));
-    }).catch(() => { /* mapping controls stay unavailable */ });
+      setUnitsState('ready');
+    }).catch(() => { if (!cancelled) setUnitsState('error'); });
     return () => { cancelled = true; };
-  }, [connectionId]);
+  }, [connectionId, reloadToken]);
 
   const changeUnitChoice = (row: ItemMappingRow, patch: Partial<UnitChoice>) => {
     setUnitChoices(current => {
@@ -412,13 +420,14 @@ export const AccountingCatalogSection = ({
         });
 
         if (!response.ok || response.data.success !== true) {
+          const code = readString(response.data.code);
+          const reason = code === 'UNIT_MAPPING_REQUIRED' ? 'واحد معتبر کالا یا تطابق آن با حسابداری را بررسی کنید.' : code === 'PRICE_LIST_REQUIRED' ? 'فهرست قیمت مورد نیاز انتقال تنظیم نشده است.' : code === 'CATALOG_IDENTITY_CONFLICT' ? 'کالای متناظر فعال و دارای واحد معتبر نیست یا کد آن تغییر کرده است.' : toPersianUiMessage(readString(response.data.message), 'انتقال کالاها انجام نشد.');
           await enqueueSnackbar({
-            message: toPersianUiMessage(
-              readString(response.data.message),
-              'انتقال کالاها انجام نشد.',
-            ),
+            message: reason + (createdLinks + updatedLinks > 0 ? '؛ دسته‌های قبلی ثبت شده‌اند.' : ''),
             variant: 'error',
           });
+          setSelected(new Map());
+          void loadPage({ atCursor: null, search: submittedSearch, refresh: true });
           return;
         }
 
@@ -633,7 +642,7 @@ export const AccountingCatalogSection = ({
           <PrimaryButton
           label={applying ? 'در حال انتقال…' : 'انتقال همه'}
           onClick={() => void transferAllEligible()}
-          disabled={!canManage || applying || loading}
+          disabled={!canManage || applying || loading || unitsState !== 'ready' || units.length === 0}
           />
         ) : null}
         {selected.size > 0 ? (
@@ -648,6 +657,8 @@ export const AccountingCatalogSection = ({
           />
         ) : null}
       </div>
+
+      {unitsState === 'error' ? <InlineAlert tone="danger" title="خواندن واحدها انجام نشد">بازخوانی کنید.</InlineAlert> : unitsState === 'ready' && units.length === 0 ? <InlineAlert tone="warning" title="واحد اندازه‌گیری تعریف نشده است">ابتدا در پیش‌نیازهای حسابداری، واحدهای اندازه‌گیری را تعریف کنید.</InlineAlert> : null}
 
       {error !== null ? (
         <InlineAlert tone="danger" title="خواندن کالاها انجام نشد">
@@ -701,7 +712,7 @@ export const AccountingCatalogSection = ({
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={!canManage || !selectable || applying}
+                          disabled={!canManage || !selectable || applying || unitsState !== 'ready'}
                           aria-label={`انتخاب ${row.name}`}
                           onChange={() => toggleSelection(row)}
                         />
@@ -711,21 +722,13 @@ export const AccountingCatalogSection = ({
                       </NativeSettingsCell>
                       <NativeSettingsCell style={styles.cell}>
                         {row.name}
-                        {isSelectableItem(row) && (
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                            <select aria-label={`واحد ${row.name}`} value={choice?.unitRecordId ?? ''} disabled={!canManage || applying}
-                              onChange={event => changeUnitChoice(row, { unitRecordId: event.target.value })}>
-                              <option value="">واحد مرجع را تعیین کنید</option>
-                              {units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
-                            </select>
-                            {row.decision === 'CREATE' && <select aria-label={`نوع ${row.name}`} value={choice?.kind ?? ''} disabled={!canManage || applying}
-                              onChange={event => changeUnitChoice(row, { kind: event.target.value as UnitChoice['kind'] })}>
-                              <option value="">نوع را تعیین کنید</option>
-                              <option value="PRODUCT">کالا</option>
-                              <option value="SERVICE">خدمت</option>
-                            </select>}
-                          </div>
-                        )}
+                        {row.decision === 'CREATE' && <div style={{ marginTop: 6 }}>
+                          <SecondaryButton label={choice?.unitRecordId ? 'ویرایش نگاشت' : 'تعیین واحد و نوع'} disabled={!canManage || applying || units.length === 0} onClick={() => setMappingRow(row)} />
+                          {choice?.unitRecordId ? <span style={styles.meta}> {units.find(unit => unit.id === choice.unitRecordId)?.name ?? 'واحد نامعتبر'}</span> : null}
+                        </div>}
+                        {isSelectableItem(row) && row.decision !== 'CREATE' && <div style={styles.meta}>
+                          {units.find(unit => unit.id === row.suggestedUnitRecordId)?.name ?? 'واحد معتبر کالا در CRM تعیین نشده است'}
+                        </div>}
                         {observationBits.length > 0 ? (
                           <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t-color-text-secondary, #666)', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {observationBits.map((bit) => (
@@ -733,7 +736,7 @@ export const AccountingCatalogSection = ({
                             ))}
                           </div>
                         ) : null}
-                        {choice?.unitRecordId &&
+                        {effectiveUnitId(row, choice) &&
                         !crmUnitCompatible(row, units, choice) ? (
                           <div style={{ marginTop: 4, fontSize: 12, color: 'var(--t-color-text-danger, #b42318)' }}>
                             واحد CRM با واحد اصلی مقصد یکی نیست
@@ -803,6 +806,15 @@ export const AccountingCatalogSection = ({
           />
         </>
       ) : null}
+      {mappingRow && <SettingsDialog title={mappingRow.name} busy={applying} onClose={() => setMappingRow(null)}
+        footer={<><PrimaryButton label="انجام شد" disabled={!canSelectMappedItem(mappingRow, units, unitChoices.get(mappingRow.externalItemId))} onClick={() => setMappingRow(null)} /><SecondaryButton label="بستن" onClick={() => setMappingRow(null)} /></>}>
+        {vendorUnitObservation(mappingRow).vendorUnitName && <span>واحد حسابداری: {vendorUnitObservation(mappingRow).vendorUnitName}</span>}
+        <UnitCombobox units={units} value={unitChoices.get(mappingRow.externalItemId)?.unitRecordId ?? ''} onChange={id => changeUnitChoice(mappingRow, { unitRecordId: id })} disabled={applying} />
+        <div role="group" aria-label="نوع کالا">
+          {(['PRODUCT', 'SERVICE'] as const).map(kind => <button type="button" key={kind} aria-pressed={unitChoices.get(mappingRow.externalItemId)?.kind === kind} style={{ ...styles.button, ...(unitChoices.get(mappingRow.externalItemId)?.kind === kind ? styles.buttonPrimary : {}) }} onClick={() => changeUnitChoice(mappingRow, { kind })}>{kind === 'PRODUCT' ? 'کالا' : 'خدمت'}</button>)}
+        </div>
+        {unitChoices.get(mappingRow.externalItemId)?.unitRecordId && !crmUnitCompatible(mappingRow, units, unitChoices.get(mappingRow.externalItemId)) && <InlineAlert tone="danger" title="واحد ناسازگار">واحد انتخاب‌شده با واحد مقصد سازگار نیست.</InlineAlert>}
+      </SettingsDialog>}
     </div>
   );
 };
