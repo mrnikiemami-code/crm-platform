@@ -396,7 +396,7 @@ export class AccountingConnectionAuthorityService {
     try {
       const group = JSON.parse(sourceProfile)?.sourceObservation;
       return group?.version === '1' && typeof group.priceListId === 'string' &&
-        /^(0|[1-9]\\d{0,18})$/.test(group.priceListId) ? group.priceListId : null;
+        /^(0|[1-9]\d{0,18})$/.test(group.priceListId) ? group.priceListId : null;
     } catch { return null; }
   }
 
@@ -404,8 +404,8 @@ export class AccountingConnectionAuthorityService {
     if (value == null) return {};
     if (typeof value !== 'object' || Array.isArray(value)) return null;
     const entries = Object.entries(value);
-    if (entries.length > 1000 || entries.some(([key, id]) => !/^(0|[1-9]\\d{0,18})$/.test(key) ||
-      typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id))) return null;
+    if (entries.length > 1000 || entries.some(([key, id]) => !/^(0|[1-9]\d{0,18})$/.test(key) ||
+      typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) return null;
     return Object.fromEntries(entries) as Record<string, string>;
   }
 
