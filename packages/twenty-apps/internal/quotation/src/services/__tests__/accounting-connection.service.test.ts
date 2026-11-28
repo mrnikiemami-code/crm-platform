@@ -39,7 +39,7 @@ const node = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const edges = (...rows: Record<string, unknown>[]) => ({
-  accountingConnections: { edges: rows.map((row) => ({ node: row })) },
+  accountingConnections: { edges: rows.map((row) => ({ node: row })), pageInfo: { hasNextPage: false, endCursor: null } },
 });
 
 describe('connection record parsing', () => {
@@ -86,6 +86,19 @@ describe('connection listing and resolution', () => {
 
     expect(connections.map((connection) => connection.id)).toEqual(['conn-1', 'conn-2']);
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed on an unreadable active flag and a duplicate scoped identity', async () => {
+    expect(parseConnectionRecord(node({ isActive: undefined }))?.isActive).toBe(false);
+    await expect(requireActiveAccountingConnection('conn-1', { execute: async () => edges(node(), node()) }))
+      .resolves.toMatchObject({ ok: false, refusal: { code: 'INVALID_RESPONSE' } });
+  });
+
+  it('resolves the default on later pages, and refuses a repeating cursor', async () => {
+    const first = { accountingConnections: { edges: [{ node: node() }], pageInfo: { hasNextPage: true, endCursor: 'next' } } };
+    const execute = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(edges(node({ id: 'conn-2', isDefault: true })));
+    expect(await resolveConnection({}, { execute })).toMatchObject({ ok: true, value: { id: 'conn-2' } });
+    expect(await resolveConnection({}, { execute: async () => first })).toMatchObject({ ok: false, refusal: { code: 'INVALID_RESPONSE' } });
   });
 
   it('resolves the workspace default when no id is named', async () => {
