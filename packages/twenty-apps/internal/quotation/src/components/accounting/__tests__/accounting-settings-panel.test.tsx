@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 vi.mock('twenty-sdk/front-component', () => ({
   AppPath: { Home: '/objects/companies' },
   enqueueSnackbar: vi.fn(async () => undefined),
+  openCommandConfirmationModal: vi.fn(async () => 'cancel'),
   navigate: vi.fn(async () => undefined),
 }));
 
@@ -216,7 +217,7 @@ describe('the selected destination is the one every section talks about', () => 
   it('loads tax and currency catalogs from Nest list actions, not /s routes', async () => {
     render(<AccountingSettingsPanel />);
 
-    await screen.findByText(/پیش‌فرض فضای کاری: آسان کارخانه/);
+    await screen.findByRole('heading', { name: 'نمای کلی' });
 
     expect(callTaxPoliciesNestActionMock).toHaveBeenCalledWith({ action: 'list' });
     expect(callQuotationCurrenciesNestActionMock).toHaveBeenCalledWith({
@@ -235,7 +236,7 @@ describe('the selected destination is the one every section talks about', () => 
     render(<AccountingSettingsPanel />);
 
     expect(
-      await screen.findByText(/پیش‌فرض فضای کاری: آسان کارخانه/),
+      await screen.findByRole('heading', { name: 'نمای کلی' }),
     ).toBeTruthy();
     expect(screen.getByText(/آسان کارخانه — /)).toBeTruthy();
     expect(screen.queryByText(/نمای موقت/)).toBeNull();
@@ -251,7 +252,7 @@ describe('the selected destination is the one every section talks about', () => 
     fireEvent.click(await screen.findByRole('menuitem', { name: 'ویرایش' }));
 
     expect(await screen.findByText('در حال ویرایش: آزمایشی کدمحور')).toBeTruthy();
-    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
+    expect(screen.queryByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeNull();
     expect(screen.queryByText(/نمای موقت/)).toBeNull();
   });
 
@@ -273,7 +274,7 @@ describe('the selected destination is the one every section talks about', () => 
     fireEvent.click(overviewButton as HTMLElement);
 
     expect(await screen.findByRole('heading', { name: 'نمای کلی' })).toBeTruthy();
-    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
+    expect(screen.queryByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeNull();
     expect(screen.queryByText(/نمای موقت/)).toBeNull();
   });
 });
@@ -289,6 +290,6 @@ describe('deep links from the readiness list', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'ویرایش' }));
 
     expect(await screen.findByText(/در حال ویرایش:/)).toBeTruthy();
-    expect(screen.getByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeTruthy();
+    expect(screen.queryByText(/پیش‌فرض فضای کاری: آسان کارخانه/)).toBeNull();
   });
 });
