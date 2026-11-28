@@ -46,7 +46,7 @@ const adapter = (
   fetchImpl?: AsanFetch,
 ) =>
   new AsanHttpAdapter({
-    baseUrl: 'http://127.0.0.1:8080/api',
+    baseUrl: 'https://accounting.example/api',
     remoteUserId: '7',
     ...(fetchImpl === undefined ? {} : { fetchImpl }),
     now: () => new Date('2026-11-21T08:00:00.000Z'),
@@ -54,23 +54,28 @@ const adapter = (
   });
 
 describe('asan health check', () => {
-  it('reports a documented read answered over plain http as reachable but insecure', async () => {
+  it('refuses a cleartext health probe even when legacy approval and token exist', async () => {
     const fake = fakeFetch({ text: '[]' });
-    const health = await adapter({}, fake.fetchImpl).testConnection();
-
-    expect(health).toEqual({
+    const health = await adapter({
+      baseUrl: 'http://127.0.0.1:8080/api',
+      allowInsecureTransport: true,
+      tunnelToken: 'fixture-secret',
+    }, fake.fetchImpl).testConnection();
+    expect(health).toMatchObject({
       ok: true,
-      value: {
-        kind: 'REACHABLE',
-        checkedAt: '2026-11-21T08:00:00.000Z',
-        latencyMs: expect.any(Number),
-        transportIsSecure: false,
-        detail: expect.stringContaining('plain HTTP'),
-      },
+      value: { kind: 'UNREACHABLE', transportIsSecure: false },
     });
-    expect(fake.calls[0].url).toBe(
-      'http://127.0.0.1:8080/api/ProductsNew/LastProducts?Count=1',
-    );
+    expect(fake.calls).toEqual([]);
+  });
+
+  it('rejects base URLs with userinfo, query or fragment before any request', async () => {
+    for (const baseUrl of ['https://user:pass@accounting.example/api', 'https://accounting.example/api?token=x', 'https://accounting.example/api#x']) {
+      const fake = fakeFetch({ text: '[]' });
+      expect(await adapter({ baseUrl }, fake.fetchImpl).listParties()).toMatchObject({
+        ok: false, refusal: { code: 'TRANSPORT_NOT_APPROVED' },
+      });
+      expect(fake.calls).toEqual([]);
+    }
   });
 
   it('reports an HTTP error as an unreadable response, not as reachable', async () => {
@@ -174,6 +179,14 @@ describe('asan product read', () => {
     );
   });
 
+  it('does not change the version marker when JSON property order changes', async () => {
+    const first = await adapter({}, fakeFetch({ text: '[{"ProductCode":1001,"ProductName":"A","Extra":{"a":1,"b":2}}]' }).fetchImpl).listItems();
+    const second = await adapter({}, fakeFetch({ text: '[{"Extra":{"b":2,"a":1},"ProductName":"A","ProductCode":1001}]' }).fetchImpl).listItems();
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(first.ok && first.value[0].remoteVersion).toBe(second.ok && second.value[0].remoteVersion);
+  });
+
   it('changes the version marker when the remote record content changes', async () => {
     const before = await adapter(
       {},
@@ -246,9 +259,9 @@ const productReadback = (price: number, tiers: number[] = []) =>
   JSON.stringify({ ProductCode: 1001, ProductName: 'کالا', SellPrice: price, SalesPrice: tiers });
 
 describe('asan write transport gate', () => {
-  it('refuses a write over plain http without explicit approval, before any request', async () => {
+  it('refuses a write over plain http even with legacy approval, before any request', async () => {
     const fake = fakeFetch({ text: '1' });
-    const result = await adapter({}, fake.fetchImpl).createItem({
+    const result = await adapter({ baseUrl: 'http://127.0.0.1:8080/api', allowInsecureTransport: true }, fake.fetchImpl).createItem({
       externalItemId: '1001',
       code: '1001',
       name: 'کالا',
@@ -267,7 +280,7 @@ describe('asan write transport gate', () => {
   it('sends the tunnel token and the documented create path when approved', async () => {
     const fake = sequencedFetch('1', productReadback(1000));
     const result = await adapter(
-      { allowInsecureTransport: true, tunnelToken: 'tunnel-secret' },
+      { baseUrl: 'https://accounting.example/api', tunnelToken: 'tunnel-secret' },
       fake.fetchImpl,
     ).createItem({
       externalItemId: '1001',
@@ -279,7 +292,7 @@ describe('asan write transport gate', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(fake.calls[0].url).toBe('http://127.0.0.1:8080/api/Products4/AddProduct');
+    expect(fake.calls[0].url).toBe('https://accounting.example/api/Products4/AddProduct');
     expect(fake.calls[0].headers.Authorization).toBe('Bearer tunnel-secret');
     expect(JSON.parse(fake.calls[0].body ?? '{}')).toMatchObject({
       ProductCode: 1001,

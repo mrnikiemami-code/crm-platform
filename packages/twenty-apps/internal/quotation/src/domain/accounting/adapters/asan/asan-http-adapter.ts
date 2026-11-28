@@ -58,9 +58,8 @@ export type AsanHttpAdapterConfig = {
   // A bearer token for an approved tunnel/proxy in front of Asan. Asan itself documents no
   // authentication, so this is never required and never sent to a plain address.
   tunnelToken?: string;
-  // The explicit approval that lets a write use a non-TLS address (for example a loopback
-  // tunnel that terminates TLS elsewhere). Default false, so a forgotten approval fails
-  // closed instead of moving money over clear text.
+  // Legacy configuration retained for compatibility. It cannot authorize cleartext.
+  // A real tunnel must expose an HTTPS endpoint to this adapter.
   allowInsecureTransport?: boolean;
   timeoutMs?: number;
   fetchImpl?: AsanFetch;
@@ -231,8 +230,16 @@ const extractArray = (
 // Asan documents no etag or version on products and customers, so the change marker is a
 // hash of the record the vendor returned. That is enough to notice "this moved since we
 // read it" without pretending the vendor gave us something it did not.
+const canonicalRecord = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalRecord);
+  const record = asRecord(value);
+  return record === null
+    ? value
+    : Object.fromEntries(Object.keys(record).sort().map((key) => [key, canonicalRecord(record[key])]));
+};
+
 const hashRecord = (value: unknown): string =>
-  createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+  createHash('sha256').update(JSON.stringify(canonicalRecord(value)), 'utf8').digest('hex');
 
 const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
   const record = asRecord(raw);
@@ -336,21 +343,21 @@ export class AsanHttpAdapter implements AccountingAdapter {
   }
 
   private transportIsSecure(): boolean {
-    return this.config.baseUrl.trim().toLowerCase().startsWith('https://');
+    try {
+      const url = new URL(this.config.baseUrl.trim());
+      return url.protocol === 'https:' && url.hostname !== '' &&
+        url.username === '' && url.password === '' && url.search === '' && url.hash === '';
+    } catch {
+      return false;
+    }
   }
 
-  // Reads may use the documented plain-HTTP address: they carry no document and no amount.
-  // Writes need TLS or an explicit approval, so a workspace that never configured a tunnel
-  // cannot move data over clear text by accident.
+  // The legacy approval flag is not proof of encryption. Customer reads also carry
+  // personal information, so every actual request must use a clean HTTPS base URL.
   private checkWriteTransport(): Result<true> {
-    if (this.transportIsSecure() || this.config.allowInsecureTransport === true) {
-      return accepted(true);
-    }
-
-    return refused(
-      'TRANSPORT_NOT_APPROVED',
-      'writes to this destination require TLS or an explicitly approved tunnel',
-    );
+    return this.transportIsSecure()
+      ? accepted(true)
+      : refused('TRANSPORT_NOT_APPROVED', 'an HTTPS vendor endpoint or HTTPS tunnel is required');
   }
 
   private async request({
@@ -364,6 +371,9 @@ export class AsanHttpAdapter implements AccountingAdapter {
     query?: Record<string, string>;
     body?: unknown;
   }): Promise<Result<RawResponse>> {
+    const transport = this.checkWriteTransport();
+    if (!transport.ok) return transport;
+
     const headers: Record<string, string> = { Accept: 'application/json' };
     const startedAt = Date.now();
 
@@ -529,9 +539,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
       checkedAt,
       latencyMs: result.value.latencyMs,
       transportIsSecure: this.transportIsSecure(),
-      detail: this.transportIsSecure()
-        ? 'the vendor answered the documented read over TLS'
-        : 'the vendor answered the documented read over plain HTTP; approve a tunnel before writing',
+      detail: 'the vendor answered the documented read over TLS',
     });
   }
 
