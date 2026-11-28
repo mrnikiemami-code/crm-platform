@@ -56,6 +56,7 @@ export type DraftDiscountInput =
 export type DraftLineInput = {
   clientLineId: string;
   catalogItemId: string | null;
+  unitRecordId?: string | null;
   kind: CatalogItemKind;
   name: string;
   description: string | null;
@@ -100,6 +101,7 @@ export type DraftQuotationInput = {
 export type DraftLineRecord = {
   clientLineId: string;
   catalogItemId: string | null;
+  unitRecordId?: string | null;
   kind: CatalogItemKind;
   name: string;
   description: string | null;
@@ -231,6 +233,7 @@ const buildDiscountInputMeta = (
 type BuiltPreTaxLine = {
   clientLineId: string;
   catalogItemId: string | null;
+  unitRecordId?: string | null;
   kind: CatalogItemKind;
   name: string;
   description: string | null;
@@ -298,6 +301,7 @@ const computeOnePreTaxLine = (
   return accepted({
     clientLineId: line.clientLineId,
     catalogItemId: line.catalogItemId,
+    unitRecordId: line.unitRecordId ?? null,
     kind: line.kind,
     name,
     description: line.description?.trim() ? line.description.trim() : null,
@@ -590,6 +594,7 @@ export const buildDraftQuotationPlan = (
     return {
       clientLineId: preTaxLine.clientLineId,
       catalogItemId: preTaxLine.catalogItemId,
+      unitRecordId: preTaxLine.unitRecordId ?? null,
       kind: preTaxLine.kind,
       name: preTaxLine.name,
       description: preTaxLine.description,
