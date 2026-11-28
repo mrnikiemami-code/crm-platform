@@ -79,6 +79,16 @@ export default defineApplication({
       description: 'Unique UUID for this read authorization. Clear before revocation and replace on every credential or destination rotation; never reuse.',
       isSecret: false,
     },
+    ASAN_APPROVED_READ_REMOTE_USER_ID: {
+      universalIdentifier: 'e0b1c2d3-0012-4000-8000-000000000012',
+      description: 'Exact remote user id attested by the administrator during separate read-only approval.',
+      isSecret: false,
+    },
+    ASAN_APPROVED_READ_DATASET_ID: {
+      universalIdentifier: 'e0b1c2d3-0013-4000-8000-000000000013',
+      description: 'Non-secret administrator-attested dataset label. Not vendor identity proof; independently verify G1 before setting.',
+      isSecret: false,
+    },
     // Registering a pro-forma in accounting is a fiscal act, so it has its own switch
     // separate from ordinary catalog/price pushes.
     ACCOUNTING_DOCUMENT_EXPORT_ENABLED: {
