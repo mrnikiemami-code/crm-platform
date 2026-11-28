@@ -59,13 +59,27 @@ const readRoutes = new Set<string>([
   ASAN_ENDPOINTS.stores, ASAN_ENDPOINTS.stockProductByStore, ASAN_ENDPOINTS.lastPishFactors,
 ]);
 
-export const isApprovedAsanRead = (binding: AsanReadBinding, input: string, method: string): boolean => {
+export const isApprovedAsanRead = (binding: AsanReadBinding, input: string, method: string, body?: string): boolean => {
   const base = cleanBase(binding.baseUrl);
-  if (base === null || method !== 'GET' || !isPublicAsanIpv4(binding.ipv4)) return false;
+  if (base === null || !['GET', 'POST'].includes(method) || !isPublicAsanIpv4(binding.ipv4)) return false;
   try {
     const url = new URL(input);
     const prefix = base.pathname.replace(/\/+$/, '') + '/';
     const route = url.pathname.slice(prefix.length);
+    if (method === 'POST') {
+      // Guide p.8: one exact read-only POST, SendPishFactorParameter.
+      // Do not allow query overrides, extra keys, duplicate JSON keys, unsafe
+      // numeric identities, alternate path, or an arbitrary request body.
+      if (url.origin !== base.origin || url.username || url.password || url.hash ||
+          !url.pathname.startsWith(prefix) || route !== ASAN_ENDPOINTS.lastCustomerPishFactors ||
+          url.search !== '' || typeof body !== 'string' || body.length > 128) return false;
+      const value = JSON.parse(body);
+      return value !== null && typeof value === 'object' && !Array.isArray(value) &&
+        Number.isSafeInteger(value.Count) && value.Count >= 1 && value.Count <= 100 &&
+        Number.isSafeInteger(value.CustomerCode) && value.CustomerCode > 0 &&
+        body === JSON.stringify({ Count: value.Count, CustomerCode: value.CustomerCode });
+    }
+    if (body !== undefined) return false;
     // A Cardex read is never an unbounded customer-wide/all-customer query.
     // Its three parameters and the exact <=93-day UTC tick range are mandatory.
     const isBoundedCardex = route === ASAN_ENDPOINTS.customerCardex && (() => {
@@ -88,7 +102,7 @@ export const isApprovedAsanRead = (binding: AsanReadBinding, input: string, meth
 
 export const createApprovedAsanReadTransport = (binding: AsanReadBinding): AsanFetch =>
   async (input, init) => {
-    if (!isApprovedAsanRead(binding, input, init.method) || init.body !== undefined) {
+    if (!isApprovedAsanRead(binding, input, init.method, init.body)) {
       throw new Error('Accounting request not allowed by read-only destination policy');
     }
     const url = new URL(input);
@@ -98,8 +112,8 @@ export const createApprovedAsanReadTransport = (binding: AsanReadBinding): AsanF
       const request = httpsRequest({
         hostname: binding.ipv4, family: 4, port: url.port === '' ? 443 : Number(url.port),
         servername: url.hostname, checkServerIdentity: (_name, cert) => checkServerIdentity(url.hostname, cert),
-        rejectUnauthorized: true, agent: false, method: 'GET', path: url.pathname + url.search,
-        headers: { ...init.headers, Host: url.host, 'Accept-Encoding': 'identity' },
+        rejectUnauthorized: true, agent: false, method: init.method, path: url.pathname + url.search,
+        headers: { ...init.headers, Host: url.host, 'Accept-Encoding': 'identity', ...(init.body === undefined ? {} : { 'Content-Length': String(Buffer.byteLength(init.body, 'utf8')) }) },
         signal: init.signal,
       }, (response) => {
         const status = response.statusCode ?? 0;
@@ -128,6 +142,6 @@ export const createApprovedAsanReadTransport = (binding: AsanReadBinding): AsanF
         });
       });
       request.on('error', reject);
-      request.end();
+      request.end(init.body);
     });
   };
