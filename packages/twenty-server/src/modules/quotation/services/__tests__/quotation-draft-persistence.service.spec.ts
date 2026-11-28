@@ -12,6 +12,7 @@ const rawLine = (overrides: Record<string, unknown> = {}) => ({
   kind: 'PRODUCT',
   description: null,
   unit: 'عدد',
+  unitRecordId: 'unit-1',
   quantityExact: '1.000000',
   unitPriceExact: '1000000.000000',
   grossExact: '1000000.000000',
@@ -120,6 +121,11 @@ const buildScope = ({
     taxPolicy: {
       findOne: taxPolicyFindOne ?? jest.fn(async () => activeNinePercentPolicy),
     },
+    quotationUnit: {
+      find: jest.fn(async () => [{ id: 'unit-1', code: 'UNIT_1', name: 'عدد', accountingCode: '00100', isActive: true }]),
+      update: jest.fn(async () => ({ affected: 1 })),
+    },
+    catalogItem: { find: jest.fn(async () => []) },
     quotationCurrency: {
       findOne:
         quotationCurrencyFindOne ?? jest.fn(async () => irrCurrency),
@@ -365,7 +371,10 @@ describe('QuotationDraftPersistenceService', () => {
       'SELECT pg_advisory_xact_lock_shared(hashtext($1))',
       ['quotation-currency-catalog:workspace-1'],
     ]);
-    expect(scope.executeRawQuery.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(scope.executeRawQuery.mock.calls[2]).toEqual([
+      'SELECT pg_advisory_xact_lock_shared(hashtext($1))', ['quotation-unit-catalog:workspace-1'],
+    ]);
+    expect(scope.executeRawQuery.mock.invocationCallOrder[2]).toBeLessThan(
       scope.getRepository.mock.invocationCallOrder[0],
     );
 
@@ -392,8 +401,27 @@ describe('QuotationDraftPersistenceService', () => {
       quotationId: 'q-1',
       sortOrder: 0,
       totalExact: '1090000.000000',
-      currencyCode: 'IRR',
+      currencyCode: 'IRR', unit: 'عدد', unitRecordId: 'unit-1', unitCode: 'UNIT_1', unitAccountingCode: '00100',
     });
+    expect(scope.getRepository('quotationUnit').update).toHaveBeenCalledWith({ id: 'unit-1' }, { accountingCodeLocked: true });
+  });
+
+  it('refuses unmapped legacy units before any document write', async () => {
+    const scope = buildScope();
+    const { service } = buildService({ permissions: ['quotation.edit'], scope });
+    expect(await service.saveDraft({ authContext, body: body({ lines: [rawLine({ unitRecordId: null })] }) })).toMatchObject({ kind: 'REJECTED', code: 'UNIT_MAPPING_REQUIRED' });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
+    expect(scope.getRepository('quotationUnit').update).not.toHaveBeenCalled();
+  });
+
+  it('never trusts client unit label and refuses mismatched item base unit', async () => {
+    const scope = buildScope();
+    const { service } = buildService({ permissions: ['quotation.edit'], scope });
+    const result = await service.saveDraft({ authContext, body: body({ lines: [rawLine({ unit: 'کیلو' })] }) });
+    expect(result.kind).toBe('SAVED');
+    expect(scope.getRepository('quotationLine').insert.mock.calls[0][0][0].unit).toBe('عدد');
+    scope.getRepository('catalogItem').find.mockResolvedValue([{ id: 'item-1', unitRecordId: 'another-unit', isActive: true }]);
+    expect(await service.saveDraft({ authContext, body: body({ lines: [rawLine({ itemId: 'item-1' })] }) })).toMatchObject({ kind: 'REJECTED', code: 'UNIT_MAPPING_REQUIRED' });
   });
 
   it('labels a person draft from the composite name the ORM returns', async () => {
