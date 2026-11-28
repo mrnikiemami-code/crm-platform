@@ -15,6 +15,7 @@ export type CatalogPickerItem = {
   kind: CatalogItemKind;
   sku: string | null;
   unit: string;
+  unitRecordId?: string | null;
   description: string | null;
   unitPriceExact: string | null;
   priceAvailable: boolean;
@@ -183,12 +184,15 @@ export const searchCatalogItemsForPicker = async (
       pricesByItemId.get(id) ?? [],
     );
 
+    const unitRecord = asRecord(edge.node.unitRecord);
+    const unitRecordId = unitRecord?.isActive === true ? readNullableString(unitRecord.id) : null;
     items.push({
       id,
       name: readString(edge.node.name),
       kind,
       sku: readNullableString(edge.node.sku),
-      unit: readString(edge.node.unit) || (kind === 'SERVICE' ? 'ساعت' : 'عدد'),
+      unit: unitRecordId ? readString(unitRecord?.name) : readString(edge.node.unit),
+      unitRecordId,
       description: readNullableString(edge.node.description),
       unitPriceExact: priceResult.ok ? priceResult.value : null,
       priceAvailable: priceResult.ok,
