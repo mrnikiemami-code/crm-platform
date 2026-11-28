@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 038 G0 verification 090 COMPLETE / PARTIAL (2026-11-28)
+## CURRENT — Goal 038 independent 090 review / security repair 091 (2026-11-28)
+
+Candidate quotation@0.1.91, SOURCE_ONLY / BUILD_AND_RUNTIME_NOT_RUN. 090 scoped runtime verification independently inspected; both existing and genuine private fresh install 0.1.90 accepted. See [checkpoint 091](./goal-038/CRM-129-GOAL-038-G0-REVIEW-091.md). Two direct fixes: remove fixed fixture credentials from current evidence scripts (old history remains, Dev rotation/revocation required), and bind live snapshot access to current read-authorization generation. G0 remains PARTIAL; G1/G2 NOT AUTHORIZED, Goal 023 ACTIVE. No live Asan or Intranet. Last verified Dev 0.1.90. Do not misrepresent 091 tests/deploy as executed.
+
+## PRIOR — Goal 038 G0 verification 090 COMPLETE / PARTIAL (2026-11-28)
 
 Cursor executed unified G0-A/B/C/D verification on exact tip `24d78d521a16b36c44067ac249619c00e56a200e` / quotation@**0.1.90**. Evidence: [verification-090](./goal-038/verification-090/) + [A01–A19 ledger](./goal-038/verification-090/A01-A19-LEDGER.md). Builds/tests PASS (Vitest 814, Asan 84, Jest quotation 377, real PG connection locks PASS). Existing Dev install **0.1.90** + idempotent. Genuine private `app:publish` + fresh-workspace `app:install` **0.1.90** PASS. Accepted **0.1.84** workspace preserved. Intranet untouched; no live Asan. **Status: SOURCE_AND_RUNTIME_VERIFIED_PARTIAL — NOT unconditional G0 PASS.** Residuals: A12 TLS/rotation fixture, A13 fiscal readback, A15 full lifecycle races, A16 observation persistence, A17 broader reports, A19 dataset-identity/rebind. G1/G2 NOT AUTHORIZED. Goal 023 ACTIVE.
 
