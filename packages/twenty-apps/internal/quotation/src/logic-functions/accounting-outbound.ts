@@ -337,6 +337,40 @@ const handler = async (event: RoutePayload<unknown>) => {
       return { success: true, outcome: outcome.value };
     }
 
+    if (action === 'customer-finance') {
+      // Only Nest supplies the linked customer id after original-user authorization.
+      const externalPartyId = readString(body.externalPartyId);
+      const report = readString(body.report);
+      if (adapter.value.id !== 'asan' || !adapter.value.readAccessScope || !externalPartyId) {
+        return failure('ASAN_TRANSPORT_UNAVAILABLE', persianAccountingMessage('ASAN_TRANSPORT_UNAVAILABLE'));
+      }
+      const observedAt = new Date().toISOString();
+      const source = { adapterId: adapter.value.id, connectionId, moneyUnit: activeConnection.settings.moneyUnit,
+        observedAt, certified: false, source: 'ASAN_REPORTED' };
+      if (report === 'SUMMARY' && adapter.value.readCustomerFinance) {
+        const result = await adapter.value.readCustomerFinance(externalPartyId);
+        if (!result.ok) return failure(result.refusal.code, persianAccountingMessage(result.refusal.code));
+        return { success: true, observation: { ...source, report, ...result.value } };
+      }
+      if (report === 'PROFORMAS' && adapter.value.listCustomerProformas) {
+        if (typeof body.count !== 'number' || !Number.isSafeInteger(body.count) || body.count < 1 || body.count > 100) {
+          return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));
+        }
+        const result = await adapter.value.listCustomerProformas(externalPartyId, body.count);
+        if (!result.ok) return failure(result.refusal.code, persianAccountingMessage(result.refusal.code));
+        return { success: true, observation: { ...source, report, customerExternalId: externalPartyId,
+          count: body.count, rows: result.value } };
+      }
+      if (report === 'CARDEX' && adapter.value.readCustomerLedger) {
+        const from = readString(body.from), to = readString(body.to);
+        const result = await adapter.value.readCustomerLedger(externalPartyId, from, to);
+        if (!result.ok) return failure(result.refusal.code, persianAccountingMessage(result.refusal.code));
+        return { success: true, observation: { ...source, report, customerExternalId: externalPartyId, from, to,
+          dateInterpretation: 'UTC_CALENDAR_UNVERIFIED_VENDOR_BOUNDS', rows: result.value } };
+      }
+      return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));
+    }
+
     if (action === 'reconcile-quotation') {
       const observed = await observeQuotationReconciliation({
         connectionId, quotationId: readString(body.quotationId),

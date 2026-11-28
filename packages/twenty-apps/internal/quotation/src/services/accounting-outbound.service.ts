@@ -880,7 +880,7 @@ export const verifyAsanPrimaryUnit = (
   return !!line.unitRecordId && !!line.unitCode?.trim() && !!line.unitAccountingCode?.trim() &&
     binding.observationVersion === '1' && observed?.version === '1' &&
     observed.externalItemId === binding.externalId && observed.crmUnitRecordId === line.unitRecordId &&
-    typeof observed.vendorUnitId === 'string' && /^[1-9]\\d*$/.test(observed.vendorUnitId) &&
+    typeof observed.vendorUnitId === 'string' && /^[1-9]\d*$/.test(observed.vendorUnitId) &&
     typeof observed.vendorUnitName === 'string' && observed.vendorUnitName.trim() !== '' &&
     remote.externalItemId === binding.externalId && remote.isActive === true &&
     remote.remoteVersion === binding.remoteVersion && remote.observation?.unitId === observed.vendorUnitId &&
@@ -1267,7 +1267,7 @@ export const observeQuotationReconciliation = async ({
           typeof detail.Price !== 'number' || !Number.isSafeInteger(detail.Price);
       })) return refused('RECONCILIATION_REQUIRED', 'original document payload is not usable');
   const acknowledgedDocumentId = claim.externalDocumentId === null ? null : readString(claim.externalDocumentId);
-  if (acknowledgedDocumentId !== null && !/^[1-9]\\d*$/.test(acknowledgedDocumentId)) {
+  if (acknowledgedDocumentId !== null && !/^[1-9]\d*$/.test(acknowledgedDocumentId)) {
     return refused('RECONCILIATION_REQUIRED', 'acknowledged document id is not usable');
   }
   const report = await adapter.listRecentProformas(100);

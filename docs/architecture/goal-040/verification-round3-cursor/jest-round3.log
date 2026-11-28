@@ -1,0 +1,21 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-issuer-defaults.util.spec.ts
+At line:5 char:1
++ npx jest `
++ ~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...ts.util.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-revision-snapshot.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-unit-lock.pg.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-accounting-code-lock.pg.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/services/__tests__/accounting-item-apply.pg.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-item-apply.service.spec.ts (6.232 s)
+
+Test Suites: 6 passed, 6 total
+Tests:       29 passed, 29 total
+Snapshots:   0 total
+Time:        6.606 s

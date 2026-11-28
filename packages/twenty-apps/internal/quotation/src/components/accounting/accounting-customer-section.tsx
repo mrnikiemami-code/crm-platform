@@ -35,6 +35,7 @@ import {
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
+import { CustomerFinanceReport } from 'src/components/accounting/customer-finance-report';
 import { loadIrrPriceListOptions } from 'src/services/quotation-price-list-picker.service';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
@@ -109,6 +110,7 @@ export const AccountingCustomerSection = ({
   const [selected, setSelected] = useState<Map<string, PartySelection>>(new Map());
   const [applying, setApplying] = useState(false);
   const [outboundOpen, setOutboundOpen] = useState(false);
+  const [financeOpen, setFinanceOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -437,6 +439,11 @@ export const AccountingCustomerSection = ({
     );
   }
 
+  if (financeOpen) {
+    return <CustomerFinancePanel key={connectionId} connectionId={connectionId} canManage={canManage}
+      onBack={() => { setFinanceOpen(false); onSubViewChange?.(null); }} />;
+  }
+
   if (outboundOpen) {
     return <CustomerOutboundPanel key={connectionId} connectionId={connectionId} canManage={canManage}
       onBack={() => { setOutboundOpen(false); onSubViewChange?.(null); }} />;
@@ -539,6 +546,7 @@ export const AccountingCustomerSection = ({
         />
       </div>
       <div role="group" aria-label="عملیات گروهی" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--t-spacing-2)' }}>
+        <SecondaryButton label="گزارش مالی مشتری" disabled={!canManage || applying || loading} onClick={() => { setFinanceOpen(true); onSubViewChange?.('گزارش مالی مشتری'); }} />
         <SecondaryButton label="ارسال مشتری CRM به حسابداری" disabled={!canManage || applying || loading} onClick={() => { setOutboundOpen(true); onSubViewChange?.('ارسال مشتری به حسابداری'); }} />
         {selected.size === 0 ? (
           <PrimaryButton
@@ -883,6 +891,21 @@ const CustomerPicker = ({
       ) : null}
     </div>
   );
+};
+
+const CustomerFinancePanel = ({ connectionId, canManage, onBack }: {
+  connectionId: string; canManage: boolean; onBack: () => void;
+}) => {
+  const [selection, setSelection] = useState<{ id: string; label: string; type: 'PERSON' | 'COMPANY' } | null>(null);
+  return <div dir="rtl" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
+    <SubViewBar label="گزارش مالی مشتری" backLabel="بازگشت به فهرست مشتریان" onBack={onBack} />
+    {!canManage ? <InlineAlert tone="danger" title="دسترسی محدود">مجوز تنظیمات حسابداری لازم است.</InlineAlert> :
+      !selection ? <CustomerPicker connectionId={connectionId} onPick={(candidate, type) => setSelection({ id: candidate.id, label: candidate.label, type })} /> :
+      <>
+        <div style={styles.row}><span>{selection.label}</span><SecondaryButton label="تغییر مشتری" onClick={() => setSelection(null)} /></div>
+        <CustomerFinanceReport key={selection.type + ':' + selection.id} connectionId={connectionId} selection={selection} canManage={canManage} />
+      </>}
+  </div>;
 };
 
 const CustomerOutboundPanel = ({ connectionId, canManage, onBack }: {

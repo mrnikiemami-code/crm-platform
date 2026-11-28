@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { buildCardexDateBounds, isExactAsanPositiveLong, parseCustomerCardex, parseCustomerFinanceSummary } from 'src/domain/accounting/adapters/asan/asan-customer-finance';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 import { ASAN_ENDPOINTS, buildAsanUrl } from 'src/domain/accounting/adapters/asan/asan-endpoints';
 import {
@@ -24,6 +25,8 @@ import {
   type RemoteStorage,
   type RemoteDocument,
   type RemoteProformaObservation,
+  type RemoteCustomerFinanceSummary,
+  type RemoteCustomerLedgerRow,
   type RemoteItemInput,
   type RemoteParty,
   type RemotePartyInput,
@@ -1196,12 +1199,57 @@ export class AsanHttpAdapter implements AccountingAdapter {
     return accepted(party);
   }
 
+  async readCustomerFinance(externalPartyId: string): Promise<Result<RemoteCustomerFinanceSummary>> {
+    if (!this.readAccessScope || !isExactAsanPositiveLong(externalPartyId)) {
+      return refused('INVALID_INPUT', 'approved exact customer finance scope required');
+    }
+    const records = await this.readPartyRecords(ASAN_ENDPOINTS.oneCustomer, { CustomerCode: externalPartyId });
+    if (!records.ok) return records;
+    return parseCustomerFinanceSummary(records.value, externalPartyId);
+  }
+
+  async readCustomerLedger(externalPartyId: string, from: string, to: string): Promise<Result<RemoteCustomerLedgerRow[]>> {
+    if (!this.readAccessScope || !isExactAsanPositiveLong(externalPartyId)) {
+      return refused('INVALID_INPUT', 'approved exact customer ledger scope required');
+    }
+    const bounds = buildCardexDateBounds(from, to);
+    if (!bounds.ok) return bounds;
+    const response = await this.request({ path: ASAN_ENDPOINTS.customerCardex, method: 'GET',
+      query: { CustomerCode: externalPartyId, ...bounds.value } });
+    if (!response.ok) return response;
+    if (response.value.status < 200 || response.value.status >= 300) {
+      return refused('INVALID_RESPONSE', 'customer ledger read did not succeed');
+    }
+    const parsed = this.parseJson(response.value.text);
+    if (!parsed.ok) return parsed;
+    const rows = extractArray(parsed.value, ['data', 'Cardex', 'cardex']);
+    return rows === null ? refused('INVALID_RESPONSE', 'invalid customer ledger report') :
+      parseCustomerCardex(rows, externalPartyId);
+  }
+
   async listRecentProformas(count: number): Promise<Result<RemoteProformaObservation[]>> {
     if (!Number.isInteger(count) || count < 1 || count > 100) {
       return refused('INVALID_INPUT', 'recent document count must be between 1 and 100');
     }
     const response = await this.request({ path: ASAN_ENDPOINTS.lastPishFactors,
       method: 'GET', query: { Count: String(count) } });
+    return this.parseProformaReport(response, count);
+  }
+
+  async listCustomerProformas(externalPartyId: string, count: number): Promise<Result<RemoteProformaObservation[]>> {
+    // The documented body has a JSON long. Refuse a code that cannot be
+    // represented exactly instead of substituting another customer.
+    if (!this.readAccessScope || !isExactAsanPositiveLong(externalPartyId) ||
+        !Number.isSafeInteger(Number(externalPartyId)) ||
+        !Number.isInteger(count) || count < 1 || count > 100) {
+      return refused('INVALID_INPUT', 'approved exact customer and count required');
+    }
+    const response = await this.request({ path: ASAN_ENDPOINTS.lastCustomerPishFactors,
+      method: 'POST', body: { Count: count, CustomerCode: Number(externalPartyId) } });
+    return this.parseProformaReport(response, count, externalPartyId);
+  }
+
+  private parseProformaReport(response: Result<RawResponse>, count: number, expectedCustomerId?: string): Result<RemoteProformaObservation[]> {
     if (!response.ok) return response;
     if (response.value.status < 200 || response.value.status >= 300) return refused('INVALID_RESPONSE', 'recent pro-forma report did not succeed');
     const parsed = this.parseJson(response.value.text);
@@ -1214,8 +1262,8 @@ export class AsanHttpAdapter implements AccountingAdapter {
       const row = asRecord(entry);
       const number = exactLong(row?.FactorNumber);
       const customer = exactLong(row?.CustomerCode);
-      if (row === null || number === null || customer === null || seen.has(number) ||
-          typeof row.Description !== 'string' || !Array.isArray(row.FactorDetails)) {
+      if (row === null || number === null || customer === null || (expectedCustomerId !== undefined && customer !== expectedCustomerId) || seen.has(number) ||
+          typeof row.Description !== 'string' || !Array.isArray(row.FactorDetails) || row.FactorDetails.length > 2000) {
         return refused('ASAN_INCOMPLETE_DATASET', 'recent pro-forma report contains an invalid or duplicate identity');
       }
       const details: RemoteProformaObservation['rows'] = [];

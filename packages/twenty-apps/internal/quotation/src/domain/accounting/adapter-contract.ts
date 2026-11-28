@@ -222,6 +222,24 @@ export type RemotePage<TRow> = {
   totalKnown: number | null;
 };
 
+export type RemoteReportedAmount = { reportedText: string; representation: 'VENDOR_TEXT' | 'JSON_NUMBER' };
+export type RemoteCustomerFinanceSummary = {
+  customerExternalId: string;
+  remain: RemoteReportedAmount | null;
+  bookCredit: RemoteReportedAmount | null;
+  chequeCredit: RemoteReportedAmount | null;
+  settlementDays: number | null;
+};
+export type RemoteCustomerLedgerRow = {
+  rowNumber: number;
+  shownDate: string;
+  description: string;
+  documentType: string;
+  debitText: string;
+  creditText: string;
+  balanceText: string;
+};
+
 export type AccountingAdapter = {
   readonly id: AccountingAdapterId;
   readonly contractVersion: string;
@@ -248,6 +266,9 @@ export type AccountingAdapter = {
   listStores?(): Promise<Result<RemoteStorage[]>>;
   readStockByStore?(externalItemId: string, externalStorageId: string): Promise<Result<number>>;
   listRecentProformas?(count: number): Promise<Result<RemoteProformaObservation[]>>;
+  listCustomerProformas?(externalPartyId: string, count: number): Promise<Result<RemoteProformaObservation[]>>;
+  readCustomerFinance?(externalPartyId: string): Promise<Result<RemoteCustomerFinanceSummary>>;
+  readCustomerLedger?(externalPartyId: string, from: string, to: string): Promise<Result<RemoteCustomerLedgerRow[]>>;
   // Implemented only when `capabilities.readStrategy === 'REMOTE_PAGED'`. Its absence is the
   // machine-readable proof that the destination cannot page, so the reader falls back to
   // the bounded snapshot instead of guessing an offset the vendor does not accept.

@@ -31,7 +31,11 @@ import {
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
+import { observeVendorSerials } from 'src/domain/catalog/vendor-stock-observation';
+import { resolveSecondaryUnitRatio } from 'src/domain/unit/secondary-unit-ratio';
+import { assertCrmUnitCompatibleWithVendorObservation } from 'src/domain/unit/vendor-unit-equivalence';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
+import { isProformaVendorFieldSupported } from 'src/domain/quotation/proforma-commercial-wire';
 
 const PAGE_SIZE = 25;
 const APPLY_BATCH_SIZE = 25;
@@ -78,9 +82,103 @@ const selectionForRow = (row: ItemMappingRow, choice?: UnitChoice): Selection =>
   ...(choice?.unitRecordId ? { unitRecordId: choice.unitRecordId } : {}),
   ...(choice?.kind ? { kind: choice.kind } : {}),
 });
-const canSelectMappedItem = (row: ItemMappingRow, choice?: UnitChoice) =>
-  isSelectableItem(row) && !!row.remoteVersion &&
-  (row.decision !== 'CREATE' || (!!choice?.unitRecordId && !!choice.kind));
+
+const vendorUnitObservation = (row: ItemMappingRow) => ({
+  vendorUnitId: row.observation?.vendorUnitId ?? null,
+  vendorUnitName: row.observation?.vendorUnitName ?? row.vendorUnitName ?? null,
+});
+
+const crmUnitCompatible = (
+  row: ItemMappingRow,
+  units: { id: string; name: string }[],
+  choice?: UnitChoice,
+): boolean => {
+  if (!choice?.unitRecordId) {
+    return row.decision !== 'CREATE';
+  }
+
+  const crmUnit = units.find((unit) => unit.id === choice.unitRecordId);
+
+  if (!crmUnit) {
+    return false;
+  }
+
+  return assertCrmUnitCompatibleWithVendorObservation({
+    observation: vendorUnitObservation(row),
+    crmUnit: { recordId: crmUnit.id, name: crmUnit.name },
+  }).ok;
+};
+
+const canSelectMappedItem = (
+  row: ItemMappingRow,
+  units: { id: string; name: string }[],
+  choice?: UnitChoice,
+) =>
+  isSelectableItem(row) &&
+  !!row.remoteVersion &&
+  (row.decision !== 'CREATE' || (!!choice?.unitRecordId && !!choice.kind)) &&
+  crmUnitCompatible(row, units, choice);
+
+const formatObservationSummary = (row: ItemMappingRow): string[] => {
+  const bits: string[] = [];
+  const observation = row.observation;
+
+  if (!observation) {
+    if (row.vendorUnitName) {
+      bits.push(`واحد مقصد: ${row.vendorUnitName}`);
+    }
+
+    return bits;
+  }
+
+  if (observation.vendorUnitName) {
+    bits.push(`واحد مقصد: ${observation.vendorUnitName}`);
+  }
+
+  const secondary = resolveSecondaryUnitRatio({
+    secondaryUnitName: observation.secondaryUnitName,
+    unitCount: observation.unitCount,
+  });
+
+  if (secondary.ok && secondary.value) {
+    bits.push(
+      `واحد فرعی: ${secondary.value.secondaryUnitName} (${secondary.value.primaryPerSecondary.toLocaleString('fa-IR')})`,
+    );
+  } else if ((observation.secondaryUnitName ?? '').trim() !== '') {
+    bits.push('واحد فرعی: نسبت تأییدنشده — تبدیل انجام نمی‌شود');
+  }
+
+  if (observation.priceUnitsByPosition.length > 0) {
+    const tierLabels = observation.priceUnitsByPosition.map((amount, index) =>
+      amount === ''
+        ? `سطح${(index + 1).toLocaleString('fa-IR')}:نامشخص`
+        : `سطح${(index + 1).toLocaleString('fa-IR')}:${amount === '0' ? '۰ (صریح)' : amount}`,
+    );
+    bits.push(`قیمت‌های سطحی: ${tierLabels.join(' · ')}`);
+  }
+
+  if (observation.totalStock !== null) {
+    bits.push(
+      `موجودی کل: ${observation.totalStock === 0 ? '۰ (صریح)' : observation.totalStock.toLocaleString('fa-IR')}`,
+    );
+  } else if (observation.stockByPosition.length > 0) {
+    bits.push(
+      `موجودی موقعیتی: ${observation.stockByPosition
+        .map((qty, index) => `P${index + 1}=${qty === 0 ? '۰' : qty}`)
+        .join(' · ')} (نام انبار بدون فهرست تأییدشده نسبت داده نمی‌شود)`,
+    );
+  }
+
+  const serials = observeVendorSerials(observation).serials;
+
+  if (serials.length > 0) {
+    bits.push(`سریال مشاهده‌شده: ${serials.join('، ')} (در پیش‌فاکتور ثبت نمی‌شود)`);
+  }
+
+  void isProformaVendorFieldSupported('Serial');
+
+  return bits;
+};
 
 const formatOutcomeReport = (outcome: Record<string, unknown> | null): string => {
   const createdLinks =
@@ -240,7 +338,7 @@ export const AccountingCatalogSection = ({
         next.delete(row.externalItemId);
         return next;
       }
-      if (!canSelectMappedItem(row, unitChoices.get(row.externalItemId))) {
+      if (!canSelectMappedItem(row, units, unitChoices.get(row.externalItemId))) {
         return current;
       }
       next.set(row.externalItemId, selectionForRow(row, unitChoices.get(row.externalItemId)));
@@ -254,8 +352,8 @@ export const AccountingCatalogSection = ({
   );
 
   const pageSelectable = useMemo(
-    () => visibleRows.filter(row => canSelectMappedItem(row, unitChoices.get(row.externalItemId))),
-    [visibleRows, unitChoices],
+    () => visibleRows.filter(row => canSelectMappedItem(row, units, unitChoices.get(row.externalItemId))),
+    [visibleRows, unitChoices, units],
   );
 
   const allPageSelected =
@@ -406,7 +504,7 @@ export const AccountingCatalogSection = ({
           await enqueueSnackbar({ message: 'فهرست کامل و تازه نیست؛ انتقال همه متوقف شد.', variant: 'error' }); return;
         }
         for (const row of mapped.rows) {
-          if (canSelectMappedItem(row, unitChoices.get(row.externalItemId))) {
+          if (canSelectMappedItem(row, units, unitChoices.get(row.externalItemId))) {
             collected.set(row.externalItemId, selectionForRow(row, unitChoices.get(row.externalItemId)));
           } else if (
             row.decision === 'DUPLICATE_REMOTE_CODE' ||
@@ -588,11 +686,12 @@ export const AccountingCatalogSection = ({
                 {visibleRows.map((row) => {
                   const checked = selected.has(row.externalItemId);
                   const choice = unitChoices.get(row.externalItemId);
-                  const selectable = canSelectMappedItem(row, choice);
+                  const selectable = canSelectMappedItem(row, units, choice);
                   const priceLabel =
                     row.priceMicros === null
                       ? row.planPrice
                       : `${formatMicrosForDisplay(row.priceMicros)} ${moneyUnitLabel}`;
+                  const observationBits = formatObservationSummary(row);
 
                   return (
                     <NativeSettingsRow key={row.externalItemId}>
@@ -623,9 +722,21 @@ export const AccountingCatalogSection = ({
                               <option value="PRODUCT">کالا</option>
                               <option value="SERVICE">خدمت</option>
                             </select>}
-                            {row.vendorUnitName ? <span>واحد مقصد: {row.vendorUnitName}</span> : null}
                           </div>
                         )}
+                        {observationBits.length > 0 ? (
+                          <div style={{ marginTop: 6, fontSize: 12, color: 'var(--t-color-text-secondary, #666)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {observationBits.map((bit) => (
+                              <span key={bit}>{bit}</span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {choice?.unitRecordId &&
+                        !crmUnitCompatible(row, units, choice) ? (
+                          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--t-color-text-danger, #b42318)' }}>
+                            واحد CRM با واحد اصلی مقصد یکی نیست
+                          </div>
+                        ) : null}
                       </NativeSettingsCell>
                       <NativeSettingsCell style={styles.cell}>{priceLabel}</NativeSettingsCell>
                       <NativeSettingsCell style={styles.cell}>
