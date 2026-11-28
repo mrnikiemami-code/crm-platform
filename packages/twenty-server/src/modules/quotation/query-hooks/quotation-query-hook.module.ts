@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AccountingFinanceAccessCreateOnePreQueryHook, AccountingFinanceAccessCreateManyPreQueryHook, AccountingFinanceAccessUpdateOnePreQueryHook, AccountingFinanceAccessUpdateManyPreQueryHook, AccountingFinanceAccessDeleteOnePreQueryHook, AccountingFinanceAccessDeleteManyPreQueryHook, AccountingFinanceAccessDestroyOnePreQueryHook, AccountingFinanceAccessDestroyManyPreQueryHook, AccountingFinanceAccessRestoreOnePreQueryHook, AccountingFinanceAccessRestoreManyPreQueryHook, AccountingFinanceAccessMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-finance-access-write.pre-query.hook';
 
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
 import { AccountingConnectionCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/accounting-connection-create-many.pre-query.hook';
@@ -131,6 +132,17 @@ import { AccountingCompanyRestoreManyPreQueryHook } from 'src/modules/quotation/
     QuotationImmutabilityService,
     QuotationRevisionWriteGuardService,
     AccountingConnectionWriteGuardService,
+    AccountingFinanceAccessCreateOnePreQueryHook,
+    AccountingFinanceAccessCreateManyPreQueryHook,
+    AccountingFinanceAccessUpdateOnePreQueryHook,
+    AccountingFinanceAccessUpdateManyPreQueryHook,
+    AccountingFinanceAccessDeleteOnePreQueryHook,
+    AccountingFinanceAccessDeleteManyPreQueryHook,
+    AccountingFinanceAccessDestroyOnePreQueryHook,
+    AccountingFinanceAccessDestroyManyPreQueryHook,
+    AccountingFinanceAccessRestoreOnePreQueryHook,
+    AccountingFinanceAccessRestoreManyPreQueryHook,
+    AccountingFinanceAccessMergeManyPreQueryHook,
     TaxPolicyWriteGuardService,
     QuotationCurrencyWriteGuardService,
     QuotationUnitWriteGuardService,
