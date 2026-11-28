@@ -24,7 +24,7 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
   const apply = jest.fn(async () => ({ success: true, outcome: { createdParties: 1 } }));
   const applyItems = jest.fn(async () => ({ success: true, outcome: { createdItems: 1 } }));
   const partyOutbound = { run: jest.fn(async () => ({ success: true, preview: {} })) };
-  const customerFinance = { read: jest.fn(async () => ({ success: true, observation: {} })) };
+  const customerFinance = { read: jest.fn(async () => ({ success: true, observation: {} })), reconcile: jest.fn(async () => ({ success: true, observation: {} })) };
   const service = new AccountingOperationDispatchService(
     cache as never, { execute } as never,
     { resolveSettingsAuthority: jest.fn(async () => authority), resolveRoleId: jest.fn(async () => 'role-1') } as never,
@@ -105,14 +105,14 @@ describe('accounting operation boundary', () => {
     const input = { connectionId: 'c', quotationId: 'q-1', operationId: 'op-1', replay: true };
     const denied = setup(null);
     expect(await denied.service.dispatch('accounting-outbound-reconcile-quotation', input, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
-    expect(denied.execute).not.toHaveBeenCalled();
+    expect(denied.customerFinance.reconcile).not.toHaveBeenCalled();
     const hidden = setup('SETTINGS_ROLE', false, false);
     expect(await hidden.service.dispatch('accounting-outbound-reconcile-quotation', input, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
+    expect(hidden.customerFinance.reconcile).not.toHaveBeenCalled();
     const granted = setup('SETTINGS_ROLE');
     expect(await granted.service.dispatch('accounting-outbound-reconcile-quotation', input, auth)).toMatchObject({ success: true });
-    expect(granted.execute).toHaveBeenCalledWith(expect.objectContaining({ payload: expect.objectContaining({
-      body: { connectionId: 'c', quotationId: 'q-1', operationId: 'op-1', action: 'reconcile-quotation' },
-    }) }));
+    expect(granted.customerFinance.reconcile).toHaveBeenCalledWith({ connectionId: 'c', quotationId: 'q-1', operationId: 'op-1' }, auth, expect.any(Function));
+    expect(granted.execute).not.toHaveBeenCalled();
   });
 
   it('holds the workspace work lock before executing a mutating private operation', async () => {
@@ -124,7 +124,8 @@ describe('accounting operation boundary', () => {
     });
     expect(await service.dispatch('accounting-outbound-execute-quotation-export',
       { connectionId: 'c', quotationId: 'q-1' }, auth)).toEqual({ success: true });
-    expect(lock).toHaveBeenCalledTimes(1);
+    expect(lock).toHaveBeenCalledTimes(2);
+    expect(lock).toHaveBeenNthCalledWith(2, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [JSON.stringify(['accounting-quotation-work', 'ws-1', 'c', 'q-1'])]);
   });
 
   it('rejects unlisted actions and unprivileged global operations before execution', async () => {
