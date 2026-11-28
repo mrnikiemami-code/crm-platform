@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 040 parallel source lanes (2026-11-28)
+## CURRENT — Goal 040 Lane A source checkpoint (2026-11-28)
+
+Architect finance branch `feat/crm129-g040-finance` tip `1961e98d6d250ad9456f395503195c0277251e42`, ten source commits (26 source/test files) plus handoff. [Exact handoff](https://github.com/mrnikiemami-code/crm-platform/blob/1961e98d6d250ad9456f395503195c0277251e42/docs/architecture/goal-040/LANE-A-HANDOFF.md) records implemented changes, dependencies and NOT_RUN gates. Cursor branch `feat/crm129-g040-reference-catalog` remote remains `f230721d1a0146748475c68e73d61572d7b5df6d` at this checkpoint; local progress unknown. Integration remains docs-only. No phase PASS, build, runtime, schema apply, version bump or vendor traffic. Read ledger and charter first; compare both branch tips, review B's actual handoff and integrate once. Finish unit line/seal seam, remaining customer/pricing/report/adapter/security/authorized reconciliation scope before single integrated verification. G1/G2 NOT_AUTHORIZED. Do not restart accepted or completed source work.
+
+## PRIOR — Goal 040 parallel source lanes (2026-11-28)
 
 User authorized parallel execution without interference. [Parallel charter](./goal-040/PARALLEL-EXECUTION.md) overrides sequential source scheduling only, preserves scope and gates. Architect owns finance/seal/export on feat/crm129-g040-finance; Cursor owns unit/catalog atomic import on feat/crm129-g040-reference-catalog. Both start at charter commit, integration branch remains architect-only; exact handoff and merge review required. No shared live Dev/DB, no app version bump until integrated candidate, no actual Asan API. Phase 3 remains one integrated verification. Source work not yet executed at charter checkpoint. Read plan, ledger and charter; verify actual branch tips and handoff before resuming.
 
