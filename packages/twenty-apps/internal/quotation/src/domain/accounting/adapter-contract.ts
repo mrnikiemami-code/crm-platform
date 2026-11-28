@@ -266,6 +266,7 @@ export type AccountingAdapter = {
   listStores?(): Promise<Result<RemoteStorage[]>>;
   readStockByStore?(externalItemId: string, externalStorageId: string): Promise<Result<number>>;
   listRecentProformas?(count: number): Promise<Result<RemoteProformaObservation[]>>;
+  listCustomerProformas?(externalPartyId: string, count: number): Promise<Result<RemoteProformaObservation[]>>;
   readCustomerFinance?(externalPartyId: string): Promise<Result<RemoteCustomerFinanceSummary>>;
   readCustomerLedger?(externalPartyId: string, from: string, to: string): Promise<Result<RemoteCustomerLedgerRow[]>>;
   // Implemented only when `capabilities.readStrategy === 'REMOTE_PAGED'`. Its absence is the
