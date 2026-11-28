@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 D:/CrmSource/twenty/packages/twenty-apps/internal/quotation
+
+
+ Test Files  27 passed | 41 skipped (68)
+      Tests  125 passed | 693 skipped (818)
+   Start at  09:56:35
+   Duration  1.67s (transform 14.64s, setup 0ms, import 21.04s, tests 341ms, environment 2.04s)
+

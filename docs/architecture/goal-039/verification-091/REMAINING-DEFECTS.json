@@ -1,0 +1,40 @@
+{
+  "remaining": [
+    {
+      "id": "DEFECT-PDF-FONT",
+      "severity": "blocker-for-pdf-consistency-gate",
+      "gate": "B-PDF-PERSIAN-BYTES",
+      "summary": "Dev server image lacks a Persian-capable TTF at runtime. generate-pdf returns UNEXPECTED / No Persian-capable font found for U+067E.",
+      "observedPathsTried": [
+        "/app/packages/twenty-server/dist/modules/quotation/pdf/fonts/Vazirmatn-Regular.ttf",
+        "host Windows fonts",
+        "Linux DejaVu/Liberation paths"
+      ],
+      "sourcePresentInRepo": "packages/twenty-server/src/modules/quotation/pdf/fonts/Vazirmatn-Regular.ttf",
+      "owner": "architect",
+      "cursorAction": "none — no product source modification / no hotpatch"
+    },
+    {
+      "id": "BLOCKED-CREDENTIAL-ROTATION",
+      "severity": "security-hygiene",
+      "gate": "A-ROTATION",
+      "summary": "Interactive Dev admin password/API-key rotation for historical fixture accounts not performed.",
+      "owner": "Dev administrator",
+      "cursorAction": "scripts cleaned to env-gated credentials; values not printed or committed"
+    },
+    {
+      "id": "SCOPED-MOCK-CATALOG-LT-2500",
+      "severity": "scope-note",
+      "gate": "B-PAGING-SEARCH",
+      "summary": "Mock item catalog totalKnown≈33; 2500+ synthetic rows not present without product Mock enlargement. Vitest jump semantics cover large-page logic.",
+      "owner": "architect (optional fixture enlargement)"
+    },
+    {
+      "id": "SCRIPT-DRIFT-UNI003-VERSION-CODE",
+      "severity": "verification-script",
+      "gate": "unified-creation",
+      "summary": "dev-verify-crm129-unified-creation.cjs expects VERSION_CONFLICT; runtime returns QUOTATION_VERSION_CONFLICT. Product behavior correct; script expectation stale.",
+      "owner": "architect/verification maintainers"
+    }
+  ]
+}

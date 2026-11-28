@@ -1,0 +1,114 @@
+{
+  "goal": "CRM-129-G039-OFFLINE-END-TO-END-ACCEPTANCE",
+  "sourceSha": "14ff9f4006442506cff6e399c0861d300b16419c",
+  "productVersion": "0.1.91",
+  "workspace": {
+    "id": "afc7afb6-94ef-4142-872b-52a81b3e91dd",
+    "displayName": "4d"
+  },
+  "image": "twenty-dev/crm129:14ff9f4006442506cff6e399c0861d300b16419c",
+  "imageDigest": "sha256:f3b42294d3adcc0320787f718a7c7e9b3900755ea70fb7b14125cbb7edcc9443",
+  "verdict": "SOURCE_AND_RUNTIME_VERIFIED_PARTIAL",
+  "packages": {
+    "A": "PASS_SCOPED",
+    "B": "PASS_WITH_DEFECT_PDF_FONT",
+    "C": "PASS"
+  },
+  "gates": [
+    {
+      "id": "A-SOURCE-SHA",
+      "result": "PASS",
+      "evidence": "CODE_SHA.txt"
+    },
+    {
+      "id": "A-INSTALLED-0.1.91",
+      "result": "PASS",
+      "evidence": "installed-version.json"
+    },
+    {
+      "id": "A-VITEST-FULL-815",
+      "result": "PASS",
+      "evidence": "vitest-full.log"
+    },
+    {
+      "id": "A-JEST-QUOTATION",
+      "result": "PASS",
+      "evidence": "jest-quotation.log"
+    },
+    {
+      "id": "A-BUILDS",
+      "result": "PASS",
+      "evidence": "build-*.log FRONT_BUILD_EXIT=0"
+    },
+    {
+      "id": "A-TLS-FIXTURE",
+      "result": "PASS_SCOPED",
+      "evidence": "tls-fixture-results.json"
+    },
+    {
+      "id": "A-PG-LOCKS",
+      "result": "PASS",
+      "evidence": "pg-connection-locks.json"
+    },
+    {
+      "id": "A-CREDENTIAL-HYGIENE",
+      "result": "PASS_SCOPED",
+      "evidence": "credential-hygiene.json"
+    },
+    {
+      "id": "A-ROTATION",
+      "result": "BLOCKED",
+      "evidence": "credential-hygiene.json rotation"
+    },
+    {
+      "id": "B-OFFLINE-OPS-MOCK",
+      "result": "PASS",
+      "evidence": "offline-ops.json"
+    },
+    {
+      "id": "B-LIFECYCLE-FINANCE",
+      "result": "PASS",
+      "evidence": "lifecycle-pdf-share.json"
+    },
+    {
+      "id": "B-LIFECYCLE-APPROVE",
+      "result": "PASS",
+      "evidence": "lifecycle-pdf-share.json"
+    },
+    {
+      "id": "B-PDF-PERSIAN-BYTES",
+      "result": "FAIL",
+      "evidence": "lifecycle-pdf-share.json",
+      "defect": "DEFECT-PDF-FONT"
+    },
+    {
+      "id": "B-ACCOUNTING-PREVIEW-MOCK",
+      "result": "PASS",
+      "evidence": "lifecycle-pdf-share.json"
+    },
+    {
+      "id": "B-PAGING-SEARCH",
+      "result": "PASS_SCOPED_MOCK_LT_2500",
+      "evidence": "lifecycle-pdf-share.json"
+    },
+    {
+      "id": "C-SEVEN-CHANNEL-SHARE",
+      "result": "PASS",
+      "evidence": "lifecycle-pdf-share.json"
+    },
+    {
+      "id": "C-CUSTOMER-LINK",
+      "result": "PASS",
+      "evidence": "lifecycle-pdf-share.json"
+    },
+    {
+      "id": "C-DOM-RTL",
+      "result": "PASS",
+      "evidence": "dom-evidence.json"
+    }
+  ],
+  "failed": [
+    "B-PDF-PERSIAN-BYTES"
+  ],
+  "observedAt": "2026-11-28T06:38:47.715Z"
+}

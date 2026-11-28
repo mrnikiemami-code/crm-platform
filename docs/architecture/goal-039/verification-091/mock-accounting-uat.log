@@ -1,0 +1,23 @@
+FAIL S1.1 deployed quotation app is the version under test :: version=0.1.91 expected=0.1.25
+FAIL S1.2 accounting settings page and sidebar item are live :: page=20c28688-fc16-42f8-a231-9d5735d1b2c2 navItems=1
+PASS S1.3 at least three connections with varied adapters and health states :: adapters=mock|asan health=UNKNOWN|FAILED|OK
+FAIL S2.1 settings payload exposes adapters, authority and both send switches :: adapters= canManage=undefined flags=undefined
+PASS S2.2 no secret value or secret field is returned by the settings route :: secret keys/values absent from payload
+FAIL S1.4 mock catalog preview returns at least 30 items :: rows=0
+FAIL S1.5 duplicate remote code is refused in the preview :: duplicateRows=0
+FAIL S1.6 invalid id, inactive item and missing price are each explained :: warnings=
+FAIL S1.7 duplicate names are visible without being treated as identity :: DUPLICATE_REMOTE_NAME present
+FAIL S3.1 mock party preview returns at least 20 customers :: rows=0
+FAIL S3.2 duplicate vendor id is refused instead of silently linked :: DUPLICATE_REMOTE_CODE present
+FAIL S3.3 duplicate national code and missing candidates are explained :: warnings=
+FAIL S3.4 unambiguous customers still wait for an explicit CRM record :: needsCrm=0
+FAIL S4.1 readiness preview returns a check matrix and line mapping :: decision=undefined checks=0 lines=undefined
+FAIL S4.2 a mock destination document is shown or its refusal is explained :: document present
+FAIL S4.3 outbound and document-export switches stay off :: undefined
+FAIL S4.4 real document registration is refused :: code=TRIGGER_NOT_FOUND
+FAIL S5.1 item preview rows are previews, not writes :: no link created by preview
+PASS S5.2 generic GraphQL connection write is still refused :: errors=1
+PASS S5.3 anonymous settings read is refused :: status=403
+PASS S5.4 previews created no accounting operation, link or quotation :: {"connections":44,"quotations":209,"revisions":21,"operations":0,"itemLinks":15,"partyLinks":55} -> {"connections":44,"quotations":209,"revisions":21,"operations":0,"itemLinks":15,"partyLinks":55}
+FAIL S1.8 workspace tax policies cover 0, 9 and 10.5 percent :: rates=0,1,10,10.5,12,12.5,13.5,14,2,5.1,5.5,6,7
+TOTAL 5/22 PASS

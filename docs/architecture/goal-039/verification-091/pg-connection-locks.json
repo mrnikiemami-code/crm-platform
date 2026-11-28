@@ -1,0 +1,10 @@
+{
+  "workspaceId": "g0-090-conn-74232-1795846972311",
+  "lockKey": "quotation-accounting-connection:g0-090-conn-74232-1795846972311",
+  "cases": {
+    "twoSharedHolders": "PASS",
+    "exclusiveBlockedWhileSharedHeld": "PASS",
+    "sharedBlockedWhileExclusiveHeld": "PASS"
+  },
+  "status": "PASS"
+}

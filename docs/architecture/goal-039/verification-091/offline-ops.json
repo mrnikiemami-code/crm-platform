@@ -1,0 +1,86 @@
+{
+  "apiBase": "http://localhost:3002",
+  "checks": {
+    "B-CONN-LIST": {
+      "ok": true,
+      "status": 201,
+      "count": 24,
+      "adapters": [
+        "mock",
+        "asan"
+      ]
+    },
+    "B-MOCK-CONNECTION": {
+      "ok": true,
+      "connectionId": "8343ab54-eb2a-4fe2-bef9-403691f1135b"
+    },
+    "B-PREVIEW-ITEMS": {
+      "ok": true,
+      "status": 201,
+      "success": true,
+      "keys": [
+        "success",
+        "page"
+      ],
+      "rowCount": 25,
+      "totalKnown": 33,
+      "error": null,
+      "transportApproved": null
+    },
+    "B-PREVIEW-PARTIES": {
+      "ok": true,
+      "status": 201,
+      "success": true,
+      "keys": [
+        "success",
+        "page"
+      ],
+      "rowCount": 22,
+      "totalKnown": 22,
+      "error": null,
+      "transportApproved": null
+    },
+    "B-OUTBOUND-LIST": {
+      "ok": true,
+      "status": 201,
+      "success": true,
+      "keys": [
+        "success",
+        "page"
+      ],
+      "rowCount": 20,
+      "totalKnown": null,
+      "error": null,
+      "transportApproved": null
+    },
+    "B-TAX-LIST": {
+      "ok": true,
+      "status": 201,
+      "count": 3,
+      "keys": [
+        "success",
+        "policies",
+        "defaultCode",
+        "message"
+      ]
+    },
+    "B-CURRENCY-LIST": {
+      "ok": true,
+      "status": 201,
+      "count": 1,
+      "keys": [
+        "success",
+        "currencies",
+        "defaultCode",
+        "message"
+      ]
+    },
+    "A-ANON-REFUSE": {
+      "ok": true,
+      "status": 403
+    }
+  },
+  "failures": [],
+  "status": "PASS",
+  "failed": []
+}

@@ -1,0 +1,11 @@
+{
+  "hostname": "fixture.asan-g039.local",
+  "cases": {
+    "trustedFixtureCert": "PASS",
+    "badSniRejected": "PASS",
+    "untrustedRejected": "PASS",
+    "productPolicyAllowlist": "COVERED_BY_UNIT:asan-approved-transport.test.ts",
+    "publicIpPinE2E": "NOT_RUN: production policy rejects private IPs; no isolated public-IP namespace available without contacting external hosts"
+  },
+  "status": "PASS_SCOPED"
+}

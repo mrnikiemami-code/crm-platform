@@ -1,0 +1,7 @@
+node : FAIL unexpected stale code: QUOTATION_VERSION_CONFLICT
+At line:1 char:1
++ node packages/twenty-apps/internal/quotation/scripts/dev-verify-crm12 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL unexpected...ERSION_CONFLICT:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

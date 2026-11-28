@@ -1,0 +1,11 @@
+node : FATAL Error: access token is not a readable JWT; set WORKSPACE_ID explicitly
+At line:13 char:1
++ node packages/twenty-apps/internal/quotation/scripts/dev-verify-crm12 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FATAL Error: ac...E_ID explicitly:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at workspaceIdOfToken 
+(D:\CrmSource\twenty\packages\twenty-apps\internal\quotation\scripts\dev-verify-crm129-tax-uat-015.cjs:22:11)
+    at D:\CrmSource\twenty\packages\twenty-apps\internal\quotation\scripts\dev-verify-crm129-tax-uat-015.cjs:156:39
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

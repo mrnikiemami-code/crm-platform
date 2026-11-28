@@ -1,0 +1,346 @@
+powershell : Preparing worktree (detached HEAD 14ff9f4006)
+At line:1 char:1
++ powershell -NoProfile -ExecutionPolicy Bypass -File "packages/twenty- ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Preparing workt...EAD 14ff9f4006):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Updating files:   5% (1914/34485)
+Updating files:   6% (2070/34485)
+Updating files:   7% (2414/34485)
+Updating files:   8% (2759/34485)
+Updating files:   9% (3104/34485)
+Updating files:  10% (3449/34485)
+Updating files:  11% (3794/34485)
+Updating files:  12% (4139/34485)
+Updating files:  13% (4484/34485)
+Updating files:  13% (4617/34485)
+Updating files:  14% (4828/34485)
+Updating files:  15% (5173/34485)
+Updating files:  16% (5518/34485)
+Updating files:  17% (5863/34485)
+Updating files:  17% (6059/34485)
+Updating files:  18% (6208/34485)
+Updating files:  19% (6553/34485)
+Updating files:  20% (6897/34485)
+Updating files:  21% (7242/34485)
+Updating files:  22% (7587/34485)
+Updating files:  23% (7932/34485)
+Updating files:  24% (8277/34485)
+Updating files:  24% (8563/34485)
+Updating files:  25% (8622/34485)
+Updating files:  26% (8967/34485)
+Updating files:  27% (9311/34485)
+Updating files:  28% (9656/34485)
+Updating files:  29% (10001/34485)
+Updating files:  30% (10346/34485)
+Updating files:  31% (10691/34485)
+Updating files:  32% (11036/34485)
+Updating files:  32% (11313/34485)
+Updating files:  33% (11381/34485)
+Updating files:  34% (11725/34485)
+Updating files:  35% (12070/34485)
+Updating files:  36% (12415/34485)
+Updating files:  37% (12760/34485)
+Updating files:  38% (13105/34485)
+Updating files:  39% (13450/34485)
+Updating files:  40% (13794/34485)
+Updating files:  41% (14139/34485)
+Updating files:  42% (14484/34485)
+Updating files:  42% (14684/34485)
+Updating files:  43% (14829/34485)
+Updating files:  44% (15174/34485)
+Updating files:  45% (15519/34485)
+Updating files:  46% (15864/34485)
+Updating files:  47% (16208/34485)
+Updating files:  48% (16553/34485)
+Updating files:  49% (16898/34485)
+Updating files:  50% (17243/34485)
+Updating files:  50% (17455/34485)
+Updating files:  51% (17588/34485)
+Updating files:  52% (17933/34485)
+Updating files:  53% (18278/34485)
+Updating files:  54% (18622/34485)
+Updating files:  55% (18967/34485)
+Updating files:  56% (19312/34485)
+Updating files:  57% (19657/34485)
+Updating files:  58% (20002/34485)
+Updating files:  59% (20347/34485)
+Updating files:  59% (20409/34485)
+Updating files:  60% (20691/34485)
+Updating files:  61% (21036/34485)
+Updating files:  62% (21381/34485)
+Updating files:  63% (21726/34485)
+Updating files:  64% (22071/34485)
+Updating files:  65% (22416/34485)
+Updating files:  66% (22761/34485)
+Updating files:  67% (23105/34485)
+Updating files:  68% (23450/34485)
+Updating files:  69% (23795/34485)
+Updating files:  69% (23853/34485)
+Updating files:  70% (24140/34485)
+Updating files:  71% (24485/34485)
+Updating files:  72% (24830/34485)
+Updating files:  73% (25175/34485)
+Updating files:  74% (25519/34485)
+Updating files:  75% (25864/34485)
+Updating files:  76% (26209/34485)
+Updating files:  77% (26554/34485)
+Updating files:  78% (26899/34485)
+Updating files:  79% (27244/34485)
+Updating files:  79% (27426/34485)
+Updating files:  80% (27588/34485)
+Updating files:  81% (27933/34485)
+Updating files:  82% (28278/34485)
+Updating files:  83% (28623/34485)
+Updating files:  84% (28968/34485)
+Updating files:  85% (29313/34485)
+Updating files:  86% (29658/34485)
+Updating files:  87% (30002/34485)
+Updating files:  87% (30331/34485)
+Updating files:  88% (30347/34485)
+Updating files:  89% (30692/34485)
+Updating files:  90% (31037/34485)
+Updating files:  91% (31382/34485)
+Updating files:  92% (31727/34485)
+Updating files:  93% (32072/34485)
+Updating files:  94% (32416/34485)
+Updating files:  95% (32761/34485)
+Updating files:  96% (33106/34485)
+Updating files:  96% (33317/34485)
+Updating files:  97% (33451/34485)
+Updating files:  98% (33796/34485)
+Updating files:  99% (34141/34485)
+Updating files: 100% (34485/34485)
+Updating files: 100% (34485/34485), done.
+HEAD is now at 14ff9f4006 docs(crm129): open Goal 039 offline acceptance and suspend live vendor gates
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 15.07kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for 
+docker.io/library/node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 104B done
+#3 DONE 0.0s
+
+#4 [front-deps  1/12] FROM 
+docker.io/library/node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995
+#4 resolve 
+docker.io/library/node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995 0.0s 
+done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 65.51MB 4.9s
+#5 transferring context: 130.74MB 10.0s
+#5 transferring context: 169.05MB 13.2s done
+#5 DONE 13.3s
+
+#6 [twenty-front-build 5/8] COPY ./packages/twenty-sdk /app/packages/twenty-sdk
+#6 CACHED
+
+#7 [twenty-server 16/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-shared/dist 
+/app/packages/twenty-shared/dist
+#7 CACHED
+
+#8 [twenty-server  9/22] COPY --chown=1000 --from=twenty-server-build /app/node_modules /app/node_modules
+#8 CACHED
+
+#9 [twenty-server  2/22] RUN apk add --no-cache     'curl>=8.22.0-r0'     'nghttp2-libs>=1.69.0-r0'     
+'libcrypto3>=3.5.8-r0'     'libssl3>=3.5.8-r0'     'postgresql18-client>=18.5-r0'     'jq>=1.8.2-r0'
+#9 CACHED
+
+#10 [twenty-server-build 2/8] COPY ./packages/twenty-shared /app/packages/twenty-shared
+#10 CACHED
+
+#11 [twenty-server 10/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/package.json 
+/app/packages/twenty-server/
+#11 CACHED
+
+#12 [front-deps  4/12] COPY ./.yarn/releases /app/.yarn/releases
+#12 CACHED
+
+#13 [twenty-server-build 5/8] RUN npx nx run twenty-server:lingui:extract &&     npx nx run 
+twenty-server:lingui:compile &&     npx nx run twenty-emails:lingui:extract &&     npx nx run 
+twenty-emails:lingui:compile
+#13 CACHED
+
+#14 [twenty-server  3/22] COPY ./packages/twenty-docker/twenty/entrypoint.sh /app/entrypoint.sh
+#14 CACHED
+
+#15 [front-deps  3/12] COPY ./package.json ./yarn.lock ./.yarnrc.yml ./tsconfig.base.json ./nx.json /app/
+#15 CACHED
+
+#16 [front-deps  6/12] COPY ./packages/twenty-ui/package.json /app/packages/twenty-ui/
+#16 CACHED
+
+#17 [server-deps  6/12] COPY ./packages/twenty-emails/package.json /app/packages/twenty-emails/
+#17 CACHED
+
+#18 [twenty-server  4/22] RUN chmod +x /app/entrypoint.sh
+#18 CACHED
+
+#19 [twenty-server-build 8/8] RUN yarn workspaces focus --production twenty-emails twenty-shared twenty-client-sdk 
+twenty-server
+#19 CACHED
+
+#20 [twenty-server 11/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/dist 
+/app/packages/twenty-server/dist
+#20 CACHED
+
+#21 [front-deps  8/12] COPY ./packages/twenty-front/package.json /app/packages/twenty-front/
+#21 CACHED
+
+#22 [twenty-server 20/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-client-sdk/dist 
+/app/packages/twenty-client-sdk/dist
+#22 CACHED
+
+#23 [twenty-server 22/22] RUN mkdir -p /app/.local-storage /app/packages/twenty-server/.local-storage &&     chown 
+1000:1000 /app/.local-storage /app/packages/twenty-server/.local-storage
+#23 CACHED
+
+#24 [front-deps  7/12] COPY ./packages/twenty-shared/package.json /app/packages/twenty-shared/
+#24 CACHED
+
+#25 [twenty-front-build 3/8] COPY ./packages/twenty-ui /app/packages/twenty-ui
+#25 CACHED
+
+#26 [twenty-server-build 6/8] RUN npx nx run twenty-server:build
+#26 CACHED
+
+#27 [twenty-front-build 8/8] RUN if [ -d /app/packages/twenty-front/build ]; then       echo "Using pre-built frontend 
+from host";     else       NODE_OPTIONS="--max-old-space-size=8192" npx nx build twenty-front;     fi
+#27 CACHED
+
+#28 [twenty-server 12/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/patches 
+/app/packages/twenty-server/patches
+#28 CACHED
+
+#29 [front-deps 11/12] COPY ./packages/twenty-client-sdk/package.json /app/packages/twenty-client-sdk/
+#29 CACHED
+
+#30 [twenty-server  7/22] COPY --chown=1000 --from=twenty-server-build /app/tsconfig.base.json /app/nx.json /app/
+#30 CACHED
+
+#31 [twenty-front-build 7/8] RUN npx nx run twenty-front:lingui:extract &&     npx nx run twenty-front:lingui:compile
+#31 CACHED
+
+#32 [twenty-server 21/22] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx       
+/usr/local/include/node &&     find /app/node_modules -type d -name example -prune -exec rm -rf {} +
+#32 CACHED
+
+#33 [twenty-front-build 6/8] COPY ./packages/twenty-client-sdk /app/packages/twenty-client-sdk
+#33 CACHED
+
+#34 [twenty-server-build 1/8] COPY ./packages/twenty-emails /app/packages/twenty-emails
+#34 CACHED
+
+#35 [twenty-server-build 4/8] COPY ./packages/twenty-server /app/packages/twenty-server
+#35 CACHED
+
+#36 [twenty-server 18/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-emails/dist 
+/app/packages/twenty-emails/dist
+#36 CACHED
+
+#37 [twenty-server-build 3/8] COPY ./packages/twenty-client-sdk /app/packages/twenty-client-sdk
+#37 CACHED
+
+#38 [front-deps 12/12] RUN yarn workspaces focus twenty twenty-front twenty-front-component-renderer twenty-ui 
+twenty-shared twenty-sdk twenty-client-sdk && yarn cache clean && npx nx reset
+#38 CACHED
+
+#39 [front-deps  9/12] COPY ./packages/twenty-front-component-renderer/package.json 
+/app/packages/twenty-front-component-renderer/
+#39 CACHED
+
+#40 [twenty-server-build 7/8] RUN find /app/packages/twenty-server/dist -name '*.d.ts' -delete  && rm -rf 
+/app/packages/twenty-server/dist/packages/twenty-server/test
+#40 CACHED
+
+#41 [twenty-server 17/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-emails/package.json 
+/app/packages/twenty-emails/
+#41 CACHED
+
+#42 [server-deps 12/12] RUN yarn workspaces focus twenty twenty-server twenty-emails twenty-shared twenty-client-sdk 
+&& yarn cache clean && npx nx reset
+#42 CACHED
+
+#43 [twenty-server  5/22] WORKDIR /app/packages/twenty-server
+#43 CACHED
+
+#44 [front-deps  2/12] WORKDIR /app
+#44 CACHED
+
+#45 [twenty-server 14/22] RUN chmod +x /app/packages/twenty-server/scripts/command-background.sh
+#45 CACHED
+
+#46 [server-deps  7/12] COPY ./packages/twenty-server/package.json /app/packages/twenty-server/
+#46 CACHED
+
+#47 [twenty-server  8/22] COPY --chown=1000 --from=twenty-server-build /app/.yarn /app/.yarn
+#47 CACHED
+
+#48 [twenty-server 15/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-shared/package.json 
+/app/packages/twenty-shared/
+#48 CACHED
+
+#49 [twenty-server 19/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-client-sdk/package.json 
+/app/packages/twenty-client-sdk/
+#49 CACHED
+
+#50 [twenty-server  6/22] COPY --chown=1000 --from=twenty-server-build /app/package.json /app/yarn.lock 
+/app/.yarnrc.yml /app/
+#50 CACHED
+
+#51 [twenty-server 13/22] COPY --chown=1000 --from=twenty-server-build /app/packages/twenty-server/scripts 
+/app/packages/twenty-server/scripts
+#51 CACHED
+
+#52 [server-deps 10/12] COPY ./packages/twenty-client-sdk/package.json /app/packages/twenty-client-sdk/
+#52 CACHED
+
+#53 [server-deps  8/12] COPY ./packages/twenty-server/patches /app/packages/twenty-server/patches
+#53 CACHED
+
+#54 [twenty-front-build 1/8] COPY ./packages/twenty-front /app/packages/twenty-front
+#54 CACHED
+
+#55 [server-deps 11/12] COPY ./packages/twenty-oxlint-rules/package.json /app/packages/twenty-oxlint-rules/
+#55 CACHED
+
+#56 [twenty-front-build 2/8] COPY ./packages/twenty-front-component-renderer 
+/app/packages/twenty-front-component-renderer
+#56 CACHED
+
+#57 [twenty-front-build 4/8] COPY ./packages/twenty-shared /app/packages/twenty-shared
+#57 CACHED
+
+#58 [server-deps  9/12] COPY ./packages/twenty-shared/package.json /app/packages/twenty-shared/
+#58 CACHED
+
+#59 [front-deps  5/12] COPY ./.yarn/patches /app/.yarn/patches
+#59 CACHED
+
+#60 [front-deps 10/12] COPY ./packages/twenty-sdk/package.json /app/packages/twenty-sdk/
+#60 CACHED
+
+#61 [twenty 1/1] COPY --chown=1000 --from=twenty-front-build /app/packages/twenty-front/build 
+/app/packages/twenty-server/dist/front
+#61 CACHED
+
+#62 exporting to image
+#62 exporting layers done
+#62 exporting manifest sha256:7cd14fda489c45a6f118673ef033b7dfef2cd9375c0978c7aaeb8a7f60836800 0.0s done
+#62 exporting config sha256:b304d08e308f0c5c3965213fc5cb604d24832d0052438c784d93c201bee1117d 0.0s done
+#62 exporting attestation manifest sha256:7f5870f6cb39578e3226e741f3af9218f01a77ffcfcb2847b2faa4140056336f 0.0s done
+#62 exporting manifest list sha256:f3b42294d3adcc0320787f718a7c7e9b3900755ea70fb7b14125cbb7edcc9443 0.0s done
+#62 naming to docker.io/twenty-dev/crm129:14ff9f4006442506cff6e399c0861d300b16419c done
+#62 unpacking to docker.io/twenty-dev/crm129:14ff9f4006442506cff6e399c0861d300b16419c 0.0s done
+#62 DONE 0.1s
+image=sha256:f3b42294d3adcc0320787f718a7c7e9b3900755ea70fb7b14125cbb7edcc9443
+CRM129_DEV_IMAGE=twenty-dev/crm129:14ff9f4006442506cff6e399c0861d300b16419c

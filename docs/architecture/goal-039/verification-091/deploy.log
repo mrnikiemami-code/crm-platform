@@ -1,0 +1,36 @@
+docker : time="2026-11-28T09:54:54+03:30" level=warning msg="The \"DISABLE_DB_MIGRATIONS\" variable is not set. 
+Defaulting to a blank string."
+At line:10 char:1
++ docker compose -p twenty -f $base -f $overlay -f $lf -f $mw up -d --n ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (time="2026-11-2... blank string.":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"DISABLE_CRON_JOBS_REGISTRATION\" variable is not set. 
+Defaulting to a blank string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"STORAGE_S3_NAME\" variable is not set. Defaulting to a blank 
+string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"STORAGE_S3_REGION\" variable is not set. Defaulting to a 
+blank string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"STORAGE_S3_ENDPOINT\" variable is not set. Defaulting to a 
+blank string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"FALLBACK_ENCRYPTION_KEY\" variable is not set. Defaulting to 
+a blank string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"FALLBACK_ENCRYPTION_KEY\" variable is not set. Defaulting to 
+a blank string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"STORAGE_S3_REGION\" variable is not set. Defaulting to a 
+blank string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"STORAGE_S3_NAME\" variable is not set. Defaulting to a blank 
+string."
+time="2026-11-28T09:54:54+03:30" level=warning msg="The \"STORAGE_S3_ENDPOINT\" variable is not set. Defaulting to a 
+blank string."
+ Container twenty-server-1 Recreate 
+ Container twenty-server-1 Recreated 
+ Container twenty-worker-1 Recreate 
+ Container twenty-worker-1 Recreated 
+ Container twenty-server-1 Starting 
+ Container twenty-server-1 Started 
+ Container twenty-server-1 Waiting 
+ Container twenty-server-1 Healthy 
+ Container twenty-worker-1 Starting 
+ Container twenty-worker-1 Started 

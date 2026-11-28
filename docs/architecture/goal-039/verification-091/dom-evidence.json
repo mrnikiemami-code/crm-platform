@@ -1,0 +1,73 @@
+{
+  "capturedAt": "2026-11-28T06:38:47.714Z",
+  "method": "Playwright-MCP browser DOM (no screenshots)",
+  "desktop": {
+    "quotationsList": {
+      "url": "http://glorious-aqua-whale.localhost:3002/objects/quotations?viewId=c3a14f2d-d0a9-4ecb-8514-e1d61cbafaff",
+      "title": "همهٔ پیش‌فاکتورها - پیش‌فاکتورها",
+      "rtl": {
+        "dir": "rtl",
+        "lang": "fa-IR"
+      },
+      "viewport": {
+        "w": 1920,
+        "h": 1080
+      },
+      "newQuotationButton": true,
+      "columns": [
+        "عنوان",
+        "شماره سند",
+        "مشتری",
+        "وضعیت",
+        "مبلغ کل"
+      ],
+      "rowCountLabelObserved": "همهٔ پیش‌فاکتورها · ۴۶"
+    },
+    "accountingSettings": {
+      "url": "http://glorious-aqua-whale.localhost:3002/page/20c28688-fc16-42f8-a231-9d5735d1b2c2",
+      "heading": "نمای کلی",
+      "rtl": {
+        "dir": "rtl",
+        "lang": "fa-IR"
+      },
+      "tabsObserved": [
+        "نمای کلی",
+        "اتصال‌ها ۲۴",
+        "کالاها ۳۱",
+        "مشتریان ۱۰۰",
+        "اسناد"
+      ]
+    },
+    "communications": {
+      "url": "http://glorious-aqua-whale.localhost:3002/objects/communications?viewId=61961a58-c469-4f2d-bc58-75c2175f62a5",
+      "title": "All ارتباطات - ارتباطات",
+      "emptyCountLabel": "All ارتباطات · ۰",
+      "columns": [
+        "نام",
+        "کانال",
+        "متن",
+        "موضوع",
+        "وضعیت",
+        "جهت",
+        "سرویس‌دهنده",
+        "گیرنده"
+      ]
+    }
+  },
+  "mobilePendingInSameSession": false,
+  "mobile": {
+    "quotationsList": {
+      "url": "http://glorious-aqua-whale.localhost:3002/objects/quotations?viewId=c3a14f2d-d0a9-4ecb-8514-e1d61cbafaff",
+      "title": "همهٔ پیش‌فاکتورها - پیش‌فاکتورها",
+      "rtl": {
+        "dir": "rtl",
+        "lang": "fa-IR"
+      },
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "note": "Emulation.setDeviceMetricsOverride mobile; newBtn may be collapsed in narrow chrome"
+    }
+  }
+}

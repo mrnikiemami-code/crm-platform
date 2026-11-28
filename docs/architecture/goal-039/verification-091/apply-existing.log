@@ -1,0 +1,44 @@
+Using remote: dev-crm129
+Applying application manifest on dev-crm129...
+App path: D:\CrmSource\twenty\packages\twenty-apps\internal\quotation
+
+Checking server...
+Building manifest...
+Building application files...
+Running typecheck...
+Computing metadata plan...
+
+Twenty will perform the following actions:
+
+  # logicFunction "accounting-connection-action" will be updated in-place
+  ~ checksum = "cea0111c69374750e547aabed7083406" -> "b67df3ce37b213cc0717d5dfa909bc8d"
+
+  # logicFunction "accounting-import-action" will be updated in-place
+  ~ checksum = "7c70e012ea1bf1523ebdd3ae139d20c5" -> "2a109ffbeef20409390c118f342eb5d7"
+
+  # logicFunction "accounting-outbound-action" will be updated in-place
+  ~ checksum = "d8037b1a0037a1b40f0257af8ed431ce" -> "c588f060a0131f96d3fbfa891a98bf6b"
+
+  # frontComponent "accounting-connection-panel" will be updated in-place
+  ~ builtComponentChecksum = "3a807c5edfa2c678ec4f8c822774cdb00149071174e00a91eeacf52182bfff6b" -> "330899aaa5a49eb015b244b98c67da7a30cb300696108c36cf422aa135bfb4b9"
+
+  # applicationVariable "e0b1c2d3-0011-4000-8000-000000000011" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Unique UUID for this read authorization. Clear before revocation and replace o…
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "ASAN_APPROVED_READ_GENERATION"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:0ARno9LlvjCIrSb2c+plB5XGYDQhIXIzPxjznQ=="
+
+Plan: 1 to add, 4 to change, 0 to destroy.
+
+Registering application...
+Uploading 43 files...
+Syncing manifest...
+Generating API client...
+
+✓ Synced پیش‌فاکتور (43 files)
+Output: D:\CrmSource\twenty\packages\twenty-apps\internal\quotation\.twenty\output

@@ -1,0 +1,119 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-draft-tax-policy.util.spec.ts
+At line:1 char:1
++ npx jest --config=packages/twenty-server/jest.config.mjs --testPathPa ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...cy.util.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-draft-totals.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-numbering.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-share.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/parse-tax-rate-percent.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/resolve-accounting-destination.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/accounting-connection-settings.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-pdf-display.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/accounting-destination-policy.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-document-currency.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-immutability.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-accounting-snapshot.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-revision-snapshot.util.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-ui-messages.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/accounting-destination-probe.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/parse-quotation-draft-save-request.util.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/exceptions/__tests__/quotation-query-validation.exception.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/query-hooks/__tests__/quotation-currency-write-guard.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/query-hooks/__tests__/quotation-revision-write-guard.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/query-hooks/__tests__/accounting-connection-write-guard.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/services/__tests__/quotation-revision.service.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/query-hooks/__tests__/tax-policy-write-guard.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/quotation-permission.service.spec.ts (5.466 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-party-write-guard.service.spec.ts (5.532 s)
+PASS twenty-server packages/twenty-server/src/modules/quotation/services/__tests__/quotation-share.service.spec.ts 
+(5.665 s)
+[Nest] 36028  - ۱۴۰۵/۰۹/۰۷, ۹:۵۱:۴۴   ERROR [QuotationDraftPersistenceService] Line tax policy lookup failed for 
+"IR_VAT_9": tax table missing
+[Nest] 36028  - ۱۴۰۵/۰۹/۰۷, ۹:۵۱:۴۴   ERROR [QuotationDraftPersistenceService] Currency accounting snapshot lookup 
+failed for "IRR": currency catalog missing
+[Nest] 36028  - ۱۴۰۵/۰۹/۰۷, ۹:۵۱:۴۴   ERROR [QuotationDraftPersistenceService] Quotation draft save failed and was 
+rolled back: insert failed
+Error: insert failed
+    at Object.<anonymous> (D:\CrmSource\twenty\packages\twenty-server\src\modules\quotation\services\__tests__\quotatio
+n-draft-persistence.service.spec.ts:463:15)
+    at D:\CrmSource\twenty\node_modules\jest-environment-node\node_modules\jest-mock\build\index.js:397:39
+    at Object.<anonymous> 
+(D:\CrmSource\twenty\node_modules\jest-environment-node\node_modules\jest-mock\build\index.js:404:13)
+    at Object.mockConstructor [as insert] 
+(D:\CrmSource\twenty\node_modules\jest-environment-node\node_modules\jest-mock\build\index.js:148:19)
+    at QuotationDraftPersistenceService.insert [as createDraft] (D:\CrmSource\twenty\packages\twenty-server\src\modules
+\quotation\services\quotation-draft-persistence.service.ts:224:28)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at QuotationDraftPersistenceService.saveDraft (D:\CrmSource\twenty\packages\twenty-server\src\modules\quotation\ser
+vices\quotation-draft-persistence.service.ts:125:14)
+    at Object.<anonymous> (D:\CrmSource\twenty\packages\twenty-server\src\modules\quotation\services\__tests__\quotatio
+n-draft-persistence.service.spec.ts:471:5)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/quotation-currency-authority.service.spec.ts (5.699 s)
+[Nest] 36028  - ۱۴۰۵/۰۹/۰۷, ۹:۵۱:۴۴   ERROR [QuotationDraftPersistenceService] Quotation draft save failed and was 
+rolled back: connection reset
+Error: connection reset
+    at Object.<anonymous> (D:\CrmSource\twenty\packages\twenty-server\src\modules\quotation\services\__tests__\quotatio
+n-draft-persistence.service.spec.ts:783:25)
+    at Promise.then.completed 
+(D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\utils.js:231:10)
+    at _callCircusTest (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at _runTest (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:252:3)
+    at _runTestsForDescribeBlock 
+(D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:126:9)
+    at _runTestsForDescribeBlock 
+(D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:121:9)
+    at run (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:71:3)
+    at runAndTransformResultsToJestFormat (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\
+legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+    at jestAdapter (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\legacy-code-todo-rewrit
+e\jestAdapter.js:79:19)
+    at runTestInternal (D:\CrmSource\twenty\node_modules\jest-runner\build\runTest.js:367:16)
+    at runTest (D:\CrmSource\twenty\node_modules\jest-runner\build\runTest.js:444:34)
+    at Object.worker (D:\CrmSource\twenty\node_modules\jest-runner\build\testWorker.js:106:12)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/quotation-draft-persistence.service.spec.ts (5.69 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/quotation-customer-link.service.spec.ts (5.71 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/query-hooks/__tests__/quotation-update-one.pre-query.hook.spec.ts (5.718 
+s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/tax-policy-authority.service.spec.ts (5.743 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-party-apply.service.spec.ts (8.045 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-connection-authority.service.spec.ts (8.601 
+s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-operation-dispatch.service.spec.ts (8.588 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-destination-probe.service.spec.ts (8.631 s)
+PASS twenty-server packages/twenty-server/src/modules/quotation/controllers/__tests__/quotation-ui.controller.spec.ts 
+(8.771 s)
+
+Test Suites: 1 skipped, 35 passed, 35 of 36 total
+Tests:       4 skipped, 377 passed, 381 total
+Snapshots:   0 total
+Time:        9.166 s, estimated 10 s

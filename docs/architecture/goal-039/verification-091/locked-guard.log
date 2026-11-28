@@ -1,0 +1,7 @@
+node : FAIL usage: node dev-verify-crm129-locked-guard.cjs <quotationId>
+At line:13 char:3
++   node packages/twenty-apps/internal/quotation/scripts/dev-verify-crm ...
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL usage: nod...s <quotationId>:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

@@ -1,0 +1,11 @@
+npx : 
+At line:15 char:1
++ npx jest --config=packages/twenty-server/jest.config.mjs --testPathPa ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Test Suites: 1 skipped, 0 of 1 total
+Tests:       4 skipped, 4 total
+Snapshots:   0 total
+Time:        0.229 s, estimated 1 s

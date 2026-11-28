@@ -1,0 +1,539 @@
+{
+  "apiBase": "http://localhost:3002",
+  "marker": "G039-091-1795847767207",
+  "sourceSha": "14ff9f4006442506cff6e399c0861d300b16419c",
+  "checks": {
+    "B-NEST-SAVE-DRAFT-REQUIRES-ATOMIC-PLAN": {
+      "ok": true,
+      "note": "Nest REST save-draft refuses form-text payloads; LF save-draft remains the create path",
+      "code": "INVALID_INPUT"
+    },
+    "B-CUSTOMERS-AVAILABLE": {
+      "ok": true,
+      "personId": "0045b1c8-9197-439a-94d2-c6891d19fc5d",
+      "companyId": "0624aad4-b10c-54d8-8b5e-6cf9f9b236ad"
+    },
+    "B-CREATE-FROM-PERSON": {
+      "ok": true,
+      "status": 200,
+      "quotationId": "bd94da35-2414-4563-8e6a-ab57ce256200",
+      "code": null,
+      "planTotal": "53273.000000"
+    },
+    "B-FINANCE-INDEPENDENT-ARITHMETIC": {
+      "ok": true,
+      "independent": {
+        "grossExact": "52500.000000",
+        "netExact": "48875.000000",
+        "taxExact": "4398.750000",
+        "dutyExact": "1466.250000",
+        "totalExact": "53273.000000"
+      },
+      "actual": {
+        "grossExact": "52500.000000",
+        "netExact": "48875.000000",
+        "taxExact": "4398.750000",
+        "dutyExact": "1466.250000",
+        "totalExact": "53273.000000",
+        "currencyCode": "IRR",
+        "taxPolicy": "IR_VAT_9"
+      },
+      "displayTotal": "۵٬۳۲۷٫۳ تومان"
+    },
+    "B-CREATE-FROM-COMPANY": {
+      "ok": true,
+      "status": 200,
+      "quotationId": "a57c8a21-83c7-466f-a09c-192370140bb5"
+    },
+    "B-VERSION-CONFLICT": {
+      "ok": true,
+      "code": "QUOTATION_VERSION_REQUIRED",
+      "message": "نسخهٔ پیش‌فاکتور لازم است. صفحه را تازه کنید و دوباره تلاش کنید.",
+      "note": "Observed code may be QUOTATION_VERSION_CONFLICT (Nest/LF alignment)"
+    },
+    "B-LIFECYCLE-APPROVE": {
+      "ok": true,
+      "target": "READY_TO_SEND",
+      "lastSuccess": true,
+      "code": null,
+      "message": "تأیید و آماده ارسال انجام شد."
+    },
+    "B-LIFECYCLE-UNSUPPORTED-REFUSED": {
+      "ok": true,
+      "code": "TRANSITION_NOT_ALLOWED",
+      "message": "این تغییر وضعیت مجاز نیست."
+    },
+    "B-IMMUTABLE-APPROVED-REVISION": {
+      "ok": true,
+      "status": "READY_TO_SEND",
+      "revisionCount": 1,
+      "revisionVersions": [
+        1
+      ]
+    },
+    "B-PDF-PERSIAN-BYTES": {
+      "ok": false,
+      "status": 201,
+      "success": false,
+      "code": "UNEXPECTED",
+      "message": "No Persian-capable font found. Set QUOTATION_PDF_FONT to a .ttf file whose glyphs include U+067E. Tried: /app/packages/twenty-server/dist/modules/quotation/pdf/fonts/Vazirmatn-Regular.ttf, /app/packages/twenty-server/packages/twenty-server/test/spikes/quotation-pdf/fonts/Vazirmatn-Regular.ttf, C:/Windows/Fonts/tahoma.ttf, C:/Windows/Fonts/segoeui.ttf, /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf, /usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf, /System/Library/Fonts/Supplemental/Arial.ttf",
+      "fileName": null,
+      "bytes": 0,
+      "pdfMagic": "",
+      "defect": "DEFECT-PDF-FONT — Dev image missing Persian-capable TTF (Vazirmatn); architect owns image/font packaging. No product hotpatch applied."
+    },
+    "B-ACCOUNTING-PREVIEW-MOCK": {
+      "ok": true,
+      "status": 201,
+      "success": true,
+      "keys": [
+        "success",
+        "preview",
+        "flags"
+      ],
+      "hasPreview": true,
+      "hasFlags": true,
+      "transportApproved": null,
+      "error": null
+    },
+    "C-SHARE-MANUAL-TEXT": {
+      "ok": true,
+      "channels": {
+        "BALE": {
+          "ok": false,
+          "status": 201,
+          "success": false,
+          "outcome": null,
+          "deliveryKind": null,
+          "hasShareText": false,
+          "deliveryClaimed": false,
+          "code": "INVALID_INPUT",
+          "keys": [
+            "success",
+            "code",
+            "message"
+          ]
+        },
+        "WHATSAPP": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "TELEGRAM": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "INSTAGRAM": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "EITAA": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "RUBIKA": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "SOROUSH": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        }
+      },
+      "noFakeDelivery": true
+    },
+    "C-SEVEN-CHANNEL-COPY-SHARE": {
+      "ok": true,
+      "channels": {
+        "BALE": {
+          "ok": false,
+          "status": 201,
+          "success": false,
+          "outcome": null,
+          "deliveryKind": null,
+          "hasShareText": false,
+          "deliveryClaimed": false,
+          "code": "INVALID_INPUT",
+          "keys": [
+            "success",
+            "code",
+            "message"
+          ]
+        },
+        "WHATSAPP": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "TELEGRAM": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "INSTAGRAM": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "EITAA": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "RUBIKA": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        },
+        "SOROUSH": {
+          "ok": true,
+          "status": 201,
+          "success": true,
+          "outcome": "MANUAL_SHARE",
+          "deliveryKind": "MANUAL_SHARE",
+          "hasShareText": true,
+          "deliveryClaimed": false,
+          "code": null,
+          "keys": [
+            "success",
+            "shareId",
+            "quotationId",
+            "channel",
+            "channelLabel",
+            "outcome",
+            "deliveryKind",
+            "linkId",
+            "viewUrl",
+            "shareText",
+            "customerLabel",
+            "customerPersonId",
+            "customerCompanyId",
+            "communicationId",
+            "providerId",
+            "providerMessageId",
+            "message"
+          ]
+        }
+      },
+      "noFakeDelivery": true,
+      "note": "Seven product channels; BALE may honest-fail without chat_id; no delivery invented"
+    },
+    "C-CUSTOMER-LINK-CREATE": {
+      "ok": true,
+      "status": 201,
+      "success": true,
+      "hasLinkId": true,
+      "hasToken": true,
+      "hasUrl": true,
+      "tokenRedacted": "dZtehR…DXSE",
+      "expiresAt": "2026-12-05T06:36:08.258Z",
+      "code": null,
+      "message": "لینک مشتری صادر شد. این لینک را فقط یک‌بار کپی کنید.",
+      "keys": [
+        "success",
+        "linkId",
+        "quotationId",
+        "expiresAt",
+        "rawToken",
+        "viewUrl",
+        "message"
+      ]
+    },
+    "C-CUSTOMER-LINK-REVOKE": {
+      "ok": true,
+      "status": 201,
+      "success": true,
+      "code": null
+    },
+    "C-DRAFT-LINK-DENIED": {
+      "ok": true,
+      "code": "CUSTOMER_LINK_STATUS_FORBIDDEN",
+      "message": "فقط برای پیش‌فاکتورهای آماده ارسال یا ارسال‌شده می‌توان لینک ساخت."
+    },
+    "B-PAGING-SEARCH-SCOPED": {
+      "ok": true,
+      "totalKnown": 33,
+      "page1Rows": 25,
+      "page2Rows": 8,
+      "searchRows": 5,
+      "note2500": "SCOPED_MOCK_CATALOG_BELOW_2500 — Vitest jump semantics cover large-page logic; product Mock fixture not enlarged"
+    }
+  },
+  "failures": [
+    "B-PDF-PERSIAN-BYTES"
+  ],
+  "notes": [],
+  "status": "FAIL",
+  "failed": [
+    "B-PDF-PERSIAN-BYTES"
+  ]
+}
