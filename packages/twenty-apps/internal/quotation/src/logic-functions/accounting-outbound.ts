@@ -3,6 +3,7 @@ import { defineLogicFunction, type RoutePayload } from 'twenty-sdk/define';
 import {
   ACCOUNTING_OUTBOUND_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
+import { executePartyPush, previewPartyPush, type PartyPushCommand } from 'src/services/accounting-party-outbound.service';
 import { buildCatalogItemPushQuery } from 'src/data/accounting-queries';
 import { executeRecordGraphql } from 'src/data/record-api';
 import { persianAccountingMessage } from 'src/domain/accounting/errors';
@@ -313,6 +314,26 @@ const handler = async (event: RoutePayload<unknown>) => {
         );
       }
 
+      return { success: true, outcome: outcome.value };
+    }
+
+    // This command is assembled by Nest from the original user's visible
+    // CRM record. There is no public HTTP trigger for this worker.
+    if (action === 'preview-party-push' || action === 'execute-party-push') {
+      const command = asRow(body.command);
+      const profile = asRow(command.profile);
+      if (!readString(command.operationId) || !['CREATE', 'UPDATE'].includes(readString(command.mode)) ||
+          !readString(profile.fullName) || !['PERSON', 'COMPANY'].includes(readString(profile.partyType))) {
+        return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));
+      }
+      if (action === 'preview-party-push') {
+        const preview = await previewPartyPush(adapter.value, command as unknown as PartyPushCommand);
+        if (!preview.ok) return failure(preview.refusal.code, persianAccountingMessage(preview.refusal.code));
+        return { success: true, preview: preview.value,
+          canExecute: flags.outboundEnabled && !adapter.value.isLive && adapter.value.writesEnabled !== false };
+      }
+      const outcome = await executePartyPush(adapter.value, command as unknown as PartyPushCommand, flags.outboundEnabled);
+      if (!outcome.ok) return failure(outcome.refusal.code, persianAccountingMessage(outcome.refusal.code));
       return { success: true, outcome: outcome.value };
     }
 
