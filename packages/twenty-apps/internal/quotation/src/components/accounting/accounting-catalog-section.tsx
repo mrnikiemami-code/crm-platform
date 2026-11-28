@@ -1,6 +1,7 @@
 import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
+import { confirmAccountingAction } from 'src/components/accounting/confirm-accounting-action';
 
 import {
   ACCOUNTING_IMPORT_ROUTE,
@@ -450,18 +451,19 @@ export const AccountingCatalogSection = ({
     }
   };
 
-  const transferSelected = () => {
+  const transferSelected = async () => {
     if (selected.size === 0) {
       return;
     }
+    const confirmedSelection = new Map(selected);
     if (
-      !window.confirm(
+      !await confirmAccountingAction(
         `انتقال ${selected.size.toLocaleString('fa-IR')} کالای انتخاب‌شده انجام شود؟`,
       )
     ) {
       return;
     }
-    void applySelections(selected);
+    void applySelections(confirmedSelection);
   };
 
   const transferAllEligible = async () => {
@@ -533,7 +535,7 @@ export const AccountingCatalogSection = ({
       }
 
       if (
-        !window.confirm(
+        !await confirmAccountingAction(
           `انتقال همه: ${collected.size.toLocaleString('fa-IR')} کالا (جست‌وجوی فعال نادیده گرفته می‌شود). موارد دارای تعارض: ${blocked.toLocaleString('fa-IR')}. ادامه؟`,
         )
       ) {
