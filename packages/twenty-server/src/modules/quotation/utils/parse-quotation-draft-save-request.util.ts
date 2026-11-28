@@ -123,13 +123,14 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
   const unit = readText(raw.unit, 32);
   const discountKind = readDiscountKind(raw.discountKind);
   const itemId = readNullableId(raw.itemId);
+  const unitRecordId = readNullableId(raw.unitRecordId);
 
   if (
     name === null ||
     kind === null ||
     unit === null ||
     discountKind === null ||
-    !itemId.ok
+    !itemId.ok || !unitRecordId.ok
   ) {
     return null;
   }
@@ -159,7 +160,8 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
   // Snapshot codes on lines are server-owned (C3); refuse client supply.
   if (
     raw.taxAccountingCode !== undefined ||
-    raw.taxPolicyRecordId !== undefined
+    raw.taxPolicyRecordId !== undefined ||
+    raw.unitCode !== undefined || raw.unitAccountingCode !== undefined
   ) {
     return null;
   }
@@ -169,6 +171,7 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
     kind,
     description: readNullableText(raw.description),
     unit,
+    unitRecordId: unitRecordId.value,
     quantityExact: raw.quantityExact as string,
     unitPriceExact: raw.unitPriceExact as string,
     grossExact: raw.grossExact as string,
