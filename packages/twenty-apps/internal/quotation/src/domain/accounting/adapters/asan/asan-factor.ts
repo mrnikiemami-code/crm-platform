@@ -66,7 +66,19 @@ export const scaledQuantityToAsanCount = (
     );
   }
 
-  return accepted(Number(quantityScaled) / Number(QUANTITY_SCALE));
+  const count = Number(quantityScaled) / Number(QUANTITY_SCALE);
+  // Safe integer conversion before division is not sufficient. At large magnitudes
+  // a double can collapse adjacent six-decimal quantities into the same value.
+  // Verify the decimal quantity that will cross the wire without re-rounding it.
+  const wire = JSON.stringify(count);
+  const match = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(wire);
+  // JSON uses exponent notation for the smallest supported positive quantity.
+  const decimal = match ? wire : count.toFixed(6);
+  const exact = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(decimal);
+  if (!exact || BigInt(exact[1] + exact[2] + (exact[3] ?? '').padEnd(6, '0')) !== quantityScaled) {
+    return refused('QUANTITY_OUT_OF_RANGE', 'this quantity loses its six-decimal identity on the vendor wire');
+  }
+  return accepted(count);
 };
 
 // Micros -> the whole-unit integer Asan expects. Refusing a remainder is the whole point:
