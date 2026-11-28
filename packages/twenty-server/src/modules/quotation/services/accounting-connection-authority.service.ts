@@ -51,6 +51,7 @@ const CONNECTION_COLUMNS = {
   lastHealthMessage: true,
   verificationState: true,
   datasetBindingId: true,
+  priceGroupMappings: true,
 } as const;
 
 const refused = (
@@ -388,6 +389,78 @@ export class AccountingConnectionAuthorityService {
   // old workspaces with every row false stay that way until this method runs.
   // Separate, explicit administrator attestation after independently approved G1
   // dataset verification. No network calls or automatic activation here.
+  // The group identifier comes only from the stored vendor-owned observation.
+  // A CRM price-list id is chosen explicitly by an authorized operator.
+  private observedPriceGroup(sourceProfile: unknown): string | null {
+    if (typeof sourceProfile !== 'string') return null;
+    try {
+      const group = JSON.parse(sourceProfile)?.sourceObservation;
+      return group?.version === '1' && typeof group.priceListId === 'string' &&
+        /^(0|[1-9]\\d{0,18})$/.test(group.priceListId) ? group.priceListId : null;
+    } catch { return null; }
+  }
+
+  private parseGroupMappings(value: unknown): Record<string, string> | null {
+    if (value == null) return {};
+    if (typeof value !== 'object' || Array.isArray(value)) return null;
+    const entries = Object.entries(value);
+    if (entries.length > 1000 || entries.some(([key, id]) => !/^(0|[1-9]\\d{0,18})$/.test(key) ||
+      typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id))) return null;
+    return Object.fromEntries(entries) as Record<string, string>;
+  }
+
+  async resolveCustomerPriceList(input: { partyType: string; internalPartyId: string; connectionId?: string }, authContext: WorkspaceAuthContext) {
+    if (authContext.type !== 'user' && authContext.type !== 'apiKey') return { success: false, code: 'FORBIDDEN' };
+    const role = await this.quotationPermissionService.resolveRoleId(authContext);
+    if (!role || !['PERSON', 'COMPANY'].includes(input.partyType) || !input.internalPartyId) return { success: false, code: 'FORBIDDEN' };
+    return this.inWorkspace(authContext, () => this.workspaceOrmManager.runInWorkspaceTransaction(async scope => {
+      const visible = await scope.getRepository<{ id: string }>(input.partyType === 'PERSON' ? 'person' : 'company', { unionOf: [role] })
+        .findOne({ where: { id: input.internalPartyId }, select: { id: true } });
+      if (!visible) return { success: false, code: 'FORBIDDEN' };
+      const destinations = await scope.getRepository<WorkspaceAccountingConnectionRow>('accountingConnection', { shouldBypassPermissionChecks: true })
+        .find({ where: input.connectionId ? { id: input.connectionId, isActive: true } : { isDefault: true, isActive: true }, select: CONNECTION_COLUMNS, take: 2 });
+      if (destinations.length > 1) return { success: false, code: 'ACCOUNTING_DESTINATION_REQUIRED' };
+      const destination = destinations[0];
+      if (!destination) return { success: true, groupId: null, priceListId: null, priceListName: null };
+      const links = await scope.getRepository<{ id: string; sourceProfile: string; syncStatus: string; remoteVersion: string; deletedAt?: string | Date | null }>('accountingPartyLink', { shouldBypassPermissionChecks: true })
+        .find({ where: { connectionId: destination.id, partyType: input.partyType, internalPartyId: input.internalPartyId }, withDeleted: true, take: 2 });
+      if (links.length > 1 || links[0]?.deletedAt || (links[0] && (links[0].syncStatus !== 'LINKED' || !links[0].remoteVersion))) return { success: false, code: 'ACCOUNTING_PARTY_IDENTITY_CONFLICT' };
+      const groupId = this.observedPriceGroup(links[0]?.sourceProfile);
+      const mappings = this.parseGroupMappings(destination.priceGroupMappings);
+      if (!mappings) return { success: false, code: 'PRICE_PROVENANCE_INVALID' };
+      const listId = groupId === null ? null : mappings[groupId] ?? null;
+      if (!listId) return { success: true, groupId, priceListId: null, priceListName: null };
+      const list = await scope.getRepository<{ id: string; name: string; currencyCode: string }>('priceList', { unionOf: [role] })
+        .findOne({ where: { id: listId, currencyCode: 'IRR' }, select: { id: true, name: true } });
+      if (!list) return { success: false, code: 'PRICE_PROVENANCE_INVALID' };
+      return { success: true, groupId, priceListId: list.id, priceListName: list.name };
+    }));
+  }
+
+  async mapCustomerPriceGroup(input: { connectionId: string; partyType: string; internalPartyId: string; priceListId: string; expectedGroupId: string }, authContext: WorkspaceAuthContext) {
+    if (authContext.type !== 'user' || await this.resolveAuthority(authContext) !== 'SETTINGS_ROLE') return { success: false, code: 'FORBIDDEN' };
+    const role = await this.quotationPermissionService.resolveRoleId(authContext);
+    if (!role || !['PERSON', 'COMPANY'].includes(input.partyType) || !input.internalPartyId || !input.connectionId || !input.priceListId) return { success: false, code: 'INVALID_INPUT' };
+    return this.inWorkspace(authContext, () => this.runLocked(async scope => {
+      const visible = await scope.getRepository<{ id: string }>(input.partyType === 'PERSON' ? 'person' : 'company', { unionOf: [role] })
+        .findOne({ where: { id: input.internalPartyId }, select: { id: true } });
+      if (!visible) return { success: false, code: 'FORBIDDEN' };
+      const repository = scope.getRepository<WorkspaceAccountingConnectionRow>('accountingConnection', { shouldBypassPermissionChecks: true });
+      const connection = await repository.findOne({ where: { id: input.connectionId, isActive: true }, select: CONNECTION_COLUMNS });
+      if (!connection) return { success: false, code: 'CONNECTION_INACTIVE' };
+      const links = await scope.getRepository<{ id: string; sourceProfile: string; syncStatus: string; remoteVersion: string; deletedAt?: string | Date | null }>('accountingPartyLink', { shouldBypassPermissionChecks: true })
+        .find({ where: { connectionId: connection.id, internalPartyId: input.internalPartyId, partyType: input.partyType }, withDeleted: true, take: 2 });
+      const groupId = this.observedPriceGroup(links[0]?.sourceProfile);
+      if (links.length !== 1 || links[0].deletedAt || links[0].syncStatus !== 'LINKED' || !links[0].remoteVersion || groupId === null || groupId !== input.expectedGroupId) return { success: false, code: 'RECONCILIATION_REQUIRED' };
+      const list = await scope.getRepository<{ id: string; name: string }>('priceList', { unionOf: [role] })
+        .findOne({ where: { id: input.priceListId, currencyCode: 'IRR' }, select: { id: true, name: true } });
+      const mappings = this.parseGroupMappings(connection.priceGroupMappings);
+      if (!list || !mappings || (Object.keys(mappings).length >= 1000 && !mappings[groupId])) return { success: false, code: 'PRICE_PROVENANCE_INVALID' };
+      const changed = await repository.update({ id: connection.id }, { priceGroupMappings: { ...mappings, [groupId]: list.id }, updatedBy: this.actorFor(authContext) } as never);
+      return changed.affected === 1 ? { success: true, groupId, priceListId: list.id, priceListName: list.name } : { success: false, code: 'ACCOUNTING_CONNECTION_CHANGED' };
+    }));
+  }
+
   async bindDataset(input: { recordId: string; datasetId: string; expectedBaseUrl: string; expectedRemoteUserId: string; confirmed: boolean }, authContext: WorkspaceAuthContext): Promise<AccountingConnectionOutcome> {
     if (authContext.type !== 'user' || await this.resolveAuthority(authContext) !== 'SETTINGS_ROLE') return refused('FORBIDDEN', 'تأیید هویت مقصد فقط با مجوز مدیر تنظیمات امکان‌پذیر است.');
     if (!input.confirmed || !/^[A-Za-z0-9_-]{1,128}$/.test(input.datasetId) || !input.recordId || !input.expectedBaseUrl) return refused('INVALID_INPUT', 'هویت مجموعه داده و تأیید صریح بررسی مقصد الزامی است.');
