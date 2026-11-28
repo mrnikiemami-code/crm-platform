@@ -323,10 +323,10 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
     return null;
   }
 
-  const code = readNumber(record.ProductCode);
+  const code = exactLong(record.ProductCode);
   const observation = parseCatalogObservation(record);
 
-  if (code === null || !Number.isSafeInteger(code) || code <= 0 || observation === null) {
+  if (code === null || observation === null) {
     return null;
   }
 
@@ -730,10 +730,10 @@ export class AsanHttpAdapter implements AccountingAdapter {
 
   async readItem(externalItemId: string): Promise<Result<RemoteCatalogItem>> {
     const code = exactLong(externalItemId);
-    if (code === null || !Number.isSafeInteger(Number(code))) {
-      return refused('ASAN_READBACK_REQUIRED', 'product identity is outside the supported safe range');
+    if (code === null) {
+      return refused('ASAN_READBACK_REQUIRED', 'product identity is outside the documented long range');
     }
-    return this.readProductByCode(Number(code));
+    return this.readProductByCode(code);
   }
 
   async readPartiesByMobile(mobile: string): Promise<Result<RemoteParty[]>> {
@@ -823,7 +823,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
   }
 
   // OneProductWithoutSerial is the documented single product read (p.15).
-  private async readProductByCode(code: number): Promise<Result<RemoteCatalogItem>> {
+  private async readProductByCode(code: number | string): Promise<Result<RemoteCatalogItem>> {
     const result = await this.request({ path: ASAN_ENDPOINTS.oneProductWithoutSerial, method: 'GET', query: { ProductCode: String(code) } });
     if (!result.ok) return result;
     if (result.value.status < 200 || result.value.status >= 300) return refused('ASAN_READBACK_REQUIRED', 'product read did not return a successful HTTP response');
@@ -864,6 +864,14 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return mapped;
     }
 
+    // The documented single-item endpoint does not establish a reliable
+    // not-found code. Use a complete bounded catalog observation for the
+    // create preflight; a failed/incomplete read is not an empty catalog.
+    const before = await this.listItems();
+    if (!before.ok) return before;
+    if (before.value.some((item) => item.externalItemId === String(mapped.value.ProductCode))) {
+      return refused('ASAN_PRODUCT_ALREADY_EXISTS', 'product code already exists; link or reconcile instead of creating');
+    }
     const result = await this.request({
       path: ASAN_ENDPOINTS.addProduct,
       method: 'POST',
@@ -883,7 +891,8 @@ export class AsanHttpAdapter implements AccountingAdapter {
 
     const verified = await this.confirmProductWrite(result.value.text, mapped.value.ProductCode, mapped.value.SellPrice, mapped.value.SalesPrice ?? []);
     if (!verified.ok) return verified;
-    return verified.value.name === mapped.value.ProductName
+    const secondary = mapped.value.ProductName2?.trim() || null;
+    return verified.value.name === mapped.value.ProductName && verified.value.secondaryName === secondary
       ? verified : refused('ASAN_WRITE_UNCONFIRMED', 'product identity/name readback differs; reconcile before retry');
   }
 
@@ -1037,7 +1046,21 @@ export class AsanHttpAdapter implements AccountingAdapter {
       normalizePartyName(assigned.value[0].fullName) !== normalizePartyName(input.fullName)) {
       return refused('ASAN_WRITE_UNCONFIRMED', 'customer creation cannot be uniquely reconciled; do not retry automatically');
     }
-    return accepted(assigned.value[0]);
+    const party = assigned.value[0];
+    const expected = mapped.value;
+    const actual: [string | undefined, string | null | undefined][] = [
+      [expected.PersonAddress, party.address], [expected.PersonEcoCode, party.economicCode],
+      [expected.PersonPostalCode, party.postalCode], [expected.PersonFirstTell, party.firstPhone],
+      [expected.PersonSecoundTell, party.secondPhone], [expected.PersonFax, party.fax],
+      [expected.PersonAccountGroup, party.accountGroup],
+    ];
+    if (actual.some(([sent, observed]) => sent !== undefined && sent.trim() !== observed?.trim()) ||
+        (expected.PersonMobile !== undefined && normalizeIranMobile(expected.PersonMobile) !== normalizeIranMobile(party.mobile)) ||
+        (expected.PersonNationalCode !== undefined && expected.PersonNationalCode !== (party.legalNationalId ?? party.nationalCode)) ||
+        party.sourceObservation?.accountNatureCode !== expected.PersonGender) {
+      return refused('ASAN_WRITE_UNCONFIRMED', 'customer fields or account nature differ from the create payload; reconcile before retry');
+    }
+    return accepted(party);
   }
 
   async updateParty(input: RemotePartyInput): Promise<Result<RemoteParty>> {
