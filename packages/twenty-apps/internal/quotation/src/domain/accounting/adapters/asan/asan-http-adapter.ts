@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { buildCardexDateBounds, isExactAsanPositiveLong, parseCustomerCardex, parseCustomerFinanceSummary } from 'src/domain/accounting/adapters/asan/asan-customer-finance';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 import { ASAN_ENDPOINTS, buildAsanUrl } from 'src/domain/accounting/adapters/asan/asan-endpoints';
 import {
@@ -24,6 +25,8 @@ import {
   type RemoteStorage,
   type RemoteDocument,
   type RemoteProformaObservation,
+  type RemoteCustomerFinanceSummary,
+  type RemoteCustomerLedgerRow,
   type RemoteItemInput,
   type RemoteParty,
   type RemotePartyInput,
@@ -1194,6 +1197,34 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return refused('ASAN_WRITE_UNCONFIRMED', 'customer readback differs from replacement payload; reconcile before retry');
     }
     return accepted(party);
+  }
+
+  async readCustomerFinance(externalPartyId: string): Promise<Result<RemoteCustomerFinanceSummary>> {
+    if (!this.readAccessScope || !isExactAsanPositiveLong(externalPartyId)) {
+      return refused('INVALID_INPUT', 'approved exact customer finance scope required');
+    }
+    const records = await this.readPartyRecords(ASAN_ENDPOINTS.oneCustomer, { CustomerCode: externalPartyId });
+    if (!records.ok) return records;
+    return parseCustomerFinanceSummary(records.value, externalPartyId);
+  }
+
+  async readCustomerLedger(externalPartyId: string, from: string, to: string): Promise<Result<RemoteCustomerLedgerRow[]>> {
+    if (!this.readAccessScope || !isExactAsanPositiveLong(externalPartyId)) {
+      return refused('INVALID_INPUT', 'approved exact customer ledger scope required');
+    }
+    const bounds = buildCardexDateBounds(from, to);
+    if (!bounds.ok) return bounds;
+    const response = await this.request({ path: ASAN_ENDPOINTS.customerCardex, method: 'GET',
+      query: { CustomerCode: externalPartyId, ...bounds.value } });
+    if (!response.ok) return response;
+    if (response.value.status < 200 || response.value.status >= 300) {
+      return refused('INVALID_RESPONSE', 'customer ledger read did not succeed');
+    }
+    const parsed = this.parseJson(response.value.text);
+    if (!parsed.ok) return parsed;
+    const rows = extractArray(parsed.value, ['data', 'Cardex', 'cardex']);
+    return rows === null ? refused('INVALID_RESPONSE', 'invalid customer ledger report') :
+      parseCustomerCardex(rows, externalPartyId);
   }
 
   async listRecentProformas(count: number): Promise<Result<RemoteProformaObservation[]>> {
