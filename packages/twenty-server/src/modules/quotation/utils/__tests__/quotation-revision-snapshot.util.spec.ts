@@ -249,3 +249,29 @@ describe('quotation revision snapshot', () => {
     }
   });
 });
+
+describe('V2 sealed facts', () => {
+  const customer = { id: 'c-1', kind: 'COMPANY' as const, name: 'شرکت نمونه',
+    nationalCode: null, economicCode: null, registrationNumber: null, accountingCode: '100',
+    customerCode: null, mobile: null, phone: null, secondPhone: null, fax: null, email: null,
+    address: { street1: null, street2: null, city: null, state: null, postcode: null, country: null } };
+  it('separates the revision sequence from the quotation version and stores item and discount shares', () => {
+    const result = buildQuotationRevisionSnapshot({
+      header: { ...header, lineDiscountExact: '50.000000', documentDiscountExact: '50.000000' },
+      lines: [{ ...line, itemId: 'item-1', itemSku: 'SKU1', itemAccountingCode: '0020',
+        discountExact: '50.000000', documentDiscountExact: '50.000000' }],
+      version: 12, issuedAt: new Date('2026-11-21T08:00:00.000Z'),
+      identity: { revisionNumber: 2, customer },
+    });
+    expect(result).toMatchObject({ ok: true, snapshot: { schemaVersion: 2, revisionNumber: 2, version: 12,
+      customerSnapshot: customer, lines: [{ itemId: 'item-1', itemSku: 'SKU1', itemAccountingCode: '0020',
+        grossMicros: '1000000000', discountMicros: '50000000', documentDiscountMicros: '50000000' }],
+      totals: { lineDiscountMicros: '50000000', documentDiscountMicros: '50000000' } } });
+  });
+  it('refuses customer substitution and inconsistent line arithmetic', () => {
+    const input = { header, lines: [line], version: 12, issuedAt: new Date('2026-11-21T08:00:00.000Z') };
+    expect(buildQuotationRevisionSnapshot({ ...input, identity: { revisionNumber: 2, customer: { ...customer, id: 'other' } } }).ok).toBe(false);
+    expect(buildQuotationRevisionSnapshot({ ...input, lines: [{ ...line, quantityExact: '2.000000' }],
+      identity: { revisionNumber: 2, customer } }).ok).toBe(false);
+  });
+});

@@ -14,8 +14,35 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // WHY AMOUNTS ARE STRINGS: bigint does not survive JSON, and a JS number would lose
 // precision on exactly the amounts this app exists to get right. The exact decimal
 // text is also what a human can read in the audit trail.
+export type SealedQuotationCustomer = {
+  id: string;
+  kind: 'PERSON' | 'COMPANY';
+  name: string;
+  nationalCode: string | null;
+  economicCode: string | null;
+  registrationNumber: string | null;
+  accountingCode: string | null;
+  customerCode: string | null;
+  mobile: string | null;
+  phone: string | null;
+  secondPhone: string | null;
+  fax: string | null;
+  email: string | null;
+  address: { street1: string | null; street2: string | null; city: string | null; state: string | null; postcode: string | null; country: string | null };
+};
+
 export type QuotationRevisionLine = {
   lineId: string;
+  // V2 captures product identity and displayed content; old hashes stay untouched.
+  itemId?: string | null;
+  name?: string;
+  kind?: 'PRODUCT' | 'SERVICE';
+  itemSku?: string | null;
+  itemAccountingCode?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string;
+  grossMicros?: string;
+  documentDiscountMicros?: string;
   description: string;
   unit: string;
   quantityScaled: string;
@@ -34,6 +61,16 @@ export type QuotationRevisionLine = {
 };
 
 export type QuotationRevisionSnapshot = {
+  // Absent on historical seals, which also used integer micros.
+  schemaVersion?: 2;
+  revisionNumber?: number;
+  documentTitle?: string;
+  customerSnapshot?: SealedQuotationCustomer;
+  expiresAt?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string;
+  currencyRecordId?: string | null;
+  currencyAccountingCode?: string;
   quotationId: string;
   version: number;
   quotationNumber: string;
@@ -51,12 +88,19 @@ export type QuotationRevisionSnapshot = {
   totals: {
     grossMicros: string;
     discountMicros: string;
+    lineDiscountMicros?: string;
+    documentDiscountMicros?: string;
     netMicros: string;
     taxOnlyMicros?: string;
     dutyMicros?: string;
     taxMicros: string;
+    roundingMicros?: string;
+    preRoundTotalMicros?: string;
     totalMicros: string;
   };
+  roundingRuleCode?: string;
+  roundingRuleName?: string;
+  roundingStepRials?: string;
   issuedAt: string;
 };
 
