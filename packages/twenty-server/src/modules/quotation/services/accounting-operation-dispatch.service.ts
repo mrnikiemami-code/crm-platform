@@ -10,7 +10,7 @@ import { AccountingCustomerFinanceService, parseCustomerFinanceRequest } from 's
 import { AccountingPartyOutboundService, parsePartyOutboundRequest } from 'src/modules/quotation/services/accounting-party-outbound.service';
 import { AccountingPartyApplyService, parseAccountingPartySelections } from 'src/modules/quotation/services/accounting-party-apply.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
-import { acquireAccountingConnectionWorkLock } from 'src/modules/quotation/utils/accounting-connection-lock.util';
+import { acquireAccountingConnectionWorkLock, acquireAccountingQuotationWorkLock } from 'src/modules/quotation/utils/accounting-connection-lock.util';
 
 // These are the installed Quotation application's existing, stable metadata identifiers.
 // No caller chooses a function identifier, app, workspace, URL, or execution credentials.
@@ -206,6 +206,24 @@ export class AccountingOperationDispatchService {
         });
       }
 
+      if (operation.action === 'reconcile-quotation') {
+        return this.customerFinance.reconcile({
+          connectionId: readText(input.connectionId), quotationId, operationId: readText(input.operationId),
+        }, authContext, async command => {
+          const result = await this.executor.execute({
+            logicFunctionId: fn.id, workspaceId,
+            payload: {
+              body: { ...command, action: 'reconcile-quotation' }, headers: {}, pathParameters: {},
+              queryStringParameters: {}, isBase64Encoded: false,
+              requestContext: { http: { method: 'POST', path: '/rest/quotation/actions' } },
+              userWorkspaceId: null,
+            },
+          });
+          const data = asRecord(result.data);
+          return result.status === LogicFunctionExecutionStatus.SUCCESS && !result.error && typeof data?.success === 'boolean' ? data : null;
+        });
+      }
+
       if (isPartyOutbound && partyRequest) {
         // Only the server-built command reaches the private worker. The
         // browser cannot inject a customer profile, destination URL or receipt.
@@ -236,9 +254,7 @@ export class AccountingOperationDispatchService {
             ? { connectionId: readText(input.connectionId), selections: partySelections, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-parties' }
             : operation.action === 'apply-items'
               ? { connectionId: readText(input.connectionId), selections: itemSelections, applyPrices: input.applyPrices === true, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-items' }
-              : operation.action === 'reconcile-quotation'
-                ? { connectionId: readText(input.connectionId), quotationId, operationId: readText(input.operationId), action: 'reconcile-quotation' }
-                : { ...input, action: operation.action },
+              : { ...input, action: operation.action },
           headers: {},
           pathParameters: {},
           queryStringParameters: {},
@@ -267,10 +283,13 @@ export class AccountingOperationDispatchService {
 
       // Keep lifecycle mutations out of the window from dispatch to durable apply.
       // The worker still rechecks active state, and each operation owns its own claim.
-      if (['apply-items', 'apply-parties', 'execute-item-push', 'execute-quotation-export', 'reconcile-quotation'].includes(operation.action)) {
+      if (['apply-items', 'apply-parties', 'execute-item-push', 'execute-quotation-export'].includes(operation.action)) {
         return await this.workspaceOrmManager.executeInWorkspaceContext(
           () => this.workspaceOrmManager.runInWorkspaceTransaction(async (scope) => {
             await acquireAccountingConnectionWorkLock(scope);
+            if (operation.action === 'execute-quotation-export') {
+              await acquireAccountingQuotationWorkLock(scope, readText(input.connectionId), quotationId);
+            }
             return execute();
           }),
           authContext,
