@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CoreCommonApiModule } from 'src/engine/api/common/core-common-api.module';
 import { AccountingItemApplyService } from 'src/modules/quotation/services/accounting-item-apply.service';
+import { AccountingCustomerFinanceService } from 'src/modules/quotation/services/accounting-customer-finance.service';
 import { AccountingPartyOutboundService } from 'src/modules/quotation/services/accounting-party-outbound.service';
 import { AccountingPartyApplyService } from 'src/modules/quotation/services/accounting-party-apply.service';
 
@@ -50,6 +51,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
     AccountingOperationDispatchService,
     AccountingPartyApplyService,
     AccountingPartyOutboundService,
+    AccountingCustomerFinanceService,
     AccountingItemApplyService,
   ],
 })
