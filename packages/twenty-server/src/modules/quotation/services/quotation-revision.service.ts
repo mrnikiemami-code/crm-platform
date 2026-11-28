@@ -190,6 +190,9 @@ export class QuotationRevisionService {
         taxPolicyRecordId: true,
         taxAccountingCode: true,
         unit: true,
+        unitRecordId: true,
+        unitCode: true,
+        unitAccountingCode: true,
         quantityExact: true,
         unitPriceExact: true,
         grossExact: true,
@@ -221,6 +224,10 @@ export class QuotationRevisionService {
     const itemById = new Map(items.map((item) => [item.id, item]));
     if (itemIds.some((id) => !itemById.has(id))) {
       throw new QuotationQueryValidationException('REVISION_MISMATCH: a referenced item is unavailable', QuotationQueryValidationExceptionCode.FORBIDDEN);
+    }
+    // Newly issued documents require resolved units; historical issued seals are unchanged.
+    if (lines.some(line => !line.unitRecordId || !line.unitCode?.trim() || !line.unit?.trim() || typeof line.unitAccountingCode !== 'string')) {
+      throw new QuotationQueryValidationException('UNIT_MAPPING_REQUIRED: save the draft with resolved unit references before issuing', QuotationQueryValidationExceptionCode.FORBIDDEN);
     }
     const built = buildQuotationRevisionSnapshot({
       header,
