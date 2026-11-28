@@ -86,6 +86,8 @@ export default defineObject({
           color: 'purple',
           position: 3,
         },
+        { id: SELECT_OPTION_IDS.operationKindPartyCreate, value: 'PARTY_CREATE', label: 'ایجاد مشتری حسابداری', color: 'blue', position: 4 },
+        { id: SELECT_OPTION_IDS.operationKindPartyUpdate, value: 'PARTY_UPDATE', label: 'ویرایش مشتری حسابداری', color: 'blue', position: 5 },
       ],
     },
     {
