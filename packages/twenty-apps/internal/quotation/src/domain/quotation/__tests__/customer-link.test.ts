@@ -58,6 +58,7 @@ const sampleSeal: QuotationRevisionSnapshot = {
   },
   taxPolicy: 'VAT_9', taxRateBasisPoints: '900', paymentTerms: 'نقد',
   issuedAt: '2026-11-19T09:00:00.000Z',
+  expiresAt: '2026-12-05',
   lines: [{ lineId: 'line-1', itemId: 'item-1', name: 'کالای الف', kind: 'PRODUCT', unit: 'عدد',
     description: 'کالای الف', quantityScaled: '1000000', unitPriceMicros: '1000000000000',
     grossMicros: '1000000000000', discountMicros: '0', documentDiscountMicros: '0',
@@ -233,6 +234,8 @@ describe('customer link service', () => {
     if (resolved.kind === 'OK') {
       expect(resolved.view.title).toBe(sampleSeal.documentTitle);
       expect(resolved.view.customerLabel).toBe('علی رضایی');
+      expect(resolved.view.validUntilDisplay).toBe(new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date('2026-12-05T00:00:00.000Z')));
+      expect(renderCustomerQuotationHtml(resolved.view)).toContain('اعتبار پیش‌فاکتور تا:');
       expect(resolved.view.lines).toHaveLength(1);
     }
     seal = { ...sampleSeal, documentTitle: 'new document' };
