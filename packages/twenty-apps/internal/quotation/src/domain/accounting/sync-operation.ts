@@ -14,6 +14,8 @@ export const ACCOUNTING_OPERATION_KINDS = [
   'CATALOG_ITEM_UPDATE',
   'CATALOG_ITEM_DEACTIVATE',
   'QUOTATION_REVISION_PUSH',
+  'PARTY_CREATE',
+  'PARTY_UPDATE',
 ] as const;
 
 export type AccountingOperationKind = (typeof ACCOUNTING_OPERATION_KINDS)[number];
