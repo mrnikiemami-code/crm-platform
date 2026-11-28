@@ -25,20 +25,9 @@ export class QuotationLineCreateOnePreQueryHook
     _objectName: string,
     payload: CreateOneResolverArgs<Record<string, unknown>>,
   ): Promise<CreateOneResolverArgs<Record<string, unknown>>> {
-    const quotationId = payload.data?.quotationId;
-
-    if (typeof quotationId !== 'string' || quotationId.length === 0) {
-      throw new QuotationQueryValidationException(
-        'quotationId is required to create a quotation line',
-        QuotationQueryValidationExceptionCode.FORBIDDEN,
-      );
-    }
-
-    await this.quotationImmutabilityService.assertQuotationLineMutationAllowed({
-      authContext,
-      quotationId,
-    });
-
-    return payload;
+    // The canonical atomic draft save writes via repository inside the transaction.
+    // No generic GraphQL create can bypass unit resolution or the first-use lock.
+    await this.quotationImmutabilityService.assertQuotationLineMutationAllowed({ authContext, quotationId: typeof payload.data?.quotationId === 'string' ? payload.data.quotationId : '', validateOnly: true });
+    throw new QuotationQueryValidationException('UNIT_MAPPING_REQUIRED: use the canonical draft save to create lines', QuotationQueryValidationExceptionCode.FORBIDDEN);
   }
 }
