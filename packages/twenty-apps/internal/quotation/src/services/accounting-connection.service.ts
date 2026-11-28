@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   ASAN_ADAPTER_CONTRACT_VERSION,
   type ConnectionSettings,
@@ -49,6 +51,7 @@ export type AdapterSecrets = {
   tunnelToken?: string;
   allowInsecureTransport: boolean;
   approvedRead?: AsanReadBinding;
+  approvedReadGeneration?: string;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -208,6 +211,7 @@ export const readAdapterSecrets = (env: Record<string, string | undefined>): Ada
     ? {}
     : { tunnelToken: env.ASAN_TUNNEL_TOKEN }),
   allowInsecureTransport: env.ASAN_TRANSPORT_APPROVED === 'true',
+  ...(env.ASAN_APPROVED_READ_GENERATION ? { approvedReadGeneration: env.ASAN_APPROVED_READ_GENERATION } : {}),
   ...(env.ASAN_APPROVED_READ_CONNECTION_ID && env.ASAN_APPROVED_READ_BASE_URL && env.ASAN_APPROVED_READ_IPV4
     ? { approvedRead: { connectionId: env.ASAN_APPROVED_READ_CONNECTION_ID,
       baseUrl: env.ASAN_APPROVED_READ_BASE_URL, ipv4: env.ASAN_APPROVED_READ_IPV4 } } : {}),
@@ -230,14 +234,22 @@ export const buildAdapter = (
     return refused('ASAN_CONTRACT_RECHECK_REQUIRED', 'save and recheck the Asan connection against the current contract');
   }
   const binding = secrets.approvedRead;
+  const generation = secrets.approvedReadGeneration;
   const approved = record.adapterId === 'asan' && record.isActive && binding !== undefined &&
+    generation !== undefined && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(generation) &&
     matchesAsanReadBinding(binding, record.id, record.settings.baseUrl);
+  // Never store the token or a token-derived digest in the snapshot. The operator
+  // must clear approval and rotate this non-secret UUID whenever credentials rotate.
+  const readAccessScope = approved && binding !== undefined
+    ? createHash('sha256').update(JSON.stringify([record.id, record.adapterVersion,
+      binding.baseUrl, binding.ipv4, generation])).digest('hex') : undefined;
   return createAccountingAdapter({
     adapterId: record.adapterId,
     settings: record.settings,
     readOnly: true,
     ...(approved && secrets.tunnelToken !== undefined ? { tunnelToken: secrets.tunnelToken } : {}),
-    ...(approved && binding !== undefined ? { fetchImpl: createApprovedAsanReadTransport(binding) } : {}),
+    ...(approved && binding !== undefined && readAccessScope !== undefined
+      ? { fetchImpl: createApprovedAsanReadTransport(binding), readAccessScope } : {}),
   });
 };
 

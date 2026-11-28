@@ -69,6 +69,7 @@ export type AsanHttpAdapterConfig = {
   timeoutMs?: number;
   fetchImpl?: AsanFetch;
   readOnly?: boolean;
+  readAccessScope?: string;
   now?: () => Date;
 };
 
@@ -447,6 +448,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
   readonly capabilities = ASAN_CAPABILITIES;
   readonly isLive = true;
   readonly writesEnabled: boolean;
+  readonly readAccessScope?: string;
 
   private readonly config: AsanHttpAdapterConfig;
   private readonly fetchImpl: AsanFetch | undefined;
@@ -457,6 +459,9 @@ export class AsanHttpAdapter implements AccountingAdapter {
     // No ambient fetch fallback: until the approved, destination-bound transport
     // is wired, a configured URL must not become a credential-bearing network call.
     this.fetchImpl = config.fetchImpl;
+    if (config.fetchImpl !== undefined && config.readAccessScope !== undefined) {
+      this.readAccessScope = config.readAccessScope;
+    }
     this.writesEnabled = config.readOnly !== true && config.fetchImpl !== undefined;
     this.now = config.now ?? (() => new Date());
   }

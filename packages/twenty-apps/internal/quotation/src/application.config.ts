@@ -74,6 +74,11 @@ export default defineApplication({
       description: 'Explicit public IPv4 pin for the approved HTTPS gateway; private egress is not enabled.',
       isSecret: false,
     },
+    ASAN_APPROVED_READ_GENERATION: {
+      universalIdentifier: 'e0b1c2d3-0011-4000-8000-000000000011',
+      description: 'Unique UUID for this read authorization. Clear before revocation and replace on every credential or destination rotation; never reuse.',
+      isSecret: false,
+    },
     // Registering a pro-forma in accounting is a fiscal act, so it has its own switch
     // separate from ordinary catalog/price pushes.
     ACCOUNTING_DOCUMENT_EXPORT_ENABLED: {

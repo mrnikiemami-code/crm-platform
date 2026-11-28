@@ -44,6 +44,8 @@ const PERSIAN_MESSAGES: Record<string, string> = {
     'مسیر فعلی آسان فقط برای خواندن اطلاعات است؛ ثبت یا تغییر اطلاعات مجاز نیست.',
   ASAN_CONTRACT_RECHECK_REQUIRED:
     'قرارداد اتصال آسان تغییر کرده است؛ تنظیمات همین اتصال را دوباره ذخیره و آزمایش کنید.',
+  ASAN_READ_APPROVAL_REQUIRED:
+    'مجوز فعلی خواندن اطلاعات آسان فعال نیست؛ اطلاعات قبلی نیز نمایش داده نمی‌شود.',
   ASAN_TRANSPORT_UNAVAILABLE:
     'مسیر امن ارتباط با آسان هنوز آماده و تأیید نشده است؛ هیچ اطلاعاتی ارسال نشد.',
   ACCOUNTING_DATASET_REBIND_REQUIRED:

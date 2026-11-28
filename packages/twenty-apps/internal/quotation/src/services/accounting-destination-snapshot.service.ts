@@ -57,6 +57,7 @@ export const snapshotKey = ({
   moneyUnit,
   baseUrl,
   remoteUserId,
+  readAccessScope,
 }: {
   connectionId: string;
   adapterId: string;
@@ -64,6 +65,7 @@ export const snapshotKey = ({
   moneyUnit: string;
   baseUrl: string;
   remoteUserId: string;
+  readAccessScope?: string;
 }): string =>
   [
     connectionId,
@@ -72,6 +74,7 @@ export const snapshotKey = ({
     moneyUnit,
     baseUrl.trim(),
     remoteUserId.trim(),
+    ...(readAccessScope === undefined ? [] : ['authorization-v1', readAccessScope]),
   ].join('|');
 
 const readPositiveInt = (name: string, fallback: number): number => {

@@ -6,6 +6,7 @@ import {
 } from 'src/domain/accounting/adapter-contract';
 import { MockAccountingAdapter } from 'src/domain/accounting/adapters/mock/mock-adapter';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
+import { AsanHttpAdapter } from 'src/domain/accounting/adapters/asan/asan-http-adapter';
 import { createKvSnapshotStorage, createMemorySnapshotStorage } from 'src/services/accounting-snapshot-storage';
 import {
   loadItemMappingPage,
@@ -104,6 +105,31 @@ const withEnv = async <TValue>(
     }
   }
 };
+
+describe('Asan mapping authorization and cached data', () => {
+  it('cannot read an old snapshot after approval is removed or rotated', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200,
+      text: async () => '[{"ProductCode":1001,"ProductName":"A","SellPrice":100}]' }));
+    const live = (scope?: string) => new AsanHttpAdapter({
+      baseUrl: 'https://gateway.example', remoteUserId: '1', readOnly: true,
+      ...(scope === undefined ? {} : { fetchImpl, readAccessScope: scope }),
+    });
+    const deps = { execute, storage: storage() };
+    const input = (adapter: AsanHttpAdapter) => ({ ...itemInput(new MockAccountingAdapter()),
+      adapterId: 'asan', baseUrl: 'https://gateway.example', adapter });
+    const first = await loadItemMappingPage(input(live('a'.repeat(64))), deps);
+    expect(first.rows).toHaveLength(1);
+    const readIndex = vi.spyOn(deps.storage, 'readIndex');
+    await expect(loadItemMappingPage(input(live()), deps)).rejects.toMatchObject({ code: 'ASAN_READ_APPROVAL_REQUIRED' });
+    expect(readIndex).not.toHaveBeenCalled();
+    const second = await loadItemMappingPage(input(live('b'.repeat(64))), deps);
+    expect(second.snapshot.reused).toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    fetchImpl.mockRejectedValueOnce(new Error('revoked credential'));
+    await expect(loadItemMappingPage({ ...input(live('b'.repeat(64))), refresh: true }, deps))
+      .rejects.toMatchObject({ code: 'TRANSPORT_ERROR' });
+  });
+});
 
 describe('remote read strategies', () => {
   it('declares Asan as REMOTE_UNPAGED, because its guide documents no cursor', () => {

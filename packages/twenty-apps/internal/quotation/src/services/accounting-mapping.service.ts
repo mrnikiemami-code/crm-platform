@@ -140,12 +140,14 @@ const resolveSnapshotRevision = async ({
   dependencies,
   build,
   isUnusable,
+  allowFallback = true,
 }: {
   key: string;
   refresh: boolean;
   dependencies: MappingDependencies;
   build: () => Promise<Result<DestinationSnapshot>>;
   isUnusable?: (revision: SnapshotRevision) => boolean;
+  allowFallback?: boolean;
 }): Promise<{
   revision: SnapshotRevision;
   key: string;
@@ -169,7 +171,7 @@ const resolveSnapshotRevision = async ({
   const built = await build();
 
   if (!built.ok) {
-    const fallback = getFallbackEntry(index, key);
+    const fallback = allowFallback ? getFallbackEntry(index, key) : null;
 
     if (fallback !== null) {
       return {
@@ -197,10 +199,19 @@ const resolveSnapshotRevision = async ({
   return { revision: entry, key, reused: false, degradedReason: null };
 };
 
+// Authorization must precede the cache lookup, not merely the network read.
+const requireSnapshotAuthorization = (adapter: AccountingAdapter): void => {
+  if (adapter.id === 'asan' && adapter.isLive &&
+      (adapter.readAccessScope === undefined || !/^[a-f0-9]{64}$/.test(adapter.readAccessScope))) {
+    throw new SnapshotRefusal('ASAN_READ_APPROVAL_REQUIRED', 'the current connection has no approved read authorization');
+  }
+};
+
 export const loadItemMappingPage = async (
   input: LoadItemPageInput,
   dependencies: MappingDependencies,
 ): Promise<MappingPagePayload<ItemImportRow>> => {
+  requireSnapshotAuthorization(input.adapter);
   const nowMs = dependencies.nowMs ?? (() => Date.now());
   const execute = dependencies.execute ?? executeRecordGraphql;
   const started = nowMs();
@@ -274,6 +285,7 @@ export const loadItemMappingPage = async (
     moneyUnit: input.moneyUnit,
     baseUrl: input.baseUrl,
     remoteUserId: input.remoteUserId,
+    ...(input.adapter.readAccessScope === undefined ? {} : { readAccessScope: input.adapter.readAccessScope }),
   });
 
   const snapshotStarted = nowMs();
@@ -281,6 +293,7 @@ export const loadItemMappingPage = async (
     key,
     refresh: input.refresh === true,
     dependencies,
+    allowFallback: !input.adapter.isLive,
     // Snapshots written before the counters were business-shaped stored the internal
     // decision histogram, which the screen reads as zeros. Rebuild those once.
     isUnusable: (candidate) => candidate.itemSummary.unlinked === undefined,
@@ -376,6 +389,7 @@ export const loadPartyMappingPage = async (
   input: LoadPartyPageInput,
   dependencies: MappingDependencies,
 ): Promise<MappingPagePayload<PartyImportRow>> => {
+  requireSnapshotAuthorization(input.adapter);
   const nowMs = dependencies.nowMs ?? (() => Date.now());
   const execute = dependencies.execute ?? executeRecordGraphql;
   const started = nowMs();
@@ -440,6 +454,7 @@ export const loadPartyMappingPage = async (
     moneyUnit: input.moneyUnit,
     baseUrl: input.baseUrl,
     remoteUserId: input.remoteUserId,
+    ...(input.adapter.readAccessScope === undefined ? {} : { readAccessScope: input.adapter.readAccessScope }),
   });
 
   const snapshotStarted = nowMs();
@@ -447,6 +462,7 @@ export const loadPartyMappingPage = async (
     key,
     refresh: input.refresh === true,
     dependencies,
+    allowFallback: !input.adapter.isLive,
     build: async () => {
       const links = await loadPartyLinks(input.connectionId, { execute });
       const remote = await input.adapter.listParties();

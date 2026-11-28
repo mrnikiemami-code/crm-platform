@@ -232,6 +232,9 @@ export type AccountingAdapter = {
   // Deployment-specific gate, distinct from the vendor's documented capabilities.
   // Absent for older test adapters; false is a hard no-write gate.
   readonly writesEnabled?: boolean;
+  // Server-generated, non-secret authorization namespace. A live Asan
+  // mapping snapshot may only be read within its current authorization.
+  readonly readAccessScope?: string;
 
   testConnection(): Promise<Result<AdapterHealth>>;
   // Whole-list reads. Required of every adapter because the `REMOTE_UNPAGED` path ingests
