@@ -50,8 +50,8 @@ const DotsIcon = () => (
 
 // Anchor-relative absolute menu: position:fixed + viewport coordinates land at the
 // wrong place under host transforms, so the menu shares its trigger's containing block.
-// Outside-close is owned by parents via React onPointerDown; this root stops
-// propagation so item/trigger presses do not dismiss.
+// The opt-in host boundary receives real outside pointer events. The local
+// document listener is retained for standalone HTML fallback only.
 export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -114,11 +114,9 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
     };
   }, [open]);
 
-  const disabledNote = items.find(
-    (item) => item.disabled && item.disabledReason,
-  )?.disabledReason;
-
   return (
+    <div className="twenty-native-row-menu-boundary" title={open ? 'open' : 'closed'}
+      onClick={(event) => { if ((event.target as HTMLInputElement | null)?.value === 'dismiss') onOpenChangeRef.current(false); }}>
     <div
       ref={rootRef}
       className={open ? 'fs-menu-root is-open' : 'fs-menu-root'}
@@ -169,9 +167,9 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
               </button>
             </div>
           ))}
-          {disabledNote && <p className="fs-menu-note">{disabledNote}</p>}
         </div>
       )}
+    </div>
     </div>
   );
 };
