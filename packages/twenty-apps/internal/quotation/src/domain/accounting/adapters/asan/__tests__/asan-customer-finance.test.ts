@@ -39,6 +39,17 @@ describe('restricted Asan customer finance observations', () => {
     expect(parseCustomerCardex(Array.from({ length: 501 }, () => cardex), '42').ok).toBe(false);
   });
 
+  it('permits only the documented read-only customer proforma POST body', () => {
+    const url = binding.baseUrl + '/PishFactorsNew/LastCustomerPishFactors';
+    expect(isApprovedAsanRead(binding, url, 'POST', '{"Count":5,"CustomerCode":101}')).toBe(true);
+    for (const body of ['{"Count":0,"CustomerCode":101}', '{"Count":101,"CustomerCode":101}', '{"Count":5,"CustomerCode":9007199254740993}', '{"Count":5,"CustomerCode":101,"extra":true}', '{"Count":5,"CustomerCode":101,"CustomerCode":102}']) {
+      expect(isApprovedAsanRead(binding, url, 'POST', body)).toBe(false);
+    }
+    expect(isApprovedAsanRead(binding, url + '?CustomerCode=102', 'POST', '{"Count":5,"CustomerCode":101}')).toBe(false);
+    expect(isApprovedAsanRead(binding, url, 'GET')).toBe(false);
+    expect(isApprovedAsanRead(binding, binding.baseUrl + '/PishFactors/RegisterPishFactor', 'POST', '{"Count":5,"CustomerCode":101}')).toBe(false);
+  });
+
   it('permits only bounded Cardex GET at the pinned origin and rejects duplicate/extra parameters', () => {
     const bounds = buildCardexDateBounds('2026-11-01', '2026-11-28');
     if (!bounds.ok) throw new Error('fixture bounds');
