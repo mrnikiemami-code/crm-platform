@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { AccountingCustomerFinanceService, parseCustomerFinanceRequest } from 'src/modules/quotation/services/accounting-customer-finance.service';
 
@@ -6,10 +7,16 @@ const internalPartyId = '22222222-2222-4222-8222-222222222222';
 const input = { connectionId, internalPartyId, partyType: 'PERSON' as const, report: 'SUMMARY' as const };
 const auth = { type: 'user', workspace: { id: 'ws-1' }, user: { id: 'u-1' }, userWorkspaceId: 'uw-1' } as WorkspaceAuthContext;
 const link = { id: 'link-1', externalPartyId: '42', internalPartyId, partyType: 'PERSON', syncStatus: 'LINKED', remoteVersion: 'v1' };
+const quotationId = '33333333-3333-4333-8333-333333333333';
+const operationId = '44444444-4444-5444-8444-444444444444';
+const payloadSnapshot = JSON.stringify({ schemaVersion: 1 });
+const claim = { id: operationId, connectionId, internalEntityId: quotationId, internalRevision: 1, kind: 'QUOTATION_REVISION_PUSH', correlationId: operationId, state: 'MANUAL_EXPORT_REQUIRED', attempts: 1, payloadFingerprint: createHash('sha256').update(payloadSnapshot).digest('hex'), payloadSnapshot, externalDocumentId: null };
 const setup = (options: { authority?: string | null; visible?: boolean; active?: boolean; links?: typeof link[]; auditFails?: boolean } = {}) => {
   const sourceRows = options.links ?? [link];
   const repositories = {
     accountingFinanceAccess: { insert: jest.fn(async (row: Record<string, unknown>) => { if (options.auditFails) throw new Error('audit unavailable'); return { identifiers: [{ id: row.id }] }; }) },
+    quotation: { findOne: jest.fn(async () => options.visible === false ? null : { id: quotationId }) },
+    accountingSyncOperation: { find: jest.fn(async () => [claim]) },
     person: { findOne: jest.fn(async () => options.visible === false ? null : { id: internalPartyId }) },
     accountingConnection: { findOne: jest.fn(async () => ({ id: connectionId, isActive: options.active !== false, adapterId: 'asan', datasetBindingId: 'dataset-1' })) },
     accountingPartyLink: { find: jest.fn(async () => sourceRows) },
@@ -52,7 +59,7 @@ describe('restricted original-user customer finance authority', () => {
     expect(worker).toHaveBeenCalledWith({ connectionId, externalPartyId: '42', report: 'SUMMARY' });
     const audit = repositories.accountingFinanceAccess.insert;
     expect(audit).toHaveBeenCalledTimes(2);
-    expect(audit.mock.calls[0][0]).toMatchObject({ actorWorkspaceId: 'uw-1', internalPartyId, phase: 'REQUESTED', outcomeCode: 'AUTHORIZED' });
+    expect(audit.mock.calls[0][0]).toMatchObject({ actorWorkspaceId: 'uw-1', subjectType: 'PERSON', subjectId: internalPartyId, phase: 'REQUESTED', outcomeCode: 'AUTHORIZED' });
     expect(audit.mock.invocationCallOrder[0]).toBeLessThan(worker.mock.invocationCallOrder[0]);
     expect(audit.mock.calls[1][0]).toMatchObject({ requestId: audit.mock.calls[0][0].requestId, phase: 'COMPLETED', outcomeCode: 'OBSERVATION_RETURNED' });
     expect(audit.mock.calls[1][0]).not.toHaveProperty('observation');
@@ -78,5 +85,32 @@ describe('restricted original-user customer finance authority', () => {
     expect(await service.read(input, auth, worker)).toMatchObject({ success: false, code: 'ASAN_INCOMPLETE_DATASET' });
     worker.mockResolvedValueOnce({ success: true, observation: { connectionId, customerExternalId: '42', report: 'SUMMARY', adapterId: 'asan', certified: true } });
     expect(await service.read(input, auth, worker)).toMatchObject({ success: false, code: 'ASAN_INCOMPLETE_DATASET' });
+  });
+});
+
+describe('durable reconciliation evidence', () => {
+  const request = { connectionId, quotationId, operationId };
+  const observation = { status: 'DETAILS_OBSERVED', externalDocumentId: '42', priceFieldsEqual: true, reportCount: 2, fiscalConfirmed: false, replayAllowed: false };
+  it('records bounded evidence without changing the operation state or authorizing retry', async () => {
+    const { service, repositories, scope } = setup();
+    const worker = jest.fn(async () => ({ success: true, observation }));
+    expect(await service.reconcile(request, auth, worker)).toMatchObject({ success: true, observation: { ...observation, claimState: 'MANUAL_EXPORT_REQUIRED', payloadFingerprint: claim.payloadFingerprint } });
+    expect(worker).toHaveBeenCalledWith(request);
+    expect(scope.executeRawQuery).toHaveBeenNthCalledWith(2, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [JSON.stringify(['accounting-quotation-work', 'ws-1', connectionId, quotationId])]);
+    const audit = repositories.accountingFinanceAccess.insert;
+    expect(audit).toHaveBeenCalledTimes(2);
+    expect(audit.mock.calls[1][0]).toMatchObject({ operationId, subjectType: 'QUOTATION', subjectId: quotationId, outcomeCode: 'RECONCILIATION_OBSERVED' });
+    expect(JSON.parse(String(audit.mock.calls[1][0].evidenceJson))).toMatchObject({ ...observation, payloadFingerprint: claim.payloadFingerprint });
+    expect(audit.mock.calls[1][0]).not.toHaveProperty('payloadSnapshot');
+    expect(repositories.accountingSyncOperation.find).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not return evidence if the claim changes or the worker asserts fiscal success', async () => {
+    const first = setup();
+    first.repositories.accountingSyncOperation.find.mockResolvedValueOnce([claim]).mockResolvedValueOnce([{ ...claim, state: 'SUCCEEDED' }]);
+    const worker = jest.fn(async () => ({ success: true, observation }));
+    expect(await first.service.reconcile(request, auth, worker)).toMatchObject({ success: false, code: 'RECONCILIATION_REQUIRED' });
+    const second = setup();
+    expect(await second.service.reconcile(request, auth, async () => ({ success: true, observation: { ...observation, fiscalConfirmed: true } }))).toMatchObject({ success: false, code: 'RECONCILIATION_REQUIRED' });
   });
 });
