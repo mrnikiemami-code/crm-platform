@@ -21,6 +21,8 @@ export const QUOTATION_ACCOUNTING_SNAPSHOT_FIELD_NAMES = [
   'currencyAccountingCode',
   'taxPolicyRecordId',
   'quotationCurrencyRecordId',
+  'unitCode',
+  'unitAccountingCode',
 ] as const;
 
 export type QuotationAccountingSnapshotFieldName =
