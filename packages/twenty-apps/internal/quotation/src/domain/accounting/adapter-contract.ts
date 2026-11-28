@@ -84,6 +84,29 @@ export type ConnectionSettings = {
   financial?: FinancialSettings;
 };
 
+// Position is not warehouse identity. Values stay in vendor units until the
+// installation money unit is confirmed; long prices are represented exactly.
+export type RemotePriceObservation = {
+  externalItemId: string;
+  name: string;
+  parentId: string | null;
+  priceUnitsByPosition: string[];
+  stockByPosition: number[];
+};
+
+export type RemoteStorage = { externalStorageId: string; name: string };
+
+export type RemoteCatalogObservation = {
+  version: '1';
+  priceUnitsByPosition?: string[];
+  stockByPosition?: number[];
+  unitId?: string;
+  unitName?: string;
+  secondaryUnitName?: string;
+  unitCount?: number;
+  taxCode?: string;
+};
+
 export type RemoteCatalogItem = {
   externalItemId: string;
   code: string;
@@ -94,6 +117,7 @@ export type RemoteCatalogItem = {
   sellPriceUnits: number | null;
   salesPriceUnits: number[];
   stock: number | null;
+  observation?: RemoteCatalogObservation;
   // The vendor's own change marker when it has one. Asan documents none, so the adapter
   // derives a stable marker from the record content instead of pretending otherwise.
   remoteVersion: string;
@@ -190,6 +214,12 @@ export type AccountingAdapter = {
   // exactly this one response into a bounded snapshot.
   listItems(): Promise<Result<RemoteCatalogItem[]>>;
   listParties(): Promise<Result<RemoteParty[]>>;
+  // Explicit optional reads; absence is not an executable capability.
+  readItem?(externalItemId: string): Promise<Result<RemoteCatalogItem>>;
+  readPartiesByMobile?(mobile: string): Promise<Result<RemoteParty[]>>;
+  listPrices?(): Promise<Result<RemotePriceObservation[]>>;
+  listStores?(): Promise<Result<RemoteStorage[]>>;
+  readStockByStore?(externalItemId: string, externalStorageId: string): Promise<Result<number>>;
   // Implemented only when `capabilities.readStrategy === 'REMOTE_PAGED'`. Its absence is the
   // machine-readable proof that the destination cannot page, so the reader falls back to
   // the bounded snapshot instead of guessing an offset the vendor does not accept.

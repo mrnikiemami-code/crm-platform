@@ -258,6 +258,40 @@ const sequencedFetch = (...responses: string[]): ReturnType<typeof fakeFetch> =>
 const productReadback = (price: number, tiers: number[] = []) =>
   JSON.stringify({ ProductCode: 1001, ProductName: 'کالا', SellPrice: price, SalesPrice: tiers });
 
+describe('Asan typed installation reads', () => {
+  it('retains price positions and units without inferring warehouse identity', async () => {
+    const raw = { ProductCode: 1001, ProductName: 'کالا', SalesPrice10: [0, '9007199254740993'],
+      StoreProduct: [0, 2.5], ProductUnitID: 7, ProductUnitTitle: 'عدد',
+      SecondUnitTitle: 'بسته', ProductUnitCount: 12, TaxID: '64' };
+    const fake = fakeFetch({ text: JSON.stringify(raw) });
+    expect(await adapter({}, fake.fetchImpl).readItem('1001')).toMatchObject({ ok: true, value: {
+      observation: { version: '1', priceUnitsByPosition: ['0', '9007199254740993'], stockByPosition: [0, 2.5],
+        unitId: '7', unitName: 'عدد', secondaryUnitName: 'بسته', unitCount: 12, taxCode: '64' },
+    } });
+    expect(fake.calls[0].url).toContain('OneProductWithoutSerial?ProductCode=1001');
+  });
+  it('reads exact prices, named stores and explicit store stock, preserving zero', async () => {
+    const fake = sequencedFetch(
+      '[{"ProductCode":1001,"ProductName":"A","parent":0,"PriceList":[0,"9007199254740993"],"StoreProduct":[0]}]',
+      '[{"StoreID":2,"StoreName":"انبار"}]', '0');
+    const instance = adapter({}, fake.fetchImpl);
+    expect(await instance.listPrices()).toMatchObject({ ok: true, value: [{
+      externalItemId: '1001', parentId: null, priceUnitsByPosition: ['0', '9007199254740993'], stockByPosition: [0],
+    }] });
+    expect(await instance.listStores()).toEqual({ ok: true, value: [{ externalStorageId: '2', name: 'انبار' }] });
+    expect(await instance.readStockByStore('1001', '2')).toEqual({ ok: true, value: 0 });
+    expect(fake.calls.map((call) => call.method)).toEqual(['GET', 'GET', 'GET']);
+    expect(fake.calls[2].url).toContain('ProductStock?ProductCode=1001&StoreID=2');
+  });
+  it('refuses unsafe numbers and unrelated mobile results', async () => {
+    const fake = sequencedFetch('[{"ProductCode":1001,"ProductName":"A","parent":0,"PriceList":[9007199254740993],"StoreProduct":[]}]',
+      '[{"Code":1,"FullName":"A","Mobile":"09350000000"}]');
+    const instance = adapter({}, fake.fetchImpl);
+    expect(await instance.listPrices()).toMatchObject({ ok: false, refusal: { code: 'ASAN_INCOMPLETE_DATASET' } });
+    expect(await instance.readPartiesByMobile('09120000000')).toMatchObject({ ok: false, refusal: { code: 'ASAN_INCOMPLETE_DATASET' } });
+  });
+});
+
 describe('asan write transport gate', () => {
   it('refuses a write over plain http even with legacy approval, before any request', async () => {
     const fake = fakeFetch({ text: '1' });

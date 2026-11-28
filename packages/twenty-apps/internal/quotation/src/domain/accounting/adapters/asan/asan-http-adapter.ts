@@ -19,6 +19,9 @@ import {
   type AccountingAdapter,
   type AdapterHealth,
   type RemoteCatalogItem,
+  type RemoteCatalogObservation,
+  type RemotePriceObservation,
+  type RemoteStorage,
   type RemoteDocument,
   type RemoteItemInput,
   type RemoteParty,
@@ -241,6 +244,72 @@ const canonicalRecord = (value: unknown): unknown => {
 const hashRecord = (value: unknown): string =>
   createHash('sha256').update(JSON.stringify(canonicalRecord(value)), 'utf8').digest('hex');
 
+// Unsafe JSON numbers cannot be recovered. Refuse them rather than rounding an
+// accounting price; exact long values supplied as strings remain exact.
+const exactLong = (value: unknown, allowZero = false): string | null => {
+  const text = typeof value === 'number' && Number.isSafeInteger(value)
+    ? String(value) : typeof value === 'string' ? value.trim() : '';
+  if (!/^(0|[1-9]\d*)$/.test(text) || text.length > 19) return null;
+  const n = BigInt(text);
+  return n <= 9223372036854775807n && (allowZero || n > 0n) ? text : null;
+};
+
+const exactLongArray = (value: unknown): string[] | null => {
+  if (!Array.isArray(value)) return null;
+  const result: string[] = [];
+  for (const element of value) {
+    const exact = exactLong(element, true);
+    if (exact === null) return null;
+    result.push(exact);
+  }
+  return result;
+};
+
+const finiteArray = (value: unknown): number[] | null => {
+  if (!Array.isArray(value)) return null;
+  const result: number[] = [];
+  for (const element of value) {
+    const parsed = readNumber(element);
+    if (parsed === null) return null;
+    result.push(parsed);
+  }
+  return result;
+};
+
+const parseCatalogObservation = (record: Record<string, unknown>): RemoteCatalogObservation | null => {
+  const observation: RemoteCatalogObservation = { version: '1' };
+  if (record.SalesPrice10 !== undefined && record.SalesPrice10 !== null) {
+    const prices = exactLongArray(record.SalesPrice10);
+    if (prices === null) return null;
+    observation.priceUnitsByPosition = prices;
+  }
+  if (record.StoreProduct !== undefined && record.StoreProduct !== null) {
+    const stock = finiteArray(record.StoreProduct);
+    if (stock === null) return null;
+    observation.stockByPosition = stock;
+  }
+  if (record.ProductUnitID !== undefined && record.ProductUnitID !== null) {
+    const id = exactLong(record.ProductUnitID, true);
+    if (id === null || BigInt(id) > 2147483647n) return null;
+    observation.unitId = id;
+  }
+  for (const [wire, key] of [
+    ['ProductUnitTitle', 'unitName'], ['SecondUnitTitle', 'secondaryUnitName'], ['TaxID', 'taxCode'],
+  ] as const) {
+    const value = record[wire];
+    if (value !== undefined && value !== null) {
+      if (typeof value !== 'string') return null;
+      observation[key] = value;
+    }
+  }
+  if (record.ProductUnitCount !== undefined && record.ProductUnitCount !== null) {
+    const count = readNumber(record.ProductUnitCount);
+    if (count === null) return null;
+    observation.unitCount = count;
+  }
+  return observation;
+};
+
 const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
   const record = asRecord(raw);
 
@@ -249,8 +318,9 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
   }
 
   const code = readNumber(record.ProductCode);
+  const observation = parseCatalogObservation(record);
 
-  if (code === null || !Number.isSafeInteger(code) || code <= 0) {
+  if (code === null || !Number.isSafeInteger(code) || code <= 0 || observation === null) {
     return null;
   }
 
@@ -271,6 +341,7 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
     secondaryName: readString(record.ProductName2) || null,
     sellPriceUnits: readNumber(record.SellPrice),
     salesPriceUnits: salesPrices,
+    ...(Object.keys(observation).length > 1 ? { observation } : {}),
     // Products.TotalCount is the documented aggregate stock (p.26).
     stock: readNumber(record.TotalCount) ?? (record.TotalCount === undefined ? readNumber(record.Stock) ?? readNumber(record.Quantity) : null),
     remoteVersion: hashRecord(record),
@@ -625,6 +696,100 @@ export class AsanHttpAdapter implements AccountingAdapter {
       parties.push(party);
     }
     return accepted(parties);
+  }
+
+  async readItem(externalItemId: string): Promise<Result<RemoteCatalogItem>> {
+    const code = exactLong(externalItemId);
+    if (code === null || !Number.isSafeInteger(Number(code))) {
+      return refused('ASAN_READBACK_REQUIRED', 'product identity is outside the supported safe range');
+    }
+    return this.readProductByCode(Number(code));
+  }
+
+  async readPartiesByMobile(mobile: string): Promise<Result<RemoteParty[]>> {
+    const normalized = normalizeIranMobile(mobile);
+    if (normalized === null) return refused('ASAN_CUSTOMER_LOOKUP_REQUIRED', 'a valid mobile is required');
+    const rows = await this.readPartyRecords(ASAN_ENDPOINTS.customerByMobile, { Mobile: mobile.trim() });
+    if (!rows.ok) return rows;
+    const parties: RemoteParty[] = [];
+    const seen = new Set<string>();
+    for (const row of rows.value) {
+      const party = parseParty(row);
+      if (party === null || normalizeIranMobile(party.mobile) !== normalized || seen.has(party.externalPartyId)) {
+        return refused('ASAN_INCOMPLETE_DATASET', 'mobile lookup returned an unrelated or duplicate identity');
+      }
+      seen.add(party.externalPartyId);
+      parties.push(party);
+    }
+    return accepted(parties);
+  }
+
+  private async readList(path: string, envelopes: readonly string[]): Promise<Result<unknown[]>> {
+    const response = await this.request({ path, method: 'GET' });
+    if (!response.ok) return response;
+    if (response.value.status < 200 || response.value.status >= 300) {
+      return refused('INVALID_RESPONSE', 'the documented read did not succeed');
+    }
+    const parsed = this.parseJson(response.value.text);
+    if (!parsed.ok) return parsed;
+    const rows = extractArray(parsed.value, envelopes);
+    return rows === null ? refused('INVALID_RESPONSE', 'the documented read did not return a list') : accepted(rows);
+  }
+
+  async listPrices(): Promise<Result<RemotePriceObservation[]>> {
+    const rows = await this.readList(ASAN_ENDPOINTS.allProductPrices, ['data', 'prices', 'Prices']);
+    if (!rows.ok) return rows;
+    const prices: RemotePriceObservation[] = [];
+    const seen = new Set<string>();
+    for (const row of rows.value) {
+      const record = asRecord(row);
+      const id = exactLong(record?.ProductCode);
+      const parent = exactLong(record?.parent, true);
+      const tiers = exactLongArray(record?.PriceList);
+      const stock = finiteArray(record?.StoreProduct);
+      if (record === null || id === null || seen.has(id) || typeof record.ProductName !== 'string' ||
+          parent === null || tiers === null || stock === null) {
+        return refused('ASAN_INCOMPLETE_DATASET', 'price list has an incomplete or duplicate row');
+      }
+      seen.add(id);
+      prices.push({ externalItemId: id, name: record.ProductName, parentId: parent === '0' ? null : parent,
+        priceUnitsByPosition: tiers, stockByPosition: stock });
+    }
+    return accepted(prices);
+  }
+
+  async listStores(): Promise<Result<RemoteStorage[]>> {
+    const rows = await this.readList(ASAN_ENDPOINTS.stores, ['data', 'stores', 'Stores']);
+    if (!rows.ok) return rows;
+    const stores: RemoteStorage[] = [];
+    const seen = new Set<string>();
+    for (const row of rows.value) {
+      const record = asRecord(row);
+      const id = exactLong(record?.StoreID);
+      if (record === null || id === null || BigInt(id) > 4294967295n ||
+          typeof record.StoreName !== 'string' || record.StoreName.trim() === '' || seen.has(id)) {
+        return refused('ASAN_INCOMPLETE_DATASET', 'store list has an incomplete or duplicate row');
+      }
+      seen.add(id);
+      stores.push({ externalStorageId: id, name: record.StoreName });
+    }
+    return accepted(stores);
+  }
+
+  async readStockByStore(externalItemId: string, externalStorageId: string): Promise<Result<number>> {
+    const product = exactLong(externalItemId);
+    const store = exactLong(externalStorageId);
+    if (product === null || store === null || BigInt(product) > 2147483647n || BigInt(store) > 2147483647n) {
+      return refused('INVALID_RESPONSE', 'stock read requires valid int product and store identities');
+    }
+    const response = await this.request({ path: ASAN_ENDPOINTS.stockProductByStore, method: 'GET',
+      query: { ProductCode: product, StoreID: store } });
+    if (!response.ok) return response;
+    if (response.value.status < 200 || response.value.status >= 300) return refused('INVALID_RESPONSE', 'stock read did not succeed');
+    const parsed = this.parseJson(response.value.text);
+    if (!parsed.ok) return parsed;
+    const count = readNumber(parsed.value);
+    return count === null ? refused('INVALID_RESPONSE', 'stock response was not a finite number') : accepted(count);
   }
 
   // OneProductWithoutSerial is the documented single product read (p.15).
