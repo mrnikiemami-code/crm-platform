@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { mergeSourcePartyProfile } from 'src/domain/accounting/party-profile';
 
 import {
   AsanHttpAdapter,
@@ -156,6 +157,23 @@ describe('guide 32-page response contract', () => {
     }
   });
 });
+describe('source-owned customer observations', () => {
+  it('keeps account nature and source price group without publishing balances or inferring party type', () => {
+    const party = parseParty({ Code: '123456789012345678', FullName: 'آزمون', Parent: 0,
+      Gender: 3, GenderTitle: 'حساب', AccountGroupPriceList: 4, VisitorID: 7, VisitorPercent: 0,
+      Remain: 1000, BookCredit: 2000, ChequeCredit: 3000 });
+    expect(party).toMatchObject({ externalPartyId: '123456789012345678',
+      sourceObservation: { version: '1', parentId: '0', accountNatureCode: 3,
+        accountNatureLabel: 'حساب', priceListId: '4', representativeId: '7', representativePercent: 0 } });
+    expect(party?.partyType).toBeUndefined();
+    expect(party).not.toHaveProperty('Remain');
+    const merged = mergeSourcePartyProfile(party!, null);
+    expect(JSON.parse(merged!)).toMatchObject({ sourceObservation: { accountNatureCode: 3, representativePercent: 0 } });
+    expect(merged).not.toContain('BookCredit');
+    expect(parseParty({ Code: 9007199254740992, FullName: 'نامعتبر' })).toBeNull();
+  });
+});
+
 describe('asan product read', () => {
   it('maps the documented product array and derives a stable version marker', async () => {
     const text = JSON.stringify([

@@ -38,6 +38,8 @@ const PERSIAN_MESSAGES: Record<string, string> = {
     'شماره سند در آسان مشاهده شد؛ تطبیق مالی سند هنوز لازم است. دوباره ارسال نکنید.',
   ASAN_DOCUMENT_READBACK_REQUIRED:
     'شماره پاسخ آسان نگهداری شد؛ سند باید در حسابداری بررسی شود. دوباره ارسال نکنید.',
+  ASAN_LIVE_IMPORT_NOT_APPROVED:
+    'در مرحله بررسی فقط مشاهده اطلاعات آسان مجاز است؛ انتقال اطلاعات به CRM هنوز تأیید نشده است.',
   ASAN_LIVE_WRITE_NOT_APPROVED:
     'مسیر فعلی آسان فقط برای خواندن اطلاعات است؛ ثبت یا تغییر اطلاعات مجاز نیست.',
   ASAN_TRANSPORT_UNAVAILABLE:

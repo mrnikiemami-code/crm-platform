@@ -125,7 +125,8 @@ export const loadOperations = async (
     const root = asRecord(data.accountingSyncOperations);
     if (!Array.isArray(root?.edges)) throw new RecordApiError('INVALID_RESPONSE', 'Operation history unavailable');
     const page = parseOperations(data);
-    if (page.length !== root.edges.length || page.some((entry) => ids.has(entry.id))) {
+    if (page.length !== root.edges.length || new Set(page.map((entry) => entry.id)).size !== page.length ||
+        page.some((entry) => ids.has(entry.id))) {
       throw new RecordApiError('INVALID_RESPONSE', 'Operation history has invalid or repeated identities');
     }
     for (const entry of page) { ids.add(entry.id); operations.push(entry); }
@@ -369,6 +370,11 @@ export const previewItemPush = async (
 
   const link =
     links.find((row) => row.internalItemId === internalItemId) ?? null;
+
+  if (adapter.writesEnabled === false) {
+    return accepted({ link, decision: { kind: 'BLOCKED', code: 'ASAN_LIVE_WRITE_NOT_APPROVED',
+      detail: 'the configured adapter is read-only', operationId: null } });
+  }
 
   return accepted({
     link,

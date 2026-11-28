@@ -3,7 +3,20 @@
 export const PARTY_PROFILE_FIELDS = ["partyType","firstName","lastName","companyName","tradeName","legalNationalId","economicCode","registrationNumber","crmCustomerCode","accountingCode","generalLedgerCode","subsidiaryLedgerCode","detailLedgerCode","accountGroup","firstPhone","secondPhone","fax","email","address","postalCode","country","state","city","contactName","paymentTermsCode","settlementDays","creditLimitExact","creditLimitCurrency","isActive"] as const;
 export type PartyProfileField = (typeof PARTY_PROFILE_FIELDS)[number];
 export type PartyKind = 'PERSON' | 'COMPANY';
+// Source-owned observation; never a writable CRM identity or a ledger balance.
+// The account-nature code must not be interpreted as a person's gender/type.
+export type RemotePartyObservation = {
+  version: '1';
+  parentId?: string;
+  accountNatureCode?: number;
+  accountNatureLabel?: string;
+  priceListId?: string;
+  representativeId?: string;
+  representativePercent?: number;
+};
+
 export type AccountingPartyProfile = {
+  sourceObservation?: RemotePartyObservation;
   partyType?: PartyKind | 'UNKNOWN' | null;
   partyTypeEvidence?: 'VENDOR_EXPLICIT' | 'NATIONAL_ID_SHAPE' | null;
   firstName?: string | null;
@@ -58,5 +71,27 @@ export const mergeSourcePartyProfile = (profile: AccountingPartyProfile, previou
     if (typeof value === 'string' && value.trim() !== '') result[field] = value.trim();
     else if (typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value))) result[field] = value;
   }
-  return Object.keys(result).length === 0 ? null : JSON.stringify(result);
+  // Keep the source observations scoped to the accounting link. Do not
+  // promote them to CRM customer fields, and never serialize balance/credit
+  // data from an unrestricted customer catalog.
+  const previousObservation = previous ? (JSON.parse(previous) as Record<string, unknown>).sourceObservation : null;
+  const candidate = profile.sourceObservation;
+  const observation: RemotePartyObservation = { version: '1' };
+  for (const source of [previousObservation, candidate]) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+    const value = source as Record<string, unknown>;
+    if (value.version !== '1') continue;
+    for (const key of ['parentId', 'priceListId', 'representativeId'] as const) {
+      const field = value[key];
+      if (typeof field === 'string' && /^(0|[1-9]\d*)$/.test(field)) observation[key] = field;
+    }
+    if (typeof value.accountNatureCode === 'number' && Number.isInteger(value.accountNatureCode) &&
+        value.accountNatureCode >= 0 && value.accountNatureCode <= 255) observation.accountNatureCode = value.accountNatureCode;
+    if (typeof value.accountNatureLabel === 'string' && value.accountNatureLabel.trim()) observation.accountNatureLabel = value.accountNatureLabel.trim();
+    if (typeof value.representativePercent === 'number' && Number.isFinite(value.representativePercent)) {
+      observation.representativePercent = value.representativePercent;
+    }
+  }
+  const merged = { ...result, ...(Object.keys(observation).length > 1 ? { sourceObservation: observation } : {}) };
+  return Object.keys(merged).length === 0 ? null : JSON.stringify(merged);
 };

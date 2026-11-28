@@ -205,6 +205,19 @@ describe('operation parsing', () => {
     ]);
   });
 
+  it('walks the entire ledger with the connection and entity filter and refuses cursor loops', async () => {
+    const row = (id: string) => ({ id, kind: 'QUOTATION_REVISION_PUSH', state: 'SUCCEEDED', attempts: 1, internalRevision: 2 });
+    const execute = vi.fn(async (query: string) => ({
+      accountingSyncOperations: { edges: [{ node: row(query.includes('after:') ? 'second' : 'first') }],
+        pageInfo: query.includes('after:') ? { hasNextPage: false } : { hasNextPage: true, endCursor: 'next' } },
+    }));
+    expect((await loadOperations('conn-1', { execute }, 'q-1')).map((entry) => entry.id)).toEqual(['first','second']);
+    expect(execute.mock.calls.every(([query]) => query.includes('conn-1') && query.includes('q-1'))).toBe(true);
+    const stuck = vi.fn(async () => ({ accountingSyncOperations: { edges: [],
+      pageInfo: { hasNextPage: true, endCursor: 'same' } } }));
+    await expect(loadOperations('conn-1', { execute: stuck })).rejects.toThrow('Incomplete operation history');
+  });
+
   it('loads the ledger scoped to the connection', async () => {
     const execute = vi.fn(async (query: string) => {
       expect(query).toContain('accountingSyncOperations');

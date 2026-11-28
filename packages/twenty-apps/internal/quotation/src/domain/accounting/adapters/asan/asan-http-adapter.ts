@@ -29,6 +29,7 @@ import {
   type RemotePartyInput,
   type RemoteProformaInput,
 } from 'src/domain/accounting/adapter-contract';
+import { type RemotePartyObservation } from 'src/domain/accounting/party-profile';
 import { normalizeIranMobile, normalizePartyName, partyNationalIdentity } from 'src/domain/accounting/party-identity';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
@@ -365,16 +366,25 @@ export const parseParty = (raw: unknown): RemoteParty | null => {
   // (write input p.24). Prefer the documented read schema; compatibility
   // aliases are only used when the read field is absent. A conflicting code
   // cannot identify a CRM customer safely.
-  const codeOf = (value: unknown): string =>
-    typeof value === 'string' ? value.trim() :
-      typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : '';
-  const code = codeOf(record.Code === undefined ? record.PersonCode : record.Code);
-  if (!/^\d+$/.test(code) || /^0+$/.test(code)) return null;
-  if (record.Code !== undefined && record.PersonCode !== undefined && codeOf(record.PersonCode) !== code) return null;
+  const code = exactLong(record.Code === undefined ? record.PersonCode : record.Code);
+  if (code === null) return null;
+  if (record.Code !== undefined && record.PersonCode !== undefined && exactLong(record.PersonCode) !== code) return null;
   const field = (read: string, legacy: string): string | null =>
     readString(record[read] === undefined ? record[legacy] : record[read]) || null;
   const national = field('NationalCode', 'PersonNationalCode');
   const settlementDays = readNumber(record.SettlementDays);
+  const observation: RemotePartyObservation = { version: '1' };
+  for (const [wire, key] of [['Parent', 'parentId'], ['AccountGroupPriceList', 'priceListId'],
+    ['VisitorID', 'representativeId']] as const) {
+    const id = exactLong(record[wire], true);
+    if (id !== null) observation[key] = id;
+  }
+  const nature = readNumber(record.Gender);
+  if (nature !== null && Number.isInteger(nature) && nature >= 0 && nature <= 255) observation.accountNatureCode = nature;
+  const label = readString(record.GenderTitle);
+  if (label !== '') observation.accountNatureLabel = label;
+  const percentage = readNumber(record.VisitorPercent);
+  if (percentage !== null) observation.representativePercent = percentage;
   return {
     externalPartyId: code, code,
     fullName: field('FullName', 'PersonFullName') ?? '',
@@ -389,7 +399,9 @@ export const parseParty = (raw: unknown): RemoteParty | null => {
     postalCode: field('PostalCode', 'PersonPostalCode'),
     accountGroup: field('AccountGroup', 'PersonAccountGroup'),
     ...(settlementDays !== null && Number.isInteger(settlementDays) && settlementDays >= 0 && settlementDays <= 255 ? { settlementDays } : {}),
+    ...(Object.keys(observation).length > 1 ? { sourceObservation: observation } : {}),
     // PersonGender describes account nature, not legal person type.
+    // Restricted balances are not exposed in this general-purpose customer read.
     remoteVersion: 'party-v2:' + hashRecord(record),
   };
 };

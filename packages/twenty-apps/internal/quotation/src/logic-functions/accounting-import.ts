@@ -208,6 +208,10 @@ const handler = async (event: RoutePayload<unknown>) => {
       return { success: true, preview: preview.value };
     }
 
+    if (adapter.value.isLive && (action === 'apply-items' || action === 'prepare-parties')) {
+      return failure('ASAN_LIVE_IMPORT_NOT_APPROVED', persianAccountingMessage('ASAN_LIVE_IMPORT_NOT_APPROVED'));
+    }
+
     if (action === 'apply-items') {
       // The preview is regenerated here instead of trusting the caller's copy: the rows
       // carry amounts and versions that become CRM records, so a stale or edited preview
