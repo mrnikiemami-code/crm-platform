@@ -39,7 +39,7 @@ const refusalCodeOf = (result: {
 }): string => (result.ok ? 'NO_REFUSAL' : (result.refusal?.code ?? 'NONE'));
 
 // One unit at 4,400,000 rial net, 9% VAT on the discounted amount.
-// Amounts are EXACT DECIMAL RIAL strings, which is what a revision stores — not micros.
+// Amounts are canonical integer micros, the representation emitted by Nest.
 const revision = (
   overrides: Partial<QuotationRevisionSnapshot> = {},
 ): QuotationRevisionSnapshot => ({
@@ -57,18 +57,18 @@ const revision = (
       description: 'خدمت مشاوره',
       unit: 'ساعت',
       quantityScaled: '1000000',
-      unitPriceMicros: '4400000.000000',
-      discountMicros: '0.000000',
-      taxMicros: '396000.000000',
-      totalMicros: '4796000.000000',
+      unitPriceMicros: '4400000000000',
+      discountMicros: '0',
+      taxMicros: '396000000000',
+      totalMicros: '4796000000000',
     },
   ],
   totals: {
-    grossMicros: '4400000.000000',
-    discountMicros: '0.000000',
-    netMicros: '4400000.000000',
-    taxMicros: '396000.000000',
-    totalMicros: '4796000.000000',
+    grossMicros: '4400000000000',
+    discountMicros: '0',
+    netMicros: '4400000000000',
+    taxMicros: '396000000000',
+    totalMicros: '4796000000000',
   },
   issuedAt: '2025-12-22T10:00:00.000Z',
   ...overrides,
@@ -148,10 +148,10 @@ describe('line amount mapping', () => {
             description: 'کابل',
             unit: 'عدد',
             quantityScaled: '3000000',
-            unitPriceMicros: '1000000.000000',
-            discountMicros: '0.000000',
-            taxMicros: '0.000000',
-            totalMicros: '3000000.000000',
+            unitPriceMicros: '1000000000000',
+            discountMicros: '0',
+            taxMicros: '0',
+            totalMicros: '3000000000000',
           },
         ],
       }),
@@ -211,21 +211,21 @@ describe('discount and tax special codes', () => {
         description: 'کابل',
         unit: 'عدد',
         quantityScaled: '1000000',
-        unitPriceMicros: '10000000.000000',
+        unitPriceMicros: '10000000000000',
         // 10,000,000 rial gross, 1,000,000 discount, 810,000 VAT on the 9,000,000 net.
-        discountMicros: '1000000.000000',
-        taxMicros: '810000.000000',
-        totalMicros: '9810000.000000',
+        discountMicros: '1000000000000',
+        taxMicros: '810000000000',
+        totalMicros: '9810000000000',
       },
     ],
     // The special lines read the document totals, so the fixture has to state the same
     // document an issued revision would: a line figure alone is not the authority.
     totals: {
-      grossMicros: '10000000.000000',
-      discountMicros: '1000000.000000',
-      netMicros: '9000000.000000',
-      taxMicros: '810000.000000',
-      totalMicros: '9810000.000000',
+      grossMicros: '10000000000000',
+      discountMicros: '1000000000000',
+      netMicros: '9000000000000',
+      taxMicros: '810000000000',
+      totalMicros: '9810000000000',
     },
   });
 
@@ -253,7 +253,7 @@ describe('discount and tax special codes', () => {
     expect(validateAsanDocumentPayable({ factor, revision: discountedRevision, moneyUnit: 'RIAL' }).ok).toBe(true);
     const wrong = { ...factor, FactorDetails: [{ ...factor.FactorDetails[0], Price: 9_000_000 }, ...factor.FactorDetails.slice(1)] };
     expect(refusalCodeOf(validateAsanDocumentPayable({ factor: wrong, revision: discountedRevision, moneyUnit: 'RIAL' }))).toBe('ASAN_DOCUMENT_TOTAL_MISMATCH');
-    expect(refusalCodeOf(validateAsanDocumentPayable({ factor, revision: { ...discountedRevision, totals: { ...discountedRevision.totals, totalMicros: '9810001.000000' } }, moneyUnit: 'RIAL' }))).toBe('ASAN_DOCUMENT_TOTAL_MISMATCH');
+    expect(refusalCodeOf(validateAsanDocumentPayable({ factor, revision: { ...discountedRevision, totals: { ...discountedRevision.totals, totalMicros: '9810001000000' } }, moneyUnit: 'RIAL' }))).toBe('ASAN_DOCUMENT_TOTAL_MISMATCH');
   });
 
   it('does not append a special line when the installation lacks the code', () => {
@@ -298,19 +298,19 @@ describe('discount and tax special codes', () => {
           description: 'خدمت مشاوره',
           unit: 'ساعت',
           quantityScaled: '1000000',
-          unitPriceMicros: '1000000.000000',
-          discountMicros: '0.000000',
-          taxMicros: '90000.000000',
-          totalMicros: '1090000.000000',
+          unitPriceMicros: '1000000000000',
+          discountMicros: '0',
+          taxMicros: '90000000000',
+          totalMicros: '1090000000000',
         },
       ],
       totals: {
-        grossMicros: '1000000.000000',
-        discountMicros: '0.000000',
-        netMicros: '1000000.000000',
-        taxMicros: '90000.000000',
-        dutyMicros: '30000.000000',
-        totalMicros: '1090000.000000',
+        grossMicros: '1000000000000',
+        discountMicros: '0',
+        netMicros: '1000000000000',
+        taxMicros: '90000000000',
+        dutyMicros: '30000000000',
+        totalMicros: '1090000000000',
       },
     });
 
@@ -503,5 +503,25 @@ describe('Asan capabilities', () => {
 describe('money scale', () => {
   it('uses a million micros per Asan unit', () => {
     expect(MICROS_PER_ASAN_UNIT).toBe(1_000_000n);
+  });
+});
+
+describe('real Nest revision encoding', () => {
+  it('maps the actual 53273 rial payable scale without a second multiplication', () => {
+    const r = revision({
+      lines: [{ lineId: 'line-1', description: 'کالا', unit: 'عدد', quantityScaled: '1000000',
+        unitPriceMicros: '53273000000', discountMicros: '0', taxMicros: '0', totalMicros: '53273000000' }],
+      totals: { grossMicros: '53273000000', discountMicros: '0', netMicros: '53273000000',
+        taxMicros: '0', totalMicros: '53273000000' },
+    });
+    const factor = unwrap(mapRevisionToAsanFactor(mappingInput({ revision: r })));
+    expect(factor.FactorDetails[0].Price).toBe(53273);
+    expect(validateAsanDocumentPayable({ factor, revision: r, moneyUnit: 'RIAL' }).ok).toBe(true);
+  });
+
+  it('rejects draft decimal strings in an issued revision rather than guessing its encoding', () => {
+    const r = revision();
+    const invalid = { ...r, lines: [{ ...r.lines[0], totalMicros: '4796000.000000' }] };
+    expect(refusalCodeOf(mapRevisionToAsanFactor(mappingInput({ revision: invalid })))).toBe('AMOUNT_NOT_A_DECIMAL');
   });
 });

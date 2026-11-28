@@ -9,7 +9,7 @@ import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { toAsanFactorDate } from 'src/domain/accounting/adapters/asan/jalali';
 import { QUANTITY_SCALE } from 'src/domain/money/quantity';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Maps a sealed quotation revision onto Asan's `FactorViewModel`.
@@ -94,25 +94,6 @@ export const microsToAsanMoney = (micros: bigint): Result<number> => {
   return accepted(Number(units));
 };
 
-// The revision stores amounts as exact decimal strings, so they are parsed once here rather
-// than trusted as numbers that already went through the API.
-const parseExactToMicros = (text: string): Result<bigint> => {
-  const match = /^(-)?(\d+)(?:\.(\d{1,6}))?$/.exec(text.trim());
-
-  if (match === null) {
-    return refused(
-      'AMOUNT_NOT_A_DECIMAL',
-      `expected an exact decimal, got "${text}"`,
-    );
-  }
-
-  const fraction = (match[3] ?? '').padEnd(6, '0');
-  const magnitude =
-    BigInt(match[2]) * MICROS_PER_ASAN_UNIT + BigInt(fraction === '' ? '0' : fraction);
-
-  return accepted(match[1] === '-' ? -magnitude : magnitude);
-};
-
 export type AsanSpecialCodeAvailability = {
   discount: boolean;
   duty: boolean;
@@ -193,25 +174,27 @@ export const mapRevisionToAsanFactor = (
       );
     }
 
-    const quantity = scaledQuantityToAsanCount(BigInt(line.quantityScaled));
+    const scaled = parseRevisionMicros(line.quantityScaled);
+    if (!scaled.ok) return scaled;
+    const quantity = scaledQuantityToAsanCount(scaled.value);
 
     if (!quantity.ok) {
       return quantity;
     }
 
-    const lineTotal = parseExactToMicros(line.totalMicros);
+    const lineTotal = parseRevisionMicros(line.totalMicros);
 
     if (!lineTotal.ok) {
       return lineTotal;
     }
 
-    const tax = parseExactToMicros(line.taxMicros);
+    const tax = parseRevisionMicros(line.taxMicros);
 
     if (!tax.ok) {
       return tax;
     }
 
-    const discount = parseExactToMicros(line.discountMicros);
+    const discount = parseRevisionMicros(line.discountMicros);
 
     if (!discount.ok) {
       return discount;
@@ -241,13 +224,13 @@ export const mapRevisionToAsanFactor = (
   // The split is a document-level fact in the sealed snapshot, so it is read from the
   // totals rather than re-derived per line: `taxMicros` already includes duty, and
   // subtracting it is what makes the destination's tax row the tax component only.
-  const documentTax = parseExactToMicros(input.revision.totals.taxMicros);
+  const documentTax = parseRevisionMicros(input.revision.totals.taxMicros);
 
   if (!documentTax.ok) {
     return documentTax;
   }
 
-  const documentDuty = parseExactToMicros(input.revision.totals.dutyMicros ?? '0');
+  const documentDuty = parseRevisionMicros(input.revision.totals.dutyMicros ?? '0');
 
   if (!documentDuty.ok) {
     return documentDuty;
@@ -389,7 +372,7 @@ export const validateAsanDocumentPayable = ({
     } else if (special) return refused('ASAN_SPECIAL_CODE_INVALID', 'ordinary product row uses a reserved special code');
     payable += BigInt(detail.Price) * (detail.Count === 0 && detail.ProductID === Number(codes.discount) ? -1n : 1n);
   }
-  const total = parseExactToMicros(revision.totals.totalMicros);
+  const total = parseRevisionMicros(revision.totals.totalMicros);
   if (!total.ok) return total;
   const expected = crmMicrosToAsanUnits(total.value, moneyUnit);
   if (!expected.ok) return expected;

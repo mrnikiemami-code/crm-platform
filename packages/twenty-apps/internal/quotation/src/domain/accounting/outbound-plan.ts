@@ -19,8 +19,7 @@ import {
   financialSettingsFromRecord,
 } from 'src/domain/accounting/financial-contract';
 import { taxPolicyProfileFromSnapshot } from 'src/domain/accounting/tax-code-contract';
-import { parseMicrosExact } from 'src/domain/money/micros';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 
 // The single gate between "the CRM intends to write" and "the CRM writes". Every refusal here
 // is a first-class outcome with a stable code, so the operation record says WHY nothing was
@@ -438,8 +437,8 @@ export const planQuotationExport = (
   // adapter declared: a single-currency destination is never asked for a currency code, a
   // rate/amount tax destination is never asked for a fiscal code, and a destination with no
   // tax contract refuses a taxed document instead of sending it without its tax.
-  const documentTax = parseMicrosExact(snapshot.totals.taxMicros);
-  const documentDuty = parseMicrosExact(snapshot.totals.dutyMicros ?? '0');
+  const documentTax = parseRevisionMicros(snapshot.totals.taxMicros);
+  const documentDuty = parseRevisionMicros(snapshot.totals.dutyMicros ?? '0');
   const financialGate = checkFinancialRequirements({
     capabilities: input.capabilities,
     financial: financialSettingsFromRecord(input.settings.financial),
@@ -504,8 +503,8 @@ export const planQuotationExport = (
       );
     }
 
-    const total = parseMicrosExact(line.totalMicros);
-    const tax = parseMicrosExact(line.taxMicros);
+    const total = parseRevisionMicros(line.totalMicros);
+    const tax = parseRevisionMicros(line.taxMicros);
 
     if (!total.ok || !tax.ok) {
       return block('AMOUNT_NOT_A_DECIMAL', `line ${line.lineId} is not an exact amount`, operationId);
@@ -521,8 +520,8 @@ export const planQuotationExport = (
     amountLines.push({ lineId: line.lineId, priceUnits: priceUnits.value });
   }
 
-  const discount = parseMicrosExact(snapshot.totals.discountMicros);
-  const tax = parseMicrosExact(snapshot.totals.taxMicros);
+  const discount = parseRevisionMicros(snapshot.totals.discountMicros);
+  const tax = parseRevisionMicros(snapshot.totals.taxMicros);
 
   if (!discount.ok || !tax.ok) {
     return block('AMOUNT_NOT_A_DECIMAL', 'document totals are not exact amounts', operationId);
@@ -556,7 +555,7 @@ export const planQuotationExport = (
   // the duty row is refused rather than posting duty as tax. A destination that carries
   // duty inside the single policy code (or as an aggregate amount) has no duty row at all,
   // so asking for its code would invent a fiscal row the vendor never reads.
-  const duty = parseMicrosExact(snapshot.totals.dutyMicros ?? '0');
+  const duty = parseRevisionMicros(snapshot.totals.dutyMicros ?? '0');
 
   if (
     input.capabilities.requiresSpecialItemCodes &&

@@ -60,6 +60,14 @@ export type QuotationRevisionSnapshot = {
   issuedAt: string;
 };
 
+// Both historical Nest-issued seals and the app line builder store integer micros.
+// This is NOT the draft decimal-IRR representation. Never infer encoding from magnitude,
+// or multiply a sealed amount by the scale a second time.
+export const parseRevisionMicros = (value: unknown): Result<bigint> =>
+  typeof value === 'string' && /^(0|-?[1-9]\d*)$/.test(value)
+    ? accepted(BigInt(value))
+    : refused('AMOUNT_NOT_A_DECIMAL', 'revision amount must be a canonical integer micro-unit string');
+
 // Key order is normalised before hashing so two structurally equal snapshots can
 // never hash differently because one was built by a different code path.
 export const canonicalizeForHash = (value: unknown): string => {

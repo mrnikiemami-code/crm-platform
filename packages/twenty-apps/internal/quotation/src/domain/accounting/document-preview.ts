@@ -19,8 +19,8 @@ import {
   scaledQuantityToAsanCount,
 } from 'src/domain/accounting/adapters/asan/asan-factor';
 import { QUOTATION_EXPORTABLE_STATUSES } from 'src/domain/accounting/outbound-plan';
-import { parseMicrosExact } from 'src/domain/money/micros';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { formatMicrosExact } from 'src/domain/money/micros';
+import { parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 
 // Everything a person needs to judge "would this document travel, and what would the
 // destination receive" BEFORE anything is written. It is built from the sealed revision and
@@ -74,8 +74,14 @@ const toVendorId = (value: string | null): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+// Preserve the existing preview/UI decimal-IRR presentation contract, not the raw seal encoding.
+const displayRevisionAmount = (text: string): string | null => {
+  const parsed = parseRevisionMicros(text);
+  return parsed.ok ? formatMicrosExact(parsed.value) : null;
+};
+
 const amountIsPositive = (text: string | undefined): boolean => {
-  const parsed = parseMicrosExact(text ?? '');
+  const parsed = parseRevisionMicros(text ?? '');
 
   return parsed.ok && parsed.value > 0n;
 };
@@ -91,7 +97,8 @@ export const buildQuotationDocumentPreview = (
 
   const lineRows: DocumentPreviewLine[] = snapshotLines.map((line) => {
     const externalItemId = linkByLineId.get(line.lineId) ?? null;
-    const quantity = scaledQuantityToAsanCount(BigInt(line.quantityScaled));
+    const scaled = parseRevisionMicros(line.quantityScaled);
+    const quantity = scaled.ok ? scaledQuantityToAsanCount(scaled.value) : scaled;
     const linkIsUsable = toVendorId(externalItemId) !== null;
 
     return {
@@ -99,8 +106,8 @@ export const buildQuotationDocumentPreview = (
       description: line.description,
       externalItemId,
       quantity: quantity.ok ? quantity.value : null,
-      totalMicros: line.totalMicros,
-      taxMicros: line.taxMicros,
+      totalMicros: displayRevisionAmount(line.totalMicros),
+      taxMicros: displayRevisionAmount(line.taxMicros),
       problem: linkIsUsable ? null : 'LINE_HAS_NO_PRODUCT_LINK',
     };
   });
