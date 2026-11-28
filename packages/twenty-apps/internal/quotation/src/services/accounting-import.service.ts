@@ -315,6 +315,30 @@ const syncAccountingItemPrice = async (
   return true;
 };
 
+// Worker output is a read-only plan. Nest is the sole production writer.
+export const prepareItemImport = (input: {
+  connectionId: string; preview: ItemImportPreview; selections: ItemApplySelection[];
+  allowRemoteVersionUpdate: boolean; applyPrices: boolean;
+}) => {
+  const plan = resolveItemApplyPlan(input);
+  const refused = [...plan.refused];
+  const rows = [];
+  for (const row of plan.rows) {
+    const preview = input.preview.rows.find(entry => entry.externalItemId === row.externalItemId);
+    const selection = input.selections.find(entry => entry.externalItemId === row.externalItemId);
+    if (!preview || !selection?.expectedRemoteVersion || selection.expectedRemoteVersion !== preview.remoteVersion ||
+        preview.warnings.includes('REMOTE_ITEM_INACTIVE') ||
+        (row.action === 'CREATE_CATALOG_ITEM' && selection.kind !== 'PRODUCT' && selection.kind !== 'SERVICE')) {
+      refused.push({ externalItemId: row.externalItemId, code: 'REVIEW_REQUIRED', detail: 'remote version, classification or active state needs confirmation' });
+      continue;
+    }
+    rows.push({ ...row, kind: selection.kind ?? null, expectedLinkId: preview.existingLinkId,
+      expectedLinkVersion: preview.expectedLinkVersion ?? null, observation: preview.observation ?? null });
+  }
+  return { connectionId: input.connectionId, applyPrices: input.applyPrices, rows, refused };
+};
+
+// Historical fixture helper only; production LF never calls it after Nest convergence.
 export const applyItemImport = async (
   {
     connectionId,
