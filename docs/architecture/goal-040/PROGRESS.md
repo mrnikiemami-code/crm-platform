@@ -22,3 +22,6 @@ A source/test tip `48c2d34124e07128cb0e2a1910d0f8d5a008fb58`, handoff tip `c2189
 
 ## Independent continuation 2
 A handoff `b09f4098788d701817cefd69c6af9efc56082745`; source/doc tip `41701449a60f62f2da4e47779562b3e6420dd532`. Precision and validity fixes committed, U05 route audit recorded (47/47 dispositions, not 47 implemented). B remote `f230721d1a0146748475c68e73d61572d7b5df6d`. SOURCE_PARTIAL; runtime NOT_RUN. Remaining U03/U04/U05/F06/F07 and unit integration after actual handoff; no live approval or Dev changes.
+
+## Convergence checkpoint
+Merged exact A and B tips in `6bf4298d3a52dafa0ad073aad10ea99bb60403d5` with all 76 changed paths and reviewed additive unit query merge. B 15+34 targeted tests reported in checked logs; integrated tests NOT_RUN. Phase 1/2 IN_PROGRESS (source only), mandatory P05 atomicity and U01 line/lock seam plus U03/U04/U05/F06/F07 remain. Phase 3 NOT_RUN; phase 4 NOT_AUTHORIZED. No Dev or vendor traffic. Architect continues on feat/crm-129-quotation, not either lane; preserve merge and avoid repeated Cursor goals.
