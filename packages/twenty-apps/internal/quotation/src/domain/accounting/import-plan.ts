@@ -1,6 +1,7 @@
 import {
   type AccountingMoneyUnit,
   type RemoteCatalogItem,
+  type RemoteCatalogObservation,
   type RemoteParty,
 } from 'src/domain/accounting/adapter-contract';
 import { mergeSourcePartyProfile, type AccountingPartyProfile } from 'src/domain/accounting/party-profile';
@@ -98,6 +99,8 @@ export type ItemImportRow = {
   warnings: ImportWarning[];
   vendorUnitId: string | null;
   vendorUnitName: string | null;
+  expectedLinkVersion?: string | null;
+  observation?: RemoteCatalogObservation | null;
 };
 
 export type ItemImportPreview = {
@@ -190,7 +193,7 @@ export const planItemImport = ({
         ? String(item.observation.unitId)
         : null;
     const vendorUnitName = item.observation?.unitName ?? null;
-    const vendorFields = { vendorUnitId, vendorUnitName };
+
 
     if ((remoteNameCounts.get(normalizeName(item.name)) ?? 0) > 1) {
       warnings.push('DUPLICATE_REMOTE_NAME');
@@ -226,6 +229,7 @@ export const planItemImport = ({
         : 'قیمت بدون تأیید واحد قابل تبدیل نیست';
 
     const existingLink = linkByExternalId.get(item.externalItemId) ?? null;
+    const vendorFields = { vendorUnitId, vendorUnitName, expectedLinkVersion: existingLink?.remoteVersion ?? null, observation: item.observation ?? null };
     const skuMatches = itemsBySku.get(item.code) ?? [];
     const comparableInternalItemId =
       existingLink !== null
@@ -366,6 +370,8 @@ export type ItemApplySelection = {
   internalItemId?: string;
   // Required whenever a CRM catalog row is created or the unit reference changes.
   unitRecordId?: string;
+  kind?: 'PRODUCT' | 'SERVICE';
+  expectedRemoteVersion?: string;
 };
 
 export type ItemApplyRow = {
