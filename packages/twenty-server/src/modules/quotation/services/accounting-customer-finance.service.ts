@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
@@ -85,19 +86,53 @@ export class AccountingCustomerFinanceService {
             reverse[0].partyType !== input.partyType || reverse[0].internalPartyId !== input.internalPartyId) return failure('ACCOUNTING_PARTY_IDENTITY_CONFLICT');
         // Only the validated link can supply the vendor identity. Never accept
         // a caller-provided external customer ID, URL or report query.
-        const response = await worker({ connectionId: input.connectionId, externalPartyId: link.externalPartyId,
-          report: input.report, ...(input.report === 'CARDEX' ? { from: input.from, to: input.to } : {}),
-          ...(input.report === 'PROFORMAS' ? { count: input.count } : {}) });
-        if (!response || response.success !== true) return failure(typeof response?.code === 'string' ? response.code : 'ACCOUNTING_RUNTIME_UNAVAILABLE');
+        // Durable intent precedes the vendor read. An unavailable audit store
+        // blocks access. A separate transaction commits it while the outer
+        // workspace/source lock is still held; no financial contents are logged.
+        const requestId = randomUUID();
+        const audit = (phase: 'REQUESTED' | 'COMPLETED', outcomeCode: string) =>
+          this.appendAccessEvent(requestId, auth.userWorkspaceId, input, phase, outcomeCode);
+        await audit('REQUESTED', 'AUTHORIZED');
+        let response: Record<string, unknown> | null = null;
+        try {
+          response = await worker({ connectionId: input.connectionId, externalPartyId: link.externalPartyId,
+            report: input.report, ...(input.report === 'CARDEX' ? { from: input.from, to: input.to } : {}),
+            ...(input.report === 'PROFORMAS' ? { count: input.count } : {}) });
+        } catch {
+          await audit('COMPLETED', 'ACCOUNTING_RUNTIME_UNAVAILABLE');
+          return failure('ACCOUNTING_RUNTIME_UNAVAILABLE');
+        }
+        if (!response || response.success !== true) {
+          const code = typeof response?.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(response.code)
+            ? response.code : 'ACCOUNTING_RUNTIME_UNAVAILABLE';
+          await audit('COMPLETED', code);
+          return failure(code);
+        }
         const report = object(response.observation);
         if (!report || report.customerExternalId !== link.externalPartyId || report.report !== input.report ||
             report.connectionId !== input.connectionId || report.adapterId !== 'asan' || report.certified !== false ||
             (input.report === 'CARDEX' && (report.from !== input.from || report.to !== input.to || !Array.isArray(report.rows) || report.rows.length > 500)) ||
-            (input.report === 'PROFORMAS' && (report.count !== input.count || !Array.isArray(report.rows) || report.rows.length > (input.count ?? 0)))) return failure('ASAN_INCOMPLETE_DATASET');
+            (input.report === 'PROFORMAS' && (report.count !== input.count || !Array.isArray(report.rows) || report.rows.length > (input.count ?? 0)))) {
+          await audit('COMPLETED', 'ASAN_INCOMPLETE_DATASET');
+          return failure('ASAN_INCOMPLETE_DATASET');
+        }
+        await audit('COMPLETED', 'OBSERVATION_RETURNED');
         return { success: true, observation: report };
       }), auth);
     } catch {
       return failure('ACCOUNTING_RUNTIME_UNAVAILABLE');
     }
+  }
+
+  private async appendAccessEvent(requestId: string, actorWorkspaceId: string, input: FinanceRequest,
+    phase: 'REQUESTED' | 'COMPLETED', outcomeCode: string): Promise<void> {
+    if (!actorWorkspaceId) throw new Error('Missing finance audit actor');
+    const id = randomUUID();
+    await this.orm.runInWorkspaceTransaction(async scope => {
+      const result = await scope.getRepository<Record<string, unknown>>('accountingFinanceAccess', { shouldBypassPermissionChecks: true }, { shouldSkipEventEmission: true })
+        .insert({ id, name: input.report + ' ' + phase, requestId, actorWorkspaceId, connectionId: input.connectionId,
+          partyType: input.partyType, internalPartyId: input.internalPartyId, reportType: input.report, phase, outcomeCode });
+      if (result.identifiers.length !== 1 || result.identifiers[0]?.id !== id) throw new Error('Finance audit insert not confirmed');
+    });
   }
 }
