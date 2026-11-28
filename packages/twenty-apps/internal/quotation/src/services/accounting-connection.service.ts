@@ -41,6 +41,7 @@ export type AccountingConnectionRecord = {
   lastHealthCheckAt: string | null;
   lastHealthMessage: string | null;
   verificationState: string;
+  datasetBindingId?: string;
 };
 
 export type ConnectionDependencies = {
@@ -107,6 +108,7 @@ export const parseConnectionRecord = (
     lastHealthCheckAt: readString(node.lastHealthCheckAt) || null,
     lastHealthMessage: readString(node.lastHealthMessage) || null,
     verificationState: readString(node.verificationState) || 'LIVE_UNVERIFIED',
+    ...(readString(node.datasetBindingId) ? { datasetBindingId: readString(node.datasetBindingId) } : {}),
   };
 };
 
@@ -272,7 +274,7 @@ export const buildAdapter = (
   const approved = record.adapterId === 'asan' && record.isActive && binding !== undefined &&
     generation !== undefined && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(generation) &&
     secrets.approvedReadRemoteUserId !== undefined && secrets.approvedReadRemoteUserId === record.settings.remoteUserId &&
-    typeof datasetId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(datasetId) &&
+    typeof datasetId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(datasetId) && record.datasetBindingId === datasetId &&
     matchesAsanReadBinding(binding, record.id, record.settings.baseUrl);
   // Never store the token or a token-derived digest in the snapshot. The operator
   // must clear approval and rotate this non-secret UUID whenever credentials rotate.
