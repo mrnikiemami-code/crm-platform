@@ -147,6 +147,9 @@ export class QuotationDraftPersistenceService {
                 return rejected(totals.code, totals.message);
               }
 
+              const priceRejection = await this.assertPriceProvenance(transactionScope, request);
+              if (priceRejection) return priceRejection;
+
               return isNonEmptyString(request.quotationId)
                 ? this.updateDraft({ transactionScope, request })
                 : this.createDraft({ transactionScope, request });
@@ -794,6 +797,57 @@ export class QuotationDraftPersistenceService {
         documentCurrencyCode: currencyDecision.currencyCode,
       },
     };
+  }
+
+  // Catalog provenance is a server-verified claim, not a browser-authored label.
+  // An explicitly manual line has no selected price id/date; its amount remains
+  // governed by the existing draft financial validation.
+  private async assertPriceProvenance(
+    scope: WorkspaceTransactionScope,
+    request: QuotationDraftSaveRequest,
+  ): Promise<QuotationDraftSaveOutcome | null> {
+    const { header, lines } = request;
+    const listId = header.selectedPriceListId?.trim() || null;
+    const refuse = () => rejected('PRICE_PROVENANCE_INVALID', 'فهرست یا قیمت انتخاب‌شده معتبر نیست؛ کالا را مجدداً انتخاب کنید.');
+    const stamp = (value: string | Date | null | undefined) =>
+      value instanceof Date ? value.toISOString().slice(0, 10) : value?.trim().slice(0, 10) || null;
+    if (!listId) {
+      if (header.selectedPriceListName || lines.some(line => line.selectedPriceListId || line.selectedPriceId || line.selectedPriceValidFrom)) return refuse();
+      return null;
+    }
+    const list = await scope.getRepository<{ id: string; name: string; currencyCode: string }>('priceList', { shouldBypassPermissionChecks: true })
+      .findOne({ where: { id: listId }, select: { id: true, name: true, currencyCode: true } });
+    if (!list || list.currencyCode !== header.currencyCode || !list.name?.trim()) return refuse();
+    // Replace the caller-provided display name with the actual catalog name.
+    header.selectedPriceListName = list.name.trim();
+    const selected = lines.filter(line => line.selectedPriceId || line.selectedPriceListId || line.selectedPriceValidFrom);
+    if (selected.some(line => !line.itemId || !line.selectedPriceId || line.selectedPriceListId !== listId)) return refuse();
+    // Use the same item-target lock namespace as accounting-item-apply. This
+    // prevents that import path replacing prices while a draft reads them.
+    const itemKeys = [...new Set(selected.map(line => JSON.stringify(['accounting-item-target', scope.workspaceId, line.itemId])))].sort();
+    for (const key of itemKeys) await scope.executeRawQuery('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+    if (!selected.length) return null;
+    const priceRepo = scope.getRepository<{ id: string; itemId: string; priceListId: string; unitPriceExact: string; validFrom: string | Date | null; validTo: string | Date | null }>('price', { shouldBypassPermissionChecks: true });
+    const prices = await priceRepo.find({ where: { itemId: In([...new Set(selected.map(line => line.itemId!))]), priceListId: listId }, take: 10001 });
+    if (prices.length > 10000) return refuse();
+    const today = new Date().toISOString().slice(0, 10);
+    for (const line of selected) {
+      const candidates = prices.filter(price => price.itemId === line.itemId && price.priceListId === listId &&
+        (!stamp(price.validFrom) || stamp(price.validFrom)! <= today) && (!stamp(price.validTo) || stamp(price.validTo)! >= today))
+        .sort((a, b) => (stamp(b.validFrom) ?? '').localeCompare(stamp(a.validFrom) ?? ''));
+      const chosen = candidates[0];
+      if (!chosen || (candidates.length > 1 && stamp(chosen.validFrom) === stamp(candidates[1].validFrom)) ||
+        chosen.id !== line.selectedPriceId || stamp(chosen.validFrom) !== stamp(line.selectedPriceValidFrom)) return refuse();
+      // Exact string normalization is only padding/leading zero removal.
+      const normalize = (value: string) => {
+        const m = /^(\\d+)(?:\\.(\\d{1,6}))?$/.exec(value.trim());
+        return m ? BigInt(m[1]) * 1000000n + BigInt((m[2] ?? '').padEnd(6, '0')) : null;
+      };
+      const amount = normalize(chosen.unitPriceExact);
+      if (amount === null || amount !== normalize(line.unitPriceExact)) return refuse();
+      line.selectedPriceValidFrom = stamp(chosen.validFrom);
+    }
+    return null;
   }
 
   // Resolve the selected unit from the workspace, not from the client's label.
