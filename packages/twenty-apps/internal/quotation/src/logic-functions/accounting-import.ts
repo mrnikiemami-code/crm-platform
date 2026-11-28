@@ -7,7 +7,7 @@ import {
 import { persianAccountingMessage } from 'src/domain/accounting/errors';
 import { readPageRequest } from 'src/domain/accounting/pagination';
 import {
-  applyItemImport,
+  prepareItemImport,
   preparePartyImport,
   importFailureMessage,
   previewItemImport,
@@ -39,7 +39,7 @@ import {
 const mappingStorage = () => createKvSnapshotStorage({ client: kv });
 
 const readSelections = (  value: unknown,
-): { externalItemId: string; internalItemId?: string; unitRecordId?: string }[] => {
+): import('src/domain/accounting/import-plan').ItemApplySelection[] => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -54,12 +54,16 @@ const readSelections = (  value: unknown,
 
     const internalItemId = readString(row.internalItemId);
     const unitRecordId = readString(row.unitRecordId);
+    const expectedRemoteVersion = readString(row.expectedRemoteVersion);
+    const kind = row.kind === 'PRODUCT' || row.kind === 'SERVICE' ? row.kind : undefined;
 
     return [
       {
         externalItemId,
         ...(internalItemId === '' ? {} : { internalItemId }),
         ...(unitRecordId === '' ? {} : { unitRecordId }),
+        ...(expectedRemoteVersion === '' ? {} : { expectedRemoteVersion }),
+        ...(kind ? { kind } : {}),
       },
     ];
   });
@@ -210,15 +214,18 @@ const handler = async (event: RoutePayload<unknown>) => {
       return { success: true, preview: preview.value };
     }
 
-    if (adapter.value.isLive && (action === 'apply-items' || action === 'prepare-parties')) {
+    if (adapter.value.isLive && (action === 'apply-items' || action === 'prepare-items' || action === 'prepare-parties')) {
       return failure('ASAN_LIVE_IMPORT_NOT_APPROVED', persianAccountingMessage('ASAN_LIVE_IMPORT_NOT_APPROVED'));
     }
 
-    if (action === 'apply-items') {
+    if (action === 'apply-items') return failure('INVALID_INPUT', 'انتقال کالا فقط از مسیر اتمیک سرور مجاز است.');
+
+    if (action === 'prepare-items') {
       // The preview is regenerated here instead of trusting the caller's copy: the rows
       // carry amounts and versions that become CRM records, so a stale or edited preview
       // must not be able to write a price that was never previewed.
       const selections = readSelections(body.selections);
+      if (selections.length < 1 || selections.length > 25) return failure('INVALID_INPUT', 'حداکثر ۲۵ کالا در هر درخواست مجاز است.');
       const preview = await previewItemImport({
         connectionId,
         adapter: adapter.value,
@@ -235,7 +242,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         );
       }
 
-      const outcome = await applyItemImport({
+      const plan = prepareItemImport({
         connectionId,
         preview: preview.value,
         selections,
@@ -243,7 +250,7 @@ const handler = async (event: RoutePayload<unknown>) => {
         applyPrices: body.applyPrices === true,
       });
 
-      return { success: true, outcome };
+      return { success: true, plan };
     }
 
     if (action === 'preview-parties') {
