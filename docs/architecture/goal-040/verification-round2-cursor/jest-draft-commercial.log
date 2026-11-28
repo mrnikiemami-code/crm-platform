@@ -1,0 +1,60 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/parse-quotation-draft-save-request.util.spec.ts
+At line:2 char:1
++ npx jest packages/twenty-server/src/modules/quotation/utils/__tests__ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...st.util.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[Nest] 78316  - ۱۴۰۵/۰۹/۰۷, ۱۲:۵۶:۴۱   ERROR [QuotationDraftPersistenceService] Line tax policy lookup failed for 
+"IR_VAT_9": tax table missing
+[Nest] 78316  - ۱۴۰۵/۰۹/۰۷, ۱۲:۵۶:۴۱   ERROR [QuotationDraftPersistenceService] Currency accounting snapshot lookup 
+failed for "IRR": currency catalog missing
+[Nest] 78316  - ۱۴۰۵/۰۹/۰۷, ۱۲:۵۶:۴۱   ERROR [QuotationDraftPersistenceService] Quotation draft save failed and was 
+rolled back: insert failed
+Error: insert failed
+    at Object.<anonymous> (D:\CrmSource\twenty-g040-round2-cursor\packages\twenty-server\src\modules\quotation\services
+\__tests__\quotation-draft-persistence.service.spec.ts:491:15)
+    at D:\CrmSource\twenty\node_modules\jest-environment-node\node_modules\jest-mock\build\index.js:397:39
+    at Object.<anonymous> 
+(D:\CrmSource\twenty\node_modules\jest-environment-node\node_modules\jest-mock\build\index.js:404:13)
+    at Object.mockConstructor [as insert] 
+(D:\CrmSource\twenty\node_modules\jest-environment-node\node_modules\jest-mock\build\index.js:148:19)
+    at QuotationDraftPersistenceService.insert [as createDraft] (D:\CrmSource\twenty-g040-round2-cursor\packages\twenty
+-server\src\modules\quotation\services\quotation-draft-persistence.service.ts:231:28)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at QuotationDraftPersistenceService.saveDraft (D:\CrmSource\twenty-g040-round2-cursor\packages\twenty-server\src\mo
+dules\quotation\services\quotation-draft-persistence.service.ts:131:14)
+    at Object.<anonymous> (D:\CrmSource\twenty-g040-round2-cursor\packages\twenty-server\src\modules\quotation\services
+\__tests__\quotation-draft-persistence.service.spec.ts:499:5)
+[Nest] 78316  - ۱۴۰۵/۰۹/۰۷, ۱۲:۵۶:۴۱   ERROR [QuotationDraftPersistenceService] Quotation draft save failed and was 
+rolled back: connection reset
+Error: connection reset
+    at Object.<anonymous> (D:\CrmSource\twenty-g040-round2-cursor\packages\twenty-server\src\modules\quotation\services
+\__tests__\quotation-draft-persistence.service.spec.ts:811:25)
+    at Promise.then.completed 
+(D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\utils.js:298:28)
+    at new Promise (<anonymous>)
+    at callAsyncCircusFn (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\utils.js:231:10)
+    at _callCircusTest (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:316:40)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at _runTest (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:252:3)
+    at _runTestsForDescribeBlock 
+(D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:126:9)
+    at _runTestsForDescribeBlock 
+(D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:121:9)
+    at run (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\run.js:71:3)
+    at runAndTransformResultsToJestFormat (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\
+legacy-code-todo-rewrite\jestAdapterInit.js:122:21)
+    at jestAdapter (D:\CrmSource\twenty\node_modules\jest-config\node_modules\jest-circus\build\legacy-code-todo-rewrit
+e\jestAdapter.js:79:19)
+    at runTestInternal (D:\CrmSource\twenty\node_modules\jest-runner\build\runTest.js:367:16)
+    at runTest (D:\CrmSource\twenty\node_modules\jest-runner\build\runTest.js:444:34)
+    at Object.worker (D:\CrmSource\twenty\node_modules\jest-runner\build\testWorker.js:106:12)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/quotation-draft-persistence.service.spec.ts (7.599 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       41 passed, 41 total
+Snapshots:   0 total
+Time:        7.993 s

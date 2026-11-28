@@ -1,0 +1,42 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-revision-snapshot.util.spec.ts
+At line:2 char:1
++ npx jest packages/twenty-server/src/modules/quotation/utils/__tests__ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...ot.util.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+FAIL twenty-server packages/twenty-server/src/modules/quotation/services/__tests__/quotation-revision.service.spec.ts
+  ● QuotationRevisionService › reads every line column the snapshot fingerprints
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: ObjectContaining {"select": {"description": true, "discountExact": true, "documentDiscountExact": true, 
+"dutyRateBasisPoints": true, "grossExact": true, "id": true, "itemId": true, "kind": true, "name": true, 
+"quantityExact": true, "taxAccountingCode": true, "taxExact": true, "taxPolicy": true, "taxPolicyRecordId": true, 
+"taxRateBasisPoints": true, "totalExact": true, "unit": true, "unitAccountingCode": true, "unitCode": true, 
+"unitPriceExact": true, "unitRecordId": true}}
+    Received: {"order": {"sortOrder": "ASC"}, "select": {"description": true, "discountExact": true, 
+"documentDiscountExact": true, "dutyRateBasisPoints": true, "grossExact": true, "id": true, "itemId": true, "kind": 
+true, "name": true, "quantityExact": true, "selectedPriceId": true, "selectedPriceListId": true, 
+"selectedPriceValidFrom": true, "taxAccountingCode": true, "taxExact": true, "taxPolicy": true, "taxPolicyRecordId": 
+true, "taxRateBasisPoints": true, "totalExact": true, "unit": true, "unitAccountingCode": true, "unitCode": true, 
+"unitPriceExact": true, "unitRecordId": true}, "where": {"quotationId": "q-1"}}
+
+    Number of calls: 1
+
+      168 |     await seal({ scope });
+      169 |
+    > 170 |     expect(lineRepository.find).toHaveBeenCalledWith(
+          |                                 ^
+      171 |       expect.objectContaining({
+      172 |         select: {
+      173 |           id: true,
+
+      at Object.toHaveBeenCalledWith 
+(src/modules/quotation/services/__tests__/quotation-revision.service.spec.ts:170:33)
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       1 failed, 23 passed, 24 total
+Snapshots:   0 total
+Time:        1.15 s

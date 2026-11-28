@@ -1,0 +1,11 @@
+npx : 
+At line:8 char:1
++ npx jest packages/twenty-server/src/modules/quotation/utils/__tests__ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Test Suites: 1 skipped, 0 of 1 total
+Tests:       4 skipped, 4 total
+Snapshots:   0 total
+Time:        0.216 s

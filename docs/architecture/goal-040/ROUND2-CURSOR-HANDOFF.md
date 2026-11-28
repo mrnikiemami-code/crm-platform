@@ -2,36 +2,38 @@
 
 Date: 2026-11-28  
 Branch: `feat/crm129-g040-final-commercial-catalog`  
-Base at start: `120c4d8fb6f034ffa1f65f16b39f0af90c3a43be`  
-Owner: Cursor (commercial/catalog/U04 + U01/U02/P05 hardening in owned files)
+Base: `120c4d8fb6f034ffa1f65f16b39f0af90c3a43be`  
+Owner: Cursor (U04 commercial/catalog + owned U01/U02/P05 hardening)
 
 ## Tip SHA
 
-`421bee7731d92ce0336da9131a493c9733a0ed8a`
+`REPLACE_AFTER_COMMIT`
 
 ## Scope delivered
 
 ### U04 commercial completeness
 
-- New quotation fields: `deliveryTerms`, `documentNotes`, `paymentDueDate`, issuer snapshot (`issuerLegalName` … `issuerPhone`), `visitorName`, `selectedPriceListId`, `selectedPriceListName`, wired `expiresAt` through draft/save/seal/PDF/customer view.
-- Quotation line fields: `selectedPriceListId`, `selectedPriceId`, `selectedPriceValidFrom` (immutable at catalog pick).
-- Draft form (Persian labels): validity, due date, delivery, notes, visitor, IRR price-list select; catalog search honors selected list; line price metadata on pick.
-- Seal (`quotation-revision-snapshot.util.ts`): version-aware optional commercial block on schema v2 only.
-- PDF + customer HTML: commercial blocks from seal only (issuer summary without re-exposing national id on customer page beyond legal name line).
+- Quotation fields: `expiresAt` wired end-to-end; `paymentDueDate`, `deliveryTerms`, `documentNotes`, issuer snapshot (`issuerLegalName` … `issuerPhone`), `visitorName`, `selectedPriceListId`, `selectedPriceListName`
+- Line fields: `selectedPriceListId`, `selectedPriceId`, `selectedPriceValidFrom` (immutable at catalog pick)
+- Draft form (Persian): validity, due date, delivery, notes, visitor, IRR price-list select; catalog search uses selected list
+- Persistence: `commercialColumnsFromDraftHeader` merged into `buildHeaderColumns` (create + update)
+- Seal (`quotation-revision-snapshot.util.ts`): version-aware commercial block on schema v2
+- PDF + customer HTML: commercial blocks from **seal only**
 
 ### Price selection
 
-- `price-snapshot.ts`: `selectCurrentCatalogPrice` returns `priceId` + `validFrom`.
-- `catalog-picker.service.ts` + `search-catalog-items` LF: explicit `priceListId` parameter.
+- `selectCurrentCatalogPrice` returns `priceId` + `validFrom`
+- Catalog picker / `search-catalog-items` accept explicit `priceListId`
 
-### U01/U02/P05
+### U01/U02/P05 (owned)
 
-- `applyItemImportPlan` naming preserved with `applyItemImport` alias; production path remains Nest-only (`apply-items` LF refuses).
-- Legacy `applyItemImport` hard-fails without injected executor (existing guard retained).
+- Production `apply-items` remains Nest transactional path
+- Legacy GraphQL apply hard-fails without Nest executor
+- PG accounting-code lock suite executed with disposable Dev DB credential (env-only)
 
-### Additive shared registration (STRICTLY ADDITIVE)
+### Additive shared registration
 
-**`packages/twenty-apps/internal/quotation/src/constants/universal-identifiers.ts`**
+**`universal-identifiers.ts`**
 
 | Key | UUID |
 |---|---|
@@ -50,49 +52,35 @@ Owner: Cursor (commercial/catalog/U04 + U01/U02/P05 hardening in owned files)
 | `QUOTATION_LINE_FIELDS.selectedPriceId` | `3075338d-9c74-5ee6-a605-0a90638017ac` |
 | `QUOTATION_LINE_FIELDS.selectedPriceValidFrom` | `c715e710-d591-5e14-821e-3a94a99a3915` |
 
-**`packages/twenty-apps/internal/quotation/src/application.config.ts`** (applicationVariables additions)
+**`application.config.ts`** issuer applicationVariables (`QUOTATION_ISSUER_*`) — see commit diff.
 
-| Variable | UUID |
-|---|---|
-| `QUOTATION_ISSUER_LEGAL_NAME` | `19ae41db-63fd-56f2-8826-4d651665a244` |
-| `QUOTATION_ISSUER_NATIONAL_ID` | `f8b91f85-ba98-5641-835f-4d262b9b051b` |
-| `QUOTATION_ISSUER_ECONOMIC_CODE` | `440790f9-7a5a-5b91-af12-7736b7b244d4` |
-| `QUOTATION_ISSUER_ADDRESS` | `7b1a7a62-3715-5945-b296-8c3e016fb26d` |
-| `QUOTATION_ISSUER_PHONE` | `343df0ff-c2c0-56ac-bafb-690000f04543` |
+No edits to forbidden architect files (outbound, Asan adapters, operation-dispatch, connection authority, customer outbound).
 
-No edits to forbidden architect files (`accounting-outbound*`, `asan-*` adapters, `accounting-operation-dispatch.service.ts`, customer outbound create/update/link).
+## Targeted tests (re-verified)
 
-## Files changed (source)
-
-App: `quotation.object.ts`, `quotation-line.object.ts`, `universal-identifiers.ts`, `application.config.ts`, `draft-quotation.ts`, `revision.ts`, `issuer-defaults.ts`, `customer-view.ts`, `price-snapshot.ts`, `quotation-queries.ts`, `atomic-draft-save-api.ts`, `quotation-save.service.ts`, `quotation-draft-edit.service.ts`, `catalog-picker.service.ts`, `accounting-import.service.ts`, `customer-link.service.ts`, `quotation-draft-form.tsx`, `catalog-item-combobox.tsx`, `save-draft-quotation.ts`, `search-catalog-items.ts`, `render-customer-quotation-html.ts`, tests under `domain/catalog`, `domain/quotation`.
-
-Server: `quotation-draft-save.type.ts`, `parse-quotation-draft-save-request.util.ts`, `quotation-commercial-header.util.ts`, `quotation-draft-persistence.service.ts`, `quotation-revision-snapshot.util.ts`, `quotation-revision.service.ts`, `quotation-pdf.service.ts`, `quotation-pdf-document.ts`, parse util spec.
-
-## Targeted tests
-
-| Command | Exit | Log |
+| Suite | Exit | Result |
 |---|---:|---|
-| `npx jest ...parse-quotation-draft-save-request.util.spec.ts` | 1 (BLOCKED: missing `file-type` / node_modules) | `docs/architecture/goal-040/verification-round2-cursor/jest-parse-draft-save.log` |
-| `npx vitest run ...price-snapshot.test.ts` | 1 (BLOCKED: missing `vitest/config`) | `docs/architecture/goal-040/verification-round2-cursor/vitest-price-snapshot.log` |
+| Jest: parse draft-save + draft-persistence | 0 | 41 passed |
+| Jest: revision service + snapshot util + parse + PG locks | 0 | 43 passed |
+| Vitest: price-snapshot + issuer-defaults | 0 | 5 passed |
 
-**BLOCKED_NO_FIXTURE (PG concurrent catalog/price writers):** existing disposable pattern in `quotation-accounting-code-lock.pg.spec.ts` — requires `CRM129_DATABASE_URL` or `PGPASSWORD`. Command when DB available:
+Logs: `docs/architecture/goal-040/verification-round2-cursor/`
+
+Commands:
 
 ```bash
-npx jest packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-accounting-code-lock.pg.spec.ts --config=packages/twenty-server/jest.config.mjs
+npx jest packages/twenty-server/src/modules/quotation/utils/__tests__/parse-quotation-draft-save-request.util.spec.ts packages/twenty-server/src/modules/quotation/services/__tests__/quotation-draft-persistence.service.spec.ts packages/twenty-server/src/modules/quotation/services/__tests__/quotation-revision.service.spec.ts packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-revision-snapshot.util.spec.ts packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-accounting-code-lock.pg.spec.ts --config=packages/twenty-server/jest.config.mjs
+npx vitest run --root packages/twenty-apps/internal/quotation src/domain/catalog/__tests__/price-snapshot.test.ts src/domain/quotation/__tests__/issuer-defaults.test.ts
 ```
 
-Typecheck/build: **NOT_RUN** (workspace `yarn`/`node_modules` incomplete in this worktree).
+## Remaining architect / external
 
-## Architect blockers (remaining)
-
-- Metadata sync / migration apply for new quotation + quotationLine fields (workspace schema).
-- Workspace application variables for issuer defaults must be set per deployment.
-- Integrated architect merge + P01–P15 phase 3 not run from this lane.
-- U03 customer outbound authority (architect lane).
-- PG concurrency evidence pending live DB fixture.
+- Workspace metadata sync for new quotation / quotationLine columns
+- Configure issuer application variables per deployment
+- Architect lane merge + U03 customer outbound + integrated P01–P15 phase 3
+- Full monorepo `nx` typecheck/build not claimed as PASS from this lane (worktree uses linked `node_modules` from Dev checkout)
 
 ## What was NOT done
 
-- No version bump, no Dev deploy, no schema apply, no merge.
-- No edits to accounting outbound, Asan adapters, connection security, customer outbound paths.
-- Full `nx test` / `tsgo` suite not executed (dependency/tooling blocked locally).
+- No version bump, Dev deploy, schema apply, merge, screenshots, live Asan
+- No architect-owned outbound/adapter/connection/security edits
