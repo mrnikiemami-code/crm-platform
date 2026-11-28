@@ -1,3 +1,4 @@
+import { readSealedQuotation, decodeRevisionLine, formatSealedMicros } from 'src/modules/quotation/utils/quotation-sealed-display.util';
 import {
   buildQuotationRevisionSnapshot,
   canonicalizeForHash,
@@ -275,3 +276,16 @@ describe('V2 sealed facts', () => {
       identity: { revisionNumber: 2, customer } }).ok).toBe(false);
   });
 });
+
+ describe('sealed display projection', () => {
+   it('reads historical canonical integer micros without multiplying a second time', () => {
+     const seal = readSealedQuotation(SHARED_SNAPSHOT, SHARED_FIXTURE_HASH, 'q-1', 1);
+     expect(seal).not.toBeNull();
+     const decoded = decodeRevisionLine(SHARED_SNAPSHOT.lines[0]);
+     expect(decoded.ok && formatSealedMicros(decoded.value.total)).toBe('981.000000');
+   });
+   it('rejects tampering and cross-document substitution', () => {
+     expect(readSealedQuotation({ ...SHARED_SNAPSHOT, quotationNumber: 'OTHER' }, SHARED_FIXTURE_HASH, 'q-1', 1)).toBeNull();
+     expect(readSealedQuotation(SHARED_SNAPSHOT, SHARED_FIXTURE_HASH, 'q-other', 1)).toBeNull();
+   });
+ });

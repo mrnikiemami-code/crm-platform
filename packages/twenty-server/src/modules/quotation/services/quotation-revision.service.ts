@@ -250,7 +250,7 @@ export class QuotationRevisionService {
       snapshotJson: built.snapshot,
       snapshotHash,
       // Record columns use exact decimal IRR; only the hashed seal uses integer micros.
-      totalExact: header.totalExact!,
+      totalExact: header.totalExact as string,
       issuedAt,
       issuedBy,
       quotationId,

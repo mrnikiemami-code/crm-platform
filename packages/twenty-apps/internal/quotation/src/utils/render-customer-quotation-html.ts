@@ -59,6 +59,7 @@ export const renderCustomerQuotationHtml = (
       <div>مشتری: ${escapeHtml(view.customerLabel)}</div>
       <div>شرایط پرداخت: ${escapeHtml(view.paymentTerms ?? '—')}</div>
     </div>
+    ${view.issuedHint ? `<p class="note">${escapeHtml(view.issuedHint)}</p>` : ''}
     <table>
       <thead>
         <tr>
@@ -78,7 +79,7 @@ export const renderCustomerQuotationHtml = (
       ${row('ناخالص', view.grossDisplay)}
       ${row('تخفیف ردیف‌ها', view.lineDiscountDisplay)}
       ${row('تخفیف کل', view.documentDiscountDisplay)}
-      ${row('مالیات', view.taxDisplay)}
+      ${row('مالیات و عوارض', view.taxDisplay)}
       ${row('تعدیل گردکردن', view.roundingDisplay)}
       <div class="row payable"><span>مبلغ نهایی قابل پرداخت</span><strong>${escapeHtml(view.totalDisplay)}</strong></div>
     </div>
