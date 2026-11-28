@@ -235,7 +235,7 @@ export const RoundingList = ({
                   <RowMenu
                     label={`عملیات قاعده ${row.stepAmount}`}
                     open={openMenuId === row.id}
-                    onOpenChange={(next) => setOpenMenuId(next ? row.id : null)}
+                    onOpenChange={(next) => setOpenMenuId(current => next ? row.id : current === row.id ? null : current)}
                     items={[
                       { id: 'edit', label: 'ویرایش', onSelect: () => onEdit(row.id) },
                       {

@@ -76,6 +76,7 @@ export const readCrmItemMatches = (
         id,
         name: readString(node.name),
         sku: readNullableString(node.sku),
+        ...(asRecord(node.unitRecord)?.isActive === true && readNullableString(asRecord(node.unitRecord)?.id) ? { unitRecordId: readNullableString(asRecord(node.unitRecord)?.id) } : {}),
         priceMicros: readItemPriceMicros(node, readNullableString(readEdges(payload, 'priceLists')[0]?.id)),
       },
     ];

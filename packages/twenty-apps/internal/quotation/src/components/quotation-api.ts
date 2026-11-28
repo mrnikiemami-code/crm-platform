@@ -41,6 +41,12 @@ export const callAppRoute = async (
     return callAccountingOperationNestAction(path, body);
   }
 
+  // All financial prerequisite reads and mutations share Nest authority.
+  if (path === QUOTATION_UNITS_ROUTE) return callQuotationUnitsNestAction(body);
+  if (path === TAX_POLICIES_ROUTE) return callTaxPoliciesNestAction(body);
+  if (path === ROUNDING_RULES_ROUTE) return callRoundingRulesNestAction(body);
+  if (path === QUOTATION_CURRENCIES_ROUTE) return callQuotationCurrenciesNestAction(body);
+
   const baseUrl = resolveFunctionsBaseUrl(undefined, undefined);
   const token =
     process.env.TWENTY_APP_ACCESS_TOKEN ?? process.env.TWENTY_API_KEY;

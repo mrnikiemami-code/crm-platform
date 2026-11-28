@@ -19,6 +19,7 @@ export type CrmItemMatch = {
   name: string;
   sku: string | null;
   priceMicros: string | null;
+  unitRecordId?: string | null;
 };
 
 export type CrmItemIndex = {
@@ -133,6 +134,7 @@ export const enrichItemPage = ({
         decision === 'DUPLICATE_REMOTE_CODE' ? null : (suggestion?.id ?? null),
       suggestedInternalItemName:
         decision === 'DUPLICATE_REMOTE_CODE' ? null : (suggestion?.name ?? null),
+      ...(suggestion?.unitRecordId && decision !== 'DUPLICATE_REMOTE_CODE' ? { suggestedUnitRecordId: suggestion.unitRecordId } : {}),
       crmPriceMicros,
       priceDifferenceMicros:
         decision === 'DUPLICATE_REMOTE_CODE'

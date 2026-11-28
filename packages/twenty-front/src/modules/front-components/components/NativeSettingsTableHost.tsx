@@ -32,13 +32,14 @@ const NativePager = forwardRef<HTMLDivElement, Props>(({ title, onClick }, ref) 
 });
 // Outside events and focus belong to the real host DOM, not the guest worker.
 // The only event sent to the guest is the presentation-only dismissal signal.
-export const NativeRowMenuBoundary = forwardRef<HTMLDivElement, Props>(({ children, title, onClick }, forwardedRef) => {
+export const NativeRowMenuBoundary = forwardRef<HTMLDivElement, Props>(({ children, title }, forwardedRef) => {
   const root = useRef<HTMLDivElement>(null);
   useImperativeHandle(forwardedRef, () => root.current!, []);
   useEffect(() => {
     const element = root.current;
     if (title !== 'open' || !element) return;
-    const dismiss = () => onClick?.({ type: 'click', target: { value: 'dismiss' } });
+    // Use the actual remote button's event bridge, not a synthetic value on a div.
+    const dismiss = () => element.querySelector<HTMLButtonElement>('button[data-row-menu-dismiss="true"]')?.click();
     const outside = (event: PointerEvent) => {
       if (!event.composedPath().includes(element)) dismiss();
     };
@@ -63,7 +64,7 @@ export const NativeRowMenuBoundary = forwardRef<HTMLDivElement, Props>(({ childr
       doc.removeEventListener('pointerdown', outside, true);
       doc.removeEventListener('keydown', keyboard, true);
     };
-  }, [title, onClick]);
+  }, [title]);
   return <div ref={root}>{children}</div>;
 });
 const optIn = (marker: string, component: ElementType) => (props: Readonly<Record<string, unknown>>) => props.className === marker ? component : undefined;

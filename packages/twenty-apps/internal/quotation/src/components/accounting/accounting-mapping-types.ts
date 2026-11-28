@@ -56,6 +56,7 @@ export type ItemMappingRow = {
   existingLinkId: string | null;
   suggestedInternalItemId: string | null;
   suggestedInternalItemName: string | null;
+  suggestedUnitRecordId?: string | null;
   priceMicros: string | null;
   planPrice: string;
   crmPriceMicros: string | null;
@@ -286,6 +287,7 @@ export const parseItemMappingPage = (value: unknown): MappingPage<ItemMappingRow
           suggestedInternalItemId: readNullableString(
             row.suggestedInternalItemId,
           ),
+          suggestedUnitRecordId: readNullableString(row.suggestedUnitRecordId),
           suggestedInternalItemName: readNullableString(
             row.suggestedInternalItemName,
           ),

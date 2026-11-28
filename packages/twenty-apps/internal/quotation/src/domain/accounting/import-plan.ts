@@ -88,6 +88,7 @@ export type ItemImportRow = {
   // The suggested item's name, so the screen never has to translate an id into a name it
   // does not have. Optional because the apply plan speaks ids only.
   suggestedInternalItemName?: string | null;
+  suggestedUnitRecordId?: string | null;
   priceMicros: string | null;
   priceUnits: number | null;
   planPrice: string;

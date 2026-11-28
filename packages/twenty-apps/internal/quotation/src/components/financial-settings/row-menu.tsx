@@ -115,15 +115,11 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
   }, [open]);
 
   return (
-    <div className="twenty-native-row-menu-boundary" title={open ? 'open' : 'closed'}
-      onClick={(event) => { if ((event.target as HTMLInputElement | null)?.value === 'dismiss') onOpenChangeRef.current(false); }}>
+    <div className="twenty-native-row-menu-boundary" title={open ? 'open' : 'closed'}>
+    <button type="button" data-row-menu-dismiss="true" aria-hidden="true" tabIndex={-1} style={{ display: 'none' }} onClick={() => onOpenChangeRef.current(false)} />
     <div
       ref={rootRef}
       className={open ? 'fs-menu-root is-open' : 'fs-menu-root'}
-      onPointerDown={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
     >
       <style>{CSS}</style>
       <button
@@ -134,10 +130,7 @@ export const RowMenu = ({ label, items, open, onOpenChange }: RowMenuProps) => {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={label}
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpenChange(!open);
-        }}
+        onClick={() => onOpenChange(!open)}
       >
         <DotsIcon />
       </button>

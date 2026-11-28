@@ -64,6 +64,7 @@ export const buildMappingCrmItemsQuery = ({
           id
           name
           sku
+          unitRecord { id name isActive }
           ${PRICE_SELECTION}
         }
       }
