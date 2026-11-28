@@ -173,8 +173,8 @@ export class QuotationPdfService {
         if (!sealed) {
           throw new QuotationQueryValidationException('REVISION_MISMATCH: issued PDF requires one valid sealed revision', QuotationQueryValidationExceptionCode.FORBIDDEN);
         }
-        let lineDiscount = 0n;
-        let documentDiscount = 0n;
+        let lineDiscount = BigInt(0);
+        let documentDiscount = BigInt(0);
         const lines = sealed.lines.map((line, index): QuotationLinePdfRow => {
           const decoded = decodeRevisionLine(line);
           if (!decoded.ok) throw new QuotationQueryValidationException('TOTALS_INCONSISTENT: invalid sealed line', QuotationQueryValidationExceptionCode.FORBIDDEN);

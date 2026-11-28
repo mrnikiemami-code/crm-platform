@@ -306,10 +306,10 @@ export const buildQuotationRevisionSnapshot = ({
       total,
     } = lineAmounts as Record<keyof typeof lineAmounts, bigint>;
 
-    if (identity && (quantity <= 0n || unitPrice < 0n || gross < 0n ||
-      discount < 0n || documentDiscount < 0n || tax < 0n ||
+    if (identity && (quantity <= BigInt(0) || unitPrice < BigInt(0) || gross < BigInt(0) ||
+      discount < BigInt(0) || documentDiscount < BigInt(0) || tax < BigInt(0) ||
       discount + documentDiscount > gross ||
-      gross !== (quantity * unitPrice + 500000n) / 1000000n ||
+      gross !== (quantity * unitPrice + BigInt(500000)) / BigInt(1000000) ||
       total !== gross - discount - documentDiscount + tax ||
       !line.id || sealedLines.some((entry) => entry.lineId === line.id))) {
       return { ok: false, code: 'TOTALS_INCONSISTENT', detail: 'line financial facts do not add up: ' + line.id };

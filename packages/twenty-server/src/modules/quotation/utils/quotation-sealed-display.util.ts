@@ -24,14 +24,14 @@ export const decodeRevisionLine = (line: QuotationRevisionLine): Result<DecodedR
   if (!quantity.ok || !unitPrice.ok || !lineDiscount.ok || !tax.ok || !total.ok) {
     return refused('AMOUNT_NOT_A_DECIMAL', 'invalid sealed line amount');
   }
-  const gross = (quantity.value * unitPrice.value + 500000n) / 1000000n;
+  const gross = (quantity.value * unitPrice.value + BigInt(500000)) / BigInt(1000000);
   const net = total.value - tax.value;
   // Historical seals did not store the allocated document discount. It is recoverable
   // exactly from the sealed quantity, price, line discount and net; the document-level
   // sum below must also match. No magnitude/encoding guess or historical rewrite.
   const documentDiscount = gross - lineDiscount.value - net;
-  if (quantity.value <= 0n || unitPrice.value < 0n || lineDiscount.value < 0n ||
-      tax.value < 0n || net < 0n || documentDiscount < 0n ||
+  if (quantity.value <= BigInt(0) || unitPrice.value < BigInt(0) || lineDiscount.value < BigInt(0) ||
+      tax.value < BigInt(0) || net < BigInt(0) || documentDiscount < BigInt(0) ||
       (line.grossMicros !== undefined && line.grossMicros !== gross.toString()) ||
       (line.documentDiscountMicros !== undefined && line.documentDiscountMicros !== documentDiscount.toString())) {
     return refused('TOTALS_INCONSISTENT', 'sealed line quantity, price and discount do not reconcile');
@@ -46,7 +46,7 @@ export const validateRevisionFinancialFacts = (revision: QuotationRevisionSnapsh
     return refused('REVISION_MISMATCH', 'unsupported or incomplete revision');
   }
   const ids = new Set<string>();
-  let gross = 0n, lineDiscount = 0n, documentDiscount = 0n, net = 0n, tax = 0n;
+  let gross = BigInt(0), lineDiscount = BigInt(0), documentDiscount = BigInt(0), net = BigInt(0), tax = BigInt(0);
   for (const line of revision.lines) {
     if (!line || typeof line.lineId !== 'string' || !line.lineId || ids.has(line.lineId) ||
       (revision.schemaVersion === 2 && (line.grossMicros === undefined || line.documentDiscountMicros === undefined))) {
@@ -69,8 +69,8 @@ export const validateRevisionFinancialFacts = (revision: QuotationRevisionSnapsh
       totals.discountMicros !== (lineDiscount + documentDiscount).toString() ||
       totals.netMicros !== net.toString() || totals.taxMicros !== tax.toString() ||
       totals.totalMicros !== (net + tax + rounding.value).toString() ||
-      (net + tax + rounding.value) % 1000000n !== 0n ||
-      net + tax + rounding.value < 0n || duty.value < 0n || duty.value > tax ||
+      (net + tax + rounding.value) % BigInt(1000000) !== BigInt(0) ||
+      net + tax + rounding.value < BigInt(0) || duty.value < BigInt(0) || duty.value > tax ||
       (totals.taxOnlyMicros !== undefined && totals.taxOnlyMicros !== (tax - duty.value).toString()) ||
       (totals.preRoundTotalMicros !== undefined && totals.preRoundTotalMicros !== (net + tax).toString()) ||
       (revision.schemaVersion === 2 && (totals.lineDiscountMicros !== lineDiscount.toString() ||
@@ -82,8 +82,8 @@ export const validateRevisionFinancialFacts = (revision: QuotationRevisionSnapsh
 
 
 export const formatSealedMicros = (value: bigint): string => {
-  const magnitude = value < 0n ? -value : value;
-  return `${value < 0n ? '-' : ''}${magnitude / 1000000n}.${(magnitude % 1000000n).toString().padStart(6, '0')}`;
+  const magnitude = value < BigInt(0) ? -value : value;
+  return `${value < BigInt(0) ? '-' : ''}${magnitude / BigInt(1000000)}.${(magnitude % BigInt(1000000)).toString().padStart(6, '0')}`;
 };
 
 export const readSealedQuotation = (raw: unknown, hash: unknown, quotationId: string, revisionNumber: number | null) => {
