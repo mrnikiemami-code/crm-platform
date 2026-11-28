@@ -419,6 +419,18 @@ describe('choosing between several connections', () => {
     expect(screen.getByRole('menuitem', { name: 'غیرفعال کردن' })).toBeTruthy();
   });
 
+  it('closes an open menu on outside press and preserves the next menu', async () => {
+    renderSection();
+    await openRowMenu('conn-2');
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('menu')).toBeNull();
+    await openRowMenu('conn-2');
+    await openRowMenu('conn-3');
+    expect(screen.getAllByRole('menu')).toHaveLength(1);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   it('sets the workspace default from the row menu', async () => {
     const { onSetWorkspaceDefault, onEditConnection } = renderSection();
 
@@ -442,7 +454,7 @@ describe('choosing between several connections', () => {
     expect(onEditConnection.mock.calls[0][0].id).toBe('conn-2');
   });
 
-  it('disables promoting the current workspace default again', async () => {
+  it('omits promoting the current workspace default again', async () => {
     renderSection({
       connections: [
         connection({ id: 'conn-1', isDefault: true }),
@@ -453,13 +465,8 @@ describe('choosing between several connections', () => {
     expect(screen.getByText('پیش‌فرض')).toBeTruthy();
 
     await openRowMenu('conn-1');
-    expect(
-      (
-        screen.getByRole('menuitem', {
-          name: 'تنظیم به‌عنوان پیش‌فرض',
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    expect(screen.queryByRole('menuitem', { name: 'تنظیم به‌عنوان پیش‌فرض' })).toBeNull();
+    expect(screen.queryByText('این اتصال هم‌اکنون پیش‌فرض است.')).toBeNull();
   });
 
   it('offers deactivate on an active row and activate on an inactive row', async () => {
