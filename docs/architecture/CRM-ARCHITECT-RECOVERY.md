@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 038 G0 repair 089 SOURCE_PARTIAL (2026-11-28)
+## CURRENT — Goal 038 G0 repair 090 SOURCE_PARTIAL (2026-11-28)
+
+Candidate quotation@0.1.90; direct source repairs committed on feat/crm-129-quotation. Read [checkpoint 090](./goal-038/CRM-129-GOAL-038-G0-REPAIR-090.md) FIRST for exact commits, remaining source/operational gates, supported fresh-package install flow and one comprehensive verification assignment. Actual Asan transport is explicitly bound and read-only; no approved binding configured or vendor traffic executed by architect. All 089/090 build/test/deploy gates NOT_RUN. Last verified Dev is 0.1.88. G0 NOT PASS, G1/G2 NOT AUTHORIZED, Goal 023 ACTIVE. Preserve accepted versions and Intranet.
+
+## PRIOR — Goal 038 G0 repair 089 SOURCE_PARTIAL (2026-11-28)
 
 Direct architect source repairs are committed on feat/crm-129-quotation; candidate quotation@0.1.89. See [repair checkpoint 089](./goal-038/CRM-129-GOAL-038-G0-REPAIR-089.md) for exact source commits, remaining gates and verification. The previous 088 runtime evidence is historical and cannot certify 089. No build, test or deployment executed for 089. Default live Asan application transport deliberately fails closed until approved transport is wired. G0 is NOT PASS, G1 not authorized, Goal 023 ACTIVE. No Intranet or real vendor traffic. Architect owns remaining product source repairs.
 
