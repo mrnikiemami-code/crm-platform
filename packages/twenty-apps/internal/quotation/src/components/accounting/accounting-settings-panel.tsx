@@ -22,7 +22,6 @@ import {
   type CatalogReadState,
 } from 'src/components/accounting/accounting-catalog-read';
 import {
-  Badge,
   Breadcrumbs,
   SectionNav,
   StateBlock,
@@ -809,8 +808,6 @@ export const AccountingSettingsPanel = () => {
 
   const connection =
     data.connections.find((entry) => entry.id === activeConnectionId) ?? null;
-  const workspaceDefaultConnection =
-    data.connections.find((entry) => entry.isDefault && entry.isActive) ?? null;
   // Every section names the same destination, so the label and the readiness counts come
   // from the SELECTED record, never from an unsaved edit draft.
   const connectionMoneyUnit =
@@ -973,16 +970,6 @@ export const AccountingSettingsPanel = () => {
                 : breadcrumbLabel}
             </h2>
           </div>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Badge
-              tone={workspaceDefaultConnection === null ? 'warning' : 'success'}
-            >
-              {workspaceDefaultConnection === null
-                ? 'نیازمند انتخاب مقصد پیش‌فرض'
-                : `پیش‌فرض فضای کاری: ${workspaceDefaultConnection.name}`}
-            </Badge>
-
-          </div>
         </div>
       </header>
 
@@ -1080,6 +1067,7 @@ export const AccountingSettingsPanel = () => {
           <div className="acct-list-panel" style={{ display: section === 'documents' ? 'flex' : 'none' }}>
             {visited.has('documents') ? (
               <AccountingDocumentsSection
+                key={connection?.id ?? 'none'}
                 connection={connection}
                 operations={operations}
                 busy={busy}
