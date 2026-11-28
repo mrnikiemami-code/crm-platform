@@ -133,6 +133,14 @@ const handler = async (event: RoutePayload<unknown>) => {
       );
     }
 
+    // Internal Nest-only health request. Use precisely the same workspace-bound
+    // transport and schema parser as the catalog read; no independent vendor socket.
+    if (action === 'probe-connection') {
+      const health = await adapter.value.testConnection();
+      if (!health.ok) return failure(health.refusal.code, persianAccountingMessage(health.refusal.code));
+      return { success: true, health: health.value };
+    }
+
     // The paginated path the screens actually use. Every response is one bounded page plus
     // the snapshot's honest limits; nothing here can grow with the size of either side.
     if (action === 'preview-items-page') {

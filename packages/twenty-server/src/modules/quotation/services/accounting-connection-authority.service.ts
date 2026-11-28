@@ -640,7 +640,7 @@ export class AccountingConnectionAuthorityService {
         baseUrl: readText(existing.baseUrl),
         transportApproved: existing.transportApproved === true,
         allowlist: readPrivateDestinationAllowlist(),
-      });
+      }, authContext, existing.id);
 
       // A live vendor is not "verified" because it answered a read: nothing here proves
       // an accepted write or a mapped document, so the state stays LIVE_UNVERIFIED.

@@ -1,5 +1,5 @@
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
-import { AccountingOperationDispatchService } from 'src/modules/quotation/services/accounting-operation-dispatch.service';
+import { AccountingOperationDispatchService, ACCOUNTING_OPERATION_ACTIONS } from 'src/modules/quotation/services/accounting-operation-dispatch.service';
 
 const auth = {
   type: 'user', workspace: { id: 'ws-1' }, user: { id: 'u-1' }, userWorkspaceId: 'uw-1',
@@ -31,6 +31,19 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
 };
 
 describe('accounting operation boundary', () => {
+  it('keeps health dispatch private and applies settings authority before invoking it', async () => {
+    expect(ACCOUNTING_OPERATION_ACTIONS).not.toContain('accounting-internal-probe-connection');
+    const denied = setup(null);
+    expect(await denied.service.dispatch('accounting-internal-probe-connection', { connectionId: 'c' }, auth))
+      .toMatchObject({ success: false, code: 'FORBIDDEN' });
+    expect(denied.execute).not.toHaveBeenCalled();
+    const granted = setup('SETTINGS_ROLE');
+    expect(await granted.service.dispatch('accounting-internal-probe-connection', { connectionId: 'c' }, auth))
+      .toEqual({ success: true });
+    expect(granted.execute).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: 'ws-1',
+      logicFunctionId: 'import-fn', payload: expect.objectContaining({ body: { connectionId: 'c', action: 'probe-connection' } }) }));
+  });
+
   it('refuses unattended customer writes before dispatch', async () => {
     const { service, execute } = setup('SETTINGS_ROLE');
     const app = { type: 'application', workspace: { id: 'ws-1' }, application: { universalIdentifier: 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb' } } as WorkspaceAuthContext;

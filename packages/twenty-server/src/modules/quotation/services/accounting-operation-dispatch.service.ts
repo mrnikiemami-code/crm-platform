@@ -18,6 +18,7 @@ const FUNCTIONS = {
 } as const;
 
 const OPERATIONS = {
+  'accounting-internal-probe-connection': { function: 'import', action: 'probe-connection' },
   'accounting-import-preview-items-page': { function: 'import', action: 'preview-items-page' },
   'accounting-import-preview-parties-page': { function: 'import', action: 'preview-parties-page' },
   'accounting-import-search-party-candidates': { function: 'import', action: 'search-party-candidates' },
@@ -33,7 +34,10 @@ const OPERATIONS = {
   'accounting-outbound-list-exportable-quotations': { function: 'outbound', action: 'list-exportable-quotations' },
 } as const;
 
-export const ACCOUNTING_OPERATION_ACTIONS = Object.keys(OPERATIONS);
+// Connection tests enter through the existing settings authority, not an
+// additional public controller action.
+export const ACCOUNTING_OPERATION_ACTIONS = Object.keys(OPERATIONS)
+  .filter((action) => action !== 'accounting-internal-probe-connection');
 
 const failure = (code: string, message: string) => ({
   success: false as const,
