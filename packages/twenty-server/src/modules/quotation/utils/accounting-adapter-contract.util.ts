@@ -45,9 +45,9 @@ const ASAN_CAPABILITIES = {
   },
   documents: {
     createProforma: true,
-    // Documented in the vendor guide, not executable by the quotation adapter.
+    // Invoice is documented, not executable; the recent pro-forma report is implemented.
     createInvoice: false,
-    readDocuments: false,
+    readDocuments: true,
     readById: false,
     updateDocument: false,
     cancelDocument: false,

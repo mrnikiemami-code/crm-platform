@@ -133,10 +133,22 @@ export type RemoteParty = AccountingPartyProfile & {
   remoteVersion: string;
 };
 
+// Report observations are not a fiscal posting confirmation. A missing row in
+// a recent-N report proves nothing about the existence of a document.
+export type RemoteProformaObservation = {
+  externalDocumentId: string;
+  customerExternalId: string;
+  description: string;
+  rows: { externalItemId: string; quantity: number; observedPrice: number; storageId: string }[];
+};
+
 export type RemoteDocument = {
   externalDocumentId: string;
   documentNumber: string;
   registeredAt: string | null;
+  // Asan acknowledges a number, but the report's price/discount semantics still
+  // require G2 certification. Neither value authorizes automatic replay.
+  registrationEvidence?: 'ACKNOWLEDGED_ONLY' | 'IDENTITY_OBSERVED';
 };
 
 export type AdapterHealth =
@@ -223,6 +235,7 @@ export type AccountingAdapter = {
   listPrices?(): Promise<Result<RemotePriceObservation[]>>;
   listStores?(): Promise<Result<RemoteStorage[]>>;
   readStockByStore?(externalItemId: string, externalStorageId: string): Promise<Result<number>>;
+  listRecentProformas?(count: number): Promise<Result<RemoteProformaObservation[]>>;
   // Implemented only when `capabilities.readStrategy === 'REMOTE_PAGED'`. Its absence is the
   // machine-readable proof that the destination cannot page, so the reader falls back to
   // the bounded snapshot instead of guessing an offset the vendor does not accept.

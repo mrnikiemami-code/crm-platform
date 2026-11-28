@@ -993,10 +993,10 @@ export const executeQuotationExport = async (
       : { specialItemCodes: settings.specialItemCodes }),
     dutyHandling: adapter.capabilities.dutyHandling,
     ...(adapter.id === 'asan' || taxVendorCode === undefined ? {} : { taxVendorCode }),
-    description:
-      context.value.quotation.name === ''
+    description: (context.value.quotation.name === ''
         ? context.value.quotation.id
-        : context.value.quotation.name,
+        : context.value.quotation.name) +
+      (adapter.id === 'asan' ? ' [CRM:' + decision.operationId + ']' : ''),
     ...(settings.defaultStorageId === ''
       ? {}
       : { storageId: Number(settings.defaultStorageId) }),
@@ -1069,6 +1069,22 @@ export const executeQuotationExport = async (
     });
 
     return vendorResult;
+  }
+
+  // The live vendor's positive code or recent-report identity match is not
+  // proof of posted monetary semantics. Preserve the candidate number and
+  // stop for reconciliation rather than marking a fiscal success or replaying.
+  if (adapter.id === 'asan') {
+    const evidence = vendorResult.value.registrationEvidence;
+    await finishOperation({
+      id: operationId, connectionId, kind: 'QUOTATION_REVISION_PUSH',
+      internalEntityId: quotationId, internalRevision: context.value.revision.version,
+      state: 'MANUAL_EXPORT_REQUIRED', attempts: attempts + 1,
+      externalDocumentId: vendorResult.value.externalDocumentId,
+      errorCode: evidence === 'IDENTITY_OBSERVED' ? 'ASAN_FISCAL_READBACK_REQUIRED' : 'ASAN_DOCUMENT_READBACK_REQUIRED',
+      execute,
+    });
+    return refused('RECONCILIATION_REQUIRED', 'the acknowledged document number is retained for authorized reconciliation; do not replay');
   }
 
   await finishOperation({

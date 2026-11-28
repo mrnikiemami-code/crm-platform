@@ -34,6 +34,10 @@ const PERSIAN_MESSAGES: Record<string, string> = {
 
   TRANSPORT_NOT_APPROVED:
     'ارتباط امن این سرویس تأیید نشده است؛ آدرس سرویس یا تونل باید HTTPS باشد.',
+  ASAN_FISCAL_READBACK_REQUIRED:
+    'شماره سند در آسان مشاهده شد؛ تطبیق مالی سند هنوز لازم است. دوباره ارسال نکنید.',
+  ASAN_DOCUMENT_READBACK_REQUIRED:
+    'شماره پاسخ آسان نگهداری شد؛ سند باید در حسابداری بررسی شود. دوباره ارسال نکنید.',
   ASAN_LIVE_WRITE_NOT_APPROVED:
     'مسیر فعلی آسان فقط برای خواندن اطلاعات است؛ ثبت یا تغییر اطلاعات مجاز نیست.',
   ASAN_TRANSPORT_UNAVAILABLE:

@@ -48,7 +48,8 @@ describe('Asan app/Nest capability parity', () => {
   it('does not present documented but absent document operations as executable', () => {
     const adapter = new AsanHttpAdapter({ baseUrl: 'https://example.invalid', remoteUserId: '1' });
     expect(adapter.capabilities.documents.createInvoice).toBe(false);
-    expect(adapter.capabilities.documents.readDocuments).toBe(false);
+    expect(adapter.capabilities.documents.readDocuments).toBe(true);
+    expect(typeof adapter.listRecentProformas).toBe('function');
     expect(adapter.capabilities.documents.readById).toBe(false);
     expect(typeof adapter.readItem).toBe('function');
     expect(typeof adapter.listPrices).toBe('function');

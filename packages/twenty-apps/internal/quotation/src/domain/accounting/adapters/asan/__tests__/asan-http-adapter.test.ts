@@ -426,7 +426,8 @@ describe('Asan write integrity', () => {
   });
 });
 describe('asan document registration', () => {
-  const payload = { FactorNumber: 0 };
+  const payload = { FactorNumber: 0, CustomerID: 101,
+    Description: 'پیش‌فاکتور [CRM:12345678-1234-5234-8234-123456789abc]' };
 
   it('treats zero as NOT registered and refuses to call it success', async () => {
     const result = await adapter(
@@ -440,20 +441,23 @@ describe('asan document registration', () => {
     });
   });
 
-  it('reports the positive document number as the only proof of registration', async () => {
-    const result = await adapter(
-      { baseUrl: 'https://accounting.example/api' },
-      fakeFetch({ text: '501' }).fetchImpl,
-    ).registerProforma({ payload, description: 'پیش‌فاکتور' });
+  it('keeps an acknowledged number without claiming registration when readback is absent', async () => {
+    const fake = sequencedFetch('501', '[]');
+    const result = await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl)
+      .registerProforma({ payload, description: 'پیش‌فاکتور' });
+    expect(result).toEqual({ ok: true, value: { externalDocumentId: '501',
+      documentNumber: '501', registeredAt: null, registrationEvidence: 'ACKNOWLEDGED_ONLY' } });
+    expect(fake.calls.map((call) => call.method)).toEqual(['POST', 'GET']);
+  });
 
-    expect(result).toEqual({
-      ok: true,
-      value: {
-        externalDocumentId: '501',
-        documentNumber: '501',
-        registeredAt: '2026-11-21T08:00:00.000Z',
-      },
-    });
+  it('matches the exact customer, number and operation marker without claiming fiscal confirmation', async () => {
+    const fake = sequencedFetch('501', JSON.stringify([{ FactorNumber: 501, CustomerCode: 101,
+      Description: payload.Description, FactorDetails: [{ ProductCode: 1001, Count: 2, Price: 1000, StorageID: 0 }] }]));
+    const result = await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl)
+      .registerProforma({ payload, description: 'پیش‌فاکتور' });
+    expect(result).toMatchObject({ ok: true, value: { externalDocumentId: '501',
+      registrationEvidence: 'IDENTITY_OBSERVED', registeredAt: null } });
+    expect(fake.calls[1].url).toContain('PishFactorsNew/LastPishFactors?Count=50');
   });
 
   it('refuses an undocumented answer rather than assuming the document exists', async () => {
@@ -541,7 +545,7 @@ describe('asan response body budget', () => {
       refusal: { code: 'REMOTE_DATASET_TOO_LARGE' },
     });
     expect(fake.readerCalls()).toBe(0);
-    expect(fake.cancellations()).toBe(0);
+    expect(fake.cancellations()).toBe(1);
   });
 
   it('reads a body inside the budget to the end', async () => {

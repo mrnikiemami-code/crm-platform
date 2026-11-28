@@ -51,7 +51,7 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
     // The guide documents these operations, but the quotation adapter does not implement
     // them. The separate wire inventory retains their documented existence.
     createInvoice: false,
-    readDocuments: false,
+    readDocuments: true, // bounded recent pro-forma report, not by-id or fiscal proof
     // The guide documents listing the LAST n documents, not fetching one by id. So a
     // status poll for a specific document is not supported and must not be assumed.
     readById: false,

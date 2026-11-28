@@ -23,6 +23,7 @@ import {
   type RemotePriceObservation,
   type RemoteStorage,
   type RemoteDocument,
+  type RemoteProformaObservation,
   type RemoteItemInput,
   type RemoteParty,
   type RemotePartyInput,
@@ -1126,6 +1127,48 @@ export class AsanHttpAdapter implements AccountingAdapter {
     return accepted(party);
   }
 
+  async listRecentProformas(count: number): Promise<Result<RemoteProformaObservation[]>> {
+    if (!Number.isInteger(count) || count < 1 || count > 100) {
+      return refused('INVALID_INPUT', 'recent document count must be between 1 and 100');
+    }
+    const response = await this.request({ path: ASAN_ENDPOINTS.lastPishFactors,
+      method: 'GET', query: { Count: String(count) } });
+    if (!response.ok) return response;
+    if (response.value.status < 200 || response.value.status >= 300) return refused('INVALID_RESPONSE', 'recent pro-forma report did not succeed');
+    const parsed = this.parseJson(response.value.text);
+    if (!parsed.ok) return parsed;
+    const records = extractArray(parsed.value, ['data', 'Factors', 'factors']);
+    if (records === null || records.length > count) return refused('INVALID_RESPONSE', 'invalid recent pro-forma report');
+    const result: RemoteProformaObservation[] = [];
+    const seen = new Set<string>();
+    for (const entry of records) {
+      const row = asRecord(entry);
+      const number = exactLong(row?.FactorNumber);
+      const customer = exactLong(row?.CustomerCode);
+      if (row === null || number === null || customer === null || seen.has(number) ||
+          typeof row.Description !== 'string' || !Array.isArray(row.FactorDetails)) {
+        return refused('ASAN_INCOMPLETE_DATASET', 'recent pro-forma report contains an invalid or duplicate identity');
+      }
+      const details: RemoteProformaObservation['rows'] = [];
+      for (const entryDetail of row.FactorDetails) {
+        const detail = asRecord(entryDetail);
+        const product = exactLong(detail?.ProductCode);
+        const quantity = readNumber(detail?.Count);
+        const observedPrice = readNumber(detail?.Price);
+        const storage = exactLong(detail?.StorageID, true);
+        if (product === null || quantity === null || observedPrice === null ||
+            Math.abs(observedPrice) > Number.MAX_SAFE_INTEGER || storage === null) {
+          return refused('ASAN_INCOMPLETE_DATASET', 'recent pro-forma contains an incomplete detail');
+        }
+        details.push({ externalItemId: product, quantity, observedPrice, storageId: storage });
+      }
+      seen.add(number);
+      result.push({ externalDocumentId: number, customerExternalId: customer,
+        description: row.Description, rows: details });
+    }
+    return accepted(result);
+  }
+
   async registerProforma(
     input: RemoteProformaInput,
   ): Promise<Result<RemoteDocument>> {
@@ -1158,10 +1201,21 @@ export class AsanHttpAdapter implements AccountingAdapter {
     );
 
     if (classification.kind === 'DOCUMENT_REGISTERED') {
+      const number = String(classification.documentNumber);
+      const payload = asRecord(input.payload);
+      const customer = exactLong(payload?.CustomerID);
+      const description = payload?.Description;
+      // Keep the acknowledged number even when readback fails. Absence from a
+      // bounded recent report is never proof that replay is safe. The report
+      // is identity evidence, not yet certified money/discount evidence.
+      const report = await this.listRecentProformas(50);
+      const matched = report.ok && customer !== null && typeof description === 'string' &&
+        /\[CRM:[0-9a-f-]{36}\]$/.test(description) &&
+        report.value.filter((row) => row.externalDocumentId === number &&
+          row.customerExternalId === customer && row.description === description).length === 1;
       return accepted({
-        externalDocumentId: String(classification.documentNumber),
-        documentNumber: String(classification.documentNumber),
-        registeredAt: this.now().toISOString(),
+        externalDocumentId: number, documentNumber: number, registeredAt: null,
+        registrationEvidence: matched ? 'IDENTITY_OBSERVED' : 'ACKNOWLEDGED_ONLY',
       });
     }
 
