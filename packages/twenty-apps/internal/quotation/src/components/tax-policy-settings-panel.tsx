@@ -267,13 +267,13 @@ export const TaxPolicySettingsPanel = () => {
       const nextRows = readRows(data);
 
       // Never paint a requested default as if it had been persisted.
-      setRows(nextRows);
       if (newDefaultRecordId !== undefined) {
-        const defaults = nextRows.filter(row => row.isDefault && row.isActive);
-        if (defaults.length !== 1 || defaults[0].recordId !== newDefaultRecordId) {
+        const defaults = nextRows.filter(row => row.isDefault);
+        if (defaults.length !== 1 || !defaults[0].isActive || defaults[0].recordId !== newDefaultRecordId) {
           return 'تغییر سیاست پیش‌فرض در پاسخ سرور تأیید نشد؛ بازخوانی کنید.';
         }
       }
+      setRows(nextRows);
       setError(null);
       const successMessage = toPersianUiMessage(data.message, fallbackMessage);
 

@@ -409,7 +409,7 @@ describe('tax policy settings panel', () => {
     expect(screen.queryByRole('menuitem', { name: /^پیش‌فرض$/ })).toBeNull();
   });
 
-  it('repaints a demoted row as non-default when the payload still flags it', async () => {
+  it('refuses contradictory default flags instead of inventing a successful promotion', async () => {
     callTaxPoliciesNestActionMock
       .mockResolvedValueOnce(
         catalog([
@@ -434,15 +434,11 @@ describe('tax policy settings panel', () => {
     await openMoreMenu('مالیات ۱۰٪');
     fireEvent.click(moreItem('مالیات ۱۰٪', /^پیش‌فرض$/));
 
-    await waitFor(() => {
-      if (snackbarMock.mock.calls.length === 0) {
-        throw new Error('the default move has not completed yet');
-      }
-    });
-
-    await openMoreMenu('مالیات ۹٪');
-    expect(moreItem('مالیات ۹٪', /^پیش‌فرض$/)).toBeTruthy();
-    expect(within(rowOf('مالیات ۱۰٪')).getByText('پیش‌فرض')).toBeTruthy();
+    expect(await screen.findByRole('alert')).toHaveTextContent('تغییر سیاست پیش‌فرض در پاسخ سرور تأیید نشد');
+    expect(snackbarMock).not.toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }));
+    expect(within(rowOf('مالیات ۹٪')).getByText('پیش‌فرض')).toBeTruthy();
+    await openMoreMenu('مالیات ۱۰٪');
+    expect(moreItem('مالیات ۱۰٪', /^پیش‌فرض$/)).toBeTruthy();
   });
 
   it('reports a bad rate under its own field with aria-invalid, not as a page error', async () => {
