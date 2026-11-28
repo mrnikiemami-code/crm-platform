@@ -213,6 +213,7 @@ const ACCOUNTING_IMPORT_ACTIONS: Record<string, string> = {
 };
 const ACCOUNTING_OUTBOUND_ACTIONS: Record<string, string> = {
   'operations': 'accounting-outbound-operations',
+  'customer-finance': 'accounting-outbound-customer-finance',
   'preview-party-push': 'accounting-outbound-preview-party-push',
   'execute-party-push': 'accounting-outbound-execute-party-push',
   'reconcile-quotation': 'accounting-outbound-reconcile-quotation',
