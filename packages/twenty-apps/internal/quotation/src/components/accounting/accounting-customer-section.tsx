@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import {
+  ACCOUNTING_CONNECTION_ROUTE,
   ACCOUNTING_IMPORT_ROUTE,
   ACCOUNTING_OUTBOUND_ROUTE,
   callAppRoute,
@@ -34,6 +35,7 @@ import {
   readString,
   sharedStyles as styles,
 } from 'src/components/accounting/accounting-shared';
+import { loadIrrPriceListOptions } from 'src/services/quotation-price-list-picker.service';
 import { toPersianUiMessage } from 'src/domain/quotation/ui-message';
 
 const PAGE_SIZE = 25;
@@ -945,6 +947,7 @@ const CustomerOutboundPanel = ({ connectionId, canManage, onBack }: {
         <SecondaryButton label="تغییر مشتری" disabled={busy} onClick={() => { generation.current += 1; setSelection(null); setPreview(null); setError(null); setReceipt(null); }} />
         <PrimaryButton label="پیش‌نمایش ارسال" disabled={busy || !canManage || receipt !== null} onClick={() => void send(false)} />
       </div>}
+    {selection && <CustomerPriceGroupMapping key={selection.type + ':' + selection.id} connectionId={connectionId} selection={selection} canManage={canManage} />}
     {preview && <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <span>{preview.fullName} — {preview.mode === 'CREATE' ? 'ایجاد مشتری' : 'به‌روزرسانی مشتری متصل'}</span>
       {preview.externalPartyId ? <span>شناسه حسابداری: {preview.externalPartyId}</span> : null}
@@ -953,5 +956,53 @@ const CustomerOutboundPanel = ({ connectionId, canManage, onBack }: {
     </div>}
     {error && <InlineAlert tone="danger" title="ارسال مشتری">{error}</InlineAlert>}
     {receipt && <InlineAlert tone="success" title="ثبت مشتری تأیید شد">شناسه حسابداری: {receipt}</InlineAlert>}
+  </div>;
+};
+
+const CustomerPriceGroupMapping = ({ connectionId, selection, canManage }: {
+  connectionId: string; selection: { id: string; type: 'PERSON' | 'COMPANY' }; canManage: boolean;
+}) => {
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
+  const [selected, setSelected] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      callAppRoute(ACCOUNTING_CONNECTION_ROUTE, { action: 'customer-price-list', connectionId, partyType: selection.type, internalPartyId: selection.id }),
+      loadIrrPriceListOptions(),
+    ]).then(([response, rows]) => {
+      if (cancelled) return;
+      if (!response.ok || response.data.success !== true) { setMessage('نگاشت گروه قیمتی قابل خواندن نیست.'); return; }
+      setGroupId(readString(response.data.groupId) || null);
+      setSelected(readString(response.data.priceListId));
+      setLists(rows);
+    }).catch(() => { if (!cancelled) setMessage('نگاشت گروه قیمتی قابل خواندن نیست.'); });
+    return () => { cancelled = true; };
+  }, [connectionId, selection.type, selection.id]);
+  const save = async () => {
+    if (!groupId || !selected || busy || !canManage) return;
+    if (!window.confirm('این نگاشت برای تمام مشتریان دارای همین گروه در این اتصال اعمال می‌شود. ادامه؟')) return;
+    setBusy(true); setMessage(null);
+    try {
+      const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, { action: 'map-customer-price-group',
+        connectionId, partyType: selection.type, internalPartyId: selection.id, expectedGroupId: groupId, priceListId: selected });
+      setMessage(response.ok && response.data.success === true ? 'نگاشت گروه قیمتی ثبت شد.' : 'نگاشت ثبت نشد؛ هویت گروه یا فهرست را بررسی کنید.');
+    } catch { setMessage('ارتباط با سرور برقرار نشد.'); }
+    finally { setBusy(false); }
+  };
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    {groupId !== null ? <>
+      <span>گروه قیمتی حسابداری: {groupId}</span>
+      <label style={styles.label}>فهرست قیمت CRM
+        <select style={styles.input} value={selected} disabled={busy || !canManage} onChange={event => { setSelected(event.target.value); setMessage(null); }}>
+          <option value="">انتخاب فهرست قیمت</option>
+          {lists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}
+        </select>
+      </label>
+      <SecondaryButton label="ثبت نگاشت گروه قیمتی" onClick={() => void save()} disabled={busy || !selected || !canManage} />
+    </> : <span style={styles.meta}>گروه قیمتی تأییدشده برای این مشتری موجود نیست.</span>}
+    {message && <span role="status">{message}</span>}
   </div>;
 };
