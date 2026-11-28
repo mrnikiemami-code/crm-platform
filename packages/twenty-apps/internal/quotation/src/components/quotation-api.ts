@@ -211,6 +211,9 @@ const ACCOUNTING_IMPORT_ACTIONS: Record<string, string> = {
 };
 const ACCOUNTING_OUTBOUND_ACTIONS: Record<string, string> = {
   'operations': 'accounting-outbound-operations',
+  'preview-party-push': 'accounting-outbound-preview-party-push',
+  'execute-party-push': 'accounting-outbound-execute-party-push',
+  'reconcile-quotation': 'accounting-outbound-reconcile-quotation',
   'preview-item-push': 'accounting-outbound-preview-item-push',
   'execute-item-push': 'accounting-outbound-execute-item-push',
   'preview-quotation-export': 'accounting-outbound-preview-quotation-export',
