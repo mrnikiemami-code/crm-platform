@@ -1,5 +1,17 @@
 # CRM-129 / Goal 039 — offline end-to-end quotation and accounting acceptance
 
+## SUPERSEDING ARCHITECT DECISION — broad scope cancelled (2026-11-28)
+
+The user explicitly rejected repeating development/verification of already delivered quotation functionality. Cancel the remaining broad Goal 039 scope. Preserve already completed 091 security verification and any existing raw operational evidence, including failures. Do not run a new comprehensive campaign, redesign, or modify product source on this authority.
+
+User-relayed interim worker report (not yet independently verified on GitHub): 0.1.91 installed in existing Dev, typecheck/builds PASS, Vitest 815 PASS, isolated TLS PASS_SCOPED, PG lock primitives PASS, anonymous refusal PASS. Credential rotation/revocation remains BLOCKED pending authorized Dev administrator. Worker also reported four unresolved checks: B-PDF-PERSIAN-BYTES, B-ACCOUNTING-PREVIEW-MOCK, C-SHARE-COPY, C-CUSTOMER-LINK-CREATE. Do not classify these as product defects or harness false negatives without actual evidence and source/contract review. Preserve raw lifecycle-pdf-share.json and existing logs, redacted. No retries merely to obtain PASS. Record remaining unexecuted checks as NOT_RUN / scope cancelled, not PASS. Stop after safe fixture cleanup and evidence-only commit/push. No new product source or test campaign. No force-push. If remote advanced, reconcile evidence-only changes with this superseding decision.
+
+Goal 038 G1/G2 remain suspended; no live Asan/API/write authorization. Last independently verified runtime remains 0.1.90 until 091 evidence arrives. Goal 023 remains ACTIVE, not a request to reimplement or recertify the existing quotation module. Next scope must be selected only after independent inventory of actual current source, prior accepted requirements and evidence; no new Goal authorized by this document.
+
+The original plan below is archived, NOT executable.
+
+---
+
 Date: 2026-11-28. Parent Goal 023, branch feat/crm-129-quotation.
 User directed development to continue because no real Asan API is available. This is authorization to advance the independent CRM workflow, not to connect to a real vendor or accept unresolved financial/security risks.
 Candidate quotation@0.1.91 product/source checkpoint 568539924fa468dc3fdd6655f287f7df2fbdd924. Last verified installed Dev 0.1.90. Goal 038 G0 remains SOURCE_AND_RUNTIME_VERIFIED_PARTIAL for 090; 091 source-only until tested. G1/G2 are suspended pending access and separate explicit authorization. Do not relabel partial G0 as PASS.

@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 039 offline end-to-end acceptance (2026-11-28)
+## CURRENT — Goal 039 broad scope CANCELLED / preserve existing evidence (2026-11-28)
+
+User rejected duplicate work on the already implemented quotation module. [Superseding decision](./goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md): stop remaining broad verification, preserve already collected evidence including the four unresolved checks, no new product source changes or test campaign. Worker interim report says 0.1.91 applied, 815 Vitest PASS, TLS scoped PASS; evidence has not yet been pushed as of this checkpoint. Credential rotation remains BLOCKED. Last independently verified Dev 0.1.90 until evidence reviewed. Goal 038 G1/G2 suspended and not authorized. Goal 023 ACTIVE. No new task before independent source/requirements/evidence audit.
+
+## PRIOR — Goal 039 offline end-to-end acceptance (2026-11-28)
 
 User approved continuing without available Asan API. [Goal 039 execution](./goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md) is the next allowed independent work: final 091 security verification and actual CRM/Mock quotation-to-accounting/communication UAT. Product candidate 0.1.91 source checkpoint 568539924fa468dc3fdd6655f287f7df2fbdd924; last verified Dev 0.1.90. Goal 038 G0 remains partial; G1/G2 suspended, NOT AUTHORIZED, all live import/write gates remain disabled. Goal 023 ACTIVE. No Intranet or actual vendor traffic. Do not claim Goal 039 executed merely from this planning commit.
 

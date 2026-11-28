@@ -7,7 +7,7 @@
 **Activation checkpoint:** `cdb890b3f5`  
 **Board updated:** User REJECTED Goal 033 visual UX after seeing `quotation@0.1.61`; Goal 034 P0 same-page live design/implementation now REQUIRED; full saved recovery: [`CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md`](./CRM-129-GOAL-034-RECOVERY-AND-EXECUTION.md). Goal 023 ACTIVE; WS5–WS7 frozen. Goal 034 is NOT implemented or USER_ACCEPTED yet.
 
-**Current transition (2026-11-28):** [Goal 039 offline acceptance](./goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md) opened by user decision to continue without Asan API. Native accounting table 0.1.86 accepted; 0.1.90 scoped build/tests/Dev/fresh install verified; 0.1.91 security repairs source-only. WS5–WS7 offline verification resumes; prior board rows below are historical. Goal 038 G0 remains partial, G1/G2 suspended and not authorized; Goal 023 ACTIVE. No premature SC closure.
+**Current transition (2026-11-28):** Goal 039 broad scope CANCELLED by user objection to repeating completed quotation work. Preserve existing 091 security and operational evidence; no additional campaign. See [superseding decision](./goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md). Interim 091 runtime report awaits independent evidence. Goal 038 G1/G2 suspended. Goal 023 ACTIVE; do not infer new work from stale historical board rows. Next goal requires actual source/requirements/evidence audit.
 
 Statuses: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `TECHNICALLY_VERIFIED` · `ARCHITECT_ACCEPTED` · `USER_ACCEPTED`
 
