@@ -4,6 +4,9 @@ Branch: feat/crm-129-quotation
 User approved G0 execution and durable recovery. First live vendor is Asan. No new table design, no new UI route, no money-domain rewrite, no Intranet, no real vendor writes.
 Product version: candidate quotation@0.1.91 (checkpoint HEAD). Status SOURCE_ONLY / BUILD_AND_RUNTIME_NOT_RUN. Last verified Dev and genuine fresh install 0.1.90, scoped evidence [verification-090](verification-090/). Read [review and security checkpoint 091](CRM-129-GOAL-038-G0-REVIEW-091.md) first; supersedes older checkpoint and verification instructions. G0 remains PARTIAL, G1/G2 NOT AUTHORIZED.
 
+## Goal 040 superseding execution plan (2026-11-28)
+User approved critical-first comprehensive Asan integration and new unit catalog. Read [Goal 040 plan](../goal-040/CRM-129-GOAL-040-ASAN-INTEGRATION-PLAN.md) and [progress](../goal-040/PROGRESS.md). It supersedes old repeated G0 execution assignments and cancelled Goal 039. G0 residuals map to finite phases; real G1/G2 remain suspended and need explicit approval. No re-running accepted evidence or product work by implication.
+
 ## API-unavailable transition (2026-11-28)
 User approved moving on with independent CRM development. See [Goal 039](../goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md) for exact residual disposition and next executable offline acceptance. G0 remains partial; no live-read or write authorization. Resume actual G1/G2 only with available API and separate approval after required source/security gates.
 

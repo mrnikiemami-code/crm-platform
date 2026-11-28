@@ -46,6 +46,10 @@ These clauses are **binding**. They close prior open decisions as listed below.
 - Server + DB transaction + deterministic concurrency tests (WS2).
 - **Does not** auto-extend to item/person/company codes.
 
+### C8 — Unit-of-measure reference and line snapshot (Goal 040, 2026-11-28)
+
+User requires an independent unit catalog analogous to tax: name and operator-assigned accounting code (e.g. عدد 100, کیلوگرم 200; examples only). Stable reference id/internal code, name, accountingCode text, active state; catalog item and quotation line reference. The server snapshots reference id, internal code, name and accountingCode at line save and seal; client cannot override. Code optional offline, unique when nonempty, frozen by reference id after first persisted nonempty use, no destructive deletion/history rewrite. Preserve legacy unit text and resolve only explicit/unambiguous matches; do not fabricate historic codes. Existing tax/currency authority and lock order preserved; unit lock appended after currency, audit other lock interactions. No Asan UnitID invented on factor line; verify product base-unit compatibility or approved exact secondary conversion. See [Goal 040 U01](./goal-040/CRM-129-GOAL-040-ASAN-INTEGRATION-PLAN.md) for full acceptance contract. C8 is additive; C1–C7 unchanged.
+
 ### C5 — Item / party codes
 
 - `catalogItem.accountingCode`, `person.accountingCode`, `company.accountingCode`.

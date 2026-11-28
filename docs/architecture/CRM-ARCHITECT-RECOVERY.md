@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — 091 runtime evidence reviewed / PDF packaging repair (2026-11-28)
+## CURRENT — Goal 040 comprehensive Asan integration plan (2026-11-28)
+
+User approved ordered critical-first integration and unit-of-measure catalog with accounting code saved on quotation line. Read [Goal 040 plan](./goal-040/CRM-129-GOAL-040-ASAN-INTEGRATION-PLAN.md) and [progress/recovery ledger](./goal-040/PROGRESS.md) FIRST, then [audit 092](./goal-038/CRM-129-ASAN-PRECONNECTION-FIELD-AND-FLOW-AUDIT-092.md), vendor wire contract, financial C1–C8. Phase 1 direct architect critical source work AUTHORIZED / NOT_STARTED; phase 2 missing fields/workflow, phase 3 ONE targeted Cursor verification, phase 4 real API G1/G2 separately authorized. No duplicate quotation development. Last installed 0.1.91 evidence 4c6eb4fd; PDF packaging repair fe801554 source-only; actual credential revocation blocked Dev admin. Goal 039 broad scope remains cancelled; Goal 023 ACTIVE; Goal 038 G0 partial, live gates suspended. This checkpoint is documentation only, no product changes or tests. Next: architect repairs actual phase 1 source, then phase 2; update ledger and recovery in each checkpoint.
+
+## PRIOR — 091 runtime evidence reviewed / PDF packaging repair (2026-11-28)
 
 Goal 039 broad scope remains CANCELLED. Evidence commit 4c6eb4fd072f88b1d5651442cc6d185618591090 inspected; installed quotation@0.1.91, 815 Vitest PASS reported, existing quotation lifecycle and Mock preview exercised. PDF gate FAIL: missing module-local Vazirmatn in dist-only runtime. Architect fixed canonical Nest asset copy and Docker build assertion directly; no quotation app version change (server build-only repair), new image NOT built/deployed/tested. See [targeted repair](./goal-039/CRM-129-PDF-PACKAGING-REPAIR-091.md). Credential revocation remains BLOCKED on Dev administrator. Six manual share channels observed success; Bale honest INVALID_INPUT, not successful delivery. Goal 038 G1/G2 suspended; no API, no live vendor writes. No further comprehensive quotation task; next feature scope requires independent source/requirements/evidence audit.
 
