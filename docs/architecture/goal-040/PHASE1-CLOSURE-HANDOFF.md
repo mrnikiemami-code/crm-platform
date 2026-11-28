@@ -8,7 +8,7 @@ Assignment tip at start: `5f90a6f2b98915c436ed5f6f719a20883e6ed3a6`
 
 ## Tip SHA
 
-`REPLACE_AFTER_COMMIT`
+`19fdaa87b9f12abf405ce9191f1d5419c7de5082`
 
 ## Candidate
 
