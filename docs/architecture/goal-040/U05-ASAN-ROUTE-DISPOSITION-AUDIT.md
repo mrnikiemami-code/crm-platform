@@ -64,3 +64,28 @@ Audited 47 guide method/path pairs against actual `asan-endpoints.ts`, `asan-wir
 - Read-only POST routes need explicit method/path/effect authorization, bounded body and response; do not grant generic POST. Mutating GET UpdateFactorState is excluded. Restricted cardex/balance/cost data must not enter normal catalog/customer observations.
 - Serial-rich OneProduct is allowlisted but lacks adapter caller; current readback uses OneProductWithoutSerial. Do not treat serial preservation as proved. Product price and store observations remain B/integration contracts.
 - Proforma alternative registration is not a retry/fallback. No sale/purchase/return, delivery-state or banking mutations within quotation scope. Historical guide documentation remains the 17-model field authority; field-level application mapping and tests must be completed after B.
+
+
+## Integrated scope decisions — 2026-11-28
+
+These are architect decisions on the 14 pending routes and the one allowlisted route without a caller. They do not supersede user authorization gates or constitute implementation evidence. The original 47-route inventory above remains the baseline.
+
+| Route | Disposition | Remaining evidence |
+|---|---|---|
+| POST Factors/LastFactors | Outside quotation scope; disabled | Separate sales/purchase history scope |
+| POST Factors/LastCustomerFactors | Outside quotation scope; disabled | Separate fiscal history scope |
+| POST PishFactorsNew/LastCustomerPishFactors | REQUIRED / restricted customer proforma read / source pending | Exact read-only POST allowlist, bounded request/response, original-user customer permission, fixture and G1 |
+| GET CustomersNew/LastCustomers | Optional incremental optimization; disabled | Not needed for complete authoritative customer import |
+| GET CustomerCardex | REQUIRED / finance-restricted read / source pending | Exact linked customer, permission, bounded dates (.NET ticks), formatted decimal text kept intact, fixture and G1 |
+| GET ProductsNew/AllProducts2 | Conditional warehouse-specific inventory read; disabled pending need | Store identity and stock semantics G1 |
+| GET ProductsNew/OneProduct | Existing allowlist only; serial-rich verification pending | Do not infer serial preservation from OneProductWithoutSerial |
+| GET ProductsNew/AllProductsInSubProductCode | Optional category browsing; disabled | Explicit taxonomy/parent mapping if required |
+| GET ProductPriceNew/GetPrice | Targeted price-tier read pending | Confirm tier identities and exact money unit; no inferred names |
+| GET ProductPlus/AllProductPlus | Extra product attributes outside current required quotation fields; disabled | Explicit new need and field mapping |
+| GET ProductPlus/OneProductPlus | Extra product attributes outside current required quotation fields; disabled | Explicit new need and field mapping |
+| GET ProductStatisticsNew/AmarKala | Sensitive purchase-cost-bearing report; disabled | Separate finance permission and field redaction if approved |
+| GET ProductStatisticsNew/AmarKalaWithCount | Sensitive purchase-cost-bearing report; disabled | Separate finance permission and field redaction if approved |
+| GET ProductStatisticsNew/ProductStock | Sensitive alternate stock/cost report; disabled | Current ProductsNew/ProductStock observation remains distinct |
+| POST ProductsNew/ProductListWithMojodi | Alternate inventory read; disabled pending demonstrated need | Explicit POST-read transport authorization and store contract |
+
+Customer outbound now has source for explicit preview, native person/company authorization, operation claim, identity readback and link CAS, with mock-only execution and real Asan writes hard-disabled. A mock adapter instance is not evidence of durable remote vendor state. Customer group-to-CRM IRR price-list mapping is explicit and connection-owned, not inferred. Financial reconciliation has read-only observation and conditional ledger completion source, not fiscal proof or durable authorized reconciliation acceptance. Durable dataset label is administrator attestation, not vendor-proved identity. Mandatory restricted customer reports, tier/store workflow, issuer/field mapping and integrated verification remain open. No real traffic, credential changes, or schema apply. G1/G2 NOT_AUTHORIZED.
