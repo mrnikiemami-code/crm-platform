@@ -1,5 +1,5 @@
 import { lookup } from 'node:dns/promises';
-import { request as httpRequest, type RequestOptions } from 'node:http';
+import { type RequestOptions } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { type IncomingMessage } from 'node:http';
 
@@ -56,7 +56,7 @@ export type ProbeDependencies = {
     address: string,
     family: number,
     timeoutMs: number,
-  ) => Promise<{ status: number; latencyMs: number }>;
+  ) => Promise<{ status: number; latencyMs: number; body?: string }>;
   now?: () => Date;
 };
 
@@ -77,31 +77,55 @@ export const pinnedHttpGet = (
   address: string,
   family: number,
   timeoutMs: number,
-): Promise<{ status: number; latencyMs: number }> =>
+): Promise<{ status: number; latencyMs: number; body?: string }> =>
   new Promise((resolve, reject) => {
+    if (url.protocol !== 'https:') {
+      reject(new Error('HTTPS is required'));
+      return;
+    }
     const startedAt = Date.now();
+    const maxBytes = 256 * 1024;
     const handleResponse = (response: IncomingMessage): void => {
-      // The status is all a health probe needs; the body is discarded and the socket is
-      // closed so a large vendor answer cannot be buffered into memory.
-      resolve({
-        status: response.statusCode ?? 0,
-        latencyMs: Date.now() - startedAt,
+      const status = response.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        resolve({ status, latencyMs: Date.now() - startedAt });
+        response.destroy();
+        return;
+      }
+      const chunks: Buffer[] = [];
+      let total = 0;
+      response.on('data', (chunk: Buffer) => {
+        total += chunk.length;
+        if (total > maxBytes) {
+          reject(new Error('probe response too large'));
+          response.destroy();
+          return;
+        }
+        chunks.push(chunk);
       });
-      response.destroy();
+      response.on('error', reject);
+      response.on('aborted', () => reject(new Error('probe response aborted')));
+      response.on('end', () => resolve({
+        status, latencyMs: Date.now() - startedAt,
+        body: Buffer.concat(chunks).toString('utf8'),
+      }));
     };
     const options: RequestOptions = {
       method: 'GET',
       headers: { Accept: 'application/json' },
       agent: false,
+      family,
       timeout: timeoutMs,
       lookup: ((_hostname: string, _lookupOptions: unknown, callback: (error: Error | null, address: string, family: number) => void) =>
         callback(null, address, family)) as never,
     };
-    const request =
-      url.protocol === 'https:'
-        ? httpsRequest(url, options, handleResponse)
-        : httpRequest(url, options, handleResponse);
-
+    const request = httpsRequest(url, options, handleResponse);
+    const timer = setTimeout(() => {
+      const error = new Error('probe timed out');
+      error.name = 'TimeoutError';
+      request.destroy(error);
+    }, timeoutMs);
+    request.on('close', () => clearTimeout(timer));
     request.on('timeout', () => {
       const error = new Error('probe timed out');
       error.name = 'TimeoutError';
@@ -132,6 +156,25 @@ const buildProbeUrl = (
   } catch {
     return null;
   }
+};
+
+// LastProducts is a read of the documented Products list, not a generic HTTP ping.
+const isAsanProbeBody = (body: string | undefined): boolean => {
+  if (body === undefined) return false;
+  try {
+    const payload: unknown = JSON.parse(body);
+    const record = payload !== null && typeof payload === 'object' && !Array.isArray(payload)
+      ? payload as Record<string, unknown> : null;
+    const rows = Array.isArray(payload) ? payload :
+      record === null ? null : [record.data, record.products, record.Products].find(Array.isArray);
+    return Array.isArray(rows) && rows.every((row: unknown) => {
+      if (row === null || typeof row !== 'object' || Array.isArray(row)) return false;
+      const item = row as Record<string, unknown>;
+      const code = typeof item.ProductCode === 'string' && /^\d+$/.test(item.ProductCode.trim())
+        ? Number(item.ProductCode) : item.ProductCode;
+      return typeof code === 'number' && Number.isSafeInteger(code) && code > 0;
+    });
+  } catch { return false; }
 };
 
 const unreachable = ({
@@ -171,12 +214,15 @@ export const probeAccountingDestination = async (
     };
   }
 
+  let base: URL | null = null;
+  try { base = new URL(input.baseUrl.trim()); } catch { /* invalid base */ }
   const url = buildProbeUrl(input.baseUrl, input.healthProbe);
 
-  if (url === null || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+  if (url === null || base === null || base.protocol !== 'https:' ||
+      base.username !== '' || base.password !== '' || base.search !== '' || base.hash !== '') {
     return unreachable({
-      code: 'INVALID_RESPONSE',
-      detail: 'آدرس مقصد قابل استفاده نیست',
+      code: 'DESTINATION_NOT_ALLOWED',
+      detail: 'آدرس مقصد باید HTTPS و بدون اطلاعات ورود یا پارامتر باشد',
       latencyMs: 0,
       checkedAt,
     });
@@ -275,6 +321,12 @@ export const probeAccountingDestination = async (
     );
 
     if (answer.status >= 200 && answer.status < 300) {
+      if (input.adapterId === 'asan' && !isAsanProbeBody(answer.body)) {
+        return unreachable({
+          code: 'INVALID_RESPONSE', detail: 'پاسخ مقصد فهرست معتبر کالا نیست',
+          latencyMs: answer.latencyMs, checkedAt,
+        });
+      }
       return {
         healthState: 'OK',
         code: 'REACHABLE',

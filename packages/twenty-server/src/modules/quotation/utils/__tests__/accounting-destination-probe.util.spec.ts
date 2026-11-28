@@ -38,7 +38,7 @@ describe('probeAccountingDestination', () => {
     const resolveHost = jest.fn(async () => [
       { address: '93.184.216.34', family: 4 },
     ]);
-    const request = jest.fn(async () => ({ status: 200, latencyMs: 7 }));
+    const request = jest.fn(async () => ({ status: 200, latencyMs: 7, body: '[]' }));
 
     const outcome = await probeAccountingDestination(asanInput(), {
       resolveHost,
@@ -58,6 +58,28 @@ describe('probeAccountingDestination', () => {
       4,
       8_000,
     );
+  });
+
+  it('refuses cleartext even with explicit approval before resolving or requesting', async () => {
+    const resolveHost = jest.fn();
+    const request = jest.fn();
+    const outcome = await probeAccountingDestination(asanInput({
+      baseUrl: 'http://asan.example.ir', transportApproved: true,
+    }), { resolveHost, request, now });
+    expect(outcome).toMatchObject({ healthState: 'FAILED', code: 'DESTINATION_NOT_ALLOWED' });
+    expect(resolveHost).not.toHaveBeenCalled();
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('does not accept an HTTP 200 login page or malformed product as healthy', async () => {
+    for (const body of ['<html>Login</html>', '{}', '[{"ProductCode":0}]']) {
+      const outcome = await probeAccountingDestination(asanInput(), {
+        resolveHost: async () => [{ address: '93.184.216.34', family: 4 }],
+        request: async () => ({ status: 200, latencyMs: 1, body }),
+        now,
+      });
+      expect(outcome).toMatchObject({ healthState: 'FAILED', code: 'INVALID_RESPONSE' });
+    }
   });
 
   it('refuses a public name that resolves into the private network', async () => {
@@ -135,11 +157,11 @@ describe('probeAccountingDestination', () => {
     const resolveHost = jest.fn(async () => [
       { address: '10.0.0.5', family: 4 },
     ]);
-    const request = jest.fn(async () => ({ status: 200, latencyMs: 3 }));
+    const request = jest.fn(async () => ({ status: 200, latencyMs: 3, body: '[]' }));
 
     const outcome = await probeAccountingDestination(
       asanInput({
-        baseUrl: 'http://10.0.0.5:8080',
+        baseUrl: 'https://10.0.0.5:8080',
         transportApproved: true,
         allowlist: [{ host: '10.0.0.5', port: 8080 }],
       }),
