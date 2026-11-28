@@ -1,0 +1,12 @@
+# Verification-only overlay: enable multi-workspace so recovery 083 can
+# create an isolated Dev workspace without touching Intranet or product source.
+services:
+  server:
+    environment:
+      IS_MULTIWORKSPACE_ENABLED: "true"
+      # Required so an authorized Dev operator can create the isolated 083 workspace.
+      IS_WORKSPACE_CREATION_LIMITED_TO_SERVER_ADMINS: "false"
+  worker:
+    environment:
+      IS_MULTIWORKSPACE_ENABLED: "true"
+      IS_WORKSPACE_CREATION_LIMITED_TO_SERVER_ADMINS: "false"

@@ -1,0 +1,13 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-accounting-code-lock.pg.spec.ts
+At line:11 char:1
++ npx jest --config=packages/twenty-server/jest.config.mjs --testPathPa ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...lock.pg.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        0.425 s

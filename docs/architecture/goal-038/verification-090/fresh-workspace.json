@@ -1,0 +1,33 @@
+{
+  "email": "g038090.mx0044pg@local.test",
+  "subdomain": "g090mx0044pg",
+  "origin": "http://g090mx0044pg.localhost:3002",
+  "steps": {
+    "signIn": {
+      "errors": null,
+      "count": 1,
+      "ids": [
+        "5366ae07-80b9-442e-83e4-1010d9f7ebd9"
+      ]
+    },
+    "exchange": {
+      "origin": "http://g090mx0044pg.localhost:3002",
+      "hasToken": true
+    },
+    "roles": {
+      "errors": null,
+      "adminRoleId": "25909a3f-32b4-4d96-a143-b84ae6f59916"
+    },
+    "createApiKey": {
+      "errors": null,
+      "id": "f938fbb2-5935-40d5-92b8-c71a6dd93fe8"
+    },
+    "generateApiKeyToken": {
+      "errors": null,
+      "hasToken": true
+    }
+  },
+  "workspaceId": "5366ae07-80b9-442e-83e4-1010d9f7ebd9",
+  "accessToken": "[redacted]",
+  "apiKeyToken": "[redacted]"
+}

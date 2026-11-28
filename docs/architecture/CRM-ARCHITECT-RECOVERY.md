@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 038 G0 repair 090 SOURCE_PARTIAL (2026-11-28)
+## CURRENT — Goal 038 G0 verification 090 COMPLETE / PARTIAL (2026-11-28)
+
+Cursor executed unified G0-A/B/C/D verification on exact tip `24d78d521a16b36c44067ac249619c00e56a200e` / quotation@**0.1.90**. Evidence: [verification-090](./goal-038/verification-090/) + [A01–A19 ledger](./goal-038/verification-090/A01-A19-LEDGER.md). Builds/tests PASS (Vitest 814, Asan 84, Jest quotation 377, real PG connection locks PASS). Existing Dev install **0.1.90** + idempotent. Genuine private `app:publish` + fresh-workspace `app:install` **0.1.90** PASS. Accepted **0.1.84** workspace preserved. Intranet untouched; no live Asan. **Status: SOURCE_AND_RUNTIME_VERIFIED_PARTIAL — NOT unconditional G0 PASS.** Residuals: A12 TLS/rotation fixture, A13 fiscal readback, A15 full lifecycle races, A16 observation persistence, A17 broader reports, A19 dataset-identity/rebind. G1/G2 NOT AUTHORIZED. Goal 023 ACTIVE.
+
+## PRIOR — Goal 038 G0 repair 090 SOURCE_PARTIAL (2026-11-28)
 
 Candidate quotation@0.1.90; direct source repairs committed on feat/crm-129-quotation. Read [checkpoint 090](./goal-038/CRM-129-GOAL-038-G0-REPAIR-090.md) FIRST for exact commits, remaining source/operational gates, supported fresh-package install flow and one comprehensive verification assignment. Actual Asan transport is explicitly bound and read-only; no approved binding configured or vendor traffic executed by architect. All 089/090 build/test/deploy gates NOT_RUN. Last verified Dev is 0.1.88. G0 NOT PASS, G1/G2 NOT AUTHORIZED, Goal 023 ACTIVE. Preserve accepted versions and Intranet.
 

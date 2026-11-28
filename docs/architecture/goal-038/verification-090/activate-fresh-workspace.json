@@ -1,0 +1,17 @@
+{
+  "activate": {
+    "errors": null,
+    "workspace": {
+      "id": "5366ae07-80b9-442e-83e4-1010d9f7ebd9",
+      "activationStatus": "ACTIVE"
+    }
+  },
+  "activationPoll": {
+    "i": 0,
+    "activationStatus": "ACTIVE",
+    "roleCount": 2,
+    "errors": null
+  },
+  "roleCount": 2,
+  "workspaceId": "5366ae07-80b9-442e-83e4-1010d9f7ebd9"
+}

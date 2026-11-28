@@ -1,7 +1,7 @@
 # Goal 038 — architect repair and verification checkpoint 090
 
-Status: SOURCE_PARTIAL / BUILD_AND_RUNTIME_NOT_RUN — NOT G0 PASS.
-Branch: feat/crm-129-quotation. Candidate quotation@0.1.90. The installed Dev version remains 0.1.88 according to the last verified evidence; 089 and 090 have no runtime certification. No actual Asan connection, CRM live import, accounting write, Intranet change or outbound flag activation was performed by the architect.
+Status: SOURCE_AND_RUNTIME_VERIFIED_PARTIAL — NOT unconditional G0 PASS.
+Branch: feat/crm-129-quotation. Candidate quotation@0.1.90 @ `24d78d521a16b36c44067ac249619c00e56a200e`. Runtime evidence: [verification-090](verification-090/). Existing Dev and fresh private install both report **0.1.90**. Residuals remain in A12/A13/A15/A16/A17/A19. No actual Asan connection, CRM live import, accounting write, Intranet change or outbound flag activation was performed.
 
 ## Source commits after checkpoint 089
 
