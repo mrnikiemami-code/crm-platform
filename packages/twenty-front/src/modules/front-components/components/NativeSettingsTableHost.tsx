@@ -1,4 +1,4 @@
-import { forwardRef, type CSSProperties, type ReactNode, type ElementType } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, type CSSProperties, type ReactNode, type ElementType } from 'react';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { SettingsPaginationControls } from '@/settings/components/SettingsPaginationControls';
 import { Table } from '@/ui/layout/table/components/Table';
@@ -30,6 +30,42 @@ const NativePager = forwardRef<HTMLDivElement, Props>(({ title, onClick }, ref) 
     onPageChange={(index) => send('page:' + (index + 1))}
     numbered={{ total, pageSize: size, locale: 'fa-IR', onPageSizeChange: (next) => send('size:' + next) }} /></div>;
 });
+// Outside events and focus belong to the real host DOM, not the guest worker.
+// The only event sent to the guest is the presentation-only dismissal signal.
+export const NativeRowMenuBoundary = forwardRef<HTMLDivElement, Props>(({ children, title, onClick }, forwardedRef) => {
+  const root = useRef<HTMLDivElement>(null);
+  useImperativeHandle(forwardedRef, () => root.current!, []);
+  useEffect(() => {
+    const element = root.current;
+    if (title !== 'open' || !element) return;
+    const dismiss = () => onClick?.({ type: 'click', target: { value: 'dismiss' } });
+    const outside = (event: PointerEvent) => {
+      if (!event.composedPath().includes(element)) dismiss();
+    };
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        dismiss();
+        element.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.focus();
+      } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && element.contains(document.activeElement)) {
+        const items = Array.from(element.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not([disabled])'));
+        if (!items.length) return;
+        event.preventDefault();
+        const index = items.findIndex(item => item === document.activeElement);
+        const next = index < 0 ? (event.key === 'ArrowDown' ? 0 : items.length - 1) : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+        items[next]?.focus();
+      }
+    };
+    const doc = element.ownerDocument;
+    doc.addEventListener('pointerdown', outside, true);
+    doc.addEventListener('keydown', keyboard, true);
+    return () => {
+      doc.removeEventListener('pointerdown', outside, true);
+      doc.removeEventListener('keydown', keyboard, true);
+    };
+  }, [title, onClick]);
+  return <div ref={root}>{children}</div>;
+});
 const optIn = (marker: string, component: ElementType) => (props: Readonly<Record<string, unknown>>) => props.className === marker ? component : undefined;
 // No dynamic registry access from the guest. Unmarked HTML renders exactly as before.
 export const nativeSettingsTableResolvers = {
@@ -39,5 +75,5 @@ export const nativeSettingsTableResolvers = {
   tr: optIn('twenty-native-settings-row', NativeRow),
   th: optIn('twenty-native-settings-header', NativeHeader),
   td: optIn('twenty-native-settings-cell', NativeCell),
-  div: optIn('twenty-native-settings-pager', NativePager),
+  div: (props: Readonly<Record<string, unknown>>) => props.className === 'twenty-native-row-menu-boundary' ? NativeRowMenuBoundary : optIn('twenty-native-settings-pager', NativePager)(props),
 };
