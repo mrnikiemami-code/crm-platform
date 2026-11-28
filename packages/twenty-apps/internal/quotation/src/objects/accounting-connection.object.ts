@@ -249,6 +249,16 @@ export default defineObject({
       isNullable: true,
     },
     {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.priceGroupMappings,
+      type: FieldType.RAW_JSON,
+      name: 'priceGroupMappings',
+      label: 'نگاشت گروه قیمتی مشتریان',
+      description: 'Explicit destination price-group id to CRM PriceList id; server-owned, never inferred from price position.',
+      icon: 'IconListDetails',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.datasetBindingId,
       type: FieldType.TEXT,
       name: 'datasetBindingId',
