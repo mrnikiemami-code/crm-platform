@@ -1,5 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 038 Asan-first domain audit / 0.1.87 SOURCE ONLY (2026-11-28)
+
+User accepted native accounting table UX 0.1.86. First real integration is Asan, with the original 32-page PDF as vendor wire authority. See [domain and wire contract](./goal-038/ASAN-DOMAIN-AND-WIRE-CONTRACT.md) and [audit and sequential gates](./goal-038/CRM-129-ASAN-REAL-CONNECTION-AUDIT-087.md). 087 source fixes customer response names, stock and adapter probe shape/redirect handling; complete route/field inventory and tests added. Other P0 gates OPEN (write response/readback, full customer update, price tiers, money/discount/tax/rounding, capability parity, transport, reconciliation, isolation). No runtime validation, no live calls, no outbound activation, no Intranet. Goal 023 remains ACTIVE. Next: G0 source remediation and isolated verification before user-authorized read-only G1.
+
+
 ## CURRENT — GOAL 036-R2 ARCHITECT DIRECT SOURCE REPAIR COMMITTED (2026-11-26)
 
 **Important:** User requested direct repo changes rather than another worker task. Architect has **committed actual code** for the six accounting-connection calls to the existing authorized Nest REST quotation controller, transaction-accurate `affectedRecordId`, exact Nest→UI DTO (nested tax/special-row mappings; health), server-advertised adapter availability, truthfully unverified separate secret/flag metadata and targeted tests. **Frontend package staged as `quotation@0.1.71`; NOT deployed.** Full source/write ledger: [CRM-129-GOAL-036-R2-DIRECT-REPAIR-STATUS.md](./goal-036/CRM-129-GOAL-036-R2-DIRECT-REPAIR-STATUS.md).
