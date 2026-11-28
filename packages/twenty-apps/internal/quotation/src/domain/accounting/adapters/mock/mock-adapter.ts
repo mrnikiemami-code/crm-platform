@@ -225,6 +225,9 @@ export class MockAccountingAdapter implements AccountingAdapter {
       return refused('VENDOR_REFUSED', 'the mock adapter is configured to refuse writes');
     }
 
+    if (input.externalPartyId !== null && this.parties.some(party => party.externalPartyId === input.externalPartyId)) {
+      return refused('ASAN_CUSTOMER_ALREADY_EXISTS', 'mock fixture identity already exists');
+    }
     const created: RemoteParty = {
       ...input,
       externalPartyId: input.externalPartyId ?? `mock-${this.parties.length + 101}`,
@@ -261,6 +264,7 @@ export class MockAccountingAdapter implements AccountingAdapter {
       ...this.parties[index],
       ...Object.fromEntries(Object.entries(input).filter(([key, value]) => key !== 'externalPartyId' && value !== null && value !== undefined && value !== '')),
       externalPartyId: this.parties[index].externalPartyId,
+      remoteVersion: this.parties[index].remoteVersion + '-u',
     };
 
     this.parties[index] = updated;
