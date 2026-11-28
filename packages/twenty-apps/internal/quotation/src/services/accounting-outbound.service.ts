@@ -1132,8 +1132,9 @@ export const executeQuotationExport = async (
     return refused('RECONCILIATION_REQUIRED', 'operation claim not confirmed; do not replay');
   }
   const finish = async (state: AccountingOperationState, externalDocumentId: string | null, errorCode: string | null) => {
-    const result = await execute(buildQuotationFinishMutation(claim.id, { state, externalDocumentId, errorCode }));
-    if (!verifyClaimReceipt(result.updateAccountingSyncOperation, claim, state, externalDocumentId, errorCode)) {
+    const result = await execute(buildQuotationFinishMutation(claim, { state, externalDocumentId, errorCode }));
+    const updated = result.updateAccountingSyncOperations;
+    if (!Array.isArray(updated) || updated.length !== 1 || !verifyClaimReceipt(updated[0], claim, state, externalDocumentId, errorCode)) {
       throw new RecordApiError('INVALID_RESPONSE', 'Accounting document outcome persistence not confirmed');
     }
   };
