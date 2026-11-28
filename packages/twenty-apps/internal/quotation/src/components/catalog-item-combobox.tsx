@@ -21,6 +21,7 @@ export type CatalogComboboxSelection = {
   name: string;
   sku: string | null;
   unit: string;
+  unitRecordId?: string | null;
   description: string | null;
   unitPriceText: string;
   priceAvailable: boolean;
@@ -33,6 +34,7 @@ type PickerRow = {
   kind: CatalogItemKind;
   sku: string | null;
   unit: string;
+  unitRecordId?: string | null;
   description: string | null;
   unitPriceExact: string | null;
   priceAvailable: boolean;
@@ -93,7 +95,8 @@ const readPickerRows = (payload: Record<string, unknown>): PickerRow[] => {
       sku: typeof record.sku === 'string' && record.sku.trim() !== ''
         ? record.sku
         : null,
-      unit: typeof record.unit === 'string' ? record.unit : 'عدد',
+      unit: typeof record.unit === 'string' ? record.unit : '',
+      unitRecordId: typeof record.unitRecordId === 'string' ? record.unitRecordId : null,
       description:
         typeof record.description === 'string' && record.description.trim() !== ''
           ? record.description
@@ -112,7 +115,7 @@ const readPickerRows = (payload: Record<string, unknown>): PickerRow[] => {
 const formatOptionSecondary = (row: PickerRow, moneyUnit: MoneyUnit): string => {
   const bits: string[] = [
     row.kind === 'SERVICE' ? 'خدمت' : 'کالا',
-    row.unit,
+    row.unitRecordId ? row.unit : 'واحد نیازمند تعیین مرجع',
   ];
 
   if (row.sku) {
@@ -303,6 +306,7 @@ export const CatalogItemCombobox = ({
       name: row.name,
       sku: row.sku,
       unit: row.unit,
+      unitRecordId: row.unitRecordId ?? null,
       description: row.description,
       unitPriceText,
       priceAvailable: row.priceAvailable,
