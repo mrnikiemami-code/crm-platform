@@ -3,7 +3,7 @@
 Date: 2026-11-28  
 Branch: `feat/crm129-g040-reference-catalog`  
 Baseline: `f230721d1a0146748475c68e73d61572d7b5df6d`  
-Lane tip: `dbbc27e732addbe3dd3252e208bd8a6e9014fcda` (+ follow-up handoff/evidence commits if any)  
+Lane tip: `c1461597f79078ecc9065c50cc88204787f9463e` (implementation `dbbc27e732` + handoff/evidence)  
 Owner: Cursor (Lane B). Architect owns Lane A finance + integration merge.  
 No merge into `feat/crm-129-quotation` by this lane. No version bump. No Dev deploy.
 
