@@ -27,12 +27,12 @@ export const buildDefaultPriceListQuery = (): string =>
 export const buildAnyIrrPriceListQuery = (): string =>
   `query IrrPriceList { priceLists(filter: { currencyCode: { eq: "IRR" } }, first: 1) { edges { node { id } } } }`;
 
-export const buildIrrPriceListsForPickerQuery = (): string =>
+export const buildIrrPriceListsForPickerQuery = (after: string | null = null): string =>
   `query IrrPriceListsForPicker {
     priceLists(
       filter: { currencyCode: { eq: "IRR" } }
       orderBy: [{ isDefault: DescNullsLast }, { name: AscNullsLast }]
-      first: 50
+      first: 50${after === null ? '' : ', after: ' + toGraphqlLiteral(after)}
     ) {
       edges {
         node {
@@ -42,6 +42,7 @@ export const buildIrrPriceListsForPickerQuery = (): string =>
           currencyCode
         }
       }
+      pageInfo { hasNextPage endCursor }
     }
   }`;
 
