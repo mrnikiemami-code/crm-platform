@@ -31,3 +31,6 @@ Source/test tip `9f4fc19af209ad055e1be897e1731a6384da919e`; 46 commits/41 paths 
 
 ## Round 2 architect initial checkpoint
 Source/test `322e2cc4b35c063ef5ff9783d089ba6c307fb0fd`, checkpoint `fe4c7dab5931df1a928252eaaa4279efd28cc5fe` (15 commits, 12 paths). Unit equivalence, destination scope and bounded reconciliation source added; U03/F06/F07/U05 remaining. Runtime NOT_RUN, bridge failed. Cursor remote at baseline when checked. No merge, Dev or vendor request. Continue exact lane ownership.
+
+## Round 2 convergence
+Merged source `095a22092449c50a97bf75153e1ca8ccc23cdd57`, 56 union paths, exact A/B ancestry verified. B final 43 Jest + 5 Vitest reported; prior standalone PG skipped, final PG lock suite reported PASS; no integrated proof or real catalog batch rollback evidence. U03/F06/F07/U05, authoritative commercial price/group/issuer and P05 rollback/concurrency remain. P01–P15 NOT_RUN on merged candidate, G1/G2 NOT_AUTHORIZED. No Dev/metadata/version/vendor changes.
