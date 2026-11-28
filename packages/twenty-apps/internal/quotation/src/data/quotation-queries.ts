@@ -281,6 +281,7 @@ export const buildQuotationForCustomerLinkQuery = (
 export const buildCreateQuotationCustomerLinkMutation = (data: {
   name: string;
   tokenHash: string;
+  revisionHash: string;
   expiresAt: string;
   issuedAt: string;
   quotationId: string;
@@ -289,10 +290,11 @@ export const buildCreateQuotationCustomerLinkMutation = (data: {
     createQuotationCustomerLink(data: ${toGraphqlLiteral({
       name: data.name,
       tokenHash: data.tokenHash,
+      revisionHash: data.revisionHash,
       expiresAt: data.expiresAt,
       issuedAt: data.issuedAt,
       quotationId: data.quotationId,
-    })}) { id expiresAt }
+    })}) { id expiresAt revisionHash }
   }`;
 
 export const buildRevokeQuotationCustomerLinkMutation = ({
@@ -321,6 +323,8 @@ export const buildQuotationCustomerLinkByHashQuery = (
         node {
           id
           tokenHash
+          revisionHash
+          issuedAt
           expiresAt
           revokedAt
           quotationId
@@ -362,43 +366,6 @@ export const buildQuotationCustomerNameQuery = ({
 export const buildQuotationCustomerViewQuery = (quotationId: string): string =>
   `query QuotationCustomerView {
     quotation(filter: { id: { eq: ${toGraphqlLiteral(quotationId)} } }) {
-      id
-      name
-      quotationNumber
-      status
-      paymentTerms
-      currencyCode
-      grossExact
-      lineDiscountExact
-      documentDiscountExact
-      taxExact
-      roundingExact
-      totalExact
-      person {
-        name { firstName lastName }
-        nameFirstName
-        nameLastName
-      }
-      company {
-        name
-      }
-    }
-    quotationLines(
-      filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }
-      orderBy: [{ sortOrder: AscNullsLast }]
-      first: 200
-    ) {
-      edges {
-        node {
-          id
-          name
-          kind
-          unit
-          quantityExact
-          unitPriceExact
-          totalExact
-          sortOrder
-        }
-      }
+      id status
     }
   }`;
