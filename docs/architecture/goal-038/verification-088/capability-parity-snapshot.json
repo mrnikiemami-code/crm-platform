@@ -1,0 +1,43 @@
+{
+  "keys": {
+    "createProforma": {
+      "appSnippet": "nedCode: false, }, documents: { createProforma: true, // POST PishFactors/RegisterPishFactor // Asan's sales",
+      "nestSnippet": "nedCode: false, }, documents: { createProforma: true, createInvoice: true, readDocuments: true, read"
+    },
+    "readById": {
+      "appSnippet": " supported and must not be assumed. readById: false, updateDocument: false, // only factor STATE can be written,",
+      "nestSnippet": "ice: true, readDocuments: true, readById: false, updateDocument: false, cancelDocument: false, remot"
+    },
+    "remoteIdempotency": {
+      "appSnippet": "ent: false, // no documented cancel remoteIdempotency: false, // undocumented; assumed absent, which is the safe ass",
+      "nestSnippet": ": false, cancelDocument: false, remoteIdempotency: false, acceptsCallerDocumentNumber: true, }, requires"
+    },
+    "updateFields": {
+      "appSnippet": "rename being reported as published. updateFields: 'PRICE_ONLY', delete: false, // no documented delete or deacti",
+      "nestSnippet": ", read: true, create: true, updateFields: 'PRICE_ONLY', delete: false, listPrices: true, readSto"
+    },
+    "returnsAssignedCode": {
+      "appSnippet": "ilently store \"1\" as a customer id. returnsAssignedCode: false, }, documents: { createProforma: true, // POS",
+      "nestSnippet": "te: true, assignsOwnCode: true, returnsAssignedCode: false, }, documents: { createProforma: true, cr"
+    },
+    "createInvoice": {
+      "appSnippet": "EVER enabled by a quotation action. createInvoice: true, readDocuments: true, // POST PishFactorsNew/LastPishFac",
+      "nestSnippet": "uments: { createProforma: true, createInvoice: true, readDocuments: true, readById: false, updateDoc"
+    },
+    "readStock": {
+      "appSnippet": "tPrice, ProductPriceNew/GetAllPrice readStock: true, // GET ProductStatisticsNew/AmarKala, ProductStatisticsNew/Prod",
+      "nestSnippet": "elete: false, listPrices: true, readStock: true, }, parties: { fields: { contractVersion: '2', identity:"
+    },
+    "listPrices": {
+      "appSnippet": "ented delete or deactivate endpoint listPrices: true, // GET ProductPriceNew/GetPrice, ProductPriceNew/GetAllPrice ",
+      "nestSnippet": "s: 'PRICE_ONLY', delete: false, listPrices: true, readStock: true, }, parties: { fields: { contractV"
+    }
+  },
+  "appHasCreateProformaTrue": true,
+  "nestHasCreateProformaTrue": true,
+  "appUpdateFieldsPriceOnly": true,
+  "nestUpdateFieldsPriceOnly": true,
+  "appReturnsAssignedCodeFalse": true,
+  "nestReturnsAssignedCodeFalse": true,
+  "note": "Duplicated capability objects; parity is textual/source review not generated gate"
+}

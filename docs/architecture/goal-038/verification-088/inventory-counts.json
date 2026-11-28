@@ -1,0 +1,10 @@
+{
+  "guideOperations": 47,
+  "guideModels": 17,
+  "wireContractTest": "PASS",
+  "asanVitest": { "passed": 69, "files": 3 },
+  "quotationVitest": { "passed": 797, "skipped": 3 },
+  "quotationJest": { "passed": 368, "skipped": 4 },
+  "moneyUnitVitest": { "passed": 10 },
+  "numberedPaginationJest": { "passed": 2 }
+}

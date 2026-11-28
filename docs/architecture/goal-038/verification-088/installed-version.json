@@ -1,0 +1,17 @@
+{
+    "quotation":  {
+                      "id":  "50a8667b-39cc-4e1c-ae3b-dab5ec41d117",
+                      "name":  "پیش‌فاکتور",
+                      "version":  "0.1.88",
+                      "universalIdentifier":  "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+                  },
+    "versionOk":  true,
+    "imageDigest":  "sha256:f4a46560c4fde4b8a5597c5a76ed9c8c541405d05661a1a1d22110d945bde6e8",
+    "sourceSha":  "8dfa4a52f4e19008f7c3bd1e1f12f023f77fc57f",
+    "expected":  "0.1.88",
+    "workspace":  {
+                      "id":  "afc7afb6-94ef-4142-872b-52a81b3e91dd",
+                      "displayName":  "4d"
+                  },
+    "image":  "twenty-dev/crm129:8dfa4a52f4e19008f7c3bd1e1f12f023f77fc57f"
+}

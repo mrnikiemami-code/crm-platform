@@ -2,8 +2,8 @@
 Date: 2026-11-28
 Branch: feat/crm-129-quotation
 User approved G0 execution and durable recovery. First live vendor is Asan. No new table design, no new UI route, no money-domain rewrite, no Intranet, no real vendor writes.
-Product version: candidate quotation@0.1.88. Running Dev last reported 0.1.86, accepted table UI.
-Current status: SOURCE_PARTIAL / BUILD_AND_RUNTIME_NOT_RUN. This is NOT G0 PASS.
+Product version: candidate quotation@0.1.88 @ `8dfa4a52f4e19008f7c3bd1e1f12f023f77fc57f`.
+Current status: SOURCE_AND_TEST_VERIFIED_PARTIAL — Dev existing install **0.1.88** applied; fresh install FAIL; open P0 A11/A12/A13/A15/A16/A17/A19. Evidence: [verification-088](verification-088/). This is NOT G0 PASS.
 
 ## Recover in a new chat
 1. Fetch actual branch head, compare current candidate and evidence history. Read docs/architecture/CRM-ARCHITECT-RECOVERY.md, this file, [source audit 087](CRM-129-ASAN-REAL-CONNECTION-AUDIT-087.md), [wire contract](ASAN-DOMAIN-AND-WIRE-CONTRACT.md). Do not rely on chat memory. The older Goal 036 checkpoint is historical.

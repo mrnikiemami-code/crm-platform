@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 038 G0 execution / 0.1.88 SOURCE_PARTIAL (2026-11-28)
+## CURRENT — Goal 038 G0 verification 088 COMPLETE / NOT G0 PASS (2026-11-28)
+
+Cursor executed unified G0-A/B/C/D verification on exact tip `8dfa4a52f4e19008f7c3bd1e1f12f023f77fc57f` / quotation@**0.1.88**. Evidence: [verification-088](./goal-038/verification-088/) + [A01–A19 ledger](./goal-038/verification-088/A01-A19-LEDGER.md). **Builds/tests PASS** (Vitest 797, Asan 69, money-unit 10, Jest quotation 368). **Dev existing install** applied and idempotent; installed version **0.1.88** on `dev-crm129`. Fresh apply on `dev-crm129-084` **FAIL** (app registration owned elsewhere; workspace remains 0.1.84). Intranet untouched; no live Asan. **G0 status: SOURCE_AND_TEST_VERIFIED_PARTIAL — NOT G0 PASS.** Open P0: A11 capability parity, A12 transport authority, A13 document reconciliation/idempotency, A15 operational isolation, A16 profiles, A17 typed reads, A19 fresh install/dataset identity. Do not authorize G1 until architect closes those source gaps. Goal 023 ACTIVE. Older headings below are historical.
+
+## PRIOR — Goal 038 G0 execution / 0.1.88 SOURCE_PARTIAL (2026-11-28)
 
 User approved execution and durable recovery. Read [G0 ordered execution and recovery](./goal-038/CRM-129-GOAL-038-G0-EXECUTION-AND-RECOVERY.md) FIRST; audit 087 and wire contract are binding. Direct source repairs for write/readback, customer replacement preservation, price tiers, double discount, sealed payable and fail-closed live retry are committed. Last running Dev reported 0.1.86; candidate 0.1.88 is NOT built, deployed or accepted. G0-A/B/C/D all PARTIAL; exact remaining audit IDs and Cursor verification instructions in linked recovery. Local bridge unavailable. No live vendor traffic, no Intranet, no outbound flags changed. Next: verify exact candidate with Cursor and independently audit evidence; complete open P0 source gates before G1 read-only authorization. Goal 023 ACTIVE. Older headings below are historical, not instructions to revert.
 
