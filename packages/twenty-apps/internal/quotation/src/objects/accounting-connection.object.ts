@@ -249,6 +249,16 @@ export default defineObject({
       isNullable: true,
     },
     {
+      universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.datasetBindingId,
+      type: FieldType.TEXT,
+      name: 'datasetBindingId',
+      label: 'شناسه مجموعه داده تأییدشده',
+      description: 'Non-secret, administrator-attested dataset identity; immutable after binding. Not proof of vendor identity.',
+      icon: 'IconDatabase',
+      isNullable: true,
+      isUIEditable: false,
+    },
+    {
       universalIdentifier: ACCOUNTING_CONNECTION_FIELDS.verificationState,
       type: FieldType.SELECT,
       name: 'verificationState',
