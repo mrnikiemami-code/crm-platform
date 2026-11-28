@@ -947,6 +947,10 @@ export const previewQuotationExport = async (
   if ((decision.kind === 'READY' || decision.kind === 'RETRY') && adapter.isLive && sealed?.snapshot.schemaVersion !== 2) {
     decision = { kind: 'BLOCKED', code: 'REVISION_MISMATCH', detail: 'historical seal has no complete item/customer identity; reissue before live export', operationId: decision.operationId };
   }
+  if ((decision.kind === 'READY' || decision.kind === 'RETRY') && adapter.isLive &&
+      sealed?.snapshot.lines.some(line => !line.unitRecordId || !line.unitCode?.trim() || !line.unitAccountingCode?.trim())) {
+    decision = { kind: 'BLOCKED', code: 'UNIT_MAPPING_REQUIRED', detail: 'live export requires an issued unit reference and nonempty accounting code; do not guess legacy units', operationId: decision.operationId };
+  }
   if ((decision.kind === 'READY' || decision.kind === 'RETRY') && documentPreview.document === null) {
     decision = { kind: 'BLOCKED', code: documentPreview.documentError?.code ?? 'INVALID_INPUT',
       detail: documentPreview.documentError?.detail ?? 'no exact vendor payload', operationId: decision.operationId };
