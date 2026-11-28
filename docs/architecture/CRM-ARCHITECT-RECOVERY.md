@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — P0 prerequisites action UAT failure (2026-11-28)
+
+User reports prerequisites buttons nonfunctional, specifically set-default; shared outside dismissal still FAIL. Source routes still connected UI→Nest→authority, actual event/HTTP/DB behavior unverified; tax UI locally overrides returned default flags, must use server authority. [UAT correction contract](goal-040/USER-UAT-092-CORRECTIONS.md) 5d36db2dc4dff61819e022aff1b374bc18f8c904. Require real authenticated per-action checks for tax/currency/unit/rounding, trace host/worker and response/persistence, preserve permission and locks. Local bridge failed; no product code, deploy or runtime test in this checkpoint. Phase 1 NOT_CLOSED; prior requirements preserved.
+
 ## CURRENT — U01 owner clarification (2026-11-28)
 
 Unit master like tax: operator name and accounting code only; system record id is FK in catalog/quotation line, shared native searchable combobox uses active workspace records, no free-text or redundant raw inline selects. Existing internal generated code hidden compatibility metadata only; adapter resolves accounting code and issued snapshot, never uses CRM UUID as vendor id. Existing code lock and historic seal preserved. See [UAT correction contract](goal-040/USER-UAT-092-CORRECTIONS.md) at f55c1c82d8e78a42fb0305964b1b7bc85d86f74b. Documentation only, no product changes; Phase 1 NOT_CLOSED and prior UAT/Phase 2 requirements unchanged.
