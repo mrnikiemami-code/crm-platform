@@ -80,6 +80,17 @@ const parseInstant = (value: unknown): Date | null => {
   return null;
 };
 
+// Interpret the stored quotation validity as a calendar date, not a token TTL.
+const formatSealedValidity = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)) return null;
+  const day = value.slice(0, 10);
+  const date = new Date(day + 'T00:00:00.000Z');
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== day) return null;
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+  }).format(date);
+};
+
 const buildPublicViewUrl = ({
   apiBaseUrl,
   rawToken,
@@ -356,6 +367,7 @@ export const resolveCustomerQuotationView = async (
   if (!viewResult.ok) return { kind: 'BUILD_FAILED', detail: viewResult.refusal.detail };
   return { kind: 'OK', view: {
     ...viewResult.value,
+    validUntilDisplay: formatSealedValidity(snapshot.expiresAt),
     // Public projection only: do not include national IDs, contacts, CRM IDs or the raw seal.
     ...(snapshot.schemaVersion === 2 ? {} : { issuedHint: 'نسخه قدیمی: مشخصات مشتری ثبت نشده است.' }),
   } };
