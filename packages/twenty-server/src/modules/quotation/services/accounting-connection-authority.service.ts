@@ -50,6 +50,7 @@ const CONNECTION_COLUMNS = {
   lastHealthCheckAt: true,
   lastHealthMessage: true,
   verificationState: true,
+  datasetBindingId: true,
 } as const;
 
 const refused = (
@@ -322,6 +323,7 @@ export class AccountingConnectionAuthorityService {
           (readMoneyUnit(existing.moneyUnit) !== 'UNCONFIRMED' &&
             readMoneyUnit(existing.moneyUnit) !== settings.value.moneyUnit)
         )) {
+          if (readText(existing.datasetBindingId)) return refused('ACCOUNTING_DATASET_REBIND_REQUIRED', 'هویت مجموعه داده این اتصال قفل شده است؛ اتصال جدید ایجاد کنید.');
           for (const object of ['accountingItemLink', 'accountingPartyLink', 'accountingSyncOperation']) {
             const history = scope.getRepository<{ id: string; connectionId: string }>(
               object, { shouldBypassPermissionChecks: true },
@@ -384,6 +386,32 @@ export class AccountingConnectionAuthorityService {
   // Exactly one active workspace default. Concurrent callers serialize under the advisory
   // lock so two set-default requests cannot leave two true flags. Inactive rows are refused;
   // old workspaces with every row false stay that way until this method runs.
+  // Separate, explicit administrator attestation after independently approved G1
+  // dataset verification. No network calls or automatic activation here.
+  async bindDataset(input: { recordId: string; datasetId: string; expectedBaseUrl: string; expectedRemoteUserId: string; confirmed: boolean }, authContext: WorkspaceAuthContext): Promise<AccountingConnectionOutcome> {
+    if (authContext.type !== 'user' || await this.resolveAuthority(authContext) !== 'SETTINGS_ROLE') return refused('FORBIDDEN', 'تأیید هویت مقصد فقط با مجوز مدیر تنظیمات امکان‌پذیر است.');
+    if (!input.confirmed || !/^[A-Za-z0-9_-]{1,128}$/.test(input.datasetId) || !input.recordId || !input.expectedBaseUrl) return refused('INVALID_INPUT', 'هویت مجموعه داده و تأیید صریح بررسی مقصد الزامی است.');
+    return this.inWorkspace(authContext, () => this.runLocked(async scope => {
+      const repository = scope.getRepository<WorkspaceAccountingConnectionRow>('accountingConnection', { shouldBypassPermissionChecks: true });
+      const row = await repository.findOne({ where: { id: input.recordId }, select: CONNECTION_COLUMNS });
+      if (!row || row.adapterId !== 'asan' || row.isActive !== true ||
+          readText(row.baseUrl).replace(/\\/+$/, '') !== input.expectedBaseUrl.replace(/\\/+$/, '') ||
+          readText(row.remoteUserId) !== input.expectedRemoteUserId) return refused('ACCOUNTING_CONNECTION_CHANGED', 'مقصد یا کاربر اتصال تغییر کرده است.');
+      const bound = readText(row.datasetBindingId);
+      if (bound && bound !== input.datasetId) return refused('ACCOUNTING_DATASET_REBIND_REQUIRED', 'تغییر هویت مقصد مجاز نیست؛ اتصال جدید ایجاد کنید.');
+      if (!bound) {
+        for (const object of ['accountingItemLink', 'accountingPartyLink', 'accountingSyncOperation']) {
+          const history = await scope.getRepository<{ id: string; connectionId: string }>(object, { shouldBypassPermissionChecks: true })
+            .findOne({ where: { connectionId: row.id }, withDeleted: true, select: { id: true } });
+          if (history) return refused('ACCOUNTING_DATASET_REBIND_REQUIRED', 'اتصال دارای سابقه بدون هویت تأییدشده است؛ ابتدا سوابق را مستقل بررسی کنید.');
+        }
+        const changed = await repository.update({ id: row.id }, { datasetBindingId: input.datasetId, updatedBy: this.actorFor(authContext) } as never);
+        if (changed.affected !== 1) return refused('ACCOUNTING_CONNECTION_CHANGED', 'ثبت هویت مقصد تأیید نشد.');
+      }
+      return { kind: 'OK', connections: await this.findAll(repository), affectedRecordId: row.id, message: 'هویت مقصد ثبت شد؛ مجوز مستقل اتصال واقعی همچنان لازم است.' };
+    }));
+  }
+
   async setDefaultConnection(
     recordId: string,
     authContext: WorkspaceAuthContext,
