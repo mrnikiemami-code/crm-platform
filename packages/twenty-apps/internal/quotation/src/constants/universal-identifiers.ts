@@ -124,6 +124,9 @@ export const QUOTATION_LINE_FIELDS = {
   kind: '6e4c1a8f-2b90-5d41-9c7e-0a1f3b5d7e9c',
   description: '993ce0c8-f0a6-5408-bdc9-aa81917fc722',
   unit: '3f7ec605-292f-5383-bad8-2f793d40d2c3',
+  unitRecordId: '4a2a9b91-723d-5963-a79c-3d4b71e8b54d',
+  unitCode: '75eee6be-c38f-5662-9b79-be9b0e205cc2',
+  unitAccountingCode: '7655c1b7-c552-58d8-8495-a214970590cb',
   quantityMilli: '22d64c2f-2a4b-5d7b-9983-be2ef599b2e3',
   unitPriceExact: '65709ed5-88af-5eba-b81a-67547894a274',
   grossExact: '1e3b5829-64a6-518f-a29d-b5263748596a',
@@ -461,6 +464,7 @@ export const QUOTATION_UNIT_FIELDS = {
   name: '929a3199-73f0-569b-92a5-707742288aea',
   isActive: '8084713d-5e20-5846-b136-0cdb557431d0',
   accountingCode: 'efceadfe-e2fa-505d-a263-95530baae29e',
+  accountingCodeLocked: '68a351c8-25eb-5bf2-9bbe-b65f672c1065',
 } as const;
 
 // App-owned fields on standard person / company (defineField). Distinct from vendor
