@@ -27,6 +27,13 @@ describe('vendor primary unit equivalence', () => {
     }
   });
 
+  it('does not equate an accounting code or a CRM id to a vendor unit', () => {
+    expect(assertVendorPrimaryUnitMatchesCrm({
+      observation: { vendorUnitName: '100', vendorUnitId: 'u1' },
+      crmUnit: { recordId: 'u1', name: 'عدد', accountingCode: '100' },
+    }).ok).toBe(false);
+  });
+
   it('allows CRM selection when vendor unit was not observed', () => {
     expect(
       assertCrmUnitCompatibleWithVendorObservation({
