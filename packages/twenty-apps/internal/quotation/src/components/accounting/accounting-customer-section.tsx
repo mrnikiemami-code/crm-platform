@@ -1,6 +1,7 @@
 import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
+import { confirmAccountingAction } from 'src/components/accounting/confirm-accounting-action';
 
 import {
   ACCOUNTING_CONNECTION_ROUTE,
@@ -316,18 +317,19 @@ export const AccountingCustomerSection = ({
     }
   };
 
-  const transferSelected = () => {
+  const transferSelected = async () => {
     if (selected.size === 0) {
       return;
     }
+    const confirmedSelection = new Map(selected);
     if (
-      !window.confirm(
+      !await confirmAccountingAction(
         `انتقال ${selected.size.toLocaleString('fa-IR')} مشتری انتخاب‌شده انجام شود؟`,
       )
     ) {
       return;
     }
-    void applySelections(selected);
+    void applySelections(confirmedSelection);
   };
 
   const transferAllEligible = async () => {
@@ -406,7 +408,7 @@ export const AccountingCustomerSection = ({
       }
 
       if (
-        !window.confirm(
+        !await confirmAccountingAction(
           `انتقال همه: ${collected.size.toLocaleString('fa-IR')} مشتری واجد شرایط. موارد نیازمند بررسی دستی: ${skipped.toLocaleString('fa-IR')}. ادامه؟`,
         )
       ) {
@@ -1006,7 +1008,7 @@ const CustomerPriceGroupMapping = ({ connectionId, selection, canManage }: {
   }, [connectionId, selection.type, selection.id]);
   const save = async () => {
     if (!groupId || !selected || busy || !canManage) return;
-    if (!window.confirm('این نگاشت برای تمام مشتریان دارای همین گروه در این اتصال اعمال می‌شود. ادامه؟')) return;
+    if (!await confirmAccountingAction('این نگاشت برای تمام مشتریان دارای همین گروه در این اتصال اعمال می‌شود. ادامه؟')) return;
     setBusy(true); setMessage(null);
     try {
       const response = await callAppRoute(ACCOUNTING_CONNECTION_ROUTE, { action: 'map-customer-price-group',
