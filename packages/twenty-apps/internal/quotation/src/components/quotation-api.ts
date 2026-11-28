@@ -178,6 +178,8 @@ const ACCOUNTING_CONNECTION_APP_ACTION_TO_NEST: Record<string, string> = {
   'set-default': 'accounting-connection-set-default',
   deactivate: 'accounting-connection-deactivate',
   reactivate: 'accounting-connection-reactivate',
+  'customer-price-list': 'accounting-connection-customer-price-list',
+  'map-customer-price-group': 'accounting-connection-map-customer-price-group',
 };
 
 export const callAccountingConnectionNestAction = (
