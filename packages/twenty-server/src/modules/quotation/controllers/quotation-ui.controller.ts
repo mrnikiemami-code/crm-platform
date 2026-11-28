@@ -56,6 +56,10 @@ type QuotationUiActionBody = {
   connectionId?: unknown;
   adapterId?: unknown;
   settings?: unknown;
+  datasetId?: unknown;
+  expectedBaseUrl?: unknown;
+  expectedRemoteUserId?: unknown;
+  confirmed?: unknown;
 };
 
 const ALLOWED_ACTIONS = new Set([
@@ -89,6 +93,7 @@ const ALLOWED_ACTIONS = new Set([
   'accounting-settings-authority',
   'accounting-connection-list',
   'accounting-connection-save',
+  'accounting-connection-bind-dataset',
   'accounting-connection-test',
   'accounting-connection-set-default',
   'accounting-connection-deactivate',
@@ -845,6 +850,13 @@ export class QuotationUiController {
           ),
           authContext,
         );
+      }
+
+      if (action === 'accounting-connection-bind-dataset') {
+        return this.describeAccountingOutcome(await this.accountingConnectionAuthorityService.bindDataset({
+          recordId: readText(body.recordId), datasetId: readText(body.datasetId), expectedBaseUrl: readText(body.expectedBaseUrl),
+          expectedRemoteUserId: readText(body.expectedRemoteUserId), confirmed: body.confirmed === true,
+        }, authContext), authContext);
       }
 
       if (action === 'accounting-connection-set-default') {
