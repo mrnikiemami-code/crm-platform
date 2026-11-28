@@ -1,6 +1,7 @@
 import { NativeSettingsTable, NativeSettingsHead, NativeSettingsBody, NativeSettingsRow, NativeSettingsHeader, NativeSettingsCell } from 'src/components/shared/native-settings-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
+import { confirmAccountingAction } from 'src/components/accounting/confirm-accounting-action';
 
 import {
   ACCOUNTING_OUTBOUND_ROUTE,
@@ -296,21 +297,22 @@ export const AccountingDocumentsSection = ({
     }
   };
 
-  const sendSelected = () => {
+  const sendSelected = async () => {
     if (selected.size === 0) {
       return;
     }
+    const confirmedSelection = [...selected];
     if (
-      !window.confirm(
+      !await confirmAccountingAction(
         `ارسال ${selected.size.toLocaleString('fa-IR')} سند انتخاب‌شده انجام شود؟`,
       )
     ) {
       return;
     }
-    void sendQuotations([...selected]);
+    void sendQuotations(confirmedSelection);
   };
 
-  const sendAllPending = () => {
+  const sendAllPending = async () => {
     const ids = rows
       .filter((row) => row.sendState === 'PENDING' || row.sendState === 'FAILED')
       .map((row) => row.quotationId);
@@ -322,7 +324,7 @@ export const AccountingDocumentsSection = ({
       return;
     }
     if (
-      !window.confirm(
+      !await confirmAccountingAction(
         `ارسال همه: ${ids.length.toLocaleString('fa-IR')} سند. ادامه؟`,
       )
     ) {
