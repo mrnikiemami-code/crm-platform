@@ -1085,12 +1085,15 @@ export const executeQuotationExport = async (
   try {
     const claimedPreview = await previewQuotationExport({ connectionId, quotationId, adapter, settings, flags }, dependencies);
     if (!claimedPreview.ok || claimedPreview.value.decision.kind !== 'IN_PROGRESS' ||
-        claimedPreview.value.decision.operationId !== claim.id ||
-        claimedPreview.value.revisionVersion !== revisionNumber ||
+        claimedPreview.value.decision.operationId !== claim.id) {
+      // Never overwrite a ledger that no longer reports our in-flight claim.
+      return refused('RECONCILIATION_REQUIRED', 'in-flight claim no longer confirmed; no vendor call made');
+    }
+    if (claimedPreview.value.revisionVersion !== revisionNumber ||
         claimedPreview.value.claim?.fingerprint !== claim.fingerprint ||
-        !claimedPreview.value.documentPreview.checks.every(check => check.ok)) {
+        !claimedPreview.value.documentPreview.checks.every(check => check.ok || check.code === 'TAX_CODE_VERIFIED')) {
       await finish('CANCELLED', null, 'REVISION_MISMATCH');
-      return refused('REVISION_MISMATCH', 'document or claim changed after persistence; no vendor call made');
+      return refused('REVISION_MISMATCH', 'document or binding changed after persistence; no vendor call made');
     }
     const cutoff = await requireActiveAccountingConnection(connectionId, { execute });
     if (!cutoff.ok) {
