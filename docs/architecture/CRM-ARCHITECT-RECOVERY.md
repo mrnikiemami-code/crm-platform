@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 040 comprehensive Asan integration plan (2026-11-28)
+## CURRENT — Goal 040 parallel source lanes (2026-11-28)
+
+User authorized parallel execution without interference. [Parallel charter](./goal-040/PARALLEL-EXECUTION.md) overrides sequential source scheduling only, preserves scope and gates. Architect owns finance/seal/export on feat/crm129-g040-finance; Cursor owns unit/catalog atomic import on feat/crm129-g040-reference-catalog. Both start at charter commit, integration branch remains architect-only; exact handoff and merge review required. No shared live Dev/DB, no app version bump until integrated candidate, no actual Asan API. Phase 3 remains one integrated verification. Source work not yet executed at charter checkpoint. Read plan, ledger and charter; verify actual branch tips and handoff before resuming.
+
+## PRIOR — Goal 040 comprehensive Asan integration plan (2026-11-28)
 
 User approved ordered critical-first integration and unit-of-measure catalog with accounting code saved on quotation line. Read [Goal 040 plan](./goal-040/CRM-129-GOAL-040-ASAN-INTEGRATION-PLAN.md) and [progress/recovery ledger](./goal-040/PROGRESS.md) FIRST, then [audit 092](./goal-038/CRM-129-ASAN-PRECONNECTION-FIELD-AND-FLOW-AUDIT-092.md), vendor wire contract, financial C1–C8. Phase 1 direct architect critical source work AUTHORIZED / NOT_STARTED; phase 2 missing fields/workflow, phase 3 ONE targeted Cursor verification, phase 4 real API G1/G2 separately authorized. No duplicate quotation development. Last installed 0.1.91 evidence 4c6eb4fd; PDF packaging repair fe801554 source-only; actual credential revocation blocked Dev admin. Goal 039 broad scope remains cancelled; Goal 023 ACTIVE; Goal 038 G0 partial, live gates suspended. This checkpoint is documentation only, no product changes or tests. Next: architect repairs actual phase 1 source, then phase 2; update ledger and recovery in each checkpoint.
 

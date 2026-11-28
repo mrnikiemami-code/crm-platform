@@ -4,6 +4,9 @@ User-approved direction: convert audit 092 to an ordered critical-first plan, fi
 
 Baseline audit commit 98ab4670868d946bc2b7409789fa0a8b2107c8a9; audited product source fe8015545fc9b091b6c9b5dd4024259831b0f08a; installed quotation@0.1.91 evidence 4c6eb4fd072f88b1d5651442cc6d185618591090. PDF packaging fix source-only. No real Asan API yet. No live imports/writes. No product change or test execution is claimed by this planning commit.
 
+## Parallel scheduling amendment
+User authorized independent source work in parallel. [Parallel charter](PARALLEL-EXECUTION.md) supersedes sequential actor assignments only: architect finance P0 lane A; Cursor unit/catalog source lane B; integration by architect, then remaining source and one phase 3 verification. All scope, requirements, priorities and gates remain binding.
+
 ## Finite phase structure
 Three offline phases plus one separately authorized live acceptance phase. Phase 1 and 2 are architect-owned direct source work, one coherent candidate, not a succession of worker repair tasks. Phase 3 is ONE Cursor build/deploy/targeted acceptance goal after independent review of both source phases. Phase 4 starts only when the API is available and gates are accepted. No repeating a PASS without a changed dependency or contrary evidence. Reuse exact previous test evidence for unchanged behavior; run affected automated suites when changing shared contracts. No arbitrary pass-count targets, no screenshots, no hotpatch, no fake tests, no credential in Git, no Intranet :6080. Continue independent checks after failures; report evidence once; architect directly fixes verified source defects. No automatic expansion into unrelated modules.
 
