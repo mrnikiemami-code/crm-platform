@@ -43,6 +43,9 @@ export type QuotationRevisionLine = {
   documentDiscountMicros?: string;
   description: string;
   unit: string;
+  unitRecordId?: string | null;
+  unitCode?: string;
+  unitAccountingCode?: string;
   quantityScaled: string;
   unitPriceMicros: string;
   discountMicros: string;
@@ -138,6 +141,9 @@ export type QuotationRevisionLineRow = {
   description: string | null;
   name: string | null;
   unit: string | null;
+  unitRecordId?: string | null;
+  unitCode?: string | null;
+  unitAccountingCode?: string | null;
   quantityExact: string | null;
   unitPriceExact: string | null;
   grossExact: string | null;
@@ -332,6 +338,7 @@ export const buildQuotationRevisionSnapshot = ({
         kind: line.kind === 'SERVICE' ? 'SERVICE' as const : 'PRODUCT' as const,
         itemSku: line.itemSku ?? null,
         itemAccountingCode: line.itemAccountingCode ?? null,
+        ...(line.unitRecordId ? { unitRecordId: line.unitRecordId, unitCode: (line.unitCode ?? '').trim(), unitAccountingCode: (line.unitAccountingCode ?? '').trim() } : {}),
         taxPolicyRecordId: line.taxPolicyRecordId ?? null,
         taxAccountingCode: (line.taxAccountingCode ?? '').trim(),
         grossMicros: gross.toString(),
