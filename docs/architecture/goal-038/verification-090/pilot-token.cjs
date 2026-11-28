@@ -1,3 +1,6 @@
+const fixtureEmail = process.env.CRM129_FIXTURE_EMAIL;
+const fixturePassword = process.env.CRM129_FIXTURE_PASSWORD;
+if (!fixtureEmail || !fixturePassword) throw new Error('Fixture credentials are required');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -25,7 +28,7 @@ const meta = async (query, variables) => {
         }
       }
     }`,
-    { email: 'pilot.a@local.test', password: 'PilotPass123!' },
+    { email: fixtureEmail, password: fixturePassword },
   );
   const workspace =
     signIn.data?.signIn?.availableWorkspaces?.availableWorkspacesForSignIn?.find(

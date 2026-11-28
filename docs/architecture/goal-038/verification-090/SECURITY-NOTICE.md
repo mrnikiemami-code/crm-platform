@@ -1,0 +1,3 @@
+# Evidence credential hygiene
+
+Independent architect review found a fixed Dev fixture password in three verification scripts at evidence commit cdf152114babfbf1f2d87b0e1eae1d0a17ef8d90. Current scripts now require environment-provided credentials. The previous Git history is unchanged; this is not revocation or secret removal from history. Dev administrator must rotate/disable affected fixture accounts, revoke associated active API keys/sessions and remove local CLI credentials if no longer needed, retaining only redacted evidence. Confirm no shared/production credential was used. Do not rewrite shared Git history without authorization. No credential values in subsequent evidence. This hygiene correction does not change or rerun candidate 0.1.90 test evidence.

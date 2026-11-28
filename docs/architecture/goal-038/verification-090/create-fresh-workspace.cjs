@@ -10,7 +10,8 @@ const config = JSON.parse(
 const apiBase = String(config.remotes['dev-crm129'].apiUrl).replace(/\/$/, '');
 const stamp = Date.now().toString(36);
 const email = `g038090.${stamp}@local.test`;
-const password = 'PilotPass123!';
+const password = process.env.CRM129_FIXTURE_PASSWORD;
+if (!password) throw new Error('CRM129_FIXTURE_PASSWORD is required');
 const origin = 'http://localhost:3002';
 const subdomain = `g090${stamp}`.replace(/[^a-z0-9]/g, '').slice(0, 20);
 

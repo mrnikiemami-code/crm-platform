@@ -5,7 +5,8 @@ const os = require('node:os');
 
 const email = process.argv[2];
 const subdomain = process.argv[3];
-const password = 'PilotPass123!';
+const password = process.env.CRM129_FIXTURE_PASSWORD;
+if (!password) throw new Error('CRM129_FIXTURE_PASSWORD is required');
 const apiBase = 'http://localhost:3002';
 const origin = `http://${subdomain}.localhost:3002`;
 
