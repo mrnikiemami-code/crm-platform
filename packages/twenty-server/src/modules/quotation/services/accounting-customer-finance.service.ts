@@ -9,7 +9,8 @@ type FinanceRequest = {
   connectionId: string;
   partyType: 'PERSON' | 'COMPANY';
   internalPartyId: string;
-  report: 'SUMMARY' | 'CARDEX';
+  report: 'SUMMARY' | 'CARDEX' | 'PROFORMAS';
+  count?: number;
   from?: string;
   to?: string;
 };
@@ -31,11 +32,17 @@ export const parseCustomerFinanceRequest = (raw: unknown): FinanceRequest | null
   const row = object(raw);
   if (!row || !uuid(row.connectionId) || !uuid(row.internalPartyId) ||
       (row.partyType !== 'PERSON' && row.partyType !== 'COMPANY') ||
-      (row.report !== 'SUMMARY' && row.report !== 'CARDEX')) return null;
+      (row.report !== 'SUMMARY' && row.report !== 'CARDEX' && row.report !== 'PROFORMAS')) return null;
   if (row.report === 'SUMMARY') {
-    if (row.from !== undefined || row.to !== undefined) return null;
+    if (row.from !== undefined || row.to !== undefined || row.count !== undefined) return null;
     return { connectionId: row.connectionId, internalPartyId: row.internalPartyId, partyType: row.partyType, report: row.report };
   }
+  if (row.report === 'PROFORMAS') {
+    if (row.from !== undefined || row.to !== undefined || typeof row.count !== 'number' ||
+        !Number.isSafeInteger(row.count) || row.count < 1 || row.count > 100) return null;
+    return { connectionId: row.connectionId, internalPartyId: row.internalPartyId, partyType: row.partyType, report: row.report, count: row.count };
+  }
+  if (row.count !== undefined) return null;
   const start = dateMs(row.from), end = dateMs(row.to);
   if (start === null || end === null || start < 0 || end < start || end - start >= 93 * 86400000) return null;
   return { connectionId: row.connectionId, internalPartyId: row.internalPartyId, partyType: row.partyType,
@@ -79,10 +86,14 @@ export class AccountingCustomerFinanceService {
         // Only the validated link can supply the vendor identity. Never accept
         // a caller-provided external customer ID, URL or report query.
         const response = await worker({ connectionId: input.connectionId, externalPartyId: link.externalPartyId,
-          report: input.report, ...(input.report === 'CARDEX' ? { from: input.from, to: input.to } : {}) });
+          report: input.report, ...(input.report === 'CARDEX' ? { from: input.from, to: input.to } : {}),
+          ...(input.report === 'PROFORMAS' ? { count: input.count } : {}) });
         if (!response || response.success !== true) return failure(typeof response?.code === 'string' ? response.code : 'ACCOUNTING_RUNTIME_UNAVAILABLE');
         const report = object(response.observation);
-        if (!report || report.customerExternalId !== link.externalPartyId || report.report !== input.report) return failure('ASAN_INCOMPLETE_DATASET');
+        if (!report || report.customerExternalId !== link.externalPartyId || report.report !== input.report ||
+            report.connectionId !== input.connectionId || report.adapterId !== 'asan' || report.certified !== false ||
+            (input.report === 'CARDEX' && (report.from !== input.from || report.to !== input.to || !Array.isArray(report.rows) || report.rows.length > 500)) ||
+            (input.report === 'PROFORMAS' && (report.count !== input.count || !Array.isArray(report.rows) || report.rows.length > (input.count ?? 0)))) return failure('ASAN_INCOMPLETE_DATASET');
         return { success: true, observation: report };
       }), auth);
     } catch {
