@@ -23,7 +23,7 @@ export default defineObject({
   labelSingular: 'واحد اندازه‌گیری',
   labelPlural: 'واحدهای اندازه‌گیری',
   description:
-    'فهرست واحدهای فضای کاری. کد حسابداری اختیاری است؛ پس از استفاده در کالا قفل می‌شود.',
+    'فهرست واحدهای فضای کاری. کد حسابداری اختیاری است؛ پس از اولین استفاده با کد غیرخالی در پیش‌فاکتور قفل می‌شود.',
   icon: 'IconRuler',
   labelIdentifierFieldMetadataUniversalIdentifier: QUOTATION_UNIT_FIELDS.name,
   isUICreatable: false,
@@ -67,11 +67,22 @@ export default defineObject({
       name: 'accountingCode',
       label: 'کد حسابداری',
       description:
-        'کد دفتر کل این واحد (اختیاری). خالی مجاز است؛ پس از استفاده در کالا غیرخالی قفل می‌شود.',
+        'کد دفتر کل این واحد (اختیاری). خالی مجاز است؛ پس از اولین ذخیره ردیف با کد غیرخالی قفل می‌شود.',
       icon: 'IconHash',
       isNullable: false,
       isUIEditable: false,
       defaultValue: "''",
+    },
+    {
+      universalIdentifier: QUOTATION_UNIT_FIELDS.accountingCodeLocked,
+      type: FieldType.BOOLEAN,
+      name: 'accountingCodeLocked',
+      label: 'قفل دائمی کد حسابداری',
+      description: 'پس از اولین ذخیره موفق ردیف با کد غیرخالی، فقط سرور ثبت می‌کند.',
+      icon: 'IconLock',
+      isNullable: false,
+      isUIEditable: false,
+      defaultValue: false,
     },
     {
       universalIdentifier: RELATION_FIELDS.quotationUnitCatalogItems,
