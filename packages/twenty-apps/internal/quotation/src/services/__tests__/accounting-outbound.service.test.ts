@@ -98,6 +98,7 @@ type QuotationFixture = {
   retireAfterClaim?: boolean;
   changeLinkAfterClaim?: boolean;
   loseClaimAfterInsert?: boolean;
+  changeClaimFingerprint?: boolean;
 };
 
 const quotationExecute = ({
@@ -108,6 +109,7 @@ const quotationExecute = ({
   retireAfterClaim = false,
   changeLinkAfterClaim = false,
   loseClaimAfterInsert = false,
+  changeClaimFingerprint = false,
 }: QuotationFixture = {}) => {
   let claimed: Record<string, unknown> | null = null;
   return vi.fn(async (query: string) => {
@@ -164,7 +166,8 @@ const quotationExecute = ({
     }
 
     if (query.includes('accountingSyncOperations')) {
-      return edges('accountingSyncOperations', claimed && !loseClaimAfterInsert ? [claimed] : []);
+      return edges('accountingSyncOperations', claimed && !loseClaimAfterInsert ?
+        [changeClaimFingerprint && query.includes('ReadQuotationClaim') ? { ...claimed, payloadFingerprint: 'tampered' } : claimed] : []);
     }
 
     if (query.includes('accountingConnections')) {
@@ -634,6 +637,7 @@ describe('quotation export', () => {
     [{ retireAfterClaim: true }, 'CONNECTION_INACTIVE'],
     [{ changeLinkAfterClaim: true }, 'REVISION_MISMATCH'],
     [{ loseClaimAfterInsert: true }, 'RECONCILIATION_REQUIRED'],
+    [{ changeClaimFingerprint: true }, 'RECONCILIATION_REQUIRED'],
   ] as const)('never dispatches after the claim cutoff changes: %j', async (fixture, code) => {
     const execute = quotationExecute(fixture);
     const adapter = new MockAccountingAdapter();
@@ -644,7 +648,7 @@ describe('quotation export', () => {
     expect(outcome).toMatchObject({ ok: false, refusal: { code } });
     expect(dispatch).not.toHaveBeenCalled();
     expect(execute.mock.calls.some(([query]) => query.includes('CreateQuotationClaim'))).toBe(true);
-    expect(execute.mock.calls.some(([query]) => query.includes('FinishQuotationClaim') && query.includes('"CANCELLED"'))).toBe(!('loseClaimAfterInsert' in fixture));
+    expect(execute.mock.calls.some(([query]) => query.includes('FinishQuotationClaim') && query.includes('"CANCELLED"'))).toBe(!('loseClaimAfterInsert' in fixture) && !('changeClaimFingerprint' in fixture));
   });
 
   it('retains an uncertain dispatch as reconciliation required and does not replay it', async () => {
