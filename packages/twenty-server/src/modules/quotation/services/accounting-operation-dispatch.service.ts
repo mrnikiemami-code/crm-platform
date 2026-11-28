@@ -5,6 +5,7 @@ import { LogicFunctionExecutorService } from 'src/engine/core-modules/logic-func
 import { LogicFunctionExecutionStatus } from 'src/engine/metadata-modules/logic-function/dtos/logic-function-execution-result.dto';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
+import { AccountingItemApplyService, parseAccountingItemSelections } from 'src/modules/quotation/services/accounting-item-apply.service';
 import { AccountingPartyApplyService, parseAccountingPartySelections } from 'src/modules/quotation/services/accounting-party-apply.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { acquireAccountingConnectionWorkLock } from 'src/modules/quotation/utils/accounting-connection-lock.util';
@@ -65,6 +66,7 @@ export class AccountingOperationDispatchService {
     private readonly permissions: QuotationPermissionService,
     private readonly workspaceOrmManager: WorkspaceOrmManager,
     private readonly partyApply: AccountingPartyApplyService,
+    private readonly itemApply: AccountingItemApplyService,
   ) {}
 
   async dispatch(
@@ -99,12 +101,14 @@ export class AccountingOperationDispatchService {
 
     // A customer write must always have a real workspace user. API keys and
     // unattended app tokens have no delegated CRM authority.
-    if (operation.action === 'apply-parties' && authContext.type !== 'user') {
+    if (['apply-parties', 'apply-items'].includes(operation.action) && authContext.type !== 'user') {
       return forbidden();
     }
 
     const partySelections = operation.action === 'apply-parties' ? parseAccountingPartySelections(input.selections) : null;
     if (operation.action === 'apply-parties' && partySelections === null) return invalid();
+    const itemSelections = operation.action === 'apply-items' ? parseAccountingItemSelections(input.selections) : null;
+    if (operation.action === 'apply-items' && itemSelections === null) return invalid();
 
     try {
       const quotationId = readText(input.quotationId);
@@ -180,7 +184,9 @@ export class AccountingOperationDispatchService {
         payload: {
           body: operation.action === 'apply-parties'
             ? { connectionId: readText(input.connectionId), selections: partySelections, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-parties' }
-            : { ...input, action: operation.action },
+            : operation.action === 'apply-items'
+              ? { connectionId: readText(input.connectionId), selections: itemSelections, applyPrices: input.applyPrices === true, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-items' }
+              : { ...input, action: operation.action },
           headers: {},
           pathParameters: {},
           queryStringParameters: {},
@@ -198,6 +204,11 @@ export class AccountingOperationDispatchService {
         if (!app || !partySelections) return unavailable();
         return await this.partyApply.apply({ connectionId: readText(input.connectionId), selections: partySelections,
           allowUpdate: input.allowRemoteVersionUpdate === true, plan: data.plan, authContext, app });
+      }
+      if (operation.action === 'apply-items' && data.success === true) {
+        if (!itemSelections) return invalid();
+        return this.itemApply.apply({ connectionId: readText(input.connectionId), selections: itemSelections, applyPrices: input.applyPrices === true,
+          allowUpdate: input.allowRemoteVersionUpdate === true, plan: data.plan, authContext });
       }
       return data;
       };
