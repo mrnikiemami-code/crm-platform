@@ -24,7 +24,14 @@ import {
   toPersianDigits,
 } from 'src/modules/quotation/utils/quotation-pdf-display.util';
 
+import { decodeRevisionLine, formatSealedMicros, readSealedQuotation } from 'src/modules/quotation/utils/quotation-sealed-display.util';
+
 type QuotationPdfRow = {
+  status: string;
+  customerName: string | null;
+  expiresAt: string | Date | null;
+  identityNote?: string;
+  customerDetails?: string[];
   id: string;
   name: string | null;
   quotationNumber: string | null;
@@ -48,6 +55,7 @@ type QuotationPdfRow = {
 };
 
 type QuotationLinePdfRow = {
+  unit: string | null;
   id: string;
   name: string | null;
   description: string | null;
@@ -122,6 +130,9 @@ export class QuotationPdfService {
         where: { id: quotationId },
         select: {
           id: true,
+          status: true,
+          customerName: true,
+          expiresAt: true,
           name: true,
           quotationNumber: true,
           grossExact: true,
@@ -151,6 +162,59 @@ export class QuotationPdfService {
         );
       }
 
+      const revisions = await this.workspaceOrmManager.getRepository<{
+        id: string; version: number | null; snapshotJson: unknown; snapshotHash: string;
+      }>('quotationRevision', { shouldBypassPermissionChecks: true }).find({
+        where: { quotationId, status: 'ISSUED' }, take: 2,
+      });
+      if (revisions.length > 0 || !['DRAFT', 'PENDING_INTERNAL_APPROVAL', 'CANCELLED'].includes(quotation.status)) {
+        const row = revisions.length === 1 ? revisions[0] : undefined;
+        const sealed = row && readSealedQuotation(row.snapshotJson, row.snapshotHash, quotationId, row.version);
+        if (!sealed) {
+          throw new QuotationQueryValidationException('REVISION_MISMATCH: issued PDF requires one valid sealed revision', QuotationQueryValidationExceptionCode.FORBIDDEN);
+        }
+        let lineDiscount = 0n;
+        let documentDiscount = 0n;
+        const lines = sealed.lines.map((line, index): QuotationLinePdfRow => {
+          const decoded = decodeRevisionLine(line);
+          if (!decoded.ok) throw new QuotationQueryValidationException('TOTALS_INCONSISTENT: invalid sealed line', QuotationQueryValidationExceptionCode.FORBIDDEN);
+          const value = decoded.value;
+          lineDiscount += value.lineDiscount;
+          documentDiscount += value.documentDiscount;
+          return {
+            id: line.lineId, name: line.name ?? null,
+            description: [line.name, line.description === line.name ? null : line.description, line.itemSku ? 'کد کالا: ' + line.itemSku : null].filter(Boolean).join(' — '),
+            unit: line.unit, quantityExact: formatSealedMicros(value.quantity),
+            unitPriceExact: formatSealedMicros(value.unitPrice),
+            discountExact: formatSealedMicros(value.lineDiscount + value.documentDiscount),
+            taxExact: formatSealedMicros(value.tax), totalExact: formatSealedMicros(value.total),
+            sortOrder: index,
+          };
+        });
+        const exact = (value: string | undefined) => formatSealedMicros(BigInt(value ?? '0'));
+        const customer = sealed.customerSnapshot;
+        const customerDetails = customer ? [
+          customer.nationalCode ? 'شناسه/کد ملی: ' + customer.nationalCode : '',
+          customer.economicCode ? 'کد اقتصادی: ' + customer.economicCode : '',
+          customer.registrationNumber ? 'شماره ثبت: ' + customer.registrationNumber : '',
+          [customer.address?.state, customer.address?.city, customer.address?.street1, customer.address?.street2, customer.address?.postcode].filter(Boolean).join('، '),
+        ].filter(Boolean) : [];
+        return {
+          quotation: { ...quotation, name: sealed.documentTitle ?? 'پیش‌فاکتور',
+            quotationNumber: sealed.quotationNumber, currencyCode: sealed.currencyCode,
+            paymentTerms: sealed.paymentTerms, sentAt: sealed.issuedAt, expiresAt: sealed.expiresAt ?? null,
+            grossExact: exact(sealed.totals.grossMicros), lineDiscountExact: formatSealedMicros(lineDiscount),
+            documentDiscountExact: formatSealedMicros(documentDiscount), netExact: exact(sealed.totals.netMicros),
+            taxExact: exact(sealed.totals.taxMicros), dutyExact: exact(sealed.totals.dutyMicros),
+            roundingExact: exact(sealed.totals.roundingMicros), totalExact: exact(sealed.totals.totalMicros),
+            taxRateBasisPoints: sealed.taxRateBasisPoints, dutyRateBasisPoints: sealed.dutyRateBasisPoints ?? null,
+            roundingStepRials: sealed.roundingStepRials ?? null, customerDetails,
+            identityNote: customer ? undefined : 'نسخه قدیمی: مشخصات مشتری در نسخه قطعی ثبت نشده است.',
+          },
+          lines, customerName: customer?.name ?? '—',
+        };
+      }
+
       const lineRepository =
         this.workspaceOrmManager.getRepository<QuotationLinePdfRow>(
           'quotationLine',
@@ -162,6 +226,7 @@ export class QuotationPdfService {
           id: true,
           name: true,
           description: true,
+          unit: true,
           quantityExact: true,
           unitPriceExact: true,
           discountExact: true,
@@ -274,6 +339,9 @@ export class QuotationPdfService {
       quotationNumber,
       customerName,
       jalaliDate,
+      validUntil: quotation.expiresAt ? formatJalaliDateFromInstant(quotation.expiresAt instanceof Date ? quotation.expiresAt.toISOString() : quotation.expiresAt) ?? undefined : undefined,
+      customerDetails: quotation.customerDetails,
+      identityNote: quotation.identityNote,
       paymentTerms: isNonEmptyString(quotation.paymentTerms)
         ? quotation.paymentTerms
         : undefined,
@@ -322,7 +390,7 @@ export class QuotationPdfService {
 
     const pdfLine: QuotationPdfLine = {
       description,
-      quantity,
+      quantity: isNonEmptyString(line.unit) ? quantity + ' ' + line.unit : quantity,
       unitPrice,
     };
 
