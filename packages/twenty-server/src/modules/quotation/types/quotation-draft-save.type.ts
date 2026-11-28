@@ -24,6 +24,7 @@ export type QuotationDraftSaveLine = {
   kind: QuotationDraftLineKind;
   description: string | null;
   unit: string;
+  unitRecordId?: string | null;
   quantityExact: string;
   unitPriceExact: string;
   grossExact: string;
