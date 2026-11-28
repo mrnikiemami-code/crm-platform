@@ -11,11 +11,16 @@ import {
 import { type GraphqlValue, toGraphqlLiteral } from 'src/data/graphql-literal';
 import {
   buildCatalogItemByIdQuery,
+  buildQuotationUnitByIdQuery,
   buildUpdateCatalogItemMutation,
   buildCreateCatalogItemMutation,
   buildCreatePriceMutation,
   buildDefaultPriceListQuery,
 } from 'src/data/quotation-queries';
+import {
+  buildCatalogItemObservationSnapshot,
+  serializeItemObservation,
+} from 'src/domain/accounting/item-observation';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import {
   type AccountingAdapter,
@@ -359,10 +364,33 @@ export const applyItemImport = async (
     try {
       let itemId = row.internalItemId;
       if (row.action === 'CREATE_CATALOG_ITEM') {
+        const unitRecordId = row.unitRecordId?.trim() ?? '';
+
+        if (unitRecordId === '') {
+          refuse('UNIT_MAPPING_REQUIRED', 'Workspace unit mapping is required');
+          continue;
+        }
+
+        const unitData = await execute(buildQuotationUnitByIdQuery(unitRecordId));
+        const unitNode = asRecord(asRecord(unitData.quotationUnit));
+        const unitName = unitNode === null ? '' : readString(unitNode.name);
+        const unitActive = unitNode?.isActive !== false;
+
+        if (unitName === '' || !unitActive) {
+          refuse('UNIT_MAPPING_REQUIRED', 'Workspace unit could not be verified');
+          continue;
+        }
+
         const created = await execute(buildCreateCatalogItemMutation({
           id: stableImportId('item', connectionId, row.externalItemId),
-          name: row.name, sku: row.code, unit: 'عدد',
-          description: row.secondaryName, kind: 'PRODUCT', isActive: true,
+          name: row.name,
+          sku: row.code,
+          unit: unitName,
+          unitRecordId,
+          secondaryName: row.secondaryName,
+          description: row.secondaryName,
+          kind: 'PRODUCT',
+          isActive: true,
         }));
         itemId = readCreatedId(created, 'createCatalogItem');
         if (!itemId) { refuse('QUERY_ERROR', 'Catalog creation not confirmed'); continue; }
@@ -390,9 +418,33 @@ export const applyItemImport = async (
       if (applyPrices && priceListId !== null && row.priceMicros !== null) {
         if (await syncAccountingItemPrice(execute, itemId, priceListId, row.priceMicros)) outcome.createdPrices += 1;
       }
+      const previewRemote = preview.rows.find(
+        (candidate) => candidate.externalItemId === row.externalItemId,
+      );
+      const observedAt = new Date().toISOString();
+      const observationPayload = buildCatalogItemObservationSnapshot({
+        item: {
+          externalItemId: row.externalItemId,
+          secondaryName: row.secondaryName,
+          observation:
+            previewRemote === undefined
+              ? undefined
+              : {
+                  version: '1',
+                  unitId: row.vendorUnitId ?? undefined,
+                  unitName: row.vendorUnitName ?? undefined,
+                },
+        },
+        capturedAt: observedAt,
+      });
+      const observationFields = serializeItemObservation(observationPayload);
       const linkFields = {
-        externalCode: row.code, remoteVersion: row.remoteVersion,
-        lastSyncedAt: new Date().toISOString(), syncStatus: 'LINKED',
+        externalCode: row.code,
+        remoteVersion: row.remoteVersion,
+        lastSyncedAt: observedAt,
+        observedAt,
+        syncStatus: 'LINKED',
+        ...observationFields,
       };
       if (linkId !== null) {
         const result = await execute(buildUpdateAccountingItemLinkMutation(linkId, linkFields));

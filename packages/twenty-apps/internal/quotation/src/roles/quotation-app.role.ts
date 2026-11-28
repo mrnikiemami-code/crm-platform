@@ -15,6 +15,7 @@ import {
   QUOTATION_REVISION_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_SEQUENCE_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_CURRENCY_OBJECT_UNIVERSAL_IDENTIFIER,
+  QUOTATION_UNIT_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_SHARE_OBJECT_UNIVERSAL_IDENTIFIER,
   ROUNDING_RULE_OBJECT_UNIVERSAL_IDENTIFIER,
   TAX_POLICY_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -148,6 +149,13 @@ export default defineApplicationRole({
     },
     {
       objectUniversalIdentifier: QUOTATION_CURRENCY_OBJECT_UNIVERSAL_IDENTIFIER,
+      canReadObjectRecords: true,
+      canUpdateObjectRecords: true,
+      canSoftDeleteObjectRecords: false,
+      canDestroyObjectRecords: false,
+    },
+    {
+      objectUniversalIdentifier: QUOTATION_UNIT_OBJECT_UNIVERSAL_IDENTIFIER,
       canReadObjectRecords: true,
       canUpdateObjectRecords: true,
       canSoftDeleteObjectRecords: false,

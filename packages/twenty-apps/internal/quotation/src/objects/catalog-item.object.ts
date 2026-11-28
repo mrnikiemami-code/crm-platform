@@ -1,6 +1,7 @@
 import {
   defineObject,
   FieldType,
+  OnDeleteAction,
   RelationType,
 } from 'twenty-sdk/define';
 
@@ -13,6 +14,7 @@ import {
   PRICE_OBJECT_UNIVERSAL_IDENTIFIER,
   QUOTATION_LINE_FIELDS,
   QUOTATION_LINE_OBJECT_UNIVERSAL_IDENTIFIER,
+  QUOTATION_UNIT_OBJECT_UNIVERSAL_IDENTIFIER,
   RELATION_FIELDS,
   SELECT_OPTION_IDS,
 } from 'src/constants/universal-identifiers';
@@ -102,10 +104,38 @@ export default defineObject({
       type: FieldType.TEXT,
       name: 'unit',
       label: 'واحد',
-      description: 'واحد اندازه‌گیری کنار مقدار، مثلاً عدد یا ساعت.',
+      description:
+        'متن نمایشی واحد (سازگاری با ردیف‌های قدیمی). همراه با ارجاع unitRecord نگه‌داری می‌شود.',
       icon: 'IconRuler',
       isNullable: false,
       defaultValue: "''",
+    },
+    {
+      universalIdentifier: CATALOG_ITEM_FIELDS.unitRecord,
+      type: FieldType.RELATION,
+      name: 'unitRecord',
+      label: 'واحد مرجع',
+      description: 'ارجاع به فهرست رسمی واحدهای فضای کاری.',
+      icon: 'IconRulerMeasure',
+      isNullable: true,
+      relationTargetObjectMetadataUniversalIdentifier:
+        QUOTATION_UNIT_OBJECT_UNIVERSAL_IDENTIFIER,
+      relationTargetFieldMetadataUniversalIdentifier:
+        RELATION_FIELDS.quotationUnitCatalogItems,
+      universalSettings: {
+        relationType: RelationType.MANY_TO_ONE,
+        onDelete: OnDeleteAction.SET_NULL,
+        joinColumnName: 'unitRecordId',
+      },
+    },
+    {
+      universalIdentifier: CATALOG_ITEM_FIELDS.secondaryName,
+      type: FieldType.TEXT,
+      name: 'secondaryName',
+      label: 'نام ثانویه',
+      description: 'نام جایگزین از مقصد حسابداری، جدا از نام اصلی CRM.',
+      icon: 'IconFileText',
+      isNullable: true,
     },
     {
       universalIdentifier: CATALOG_ITEM_FIELDS.description,

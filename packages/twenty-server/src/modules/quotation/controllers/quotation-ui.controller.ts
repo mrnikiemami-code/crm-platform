@@ -24,11 +24,13 @@ import { QuotationShareService } from 'src/modules/quotation/services/quotation-
 import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
 import { QuotationCurrencyAuthorityService } from 'src/modules/quotation/services/quotation-currency-authority.service';
+import { QuotationUnitAuthorityService } from 'src/modules/quotation/services/quotation-unit-authority.service';
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 import { RoundingRuleAuthorityService } from 'src/modules/quotation/services/rounding-rule-authority.service';
 import { type TaxPolicyMutationOutcome } from 'src/modules/quotation/types/tax-policy.type';
 import { type RoundingRuleMutationOutcome } from 'src/modules/quotation/types/rounding-rule.type';
 import { type QuotationCurrencyMutationOutcome } from 'src/modules/quotation/types/quotation-currency.type';
+import { type QuotationUnitMutationOutcome } from 'src/modules/quotation/types/quotation-unit.type';
 import { type AccountingConnectionOutcome } from 'src/modules/quotation/types/accounting-connection.type';
 import { accountingAdapterContract } from 'src/modules/quotation/utils/accounting-adapter-contract.util';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
@@ -81,6 +83,9 @@ const ALLOWED_ACTIONS = new Set([
   'quotation-currency-bootstrap',
   'quotation-currency-save',
   'quotation-currency-set-default',
+  'quotation-unit-list',
+  'quotation-unit-save',
+  'quotation-unit-deactivate',
   'accounting-settings-authority',
   'accounting-connection-list',
   'accounting-connection-save',
@@ -112,6 +117,11 @@ const QUOTATION_CURRENCY_MUTATING_ACTIONS = new Set([
   'quotation-currency-set-default',
 ]);
 
+const QUOTATION_UNIT_MUTATING_ACTIONS = new Set([
+  'quotation-unit-save',
+  'quotation-unit-deactivate',
+]);
+
 const readBoolean = (value: unknown, fallback: boolean): boolean =>
   typeof value === 'boolean' ? value : fallback;
 
@@ -131,6 +141,7 @@ export class QuotationUiController {
     private readonly taxPolicyAuthorityService: TaxPolicyAuthorityService,
     private readonly roundingRuleAuthorityService: RoundingRuleAuthorityService,
     private readonly quotationCurrencyAuthorityService: QuotationCurrencyAuthorityService,
+    private readonly quotationUnitAuthorityService: QuotationUnitAuthorityService,
     private readonly quotationPermissionService: QuotationPermissionService,
     private readonly accountingConnectionAuthorityService: AccountingConnectionAuthorityService,
     private readonly accountingOperationDispatchService: AccountingOperationDispatchService,
@@ -163,6 +174,10 @@ export class QuotationUiController {
 
     if (action.startsWith('quotation-currency-')) {
       return this.handleQuotationCurrencyAction({ action, body, authContext });
+    }
+
+    if (action.startsWith('quotation-unit-')) {
+      return this.handleQuotationUnitAction({ action, body, authContext });
     }
 
     // Read-only authority probe for the standalone settings page. It answers whether the
@@ -570,6 +585,102 @@ export class QuotationUiController {
       recordId,
       authContext,
     );
+  }
+
+  private async handleQuotationUnitAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<unknown> {
+    try {
+      if (QUOTATION_UNIT_MUTATING_ACTIONS.has(action)) {
+        const authority =
+          await this.quotationUnitAuthorityService.resolveAuthority(authContext);
+
+        if (authority === null) {
+          return {
+            success: false,
+            code: 'FORBIDDEN',
+            message: persianMessageForQuotationCode('FORBIDDEN'),
+          };
+        }
+      }
+
+      const outcome = await this.runQuotationUnitAction({
+        action,
+        body,
+        authContext,
+      });
+
+      if (outcome.kind !== 'OK') {
+        return {
+          success: false,
+          code: outcome.code,
+          message: outcome.message,
+        };
+      }
+
+      return {
+        success: true,
+        units: outcome.units,
+        message: outcome.message,
+      };
+    } catch (error) {
+      return this.quotationUiService.toPersianFailure(error);
+    }
+  }
+
+  private runQuotationUnitAction({
+    action,
+    body,
+    authContext,
+  }: {
+    action: string;
+    body: QuotationUiActionBody;
+    authContext: WorkspaceAuthContext;
+  }): Promise<QuotationUnitMutationOutcome> {
+    if (action === 'quotation-unit-list') {
+      return this.quotationUnitAuthorityService.listUnits(authContext);
+    }
+
+    if (action === 'quotation-unit-save') {
+      return this.quotationUnitAuthorityService.saveUnit(
+        {
+          recordId: readText(body.recordId) || null,
+          name: readText(body.name),
+          accountingCodeText: readText(body.accountingCodeText),
+          isActive: readBoolean(body.isActive, true),
+        },
+        authContext,
+      );
+    }
+
+    if (action === 'quotation-unit-deactivate') {
+      const recordId = readText(body.recordId);
+
+      if (recordId === '') {
+        return Promise.resolve({
+          kind: 'REFUSED',
+          code: 'QUOTATION_UNIT_REQUIRED',
+          message: 'واحد را انتخاب کنید',
+        });
+      }
+
+      return this.quotationUnitAuthorityService.deactivateUnit(
+        recordId,
+        authContext,
+      );
+    }
+
+    return Promise.resolve({
+      kind: 'REFUSED',
+      code: 'INVALID_INPUT',
+      message: 'عملیات واحد شناخته نشد',
+    });
   }
 
   private async handleQuotationCurrencyAction({

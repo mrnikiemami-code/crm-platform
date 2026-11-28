@@ -116,6 +116,9 @@ export const buildQuotationLinesByQuotationQuery = (
 ): string =>
   `query QuotationLinesByQuotation { quotationLines(filter: { quotationId: { eq: ${toGraphqlLiteral(quotationId)} } }, orderBy: [{ sortOrder: AscNullsLast }], first: 200) { edges { node { id } } } }`;
 
+export const buildQuotationUnitByIdQuery = (id: string): string =>
+  `query QuotationUnitById { quotationUnit(filter: { id: { eq: ${toGraphqlLiteral(id)} } }) { id name isActive accountingCode code } }`;
+
 export const buildCatalogItemByIdQuery = (id: string): string =>
   `query CatalogItemById { catalogItem(filter: { id: { eq: ${toGraphqlLiteral(id)} } }) { id name kind sku unit isActive } }`;
 

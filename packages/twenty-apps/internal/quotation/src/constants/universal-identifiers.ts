@@ -39,6 +39,8 @@ export const CATALOG_ITEM_FIELDS = {
   kind: 'c99c7424-6211-5784-8f89-eedf38264123',
   sku: '63ca111f-9a29-573b-9e54-be54dbe491b9',
   unit: '449dc01c-cebc-5569-a9ea-9911dd29cfbb',
+  unitRecord: 'fdbf5fa7-f54b-543a-a292-65ded00c0ce0',
+  secondaryName: 'de7b04e4-d580-57ba-a083-a5b1a08624c9',
   isActive: '86622cae-9041-5a26-80f2-5cf238591f94',
   description: '609565c6-b1ed-5653-b6eb-b2f2e6f9a6cc',
   // CRM ledger code on the item record — distinct from accountingItemLink.externalItemId.
@@ -219,6 +221,9 @@ export const ACCOUNTING_ITEM_LINK_FIELDS = {
   remoteVersion: '12855f1e-4456-5366-afcf-393a5f1951f4',
   lastSyncedAt: 'ee2ff19b-63fe-5682-8131-29fedfb29262',
   syncStatus: '9c4399a3-62f2-5653-a581-f1e1fc8e19ae',
+  observationJson: 'bd212419-2595-57c0-bd7f-e81d51d2b25b',
+  observationVersion: '39be4f24-0392-546d-8ce0-f99b6539a20b',
+  observedAt: 'e35faa6e-4eb4-5ba7-9b74-b623ff45b627',
 } as const;
 
 export const ACCOUNTING_PARTY_LINK_FIELDS = {
@@ -261,6 +266,8 @@ export const RELATION_FIELDS = {
   catalogItemQuotationLines: '56b6c96d-e4fa-58f2-ab0e-30172b48e577',
   catalogItemPrices: '2d808b0d-7715-508f-ab08-21776e9fe45b',
   catalogItemAccountingLinks: '8e1f288e-279f-5b57-8c83-5e6e3afebcd3',
+  catalogItemUnit: 'cfbd0316-7d6e-5169-8e1c-323b0ba18674',
+  quotationUnitCatalogItems: '0d5b3a2d-fdac-58d9-9861-c11eea3e9116',
   priceListPrices: '6f799474-1cc7-5be0-aaac-0e836cea03b3',
   accountingConnectionItemLinks: '08d76d75-1026-5e01-864c-6e643cff85dc',
   accountingConnectionSyncOperations: '2b9e64a2-8aa6-5471-9431-6a2217658d8d',
@@ -446,6 +453,16 @@ export const QUOTATION_CURRENCY_FIELDS = {
   accountingCode: '46b1a49d-2088-500e-927c-f07eac565185',
 } as const;
 
+export const QUOTATION_UNIT_OBJECT_UNIVERSAL_IDENTIFIER =
+  '08f95dbf-072a-58c3-9dfe-b8daeb3e27b8';
+
+export const QUOTATION_UNIT_FIELDS = {
+  code: '8be81bc9-6ef6-5475-ba59-4f284f80a4df',
+  name: '929a3199-73f0-569b-92a5-707742288aea',
+  isActive: '8084713d-5e20-5846-b136-0cdb557431d0',
+  accountingCode: 'efceadfe-e2fa-505d-a263-95530baae29e',
+} as const;
+
 // App-owned fields on standard person / company (defineField). Distinct from vendor
 // party-link external ids.
 export const PERSON_ACCOUNTING_CODE_FIELD_UNIVERSAL_IDENTIFIER =
@@ -489,6 +506,9 @@ export const TAX_POLICIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '8520069f-3d4f-5b37-85fa-7d170dd67038';
 export const QUOTATION_CURRENCIES_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   'ad256883-27a5-5287-8658-be84ecf37850';
+
+export const QUOTATION_UNITS_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'aeff44f5-ea3d-5d16-a628-de1bbba63867';
 
 // The workspace accounting settings surface. Same reason as the tax page above: the
 // fork hides Settings → Applications, so an independently reachable page with a sidebar

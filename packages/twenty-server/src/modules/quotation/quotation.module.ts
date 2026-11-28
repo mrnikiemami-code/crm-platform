@@ -18,6 +18,7 @@ import { QuotationUiService } from 'src/modules/quotation/services/quotation-ui.
 import { TaxPolicyAuthorityService } from 'src/modules/quotation/services/tax-policy-authority.service';
 import { RoundingRuleAuthorityService } from 'src/modules/quotation/services/rounding-rule-authority.service';
 import { QuotationCurrencyAuthorityService } from 'src/modules/quotation/services/quotation-currency-authority.service';
+import { QuotationUnitAuthorityService } from 'src/modules/quotation/services/quotation-unit-authority.service';
 import { AccountingConnectionAuthorityService } from 'src/modules/quotation/services/accounting-connection-authority.service';
 import { AccountingDestinationProbeService } from 'src/modules/quotation/services/accounting-destination-probe.service';
 
@@ -41,6 +42,7 @@ import { AccountingDestinationProbeService } from 'src/modules/quotation/service
     TaxPolicyAuthorityService,
     RoundingRuleAuthorityService,
     QuotationCurrencyAuthorityService,
+    QuotationUnitAuthorityService,
     AccountingDestinationProbeService,
     AccountingConnectionAuthorityService,
     AccountingOperationDispatchService,

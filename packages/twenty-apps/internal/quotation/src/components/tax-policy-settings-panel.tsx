@@ -5,6 +5,7 @@ import { SettingsShell } from 'src/components/financial-settings/settings-shell'
 import { TaxLedger } from 'src/components/financial-settings/tax-ledger';
 import { callTaxPoliciesNestAction } from 'src/components/quotation-api';
 import { QuotationCurrencySettingsSection } from 'src/components/quotation-currency-settings-section';
+import { QuotationUnitSettingsSection } from 'src/components/quotation-unit-settings-section';
 import { RoundingRuleSettingsSection } from 'src/components/rounding-rule-settings-section';
 import { runDestructiveConfirm } from 'src/components/shared/run-destructive-confirm';
 import { SettingsDialog } from 'src/components/shared/settings-dialog';
@@ -184,7 +185,7 @@ const usageLine = (row: TaxPolicyRow): string => {
   return `${toPersianDigits(String(row.quotationCount))} سند وابسته`;
 };
 
-type SettingsTab = 'tax' | 'currencies' | 'rounding';
+type SettingsTab = 'tax' | 'currencies' | 'units' | 'rounding';
 type TaxFilterId = 'all' | 'active' | 'default';
 
 export const TaxPolicySettingsPanel = () => {
@@ -570,6 +571,11 @@ export const TaxPolicySettingsPanel = () => {
       count: 1,
     },
     {
+      id: 'units',
+      label: 'واحدهای اندازه‌گیری',
+      count: 0,
+    },
+    {
       id: 'rounding',
       label: 'قواعد رُند کردن',
       count: 0,
@@ -600,7 +606,7 @@ export const TaxPolicySettingsPanel = () => {
       <style>{PANEL_CSS}</style>
       <SettingsShell
         title="پیش‌نیازهای حسابداری"
-        subtitle="سیاست مالیات، ارز عملیاتی و قواعد رُند"
+        subtitle="سیاست مالیات، ارز، واحد و قواعد رُند"
         tabs={shellTabs}
         activeTabId={activeTab}
         onTabChange={(id) => setActiveTab(id as SettingsTab)}
@@ -609,7 +615,9 @@ export const TaxPolicySettingsPanel = () => {
             ? 'نمای مالیات'
             : activeTab === 'currencies'
               ? 'نمای ارز'
-              : 'نمای رُند'
+              : activeTab === 'units'
+                ? 'نمای واحد'
+                : 'نمای رُند'
         }
         stats={
           activeTab === 'tax'
@@ -687,6 +695,11 @@ export const TaxPolicySettingsPanel = () => {
               فعلاً فقط ریال ایران فعال است. کد حسابداری ارز را می‌توانید از همین
               صفحه ویرایش کنید.
             </>
+          ) : activeTab === 'units' ? (
+            <>
+              کد حسابداری واحد اختیاری است و پس از استفاده در کالا قفل می‌شود.
+              هیچ واحد پیش‌فرضی حدس زده نمی‌شود.
+            </>
           ) : (
             <>
               گام رُند باید عدد صحیح مثبت ریال باشد. قاعده پیش‌فرض یا استفاده‌شده
@@ -754,6 +767,9 @@ export const TaxPolicySettingsPanel = () => {
         ) : null}
         {activeTab === 'currencies' ? (
           <QuotationCurrencySettingsSection alwaysOpen />
+        ) : null}
+        {activeTab === 'units' ? (
+          <QuotationUnitSettingsSection alwaysOpen />
         ) : null}
         {activeTab === 'rounding' ? (
           <RoundingRuleSettingsSection alwaysOpen />

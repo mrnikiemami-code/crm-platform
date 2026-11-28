@@ -154,6 +154,18 @@ describe('item import apply', () => {
         return edges('priceLists', [{ id: 'pl-1' }]);
       }
 
+      if (query.includes('QuotationUnitById')) {
+        return {
+          quotationUnit: {
+            id: 'unit-1',
+            name: 'عدد',
+            isActive: true,
+            code: 'UNIT_1',
+            accountingCode: '100',
+          },
+        };
+      }
+
       if (query.includes('createCatalogItem')) {
         writes.push('catalogItem');
 
@@ -180,7 +192,7 @@ describe('item import apply', () => {
       {
         connectionId: 'conn-1',
         preview,
-        selections: [{ externalItemId: '2001' }],
+        selections: [{ externalItemId: '2001', unitRecordId: 'unit-1' }],
         allowRemoteVersionUpdate: false,
         applyPrices: true,
       },
@@ -203,6 +215,18 @@ describe('item import apply', () => {
         return edges('priceLists', []);
       }
 
+      if (query.includes('QuotationUnitById')) {
+        return {
+          quotationUnit: {
+            id: 'unit-1',
+            name: 'عدد',
+            isActive: true,
+            code: 'UNIT_1',
+            accountingCode: '100',
+          },
+        };
+      }
+
       if (query.includes('createCatalogItem')) {
         return { createCatalogItem: { id: 'crm-new' } };
       }
@@ -214,7 +238,7 @@ describe('item import apply', () => {
       {
         connectionId: 'conn-1',
         preview,
-        selections: [{ externalItemId: '2001' }],
+        selections: [{ externalItemId: '2001', unitRecordId: 'unit-1' }],
         allowRemoteVersionUpdate: false,
         applyPrices: true,
       },
@@ -250,7 +274,7 @@ describe('item import apply', () => {
       {
         connectionId: 'conn-1',
         preview: unconfirmed,
-        selections: [{ externalItemId: '2001' }],
+        selections: [{ externalItemId: '2001', unitRecordId: 'unit-1' }],
         allowRemoteVersionUpdate: false,
         applyPrices: true,
       },
@@ -258,6 +282,18 @@ describe('item import apply', () => {
         execute: fakeExecute((query) => {
           if (query.includes('priceLists')) {
             return edges('priceLists', [{ id: 'pl-1' }]);
+          }
+
+          if (query.includes('QuotationUnitById')) {
+            return {
+              quotationUnit: {
+                id: 'unit-1',
+                name: 'عدد',
+                isActive: true,
+                code: 'UNIT_1',
+                accountingCode: '100',
+              },
+            };
           }
 
           return query.includes('createCatalogItem')

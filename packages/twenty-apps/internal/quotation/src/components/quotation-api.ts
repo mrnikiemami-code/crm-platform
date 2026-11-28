@@ -140,6 +140,12 @@ const CURRENCY_APP_ACTION_TO_NEST: Record<string, string> = {
   'set-default': 'quotation-currency-set-default',
 };
 
+const UNIT_APP_ACTION_TO_NEST: Record<string, string> = {
+  list: 'quotation-unit-list',
+  save: 'quotation-unit-save',
+  deactivate: 'quotation-unit-deactivate',
+};
+
 export const callRoundingRulesNestAction = (
   body: Record<string, unknown>,
 ): Promise<AppRouteResponse> =>
@@ -154,6 +160,13 @@ export const callQuotationCurrenciesNestAction = (
   body: Record<string, unknown>,
 ): Promise<AppRouteResponse> =>
   callQuotationNestAction(CURRENCY_APP_ACTION_TO_NEST, body);
+
+export const QUOTATION_UNITS_ROUTE = '/quotation/units';
+
+export const callQuotationUnitsNestAction = (
+  body: Record<string, unknown>,
+): Promise<AppRouteResponse> =>
+  callQuotationNestAction(UNIT_APP_ACTION_TO_NEST, body);
 
 // The accounting connection previously called the Logic Function /s route, which is not
 // served by the Dev worker. The Nest controller already owns these six operations and
