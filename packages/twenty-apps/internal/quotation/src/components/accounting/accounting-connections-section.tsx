@@ -263,7 +263,7 @@ export const AccountingConnectionsSection = ({
                           label={`عملیات ${entry.name}`}
                           open={openMenuId === entry.id}
                           onOpenChange={(next) =>
-                            setOpenMenuId(next ? entry.id : null)
+                            setOpenMenuId(current => next ? entry.id : current === entry.id ? null : current)
                           }
                           items={[
                             {
@@ -282,21 +282,7 @@ export const AccountingConnectionsSection = ({
                                   : undefined,
                               onSelect: () => onTestConnection(entry),
                             },
-                            {
-                              id: 'default',
-                              label: 'تنظیم به‌عنوان پیش‌فرض',
-                              disabled:
-                                busy ||
-                                !canManage ||
-                                isWorkspaceDefault ||
-                                entry.isActive === false,
-                              disabledReason: isWorkspaceDefault
-                                ? 'این اتصال هم‌اکنون پیش‌فرض است.'
-                                : entry.isActive === false
-                                  ? 'اتصال غیرفعال را نمی‌توان پیش‌فرض کرد.'
-                                  : undefined,
-                              onSelect: () => onSetWorkspaceDefault(entry),
-                            },
+                            ...(!isWorkspaceDefault && entry.isActive !== false ? [{ id: 'default', label: 'تنظیم به‌عنوان پیش‌فرض', disabled: busy || !canManage, onSelect: () => onSetWorkspaceDefault(entry) }] : []),
                             entry.isActive === false
                               ? {
                                   id: 'activate',
