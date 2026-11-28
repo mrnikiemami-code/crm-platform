@@ -109,9 +109,6 @@ export const AccountingDocumentsSection = ({
   operations,
   busy,
   canManage,
-  outboundEnabled,
-  documentExportEnabled,
-  metadataVerified,
   onReload,
   onGoToConnections,
 }: {
@@ -145,7 +142,12 @@ export const AccountingDocumentsSection = ({
   const [inFlightIds, setInFlightIds] = useState<Set<string>>(new Set());
 
   const connectionId = connection?.id ?? null;
-  const outboundDisabled = metadataVerified === false || !outboundEnabled || !documentExportEnabled;
+  const [readiness, setReadiness] = useState<{ connectionId: string; outboundEnabled: boolean; documentExportEnabled: boolean; destinationWritable: boolean } | null>(null);
+  const currentReadiness = readiness?.connectionId === connectionId ? readiness : null;
+  const outboundDisabled = currentReadiness === null || !currentReadiness.outboundEnabled || !currentReadiness.documentExportEnabled || !currentReadiness.destinationWritable;
+  const disabledReason = currentReadiness === null ? 'آمادگی ارسال تأیید نشده است.' :
+    !currentReadiness.destinationWritable ? 'ارسال به این مقصد مجاز نیست.' :
+    !currentReadiness.outboundEnabled || !currentReadiness.documentExportEnabled ? 'مجوز ارسال اسناد فعال نیست.' : '';
 
   const loadQueue = useCallback(async () => {
     if (connectionId === null) {
@@ -155,11 +157,14 @@ export const AccountingDocumentsSection = ({
 
     setLoading(true);
     setError(null);
+    setReadiness(null);
 
     try {
       const collected = new Map<string, ExportableRow>();
       const seen = new Set<string>();
       let cursor: string | null = null;
+      let verified: typeof readiness = null;
+      let completeReadiness = true;
       for (;;) {
         const response = await callAppRoute(ACCOUNTING_OUTBOUND_ROUTE, {
           action: 'list-exportable-quotations', connectionId, cursor, pageSize: 50,
@@ -168,6 +173,16 @@ export const AccountingDocumentsSection = ({
           setRows([]);
           setError(toPersianUiMessage(readString(response.data.message), 'خواندن صف اسناد انجام نشد.'));
           return;
+        }
+        const attestation = asRecord(response.data.readiness);
+        if (attestation?.connectionId !== connectionId || typeof attestation.outboundEnabled !== 'boolean' ||
+            typeof attestation.documentExportEnabled !== 'boolean' || typeof attestation.destinationWritable !== 'boolean') {
+          completeReadiness = false;
+        } else {
+          const next = { connectionId, outboundEnabled: attestation.outboundEnabled,
+            documentExportEnabled: attestation.documentExportEnabled, destinationWritable: attestation.destinationWritable };
+          if (verified !== null && JSON.stringify(verified) !== JSON.stringify(next)) completeReadiness = false;
+          verified = next;
         }
         const page = asRecord(response.data.page);
         if (!Array.isArray(page?.rows)) throw new Error('Invalid document queue');
@@ -178,6 +193,7 @@ export const AccountingDocumentsSection = ({
         seen.add(next); cursor = next;
       }
       setRows([...collected.values()]);
+      setReadiness(completeReadiness ? verified : null);
     } catch {
       setRows([]);
       setError('خواندن کامل صف اسناد انجام نشد.');
@@ -240,6 +256,17 @@ export const AccountingDocumentsSection = ({
       }
       return next;
     });
+  };
+
+  const inspectReadiness = async (quotationId: string) => {
+    if (!connectionId || !canManage || sending) return;
+    try {
+      const response = await callAppRoute(ACCOUNTING_OUTBOUND_ROUTE, { action: 'preview-quotation-export', connectionId, quotationId });
+      const decision = asRecord(asRecord(response.data.preview)?.decision);
+      const code = readString(decision?.code) || readString(response.data.code);
+      await enqueueSnackbar({ message: code ? toPersianUiMessage(code, disabledReason || 'سند نیازمند بررسی است.') :
+        (disabledReason || 'آمادگی سند بررسی شد.'), variant: 'info' });
+    } catch { await enqueueSnackbar({ message: 'بررسی آمادگی سند انجام نشد.', variant: 'error' }); }
   };
 
   const sendQuotations = async (quotationIds: string[]) => {
@@ -349,11 +376,7 @@ export const AccountingDocumentsSection = ({
 
   return (
     <div className="acct-list-section" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
-      {outboundDisabled ? (
-        <InlineAlert tone="info">
-          ارسال اسناد به حسابداری غیرفعال است.
-        </InlineAlert>
-      ) : null}
+      {outboundDisabled && !loading && error === null ? <span role="status" style={styles.meta}>{disabledReason}</span> : null}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
         {(
@@ -424,14 +447,14 @@ export const AccountingDocumentsSection = ({
         />
       </div>
       <div role="group" aria-label="عملیات گروهی" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--t-spacing-2)' }}>
-        {tab === 'PENDING' && selected.size === 0 ? (
+        {tab === 'PENDING' && !outboundDisabled && selected.size === 0 ? (
           <SecondaryButton
             label={sending ? 'در حال ارسال…' : 'ارسال همه'}
             onClick={sendAllPending}
             disabled={!canManage || sending || loading || outboundDisabled}
           />
         ) : null}
-        {tab === 'PENDING' && selected.size > 0 ? (
+        {tab === 'PENDING' && !outboundDisabled && selected.size > 0 ? (
           <PrimaryButton
             label={
               sending
@@ -541,12 +564,14 @@ export const AccountingDocumentsSection = ({
                           fontSize: 'var(--t-font-size-xs)',
                         }}
                       >
-                        {row.lastErrorCode}
+                        {toPersianUiMessage(row.lastErrorCode, 'نیازمند بررسی')}
                       </span>
                     )}
                   </NativeSettingsCell>
                   <NativeSettingsCell style={styles.cell}>
-                    {tab === 'PENDING' && canSend ? (
+                    {tab === 'PENDING' && canSend && outboundDisabled ? (
+                      <SecondaryButton label="بررسی آمادگی" disabled={!canManage || sending || loading} onClick={() => void inspectReadiness(row.quotationId)} />
+                    ) : tab === 'PENDING' && canSend ? (
                       <SecondaryButton
                         label="ارسال"
                         disabled={!canManage || sending || outboundDisabled || inFlightIds.has(row.quotationId)}
