@@ -23,12 +23,13 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
   };
   const apply = jest.fn(async () => ({ success: true, outcome: { createdParties: 1 } }));
   const applyItems = jest.fn(async () => ({ success: true, outcome: { createdItems: 1 } }));
+  const partyOutbound = { run: jest.fn(async () => ({ success: true, preview: {} })) };
   const service = new AccountingOperationDispatchService(
     cache as never, { execute } as never,
     { resolveSettingsAuthority: jest.fn(async () => authority), resolveRoleId: jest.fn(async () => 'role-1') } as never,
-    manager as never, { apply } as never, { apply: applyItems } as never,
+    manager as never, { apply } as never, { apply: applyItems } as never, partyOutbound as never,
   );
-  return { service, execute, manager, apply, applyItems, lock };
+  return { service, execute, manager, apply, applyItems, lock, partyOutbound };
 };
 
 describe('accounting operation boundary', () => {
@@ -76,6 +77,14 @@ describe('accounting operation boundary', () => {
       connectionId: 'c', selections, applyPrices: true, allowRemoteVersionUpdate: false, action: 'prepare-items',
     } }) }));
     expect(applyItems).toHaveBeenCalledWith(expect.objectContaining({ plan, authContext: auth }));
+  });
+
+  it('passes only a parsed customer selection to the original-user outbound authority', async () => {
+    const { service, execute, partyOutbound } = setup('SETTINGS_ROLE');
+    const input = { connectionId: '11111111-1111-4111-8111-111111111111', internalPartyId: '22222222-2222-4222-8222-222222222222', partyType: 'PERSON', profile: { fullName: 'injected' } };
+    expect(await service.dispatch('accounting-outbound-preview-party-push', input, auth)).toMatchObject({ success: true });
+    expect(partyOutbound.run).toHaveBeenCalledWith({ connectionId: input.connectionId, internalPartyId: input.internalPartyId, partyType: 'PERSON' }, false, auth, expect.any(Function));
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('requires both settings authority and quotation visibility for reconciliation', async () => {
