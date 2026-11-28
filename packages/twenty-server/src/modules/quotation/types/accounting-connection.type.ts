@@ -22,6 +22,7 @@ export type WorkspaceAccountingConnectionRow = {
   lastHealthMessage: string | null;
   verificationState: string | null;
   datasetBindingId?: string | null;
+  priceGroupMappings?: unknown;
 };
 
 export type AccountingConnectionView = {
