@@ -42,6 +42,8 @@ const PERSIAN_MESSAGES: Record<string, string> = {
     'در مرحله بررسی فقط مشاهده اطلاعات آسان مجاز است؛ انتقال اطلاعات به CRM هنوز تأیید نشده است.',
   ASAN_LIVE_WRITE_NOT_APPROVED:
     'مسیر فعلی آسان فقط برای خواندن اطلاعات است؛ ثبت یا تغییر اطلاعات مجاز نیست.',
+  ASAN_CONTRACT_RECHECK_REQUIRED:
+    'قرارداد اتصال آسان تغییر کرده است؛ تنظیمات همین اتصال را دوباره ذخیره و آزمایش کنید.',
   ASAN_TRANSPORT_UNAVAILABLE:
     'مسیر امن ارتباط با آسان هنوز آماده و تأیید نشده است؛ هیچ اطلاعاتی ارسال نشد.',
   ACCOUNTING_DATASET_REBIND_REQUIRED:

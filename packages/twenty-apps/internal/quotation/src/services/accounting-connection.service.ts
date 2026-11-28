@@ -1,4 +1,5 @@
 import {
+  ASAN_ADAPTER_CONTRACT_VERSION,
   type ConnectionSettings,
 } from 'src/domain/accounting/adapter-contract';
 import {
@@ -224,6 +225,9 @@ export const buildAdapter = (
   record: AccountingConnectionRecord,
   secrets: AdapterSecrets,
 ): Result<AccountingAdapter> => {
+  if (record.adapterId === 'asan' && record.adapterVersion !== ASAN_ADAPTER_CONTRACT_VERSION) {
+    return refused('ASAN_CONTRACT_RECHECK_REQUIRED', 'save and recheck the Asan connection against the current contract');
+  }
   const binding = secrets.approvedRead;
   const approved = record.adapterId === 'asan' && record.isActive && binding !== undefined &&
     matchesAsanReadBinding(binding, record.id, record.settings.baseUrl);

@@ -15,7 +15,7 @@ import {
   type AsanOperation,
 } from 'src/domain/accounting/adapters/asan/asan-response';
 import {
-  ACCOUNTING_ADAPTER_CONTRACT_VERSION,
+  ASAN_ADAPTER_CONTRACT_VERSION,
   type AccountingAdapter,
   type AdapterHealth,
   type RemoteCatalogItem,
@@ -414,7 +414,7 @@ type RawResponse = {
 
 export class AsanHttpAdapter implements AccountingAdapter {
   readonly id = 'asan' as const;
-  readonly contractVersion = ACCOUNTING_ADAPTER_CONTRACT_VERSION;
+  readonly contractVersion = ASAN_ADAPTER_CONTRACT_VERSION;
   readonly capabilities = ASAN_CAPABILITIES;
   readonly isLive = true;
   readonly writesEnabled: boolean;

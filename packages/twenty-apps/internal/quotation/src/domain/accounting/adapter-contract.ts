@@ -258,3 +258,6 @@ export type AccountingAdapter = {
 // connection so a behaviour change is deliberate: an old connection can be reported as
 // needing a re-check instead of silently being judged by new rules.
 export const ACCOUNTING_ADAPTER_CONTRACT_VERSION = '2026-11-1';
+// Asan behavior changed independently of existing mock profiles. Re-saving a
+// live connection explicitly rebinds its capability contract before any read.
+export const ASAN_ADAPTER_CONTRACT_VERSION = '2026-11-2';

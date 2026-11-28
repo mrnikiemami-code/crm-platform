@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
 import { AsanHttpAdapter } from 'src/domain/accounting/adapters/asan/asan-http-adapter';
-import { ACCOUNTING_ADAPTER_CONTRACT_VERSION } from 'src/domain/accounting/adapter-contract';
+import { ASAN_ADAPTER_CONTRACT_VERSION } from 'src/domain/accounting/adapter-contract';
 import { ASAN_GUIDE_FIELD_MODELS, ASAN_GUIDE_OPERATIONS } from 'src/domain/accounting/adapters/asan/asan-wire-contract';
 import { ASAN_ENDPOINTS } from 'src/domain/accounting/adapters/asan/asan-endpoints';
 
@@ -41,7 +41,7 @@ describe('Asan app/Nest capability parity', () => {
       contractVersion: string; capabilities: unknown;
     } };
     const nest = exports.accountingAdapterContract('asan');
-    expect(nest.contractVersion).toBe(ACCOUNTING_ADAPTER_CONTRACT_VERSION);
+    expect(nest.contractVersion).toBe(ASAN_ADAPTER_CONTRACT_VERSION);
     expect(JSON.parse(JSON.stringify(nest.capabilities))).toEqual(ASAN_CAPABILITIES);
   });
 

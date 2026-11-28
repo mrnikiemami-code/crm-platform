@@ -180,7 +180,7 @@ const mockCapabilities = (profile: unknown): Record<string, unknown> => {
 const ACCOUNTING_ADAPTER_CONTRACTS: Record<string, AccountingAdapterContract> = {
   asan: {
     isLive: true,
-    contractVersion: '2026-11-1',
+    contractVersion: '2026-11-2',
     capabilities: ASAN_CAPABILITIES as unknown as Record<string, unknown>,
     healthProbe: { path: 'ProductsNew/LastProducts', query: { Count: '1' } },
   },

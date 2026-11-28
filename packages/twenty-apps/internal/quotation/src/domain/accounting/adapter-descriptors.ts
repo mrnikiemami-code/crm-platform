@@ -1,5 +1,6 @@
 import {
   ACCOUNTING_ADAPTER_CONTRACT_VERSION,
+  ASAN_ADAPTER_CONTRACT_VERSION,
   type AccountingAdapterId,
 } from 'src/domain/accounting/adapter-contract';
 import { ASAN_CAPABILITIES } from 'src/domain/accounting/adapters/asan/asan-capabilities';
@@ -72,7 +73,7 @@ export const ADAPTER_DESCRIPTORS: readonly AdapterDescriptor[] = [
     label: 'آسان (LinqToAsan)',
     vendor: 'آسان',
     partyFieldContract: ASAN_CAPABILITIES.parties.fields,
-    contractVersion: ACCOUNTING_ADAPTER_CONTRACT_VERSION,
+    contractVersion: ASAN_ADAPTER_CONTRACT_VERSION,
     isLive: true,
     transportIsSecure: false,
     readiness: 'LIVE_UNVERIFIED',

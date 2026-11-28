@@ -317,6 +317,8 @@ export class AccountingConnectionAuthorityService {
         if (existing !== null && (
           readText(existing.adapterId) !== adapterId ||
           readText(existing.baseUrl).replace(/\/+$/, '') !== settings.value.baseUrl ||
+          (adapterId === 'asan' && readText(existing.remoteUserId) !== settings.value.remoteUserId) ||
+          (adapterId === 'mock' && readFinancialSettings(existing.financialSettings).mockProfile !== settings.value.financial.mockProfile) ||
           (readMoneyUnit(existing.moneyUnit) !== 'UNCONFIRMED' &&
             readMoneyUnit(existing.moneyUnit) !== settings.value.moneyUnit)
         )) {
@@ -329,7 +331,7 @@ export class AccountingConnectionAuthorityService {
             });
             if (linked !== null) {
               return refused('ACCOUNTING_DATASET_REBIND_REQUIRED',
-                'این اتصال دارای سوابق است؛ برای تغییر مقصد یا واحد پول، اتصال جدید ایجاد کنید.');
+                'این اتصال دارای سوابق است؛ برای تغییر مقصد، هویت داده یا واحد پول، اتصال جدید ایجاد کنید.');
             }
           }
         }
