@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 040 regression stabilization / SOURCE_PARTIAL (2026-11-28)
+
+User directed existing errors first; new commercial development paused. [Regression stabilization](goal-040/UAT-092-REGRESSION-CLOSURE.md) 5b0dd0618d10b8a26ca2b762770fee7ddcc69f4b. Source/test tip d8f9247ca83b9247957410f59c8548579807f1f0: 3 commits/16 changed paths since ccb05ba74670de4cfaa56c6217f9e39616437204. Shared row-menu real Host button dismissal, no guest suppression/stale close; tax default response authority; four prerequisite route constants use Nest; catalog page reads authoritative unit FK, existing row uses it, new unit/kind in dedicated searchable dialog, missing/incompatible blocks and differentiated refusal. Targeted tests added NOT_RUN. Local bridge and Wake health failed; no build/deploy/schema/data/vendor changes. User-confirmed customer/confirmation untouched. Full prerequisites operational failure not yet reproduced or closed. Single focused build and authenticated UI/API/PG readback next; all remaining P0 gates and existing Phase 2 owner corrections preserved. Phase 1 NOT_CLOSED, G1/G2 NOT_AUTHORIZED.
+
 ## CURRENT — P0 prerequisites action UAT failure (2026-11-28)
 
 User reports prerequisites buttons nonfunctional, specifically set-default; shared outside dismissal still FAIL. Source routes still connected UI→Nest→authority, actual event/HTTP/DB behavior unverified; tax UI locally overrides returned default flags, must use server authority. [UAT correction contract](goal-040/USER-UAT-092-CORRECTIONS.md) 5d36db2dc4dff61819e022aff1b374bc18f8c904. Require real authenticated per-action checks for tax/currency/unit/rounding, trace host/worker and response/persistence, preserve permission and locks. Local bridge failed; no product code, deploy or runtime test in this checkpoint. Phase 1 NOT_CLOSED; prior requirements preserved.
