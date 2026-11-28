@@ -81,7 +81,7 @@ export const parseAccountingItemPlan = (value: unknown, connectionId: string, se
       if (!row.internalItemId || selected.internalItemId !== row.internalItemId || row.expectedLinkId !== null ||
         row.expectedLinkVersion !== null || row.unitRecordId !== (selected.unitRecordId ?? null)) return null;
     } else if (row.action === 'UPDATE_LINK_VERSION') {
-      if (!allowUpdate || !row.internalItemId || selected.internalItemId !== row.internalItemId || !row.expectedLinkId || !row.expectedLinkVersion) return null;
+      if (!allowUpdate || !row.internalItemId || selected.internalItemId !== row.internalItemId || !row.expectedLinkId || !row.expectedLinkVersion || row.unitRecordId !== (selected.unitRecordId ?? null)) return null;
     } else return null;
     seen.add(row.externalItemId);
     rows.push(row as unknown as PlanRow);
@@ -129,7 +129,7 @@ export class AccountingItemApplyService {
               assert(existing.length === 1 && expected.id === row.expectedLinkId && !expected.deletedAt &&
                 expected.itemId === row.internalItemId && expected.remoteVersion === row.expectedLinkVersion && expected.syncStatus === 'LINKED', 'ACCOUNTING_LINK_CONFLICT');
             } else assert(existing.length === 0, 'ACCOUNTING_LINK_CONFLICT');
-            let itemId = row.internalItemId ?? stableId('item', connectionId, row.externalItemId);
+            const itemId = row.internalItemId ?? stableId('item', connectionId, row.externalItemId);
             let unitRecordId = row.unitRecordId;
             if (row.action === 'CREATE_CATALOG_ITEM') {
               const conflicts = await items.find({ where: [{ id: itemId }, { sku: row.code }], withDeleted: true, take: 2 });
@@ -149,8 +149,8 @@ export class AccountingItemApplyService {
               let old: Record<string, unknown> | null = null;
               try { old = object(JSON.parse(expected.observationJson ?? 'null')); } catch { /* review required */ }
               // A changed remote base unit is not silently mapped to the old CRM unit.
-              assert(old && old.crmUnitRecordId === unitRecordId && old.vendorUnitId === row.vendorUnitId &&
-                old.vendorUnitName === row.vendorUnitName, 'UNIT_MAPPING_REQUIRED');
+              assert(row.unitRecordId === unitRecordId || (old && old.crmUnitRecordId === unitRecordId && old.vendorUnitId === row.vendorUnitId &&
+                old.vendorUnitName === row.vendorUnitName), 'UNIT_MAPPING_REQUIRED');
             }
             if (row.action === 'CREATE_CATALOG_ITEM') {
               const inserted = await items.insert({ id: itemId, name: row.name, sku: row.code, kind: row.kind,
