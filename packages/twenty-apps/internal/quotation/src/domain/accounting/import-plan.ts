@@ -462,7 +462,7 @@ export const resolveItemApplyPlan = ({
         secondaryName: row.secondaryName,
         priceMicros: row.priceMicros,
         warnings: row.warnings,
-        unitRecordId: null,
+        unitRecordId: selection.unitRecordId?.trim() || null,
         vendorUnitId: row.vendorUnitId,
         vendorUnitName: row.vendorUnitName,
       });
