@@ -34,12 +34,17 @@ import {
 } from 'src/modules/quotation/utils/quotation-immutability.util';
 import { persianMessageForQuotationCode } from 'src/modules/quotation/utils/quotation-ui-messages.util';
 import { acquireCurrencyCatalogReadLock } from 'src/modules/quotation/utils/quotation-currency-lock.util';
+import { acquireQuotationUnitCatalogReadLock } from 'src/modules/quotation/utils/quotation-unit-lock.util';
+import { type WorkspaceQuotationUnitRow } from 'src/modules/quotation/types/quotation-unit.type';
 import { acquireTaxPolicyReadLock } from 'src/modules/quotation/utils/quotation-tax-policy-lock.util';
 import {
   buildQuotationAccountingSnapshot,
   type QuotationAccountingSnapshot,
 } from 'src/modules/quotation/utils/quotation-accounting-snapshot.util';
 import { evaluateDocumentCurrencyForSave } from 'src/modules/quotation/utils/quotation-document-currency.util';
+
+type UnitSnapshot = { unitRecordId: string; unitCode: string; unit: string; unitAccountingCode: string };
+type LineAccountingSnapshot = UnitSnapshot & { taxPolicyRecordId: string | null; taxAccountingCode: string };
 
 type QuotationHeaderRow = {
   id: string;
@@ -126,10 +131,11 @@ export class QuotationDraftPersistenceService {
         () =>
           this.workspaceOrmManager.runInWorkspaceTransaction(
             async (transactionScope) => {
-              // Fixed order Tax → Currency (F6 / Q-LOCK-2): first statements before
+              // Fixed order Tax → Currency → Unit (F6 / C8): first statements before
               // any row read so lock order cannot invert with catalog mutations.
               await acquireTaxPolicyReadLock(transactionScope);
               await acquireCurrencyCatalogReadLock(transactionScope);
+              await acquireQuotationUnitCatalogReadLock(transactionScope);
 
               const totals = evaluateQuotationDraftTotals({
                 header: request.header,
@@ -213,7 +219,7 @@ export class QuotationDraftPersistenceService {
     const quotationId = created.identifiers[0]?.id;
 
     if (!isNonEmptyString(quotationId)) {
-      return rejected('PERSISTENCE_FAILED', 'quotation was not created');
+      throw new Error('PERSISTENCE_FAILED: quotation insert identity missing');
     }
 
     if (request.lines.length > 0) {
@@ -234,6 +240,7 @@ export class QuotationDraftPersistenceService {
       );
     }
 
+    await this.lockUsedUnitCodes(transactionScope, accountingSnapshot.value.lines);
     return { kind: 'SAVED', quotationId, version: 1, status: 'DRAFT' };
   }
 
@@ -366,6 +373,7 @@ export class QuotationDraftPersistenceService {
       documentCurrencyCode: accountingSnapshot.value.documentCurrencyCode,
     });
 
+    await this.lockUsedUnitCodes(transactionScope, accountingSnapshot.value.lines);
     return {
       kind: 'SAVED',
       quotationId,
@@ -580,10 +588,7 @@ export class QuotationDraftPersistenceService {
         ok: true;
         value: {
           header: QuotationAccountingSnapshot;
-          lines: Array<{
-            taxPolicyRecordId: string | null;
-            taxAccountingCode: string;
-          }>;
+          lines: LineAccountingSnapshot[];
           documentCurrencyCode: string;
         };
       }
@@ -772,6 +777,9 @@ export class QuotationDraftPersistenceService {
       }
     }
 
+    const unitSnapshots = await this.resolveUnitSnapshots(transactionScope, request.lines);
+    if (!unitSnapshots.ok) return unitSnapshots;
+
     return {
       ok: true,
       value: {
@@ -781,10 +789,53 @@ export class QuotationDraftPersistenceService {
           quotationCurrencyRecordId: currencyRow.id,
           currencyAccountingCode: (currencyRow.accountingCode ?? '').trim(),
         }),
-        lines: lineSnapshots,
+        lines: lineSnapshots.map((snapshot, index) => ({ ...snapshot, ...unitSnapshots.value[index] })),
         documentCurrencyCode: currencyDecision.currencyCode,
       },
     };
+  }
+
+  // Resolve the selected unit from the workspace, not from the client's label.
+  // Catalog items must use their configured primary unit; no guessed legacy mapping.
+  private async resolveUnitSnapshots(scope: WorkspaceTransactionScope, lines: QuotationDraftSaveLine[]): Promise<
+    { ok: true; value: UnitSnapshot[] } | { ok: false; rejection: QuotationDraftSaveOutcome }
+  > {
+    const fail = (code: string, message: string) => ({ ok: false as const, rejection: rejected(code, message) });
+    const unitIds = [...new Set(lines.flatMap(line => line.unitRecordId ? [line.unitRecordId] : []))];
+    if (lines.some(line => !line.unitRecordId)) return fail('UNIT_MAPPING_REQUIRED', 'واحد اندازه‌گیری هر ردیف را تعیین کنید.');
+    const itemIds = [...new Set(lines.flatMap(line => line.itemId ? [line.itemId] : []))];
+    const units = await scope.getRepository<WorkspaceQuotationUnitRow>('quotationUnit', { shouldBypassPermissionChecks: true })
+      .find({ where: { id: In(unitIds) }, select: { id: true, code: true, name: true, accountingCode: true, isActive: true } });
+    const items = itemIds.length ? await scope.getRepository<{ id: string; unitRecordId: string | null; isActive: boolean }>('catalogItem', { shouldBypassPermissionChecks: true })
+      .find({ where: { id: In(itemIds) }, select: { id: true, unitRecordId: true, isActive: true } }) : [];
+    const unitById = new Map(units.map(unit => [unit.id, unit]));
+    const itemById = new Map(items.map(item => [item.id, item]));
+    const result: UnitSnapshot[] = [];
+    for (const line of lines) {
+      const unit = unitById.get(line.unitRecordId ?? '');
+      if (!unit || unit.isActive !== true || !unit.code?.trim() || !unit.name?.trim()) {
+        return fail('UNIT_MAPPING_REQUIRED', 'واحد اندازه‌گیری معتبر و فعال انتخاب کنید.');
+      }
+      if (line.itemId) {
+        const item = itemById.get(line.itemId);
+        if (!item || item.isActive !== true || item.unitRecordId !== unit.id) {
+          return fail('UNIT_MAPPING_REQUIRED', 'واحد ردیف با واحد اصلی کالای فعال کاتالوگ یکسان نیست.');
+        }
+      }
+      result.push({ unitRecordId: unit.id, unitCode: unit.code.trim(), unit: unit.name.trim(), unitAccountingCode: (unit.accountingCode ?? '').trim() });
+    }
+    return { ok: true, value: result };
+  }
+
+  private async lockUsedUnitCodes(scope: WorkspaceTransactionScope, snapshots: UnitSnapshot[]): Promise<void> {
+    const ids = [...new Set(snapshots.filter(unit => unit.unitAccountingCode !== '').map(unit => unit.unitRecordId))].sort();
+    if (ids.length === 0) return;
+    const repository = scope.getRepository<WorkspaceQuotationUnitRow>('quotationUnit', { shouldBypassPermissionChecks: true });
+    // Monotonic durable flag; the entire save rolls back if this write fails.
+    for (const id of ids) {
+      const updated = await repository.update({ id }, { accountingCodeLocked: true });
+      if (updated.affected !== 1) throw new Error('UNIT_MAPPING_REQUIRED: unit first-use lock not persisted');
+    }
   }
 
   private async describeLostClaim({    transactionScope,
@@ -833,10 +884,7 @@ export class QuotationDraftPersistenceService {
     transactionScope: WorkspaceTransactionScope;
     quotationId: string;
     lines: QuotationDraftSaveLine[];
-    lineSnapshots: Array<{
-      taxPolicyRecordId: string | null;
-      taxAccountingCode: string;
-    }>;
+    lineSnapshots: LineAccountingSnapshot[];
     documentCurrencyCode: string;
   }): Promise<void> {
     const lineRepository = transactionScope.getRepository('quotationLine', {
@@ -943,10 +991,7 @@ export class QuotationDraftPersistenceService {
   private buildLineColumns(
     line: QuotationDraftSaveLine,
     sortOrder: number,
-    taxSnapshot?: {
-      taxPolicyRecordId: string | null;
-      taxAccountingCode: string;
-    },
+    taxSnapshot: LineAccountingSnapshot,
     documentCurrencyCode?: string,
   ): Record<string, unknown> {
     // WS4: every line inherits the document currency; no independent line picker.
@@ -959,7 +1004,10 @@ export class QuotationDraftPersistenceService {
       name: line.name,
       kind: line.kind,
       description: line.description,
-      unit: line.unit,
+      unit: taxSnapshot.unit,
+      unitRecordId: taxSnapshot.unitRecordId,
+      unitCode: taxSnapshot.unitCode,
+      unitAccountingCode: taxSnapshot.unitAccountingCode,
       quantityExact: line.quantityExact,
       unitPriceExact: line.unitPriceExact,
       grossExact: line.grossExact,
