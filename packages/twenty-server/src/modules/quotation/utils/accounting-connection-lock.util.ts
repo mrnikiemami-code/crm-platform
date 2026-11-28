@@ -14,3 +14,15 @@ export const acquireAccountingConnectionExclusiveLock = async (
     [accountingConnectionLockKey(transactionScope.workspaceId)],
   );
 };
+
+// New work that can write records holds a shared lock until its private function and
+// any in-process apply finish. Settings saves and retirement take the exclusive side.
+// Independent operations may proceed together; this is not their idempotency claim.
+export const acquireAccountingConnectionWorkLock = async (
+  transactionScope: WorkspaceTransactionScope,
+): Promise<void> => {
+  await transactionScope.executeRawQuery(
+    'SELECT pg_advisory_xact_lock_shared(hashtext($1))',
+    [accountingConnectionLockKey(transactionScope.workspaceId)],
+  );
+};

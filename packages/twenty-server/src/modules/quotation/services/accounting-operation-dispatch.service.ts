@@ -7,6 +7,7 @@ import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/works
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { AccountingPartyApplyService, parseAccountingPartySelections } from 'src/modules/quotation/services/accounting-party-apply.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
+import { acquireAccountingConnectionWorkLock } from 'src/modules/quotation/utils/accounting-connection-lock.util';
 
 // These are the installed Quotation application's existing, stable metadata identifiers.
 // No caller chooses a function identifier, app, workspace, URL, or execution credentials.
@@ -165,6 +166,7 @@ export class AccountingOperationDispatchService {
         return unavailable();
       }
 
+      const execute = async () => {
       const result = await this.executor.execute({
         logicFunctionId: fn.id,
         workspaceId,
@@ -194,6 +196,20 @@ export class AccountingOperationDispatchService {
           allowUpdate: input.allowRemoteVersionUpdate === true, plan: data.plan, authContext, app });
       }
       return data;
+      };
+
+      // Keep lifecycle mutations out of the window from dispatch to durable apply.
+      // The worker still rechecks active state, and each operation owns its own claim.
+      if (['apply-items', 'apply-parties', 'execute-item-push', 'execute-quotation-export'].includes(operation.action)) {
+        return await this.workspaceOrmManager.executeInWorkspaceContext(
+          () => this.workspaceOrmManager.runInWorkspaceTransaction(async (scope) => {
+            await acquireAccountingConnectionWorkLock(scope);
+            return execute();
+          }),
+          authContext,
+        );
+      }
+      return await execute();
     } catch {
       // Never disclose worker stack traces, application tokens or vendor credentials.
       return unavailable();

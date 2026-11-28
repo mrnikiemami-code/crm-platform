@@ -14,7 +14,10 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
     } },
     flatApplicationMaps: { byId: { app: { universalIdentifier: 'e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb' } } },
   })) };
+  const lock = jest.fn(async () => undefined);
   const manager = {
+    runInWorkspaceTransaction: jest.fn(async (work: (scope: unknown) => Promise<unknown>) =>
+      work({ workspaceId: 'ws-1', executeRawQuery: lock })),
     executeInWorkspaceContext: jest.fn(async (work: () => Promise<unknown>) => work()),
     getRepository: jest.fn(() => ({ findOne: jest.fn(async () => visible ? { id: 'q-1' } : null) })),
   };
@@ -24,7 +27,7 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
     { resolveSettingsAuthority: jest.fn(async () => authority), resolveRoleId: jest.fn(async () => 'role-1') } as never,
     manager as never, { apply } as never,
   );
-  return { service, execute, manager, apply };
+  return { service, execute, manager, apply, lock };
 };
 
 describe('accounting operation boundary', () => {
@@ -48,6 +51,18 @@ describe('accounting operation boundary', () => {
     expect(execute).not.toHaveBeenCalledWith(expect.objectContaining({ userId: expect.anything() }));
     expect(apply).toHaveBeenCalledWith(expect.objectContaining({ authContext: auth, plan }));
   });
+  it('holds the workspace work lock before executing a mutating private operation', async () => {
+    const { service, execute, lock } = setup('SETTINGS_ROLE');
+    execute.mockImplementationOnce(async () => {
+      expect(lock).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock_shared(hashtext($1))',
+        ['quotation-accounting-connection:ws-1']);
+      return { status: 'SUCCESS', data: { success: true } };
+    });
+    expect(await service.dispatch('accounting-outbound-execute-quotation-export',
+      { connectionId: 'c', quotationId: 'q-1' }, auth)).toEqual({ success: true });
+    expect(lock).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects unlisted actions and unprivileged global operations before execution', async () => {
     const { service, execute } = setup(null);
     expect(await service.dispatch('invented', {}, auth)).toMatchObject({ success: false, code: 'INVALID_INPUT' });

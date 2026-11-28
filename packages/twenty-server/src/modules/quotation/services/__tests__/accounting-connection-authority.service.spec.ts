@@ -41,11 +41,13 @@ const buildService = ({
   row = storedRow(),
   rows,
   probe,
+  history = null,
 }: {
   authority: TaxSettingsAuthority | null;
   row?: Record<string, unknown> | null;
   rows?: Record<string, unknown>[];
   probe?: jest.Mock;
+  history?: { id: string } | null;
 }) => {
   const update = jest.fn();
   const insert = jest.fn();
@@ -75,7 +77,8 @@ const buildService = ({
   const runInWorkspaceTransaction = jest.fn(
     async (work: (scope: unknown) => Promise<unknown>) =>
       work({
-        getRepository: () => repository,
+        getRepository: (name: string) => name === 'accountingConnection'
+          ? repository : { findOne: jest.fn(async () => history) },
         executeRawQuery,
         workspaceId: 'workspace-1',
       }),
@@ -164,6 +167,29 @@ describe('AccountingConnectionAuthorityService', () => {
         expect.objectContaining({ verificationState: expected }),
       );
     }
+  });
+
+  it('refuses to rebind a connection that already owns mappings or history', async () => {
+    const { service, update } = buildService({ authority: 'SETTINGS_ROLE', history: { id: 'link' } });
+    const outcome = await service.saveConnection({
+      recordId: 'connection-1', name: 'آسان', adapterId: 'asan',
+      settings: { baseUrl: 'https://different.example.ir', moneyUnit: 'RIAL' },
+    }, userAuthContext);
+    expect(outcome).toMatchObject({ kind: 'REFUSED', code: 'ACCOUNTING_DATASET_REBIND_REQUIRED' });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('does not store health from an endpoint changed during the probe', async () => {
+    const rows = [storedRow()];
+    const probe = jest.fn(async () => {
+      rows[0] = { ...rows[0], baseUrl: 'https://different.example.ir' };
+      return { healthState: 'OK', code: 'REACHABLE', latencyMs: 1,
+        checkedAt: '2026-11-22T00:00:00.000Z', detail: 'ok' };
+    });
+    const { service, update } = buildService({ authority: 'SETTINGS_ROLE', rows, probe });
+    expect(await service.testConnection('connection-1', userAuthContext))
+      .toMatchObject({ kind: 'REFUSED', code: 'ACCOUNTING_CONNECTION_CHANGED' });
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('stores the adapter contract capabilities, ignoring a forged capabilities payload', async () => {

@@ -292,7 +292,7 @@ export class AccountingConnectionAuthorityService {
     const actor = this.actorFor(authContext);
 
     return this.inWorkspace(authContext, () =>
-      this.runInTransaction(async (scope) => {
+      this.runLocked(async (scope) => {
         const repository = scope.getRepository<WorkspaceAccountingConnectionRow>(
           'accountingConnection',
           { shouldBypassPermissionChecks: true },
@@ -310,6 +310,28 @@ export class AccountingConnectionAuthorityService {
             'ACCOUNTING_CONNECTION_NOT_FOUND',
             'اتصال حسابداری انتخاب‌شده پیدا نشد',
           );
+        }
+
+        // A bound connection owns its remote identities and its history. Repointing
+        // it to another vendor or dataset would silently reinterpret every mapping.
+        if (existing !== null && (
+          readText(existing.adapterId) !== adapterId ||
+          readText(existing.baseUrl).replace(/\/+$/, '') !== settings.value.baseUrl ||
+          (readMoneyUnit(existing.moneyUnit) !== 'UNCONFIRMED' &&
+            readMoneyUnit(existing.moneyUnit) !== settings.value.moneyUnit)
+        )) {
+          for (const object of ['accountingItemLink', 'accountingPartyLink', 'accountingSyncOperation']) {
+            const history = scope.getRepository<{ id: string; connectionId: string }>(
+              object, { shouldBypassPermissionChecks: true },
+            );
+            const linked = await history.findOne({
+              where: { connectionId: existing.id }, withDeleted: true, select: { id: true },
+            });
+            if (linked !== null) {
+              return refused('ACCOUNTING_DATASET_REBIND_REQUIRED',
+                'این اتصال دارای سوابق است؛ برای تغییر مقصد یا واحد پول، اتصال جدید ایجاد کنید.');
+            }
+          }
         }
 
         const affectedRecordId = existing?.id ?? randomUUID();
@@ -640,12 +662,24 @@ export class AccountingConnectionAuthorityService {
       };
       const actor = this.actorFor(authContext);
 
-      await this.runInTransaction(async (scope) => {
+      const stored = await this.runLocked(async (scope) => {
         const transactionalRepository =
           scope.getRepository<WorkspaceAccountingConnectionRow>(
             'accountingConnection',
             { shouldBypassPermissionChecks: true },
           );
+
+        const current = await transactionalRepository.findOne({
+          where: { id: existing.id }, select: CONNECTION_COLUMNS,
+        });
+        if (current === null || readText(current.adapterId) !== readText(existing.adapterId) ||
+          readText(current.baseUrl) !== readText(existing.baseUrl) ||
+          readText(current.adapterVersion) !== readText(existing.adapterVersion) ||
+          current.transportApproved !== existing.transportApproved ||
+          current.isActive !== existing.isActive ||
+          readText(current.moneyUnit) !== readText(existing.moneyUnit) ||
+          readText(current.lastHealthCheckAt) !== readText(existing.lastHealthCheckAt) ||
+          readText(current.lastHealthMessage) !== readText(existing.lastHealthMessage)) return false;
 
         await transactionalRepository.update(
           { id: existing.id },
@@ -657,8 +691,11 @@ export class AccountingConnectionAuthorityService {
             updatedBy: actor,
           } as never,
         );
+        return true;
       });
 
+      if (!stored) return refused('ACCOUNTING_CONNECTION_CHANGED',
+        'تنظیمات اتصال هنگام آزمایش تغییر کرد؛ آزمایش را دوباره انجام دهید.');
       return {
         kind: 'OK' as const,
         connections: await this.findAll(repository),
@@ -673,14 +710,6 @@ export class AccountingConnectionAuthorityService {
     work: () => Promise<T>,
   ): Promise<T> {
     return this.workspaceOrmManager.executeInWorkspaceContext(work, authContext);
-  }
-
-  private runInTransaction<T>(
-    work: (scope: WorkspaceTransactionScope) => Promise<T>,
-  ): Promise<T> {
-    return this.workspaceOrmManager.runInWorkspaceTransaction(async (scope) =>
-      work(scope),
-    );
   }
 
   private runLocked<T>(
