@@ -91,6 +91,17 @@ export const QUOTATION_FIELDS = {
   dutyRateBasisPoints: '1a3b5c7d-8e9f-5a1b-9c2d-3e4f5a6b7c8d',
   paymentTerms: 'cf04f6e1-8c8a-5097-9e1e-8139bfdfcb96',
   expiresAt: 'c32e9743-fd46-58ce-a4fa-9833a1e871ad',
+  deliveryTerms: 'a9f787d9-4715-53e9-ba5f-b8ba1081649b',
+  documentNotes: '07a30d44-2402-5d7f-8334-43b45b39b982',
+  paymentDueDate: '8a65a47c-c37f-5d1e-a540-7e93ef71733e',
+  issuerLegalName: 'b6414a96-1338-501c-9e0f-9184cb082dd1',
+  issuerNationalId: '1e1a47a4-2c3e-53ea-9181-fab539157529',
+  issuerEconomicCode: 'e31bea10-82ea-5cc1-a28c-8c41a89e0a38',
+  issuerAddress: '875ec2b9-4b97-593d-b019-edf315af525b',
+  issuerPhone: '082331c8-012f-543f-acf8-877cbe9d1374',
+  visitorName: '2c94a410-ff54-5b7f-be76-79a786ba80ba',
+  selectedPriceListId: 'adc703ea-d690-5472-aac2-deae632ee023',
+  selectedPriceListName: 'fadb8b17-d3a1-5186-9456-51cd62b8b61b',
   totalExact: '30552386-2860-5833-9731-0082e6e1ed16',
   // S2-R8 stored breakdown (IRR micros text) + document discount input.
   // Variant nibble of group 4 must be 8|9|a|b (UUID RFC).
@@ -149,6 +160,9 @@ export const QUOTATION_LINE_FIELDS = {
   // WS4 phase-2 stub: line inherits document currencyCode; no independent picker while
   // MULTI_CURRENCY_DOCUMENTS is false.
   currencyCode: 'fd6422e4-d8ec-54bf-b628-27bd5950fdaf',
+  selectedPriceListId: 'ec6422ff-3d9a-52bc-9b41-1217c2a7f423',
+  selectedPriceId: '3075338d-9c74-5ee6-a605-0a90638017ac',
+  selectedPriceValidFrom: 'c715e710-d591-5e14-821e-3a94a99a3915',
 } as const;
 
 export const QUOTATION_REVISION_FIELDS = {

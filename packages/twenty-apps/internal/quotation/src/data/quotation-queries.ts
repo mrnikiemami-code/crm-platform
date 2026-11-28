@@ -27,6 +27,24 @@ export const buildDefaultPriceListQuery = (): string =>
 export const buildAnyIrrPriceListQuery = (): string =>
   `query IrrPriceList { priceLists(filter: { currencyCode: { eq: "IRR" } }, first: 1) { edges { node { id } } } }`;
 
+export const buildIrrPriceListsForPickerQuery = (): string =>
+  `query IrrPriceListsForPicker {
+    priceLists(
+      filter: { currencyCode: { eq: "IRR" } }
+      orderBy: [{ isDefault: DescNullsLast }, { name: AscNullsLast }]
+      first: 50
+    ) {
+      edges {
+        node {
+          id
+          name
+          isDefault
+          currencyCode
+        }
+      }
+    }
+  }`;
+
 export const buildCreateQuotationMutation = (
   data: Record<string, GraphqlValue>,
 ): string =>
@@ -69,6 +87,18 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
       name
       customerType
       paymentTerms
+      expiresAt
+      paymentDueDate
+      deliveryTerms
+      documentNotes
+      issuerLegalName
+      issuerNationalId
+      issuerEconomicCode
+      issuerAddress
+      issuerPhone
+      visitorName
+      selectedPriceListId
+      selectedPriceListName
       taxPolicy
       taxRateBasisPoints
       dutyRateBasisPoints
@@ -107,6 +137,9 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
           dutyRateBasisPoints
           sortOrder
           item { id }
+          selectedPriceListId
+          selectedPriceId
+          selectedPriceValidFrom
         }
       }
     }
@@ -258,6 +291,7 @@ export const buildPricesForItemsOnListQuery = ({
     ) {
       edges {
         node {
+          id
           unitPriceExact
           validFrom
           validTo

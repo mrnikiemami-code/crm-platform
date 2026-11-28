@@ -42,6 +42,7 @@ import {
   type QuotationAccountingSnapshot,
 } from 'src/modules/quotation/utils/quotation-accounting-snapshot.util';
 import { evaluateDocumentCurrencyForSave } from 'src/modules/quotation/utils/quotation-document-currency.util';
+import { commercialColumnsFromDraftHeader } from 'src/modules/quotation/utils/quotation-commercial-header.util';
 
 type UnitSnapshot = { unitRecordId: string; unitCode: string; unit: string; unitAccountingCode: string };
 type LineAccountingSnapshot = UnitSnapshot & { taxPolicyRecordId: string | null; taxAccountingCode: string };
@@ -985,6 +986,7 @@ export class QuotationDraftPersistenceService {
         header.totalExact,
         resolveCurrencyLabel(header.currencyCode),
       ),
+      ...commercialColumnsFromDraftHeader(header),
     };
   }
 
@@ -1028,6 +1030,9 @@ export class QuotationDraftPersistenceService {
       // drafts do not all land at position 0 in object views.
       position: sortOrder,
       itemId: line.itemId,
+      selectedPriceListId: line.selectedPriceListId ?? null,
+      selectedPriceId: line.selectedPriceId ?? null,
+      selectedPriceValidFrom: line.selectedPriceValidFrom ?? null,
     };
   }
 

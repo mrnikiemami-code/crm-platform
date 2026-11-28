@@ -6,7 +6,7 @@ import {
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import {
   type PriceCandidate,
-  selectCurrentPriceExact,
+  selectCurrentCatalogPrice,
 } from 'src/domain/catalog/price-snapshot';
 
 export type CatalogPickerItem = {
@@ -18,6 +18,8 @@ export type CatalogPickerItem = {
   unitRecordId?: string | null;
   description: string | null;
   unitPriceExact: string | null;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
   priceAvailable: boolean;
   priceMessage: string | null;
 };
@@ -106,10 +108,12 @@ export const searchCatalogItemsForPicker = async (
     search,
     afterCursor,
     pageSize = CATALOG_PICKER_PAGE_SIZE,
+    priceListId = null,
   }: {
     search: string;
     afterCursor: string | null;
     pageSize?: number;
+    priceListId?: string | null;
   },
   dependencies: CatalogPickerDependencies,
 ): Promise<CatalogPickerPage> => {
@@ -131,19 +135,22 @@ export const searchCatalogItemsForPicker = async (
   const pageInfo = readPageInfo(pagePayload, 'catalogItems');
   const itemIds = edges.map((edge) => readString(edge.node.id)).filter(Boolean);
   const priceListEdge = readEdges(pagePayload, 'priceLists')[0];
-  const priceListId = priceListEdge
-    ? readString(priceListEdge.node.id) || null
-    : null;
+  const resolvedPriceListId =
+    priceListId !== null && priceListId.trim() !== ''
+      ? priceListId.trim()
+      : priceListEdge
+        ? readString(priceListEdge.node.id) || null
+        : null;
 
   let pricesMs = 0;
   const pricesByItemId = new Map<string, PriceCandidate[]>();
 
-  if (priceListId !== null && itemIds.length > 0) {
+  if (resolvedPriceListId !== null && itemIds.length > 0) {
     const pricesStarted = nowMs();
     const pricesPayload = await dependencies.execute(
       buildPricesForItemsOnListQuery({
         itemIds,
-        priceListId,
+        priceListId: resolvedPriceListId,
       }),
     );
     pricesMs = nowMs() - pricesStarted;
@@ -156,6 +163,7 @@ export const searchCatalogItemsForPicker = async (
       }
 
       const candidate: PriceCandidate = {
+        id: readNullableString(edge.node.id),
         unitPriceExact: readString(edge.node.unitPriceExact),
         validFrom: readNullableString(edge.node.validFrom),
         validTo: readNullableString(edge.node.validTo),
@@ -180,7 +188,7 @@ export const searchCatalogItemsForPicker = async (
 
     const kind =
       readString(edge.node.kind) === 'SERVICE' ? 'SERVICE' : 'PRODUCT';
-    const priceResult = selectCurrentPriceExact(
+    const priceResult = selectCurrentCatalogPrice(
       pricesByItemId.get(id) ?? [],
     );
 
@@ -194,7 +202,9 @@ export const searchCatalogItemsForPicker = async (
       unit: unitRecordId ? readString(unitRecord?.name) : readString(edge.node.unit),
       unitRecordId,
       description: readNullableString(edge.node.description),
-      unitPriceExact: priceResult.ok ? priceResult.value : null,
+      unitPriceExact: priceResult.ok ? priceResult.value.unitPriceExact : null,
+      selectedPriceId: priceResult.ok ? priceResult.value.priceId : null,
+      selectedPriceValidFrom: priceResult.ok ? priceResult.value.validFrom : null,
       priceAvailable: priceResult.ok,
       priceMessage: priceResult.ok ? null : priceResult.refusal.detail,
     });

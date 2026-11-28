@@ -339,7 +339,7 @@ export const prepareItemImport = (input: {
 };
 
 // Historical fixture helper only; production LF never calls it after Nest convergence.
-export const applyItemImport = async (
+export const applyItemImportPlan = async (
   {
     connectionId,
     preview,
@@ -495,6 +495,8 @@ export const applyItemImport = async (
 
   return outcome;
 };
+
+export const applyItemImport = applyItemImportPlan;
 
 export const previewPartyImport = async (
   {

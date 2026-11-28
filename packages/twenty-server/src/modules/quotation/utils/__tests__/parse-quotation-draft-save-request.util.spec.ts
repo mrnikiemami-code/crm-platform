@@ -183,4 +183,46 @@ describe('parseQuotationDraftSaveRequest', () => {
       ),
     ).toMatchObject({ ok: false, code: 'INVALID_INPUT' });
   });
+
+  it('accepts U04 commercial header and line price metadata', () => {
+    const parsed = parseQuotationDraftSaveRequest(
+      rawBody({
+        header: {
+          ...rawBody().header,
+          expiresAt: '2026-12-31',
+          paymentDueDate: '2027-01-15',
+          deliveryTerms: 'تحویل درب کارخانه',
+          documentNotes: 'یادداشت',
+          issuerLegalName: 'شرکت تست',
+          visitorName: 'علی',
+          selectedPriceListId: 'pl-1',
+          selectedPriceListName: 'عمومی',
+        },
+        lines: [
+          rawLine({
+            selectedPriceListId: 'pl-1',
+            selectedPriceId: 'price-1',
+            selectedPriceValidFrom: '2026-01-01',
+          }),
+        ],
+      }),
+    );
+
+    expect(parsed).toMatchObject({
+      ok: true,
+      value: {
+        header: {
+          expiresAt: '2026-12-31',
+          paymentDueDate: '2027-01-15',
+          selectedPriceListName: 'عمومی',
+        },
+        lines: [
+          {
+            selectedPriceId: 'price-1',
+            selectedPriceValidFrom: '2026-01-01',
+          },
+        ],
+      },
+    });
+  });
 });

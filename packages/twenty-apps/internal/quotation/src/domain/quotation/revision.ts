@@ -61,6 +61,9 @@ export type QuotationRevisionLine = {
   taxPolicy?: string;
   taxRateBasisPoints?: string | null;
   dutyRateBasisPoints?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceId?: string | null;
+  selectedPriceValidFrom?: string | null;
 };
 
 export type QuotationRevisionSnapshot = {
@@ -87,6 +90,18 @@ export type QuotationRevisionSnapshot = {
   // policies could carry duty, which is what keeps those documents' amounts unchanged.
   dutyRateBasisPoints?: string | null;
   paymentTerms: string | null;
+  paymentDueDate?: string | null;
+  deliveryTerms?: string | null;
+  documentNotes?: string | null;
+  issuerSnapshot?: {
+    legalName: string;
+    nationalId: string | null;
+    economicCode: string | null;
+    address: string | null;
+    phone: string | null;
+  };
+  visitorName?: string | null;
+  selectedPriceListName?: string | null;
   lines: QuotationRevisionLine[];
   totals: {
     grossMicros: string;

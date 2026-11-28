@@ -24,6 +24,8 @@ export type CatalogComboboxSelection = {
   unitRecordId?: string | null;
   description: string | null;
   unitPriceText: string;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
   priceAvailable: boolean;
   priceMessage: string | null;
 };
@@ -37,6 +39,8 @@ type PickerRow = {
   unitRecordId?: string | null;
   description: string | null;
   unitPriceExact: string | null;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
   priceAvailable: boolean;
   priceMessage: string | null;
 };
@@ -44,6 +48,7 @@ type PickerRow = {
 type CatalogItemComboboxProps = {
   moneyUnit: MoneyUnit;
   selectedLabel: string;
+  priceListId?: string | null;
   onSelect: (selection: CatalogComboboxSelection) => void;
 };
 
@@ -103,6 +108,12 @@ const readPickerRows = (payload: Record<string, unknown>): PickerRow[] => {
           : null,
       unitPriceExact:
         typeof record.unitPriceExact === 'string' ? record.unitPriceExact : null,
+      selectedPriceId:
+        typeof record.selectedPriceId === 'string' ? record.selectedPriceId : null,
+      selectedPriceValidFrom:
+        typeof record.selectedPriceValidFrom === 'string'
+          ? record.selectedPriceValidFrom
+          : null,
       priceAvailable: record.priceAvailable === true,
       priceMessage:
         typeof record.priceMessage === 'string' ? record.priceMessage : null,
@@ -140,6 +151,7 @@ const formatOptionSecondary = (row: PickerRow, moneyUnit: MoneyUnit): string => 
 export const CatalogItemCombobox = ({
   moneyUnit,
   selectedLabel,
+  priceListId = null,
   onSelect,
 }: CatalogItemComboboxProps) => {
   const listboxId = useId();
@@ -201,6 +213,7 @@ export const CatalogItemCombobox = ({
         search,
         afterCursor,
         pageSize: PAGE_SIZE,
+        ...(priceListId ? { priceListId } : {}),
       });
 
       if (serial !== requestSerial.current) {
@@ -309,6 +322,8 @@ export const CatalogItemCombobox = ({
       unitRecordId: row.unitRecordId ?? null,
       description: row.description,
       unitPriceText,
+      selectedPriceId: row.selectedPriceId,
+      selectedPriceValidFrom: row.selectedPriceValidFrom,
       priceAvailable: row.priceAvailable,
       priceMessage: row.priceMessage,
     });

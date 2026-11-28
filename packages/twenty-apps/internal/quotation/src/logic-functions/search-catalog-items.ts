@@ -31,11 +31,13 @@ const handler = async (event: RoutePayload<unknown>) => {
   }
 
   try {
+    const priceListId = readString(body.priceListId) || null;
     const page = await searchCatalogItemsForPicker(
       {
         search,
         afterCursor,
         pageSize: requestedSize,
+        priceListId,
       },
       { execute: executeRecordGraphql },
     );

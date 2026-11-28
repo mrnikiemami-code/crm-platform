@@ -29,6 +29,9 @@ import {
   callAppRoute,
   callRoundingRulesNestAction,
 } from 'src/components/quotation-api';
+import {
+  buildIrrPriceListsForPickerQuery,
+} from 'src/data/quotation-queries';
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import {
@@ -86,6 +89,9 @@ type LineDraft = {
   // WS3: independent per-line policy; new lines inherit the document default.
   taxPolicyCode: string;
   priceWarning: string | null;
+  selectedPriceListId: string | null;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
 };
 
 const newLine = (defaultTaxPolicyCode: string): LineDraft => ({
@@ -104,6 +110,9 @@ const newLine = (defaultTaxPolicyCode: string): LineDraft => ({
   discountAmountText: '',
   taxPolicyCode: defaultTaxPolicyCode,
   priceWarning: null,
+  selectedPriceListId: null,
+  selectedPriceId: null,
+  selectedPriceValidFrom: null,
 });
 
 const PROBLEM_FALLBACK = 'لطفاً ورودی‌ها را بررسی کنید.';
@@ -382,6 +391,9 @@ const toDraftLineInput = (
   ),
   taxPolicy: line.taxPolicyCode,
   taxPolicyDefinition: lineTaxPolicyDefinition,
+  selectedPriceListId: line.selectedPriceListId,
+  selectedPriceId: line.selectedPriceId,
+  selectedPriceValidFrom: line.selectedPriceValidFrom,
 });
 
 const lineCardStyle = (index: number): CSSProperties => ({
@@ -438,6 +450,25 @@ export const QuotationDraftForm = () => {
 
   const [name, setName] = useState('پیش‌فاکتور جدید');
   const [paymentTerms, setPaymentTerms] = useState('۳۰ روز');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [paymentDueDate, setPaymentDueDate] = useState('');
+  const [deliveryTerms, setDeliveryTerms] = useState('');
+  const [documentNotes, setDocumentNotes] = useState('');
+  const [visitorName, setVisitorName] = useState('');
+  const [issuerLegalName, setIssuerLegalName] = useState('');
+  const [issuerNationalId, setIssuerNationalId] = useState('');
+  const [issuerEconomicCode, setIssuerEconomicCode] = useState('');
+  const [issuerAddress, setIssuerAddress] = useState('');
+  const [issuerPhone, setIssuerPhone] = useState('');
+  const [priceListOptions, setPriceListOptions] = useState<
+    Array<{ id: string; name: string; isDefault: boolean }>
+  >([]);
+  const [selectedPriceListId, setSelectedPriceListId] = useState<string | null>(
+    null,
+  );
+  const [selectedPriceListName, setSelectedPriceListName] = useState<
+    string | null
+  >(null);
   const [moneyUnit, setMoneyUnit] = useState<MoneyUnit>('TOMAN');
   const [customerType, setCustomerType] = useState<'PERSON' | 'COMPANY'>(
     initialCustomerType,
@@ -684,6 +715,69 @@ export const QuotationDraftForm = () => {
   }, [isRecordEdit]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadPriceLists = async () => {
+      try {
+        const data = await executeRecordGraphql(buildIrrPriceListsForPickerQuery());
+        const connection = data.priceLists as
+          | { edges?: Array<{ node?: Record<string, unknown> }> }
+          | undefined;
+        const edges = Array.isArray(connection?.edges) ? connection.edges : [];
+
+        const rows = edges.flatMap((edge) => {
+          const node = edge?.node;
+          const id = typeof node?.id === 'string' ? node.id.trim() : '';
+          const name =
+            typeof node?.name === 'string' && node.name.trim() !== ''
+              ? node.name.trim()
+              : id;
+
+          if (id === '') {
+            return [];
+          }
+
+          return [
+            {
+              id,
+              name,
+              isDefault: node?.isDefault === true,
+            },
+          ];
+        });
+
+        if (cancelled || rows.length === 0) {
+          return;
+        }
+
+        setPriceListOptions(rows);
+
+        if (selectedPriceListId === null) {
+          const preferred =
+            rows.find((row) => row.isDefault) ?? rows[0] ?? null;
+
+          if (preferred !== null) {
+            setSelectedPriceListId(preferred.id);
+            setSelectedPriceListName(preferred.name);
+          }
+        }
+      } catch (loadFailure) {
+        console.error(
+          'quotation-draft-form: price list load failed',
+          loadFailure,
+        );
+      }
+    };
+
+    void loadPriceLists();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- default list once on mount
+  }, []);
+
+  useEffect(() => {
     if (!isRecordEdit) {
       return;
     }
@@ -719,6 +813,18 @@ export const QuotationDraftForm = () => {
         setRecordVersion(draft.version);
         setName(draft.name);
         setPaymentTerms(draft.paymentTerms);
+        setExpiresAt(draft.expiresAt ?? '');
+        setPaymentDueDate(draft.paymentDueDate ?? '');
+        setDeliveryTerms(draft.deliveryTerms ?? '');
+        setDocumentNotes(draft.documentNotes ?? '');
+        setVisitorName(draft.visitorName ?? '');
+        setIssuerLegalName(draft.issuerLegalName ?? '');
+        setIssuerNationalId(draft.issuerNationalId ?? '');
+        setIssuerEconomicCode(draft.issuerEconomicCode ?? '');
+        setIssuerAddress(draft.issuerAddress ?? '');
+        setIssuerPhone(draft.issuerPhone ?? '');
+        setSelectedPriceListId(draft.selectedPriceListId);
+        setSelectedPriceListName(draft.selectedPriceListName);
         setMoneyUnit(draft.moneyUnit);
         setDocumentCurrencyCode(
           draft.currencyCode !== null && draft.currencyCode.trim() !== ''
@@ -807,6 +913,9 @@ export const QuotationDraftForm = () => {
                 ? line.taxPolicy.trim()
                 : headerTaxPolicy,
             priceWarning: null,
+            selectedPriceListId: line.selectedPriceListId,
+            selectedPriceId: line.selectedPriceId,
+            selectedPriceValidFrom: line.selectedPriceValidFrom,
           })),
         );
 
@@ -1039,6 +1148,18 @@ export const QuotationDraftForm = () => {
       roundingRuleName: selectedRounding?.label ?? null,
       roundingStepRials: selectedRounding?.stepRials ?? 1n,
       roundingRuleRecordId: selectedRounding?.recordId || null,
+      expiresAt: expiresAt.trim() || null,
+      paymentDueDate: paymentDueDate.trim() || null,
+      deliveryTerms: deliveryTerms.trim() || null,
+      documentNotes: documentNotes.trim() || null,
+      issuerLegalName: issuerLegalName.trim() || null,
+      issuerNationalId: issuerNationalId.trim() || null,
+      issuerEconomicCode: issuerEconomicCode.trim() || null,
+      issuerAddress: issuerAddress.trim() || null,
+      issuerPhone: issuerPhone.trim() || null,
+      visitorName: visitorName.trim() || null,
+      selectedPriceListId,
+      selectedPriceListName,
       lines: draftLines,
     });
   }, [
@@ -1059,6 +1180,18 @@ export const QuotationDraftForm = () => {
     roundingRules,
     roundingRuleCode,
     storedRoundingRule,
+    expiresAt,
+    paymentDueDate,
+    deliveryTerms,
+    documentNotes,
+    visitorName,
+    issuerLegalName,
+    issuerNationalId,
+    issuerEconomicCode,
+    issuerAddress,
+    issuerPhone,
+    selectedPriceListId,
+    selectedPriceListName,
   ]);
 
   const summaryPlan =
@@ -1131,6 +1264,9 @@ export const QuotationDraftForm = () => {
       unit: selection.unit,
       unitRecordId: selection.unitRecordId ?? null,
       unitPriceText: selection.unitPriceText,
+      selectedPriceListId,
+      selectedPriceId: selection.selectedPriceId,
+      selectedPriceValidFrom: selection.selectedPriceValidFrom,
       priceWarning: selection.priceAvailable ? null : selection.priceMessage,
     });
   };
@@ -1173,6 +1309,18 @@ export const QuotationDraftForm = () => {
         documentDiscountKind,
         documentDiscountPercentText,
         documentDiscountAmountText,
+        expiresAt: expiresAt.trim() || null,
+        paymentDueDate: paymentDueDate.trim() || null,
+        deliveryTerms: deliveryTerms.trim() || null,
+        documentNotes: documentNotes.trim() || null,
+        issuerLegalName: issuerLegalName.trim() || null,
+        issuerNationalId: issuerNationalId.trim() || null,
+        issuerEconomicCode: issuerEconomicCode.trim() || null,
+        issuerAddress: issuerAddress.trim() || null,
+        issuerPhone: issuerPhone.trim() || null,
+        visitorName: visitorName.trim() || null,
+        selectedPriceListId,
+        selectedPriceListName,
         lines: lines.map((line) => ({
           clientLineId: line.clientLineId,
           catalogItemId: line.catalogItemId,
@@ -1188,6 +1336,9 @@ export const QuotationDraftForm = () => {
           discountPercentText: line.discountPercentText,
           discountAmountText: line.discountAmountText,
           taxPolicy: line.taxPolicyCode,
+          selectedPriceListId: line.selectedPriceListId,
+          selectedPriceId: line.selectedPriceId,
+          selectedPriceValidFrom: line.selectedPriceValidFrom,
         })),
       });
 
@@ -1329,6 +1480,123 @@ export const QuotationDraftForm = () => {
         </section>
 
         <section style={formSectionStyle} className="qd-section">
+          <h3 style={styles.sectionTitle}>اطلاعات تجاری</h3>
+          <div style={styles.row} className="qd-row">
+            <label style={styles.label} className="qd-field">
+              اعتبار پیش‌فاکتور تا
+              <input
+                style={styles.input}
+                type="date"
+                value={expiresAt}
+                onChange={(event) => setExpiresAt(event.target.value)}
+              />
+            </label>
+            <label style={styles.label} className="qd-field">
+              سررسید پرداخت
+              <input
+                style={styles.input}
+                type="date"
+                value={paymentDueDate}
+                onChange={(event) => setPaymentDueDate(event.target.value)}
+              />
+            </label>
+          </div>
+          <label style={styles.label}>
+            فهرست قیمت
+            <select
+              style={styles.input}
+              value={selectedPriceListId ?? ''}
+              onChange={(event) => {
+                const nextId = event.target.value.trim();
+                const match = priceListOptions.find((row) => row.id === nextId);
+
+                setSelectedPriceListId(nextId === '' ? null : nextId);
+                setSelectedPriceListName(match?.name ?? null);
+              }}
+            >
+              {priceListOptions.length === 0 ? (
+                <option value="">در حال بارگذاری…</option>
+              ) : (
+                priceListOptions.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                    {row.isDefault ? ' — پیش‌فرض' : ''}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          <label style={styles.label}>
+            شرایط تحویل
+            <input
+              style={styles.input}
+              value={deliveryTerms}
+              onChange={(event) => setDeliveryTerms(event.target.value)}
+            />
+          </label>
+          <label style={styles.label}>
+            یادداشت سند
+            <textarea
+              style={{ ...styles.input, minHeight: 72, resize: 'vertical' }}
+              value={documentNotes}
+              onChange={(event) => setDocumentNotes(event.target.value)}
+            />
+          </label>
+          <label style={styles.label}>
+            بازدیدکننده / فروشنده
+            <input
+              style={styles.input}
+              value={visitorName}
+              onChange={(event) => setVisitorName(event.target.value)}
+            />
+          </label>
+          <div style={styles.row} className="qd-row">
+            <label style={styles.label} className="qd-field">
+              نام صادرکننده
+              <input
+                style={styles.input}
+                value={issuerLegalName}
+                onChange={(event) => setIssuerLegalName(event.target.value)}
+              />
+            </label>
+            <label style={styles.label} className="qd-field">
+              شناسه ملی صادرکننده
+              <input
+                style={styles.input}
+                value={issuerNationalId}
+                onChange={(event) => setIssuerNationalId(event.target.value)}
+              />
+            </label>
+          </div>
+          <div style={styles.row} className="qd-row">
+            <label style={styles.label} className="qd-field">
+              کد اقتصادی صادرکننده
+              <input
+                style={styles.input}
+                value={issuerEconomicCode}
+                onChange={(event) => setIssuerEconomicCode(event.target.value)}
+              />
+            </label>
+            <label style={styles.label} className="qd-field">
+              تلفن صادرکننده
+              <input
+                style={styles.input}
+                value={issuerPhone}
+                onChange={(event) => setIssuerPhone(event.target.value)}
+              />
+            </label>
+          </div>
+          <label style={styles.label}>
+            نشانی صادرکننده
+            <input
+              style={styles.input}
+              value={issuerAddress}
+              onChange={(event) => setIssuerAddress(event.target.value)}
+            />
+          </label>
+        </section>
+
+        <section style={formSectionStyle} className="qd-section">
           <h3 style={styles.sectionTitle}>ارز سند و نمایش مبلغ</h3>
           <div style={styles.row} className="qd-row">
             <label style={styles.label} className="qd-field">
@@ -1438,6 +1706,7 @@ export const QuotationDraftForm = () => {
                   عنوان کالا / خدمت
                   <CatalogItemCombobox
                     moneyUnit={moneyUnit}
+                    priceListId={selectedPriceListId}
                     selectedLabel={line.name}
                     onSelect={(selection) =>
                       applyCatalogSelection(line.clientLineId, selection)

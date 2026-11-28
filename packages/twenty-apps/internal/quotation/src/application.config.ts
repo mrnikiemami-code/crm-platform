@@ -104,5 +104,31 @@ export default defineApplication({
         'Identifier of the tax policy a new quotation starts with, for example IR_VAT_9. Rates are configured per policy, not hardcoded.',
       isSecret: false,
     },
+    // Issuer defaults filled onto quotations when the draft leaves issuer fields empty.
+    QUOTATION_ISSUER_LEGAL_NAME: {
+      universalIdentifier: '19ae41db-63fd-56f2-8826-4d651665a244',
+      description: 'Default legal name printed as quotation issuer when the draft omits it.',
+      isSecret: false,
+    },
+    QUOTATION_ISSUER_NATIONAL_ID: {
+      universalIdentifier: 'f8b91f85-ba98-5641-835f-4d262b9b051b',
+      description: 'Default national id for the quotation issuer snapshot.',
+      isSecret: false,
+    },
+    QUOTATION_ISSUER_ECONOMIC_CODE: {
+      universalIdentifier: '440790f9-7a5a-5b91-af12-7736b7b244d4',
+      description: 'Default economic code for the quotation issuer snapshot.',
+      isSecret: false,
+    },
+    QUOTATION_ISSUER_ADDRESS: {
+      universalIdentifier: '7b1a7a62-3715-5945-b296-8c3e016fb26d',
+      description: 'Default issuer address printed on quotations.',
+      isSecret: false,
+    },
+    QUOTATION_ISSUER_PHONE: {
+      universalIdentifier: '343df0ff-c2c0-56ac-bafb-690000f04543',
+      description: 'Default issuer phone printed on quotations.',
+      isSecret: false,
+    },
   },
 });

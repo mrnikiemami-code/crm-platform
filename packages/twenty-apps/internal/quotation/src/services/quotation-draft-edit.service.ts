@@ -36,6 +36,9 @@ export type EditableDraftLine = {
   discountAmountText: string;
   // Null on legacy header-only tax documents; form copies header policy once.
   taxPolicy: string | null;
+  selectedPriceListId: string | null;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
 };
 
 export type EditableDraft = {
@@ -69,6 +72,18 @@ export type EditableDraft = {
   documentDiscountKind: EditableDraftDiscountKind;
   documentDiscountPercentText: string;
   documentDiscountAmountText: string;
+  expiresAt: string | null;
+  paymentDueDate: string | null;
+  deliveryTerms: string | null;
+  documentNotes: string | null;
+  issuerLegalName: string | null;
+  issuerNationalId: string | null;
+  issuerEconomicCode: string | null;
+  issuerAddress: string | null;
+  issuerPhone: string | null;
+  visitorName: string | null;
+  selectedPriceListId: string | null;
+  selectedPriceListName: string | null;
   lines: EditableDraftLine[];
   contentEditable: boolean;
 };
@@ -199,6 +214,9 @@ type RawLine = {
   discountInputExact: string;
   itemId: string | null;
   taxPolicy: string | null;
+  selectedPriceListId: string | null;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
 };
 
 const readLines = (data: Record<string, unknown>): RawLine[] => {
@@ -231,9 +249,22 @@ const readLines = (data: Record<string, unknown>): RawLine[] => {
         discountInputExact: readText(node.discountInputExact) || '0.000000',
         itemId: readRelationId(node.item),
         taxPolicy: readNullableText(node.taxPolicy),
+        selectedPriceListId: readNullableText(node.selectedPriceListId),
+        selectedPriceId: readNullableText(node.selectedPriceId),
+        selectedPriceValidFrom: readNullableText(node.selectedPriceValidFrom),
       },
     ];
   });
+};
+
+const readDateInput = (value: unknown): string | null => {
+  const text = readNullableText(value);
+
+  if (text === null) {
+    return null;
+  }
+
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : text;
 };
 
 const resolveMoneyUnit = (
@@ -334,6 +365,9 @@ export const parseDraftForEdit = (
       discountPercentText,
       discountAmountText,
       taxPolicy: rawLine.taxPolicy,
+      selectedPriceListId: rawLine.selectedPriceListId,
+      selectedPriceId: rawLine.selectedPriceId,
+      selectedPriceValidFrom: rawLine.selectedPriceValidFrom,
     });
   }
 
@@ -378,6 +412,18 @@ export const parseDraftForEdit = (
       resolvedDocumentDiscountKind === 'AMOUNT'
         ? (formatAmountInput(documentDiscountInputExact, moneyUnit) ?? '')
         : '',
+    expiresAt: readDateInput(quotation.expiresAt),
+    paymentDueDate: readDateInput(quotation.paymentDueDate),
+    deliveryTerms: readNullableText(quotation.deliveryTerms),
+    documentNotes: readNullableText(quotation.documentNotes),
+    issuerLegalName: readNullableText(quotation.issuerLegalName),
+    issuerNationalId: readNullableText(quotation.issuerNationalId),
+    issuerEconomicCode: readNullableText(quotation.issuerEconomicCode),
+    issuerAddress: readNullableText(quotation.issuerAddress),
+    issuerPhone: readNullableText(quotation.issuerPhone),
+    visitorName: readNullableText(quotation.visitorName),
+    selectedPriceListId: readNullableText(quotation.selectedPriceListId),
+    selectedPriceListName: readNullableText(quotation.selectedPriceListName),
     lines,
     contentEditable: canEditQuotationLines(status),
   });

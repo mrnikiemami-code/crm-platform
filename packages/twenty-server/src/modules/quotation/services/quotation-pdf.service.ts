@@ -47,6 +47,16 @@ type QuotationPdfRow = {
   roundingStepRials: string | null;
   totalExact: string | null;
   paymentTerms: string | null;
+  paymentDueDate?: string | Date | null;
+  deliveryTerms?: string | null;
+  documentNotes?: string | null;
+  issuerLegalName?: string | null;
+  issuerNationalId?: string | null;
+  issuerEconomicCode?: string | null;
+  issuerAddress?: string | null;
+  issuerPhone?: string | null;
+  visitorName?: string | null;
+  selectedPriceListName?: string | null;
   currencyCode: string | null;
   personId: string | null;
   companyId: string | null;
@@ -202,7 +212,18 @@ export class QuotationPdfService {
         return {
           quotation: { ...quotation, name: sealed.documentTitle ?? 'پیش‌فاکتور',
             quotationNumber: sealed.quotationNumber, currencyCode: sealed.currencyCode,
-            paymentTerms: sealed.paymentTerms, sentAt: sealed.issuedAt, expiresAt: sealed.expiresAt ?? null,
+            paymentTerms: sealed.paymentTerms,
+            paymentDueDate: sealed.paymentDueDate ?? null,
+            deliveryTerms: sealed.deliveryTerms ?? null,
+            documentNotes: sealed.documentNotes ?? null,
+            visitorName: sealed.visitorName ?? null,
+            selectedPriceListName: sealed.selectedPriceListName ?? null,
+            issuerLegalName: sealed.issuerSnapshot?.legalName ?? null,
+            issuerNationalId: sealed.issuerSnapshot?.nationalId ?? null,
+            issuerEconomicCode: sealed.issuerSnapshot?.economicCode ?? null,
+            issuerAddress: sealed.issuerSnapshot?.address ?? null,
+            issuerPhone: sealed.issuerSnapshot?.phone ?? null,
+            sentAt: sealed.issuedAt, expiresAt: sealed.expiresAt ?? null,
             grossExact: exact(sealed.totals.grossMicros), lineDiscountExact: formatSealedMicros(lineDiscount),
             documentDiscountExact: formatSealedMicros(documentDiscount), netExact: exact(sealed.totals.netMicros),
             taxExact: exact(sealed.totals.taxMicros), dutyExact: exact(sealed.totals.dutyMicros),
@@ -345,6 +366,50 @@ export class QuotationPdfService {
       paymentTerms: isNonEmptyString(quotation.paymentTerms)
         ? quotation.paymentTerms
         : undefined,
+      paymentDueDate: quotation.paymentDueDate
+        ? formatJalaliDateFromInstant(
+            quotation.paymentDueDate instanceof Date
+              ? quotation.paymentDueDate.toISOString()
+              : quotation.paymentDueDate,
+          ) ?? undefined
+        : undefined,
+      deliveryTerms: isNonEmptyString(quotation.deliveryTerms)
+        ? quotation.deliveryTerms
+        : undefined,
+      documentNotes: isNonEmptyString(quotation.documentNotes)
+        ? quotation.documentNotes
+        : undefined,
+      visitorName: isNonEmptyString(quotation.visitorName)
+        ? quotation.visitorName
+        : undefined,
+      priceListName: isNonEmptyString(quotation.selectedPriceListName)
+        ? quotation.selectedPriceListName
+        : undefined,
+      issuerLines: (() => {
+        if (!isNonEmptyString(quotation.issuerLegalName)) {
+          return undefined;
+        }
+
+        const rows = [quotation.issuerLegalName];
+
+        if (isNonEmptyString(quotation.issuerNationalId)) {
+          rows.push(`شناسه ملی: ${quotation.issuerNationalId}`);
+        }
+
+        if (isNonEmptyString(quotation.issuerEconomicCode)) {
+          rows.push(`کد اقتصادی: ${quotation.issuerEconomicCode}`);
+        }
+
+        if (isNonEmptyString(quotation.issuerAddress)) {
+          rows.push(quotation.issuerAddress);
+        }
+
+        if (isNonEmptyString(quotation.issuerPhone)) {
+          rows.push(`تلفن: ${quotation.issuerPhone}`);
+        }
+
+        return rows;
+      })(),
       currencyLabel,
       lines: pdfLines,
       // Stored breakdown only — never recompute money in the PDF layer.
