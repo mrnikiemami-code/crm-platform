@@ -26,3 +26,15 @@ export const acquireAccountingConnectionWorkLock = async (
     [accountingConnectionLockKey(transactionScope.workspaceId)],
   );
 };
+
+// The lifecycle lock is always acquired first. This narrower lock serializes
+// a quotation's export and reconciliation window at the Nest boundary, without
+// making unrelated quotations wait. Durable claim uniqueness remains required.
+export const acquireAccountingQuotationWorkLock = async (
+  scope: WorkspaceTransactionScope,
+  connectionId: string,
+  quotationId: string,
+): Promise<void> => {
+  await scope.executeRawQuery('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+    [JSON.stringify(['accounting-quotation-work', scope.workspaceId, connectionId, quotationId])]);
+};
