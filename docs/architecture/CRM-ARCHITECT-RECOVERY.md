@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 040 architect continuation START (2026-11-28)
+
+User explicitly authorized continuation and before/after recovery. Verified remote A `1961e98d6d250ad9456f395503195c0277251e42`, B `f230721d1a0146748475c68e73d61572d7b5df6d` (no pushed B work yet). Review A-owned finance/seal/export source and close independent defects only; preserve B ownership, no integration product writes until handoff. Record actual changes and remaining blockers at end. Canonical recovery update on architect-owned integration branch is coordination documentation only. No build/deploy/schema/vendor traffic; no PASS inferred.
+
 ## CURRENT — Goal 040 Lane A source checkpoint (2026-11-28)
 
 Architect finance branch `feat/crm129-g040-finance` tip `1961e98d6d250ad9456f395503195c0277251e42`, ten source commits (26 source/test files) plus handoff. [Exact handoff](https://github.com/mrnikiemami-code/crm-platform/blob/1961e98d6d250ad9456f395503195c0277251e42/docs/architecture/goal-040/LANE-A-HANDOFF.md) records implemented changes, dependencies and NOT_RUN gates. Cursor branch `feat/crm129-g040-reference-catalog` remote remains `f230721d1a0146748475c68e73d61572d7b5df6d` at this checkpoint; local progress unknown. Integration remains docs-only. No phase PASS, build, runtime, schema apply, version bump or vendor traffic. Read ledger and charter first; compare both branch tips, review B's actual handoff and integrate once. Finish unit line/seal seam, remaining customer/pricing/report/adapter/security/authorized reconciliation scope before single integrated verification. G1/G2 NOT_AUTHORIZED. Do not restart accepted or completed source work.
