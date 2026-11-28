@@ -6,9 +6,10 @@ const internalPartyId = '22222222-2222-4222-8222-222222222222';
 const input = { connectionId, internalPartyId, partyType: 'PERSON' as const, report: 'SUMMARY' as const };
 const auth = { type: 'user', workspace: { id: 'ws-1' }, user: { id: 'u-1' }, userWorkspaceId: 'uw-1' } as WorkspaceAuthContext;
 const link = { id: 'link-1', externalPartyId: '42', internalPartyId, partyType: 'PERSON', syncStatus: 'LINKED', remoteVersion: 'v1' };
-const setup = (options: { authority?: string | null; visible?: boolean; active?: boolean; links?: typeof link[] } = {}) => {
+const setup = (options: { authority?: string | null; visible?: boolean; active?: boolean; links?: typeof link[]; auditFails?: boolean } = {}) => {
   const sourceRows = options.links ?? [link];
   const repositories = {
+    accountingFinanceAccess: { insert: jest.fn(async (row: Record<string, unknown>) => { if (options.auditFails) throw new Error('audit unavailable'); return { identifiers: [{ id: row.id }] }; }) },
     person: { findOne: jest.fn(async () => options.visible === false ? null : { id: internalPartyId }) },
     accountingConnection: { findOne: jest.fn(async () => ({ id: connectionId, isActive: options.active !== false, adapterId: 'asan', datasetBindingId: 'dataset-1' })) },
     accountingPartyLink: { find: jest.fn(async () => sourceRows) },
@@ -49,6 +50,26 @@ describe('restricted original-user customer finance authority', () => {
     expect(scope.executeRawQuery).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock_shared(hashtext($1))', ['quotation-accounting-connection:ws-1']);
     expect(repositories.accountingPartyLink.find).toHaveBeenCalledTimes(3);
     expect(worker).toHaveBeenCalledWith({ connectionId, externalPartyId: '42', report: 'SUMMARY' });
+    const audit = repositories.accountingFinanceAccess.insert;
+    expect(audit).toHaveBeenCalledTimes(2);
+    expect(audit.mock.calls[0][0]).toMatchObject({ actorWorkspaceId: 'uw-1', internalPartyId, phase: 'REQUESTED', outcomeCode: 'AUTHORIZED' });
+    expect(audit.mock.invocationCallOrder[0]).toBeLessThan(worker.mock.invocationCallOrder[0]);
+    expect(audit.mock.calls[1][0]).toMatchObject({ requestId: audit.mock.calls[0][0].requestId, phase: 'COMPLETED', outcomeCode: 'OBSERVATION_RETURNED' });
+    expect(audit.mock.calls[1][0]).not.toHaveProperty('observation');
+  });
+
+  it('does not contact the vendor when the durable audit intent cannot be recorded', async () => {
+    const { service, worker } = setup({ auditFails: true });
+    expect(await service.read(input, auth, worker)).toMatchObject({ success: false });
+    expect(worker).not.toHaveBeenCalled();
+  });
+
+  it('does not disclose an observation if the completion audit fails', async () => {
+    const { service, worker, repositories } = setup();
+    repositories.accountingFinanceAccess.insert.mockImplementationOnce(async row => ({ identifiers: [{ id: row.id }] }))
+      .mockRejectedValueOnce(new Error('audit failed'));
+    expect(await service.read(input, auth, worker)).toMatchObject({ success: false });
+    expect(worker).toHaveBeenCalledTimes(1);
   });
 
   it('rejects mismatched returned customer or certified claims', async () => {
