@@ -307,7 +307,7 @@ describe('credentials', () => {
     expect(buildAdapter(configured, { allowInsecureTransport: false })).toMatchObject({
       ok: false, refusal: { code: 'ASAN_CONTRACT_RECHECK_REQUIRED' },
     });
-    const current = { ...configured, adapterVersion: '2026-11-2' };
+    const current = { ...configured, adapterVersion: '2026-11-2', datasetBindingId: 'fixture-dataset' };
     const binding = { connectionId: current.id, baseUrl: current.settings.baseUrl, ipv4: '93.184.216.34' };
     const noGeneration = buildAdapter(current, { allowInsecureTransport: false, approvedRead: binding });
     expect(noGeneration).toMatchObject({ ok: true, value: { writesEnabled: false } });
@@ -327,6 +327,8 @@ describe('credentials', () => {
     const noDataset = buildAdapter(current, { ...authorization, approvedReadDatasetId: undefined });
     expect(noDataset.ok && noDataset.value.readAccessScope).toBeUndefined();
     const changedDataset = buildAdapter(current, { ...authorization, approvedReadDatasetId: 'another-dataset' });
-    expect(changedDataset.ok && changedDataset.value.readAccessScope).not.toBe(first.ok && first.value.readAccessScope);
+    expect(changedDataset.ok && changedDataset.value.readAccessScope).toBeUndefined();
+    const unbound = buildAdapter({ ...current, datasetBindingId: undefined }, authorization);
+    expect(unbound.ok && unbound.value.readAccessScope).toBeUndefined();
   });
 });
