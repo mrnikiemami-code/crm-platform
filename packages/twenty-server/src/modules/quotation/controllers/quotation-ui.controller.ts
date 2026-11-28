@@ -57,6 +57,10 @@ type QuotationUiActionBody = {
   adapterId?: unknown;
   settings?: unknown;
   datasetId?: unknown;
+  partyType?: unknown;
+  internalPartyId?: unknown;
+  priceListId?: unknown;
+  expectedGroupId?: unknown;
   expectedBaseUrl?: unknown;
   expectedRemoteUserId?: unknown;
   confirmed?: unknown;
@@ -94,6 +98,8 @@ const ALLOWED_ACTIONS = new Set([
   'accounting-connection-list',
   'accounting-connection-save',
   'accounting-connection-bind-dataset',
+  'accounting-connection-customer-price-list',
+  'accounting-connection-map-customer-price-group',
   'accounting-connection-test',
   'accounting-connection-set-default',
   'accounting-connection-deactivate',
@@ -850,6 +856,18 @@ export class QuotationUiController {
           ),
           authContext,
         );
+      }
+
+      if (action === 'accounting-connection-customer-price-list') {
+        return this.accountingConnectionAuthorityService.resolveCustomerPriceList({
+          partyType: readText(body.partyType), internalPartyId: readText(body.internalPartyId), connectionId: readText(body.connectionId) || undefined,
+        }, authContext);
+      }
+      if (action === 'accounting-connection-map-customer-price-group') {
+        return this.accountingConnectionAuthorityService.mapCustomerPriceGroup({
+          connectionId: readText(body.connectionId), partyType: readText(body.partyType), internalPartyId: readText(body.internalPartyId),
+          priceListId: readText(body.priceListId), expectedGroupId: readText(body.expectedGroupId),
+        }, authContext);
       }
 
       if (action === 'accounting-connection-bind-dataset') {
