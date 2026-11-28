@@ -95,6 +95,9 @@ type QuotationFixture = {
   quotationId?: string;
   companyId?: string | null;
   personId?: string | null;
+  retireAfterClaim?: boolean;
+  changeLinkAfterClaim?: boolean;
+  loseClaimAfterInsert?: boolean;
 };
 
 const quotationExecute = ({
@@ -102,6 +105,9 @@ const quotationExecute = ({
   quotationId = 'q-1',
   companyId = 'company-1',
   personId = null,
+  retireAfterClaim = false,
+  changeLinkAfterClaim = false,
+  loseClaimAfterInsert = false,
 }: QuotationFixture = {}) => {
   let claimed: Record<string, unknown> | null = null;
   return vi.fn(async (query: string) => {
@@ -135,7 +141,7 @@ const quotationExecute = ({
         {
           id: 'link-1',
           connection: { id: 'conn-1' },
-          externalItemId: '1001',
+          externalItemId: changeLinkAfterClaim && claimed ? '1002' : '1001',
           remoteVersion: 'v1',
           syncStatus: 'LINKED',
           item: { id: 'item-1' },
@@ -158,11 +164,11 @@ const quotationExecute = ({
     }
 
     if (query.includes('accountingSyncOperations')) {
-      return edges('accountingSyncOperations', []);
+      return edges('accountingSyncOperations', claimed && !loseClaimAfterInsert ? [claimed] : []);
     }
 
     if (query.includes('accountingConnections')) {
-      return accountingConnections(connectionNode());
+      return accountingConnections(connectionNode({ isActive: !(retireAfterClaim && claimed) }));
     }
 
     if (query.includes('CreateQuotationClaim')) {
@@ -176,7 +182,11 @@ const quotationExecute = ({
       return { createAccountingSyncOperation: claimed };
     }
     if (query.includes('FinishQuotationClaim')) {
-      return { updateAccountingSyncOperation: { ...claimed, state: 'SUCCEEDED', externalDocumentId: '500', errorCode: null } };
+      const state = /state: "([^"]+)"/.exec(query)?.[1];
+      const externalDocumentId = /externalDocumentId: "([^"]+)"/.exec(query)?.[1] ?? null;
+      const errorCode = /errorCode: "([^"]+)"/.exec(query)?.[1] ?? null;
+      claimed = { ...claimed, state, externalDocumentId, errorCode };
+      return { updateAccountingSyncOperation: claimed };
     }
     return {};
   });
@@ -618,6 +628,35 @@ describe('quotation export', () => {
     expect(
       execute.mock.calls.some(([query]) => String(query).includes('"SUCCEEDED"')),
     ).toBe(true);
+  });
+
+  it.each([
+    [{ retireAfterClaim: true }, 'CONNECTION_INACTIVE'],
+    [{ changeLinkAfterClaim: true }, 'REVISION_MISMATCH'],
+    [{ loseClaimAfterInsert: true }, 'RECONCILIATION_REQUIRED'],
+  ] as const)('never dispatches after the claim cutoff changes: %j', async (fixture, code) => {
+    const execute = quotationExecute(fixture);
+    const adapter = new MockAccountingAdapter();
+    const dispatch = vi.spyOn(adapter, 'registerProforma');
+    const outcome = await executeQuotationExport({
+      connectionId: 'conn-1', quotationId: 'q-1', adapter, settings: settings(), flags: flags(),
+    }, { execute });
+    expect(outcome).toMatchObject({ ok: false, refusal: { code } });
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(execute.mock.calls.some(([query]) => query.includes('CreateQuotationClaim'))).toBe(true);
+    expect(execute.mock.calls.some(([query]) => query.includes('FinishQuotationClaim') && query.includes('"CANCELLED"'))).toBe(!('loseClaimAfterInsert' in fixture));
+  });
+
+  it('retains an uncertain dispatch as reconciliation required and does not replay it', async () => {
+    const execute = quotationExecute();
+    const adapter = new MockAccountingAdapter();
+    const dispatch = vi.spyOn(adapter, 'registerProforma').mockRejectedValueOnce(new Error('transport disconnected'));
+    const input = { connectionId: 'conn-1', quotationId: 'q-1', adapter, settings: settings(), flags: flags() };
+    const outcome = await executeQuotationExport(input, { execute });
+    expect(outcome).toMatchObject({ ok: false, refusal: { code: 'RECONCILIATION_REQUIRED' } });
+    expect(execute.mock.calls.some(([query]) => query.includes('FinishQuotationClaim') && query.includes('"MANUAL_EXPORT_REQUIRED"'))).toBe(true);
+    expect((await executeQuotationExport(input, { execute })).ok).toBe(false);
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a draft before reading a revision or writing an operation', async () => {
