@@ -355,7 +355,8 @@ export const applyItemImport = async (
   },
   dependencies: ImportDependencies = {},
 ): Promise<ItemApplyOutcome> => {
-  const execute = dependencies.execute ?? executeRecordGraphql;
+  if (!dependencies.execute) throw new Error('Legacy fixture path requires an injected executor; production import uses Nest');
+  const execute = dependencies.execute;
   const plan = resolveItemApplyPlan({
     preview,
     selections,
