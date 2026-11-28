@@ -320,6 +320,8 @@ export const SELECT_OPTION_IDS = {
   operationKindItemUpdate: 'b023c85d-d094-5ce4-ac02-82447e546140',
   operationKindItemDeactivate: 'ce9a8bb0-dd32-5a4c-90d8-5771764abce7',
   operationKindRevisionPush: '308faacc-847f-5907-b6eb-f95ec9a84693',
+  operationKindPartyCreate: 'a37b06f3-cc81-5377-8478-d2883a26087e',
+  operationKindPartyUpdate: 'dba2dc9a-0fba-5da7-a0e5-9be7116ed2ce',
   operationStatePending: '27bb9cb9-4ad7-5f0f-808a-2c5b9e65c40f',
   operationStateInFlight: '3f3cb494-f059-5e24-b58a-d2dbd97dcc59',
   operationStateSucceeded: 'c839d228-2b3d-550d-9fa6-b814ac873d78',
