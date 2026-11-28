@@ -290,5 +290,11 @@ describe('credentials', () => {
       ok: false,
       refusal: { code: 'ADAPTER_NOT_CONFIGURED' },
     });
+    const configured = { ...record, settings: { ...record.settings, baseUrl: 'https://accounting.example' } };
+    expect(buildAdapter(configured, { allowInsecureTransport: false })).toMatchObject({
+      ok: false, refusal: { code: 'ASAN_CONTRACT_RECHECK_REQUIRED' },
+    });
+    expect(buildAdapter({ ...configured, adapterVersion: '2026-11-2' }, { allowInsecureTransport: false }))
+      .toMatchObject({ ok: true, value: { writesEnabled: false } });
   });
 });

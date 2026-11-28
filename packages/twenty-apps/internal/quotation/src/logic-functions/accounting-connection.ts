@@ -264,11 +264,10 @@ const handler = async (event: RoutePayload<unknown>) => {
       }
 
       const adapter = buildAdapter(resolved.value, secrets);
-      const transportIsSecure =
-        resolved.value.settings.baseUrl
-          .trim()
-          .toLowerCase()
-          .startsWith('https://') || secrets.allowInsecureTransport;
+      // A legacy approval flag is not encryption and a URL scheme is not
+      // successful transport evidence. Only a successful canonical probe counts.
+      const transportIsSecure = tested.value.healthState === 'OK' &&
+        (descriptor.isLive ? resolved.value.settings.baseUrl.trim().toLowerCase().startsWith('https://') : true);
 
       return {
         success: true,

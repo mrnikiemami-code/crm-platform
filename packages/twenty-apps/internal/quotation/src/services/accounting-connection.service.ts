@@ -225,7 +225,8 @@ export const buildAdapter = (
   record: AccountingConnectionRecord,
   secrets: AdapterSecrets,
 ): Result<AccountingAdapter> => {
-  if (record.adapterId === 'asan' && record.adapterVersion !== ASAN_ADAPTER_CONTRACT_VERSION) {
+  if (record.adapterId === 'asan' && record.settings.baseUrl.trim() !== '' &&
+      record.adapterVersion !== ASAN_ADAPTER_CONTRACT_VERSION) {
     return refused('ASAN_CONTRACT_RECHECK_REQUIRED', 'save and recheck the Asan connection against the current contract');
   }
   const binding = secrets.approvedRead;
