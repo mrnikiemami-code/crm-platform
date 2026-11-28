@@ -19,6 +19,8 @@ export type CatalogItemUpsertInput = {
   name: string;
   sku: string | null;
   unit: string;
+  unitRecordId: string | null;
+  secondaryName: string | null;
   description: string | null;
   isActive: boolean;
   defaultUnitPriceText: string | null;
@@ -28,6 +30,8 @@ export type CatalogItemUpsertInput = {
 export type CatalogItemUpsertPlan = {
   item: CatalogItem;
   defaultUnitPriceExact: string | null;
+  unitRecordId: string | null;
+  secondaryName: string | null;
 };
 
 export const buildCatalogItemUpsertPlan = (
@@ -68,6 +72,9 @@ export const buildCatalogItemUpsertPlan = (
     defaultUnitPriceExact = formatMicrosExact(price.value.irrMicros);
   }
 
+  const unitRecordId = input.unitRecordId?.trim() || null;
+  const secondaryName = input.secondaryName?.trim() || null;
+
   return accepted({
     item: {
       ...item.value,
@@ -75,6 +82,8 @@ export const buildCatalogItemUpsertPlan = (
       id: input.id ?? item.value.id,
     },
     defaultUnitPriceExact,
+    unitRecordId,
+    secondaryName,
   });
 };
 

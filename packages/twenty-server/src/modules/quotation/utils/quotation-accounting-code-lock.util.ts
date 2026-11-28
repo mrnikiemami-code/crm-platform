@@ -86,6 +86,38 @@ export const isTaxPolicyAccountingCodeLocked = async ({
   }
 };
 
+export const isQuotationUnitAccountingCodeLocked = async ({
+  scope,
+  quotationUnitRecordId,
+}: {
+  scope: WorkspaceTransactionScope;
+  quotationUnitRecordId: string;
+}): Promise<boolean> => {
+  if (!isNonEmptyString(quotationUnitRecordId)) {
+    return false;
+  }
+
+  const catalogRepository = scope.getRepository<{
+    id: string;
+    unitRecordId?: string | null;
+    accountingCode?: string | null;
+  }>('catalogItem', {
+    shouldBypassPermissionChecks: true,
+  });
+
+  try {
+    const rows = await catalogRepository.find({
+      where: { unitRecordId: quotationUnitRecordId },
+      select: { id: true, unitRecordId: true },
+      take: 20,
+    });
+
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+};
+
 export const isCurrencyAccountingCodeLocked = async ({
   scope,
   quotationCurrencyRecordId,

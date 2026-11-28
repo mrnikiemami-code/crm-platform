@@ -14,6 +14,7 @@ import quotationRevision from 'src/objects/quotation-revision.object';
 import quotationSequence from 'src/objects/quotation-sequence.object';
 import quotationShare from 'src/objects/quotation-share.object';
 import quotationCurrency from 'src/objects/quotation-currency.object';
+import quotationUnit from 'src/objects/quotation-unit.object';
 import roundingRule from 'src/objects/rounding-rule.object';
 import taxPolicy from 'src/objects/tax-policy.object';
 import companyEconomicCode from 'src/fields/company-economic-code.field';
@@ -57,7 +58,7 @@ describe('object manifests', () => {
     type Field = { name: string; type?: string; isUnique?: boolean; isNullable?: boolean; defaultValue?: unknown };
     const fields: Field[] = [
       ...allManifests.flatMap(({ manifest }) => manifest.config.fields ?? []),
-      ...[quotationCurrency, roundingRule, taxPolicy].flatMap((manifest) => (manifest.config.fields ?? []) as Field[]),
+      ...[quotationCurrency, quotationUnit, roundingRule, taxPolicy].flatMap((manifest) => (manifest.config.fields ?? []) as Field[]),
       ...[companyEconomicCode, companyNationalCode, personEconomicCode, personNationalCode].map((manifest) => manifest.config as Field),
     ];
     const unique = fields.filter((field) => field.type === 'TEXT' && field.isUnique === true);

@@ -8,6 +8,7 @@ import {
   hashCustomerLinkToken,
   mintCustomerLinkToken,
 } from 'src/domain/quotation/customer-link-token';
+import { hashQuotationRevision, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { buildCustomerQuotationView } from 'src/domain/quotation/customer-view';
 import { renderCustomerQuotationHtml } from 'src/utils/render-customer-quotation-html';
 import {
@@ -45,6 +46,27 @@ const sampleLines = [
     totalExact: '1090000.000000',
   },
 ];
+
+const sampleSeal: QuotationRevisionSnapshot = {
+  schemaVersion: 2, revisionNumber: 1, version: 4, quotationId: 'q-1',
+  quotationNumber: 'QF-100', documentTitle: 'پیش‌فاکتور نمونه', currencyCode: 'IRR',
+  customerRef: 'p-1', customerSnapshot: {
+    id: 'p-1', kind: 'PERSON', name: 'علی رضایی', nationalCode: null, economicCode: null,
+    registrationNumber: null, accountingCode: null, customerCode: null, mobile: null,
+    phone: null, secondPhone: null, fax: null, email: null,
+    address: { street1: null, street2: null, city: null, state: null, postcode: null, country: null },
+  },
+  taxPolicy: 'VAT_9', taxRateBasisPoints: '900', paymentTerms: 'نقد',
+  issuedAt: '2026-11-19T09:00:00.000Z',
+  expiresAt: '2026-12-05',
+  lines: [{ lineId: 'line-1', itemId: 'item-1', name: 'کالای الف', kind: 'PRODUCT', unit: 'عدد',
+    description: 'کالای الف', quantityScaled: '1000000', unitPriceMicros: '1000000000000',
+    grossMicros: '1000000000000', discountMicros: '0', documentDiscountMicros: '0',
+    taxMicros: '90000000000', totalMicros: '1090000000000' }],
+  totals: { grossMicros: '1000000000000', discountMicros: '0', lineDiscountMicros: '0',
+    documentDiscountMicros: '0', netMicros: '1000000000000', taxMicros: '90000000000',
+    totalMicros: '1090000000000' },
+};
 
 describe('customer link token', () => {
   it('mints a random token and stores only its sha256 hex', () => {
@@ -139,6 +161,7 @@ describe('customer quotation view', () => {
 describe('customer link service', () => {
   it('creates a hashed link and resolves only that quotation', async () => {
     const rows = new Map<string, Record<string, unknown>>();
+    let seal = sampleSeal;
     const execute = async (query: string) => {
       if (query.includes('QuotationForCustomerLink')) {
         return {
@@ -148,16 +171,22 @@ describe('customer link service', () => {
         };
       }
 
+      if (query.includes('QuotationRevisionForAccounting')) {
+        return { quotationRevisions: { edges: [{ node: { id: 'r-1', version: 1, snapshotJson: seal, snapshotHash: hashQuotationRevision(seal) } }], pageInfo: { hasNextPage: false } } };
+      }
+
       if (query.includes('CreateQuotationCustomerLink')) {
         const hash = query.match(/tokenHash: "([0-9a-f]+)"/)?.[1] ?? '';
         rows.set(hash, {
           id: 'link-1',
           tokenHash: hash,
+          revisionHash: hashQuotationRevision(seal),
+          issuedAt: NOW.toISOString(),
           expiresAt: '2026-11-26T10:00:00.000Z',
           revokedAt: null,
           quotationId: 'q-1',
         });
-        return { createQuotationCustomerLink: { id: 'link-1' } };
+        return { createQuotationCustomerLink: { id: 'link-1', revisionHash: hashQuotationRevision(seal) } };
       }
 
       if (query.includes('QuotationCustomerLinkByHash')) {
@@ -174,8 +203,8 @@ describe('customer link service', () => {
         expect(query).toContain('q-1');
         expect(query).not.toContain('person {\\n        id');
         return {
-          quotation: sampleQuotation,
-          quotationLines: { edges: [{ node: sampleLines[0] }] },
+          quotation: { ...sampleQuotation, name: 'changed', totalExact: '1.000000' },
+          quotationLines: { edges: [] },
         };
       }
 
@@ -202,6 +231,15 @@ describe('customer link service', () => {
       { execute, now: () => NOW },
     );
     expect(resolved.kind).toBe('OK');
+    if (resolved.kind === 'OK') {
+      expect(resolved.view.title).toBe(sampleSeal.documentTitle);
+      expect(resolved.view.customerLabel).toBe('علی رضایی');
+      expect(resolved.view.validUntilDisplay).toBe(new Intl.DateTimeFormat('fa-IR-u-ca-persian', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).format(new Date('2026-12-05T00:00:00.000Z')));
+      expect(renderCustomerQuotationHtml(resolved.view)).toContain('اعتبار پیش‌فاکتور تا:');
+      expect(resolved.view.lines).toHaveLength(1);
+    }
+    seal = { ...sampleSeal, documentTitle: 'new document' };
+    expect((await resolveCustomerQuotationView({ rawToken: created.value.rawToken }, { execute, now: () => NOW })).kind).toBe('BUILD_FAILED');
 
     const other = await resolveCustomerQuotationView(
       { rawToken: mintCustomerLinkToken().rawToken },

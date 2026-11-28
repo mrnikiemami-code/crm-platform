@@ -332,7 +332,8 @@ const handler = async (event: RoutePayload<unknown>) => {
         );
       }
 
-      return { success: true, preview: preview.value, flags };
+      const { claim: _privateClaim, ...publicPreview } = preview.value;
+      return { success: true, preview: publicPreview, flags };
     }
 
     if (action === 'execute-quotation-export') {

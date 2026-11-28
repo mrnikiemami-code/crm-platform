@@ -12,8 +12,35 @@ import {
 // WHY THE HASH EXISTS: the platform has no immutability guard on rows. The hash is the
 // guard — a stored revision is never edited, and any later attempt can be compared
 // against bytes that were sealed at issue time.
+export type SealedQuotationCustomer = {
+  id: string;
+  kind: 'PERSON' | 'COMPANY';
+  name: string;
+  nationalCode: string | null;
+  economicCode: string | null;
+  registrationNumber: string | null;
+  accountingCode: string | null;
+  customerCode: string | null;
+  mobile: string | null;
+  phone: string | null;
+  secondPhone: string | null;
+  fax: string | null;
+  email: string | null;
+  address: { street1: string | null; street2: string | null; city: string | null; state: string | null; postcode: string | null; country: string | null };
+};
+
 export type QuotationRevisionLine = {
   lineId: string;
+  // V2 captures product identity and displayed content; old hashes stay untouched.
+  itemId?: string | null;
+  name?: string;
+  kind?: 'PRODUCT' | 'SERVICE';
+  itemSku?: string | null;
+  itemAccountingCode?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string;
+  grossMicros?: string;
+  documentDiscountMicros?: string;
   description: string;
   unit: string;
   quantityScaled: string;
@@ -28,6 +55,16 @@ export type QuotationRevisionLine = {
 };
 
 export type QuotationRevisionSnapshot = {
+  // Absent on historical seals, which also used integer micros.
+  schemaVersion?: 2;
+  revisionNumber?: number;
+  documentTitle?: string;
+  customerSnapshot?: SealedQuotationCustomer;
+  expiresAt?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string;
+  currencyRecordId?: string | null;
+  currencyAccountingCode?: string;
   quotationId: string;
   version: number;
   quotationNumber: string;
@@ -43,6 +80,8 @@ export type QuotationRevisionSnapshot = {
   totals: {
     grossMicros: string;
     discountMicros: string;
+    lineDiscountMicros?: string;
+    documentDiscountMicros?: string;
     netMicros: string;
     taxOnlyMicros?: string;
     dutyMicros?: string;
@@ -60,6 +99,12 @@ export type QuotationRevisionSnapshot = {
 
 export type QuotationRevisionHeaderRow = {
   id: string;
+  name?: string | null;
+  expiresAt?: string | Date | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string | null;
+  quotationCurrencyRecordId?: string | null;
+  currencyAccountingCode?: string | null;
   quotationNumber: string | null;
   currencyCode: string | null;
   taxPolicy: string | null;
@@ -84,6 +129,12 @@ export type QuotationRevisionHeaderRow = {
 
 export type QuotationRevisionLineRow = {
   id: string;
+  itemId?: string | null;
+  kind?: 'PRODUCT' | 'SERVICE' | null;
+  itemSku?: string | null;
+  itemAccountingCode?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string | null;
   description: string | null;
   name: string | null;
   unit: string | null;
@@ -147,7 +198,10 @@ export const buildQuotationRevisionSnapshot = ({
   lines,
   version,
   issuedAt,
+  identity,
 }: {
+  // Transactional writer always supplies V2 identity; legacy encoding retained for hash compatibility tests.
+  identity?: { revisionNumber: number; customer: SealedQuotationCustomer };
   header: QuotationRevisionHeaderRow;
   lines: QuotationRevisionLineRow[];
   version: number;
@@ -204,6 +258,14 @@ export const buildQuotationRevisionSnapshot = ({
     };
   }
 
+  const customerRef = (header.companyId ?? header.personId ?? '').trim();
+  if (identity && (!customerRef || (!!header.companyId === !!header.personId) ||
+    identity.customer.id !== customerRef ||
+    identity.customer.kind !== (header.companyId ? 'COMPANY' : 'PERSON') ||
+    !identity.customer.name.trim() || !Number.isSafeInteger(identity.revisionNumber) || identity.revisionNumber < 1 ||
+    !Number.isSafeInteger(version) || version < 1)) {
+    return { ok: false, code: 'REVISION_MISMATCH', detail: 'issued customer or revision identity is not authoritative' };
+  }
   const sealedLines: QuotationRevisionLine[] = [];
   let lineGross = BigInt(0);
   let lineDiscount = BigInt(0);
@@ -244,6 +306,14 @@ export const buildQuotationRevisionSnapshot = ({
       total,
     } = lineAmounts as Record<keyof typeof lineAmounts, bigint>;
 
+    if (identity && (quantity <= BigInt(0) || unitPrice < BigInt(0) || gross < BigInt(0) ||
+      discount < BigInt(0) || documentDiscount < BigInt(0) || tax < BigInt(0) ||
+      discount + documentDiscount > gross ||
+      gross !== (quantity * unitPrice + BigInt(500000)) / BigInt(1000000) ||
+      total !== gross - discount - documentDiscount + tax ||
+      !line.id || sealedLines.some((entry) => entry.lineId === line.id))) {
+      return { ok: false, code: 'TOTALS_INCONSISTENT', detail: 'line financial facts do not add up: ' + line.id };
+    }
     lineGross += gross;
     lineDiscount += discount;
     lineDocumentDiscount += documentDiscount;
@@ -256,6 +326,17 @@ export const buildQuotationRevisionSnapshot = ({
 
     sealedLines.push({
       lineId: line.id,
+      ...(identity ? {
+        itemId: line.itemId ?? null,
+        name: (line.name ?? '').trim(),
+        kind: line.kind === 'SERVICE' ? 'SERVICE' as const : 'PRODUCT' as const,
+        itemSku: line.itemSku ?? null,
+        itemAccountingCode: line.itemAccountingCode ?? null,
+        taxPolicyRecordId: line.taxPolicyRecordId ?? null,
+        taxAccountingCode: (line.taxAccountingCode ?? '').trim(),
+        grossMicros: gross.toString(),
+        documentDiscountMicros: documentDiscount.toString(),
+      } : {}),
       description: (line.description ?? line.name ?? '').trim(),
       unit: (line.unit ?? '').trim(),
       quantityScaled: quantity.toString(),
@@ -358,11 +439,23 @@ export const buildQuotationRevisionSnapshot = ({
   return {
     ok: true,
     snapshot: {
+      ...(identity ? {
+        schemaVersion: 2 as const,
+        revisionNumber: identity.revisionNumber,
+        documentTitle: (header.name ?? '').trim(),
+        customerSnapshot: identity.customer,
+        expiresAt: header.expiresAt instanceof Date
+          ? header.expiresAt.toISOString().slice(0, 10) : header.expiresAt ?? null,
+        taxPolicyRecordId: header.taxPolicyRecordId ?? null,
+        taxAccountingCode: (header.taxAccountingCode ?? '').trim(),
+        currencyRecordId: header.quotationCurrencyRecordId ?? null,
+        currencyAccountingCode: (header.currencyAccountingCode ?? '').trim(),
+      } : {}),
       quotationId: header.id,
       version,
       quotationNumber,
       currencyCode: (header.currencyCode ?? '').trim() || 'IRR',
-      customerRef: (header.companyId ?? header.personId ?? '').trim(),
+      customerRef,
       taxPolicy: (header.taxPolicy ?? '').trim(),
       taxRateBasisPoints,
       // Emitted only when a duty rate was actually declared: a duty-free revision must
@@ -375,6 +468,7 @@ export const buildQuotationRevisionSnapshot = ({
       lines: sealedLines,
       totals: {
         grossMicros: headerGross.toString(),
+        ...(identity ? { lineDiscountMicros: headerLineDiscount.toString(), documentDiscountMicros: headerDocumentDiscount.toString() } : {}),
         // Every discount the customer received: line-level plus the document-level share.
         discountMicros: (
           headerLineDiscount + headerDocumentDiscount

@@ -21,6 +21,8 @@ export type CustomerQuotationView = {
   statusLabel: string;
   customerLabel: string;
   paymentTerms: string | null;
+  // Quotation validity, not the independent bearer-link expiration.
+  validUntilDisplay?: string | null;
   currencyLabel: string;
   lines: CustomerViewLine[];
   grossDisplay: string | null;
@@ -113,7 +115,7 @@ export const buildCustomerQuotationView = ({
 
   const viewLines: CustomerViewLine[] = lines.map((line) => ({
     name: line.name?.trim() || '—',
-    kindLabel: line.kind === 'SERVICE' ? 'خدمت' : 'کالا',
+    kindLabel: line.kind === 'SERVICE' ? 'خدمت' : line.kind === 'PRODUCT' ? 'کالا' : '—',
     unit: line.unit?.trim() || '—',
     quantityDisplay: quantityPeople(line.quantityExact),
     unitPriceDisplay: `${moneyPeople(line.unitPriceExact) ?? '—'} ${currencyLabel}`,

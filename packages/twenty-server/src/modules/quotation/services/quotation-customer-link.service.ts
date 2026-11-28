@@ -17,6 +17,7 @@ import {
   QuotationQueryValidationExceptionCode,
 } from 'src/modules/quotation/exceptions/quotation-query-validation.exception';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
+import { readSealedQuotation } from 'src/modules/quotation/utils/quotation-sealed-display.util';
 
 const CUSTOMER_LINKABLE_STATUSES = [
   'READY_TO_SEND',
@@ -137,7 +138,18 @@ export class QuotationCustomerLinkService {
             { shouldBypassPermissionChecks: true },
           );
 
+        const revisions = await this.workspaceOrmManager.getRepository<{
+          id: string; version: number | null; snapshotJson: unknown; snapshotHash: string;
+        }>('quotationRevision', { shouldBypassPermissionChecks: true }).find({
+          where: { quotationId: quotation.id, status: 'ISSUED' }, take: 2,
+        });
+        const row = revisions.length === 1 ? revisions[0] : undefined;
+        const seal = row && readSealedQuotation(row.snapshotJson, row.snapshotHash, quotation.id, row.version);
+        if (!row || !seal || seal.schemaVersion !== 2 || Date.parse(seal.issuedAt) > now.getTime()) {
+          throw new QuotationQueryValidationException('REVISION_MISMATCH: new customer link requires a valid identified issued revision', QuotationQueryValidationExceptionCode.FORBIDDEN);
+        }
         return repository.insert({
+          revisionHash: row.snapshotHash,
           name: `لینک مشتری ${numberLabel}`,
           tokenHash,
           expiresAt,

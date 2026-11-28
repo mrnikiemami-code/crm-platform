@@ -52,6 +52,17 @@ import { QuotationCurrencyDeleteOnePreQueryHook } from 'src/modules/quotation/qu
 import { QuotationCurrencyDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-destroy-many.pre-query.hook';
 import { QuotationCurrencyDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-destroy-one.pre-query.hook';
 import { QuotationCurrencyMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-merge-many.pre-query.hook';
+import { QuotationUnitCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-create-many.pre-query.hook';
+import { QuotationUnitCreateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-create-one.pre-query.hook';
+import { QuotationUnitDeleteManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-delete-many.pre-query.hook';
+import { QuotationUnitDeleteOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-delete-one.pre-query.hook';
+import { QuotationUnitDestroyManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-destroy-many.pre-query.hook';
+import { QuotationUnitDestroyOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-destroy-one.pre-query.hook';
+import { QuotationUnitMergeManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-merge-many.pre-query.hook';
+import { QuotationUnitRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-restore-many.pre-query.hook';
+import { QuotationUnitRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-restore-one.pre-query.hook';
+import { QuotationUnitUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-update-many.pre-query.hook';
+import { QuotationUnitUpdateOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-unit-update-one.pre-query.hook';
 import { QuotationCurrencyRestoreManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-restore-many.pre-query.hook';
 import { QuotationCurrencyRestoreOnePreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-restore-one.pre-query.hook';
 import { QuotationCurrencyUpdateManyPreQueryHook } from 'src/modules/quotation/query-hooks/quotation-currency-update-many.pre-query.hook';
@@ -65,6 +76,7 @@ import { QuotationRevisionService } from 'src/modules/quotation/services/quotati
 import { QuotationRevisionWriteGuardService } from 'src/modules/quotation/services/quotation-revision-write-guard.service';
 import { AccountingConnectionWriteGuardService } from 'src/modules/quotation/services/accounting-connection-write-guard.service';
 import { QuotationCurrencyWriteGuardService } from 'src/modules/quotation/services/quotation-currency-write-guard.service';
+import { QuotationUnitWriteGuardService } from 'src/modules/quotation/services/quotation-unit-write-guard.service';
 import { TaxPolicyWriteGuardService } from 'src/modules/quotation/services/tax-policy-write-guard.service';
 import { RoundingRuleWriteGuardService } from 'src/modules/quotation/services/rounding-rule-write-guard.service';
 import { RoundingRuleCreateManyPreQueryHook } from 'src/modules/quotation/query-hooks/rounding-rule-create-many.pre-query.hook';
@@ -121,6 +133,7 @@ import { AccountingCompanyRestoreManyPreQueryHook } from 'src/modules/quotation/
     AccountingConnectionWriteGuardService,
     TaxPolicyWriteGuardService,
     QuotationCurrencyWriteGuardService,
+    QuotationUnitWriteGuardService,
     RoundingRuleWriteGuardService,
     QuotationUpdateOnePreQueryHook,
     QuotationUpdateManyPreQueryHook,
@@ -168,6 +181,17 @@ import { AccountingCompanyRestoreManyPreQueryHook } from 'src/modules/quotation/
     QuotationCurrencyRestoreOnePreQueryHook,
     QuotationCurrencyRestoreManyPreQueryHook,
     QuotationCurrencyMergeManyPreQueryHook,
+    QuotationUnitCreateOnePreQueryHook,
+    QuotationUnitCreateManyPreQueryHook,
+    QuotationUnitUpdateOnePreQueryHook,
+    QuotationUnitUpdateManyPreQueryHook,
+    QuotationUnitDeleteOnePreQueryHook,
+    QuotationUnitDeleteManyPreQueryHook,
+    QuotationUnitDestroyOnePreQueryHook,
+    QuotationUnitDestroyManyPreQueryHook,
+    QuotationUnitRestoreOnePreQueryHook,
+    QuotationUnitRestoreManyPreQueryHook,
+    QuotationUnitMergeManyPreQueryHook,
     RoundingRuleCreateOnePreQueryHook,
     RoundingRuleCreateManyPreQueryHook,
     RoundingRuleUpdateOnePreQueryHook,

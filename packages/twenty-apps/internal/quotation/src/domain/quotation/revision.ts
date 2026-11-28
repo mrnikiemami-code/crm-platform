@@ -14,8 +14,35 @@ import { accepted, refused, type Result } from 'src/domain/shared/result';
 // WHY AMOUNTS ARE STRINGS: bigint does not survive JSON, and a JS number would lose
 // precision on exactly the amounts this app exists to get right. The exact decimal
 // text is also what a human can read in the audit trail.
+export type SealedQuotationCustomer = {
+  id: string;
+  kind: 'PERSON' | 'COMPANY';
+  name: string;
+  nationalCode: string | null;
+  economicCode: string | null;
+  registrationNumber: string | null;
+  accountingCode: string | null;
+  customerCode: string | null;
+  mobile: string | null;
+  phone: string | null;
+  secondPhone: string | null;
+  fax: string | null;
+  email: string | null;
+  address: { street1: string | null; street2: string | null; city: string | null; state: string | null; postcode: string | null; country: string | null };
+};
+
 export type QuotationRevisionLine = {
   lineId: string;
+  // V2 captures product identity and displayed content; old hashes stay untouched.
+  itemId?: string | null;
+  name?: string;
+  kind?: 'PRODUCT' | 'SERVICE';
+  itemSku?: string | null;
+  itemAccountingCode?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string;
+  grossMicros?: string;
+  documentDiscountMicros?: string;
   description: string;
   unit: string;
   quantityScaled: string;
@@ -34,6 +61,16 @@ export type QuotationRevisionLine = {
 };
 
 export type QuotationRevisionSnapshot = {
+  // Absent on historical seals, which also used integer micros.
+  schemaVersion?: 2;
+  revisionNumber?: number;
+  documentTitle?: string;
+  customerSnapshot?: SealedQuotationCustomer;
+  expiresAt?: string | null;
+  taxPolicyRecordId?: string | null;
+  taxAccountingCode?: string;
+  currencyRecordId?: string | null;
+  currencyAccountingCode?: string;
   quotationId: string;
   version: number;
   quotationNumber: string;
@@ -51,13 +88,98 @@ export type QuotationRevisionSnapshot = {
   totals: {
     grossMicros: string;
     discountMicros: string;
+    lineDiscountMicros?: string;
+    documentDiscountMicros?: string;
     netMicros: string;
     taxOnlyMicros?: string;
     dutyMicros?: string;
     taxMicros: string;
+    roundingMicros?: string;
+    preRoundTotalMicros?: string;
     totalMicros: string;
   };
+  roundingRuleCode?: string;
+  roundingRuleName?: string;
+  roundingStepRials?: string;
   issuedAt: string;
+};
+
+// Both historical Nest-issued seals and the app line builder store integer micros.
+// This is NOT the draft decimal-IRR representation. Never infer encoding from magnitude,
+// or multiply a sealed amount by the scale a second time.
+export const parseRevisionMicros = (value: unknown): Result<bigint> =>
+  typeof value === 'string' && /^(0|-?[1-9]\d*)$/.test(value)
+    ? accepted(BigInt(value))
+    : refused('AMOUNT_NOT_A_DECIMAL', 'revision amount must be a canonical integer micro-unit string');
+
+export type DecodedRevisionLine = {
+  quantity: bigint; unitPrice: bigint; gross: bigint; lineDiscount: bigint;
+  documentDiscount: bigint; net: bigint; tax: bigint; total: bigint;
+};
+
+export const decodeRevisionLine = (line: QuotationRevisionLine): Result<DecodedRevisionLine> => {
+  const quantity = parseRevisionMicros(line.quantityScaled);
+  const unitPrice = parseRevisionMicros(line.unitPriceMicros);
+  const lineDiscount = parseRevisionMicros(line.discountMicros);
+  const tax = parseRevisionMicros(line.taxMicros);
+  const total = parseRevisionMicros(line.totalMicros);
+  if (!quantity.ok || !unitPrice.ok || !lineDiscount.ok || !tax.ok || !total.ok) {
+    return refused('AMOUNT_NOT_A_DECIMAL', 'invalid sealed line amount');
+  }
+  const gross = (quantity.value * unitPrice.value + 500000n) / 1000000n;
+  const net = total.value - tax.value;
+  // Historical seals did not store the allocated document discount. It is recoverable
+  // exactly from the sealed quantity, price, line discount and net; the document-level
+  // sum below must also match. No magnitude/encoding guess or historical rewrite.
+  const documentDiscount = gross - lineDiscount.value - net;
+  if (quantity.value <= 0n || unitPrice.value < 0n || lineDiscount.value < 0n ||
+      tax.value < 0n || net < 0n || documentDiscount < 0n ||
+      (line.grossMicros !== undefined && line.grossMicros !== gross.toString()) ||
+      (line.documentDiscountMicros !== undefined && line.documentDiscountMicros !== documentDiscount.toString())) {
+    return refused('TOTALS_INCONSISTENT', 'sealed line quantity, price and discount do not reconcile');
+  }
+  return accepted({ quantity: quantity.value, unitPrice: unitPrice.value, gross,
+    lineDiscount: lineDiscount.value, documentDiscount, net, tax: tax.value, total: total.value });
+};
+
+export const validateRevisionFinancialFacts = (revision: QuotationRevisionSnapshot): Result<true> => {
+  if ((revision.schemaVersion !== undefined && revision.schemaVersion !== 2) ||
+      !Array.isArray(revision.lines) || !revision.lines.length || !revision.totals) {
+    return refused('REVISION_MISMATCH', 'unsupported or incomplete revision');
+  }
+  const ids = new Set<string>();
+  let gross = 0n, lineDiscount = 0n, documentDiscount = 0n, net = 0n, tax = 0n;
+  for (const line of revision.lines) {
+    if (!line || typeof line.lineId !== 'string' || !line.lineId || ids.has(line.lineId) ||
+      (revision.schemaVersion === 2 && (line.grossMicros === undefined || line.documentDiscountMicros === undefined))) {
+      return refused('REVISION_MISMATCH', 'missing or duplicate sealed line identity');
+    }
+    ids.add(line.lineId);
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return decoded;
+    gross += decoded.value.gross;
+    lineDiscount += decoded.value.lineDiscount;
+    documentDiscount += decoded.value.documentDiscount;
+    net += decoded.value.net;
+    tax += decoded.value.tax;
+  }
+  const totals = revision.totals;
+  const duty = parseRevisionMicros(totals.dutyMicros ?? '0');
+  const rounding = parseRevisionMicros(totals.roundingMicros ?? '0');
+  if (!duty.ok || !rounding.ok) return refused('AMOUNT_NOT_A_DECIMAL', 'invalid sealed duty or rounding');
+  if (totals.grossMicros !== gross.toString() ||
+      totals.discountMicros !== (lineDiscount + documentDiscount).toString() ||
+      totals.netMicros !== net.toString() || totals.taxMicros !== tax.toString() ||
+      totals.totalMicros !== (net + tax + rounding.value).toString() ||
+      (net + tax + rounding.value) % 1000000n !== 0n ||
+      net + tax + rounding.value < 0n || duty.value < 0n || duty.value > tax ||
+      (totals.taxOnlyMicros !== undefined && totals.taxOnlyMicros !== (tax - duty.value).toString()) ||
+      (totals.preRoundTotalMicros !== undefined && totals.preRoundTotalMicros !== (net + tax).toString()) ||
+      (revision.schemaVersion === 2 && (totals.lineDiscountMicros !== lineDiscount.toString() ||
+        totals.documentDiscountMicros !== documentDiscount.toString()))) {
+    return refused('TOTALS_INCONSISTENT', 'sealed line sums and document totals do not reconcile');
+  }
+  return accepted(true);
 };
 
 // Key order is normalised before hashing so two structurally equal snapshots can

@@ -184,6 +184,8 @@ export const buildCatalogItemWritePayload = (
       kind: plan.item.kind,
       sku: plan.item.sku,
       unit: plan.item.unit,
+      unitRecordId: plan.unitRecordId,
+      secondaryName: plan.secondaryName,
       isActive: plan.item.isActive,
     },
     defaultUnitPriceExact: plan.defaultUnitPriceExact,

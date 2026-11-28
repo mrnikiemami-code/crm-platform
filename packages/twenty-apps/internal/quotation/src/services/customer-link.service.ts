@@ -17,6 +17,9 @@ import {
   mintCustomerLinkToken,
 } from 'src/domain/quotation/customer-link-token';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
+import { buildExportIssuedRevisionQuery } from 'src/data/quotation-export-queries';
+import { decodeRevisionLine, hashQuotationRevision, validateRevisionFinancialFacts, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { formatMicrosExact } from 'src/domain/money/micros';
 
 export type CustomerLinkDependencies = {
   execute: (query: string) => Promise<Record<string, unknown>>;
@@ -77,6 +80,17 @@ const parseInstant = (value: unknown): Date | null => {
   return null;
 };
 
+// Interpret the stored quotation validity as a calendar date, not a token TTL.
+const formatSealedValidity = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)) return null;
+  const day = value.slice(0, 10);
+  const date = new Date(day + 'T00:00:00.000Z');
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== day) return null;
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC',
+  }).format(date);
+};
+
 const buildPublicViewUrl = ({
   apiBaseUrl,
   rawToken,
@@ -93,6 +107,28 @@ const buildPublicViewUrl = ({
   );
 
   return `${base}/s/quotation/customer-view?token=${encodeURIComponent(rawToken)}`;
+};
+
+const readIssuedSeal = async (quotationId: string, dependencies: CustomerLinkDependencies) => {
+  const payload = await dependencies.execute(buildExportIssuedRevisionQuery(quotationId));
+  const connection = asRecord(payload.quotationRevisions);
+  const rows = readEdges(payload, 'quotationRevisions');
+  if (asRecord(connection?.pageInfo)?.hasNextPage !== false || rows.length !== 1 ||
+      !Array.isArray(connection?.edges) || connection.edges.length !== 1) return null;
+  const row = rows[0];
+  let raw: unknown = row.snapshotJson;
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch { return null; }
+  }
+  const snapshot = asRecord(raw) as unknown as QuotationRevisionSnapshot | null;
+  const hash = readString(row.snapshotHash);
+  if (!snapshot || snapshot.quotationId !== quotationId || snapshot.currencyCode !== 'IRR' ||
+    !hash || hashQuotationRevision(snapshot) !== hash ||
+    !parseInstant(snapshot.issuedAt) || !validateRevisionFinancialFacts(snapshot).ok ||
+    (snapshot.schemaVersion === 2 && (snapshot.revisionNumber !== row.version ||
+      !snapshot.customerSnapshot || snapshot.customerSnapshot.id !== snapshot.customerRef ||
+      typeof snapshot.customerSnapshot.name !== 'string' || !snapshot.customerSnapshot.name.trim()))) return null;
+  return { snapshot, hash };
 };
 
 export type CreatedCustomerLink = {
@@ -146,6 +182,10 @@ export const createCustomerLink = async (
     );
   }
 
+  const seal = await readIssuedSeal(id, dependencies);
+  if (!seal || seal.snapshot.schemaVersion !== 2 || Date.parse(seal.snapshot.issuedAt) > now.getTime()) {
+    return refused('REVISION_MISMATCH', 'a valid identified issued revision is required for a new link');
+  }
   const token = mintCustomerLinkToken();
   const issuedAtIso = now.toISOString();
   const expiresAtIso = expiry.value.toISOString();
@@ -155,6 +195,7 @@ export const createCustomerLink = async (
     buildCreateQuotationCustomerLinkMutation({
       name: `لینک مشتری ${numberLabel}`,
       tokenHash: token.tokenHash,
+      revisionHash: seal.hash,
       expiresAt: expiresAtIso,
       issuedAt: issuedAtIso,
       quotationId: id,
@@ -163,7 +204,7 @@ export const createCustomerLink = async (
 
   const created = asRecord(createdPayload.createQuotationCustomerLink);
 
-  if (created === null || readString(created.id) === '') {
+  if (created === null || readString(created.id) === '' || created.revisionHash !== seal.hash) {
     return refused('CUSTOMER_LINK_CREATE_FAILED', 'could not create link row');
   }
 
@@ -285,58 +326,49 @@ export const resolveCustomerQuotationView = async (
     return { kind: 'FORBIDDEN_STATUS' };
   }
 
-  const lineNodes = readEdges(viewPayload, 'quotationLines');
-  const person = asRecord(quotation.person);
-  const personName = asRecord(person?.name);
-  const company = asRecord(quotation.company);
-
+  const seal = await readIssuedSeal(quotationId, dependencies);
+  const issued = parseInstant(link.issuedAt);
+  // Old links predate the explicit revision pin. Do not let them open a newer seal.
+  // Unpinned links to V2 are not accepted: V2 issuance always requires an explicit pin.
+  if (!seal || !issued || Date.parse(seal.snapshot.issuedAt) > issued.getTime() ||
+    (readString(link.revisionHash) ? link.revisionHash !== seal.hash : seal.snapshot.schemaVersion === 2)) {
+    return { kind: 'BUILD_FAILED', detail: 'customer link does not identify the current issued revision' };
+  }
+  const snapshot = seal.snapshot;
+  let lineDiscount = 0n;
+  let documentDiscount = 0n;
+  for (const line of snapshot.lines) {
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return { kind: 'BUILD_FAILED', detail: 'invalid sealed line' };
+    lineDiscount += decoded.value.lineDiscount;
+    documentDiscount += decoded.value.documentDiscount;
+  }
+  const exact = (value: string | undefined) => formatMicrosExact(BigInt(value ?? '0'));
   const viewResult = buildCustomerQuotationView({
     quotation: {
-      id: quotationId,
-      name: readNullableString(quotation.name),
-      quotationNumber: readNullableString(quotation.quotationNumber),
-      status,
-      paymentTerms: readNullableString(quotation.paymentTerms),
-      currencyCode: readNullableString(quotation.currencyCode),
-      grossExact: readNullableString(quotation.grossExact),
-      lineDiscountExact: readNullableString(quotation.lineDiscountExact),
-      documentDiscountExact: readNullableString(quotation.documentDiscountExact),
-      taxExact: readNullableString(quotation.taxExact),
-      roundingExact: readNullableString(quotation.roundingExact),
-      totalExact: readNullableString(quotation.totalExact),
-      person:
-        person === null
-          ? null
-          : {
-              name:
-                personName === null
-                  ? {
-                      firstName: readNullableString(person.nameFirstName),
-                      lastName: readNullableString(person.nameLastName),
-                    }
-                  : {
-                      firstName: readNullableString(personName.firstName),
-                      lastName: readNullableString(personName.lastName),
-                    },
-            },
-      company:
-        company === null
-          ? null
-          : { name: readNullableString(company.name) },
+      id: quotationId, name: snapshot.documentTitle ?? 'پیش‌فاکتور',
+      quotationNumber: snapshot.quotationNumber, status,
+      paymentTerms: snapshot.paymentTerms, currencyCode: snapshot.currencyCode,
+      grossExact: exact(snapshot.totals.grossMicros),
+      lineDiscountExact: formatMicrosExact(lineDiscount),
+      documentDiscountExact: formatMicrosExact(documentDiscount),
+      taxExact: exact(snapshot.totals.taxMicros),
+      roundingExact: exact(snapshot.totals.roundingMicros),
+      totalExact: exact(snapshot.totals.totalMicros),
+      person: null,
+      company: snapshot.customerSnapshot ? { name: snapshot.customerSnapshot.name } : null,
     },
-    lines: lineNodes.map((line) => ({
-      name: readNullableString(line.name),
-      kind: readNullableString(line.kind),
-      unit: readNullableString(line.unit),
-      quantityExact: readNullableString(line.quantityExact),
-      unitPriceExact: readNullableString(line.unitPriceExact),
-      totalExact: readNullableString(line.totalExact),
+    lines: snapshot.lines.map(line => ({
+      name: line.name ?? line.description, kind: line.kind ?? null, unit: line.unit,
+      quantityExact: exact(line.quantityScaled), unitPriceExact: exact(line.unitPriceMicros),
+      totalExact: exact(line.totalMicros),
     })),
   });
-
-  if (!viewResult.ok) {
-    return { kind: 'BUILD_FAILED', detail: viewResult.refusal.detail };
-  }
-
-  return { kind: 'OK', view: viewResult.value };
+  if (!viewResult.ok) return { kind: 'BUILD_FAILED', detail: viewResult.refusal.detail };
+  return { kind: 'OK', view: {
+    ...viewResult.value,
+    validUntilDisplay: formatSealedValidity(snapshot.expiresAt),
+    // Public projection only: do not include national IDs, contacts, CRM IDs or the raw seal.
+    ...(snapshot.schemaVersion === 2 ? {} : { issuedHint: 'نسخه قدیمی: مشخصات مشتری ثبت نشده است.' }),
+  } };
 };

@@ -116,6 +116,9 @@ describe('buildQuotationDocumentPreview', () => {
     expect(preview.document?.FactorDetails).toHaveLength(2);
     expect(preview.document?.FactorDetails[0].ProductID).toBe(1001);
     expect(preview.document?.FactorDetails[0].Count).toBe(2);
+    expect(preview.document?.FactorDetails[0].Price).toBe(200);
+    expect(preview.document?.FactorDetails[1].Price).toBe(18);
+    expect(preview.lines[0].totalMicros).toBe('218.000000');
     expect(preview.document?.FactorDetails[1].Count).toBe(0);
     expect(preview.checks.every((check) => check.code !== 'CUSTOMER_LINKED' || check.ok)).toBe(true);
     expect(preview.lines[0].problem).toBeNull();

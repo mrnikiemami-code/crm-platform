@@ -83,6 +83,8 @@ describe('quotation-save.service', () => {
       name: 'مشاوره',
       sku: null,
       unit: 'ساعت',
+      unitRecordId: null,
+      secondaryName: null,
       description: null,
       isActive: true,
       defaultUnitPriceText: '250000',

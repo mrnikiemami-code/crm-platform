@@ -26,6 +26,8 @@ const handler = async (event: RoutePayload<unknown>) => {
     name: readString(body.name),
     sku: readString(body.sku) || null,
     unit: readString(body.unit),
+    unitRecordId: readString(body.unitRecordId) || null,
+    secondaryName: readString(body.secondaryName) || null,
     description: readString(body.description) || null,
     isActive: body.isActive !== false,
     defaultUnitPriceText: readString(body.defaultUnitPriceText) || null,

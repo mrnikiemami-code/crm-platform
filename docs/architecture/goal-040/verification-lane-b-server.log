@@ -1,0 +1,15 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/query-hooks/__tests__/quotation-unit-write-guard.spec.ts
+At line:1 char:1
++ npx jest packages/twenty-server/src/modules/quotation/services/__test ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...e-guard.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/quotation-unit-authority.service.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        2.72 s, estimated 13 s

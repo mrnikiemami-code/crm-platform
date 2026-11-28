@@ -60,7 +60,8 @@ export type ImportWarning =
   | 'NO_CRM_CANDIDATE'
   | 'REMOTE_ID_NOT_NUMERIC'
   | 'REMOTE_ITEM_INACTIVE'
-  | 'REMOTE_PRICE_MISSING';
+  | 'REMOTE_PRICE_MISSING'
+  | 'UNIT_MAPPING_REQUIRED';
 
 export type ItemImportDecision =
   | 'CREATE'
@@ -95,6 +96,8 @@ export type ItemImportRow = {
   crmPriceMicros: string | null;
   priceDifferenceMicros: string | null;
   warnings: ImportWarning[];
+  vendorUnitId: string | null;
+  vendorUnitName: string | null;
 };
 
 export type ItemImportPreview = {
@@ -182,6 +185,12 @@ export const planItemImport = ({
 
   const rows: ItemImportRow[] = remoteItems.map((item) => {
     const warnings: ImportWarning[] = [];
+    const vendorUnitId =
+      item.observation?.unitId !== undefined
+        ? String(item.observation.unitId)
+        : null;
+    const vendorUnitName = item.observation?.unitName ?? null;
+    const vendorFields = { vendorUnitId, vendorUnitName };
 
     if ((remoteNameCounts.get(normalizeName(item.name)) ?? 0) > 1) {
       warnings.push('DUPLICATE_REMOTE_NAME');
@@ -246,6 +255,7 @@ export const planItemImport = ({
         crmPriceMicros: null,
         priceDifferenceMicros: null,
         warnings,
+        ...vendorFields,
       };
     }
 
@@ -268,6 +278,7 @@ export const planItemImport = ({
         crmPriceMicros,
         priceDifferenceMicros,
         warnings,
+        ...vendorFields,
       };
     }
 
@@ -287,6 +298,7 @@ export const planItemImport = ({
         crmPriceMicros,
         priceDifferenceMicros,
         warnings,
+        ...vendorFields,
       };
     }
 
@@ -306,8 +318,11 @@ export const planItemImport = ({
         crmPriceMicros: null,
         priceDifferenceMicros: null,
         warnings,
+        ...vendorFields,
       };
     }
+
+    warnings.push('UNIT_MAPPING_REQUIRED');
 
     return {
       externalItemId: item.externalItemId,
@@ -324,6 +339,7 @@ export const planItemImport = ({
       crmPriceMicros: null,
       priceDifferenceMicros: null,
       warnings,
+      ...vendorFields,
     };
   });
 
@@ -348,6 +364,8 @@ export type ItemApplySelection = {
   // Required for a LINK_SUGGESTED row when the caller chose a different item than the one
   // suggested; ignored for CREATE.
   internalItemId?: string;
+  // Required whenever a CRM catalog row is created or the unit reference changes.
+  unitRecordId?: string;
 };
 
 export type ItemApplyRow = {
@@ -360,6 +378,9 @@ export type ItemApplyRow = {
   secondaryName: string | null;
   priceMicros: string | null;
   warnings: ImportWarning[];
+  unitRecordId: string | null;
+  vendorUnitId: string | null;
+  vendorUnitName: string | null;
 };
 
 export type ItemApplyPlan = {
@@ -435,11 +456,25 @@ export const resolveItemApplyPlan = ({
         secondaryName: row.secondaryName,
         priceMicros: row.priceMicros,
         warnings: row.warnings,
+        unitRecordId: null,
+        vendorUnitId: row.vendorUnitId,
+        vendorUnitName: row.vendorUnitName,
       });
       continue;
     }
 
     if (row.decision === 'CREATE') {
+      const unitRecordId = selection.unitRecordId?.trim() ?? '';
+
+      if (unitRecordId === '') {
+        refused.push({
+          externalItemId: row.externalItemId,
+          code: 'UNIT_MAPPING_REQUIRED',
+          detail: 'choose a workspace unit reference for this item',
+        });
+        continue;
+      }
+
       rows.push({
         externalItemId: row.externalItemId,
         action: 'CREATE_CATALOG_ITEM',
@@ -450,6 +485,9 @@ export const resolveItemApplyPlan = ({
         secondaryName: row.secondaryName,
         priceMicros: row.priceMicros,
         warnings: row.warnings,
+        unitRecordId,
+        vendorUnitId: row.vendorUnitId,
+        vendorUnitName: row.vendorUnitName,
       });
       continue;
     }
@@ -479,6 +517,9 @@ export const resolveItemApplyPlan = ({
       secondaryName: row.secondaryName,
       priceMicros: row.priceMicros,
       warnings: row.warnings,
+      unitRecordId: selection.unitRecordId?.trim() || null,
+      vendorUnitId: row.vendorUnitId,
+      vendorUnitName: row.vendorUnitName,
     });
   }
 

@@ -66,6 +66,8 @@ const buildScope = ({
     findOne: jest.fn().mockResolvedValue(headerRow),
   };
   const lineRepository = { find: jest.fn().mockResolvedValue(lineRows) };
+  const partyRepository = { findOne: jest.fn().mockResolvedValue({ id: 'c-1', name: 'شرکت نمونه' }) };
+  const catalogRepository = { find: jest.fn().mockResolvedValue([{ id: 'item-1', sku: 'SKU1', accountingCode: '100' }]) };
 
   const scope = {
     getRepository: jest.fn((name: string) => {
@@ -81,6 +83,8 @@ const buildScope = ({
         return lineRepository;
       }
 
+      if (name === 'company') return partyRepository;
+      if (name === 'catalogItem') return catalogRepository;
       throw new Error(`unexpected repository ${name}`);
     }),
   } as unknown as WorkspaceTransactionScope;
@@ -118,11 +122,16 @@ describe('QuotationRevisionService', () => {
       name: 'QT-1405-000031 v1',
       version: 1,
       status: 'ISSUED',
-      totalExact: '1090000000',
+      totalExact: '1090.000000',
       issuedBy: 'member-1',
       quotationId: 'q-1',
     });
     expect(inserted[0].snapshotJson.totals.totalMicros).toBe('1090000000');
+    expect(inserted[0].snapshotJson).toMatchObject({
+      schemaVersion: 2, revisionNumber: 1, version: 3,
+      customerSnapshot: { id: 'c-1', kind: 'COMPANY', name: 'شرکت نمونه' },
+      lines: [{ grossMicros: '1000000000', documentDiscountMicros: '0' }],
+    });
   });
 
   it('never creates a second identity for the same approved content', async () => {
@@ -161,6 +170,10 @@ describe('QuotationRevisionService', () => {
           id: true,
           description: true,
           name: true,
+          kind: true,
+          itemId: true,
+          taxPolicyRecordId: true,
+          taxAccountingCode: true,
           unit: true,
           quantityExact: true,
           unitPriceExact: true,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
+import { In } from 'typeorm';
 
 import { type WorkspaceTransactionScope } from 'src/engine/twenty-orm/types/workspace-transaction-scope.type';
 import {
@@ -11,7 +12,71 @@ import {
   hashQuotationRevision,
   type QuotationRevisionHeaderRow,
   type QuotationRevisionLineRow,
+  type SealedQuotationCustomer,
 } from 'src/modules/quotation/utils/quotation-revision-snapshot.util';
+
+type PartySealRow = {
+  id: string;
+  name?: string | { firstName?: string | null; lastName?: string | null } | null;
+  nationalCode?: string | null;
+  economicCode?: string | null;
+  registrationNumber?: string | null;
+  accountingCode?: string | null;
+  customerCode?: string | null;
+  accountingMobile?: string | null;
+  accountingPhone?: string | null;
+  accountingSecondPhone?: string | null;
+  accountingFax?: string | null;
+  accountingEmail?: string | null;
+  phones?: { primaryPhoneNumber?: string | null } | null;
+  emails?: { primaryEmail?: string | null } | null;
+  address?: Record<string, unknown> | null;
+  accountingAddress?: Record<string, unknown> | null;
+};
+
+const optionalText = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+
+const buildCustomerSeal = async (scope: WorkspaceTransactionScope, header: QuotationRevisionHeaderRow): Promise<SealedQuotationCustomer> => {
+  const id = header.companyId ?? header.personId;
+  if (!id || (!!header.companyId === !!header.personId)) {
+    throw new QuotationQueryValidationException('REVISION_MISMATCH: exactly one customer is required', QuotationQueryValidationExceptionCode.FORBIDDEN);
+  }
+  const company = !!header.companyId;
+  const row = await scope.getRepository<PartySealRow>(company ? 'company' : 'person', {
+    shouldBypassPermissionChecks: true,
+  }).findOne({ where: { id } });
+  const nativeName = typeof row?.name === 'string' ? row.name :
+    [row?.name?.firstName, row?.name?.lastName].filter(Boolean).join(' ');
+  const name = optionalText(nativeName);
+  if (!row || row.id !== id || !name) {
+    throw new QuotationQueryValidationException('REVISION_MISMATCH: customer identity is unavailable', QuotationQueryValidationExceptionCode.FORBIDDEN);
+  }
+  const address = company ? row.address : row.accountingAddress;
+  return {
+    id,
+    kind: company ? 'COMPANY' : 'PERSON',
+    name,
+    nationalCode: optionalText(row.nationalCode),
+    economicCode: optionalText(row.economicCode),
+    registrationNumber: company ? optionalText(row.registrationNumber) : null,
+    accountingCode: optionalText(row.accountingCode),
+    customerCode: optionalText(row.customerCode),
+    mobile: optionalText(company ? row.accountingMobile : row.phones?.primaryPhoneNumber),
+    phone: optionalText(row.accountingPhone),
+    secondPhone: optionalText(row.accountingSecondPhone),
+    fax: optionalText(row.accountingFax),
+    email: optionalText(company ? row.accountingEmail : row.emails?.primaryEmail),
+    address: {
+      street1: optionalText(address?.addressStreet1),
+      street2: optionalText(address?.addressStreet2),
+      city: optionalText(address?.addressCity),
+      state: optionalText(address?.addressState),
+      postcode: optionalText(address?.addressPostcode),
+      country: optionalText(address?.addressCountry),
+    },
+  };
+};
 
 type QuotationRevisionRow = {
   id: string;
@@ -73,6 +138,12 @@ export class QuotationRevisionService {
         id: true,
         version: true,
         quotationNumber: true,
+        name: true,
+        expiresAt: true,
+        taxPolicyRecordId: true,
+        taxAccountingCode: true,
+        quotationCurrencyRecordId: true,
+        currencyAccountingCode: true,
         currencyCode: true,
         taxPolicy: true,
         taxRateBasisPoints: true,
@@ -114,6 +185,10 @@ export class QuotationRevisionService {
         id: true,
         description: true,
         name: true,
+        kind: true,
+        itemId: true,
+        taxPolicyRecordId: true,
+        taxAccountingCode: true,
         unit: true,
         quantityExact: true,
         unitPriceExact: true,
@@ -129,18 +204,33 @@ export class QuotationRevisionService {
       order: { sortOrder: 'ASC' },
     });
 
-    const version = (header.version ?? 0) + 1;
+    // The status/version UPDATE has already executed in this transaction.
+    const version = header.version ?? 0;
     const revisionVersion =
       existingRevisions.reduce(
         (highest, revision) => Math.max(highest, revision.version ?? 0),
         0,
       ) + 1;
 
+    const customer = await buildCustomerSeal(transactionScope, header);
+    const itemIds = [...new Set(lines.flatMap((line) => line.itemId ? [line.itemId] : []))];
+    const items = itemIds.length === 0 ? [] :
+      await transactionScope.getRepository<{ id: string; sku: string | null; accountingCode: string | null }>(
+        'catalogItem', { shouldBypassPermissionChecks: true },
+      ).find({ where: { id: In(itemIds) }, select: { id: true, sku: true, accountingCode: true } });
+    const itemById = new Map(items.map((item) => [item.id, item]));
+    if (itemIds.some((id) => !itemById.has(id))) {
+      throw new QuotationQueryValidationException('REVISION_MISMATCH: a referenced item is unavailable', QuotationQueryValidationExceptionCode.FORBIDDEN);
+    }
     const built = buildQuotationRevisionSnapshot({
       header,
-      lines,
+      lines: lines.map((line) => {
+        const item = line.itemId ? itemById.get(line.itemId) : undefined;
+        return { ...line, itemSku: item?.sku ?? null, itemAccountingCode: item?.accountingCode ?? null };
+      }),
       version,
       issuedAt,
+      identity: { revisionNumber: revisionVersion, customer },
     });
 
     if (!built.ok) {
@@ -159,7 +249,8 @@ export class QuotationRevisionService {
       status: 'ISSUED',
       snapshotJson: built.snapshot,
       snapshotHash,
-      totalExact: built.snapshot.totals.totalMicros,
+      // Record columns use exact decimal IRR; only the hashed seal uses integer micros.
+      totalExact: header.totalExact as string,
       issuedAt,
       issuedBy,
       quotationId,

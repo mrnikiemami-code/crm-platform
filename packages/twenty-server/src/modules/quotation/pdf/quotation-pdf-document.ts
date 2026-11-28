@@ -130,6 +130,9 @@ export type QuotationPdfInput = {
   quotationNumber: string;
   customerName: string;
   jalaliDate?: string;
+  validUntil?: string;
+  customerDetails?: string[];
+  identityNote?: string;
   paymentTerms?: string;
   currencyLabel: string;
   lines: QuotationPdfLine[];
@@ -187,6 +190,10 @@ const buildMetaLines = (input: QuotationPdfInput): string[] => {
   if (isNonEmptyString(input.jalaliDate)) {
     lines.push(`تاریخ ${input.jalaliDate}`);
   }
+
+  if (isNonEmptyString(input.validUntil)) lines.push(`اعتبار تا: ${input.validUntil}`);
+  if (input.customerDetails) lines.push(...input.customerDetails);
+  if (isNonEmptyString(input.identityNote)) lines.push(input.identityNote);
 
   if (isNonEmptyString(input.paymentTerms)) {
     lines.push(`شرایط پرداخت: ${input.paymentTerms}`);
@@ -268,7 +275,7 @@ export const buildQuotationPdfDocument = (
 
   const headerChildren: ReactElement[] = [
     tableCell(descriptionStyle, 'شرح کالا یا خدمت', 'hdr-desc'),
-    tableCell(narrowStyle, 'تعداد', 'hdr-qty'),
+    tableCell(narrowStyle, 'مقدار / واحد', 'hdr-qty'),
     tableCell(moneyStyle, 'قیمت واحد', 'hdr-unit'),
   ];
 

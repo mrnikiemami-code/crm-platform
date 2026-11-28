@@ -54,6 +54,17 @@ export default defineObject({
       defaultValue: null,
     },
     {
+      universalIdentifier: '5f3a1d02-951c-56c5-8d5b-0105c4304003',
+      type: FieldType.TEXT,
+      name: 'revisionHash',
+      label: 'هش نسخه قطعی',
+      description: 'این لینک فقط همین نسخه قطعی را نمایش می‌دهد.',
+      icon: 'IconFingerprint',
+      isNullable: true,
+      isUIEditable: false,
+      defaultValue: null,
+    },
+    {
       universalIdentifier: QUOTATION_CUSTOMER_LINK_FIELDS.expiresAt,
       type: FieldType.DATE_TIME,
       name: 'expiresAt',

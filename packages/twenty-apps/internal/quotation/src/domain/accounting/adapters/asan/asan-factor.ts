@@ -9,7 +9,7 @@ import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { toAsanFactorDate } from 'src/domain/accounting/adapters/asan/jalali';
 import { QUANTITY_SCALE } from 'src/domain/money/quantity';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { decodeRevisionLine, parseRevisionMicros, validateRevisionFinancialFacts, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Maps a sealed quotation revision onto Asan's `FactorViewModel`.
@@ -66,7 +66,19 @@ export const scaledQuantityToAsanCount = (
     );
   }
 
-  return accepted(Number(quantityScaled) / Number(QUANTITY_SCALE));
+  const count = Number(quantityScaled) / Number(QUANTITY_SCALE);
+  // Safe integer conversion before division is not sufficient. At large magnitudes
+  // a double can collapse adjacent six-decimal quantities into the same value.
+  // Verify the decimal quantity that will cross the wire without re-rounding it.
+  const wire = JSON.stringify(count);
+  const match = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(wire);
+  // JSON uses exponent notation for the smallest supported positive quantity.
+  const decimal = match ? wire : count.toFixed(6);
+  const exact = /^(-?)(\d+)(?:\.(\d{1,6}))?$/.exec(decimal);
+  if (!exact || BigInt(exact[1] + exact[2] + (exact[3] ?? '').padEnd(6, '0')) !== quantityScaled) {
+    return refused('QUANTITY_OUT_OF_RANGE', 'this quantity loses its six-decimal identity on the vendor wire');
+  }
+  return accepted(count);
 };
 
 // Micros -> the whole-unit integer Asan expects. Refusing a remainder is the whole point:
@@ -92,25 +104,6 @@ export const microsToAsanMoney = (micros: bigint): Result<number> => {
   }
 
   return accepted(Number(units));
-};
-
-// The revision stores amounts as exact decimal strings, so they are parsed once here rather
-// than trusted as numbers that already went through the API.
-const parseExactToMicros = (text: string): Result<bigint> => {
-  const match = /^(-)?(\d+)(?:\.(\d{1,6}))?$/.exec(text.trim());
-
-  if (match === null) {
-    return refused(
-      'AMOUNT_NOT_A_DECIMAL',
-      `expected an exact decimal, got "${text}"`,
-    );
-  }
-
-  const fraction = (match[3] ?? '').padEnd(6, '0');
-  const magnitude =
-    BigInt(match[2]) * MICROS_PER_ASAN_UNIT + BigInt(fraction === '' ? '0' : fraction);
-
-  return accepted(match[1] === '-' ? -magnitude : magnitude);
 };
 
 export type AsanSpecialCodeAvailability = {
@@ -193,35 +186,13 @@ export const mapRevisionToAsanFactor = (
       );
     }
 
-    const quantity = scaledQuantityToAsanCount(BigInt(line.quantityScaled));
-
-    if (!quantity.ok) {
-      return quantity;
-    }
-
-    const lineTotal = parseExactToMicros(line.totalMicros);
-
-    if (!lineTotal.ok) {
-      return lineTotal;
-    }
-
-    const tax = parseExactToMicros(line.taxMicros);
-
-    if (!tax.ok) {
-      return tax;
-    }
-
-    const discount = parseExactToMicros(line.discountMicros);
-
-    if (!discount.ok) {
-      return discount;
-    }
-
-    // PDF pp.3-4: either net line price OR a separate discount row.
-    // When using the separate row, restore the discount into the product
-    // line so the vendor subtracts it once, not twice.
-    const netOfTaxMicros = lineTotal.value - tax.value;
-    const price = convertToVendorUnits(netOfTaxMicros + (input.specialCodesInUse.discount ? discount.value : 0n));
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return decoded;
+    const quantity = scaledQuantityToAsanCount(decoded.value.quantity);
+    if (!quantity.ok) return quantity;
+    const lineDiscount = decoded.value.lineDiscount + decoded.value.documentDiscount;
+    // Restore ALL allocated discounts when a separate row will subtract them.
+    const price = convertToVendorUnits(input.specialCodesInUse.discount ? decoded.value.gross : decoded.value.net);
 
     if (!price.ok) {
       return price;
@@ -235,19 +206,19 @@ export const mapRevisionToAsanFactor = (
       Description: line.description,
     });
 
-    discountTotalMicros += discount.value;
+    discountTotalMicros += lineDiscount;
   }
 
   // The split is a document-level fact in the sealed snapshot, so it is read from the
   // totals rather than re-derived per line: `taxMicros` already includes duty, and
   // subtracting it is what makes the destination's tax row the tax component only.
-  const documentTax = parseExactToMicros(input.revision.totals.taxMicros);
+  const documentTax = parseRevisionMicros(input.revision.totals.taxMicros);
 
   if (!documentTax.ok) {
     return documentTax;
   }
 
-  const documentDuty = parseExactToMicros(input.revision.totals.dutyMicros ?? '0');
+  const documentDuty = parseRevisionMicros(input.revision.totals.dutyMicros ?? '0');
 
   if (!documentDuty.ok) {
     return documentDuty;
@@ -365,13 +336,16 @@ const appendSpecialLines = ({
 // Live Asan pre-dispatch gate. Independently reconstruct the payable from the
 // wire rows; a rounding difference or omitted fiscal amount must not post.
 export const validateAsanDocumentPayable = ({
-  factor, revision, moneyUnit, specialItemCodes,
+  factor, revision, moneyUnit, specialItemCodes, productCodeByLineId,
 }: {
   factor: AsanFactorViewModel;
   revision: QuotationRevisionSnapshot;
   moneyUnit: AccountingMoneyUnit;
   specialItemCodes?: AsanSpecialItemCodeOverrides;
+  productCodeByLineId?: Record<string, number>;
 }): Result<true> => {
+  const financial = validateRevisionFinancialFacts(revision);
+  if (!financial.ok) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', financial.refusal.detail);
   const validInt = (value: number) => Number.isInteger(value) && value > 0 && value <= 2147483647;
   if (!validInt(factor.CustomerID) || !validInt(factor.UserID) || factor.FactorNumber !== 0 || factor.FactorDetails.length === 0) return refused('ASAN_DOCUMENT_ID_INVALID', 'customer/user id or document numbering is invalid');
   const codes = Object.fromEntries((['discount', 'duty', 'tax'] as const).map((kind) => [kind, (specialItemCodes?.[kind] ?? '').trim() || ASAN_SPECIAL_ITEM_CODES[kind]])) as Record<'discount' | 'duty' | 'tax', string>;
@@ -389,7 +363,33 @@ export const validateAsanDocumentPayable = ({
     } else if (special) return refused('ASAN_SPECIAL_CODE_INVALID', 'ordinary product row uses a reserved special code');
     payable += BigInt(detail.Price) * (detail.Count === 0 && detail.ProductID === Number(codes.discount) ? -1n : 1n);
   }
-  const total = parseExactToMicros(revision.totals.totalMicros);
+  // An equal grand total is not sufficient: each fiscal component and product row
+  // must match the seal independently. No undocumented rounding row is invented.
+  const ordinary = factor.FactorDetails.filter(row => row.Count !== 0);
+  if (ordinary.length !== revision.lines.length) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'product row count differs from seal');
+  for (let i = 0; i < revision.lines.length; i++) {
+    const line = revision.lines[i];
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return decoded;
+    const quantity = scaledQuantityToAsanCount(decoded.value.quantity);
+    const gross = crmMicrosToAsanUnits(decoded.value.gross, moneyUnit);
+    if (!quantity.ok || !gross.ok || ordinary[i].Count !== quantity.value || ordinary[i].Price !== gross.value ||
+        (productCodeByLineId !== undefined && ordinary[i].ProductID !== productCodeByLineId[line.lineId])) {
+      return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'product row differs from sealed gross, quantity or mapped identity');
+    }
+  }
+  const tax = parseRevisionMicros(revision.totals.taxMicros);
+  const duty = parseRevisionMicros(revision.totals.dutyMicros ?? '0');
+  const discount = parseRevisionMicros(revision.totals.discountMicros);
+  if (!tax.ok || !duty.ok || !discount.ok) return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'invalid sealed fiscal components');
+  for (const [kind, micros] of [['discount', discount.value], ['duty', duty.value], ['tax', tax.value - duty.value]] as const) {
+    const expected = crmMicrosToAsanUnits(micros, moneyUnit);
+    const row = factor.FactorDetails.find(detail => detail.Count === 0 && detail.ProductID === Number(codes[kind]));
+    if (!expected.ok || (expected.value === 0 ? row !== undefined : row?.Price !== expected.value)) {
+      return refused('ASAN_DOCUMENT_TOTAL_MISMATCH', 'special fiscal row differs from sealed ' + kind);
+    }
+  }
+  const total = parseRevisionMicros(revision.totals.totalMicros);
   if (!total.ok) return total;
   const expected = crmMicrosToAsanUnits(total.value, moneyUnit);
   if (!expected.ok) return expected;

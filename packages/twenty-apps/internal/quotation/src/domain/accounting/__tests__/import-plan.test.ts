@@ -201,9 +201,9 @@ describe('item import preview', () => {
     });
 
     expect(preview.rows.map((row) => row.warnings)).toEqual([
-      ['REMOTE_ID_NOT_NUMERIC'],
-      ['REMOTE_ITEM_INACTIVE'],
-      ['REMOTE_PRICE_MISSING'],
+      ['REMOTE_ID_NOT_NUMERIC', 'UNIT_MAPPING_REQUIRED'],
+      ['REMOTE_ITEM_INACTIVE', 'UNIT_MAPPING_REQUIRED'],
+      ['REMOTE_PRICE_MISSING', 'UNIT_MAPPING_REQUIRED'],
     ]);
     expect(preview.rows[2].priceMicros).toBeNull();
   });
@@ -228,7 +228,10 @@ describe('item apply plan', () => {
   it('turns a confirmed suggestion and a confirmed create into writes', () => {
     const plan = resolveItemApplyPlan({
       preview,
-      selections: [{ externalItemId: '1001' }, { externalItemId: '1004' }],
+      selections: [
+        { externalItemId: '1001' },
+        { externalItemId: '1004', unitRecordId: 'unit-1' },
+      ],
       allowRemoteVersionUpdate: false,
     });
 
@@ -263,6 +266,19 @@ describe('item apply plan', () => {
       action: 'UPDATE_LINK_VERSION',
       internalItemId: 'crm-3',
       remoteVersion: 'v2',
+    });
+  });
+
+  it('refuses create without a workspace unit mapping', () => {
+    const plan = resolveItemApplyPlan({
+      preview,
+      selections: [{ externalItemId: '1004' }],
+      allowRemoteVersionUpdate: false,
+    });
+
+    expect(plan.rows).toEqual([]);
+    expect(plan.refused[0]).toMatchObject({
+      code: 'UNIT_MAPPING_REQUIRED',
     });
   });
 

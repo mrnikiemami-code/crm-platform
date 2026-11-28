@@ -1,10 +1,11 @@
-import { type CSSProperties, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import {
   closeSidePanel,
   enqueueSnackbar,
 } from 'twenty-sdk/front-component';
 
 import {
+  QUOTATION_UNITS_ROUTE,
   SAVE_CATALOG_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
@@ -16,7 +17,11 @@ export const CatalogItemForm = () => {
   const [kind, setKind] = useState<CatalogItemKind>('PRODUCT');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
-  const [unit, setUnit] = useState('عدد');
+  const [unit, setUnit] = useState('');
+  const [unitRecordId, setUnitRecordId] = useState('');
+  const [unitOptions, setUnitOptions] = useState<
+    { recordId: string; name: string }[]
+  >([]);
   const [isActive, setIsActive] = useState(true);
   const [priceText, setPriceText] = useState('');
   const [moneyUnit, setMoneyUnit] = useState<MoneyUnit>('TOMAN');
@@ -30,13 +35,60 @@ export const CatalogItemForm = () => {
         name,
         sku: sku.trim() === '' ? null : sku,
         unit,
+        unitRecordId: unitRecordId.trim() === '' ? null : unitRecordId,
+        secondaryName: null,
         description: null,
         isActive,
         defaultUnitPriceText: priceText.trim() === '' ? null : priceText,
         moneyUnit,
       }),
-    [kind, name, sku, unit, isActive, priceText, moneyUnit],
+    [kind, name, sku, unit, unitRecordId, isActive, priceText, moneyUnit],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await callAppRoute(QUOTATION_UNITS_ROUTE, {
+          action: 'list',
+        });
+
+        if (!response.ok || response.data.success !== true || cancelled) {
+          return;
+        }
+
+        const units = Array.isArray(response.data.units)
+          ? response.data.units
+          : [];
+        const options = units.flatMap((candidate) => {
+          if (candidate === null || typeof candidate !== 'object') {
+            return [];
+          }
+
+          const row = candidate as Record<string, unknown>;
+          const recordId =
+            typeof row.recordId === 'string' ? row.recordId.trim() : '';
+          const label = typeof row.name === 'string' ? row.name.trim() : '';
+
+          if (recordId === '' || label === '' || row.isActive === false) {
+            return [];
+          }
+
+          return [{ recordId, name: label }];
+        });
+
+        setUnitOptions(options);
+      } catch {
+        // Units remain unavailable offline until settings load succeeds.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   const onSave = async () => {
     if (!plan.ok) {
@@ -52,6 +104,7 @@ export const CatalogItemForm = () => {
         name,
         sku: sku.trim() === '' ? null : sku,
         unit,
+        unitRecordId: unitRecordId.trim() === '' ? null : unitRecordId,
         isActive,
         defaultUnitPriceText: priceText.trim() === '' ? null : priceText,
         moneyUnit,
@@ -93,9 +146,7 @@ export const CatalogItemForm = () => {
           style={styles.input}
           value={kind}
           onChange={(event) => {
-            const next = event.target.value as CatalogItemKind;
-            setKind(next);
-            setUnit(next === 'SERVICE' ? 'ساعت' : 'عدد');
+            setKind(event.target.value as CatalogItemKind);
           }}
         >
           <option value="PRODUCT">کالا</option>
@@ -122,14 +173,39 @@ export const CatalogItemForm = () => {
           />
         </label>
         <label style={styles.label}>
-          واحد
-          <input
+          واحد مرجع
+          <select
             style={styles.input}
-            value={unit}
-            onChange={(event) => setUnit(event.target.value)}
-          />
+            value={unitRecordId}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              setUnitRecordId(nextId);
+              const chosen = unitOptions.find(
+                (option) => option.recordId === nextId,
+              );
+              if (chosen !== undefined) {
+                setUnit(chosen.name);
+              }
+            }}
+          >
+            <option value="">انتخاب کنید…</option>
+            {unitOptions.map((option) => (
+              <option key={option.recordId} value={option.recordId}>
+                {option.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
+
+      <label style={styles.label}>
+        متن واحد (نمایشی / قدیمی)
+        <input
+          style={styles.input}
+          value={unit}
+          onChange={(event) => setUnit(event.target.value)}
+        />
+      </label>
 
       <div style={styles.row}>
         <label style={styles.label}>

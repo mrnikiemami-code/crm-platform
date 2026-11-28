@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 D:/CrmSource/twenty-g040-lane-b/packages/twenty-apps/internal/quotation
+
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  12:21:26
+   Duration  252ms (transform 219ms, setup 0ms, import 297ms, tests 18ms, environment 0ms)
+

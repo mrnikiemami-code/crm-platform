@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RecordApiError } from 'src/data/record-api';
 import { type ConnectionSettings } from 'src/domain/accounting/adapter-contract';
 import { MockAccountingAdapter } from 'src/domain/accounting/adapters/mock/mock-adapter';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { hashQuotationRevision, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import {
   executeItemPush,
   executeQuotationExport,
@@ -14,7 +14,7 @@ import {
 } from 'src/services/accounting-outbound.service';
 
 const edges = (root: string, rows: Record<string, unknown>[]) => ({
-  [root]: { edges: rows.map((node) => ({ node })) },
+  [root]: { edges: rows.map((node) => ({ node })), pageInfo: { hasNextPage: false, endCursor: null } },
 });
 
 const connectionNode = (overrides: Record<string, unknown> = {}) => ({
@@ -64,7 +64,7 @@ const snapshot = (): QuotationRevisionSnapshot => ({
   version: 2,
   quotationNumber: 'Q-0001',
   currencyCode: 'IRR',
-  customerRef: 'company:company-1',
+  customerRef: 'company-1',
   taxPolicy: 'IR_VAT_9',
   taxRateBasisPoints: '0',
   paymentTerms: null,
@@ -73,19 +73,19 @@ const snapshot = (): QuotationRevisionSnapshot => ({
       lineId: 'line-1',
       description: 'کالا',
       unit: 'عدد',
-      quantityScaled: '1',
-      unitPriceMicros: '1000000.000000',
-      discountMicros: '0.000000',
-      taxMicros: '0.000000',
-      totalMicros: '1000000.000000',
+      quantityScaled: '1000000',
+      unitPriceMicros: '1000000000000',
+      discountMicros: '0',
+      taxMicros: '0',
+      totalMicros: '1000000000000',
     },
   ],
   totals: {
-    grossMicros: '1000000.000000',
-    discountMicros: '0.000000',
-    netMicros: '1000000.000000',
-    taxMicros: '0.000000',
-    totalMicros: '1000000.000000',
+    grossMicros: '1000000000000',
+    discountMicros: '0',
+    netMicros: '1000000000000',
+    taxMicros: '0',
+    totalMicros: '1000000000000',
   },
   issuedAt: '2026-11-20T10:00:00.000Z',
 });
@@ -95,6 +95,10 @@ type QuotationFixture = {
   quotationId?: string;
   companyId?: string | null;
   personId?: string | null;
+  retireAfterClaim?: boolean;
+  changeLinkAfterClaim?: boolean;
+  loseClaimAfterInsert?: boolean;
+  changeClaimFingerprint?: boolean;
 };
 
 const quotationExecute = ({
@@ -102,8 +106,13 @@ const quotationExecute = ({
   quotationId = 'q-1',
   companyId = 'company-1',
   personId = null,
-}: QuotationFixture = {}) =>
-  vi.fn(async (query: string) => {
+  retireAfterClaim = false,
+  changeLinkAfterClaim = false,
+  loseClaimAfterInsert = false,
+  changeClaimFingerprint = false,
+}: QuotationFixture = {}) => {
+  let claimed: Record<string, unknown> | null = null;
+  return vi.fn(async (query: string) => {
     if (query.includes('QuotationForAccounting')) {
       return {
         quotation: {
@@ -117,13 +126,15 @@ const quotationExecute = ({
         },
         quotationLines: {
           edges: [{ node: { id: 'line-1', item: { id: 'item-1' } } }],
+          pageInfo: { hasNextPage: false, endCursor: null },
         },
       };
     }
 
     if (query.includes('QuotationRevisionForAccounting')) {
+      const seal = { ...snapshot(), customerRef: companyId ?? personId ?? '' };
       return edges('quotationRevisions', [
-        { id: 'rev-1', version: 2, snapshotJson: JSON.stringify(snapshot()) },
+        { id: 'rev-1', version: 2, snapshotJson: JSON.stringify(seal), snapshotHash: hashQuotationRevision(seal) },
       ]);
     }
 
@@ -131,7 +142,8 @@ const quotationExecute = ({
       return edges('accountingItemLinks', [
         {
           id: 'link-1',
-          externalItemId: '1001',
+          connection: { id: 'conn-1' },
+          externalItemId: changeLinkAfterClaim && claimed ? '1002' : '1001',
           remoteVersion: 'v1',
           syncStatus: 'LINKED',
           item: { id: 'item-1' },
@@ -140,9 +152,12 @@ const quotationExecute = ({
     }
 
     if (query.includes('accountingPartyLinks')) {
-      return edges('accountingPartyLinks', [
+      return edges('accountingPartyLinks', companyId !== 'company-1' ? [] : [
         {
           id: 'party-link-1',
+          connection: { id: 'conn-1' },
+          partyType: 'COMPANY',
+          remoteVersion: 'v1',
           externalPartyId: '101',
           internalPartyId: 'company-1',
           syncStatus: 'LINKED',
@@ -151,23 +166,34 @@ const quotationExecute = ({
     }
 
     if (query.includes('accountingSyncOperations')) {
-      return edges('accountingSyncOperations', []);
+      return edges('accountingSyncOperations', claimed && !loseClaimAfterInsert ?
+        [changeClaimFingerprint && query.includes('ReadQuotationClaim') ? { ...claimed, payloadFingerprint: 'tampered' } : claimed] : []);
     }
 
     if (query.includes('accountingConnections')) {
-      return accountingConnections(connectionNode());
+      return accountingConnections(connectionNode({ isActive: !(retireAfterClaim && claimed) }));
     }
 
-    if (query.includes('createAccountingSyncOperation')) {
-      return { createAccountingSyncOperation: { id: 'op-1' } };
+    if (query.includes('CreateQuotationClaim')) {
+      const id = /id: "([^"]+)"/.exec(query)?.[1];
+      const fingerprint = /payloadFingerprint: "([^"]+)"/.exec(query)?.[1];
+      const snapshotLiteral = /payloadSnapshot: ("(?:\\.|[^"\\])*")/.exec(query)?.[1];
+      const payloadSnapshot = snapshotLiteral ? JSON.parse(snapshotLiteral) : null;
+      claimed = { id, payloadSnapshot, kind: 'QUOTATION_REVISION_PUSH', state: 'IN_FLIGHT',
+        internalEntityId: quotationId, internalRevision: 2, attempts: 1, correlationId: id,
+        connection: { id: 'conn-1' }, externalDocumentId: null, errorCode: null, payloadFingerprint: fingerprint };
+      return { createAccountingSyncOperation: claimed };
     }
-
-    if (query.includes('updateAccountingSyncOperation')) {
-      return { updateAccountingSyncOperation: { id: 'op-1' } };
+    if (query.includes('FinishQuotationClaim')) {
+      const state = /state: "([^"]+)"/.exec(query)?.[1];
+      const externalDocumentId = /externalDocumentId: "([^"]+)"/.exec(query)?.[1] ?? null;
+      const errorCode = /errorCode: "([^"]+)"/.exec(query)?.[1] ?? null;
+      claimed = { ...claimed, state, externalDocumentId, errorCode };
+      return { updateAccountingSyncOperation: claimed };
     }
-
     return {};
   });
+};
 
 const item = {
   code: '1001',
@@ -605,6 +631,36 @@ describe('quotation export', () => {
     expect(
       execute.mock.calls.some(([query]) => String(query).includes('"SUCCEEDED"')),
     ).toBe(true);
+  });
+
+  it.each([
+    [{ retireAfterClaim: true }, 'CONNECTION_INACTIVE'],
+    [{ changeLinkAfterClaim: true }, 'REVISION_MISMATCH'],
+    [{ loseClaimAfterInsert: true }, 'RECONCILIATION_REQUIRED'],
+    [{ changeClaimFingerprint: true }, 'RECONCILIATION_REQUIRED'],
+  ] as const)('never dispatches after the claim cutoff changes: %j', async (fixture, code) => {
+    const execute = quotationExecute(fixture);
+    const adapter = new MockAccountingAdapter();
+    const dispatch = vi.spyOn(adapter, 'registerProforma');
+    const outcome = await executeQuotationExport({
+      connectionId: 'conn-1', quotationId: 'q-1', adapter, settings: settings(), flags: flags(),
+    }, { execute });
+    expect(outcome).toMatchObject({ ok: false, refusal: { code } });
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(execute.mock.calls.some(([query]) => query.includes('CreateQuotationClaim'))).toBe(true);
+    expect(execute.mock.calls.some(([query]) => query.includes('FinishQuotationClaim') && query.includes('"CANCELLED"'))).toBe(!('loseClaimAfterInsert' in fixture) && !('changeClaimFingerprint' in fixture));
+  });
+
+  it('retains an uncertain dispatch as reconciliation required and does not replay it', async () => {
+    const execute = quotationExecute();
+    const adapter = new MockAccountingAdapter();
+    const dispatch = vi.spyOn(adapter, 'registerProforma').mockRejectedValueOnce(new Error('transport disconnected'));
+    const input = { connectionId: 'conn-1', quotationId: 'q-1', adapter, settings: settings(), flags: flags() };
+    const outcome = await executeQuotationExport(input, { execute });
+    expect(outcome).toMatchObject({ ok: false, refusal: { code: 'RECONCILIATION_REQUIRED' } });
+    expect(execute.mock.calls.some(([query]) => query.includes('FinishQuotationClaim') && query.includes('"MANUAL_EXPORT_REQUIRED"'))).toBe(true);
+    expect((await executeQuotationExport(input, { execute })).ok).toBe(false);
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a draft before reading a revision or writing an operation', async () => {
