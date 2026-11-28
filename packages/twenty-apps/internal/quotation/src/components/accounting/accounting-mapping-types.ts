@@ -36,6 +36,8 @@ export type SnapshotView = {
 
 export type ItemMappingRow = {
   externalItemId: string;
+  remoteVersion?: string;
+  vendorUnitName?: string | null;
   code: string;
   name: string;
   secondaryName: string | null;
@@ -219,6 +221,8 @@ export const parseItemMappingPage = (value: unknown): MappingPage<ItemMappingRow
       return [
         {
           externalItemId,
+          remoteVersion: readString(row.remoteVersion),
+          vendorUnitName: readNullableString(row.vendorUnitName),
           code: readString(row.code),
           name: readString(row.name),
           secondaryName: readNullableString(row.secondaryName),
