@@ -93,29 +93,19 @@ export const isQuotationUnitAccountingCodeLocked = async ({
   scope: WorkspaceTransactionScope;
   quotationUnitRecordId: string;
 }): Promise<boolean> => {
-  if (!isNonEmptyString(quotationUnitRecordId)) {
-    return false;
-  }
-
-  const catalogRepository = scope.getRepository<{
-    id: string;
-    unitRecordId?: string | null;
-    accountingCode?: string | null;
-  }>('catalogItem', {
+  if (!isNonEmptyString(quotationUnitRecordId)) return false;
+  const repository = scope.getRepository<{ id: string; accountingCodeLocked: boolean }>('quotationUnit', {
     shouldBypassPermissionChecks: true,
   });
-
-  try {
-    const rows = await catalogRepository.find({
-      where: { unitRecordId: quotationUnitRecordId },
-      select: { id: true, unitRecordId: true },
-      take: 20,
-    });
-
-    return rows.length > 0;
-  } catch {
-    return false;
+  const row = await repository.findOne({
+    where: { id: quotationUnitRecordId },
+    select: { id: true, accountingCodeLocked: true },
+  });
+  // Missing schema, row or flag is not evidence of an unlocked code.
+  if (!row || typeof row.accountingCodeLocked !== 'boolean') {
+    throw new Error('UNIT_MAPPING_REQUIRED: unit lock state is unavailable');
   }
+  return row.accountingCodeLocked;
 };
 
 export const isCurrencyAccountingCodeLocked = async ({
