@@ -9,7 +9,7 @@ import {
   buildUpdateAccountingOperationMutation,
 } from 'src/data/accounting-queries';
 import { buildExportHeaderAndLinesQuery, buildExportIssuedRevisionQuery, buildExportLinksQuery,
-  buildQuotationClaimMutation, buildQuotationFinishMutation, buildSealedRevisionListQuery } from 'src/data/quotation-export-queries';
+  buildQuotationClaimMutation, buildQuotationClaimReadQuery, buildQuotationFinishMutation, buildSealedRevisionListQuery } from 'src/data/quotation-export-queries';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import { requireActiveAccountingConnection } from 'src/services/accounting-connection.service';
 import {
@@ -1083,6 +1083,14 @@ export const executeQuotationExport = async (
   // A claim alone does not authorize dispatch if the document or destination moved.
   // This is a fail-closed source guard, not an atomic connection/dispatch lock.
   try {
+    const persistedClaim = await execute(buildQuotationClaimReadQuery(claim.id, connectionId));
+    const root = asRecord(persistedClaim.accountingSyncOperations);
+    const rows = readRows(persistedClaim, 'accountingSyncOperations');
+    if (!Array.isArray(root?.edges) || root.edges.length !== 1 || rows.length !== 1 ||
+        asRecord(root.pageInfo)?.hasNextPage !== false ||
+        !verifyClaimReceipt(rows[0], claim, 'IN_FLIGHT', null, null)) {
+      return refused('RECONCILIATION_REQUIRED', 'exact persisted claim no longer confirmed; no vendor call made');
+    }
     const claimedPreview = await previewQuotationExport({ connectionId, quotationId, adapter, settings, flags }, dependencies);
     if (!claimedPreview.ok || claimedPreview.value.decision.kind !== 'IN_PROGRESS' ||
         claimedPreview.value.decision.operationId !== claim.id) {
