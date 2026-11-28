@@ -431,7 +431,15 @@ const handler = async (event: RoutePayload<unknown>) => {
             : 25,
       });
 
-      return { success: true, page };
+      // The same worker that enforces the export switches attests readiness.
+      // A list endpoint never enables a write, and no secret is exposed.
+      const readiness = {
+        connectionId,
+        outboundEnabled: flags.outboundEnabled,
+        documentExportEnabled: flags.documentExportEnabled,
+        destinationWritable: adapter.value.writesEnabled !== false && !adapter.value.isLive,
+      };
+      return { success: true, page, readiness };
     }
 
     return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));
