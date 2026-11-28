@@ -312,12 +312,21 @@ describe('credentials', () => {
     const noGeneration = buildAdapter(current, { allowInsecureTransport: false, approvedRead: binding });
     expect(noGeneration).toMatchObject({ ok: true, value: { writesEnabled: false } });
     if (noGeneration.ok) expect(noGeneration.value.readAccessScope).toBeUndefined();
-    const first = buildAdapter(current, { allowInsecureTransport: false, approvedRead: binding,
+    const first = buildAdapter(current, { allowInsecureTransport: false, approvedRead: binding, approvedReadRemoteUserId: current.settings.remoteUserId, approvedReadDatasetId: 'fixture-dataset',
       approvedReadGeneration: 'a1b2c3d4-1111-4111-8111-111111111111' });
-    const second = buildAdapter(current, { allowInsecureTransport: false, approvedRead: binding,
+    const second = buildAdapter(current, { allowInsecureTransport: false, approvedRead: binding, approvedReadRemoteUserId: current.settings.remoteUserId, approvedReadDatasetId: 'fixture-dataset',
       approvedReadGeneration: 'a1b2c3d4-2222-4222-8222-222222222222' });
     expect(first.ok && first.value.readAccessScope).toMatch(/^[a-f0-9]{64}$/);
     expect(second.ok && second.value.readAccessScope).toMatch(/^[a-f0-9]{64}$/);
     expect(first.ok && first.value.readAccessScope).not.toBe(second.ok && second.value.readAccessScope);
+    const authorization = { allowInsecureTransport: false, approvedRead: binding,
+      approvedReadGeneration: 'a1b2c3d4-1111-4111-8111-111111111111',
+      approvedReadRemoteUserId: current.settings.remoteUserId, approvedReadDatasetId: 'fixture-dataset' };
+    const changedUser = buildAdapter({ ...current, settings: { ...current.settings, remoteUserId: '999' } }, authorization);
+    expect(changedUser.ok && changedUser.value.readAccessScope).toBeUndefined();
+    const noDataset = buildAdapter(current, { ...authorization, approvedReadDatasetId: undefined });
+    expect(noDataset.ok && noDataset.value.readAccessScope).toBeUndefined();
+    const changedDataset = buildAdapter(current, { ...authorization, approvedReadDatasetId: 'another-dataset' });
+    expect(changedDataset.ok && changedDataset.value.readAccessScope).not.toBe(first.ok && first.value.readAccessScope);
   });
 });
