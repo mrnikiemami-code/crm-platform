@@ -28,3 +28,6 @@ Merged exact A and B tips in `6bf4298d3a52dafa0ad073aad10ea99bb60403d5` with all
 
 ## Architect integration stop — 2026-11-28
 Source/test tip `9f4fc19af209ad055e1be897e1731a6384da919e`; 46 commits/41 paths after integration ledger. U01 primary unit selection, server line/seal snapshots and monotonic first-use lock implemented in source. P05 private prepare-items + Nest 25-row atomic batch source and UI explicit version/unit/kind selection implemented; source fixtures added, runtime NOT_RUN. User requested stop. SOURCE_PARTIAL / NOT_ACCEPTED: U03/U04/U05/F06/F07 plus remaining U01/U02/P05 real PG/concurrency and unit equivalence gates unresolved. Local bridge internal error. P01–P15 NOT_RUN; G1/G2 NOT_AUTHORIZED. No Dev/intranet apply, version bump or vendor calls. Recovery document authoritative for next continuation.
+
+## Round 2 architect initial checkpoint
+Source/test `322e2cc4b35c063ef5ff9783d089ba6c307fb0fd`, checkpoint `fe4c7dab5931df1a928252eaaa4279efd28cc5fe` (15 commits, 12 paths). Unit equivalence, destination scope and bounded reconciliation source added; U03/F06/F07/U05 remaining. Runtime NOT_RUN, bridge failed. Cursor remote at baseline when checked. No merge, Dev or vendor request. Continue exact lane ownership.
