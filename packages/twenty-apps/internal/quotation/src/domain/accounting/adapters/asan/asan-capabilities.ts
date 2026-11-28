@@ -48,10 +48,10 @@ export const ASAN_CAPABILITIES: AdapterCapabilities = {
   },
   documents: {
     createProforma: true, // POST PishFactors/RegisterPishFactor
-    // Asan's sales invoice exists but is a SEPARATE posted fiscal document. Exposed as a
-    // capability so the adapter can describe it, NEVER enabled by a quotation action.
-    createInvoice: true,
-    readDocuments: true, // POST PishFactorsNew/LastPishFactors, LastCustomerPishFactors
+    // The guide documents these operations, but the quotation adapter does not implement
+    // them. The separate wire inventory retains their documented existence.
+    createInvoice: false,
+    readDocuments: false,
     // The guide documents listing the LAST n documents, not fetching one by id. So a
     // status poll for a specific document is not supported and must not be assumed.
     readById: false,

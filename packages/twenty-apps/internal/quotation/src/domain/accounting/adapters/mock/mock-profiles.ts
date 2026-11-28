@@ -134,6 +134,8 @@ export const mockProfileCapabilities = (
 
   return {
     ...ASAN_CAPABILITIES,
+    // Preserve the existing mock profile contract independently of live Asan gates.
+    documents: { ...ASAN_CAPABILITIES.documents, createInvoice: true, readDocuments: true },
     parties: { ...ASAN_CAPABILITIES.parties, fields: {
       contractVersion: '2', identity: 'EXTERNAL_ID',
       readable: ['code', 'fullName', 'mobile', 'nationalCode', ...PARTY_PROFILE_FIELDS],

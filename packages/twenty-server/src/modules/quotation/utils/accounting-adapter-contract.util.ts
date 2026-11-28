@@ -45,8 +45,9 @@ const ASAN_CAPABILITIES = {
   },
   documents: {
     createProforma: true,
-    createInvoice: true,
-    readDocuments: true,
+    // Documented in the vendor guide, not executable by the quotation adapter.
+    createInvoice: false,
+    readDocuments: false,
     readById: false,
     updateDocument: false,
     cancelDocument: false,
@@ -160,6 +161,8 @@ const mockCapabilities = (profile: unknown): Record<string, unknown> => {
 
   return {
     ...ASAN_CAPABILITIES,
+    // Preserve the existing test profile contract; these are not live vendor claims.
+    documents: { ...ASAN_CAPABILITIES.documents, createInvoice: true, readDocuments: true },
     parties: { ...ASAN_CAPABILITIES.parties, fields: { contractVersion: '2', identity: 'EXTERNAL_ID', readable: ["code","fullName","mobile","nationalCode","partyType","firstName","lastName","companyName","tradeName","legalNationalId","economicCode","registrationNumber","crmCustomerCode","accountingCode","generalLedgerCode","subsidiaryLedgerCode","detailLedgerCode","accountGroup","firstPhone","secondPhone","fax","email","address","postalCode","country","state","city","contactName","paymentTermsCode","settlementDays","creditLimitExact","creditLimitCurrency","isActive"], writable: ["fullName","mobile","nationalCode","partyType","firstName","lastName","companyName","tradeName","legalNationalId","economicCode","registrationNumber","crmCustomerCode","accountingCode","generalLedgerCode","subsidiaryLedgerCode","detailLedgerCode","accountGroup","firstPhone","secondPhone","fax","email","address","postalCode","country","state","city","contactName","paymentTermsCode","settlementDays","creditLimitExact","creditLimitCurrency","isActive"] } },
     // A mock destination has no vendor installation, so it declares no special-row codes:
     // those belong to Asan's documented payload, not to a test profile.
