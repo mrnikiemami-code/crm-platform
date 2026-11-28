@@ -352,6 +352,15 @@ const handler = async (event: RoutePayload<unknown>) => {
         if (!result.ok) return failure(result.refusal.code, persianAccountingMessage(result.refusal.code));
         return { success: true, observation: { ...source, report, ...result.value } };
       }
+      if (report === 'PROFORMAS' && adapter.value.listCustomerProformas) {
+        if (typeof body.count !== 'number' || !Number.isSafeInteger(body.count) || body.count < 1 || body.count > 100) {
+          return failure('INVALID_INPUT', persianAccountingMessage('INVALID_INPUT'));
+        }
+        const result = await adapter.value.listCustomerProformas(externalPartyId, body.count);
+        if (!result.ok) return failure(result.refusal.code, persianAccountingMessage(result.refusal.code));
+        return { success: true, observation: { ...source, report, customerExternalId: externalPartyId,
+          count: body.count, rows: result.value } };
+      }
       if (report === 'CARDEX' && adapter.value.readCustomerLedger) {
         const from = readString(body.from), to = readString(body.to);
         const result = await adapter.value.readCustomerLedger(externalPartyId, from, to);
