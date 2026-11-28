@@ -1,0 +1,40 @@
+# CRM-129 / Goal 038 — G0 execution and architect handoff
+Date: 2026-11-28
+Branch: feat/crm-129-quotation
+User approved G0 execution and durable recovery. First live vendor is Asan. No new table design, no new UI route, no money-domain rewrite, no Intranet, no real vendor writes.
+Product version: candidate quotation@0.1.88. Running Dev last reported 0.1.86, accepted table UI.
+Current status: SOURCE_PARTIAL / BUILD_AND_RUNTIME_NOT_RUN. This is NOT G0 PASS.
+
+## Recover in a new chat
+1. Fetch actual branch head, compare current candidate and evidence history. Read docs/architecture/CRM-ARCHITECT-RECOVERY.md, this file, [source audit 087](CRM-129-ASAN-REAL-CONNECTION-AUDIT-087.md), [wire contract](ASAN-DOMAIN-AND-WIRE-CONTRACT.md). Do not rely on chat memory. The older Goal 036 checkpoint is historical.
+2. Read actual Asan adapter, tests and Nest dispatch/authority. Review diff and latest build/verification evidence. If evidence is missing or a check NOT_RUN, do not assert PASS.
+3. Resume first unclosed G0 gate below. Preserve accepted 084/086 functionality, user approval of native Twenty UI, canonical authority, and prior residual tests. No duplicated implementation or blind retry.
+4. Architect directly owns source corrections; Cursor builds/deploys/tests exact committed candidates in Dev; user owns final UI UAT. No background promises. Do not enable outbound or connect to real Asan without explicit G1/G2 approval.
+5. At each completed gate append exact SHA, version, commands/evidence, blockers, next allowed step; update recovery header. Stop for architect review after verification; do not stop after an arbitrary subset of executable tests.
+
+## Ordered G0 plan (one goal, four work packages)
+| Package | Audit coverage | Source status | Acceptance / remaining work |
+|---|---|---|---|
+| G0-A domain and contracts | A01,A02,A11,A14,A16,A17 | PARTIAL | 47 routes and 17 models cataloged; read fields corrected; invalid identity/tier rows fail dataset. Complete canonical observation profiles and actual typed operations, exact numeric representation, deterministic version markers, explicit capabilities by documented/implemented/enabled/verified and Nest/app parity; real-schema fixture coverage. Preserve source-only financial fields and restricted balances. No new schema by assumption. |
+| G0-B customer and catalog synchronization | A04–A07,A15 | PARTIAL | product create/update requires positive result and exact readback; edit preserves two price tiers, zero positions; customer create preflight and unique readback; replacement update preserves account nature and all known string fields, refuses incomplete profile. Remaining product create preflight semantics, customer create full field/readback and conflict proof, exact remote identity/version checks, persistent links and transactional rollback/stale/deleted-mapping/cross-connection evidence. No silent deletion or source overwrite. |
+| G0-C financial/document contract | A08–A10,A13 | PARTIAL | discount double subtraction repaired with gross line when separate discount; live Asan wire payable checked against sealed CRM total; invalid codes/rows and mismatched amounts refused, no tax-policy fallback for live Asan; caller reconciliation assertion no longer authorizes live replay. Remaining independent monetary fixture matrix, exact currency and special row/store/customer/product preflight, full document readback/reconciliation and uncertainty recovery, vendor-neutral mapper interface and versioned authority; live units and actual behavior belong to G1/G2. |
+| G0-D security & certification | A03,A12,A14,A15,A19 | PARTIAL | adapter probe shape/redirect fixed; uncertain failed live operations go to manual review, no blind retry. Remaining single approved transport including Nest/LF DNS pinning, token scope, credential rotation, binding dataset identity and retirement/inflight interlock, permission and workspace isolation, real PostgreSQL rollback, upgrade/fresh installation and full tests. |
+
+A18 global filters and large UI proof scheduled G3, A20 final quotation/communication certification G3; neither is closed by G0. Goal 023 ACTIVE. Future vendor adapters must conform to versioned common interface without pretending Asan's wire fields are universal.
+
+## Actual source commits
+- ef222ed33a95c5583e073be8c1bd37801f9e9314 — 0.1.87 domain inventory and inbound customer field, stock, health probe and redirect corrections.
+- 0097afb58385ad969c7fa184f4c5d329358f09c3 — product write/readback, customer lookup/preflight/replacement/readback, strict integer responses, exact tier positions, discount line correction, dataset completeness and focused fixtures.
+- d89134a94efcac3308eee200166a93019dedad7a — live Asan payable verification, distinct special code and row checks, no browser-only reconciliation or blind live retry, no invalid tier shifting.
+- Final checkpoint commit bumps candidate to 0.1.88. No source changes to UI/native table or Money Domain. No real external requests executed by architect. Local bridge list_projects failed internally; build, typecheck and test execution NOT_RUN.
+
+## Immediate execution verification (single Cursor assignment)
+Pull exact final checkpoint SHA. Read this document and audit 087. Build/test this source candidate before any Dev deployment: focused Asan HTTP, mapping, wire contract and all dependent accounting tests; typecheck, full relevant Vitest/Jest, production build front/server/worker/app. Existing and fresh Dev application sync and idempotent reapply. All tests use isolated mocks/real-schema controlled HTTP fixture, not real Asan or live vendor credentials. A fixture may be extended independently of production sources to execute required cases; do not alter product or weaken tests. Use actual HTTP response names and numeric types from PDF. Required evidence:
+- Response shape/aliases, Code/PersonCode conflict, malformed/empty/zero/fractional write results, invalid price slots, explicit zero, large unsafe IDs, complete dataset failure, exact product pre-read/readback, no false success.
+- Customer create lookup no match, ambiguous match, unique assigned readback, no-code case; replacement full field preservation (including blank, gender), incomplete record refused before POST; actual product/customer write ambiguity and blocked repeat (no second request).
+- One mixed discount/tax/duty case, no discount, no special code, mismatched sealed total, rounding mismatch, wrong special ID, numeric limits, exact conversion RIAL/TOMAN, unchanged Mock and 084/086 regressions. Test actual dispatcher not only helper. Do not claim full live G0 completion even if these tests pass.
+- Run other executable A01–A19 tests and report each immutable audit ID as PASS scoped, FAIL, or NOT_RUN with precise evidence. A P0 may only close after all required implementation and relevant proof; explicitly record outstanding source gaps. Do not run G1 or G2. No permission bypass, hot patches, destructive resets, screenshots or Intranet changes.
+- Evidence docs/architecture/goal-038/verification-088/ with candidate SHA, installed version, logs, test counts, independent fixture inputs and sanitized outputs, precise failures and not-run gates. Push evidence full commit SHA. STOP_FOR_ARCHITECT. If build fails, return actual first errors and all feasible preflight evidence, not an invented PASS.
+
+## Remaining architect work
+Source candidate addresses concrete hazards but does not complete G0. A11/A12/A13/A15/A16/A17/A19 and parts of A04–A10/A14 remain open. Complete them before real read-only G1 authorization. G1 is named Dev installation, safe transport, read-only operation-by-effect; G2 isolated vendor write with explicit user approval and accountant proof; G3 operator UAT and separate release approval. Actual endpoint and credentials not supplied. Do not broaden scope to receipts/payments/sale invoices or future vendors.

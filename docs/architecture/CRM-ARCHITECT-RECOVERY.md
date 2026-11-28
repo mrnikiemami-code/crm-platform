@@ -1,5 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 038 G0 execution / 0.1.88 SOURCE_PARTIAL (2026-11-28)
+
+User approved execution and durable recovery. Read [G0 ordered execution and recovery](./goal-038/CRM-129-GOAL-038-G0-EXECUTION-AND-RECOVERY.md) FIRST; audit 087 and wire contract are binding. Direct source repairs for write/readback, customer replacement preservation, price tiers, double discount, sealed payable and fail-closed live retry are committed. Last running Dev reported 0.1.86; candidate 0.1.88 is NOT built, deployed or accepted. G0-A/B/C/D all PARTIAL; exact remaining audit IDs and Cursor verification instructions in linked recovery. Local bridge unavailable. No live vendor traffic, no Intranet, no outbound flags changed. Next: verify exact candidate with Cursor and independently audit evidence; complete open P0 source gates before G1 read-only authorization. Goal 023 ACTIVE. Older headings below are historical, not instructions to revert.
+
+
 ## CURRENT — Goal 038 Asan-first domain audit / 0.1.87 SOURCE ONLY (2026-11-28)
 
 User accepted native accounting table UX 0.1.86. First real integration is Asan, with the original 32-page PDF as vendor wire authority. See [domain and wire contract](./goal-038/ASAN-DOMAIN-AND-WIRE-CONTRACT.md) and [audit and sequential gates](./goal-038/CRM-129-ASAN-REAL-CONNECTION-AUDIT-087.md). 087 source fixes customer response names, stock and adapter probe shape/redirect handling; complete route/field inventory and tests added. Other P0 gates OPEN (write response/readback, full customer update, price tiers, money/discount/tax/rounding, capability parity, transport, reconciliation, isolation). No runtime validation, no live calls, no outbound activation, no Intranet. Goal 023 remains ACTIVE. Next: G0 source remediation and isolated verification before user-authorized read-only G1.

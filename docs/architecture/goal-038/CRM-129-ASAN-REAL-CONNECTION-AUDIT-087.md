@@ -39,3 +39,6 @@ Future vendors: adapter-specific guide and fixture, declared capabilities, exact
 
 ## Architect posture
 No install or live writes authorized in this commit. Candidate 087 fixes A01–A03 source subsets only; other open P0 items require implementation and real evidence. 086 table UAT accepted for appearance, not unrestricted certification. Goal 023 remains ACTIVE. First next execution is G0; do not start live connection until P0 closure and read-only authorization. Do not silently activate an unsupported feature.
+
+## 088 execution checkpoint
+See [G0 execution and recovery](CRM-129-GOAL-038-G0-EXECUTION-AND-RECOVERY.md) for actual source commits, four work packages and remaining gates. No full P0 closure or runtime proof yet.
