@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 040 round 2 architect source checkpoint (2026-11-28)
+
+Architect lane `feat/crm129-g040-final-finance-security` handoff `fe4c7dab5931df1a928252eaaa4279efd28cc5fe`, source/test tip `322e2cc4b35c063ef5ff9783d089ba6c307fb0fd` (15 commits, 12 files). [Checkpoint](https://github.com/mrnikiemami-code/crm-platform/blob/fe4c7dab5931df1a928252eaaa4279efd28cc5fe/docs/architecture/goal-040/ROUND2-ARCHITECT-CHECKPOINT.md). Cursor remote still common base `120c4d8fb6f034ffa1f65f16b39f0af90c3a43be` at check time; local progress unknown. Source: explicit primary unit equivalence checks, exact destination resolution and paged defaults, admin-attested read scope, authorized bounded read-only reconciliation with no fiscal confirmation/replay, targeted fixtures. Shared seams documented (application variables and query pagination, dispatch). Remaining U03 outbound customer/link, F06 atomic ledger and reconciliation persistence, F07 durable dataset authority, U05 field/route closure. Local bridge failed; runtime NOT_RUN. No Dev, vendor request, version bump or merge. Resume on architect lane, not Cursor. G1/G2 NOT_AUTHORIZED.
+
 ## CURRENT — Goal 040 round 2 parallel closure START (2026-11-28)
 
 User authorized second parallel split after merge. [Binding round 2 charter](goal-040/PARALLEL-CLOSURE-ROUND-2.md). Product baseline `e906c3816be4f94d9bf8d134ef65df774040b1c1`. Architect lane `feat/crm129-g040-final-finance-security` owns F06/F07/U03/U05 outbound/security/reconciliation; Cursor lane `feat/crm129-g040-final-commercial-catalog` owns U04 and residual U01/U02/P05 commercial/price/unit/catalog with targeted local verification. Shared seams converge centrally; no branch cross-writes, no deployment/real vendor/version bump. Prior source partial gates remain; neither lane has started implementation yet. One final integrated phase 3 after source completion. G1/G2 NOT_AUTHORIZED.
