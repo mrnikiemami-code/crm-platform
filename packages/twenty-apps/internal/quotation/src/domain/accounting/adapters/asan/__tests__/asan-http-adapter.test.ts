@@ -4,6 +4,7 @@ import {
   AsanHttpAdapter,
   type AsanFetch,
   readBoundedResponseText,
+  parseParty,
 } from 'src/domain/accounting/adapters/asan/asan-http-adapter';
 
 type Call = {
@@ -105,6 +106,38 @@ describe('asan health check', () => {
   });
 });
 
+describe('guide 32-page response contract', () => {
+  it('reads CustomerServiceViewModel output fields rather than write input names', async () => {
+    const raw = { Code: 801001, FullName: 'شرکت آزمون', Parent: 801,
+      NationalCode: '0012345678', Mobile: '09120000000', EconomicCode: '00120003',
+      Address: 'تهران', Tellephone: '02111111111', Tellephone2: '02122222222',
+      Fax: '02133333333', PostalCode: '0012345678', AccountGroup: 'الف',
+      Gender: 0, GenderTitle: 'ماهیت حساب', SettlementDays: 15 };
+    const result = await adapter({}, fakeFetch({ text: JSON.stringify([raw]) }).fetchImpl).listParties();
+    expect(result).toMatchObject({ ok: true, value: [{
+      externalPartyId: '801001', code: '801001', fullName: raw.FullName,
+      nationalCode: raw.NationalCode, mobile: raw.Mobile, economicCode: raw.EconomicCode,
+      address: raw.Address, firstPhone: raw.Tellephone, secondPhone: raw.Tellephone2,
+      fax: raw.Fax, postalCode: raw.PostalCode, accountGroup: raw.AccountGroup, settlementDays: 15,
+    }] });
+    expect(parseParty(raw)?.partyType).toBeUndefined();
+    expect(parseParty({ ...raw, PersonCode: 801002 })).toBeNull();
+    expect(parseParty({ PersonCode: 801001, PersonFullName: 'قدیمی' })?.fullName).toBe('قدیمی');
+  });
+  it('reads documented TotalCount, including zero, without replacing it by a legacy alias', async () => {
+    const result = await adapter({}, fakeFetch({ text: JSON.stringify([
+      { ProductCode: 101, ProductName: 'کالا', TotalCount: 0, Stock: 99, SellPrice: 1000 },
+      { ProductCode: 102, ProductName: 'کالا', TotalCount: 12.5 },
+    ]) }).fetchImpl).listItems();
+    expect(result).toMatchObject({ ok: true, value: [{ stock: 0 }, { stock: 12.5 }] });
+  });
+  it('does not mark an HTTP 200 HTML page or malformed product body reachable', async () => {
+    for (const body of ['<html>Login</html>', '{}', '[{"ProductCode":0}]']) {
+      expect(await adapter({}, fakeFetch({ text: body }).fetchImpl).testConnection())
+        .toMatchObject({ ok: true, value: { kind: 'UNREACHABLE', code: 'INVALID_RESPONSE' } });
+    }
+  });
+});
 describe('asan product read', () => {
   it('maps the documented product array and derives a stable version marker', async () => {
     const text = JSON.stringify([

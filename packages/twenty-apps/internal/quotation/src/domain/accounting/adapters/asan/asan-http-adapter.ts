@@ -47,6 +47,7 @@ export type AsanFetch = (
     headers: Record<string, string>;
     body?: string;
     signal?: AbortSignal;
+    redirect?: 'error';
   },
 ) => Promise<AsanFetchResponse>;
 
@@ -190,7 +191,8 @@ const readNumber = (value: unknown): number | null => {
   }
 
   if (typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value.trim())) {
-    return Number(value);
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
   }
 
   return null;
@@ -240,7 +242,7 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
 
   const code = readNumber(record.ProductCode);
 
-  if (code === null || !Number.isInteger(code) || code <= 0) {
+  if (code === null || !Number.isSafeInteger(code) || code <= 0) {
     return null;
   }
 
@@ -255,7 +257,8 @@ const parseProduct = (raw: unknown): RemoteCatalogItem | null => {
     secondaryName: readString(record.ProductName2) || null,
     sellPriceUnits: readNumber(record.SellPrice),
     salesPriceUnits: salesPrices,
-    stock: readNumber(record.Stock) ?? readNumber(record.Quantity),
+    // Products.TotalCount is the documented aggregate stock (p.26).
+    stock: readNumber(record.TotalCount) ?? (record.TotalCount === undefined ? readNumber(record.Stock) ?? readNumber(record.Quantity) : null),
     remoteVersion: hashRecord(record),
     isActive: true,
   };
@@ -268,24 +271,34 @@ export const parseParty = (raw: unknown): RemoteParty | null => {
     return null;
   }
 
-  const rawCode = record.PersonCode;
-  const code = typeof rawCode === 'string' ? rawCode.trim() :
-    typeof rawCode === 'number' && Number.isSafeInteger(rawCode) ? String(rawCode) : '';
+  // CustomerServiceViewModel (guide p.29) is NOT CustomerViewModel
+  // (write input p.24). Prefer the documented read schema; compatibility
+  // aliases are only used when the read field is absent. A conflicting code
+  // cannot identify a CRM customer safely.
+  const codeOf = (value: unknown): string =>
+    typeof value === 'string' ? value.trim() :
+      typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : '';
+  const code = codeOf(record.Code === undefined ? record.PersonCode : record.Code);
   if (!/^\d+$/.test(code) || /^0+$/.test(code)) return null;
-  const national = readString(record.PersonNationalCode) || null;
+  if (record.Code !== undefined && record.PersonCode !== undefined && codeOf(record.PersonCode) !== code) return null;
+  const field = (read: string, legacy: string): string | null =>
+    readString(record[read] === undefined ? record[legacy] : record[read]) || null;
+  const national = field('NationalCode', 'PersonNationalCode');
+  const settlementDays = readNumber(record.SettlementDays);
   return {
     externalPartyId: code, code,
-    fullName: readString(record.PersonFullName),
-    mobile: readString(record.PersonMobile) || null,
+    fullName: field('FullName', 'PersonFullName') ?? '',
+    mobile: field('Mobile', 'PersonMobile'),
     nationalCode: national,
     ...(national !== null && /^\d{11}$/.test(national) ? { legalNationalId: national } : {}),
-    economicCode: readString(record.PersonEcoCode) || null,
-    address: readString(record.PersonAddress) || null,
-    firstPhone: readString(record.PersonFirstTell) || null,
-    secondPhone: readString(record.PersonSecoundTell) || null,
-    fax: readString(record.PersonFax) || null,
-    postalCode: readString(record.PersonPostalCode) || null,
-    accountGroup: readString(record.PersonAccountGroup) || null,
+    economicCode: field('EconomicCode', 'PersonEcoCode'),
+    address: field('Address', 'PersonAddress'),
+    firstPhone: field('Tellephone', 'PersonFirstTell'),
+    secondPhone: field('Tellephone2', 'PersonSecoundTell'),
+    fax: field('Fax', 'PersonFax'),
+    postalCode: field('PostalCode', 'PersonPostalCode'),
+    accountGroup: field('AccountGroup', 'PersonAccountGroup'),
+    ...(settlementDays !== null && Number.isInteger(settlementDays) && settlementDays >= 0 && settlementDays <= 255 ? { settlementDays } : {}),
     // PersonGender describes account nature, not legal person type.
     remoteVersion: 'party-v2:' + hashRecord(record),
   };
@@ -367,6 +380,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
         {
           method,
           headers,
+          redirect: 'error',
           ...(body === undefined ? {} : { body: JSON.stringify(body) }),
           signal: AbortSignal.timeout(
             this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -487,6 +501,19 @@ export class AsanHttpAdapter implements AccountingAdapter {
         transportIsSecure: this.transportIsSecure(),
         code: 'INVALID_RESPONSE',
         detail: `the vendor answered HTTP ${result.value.status} for the documented read`,
+      });
+    }
+
+    const parsed = this.parseJson(result.value.text);
+    const records = parsed.ok ? extractArray(parsed.value, ['data', 'products', 'Products']) : null;
+    if (records === null || records.some((record) => parseProduct(record) === null)) {
+      return accepted({
+        kind: 'UNREACHABLE',
+        checkedAt,
+        latencyMs: result.value.latencyMs,
+        transportIsSecure: this.transportIsSecure(),
+        code: 'INVALID_RESPONSE',
+        detail: 'the vendor did not return the expected Products list',
       });
     }
 
