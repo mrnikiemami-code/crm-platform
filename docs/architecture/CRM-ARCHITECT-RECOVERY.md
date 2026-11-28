@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 038 independent 090 review / security repair 091 (2026-11-28)
+## CURRENT — Goal 039 offline end-to-end acceptance (2026-11-28)
+
+User approved continuing without available Asan API. [Goal 039 execution](./goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md) is the next allowed independent work: final 091 security verification and actual CRM/Mock quotation-to-accounting/communication UAT. Product candidate 0.1.91 source checkpoint 568539924fa468dc3fdd6655f287f7df2fbdd924; last verified Dev 0.1.90. Goal 038 G0 remains partial; G1/G2 suspended, NOT AUTHORIZED, all live import/write gates remain disabled. Goal 023 ACTIVE. No Intranet or actual vendor traffic. Do not claim Goal 039 executed merely from this planning commit.
+
+## PRIOR — Goal 038 independent 090 review / security repair 091 (2026-11-28)
 
 Candidate quotation@0.1.91, SOURCE_ONLY / BUILD_AND_RUNTIME_NOT_RUN. 090 scoped runtime verification independently inspected; both existing and genuine private fresh install 0.1.90 accepted. See [checkpoint 091](./goal-038/CRM-129-GOAL-038-G0-REVIEW-091.md). Two direct fixes: remove fixed fixture credentials from current evidence scripts (old history remains, Dev rotation/revocation required), and bind live snapshot access to current read-authorization generation. G0 remains PARTIAL; G1/G2 NOT AUTHORIZED, Goal 023 ACTIVE. No live Asan or Intranet. Last verified Dev 0.1.90. Do not misrepresent 091 tests/deploy as executed.
 

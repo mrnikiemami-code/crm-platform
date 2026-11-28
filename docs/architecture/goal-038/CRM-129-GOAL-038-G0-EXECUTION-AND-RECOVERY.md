@@ -4,6 +4,9 @@ Branch: feat/crm-129-quotation
 User approved G0 execution and durable recovery. First live vendor is Asan. No new table design, no new UI route, no money-domain rewrite, no Intranet, no real vendor writes.
 Product version: candidate quotation@0.1.91 (checkpoint HEAD). Status SOURCE_ONLY / BUILD_AND_RUNTIME_NOT_RUN. Last verified Dev and genuine fresh install 0.1.90, scoped evidence [verification-090](verification-090/). Read [review and security checkpoint 091](CRM-129-GOAL-038-G0-REVIEW-091.md) first; supersedes older checkpoint and verification instructions. G0 remains PARTIAL, G1/G2 NOT AUTHORIZED.
 
+## API-unavailable transition (2026-11-28)
+User approved moving on with independent CRM development. See [Goal 039](../goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md) for exact residual disposition and next executable offline acceptance. G0 remains partial; no live-read or write authorization. Resume actual G1/G2 only with available API and separate approval after required source/security gates.
+
 ## Recover in a new chat
 1. Fetch actual branch head, compare current candidate and evidence history. Read docs/architecture/CRM-ARCHITECT-RECOVERY.md, this file, [source audit 087](CRM-129-ASAN-REAL-CONNECTION-AUDIT-087.md), [wire contract](ASAN-DOMAIN-AND-WIRE-CONTRACT.md). Do not rely on chat memory. The older Goal 036 checkpoint is historical.
 2. Read actual Asan adapter, tests and Nest dispatch/authority. Review diff and latest build/verification evidence. If evidence is missing or a check NOT_RUN, do not assert PASS.
