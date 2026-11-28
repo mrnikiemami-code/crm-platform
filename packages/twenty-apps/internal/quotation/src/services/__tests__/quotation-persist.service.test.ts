@@ -111,6 +111,8 @@ describe('quotation-persist.service', () => {
         name: 'کالای تست',
         sku: 'SKU-1',
         unit: 'عدد',
+        unitRecordId: 'unit-1',
+        secondaryName: null,
         description: null,
         isActive: true,
         defaultUnitPriceText: '1000',

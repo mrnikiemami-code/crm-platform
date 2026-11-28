@@ -16,8 +16,8 @@ export class QuotationUnitDestroyOnePreQueryHook implements WorkspacePreQueryHoo
   async execute(
     _authContext: WorkspaceAuthContext,
     _objectName: string,
-    _payload: DestroyOneResolverArgs<Record<string, unknown>>,
-  ): Promise<DestroyOneResolverArgs<Record<string, unknown>>> {
+    _payload: DestroyOneResolverArgs,
+  ): Promise<DestroyOneResolverArgs> {
     return this.writeGuardService.refuseWrite('destroyed');
   }
 }

@@ -21,7 +21,7 @@ const object = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const exactLong = (value: unknown): value is string => typeof value === 'string' &&
-  /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= 9223372036854775807n;
+  /^[1-9]\d{0,18}$/.test(value) && BigInt(value) <= BigInt('9223372036854775807');
 const dateMs = (value: unknown): number | null => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const ms = Date.parse(value + 'T00:00:00.000Z');

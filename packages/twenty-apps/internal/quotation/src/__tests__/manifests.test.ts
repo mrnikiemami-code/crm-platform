@@ -51,6 +51,10 @@ const allManifests: { name: string; manifest: Manifest }[] = [
     name: 'accountingSyncOperation',
     manifest: accountingSyncOperation as Manifest,
   },
+  { name: 'quotationCurrency', manifest: quotationCurrency as Manifest },
+  { name: 'quotationUnit', manifest: quotationUnit as Manifest },
+  { name: 'roundingRule', manifest: roundingRule as Manifest },
+  { name: 'taxPolicy', manifest: taxPolicy as Manifest },
 ];
 
 describe('object manifests', () => {
@@ -58,7 +62,6 @@ describe('object manifests', () => {
     type Field = { name: string; type?: string; isUnique?: boolean; isNullable?: boolean; defaultValue?: unknown };
     const fields: Field[] = [
       ...allManifests.flatMap(({ manifest }) => manifest.config.fields ?? []),
-      ...[quotationCurrency, quotationUnit, roundingRule, taxPolicy].flatMap((manifest) => (manifest.config.fields ?? []) as Field[]),
       ...[companyEconomicCode, companyNationalCode, personEconomicCode, personNationalCode].map((manifest) => manifest.config as Field),
     ];
     const unique = fields.filter((field) => field.type === 'TEXT' && field.isUnique === true);

@@ -21,7 +21,14 @@ import { parseRoundingStepRialsText } from 'src/modules/quotation/utils/parse-ro
 import { acquireRoundingRuleExclusiveLock } from 'src/modules/quotation/utils/quotation-rounding-rule-lock.util';
 import { toPersianDigits } from 'src/modules/quotation/utils/quotation-numbering.util';
 
-const SEED_STEPS = [10n, 100n, 1000n, 10000n, 100000n, 1000000n] as const;
+const SEED_STEPS = [
+  BigInt(10),
+  BigInt(100),
+  BigInt(1000),
+  BigInt(10000),
+  BigInt(100000),
+  BigInt(1000000),
+] as const;
 
 const RULE_COLUMNS = {
   id: true,

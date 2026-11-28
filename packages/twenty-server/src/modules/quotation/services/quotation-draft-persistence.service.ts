@@ -841,7 +841,9 @@ export class QuotationDraftPersistenceService {
       // Exact string normalization is only padding/leading zero removal.
       const normalize = (value: string) => {
         const m = /^(\\d+)(?:\\.(\\d{1,6}))?$/.exec(value.trim());
-        return m ? BigInt(m[1]) * 1000000n + BigInt((m[2] ?? '').padEnd(6, '0')) : null;
+        return m
+          ? BigInt(m[1]) * BigInt(1000000) + BigInt((m[2] ?? '').padEnd(6, '0'))
+          : null;
       };
       const amount = normalize(chosen.unitPriceExact);
       if (amount === null || amount !== normalize(line.unitPriceExact)) return refuse();

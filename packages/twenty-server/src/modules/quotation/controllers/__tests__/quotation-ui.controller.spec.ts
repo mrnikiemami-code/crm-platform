@@ -84,6 +84,11 @@ const buildController = ({
     deleteRule: jest.fn(async () => ({ kind: 'OK', rules: [], message: '' })),
   };
 
+  const quotationUnitAuthorityService = {
+    resolveAuthority: jest.fn(async () => authority),
+    listUnits: jest.fn(async () => ({ kind: 'OK', units: [], message: '' })),
+  };
+
   const controller = new QuotationUiController(
     { toPersianFailure: jest.fn(() => ({ success: false, code: 'PERSISTENCE_FAILED' })) } as never,
     {} as never,
@@ -93,6 +98,7 @@ const buildController = ({
     taxPolicyAuthorityService as never,
     roundingRuleAuthorityService as never,
     quotationCurrencyAuthorityService as never,
+    quotationUnitAuthorityService as never,
     { resolveSettingsAuthority: jest.fn(async () => authority) } as never,
     {} as never,
     {} as never,

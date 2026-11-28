@@ -13,7 +13,12 @@ describe('customer outbound identity and receipt', () => {
     const adapter = new MockAccountingAdapter({ parties: [] });
     expect(await previewPartyPush(adapter, command)).toMatchObject({ ok: true });
     const created = await executePartyPush(adapter, command, true);
-    expect(created).toMatchObject({ ok: true, value: { externalPartyId: expect.stringMatching(/^\\d+$/), remoteVersion: expect.any(String) } });
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      return;
+    }
+    expect(created.value.externalPartyId).toMatch(/^\d+$/);
+    expect(created.value.remoteVersion).toEqual(expect.any(String));
     expect(await executePartyPush(adapter, command, true)).toMatchObject({ ok: false, refusal: { code: 'ASAN_CUSTOMER_ALREADY_EXISTS' } });
   });
   it('never calls a disabled or live adapter write', async () => {

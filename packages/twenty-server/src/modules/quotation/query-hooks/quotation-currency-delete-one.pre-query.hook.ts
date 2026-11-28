@@ -16,8 +16,8 @@ export class QuotationCurrencyDeleteOnePreQueryHook implements WorkspacePreQuery
   async execute(
     _authContext: WorkspaceAuthContext,
     _objectName: string,
-    _payload: DeleteOneResolverArgs<Record<string, unknown>>,
-  ): Promise<DeleteOneResolverArgs<Record<string, unknown>>> {
+    _payload: DeleteOneResolverArgs,
+  ): Promise<DeleteOneResolverArgs> {
     return this.writeGuardService.refuseWrite('deleted');
   }
 }

@@ -16,8 +16,8 @@ export class QuotationCurrencyRestoreOnePreQueryHook implements WorkspacePreQuer
   async execute(
     _authContext: WorkspaceAuthContext,
     _objectName: string,
-    _payload: RestoreOneResolverArgs<Record<string, unknown>>,
-  ): Promise<RestoreOneResolverArgs<Record<string, unknown>>> {
+    _payload: RestoreOneResolverArgs,
+  ): Promise<RestoreOneResolverArgs> {
     return this.writeGuardService.refuseWrite('restored');
   }
 }

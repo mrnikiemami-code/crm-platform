@@ -184,7 +184,7 @@ export const QuotationUnitSettingsSection = ({
 
   return (
     <div dir="rtl" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <motionless-toolbar
+      <MotionlessToolbar
         busy={busy}
         onReload={() => void load()}
         onCreate={() => setEditor(emptyEditor())}
@@ -293,7 +293,7 @@ export const QuotationUnitSettingsSection = ({
   );
 };
 
-const motionlessToolbar = ({
+const MotionlessToolbar = ({
   busy,
   onReload,
   onCreate,
