@@ -24,12 +24,14 @@ const row = (overrides: Record<string, unknown> = {}) => ({
 
 type Repository = {
   find: jest.Mock;
+  findOne: jest.Mock;
   insert: jest.Mock;
   update: jest.Mock;
 };
 
 const buildRepository = (): Repository => ({
   find: jest.fn(async () => []),
+  findOne: jest.fn(async () => ({ id: 'unit-1', accountingCodeLocked: false })),
   insert: jest.fn(async () => ({ identifiers: [{ id: 'unit-new' }] })),
   update: jest.fn(async () => ({ affected: 1 })),
 });
@@ -124,11 +126,12 @@ describe('QuotationUnitAuthorityService', () => {
     });
   });
 
-  it('refuses accounting code edits once a catalog item references the unit', async () => {
+  it('refuses accounting code edits after durable first use even without catalog references', async () => {
     const repository = buildRepository();
     const catalogItems = buildRepository();
     repository.find.mockResolvedValue([row()]);
-    catalogItems.find.mockResolvedValue([{ id: 'item-1', unitRecordId: 'unit-1' }]);
+    repository.findOne.mockResolvedValue({ id: 'unit-1', accountingCodeLocked: true });
+    catalogItems.find.mockResolvedValue([]);
     const { service } = buildService({ repository, catalogItems });
 
     const outcome = await service.saveUnit(
