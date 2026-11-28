@@ -6,6 +6,7 @@ import { LogicFunctionExecutionStatus } from 'src/engine/metadata-modules/logic-
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { AccountingItemApplyService, parseAccountingItemSelections } from 'src/modules/quotation/services/accounting-item-apply.service';
+import { AccountingCustomerFinanceService, parseCustomerFinanceRequest } from 'src/modules/quotation/services/accounting-customer-finance.service';
 import { AccountingPartyOutboundService, parsePartyOutboundRequest } from 'src/modules/quotation/services/accounting-party-outbound.service';
 import { AccountingPartyApplyService, parseAccountingPartySelections } from 'src/modules/quotation/services/accounting-party-apply.service';
 import { QuotationPermissionService } from 'src/modules/quotation/services/quotation-permission.service';
@@ -28,6 +29,7 @@ const OPERATIONS = {
   'accounting-import-apply-items': { function: 'import', action: 'apply-items' },
   'accounting-import-preview-parties': { function: 'import', action: 'preview-parties' },
   'accounting-import-apply-parties': { function: 'import', action: 'apply-parties' },
+  'accounting-outbound-customer-finance': { function: 'outbound', action: 'customer-finance' },
   'accounting-outbound-preview-party-push': { function: 'outbound', action: 'preview-party-push' },
   'accounting-outbound-execute-party-push': { function: 'outbound', action: 'execute-party-push' },
   'accounting-outbound-operations': { function: 'outbound', action: 'operations' },
@@ -72,6 +74,7 @@ export class AccountingOperationDispatchService {
     private readonly partyApply: AccountingPartyApplyService,
     private readonly itemApply: AccountingItemApplyService,
     private readonly partyOutbound: AccountingPartyOutboundService,
+    private readonly customerFinance: AccountingCustomerFinanceService,
   ) {}
 
   async dispatch(
@@ -106,11 +109,14 @@ export class AccountingOperationDispatchService {
 
     // A customer write must always have a real workspace user. API keys and
     // unattended app tokens have no delegated CRM authority.
-    if (['apply-parties', 'apply-items', 'reconcile-quotation', 'preview-party-push', 'execute-party-push'].includes(operation.action) && authContext.type !== 'user') {
+    if (['apply-parties', 'apply-items', 'reconcile-quotation', 'preview-party-push', 'execute-party-push', 'customer-finance'].includes(operation.action) && authContext.type !== 'user') {
       return forbidden();
     }
 
     if (operation.action === 'reconcile-quotation' && !readText(input.operationId)) return invalid();
+    const isCustomerFinance = operation.action === 'customer-finance';
+    const financeRequest = isCustomerFinance ? parseCustomerFinanceRequest(input) : null;
+    if (isCustomerFinance && !financeRequest) return invalid();
     const isPartyOutbound = operation.action === 'preview-party-push' || operation.action === 'execute-party-push';
     const partyRequest = isPartyOutbound ? parsePartyOutboundRequest(input) : null;
     if (isPartyOutbound && !partyRequest) return invalid();
@@ -182,6 +188,22 @@ export class AccountingOperationDispatchService {
         app?.universalIdentifier !== QUOTATION_APPLICATION
       ) {
         return unavailable();
+      }
+
+      if (isCustomerFinance && financeRequest) {
+        return this.customerFinance.read(financeRequest, authContext, async command => {
+          const result = await this.executor.execute({
+            logicFunctionId: fn.id, workspaceId,
+            payload: {
+              body: { ...command, action: 'customer-finance' }, headers: {}, pathParameters: {},
+              queryStringParameters: {}, isBase64Encoded: false,
+              requestContext: { http: { method: 'POST', path: '/rest/quotation/actions' } },
+              userWorkspaceId: null,
+            },
+          });
+          const data = asRecord(result.data);
+          return result.status === LogicFunctionExecutionStatus.SUCCESS && !result.error && typeof data?.success === 'boolean' ? data : null;
+        });
       }
 
       if (isPartyOutbound && partyRequest) {
