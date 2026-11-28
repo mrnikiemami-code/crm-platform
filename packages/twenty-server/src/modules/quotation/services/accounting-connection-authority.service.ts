@@ -468,7 +468,7 @@ export class AccountingConnectionAuthorityService {
       const repository = scope.getRepository<WorkspaceAccountingConnectionRow>('accountingConnection', { shouldBypassPermissionChecks: true });
       const row = await repository.findOne({ where: { id: input.recordId }, select: CONNECTION_COLUMNS });
       if (!row || row.adapterId !== 'asan' || row.isActive !== true ||
-          readText(row.baseUrl).replace(/\\/+$/, '') !== input.expectedBaseUrl.replace(/\\/+$/, '') ||
+          readText(row.baseUrl).replace(/\/+$/, '') !== input.expectedBaseUrl.replace(/\/+$/, '') ||
           readText(row.remoteUserId) !== input.expectedRemoteUserId) return refused('ACCOUNTING_CONNECTION_CHANGED', 'مقصد یا کاربر اتصال تغییر کرده است.');
       const bound = readText(row.datasetBindingId);
       if (bound && bound !== input.datasetId) return refused('ACCOUNTING_DATASET_REBIND_REQUIRED', 'تغییر هویت مقصد مجاز نیست؛ اتصال جدید ایجاد کنید.');
