@@ -1512,6 +1512,13 @@ export const QuotationDraftForm = () => {
 
                 setSelectedPriceListId(nextId === '' ? null : nextId);
                 setSelectedPriceListName(match?.name ?? null);
+                if (nextId !== (selectedPriceListId ?? '')) {
+                  // Prices from a different list cannot be represented as selected-list facts.
+                  setLines(current => current.map(line => line.selectedPriceId ? {
+                    ...line, unitPriceText: '', selectedPriceListId: null, selectedPriceId: null,
+                    selectedPriceValidFrom: null, priceWarning: 'کالا را از فهرست قیمت جدید دوباره انتخاب کنید.',
+                  } : line));
+                }
               }}
             >
               {priceListOptions.length === 0 ? (
@@ -1743,6 +1750,10 @@ export const QuotationDraftForm = () => {
                       onValueChange={(unitPriceText) =>
                         updateLine(line.clientLineId, {
                           unitPriceText,
+                          // Explicit edit converts catalog-sourced amount to manual price.
+                          selectedPriceListId: null,
+                          selectedPriceId: null,
+                          selectedPriceValidFrom: null,
                           priceWarning: null,
                         })
                       }
