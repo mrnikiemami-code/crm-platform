@@ -217,10 +217,11 @@ export const mapRevisionToAsanFactor = (
       return discount;
     }
 
-    // `Price` is the whole line amount AFTER discount. Tax is excluded here because Asan
-    // takes tax as its own special-code line, so including it would double-charge the VAT.
+    // PDF pp.3-4: either net line price OR a separate discount row.
+    // When using the separate row, restore the discount into the product
+    // line so the vendor subtracts it once, not twice.
     const netOfTaxMicros = lineTotal.value - tax.value;
-    const price = convertToVendorUnits(netOfTaxMicros);
+    const price = convertToVendorUnits(netOfTaxMicros + (input.specialCodesInUse.discount ? discount.value : 0n));
 
     if (!price.ok) {
       return price;

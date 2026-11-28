@@ -8,6 +8,7 @@ import {
 } from 'src/domain/accounting/adapters/asan/asan-product';
 import {
   mapPartyToAsanCustomer,
+  type AsanCustomerInput,
 } from 'src/domain/accounting/adapters/asan/asan-customer';
 import {
   classifyAsanResponse,
@@ -24,7 +25,7 @@ import {
   type RemotePartyInput,
   type RemoteProformaInput,
 } from 'src/domain/accounting/adapter-contract';
-import { normalizeNationalCode, partyNationalIdentity } from 'src/domain/accounting/party-identity';
+import { normalizeIranMobile, normalizePartyName, partyNationalIdentity } from 'src/domain/accounting/party-identity';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 export type AsanFetchResponse = {
@@ -442,7 +443,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
     }
 
     if (typeof parsed.value === 'string') {
-      return Number(parsed.value);
+      return /^-?\d+$/.test(parsed.value.trim()) ? Number(parsed.value) : Number.NaN;
     }
 
     const record = asRecord(parsed.value);
@@ -561,17 +562,12 @@ export class AsanHttpAdapter implements AccountingAdapter {
     }
 
     const items: RemoteCatalogItem[] = [];
-
     for (const record of records) {
       const item = parseProduct(record);
-
-      // A row without a usable ProductCode cannot be linked to anything, so it is skipped
-      // instead of being given a fabricated identity.
-      if (item !== null) {
-        items.push(item);
-      }
+      if (item === null) return refused('ASAN_INCOMPLETE_DATASET', 'product list contains a row with an unusable identity');
+      items.push(item);
     }
-
+    // Duplicate codes are intentionally retained for the mapping planner to flag.
     return accepted(items);
   }
 
@@ -608,11 +604,36 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return refused('INVALID_RESPONSE', 'the customer list was not an array');
     }
 
-    return accepted(
-      records
-        .map(parseParty)
-        .filter((party): party is RemoteParty => party !== null),
-    );
+    const parties: RemoteParty[] = [];
+    for (const record of records) {
+      const party = parseParty(record);
+      if (party === null) return refused('ASAN_INCOMPLETE_DATASET', 'customer list contains a row with an unusable identity');
+      parties.push(party);
+    }
+    return accepted(parties);
+  }
+
+  // OneProductWithoutSerial is the documented single product read (p.15).
+  private async readProductByCode(code: number): Promise<Result<RemoteCatalogItem>> {
+    const result = await this.request({ path: ASAN_ENDPOINTS.oneProductWithoutSerial, method: 'GET', query: { ProductCode: String(code) } });
+    if (!result.ok) return result;
+    if (result.value.status < 200 || result.value.status >= 300) return refused('ASAN_READBACK_REQUIRED', 'product read did not return a successful HTTP response');
+    const parsed = this.parseJson(result.value.text);
+    if (!parsed.ok) return parsed;
+    const item = parseProduct(parsed.value);
+    return item !== null && item.externalItemId === String(code)
+      ? accepted(item) : refused('ASAN_READBACK_REQUIRED', 'product read did not return the requested identity');
+  }
+
+  private async confirmProductWrite(body: string, code: number, price: number, tiers: number[]): Promise<Result<RemoteCatalogItem>> {
+    const response = this.parseWriteCode(body);
+    if (!Number.isInteger(response) || response <= 0 || response > 2147483647) return refused('ASAN_WRITE_UNCONFIRMED', 'product write did not return a positive integer; reconcile before retry');
+    const observed = await this.readProductByCode(code);
+    if (!observed.ok || observed.value.sellPriceUnits !== price ||
+      tiers.some((tier, index) => observed.value.salesPriceUnits[index] !== tier)) {
+      return refused('ASAN_WRITE_UNCONFIRMED', 'product write could not be confirmed by exact price readback; reconcile before retry');
+    }
+    return observed;
   }
 
   async createItem(input: RemoteItemInput): Promise<Result<RemoteCatalogItem>> {
@@ -651,19 +672,10 @@ export class AsanHttpAdapter implements AccountingAdapter {
       );
     }
 
-    return accepted({
-      externalItemId: String(mapped.value.ProductCode),
-      code: String(mapped.value.ProductCode),
-      name: mapped.value.ProductName,
-      secondaryName: mapped.value.ProductName2 ?? null,
-      sellPriceUnits: mapped.value.SellPrice,
-      salesPriceUnits: mapped.value.SalesPrice ?? [],
-      stock: null,
-      // The create response is not documented as a record, so the version starts empty and
-      // the next read establishes it.
-      remoteVersion: '',
-      isActive: true,
-    });
+    const verified = await this.confirmProductWrite(result.value.text, mapped.value.ProductCode, mapped.value.SellPrice, mapped.value.SalesPrice ?? []);
+    if (!verified.ok) return verified;
+    return verified.value.name === mapped.value.ProductName
+      ? verified : refused('ASAN_WRITE_UNCONFIRMED', 'product identity/name readback differs; reconcile before retry');
   }
 
   async updateItemPrices(
@@ -675,12 +687,18 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return transport;
     }
 
+    const productCode = Number(input.externalItemId ?? input.code);
+    if (!Number.isSafeInteger(productCode) || productCode <= 0 || input.salesPriceUnits.length > 2) return refused('ASAN_PRICE_RANGE_INVALID', 'invalid product code or price tiers');
+    const current = await this.readProductByCode(productCode);
+    if (!current.ok) return current;
+    const tiers = [input.salesPriceUnits[0] ?? current.value.salesPriceUnits[0], input.salesPriceUnits[1] ?? current.value.salesPriceUnits[1]];
+    if (tiers.some((tier) => tier === undefined)) return refused('ASAN_PRICE_TIERS_REQUIRED', 'readback did not establish both price tiers');
     const mapped = mapItemPricesToAsanUpdate({
-      productCode: Number(input.externalItemId ?? input.code),
-      currentName: input.name,
-      currentSecondaryName: input.secondaryName,
+      productCode,
+      currentName: current.value.name,
+      currentSecondaryName: current.value.secondaryName,
       sellPrice: input.sellPriceUnits,
-      salesPrices: input.salesPriceUnits,
+      salesPrices: tiers as number[],
     });
 
     if (!mapped.ok) {
@@ -704,17 +722,40 @@ export class AsanHttpAdapter implements AccountingAdapter {
       );
     }
 
-    return accepted({
-      externalItemId: String(mapped.value.ProductCode),
-      code: String(mapped.value.ProductCode),
-      name: mapped.value.ProductName,
-      secondaryName: mapped.value.ProductName2 ?? null,
-      sellPriceUnits: mapped.value.SellPrice,
-      salesPriceUnits: mapped.value.SalesPrice ?? [],
-      stock: null,
-      remoteVersion: '',
-      isActive: true,
-    });
+    const verified = await this.confirmProductWrite(result.value.text, mapped.value.ProductCode, mapped.value.SellPrice, mapped.value.SalesPrice ?? []);
+    if (!verified.ok) return verified;
+    return verified.value.name === current.value.name && verified.value.secondaryName === current.value.secondaryName
+      ? verified : refused('ASAN_WRITE_UNCONFIRMED', 'product name changed during price update; reconcile before retry');
+  }
+
+  private async readPartyRecords(path: string, query: Record<string, string>): Promise<Result<Record<string, unknown>[]>> {
+    const result = await this.request({ path, method: 'GET', query });
+    if (!result.ok) return result;
+    if (result.value.status < 200 || result.value.status >= 300) return refused('ASAN_READBACK_REQUIRED', 'customer read was unsuccessful');
+    const parsed = this.parseJson(result.value.text);
+    if (!parsed.ok) return parsed;
+    const rows = extractArray(parsed.value, ['data', 'customers', 'Customers']);
+    if (rows === null) return refused('INVALID_RESPONSE', 'customer read did not return the documented list');
+    const records: Record<string, unknown>[] = [];
+    for (const row of rows) {
+      const record = asRecord(row);
+      if (record === null || parseParty(record) === null) return refused('ASAN_INCOMPLETE_DATASET', 'customer read includes an unusable identity');
+      records.push(record);
+    }
+    return accepted(records);
+  }
+
+  private async lookupPartyForCreate(input: RemotePartyInput): Promise<Result<RemoteParty[]>> {
+    const national = partyNationalIdentity(input);
+    const mobile = normalizeIranMobile(input.mobile);
+    if (national === null && mobile === null) return refused('ASAN_CUSTOMER_LOOKUP_REQUIRED', 'a valid national identifier or mobile is required to reconcile a generated customer code');
+    const records = national !== null
+      ? await this.readPartyRecords(ASAN_ENDPOINTS.customerByNationalCode, { NationalCode: national })
+      : await this.readPartyRecords(ASAN_ENDPOINTS.customerByMobile, { Mobile: input.mobile?.trim() ?? '' });
+    if (!records.ok) return records;
+    const parties = records.value.map(parseParty).filter((party): party is RemoteParty => party !== null);
+    if (parties.some((party) => national !== null ? partyNationalIdentity(party) !== national : normalizeIranMobile(party.mobile) !== mobile)) return refused('ASAN_READBACK_REQUIRED', 'customer lookup returned unrelated records');
+    return accepted(parties);
   }
 
   async createParty(input: RemotePartyInput): Promise<Result<RemoteParty>> {
@@ -746,6 +787,9 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return mapped;
     }
 
+    const before = await this.lookupPartyForCreate(input);
+    if (!before.ok) return before;
+    if (before.value.length !== 0) return refused('ASAN_CUSTOMER_ALREADY_EXISTS', 'customer lookup is not empty; link or review before creating');
     const result = await this.request({
       path: ASAN_ENDPOINTS.addCustomer,
       method: 'POST',
@@ -779,51 +823,12 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return refused('VENDOR_UNDOCUMENTED', classification.detail);
     }
 
-    // The documented create response is a result flag, never the assigned PersonCode. The
-    // lookup is best-effort: a customer created without a national code has no documented
-    // way back to its code, so the caller gets an empty id and must re-read in Asan instead
-    // of storing the flag "1" as an id.
-    const identity = partyNationalIdentity(input);
-    const assigned = identity === null ? null : await this.findPartyByNationalCode(identity);
-
-    return accepted({
-      externalPartyId: assigned?.externalPartyId ?? '',
-      code: assigned?.code ?? '',
-      fullName: input.fullName,
-      mobile: input.mobile,
-      nationalCode: input.nationalCode,
-      remoteVersion: assigned?.remoteVersion ?? '',
-    });
-  }
-
-  private async findPartyByNationalCode(
-    nationalCode: string,
-  ): Promise<RemoteParty | null> {
-    const result = await this.request({
-      path: ASAN_ENDPOINTS.customerByNationalCode,
-      method: 'GET',
-      query: { NationalCode: nationalCode },
-    });
-
-    if (!result.ok || result.value.status < 200 || result.value.status >= 300) {
-      return null;
+    const assigned = await this.lookupPartyForCreate(input);
+    if (!assigned.ok || assigned.value.length !== 1 ||
+      normalizePartyName(assigned.value[0].fullName) !== normalizePartyName(input.fullName)) {
+      return refused('ASAN_WRITE_UNCONFIRMED', 'customer creation cannot be uniquely reconciled; do not retry automatically');
     }
-
-    const parsed = this.parseJson(result.value.text);
-
-    if (!parsed.ok) {
-      return null;
-    }
-
-    const records = extractArray(parsed.value, [
-      'data',
-      'customers',
-      'Customers',
-    ]);
-
-    const candidates = (records ?? [parsed.value]).map(parseParty).filter((party): party is RemoteParty => party !== null);
-    const matches = candidates.filter((party) => partyNationalIdentity(party) === normalizeNationalCode(nationalCode));
-    return matches.length === 1 ? matches[0] : null;
+    return accepted(assigned.value[0]);
   }
 
   async updateParty(input: RemotePartyInput): Promise<Result<RemoteParty>> {
@@ -834,10 +839,18 @@ export class AsanHttpAdapter implements AccountingAdapter {
     }
 
     const personCode = Number(input.externalPartyId ?? '');
+    if (!Number.isInteger(personCode) || personCode <= 0 || personCode > 2147483647) return refused('ASAN_UPDATE_NEEDS_PERSON_CODE', 'customer update requires a valid int code');
+    const current = await this.readPartyRecords(ASAN_ENDPOINTS.oneCustomer, { CustomerCode: String(personCode) });
+    if (!current.ok) return current;
+    if (current.value.length !== 1 || parseParty(current.value[0])?.externalPartyId !== String(personCode)) return refused('ASAN_READBACK_REQUIRED', 'customer lookup did not establish a unique matching code');
+    const raw = current.value[0];
+    const gender = readNumber(raw.Gender);
+    if (gender === null || !Number.isInteger(gender) || gender < 0 || gender > 255) return refused('ASAN_CUSTOMER_PROFILE_INCOMPLETE', 'current account nature is unavailable');
 
     const mapped = mapPartyToAsanCustomer(
       {
-        personCode: Number.isSafeInteger(personCode) ? personCode : null,
+        personCode,
+        personGender: gender,
         fullName: input.fullName,
         mobile: input.mobile,
         nationalCode: input.legalNationalId ?? input.nationalCode,
@@ -857,10 +870,25 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return mapped;
     }
 
+    // The vendor's update replaces the record. Require every documented
+    // writable string in the current read, including explicit blank values.
+    const fields = {
+      PersonMobile: 'Mobile', PersonNationalCode: 'NationalCode',
+      PersonAddress: 'Address', PersonEcoCode: 'EconomicCode',
+      PersonPostalCode: 'PostalCode', PersonFirstTell: 'Tellephone',
+      PersonSecoundTell: 'Tellephone2', PersonFax: 'Fax',
+      PersonAccountGroup: 'AccountGroup',
+    } as const;
+    const payload: AsanCustomerInput = { ...mapped.value };
+    for (const key of Object.keys(fields) as (keyof typeof fields)[]) {
+      const original = raw[fields[key]];
+      if (typeof original !== 'string') return refused('ASAN_CUSTOMER_PROFILE_INCOMPLETE', 'current customer profile lacks a replaceable field');
+      payload[key] = payload[key] ?? original;
+    }
     const result = await this.request({
       path: ASAN_ENDPOINTS.editCustomer,
       method: 'POST',
-      body: mapped.value,
+      body: payload,
     });
 
     if (!result.ok) {
@@ -890,14 +918,16 @@ export class AsanHttpAdapter implements AccountingAdapter {
       return refused('VENDOR_UNDOCUMENTED', classification.detail);
     }
 
-    return accepted({
-      externalPartyId: String(mapped.value.PersonCode),
-      code: String(mapped.value.PersonCode),
-      fullName: input.fullName,
-      mobile: input.mobile,
-      nationalCode: input.nationalCode,
-      remoteVersion: '',
-    });
+    const after = await this.readPartyRecords(ASAN_ENDPOINTS.oneCustomer, { CustomerCode: String(personCode) });
+    if (!after.ok || after.value.length !== 1) return refused('ASAN_WRITE_UNCONFIRMED', 'customer update readback failed; reconcile before retry');
+    const observed = after.value[0];
+    const party = parseParty(observed);
+    if (party === null || party.externalPartyId !== String(personCode) ||
+        party.fullName !== payload.PersonFullName || readNumber(observed.Gender) !== payload.PersonGender ||
+        (Object.keys(fields) as (keyof typeof fields)[]).some((key) => observed[fields[key]] !== payload[key])) {
+      return refused('ASAN_WRITE_UNCONFIRMED', 'customer readback differs from replacement payload; reconcile before retry');
+    }
+    return accepted(party);
   }
 
   async registerProforma(

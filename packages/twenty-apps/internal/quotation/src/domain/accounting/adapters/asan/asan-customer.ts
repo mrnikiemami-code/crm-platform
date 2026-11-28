@@ -47,6 +47,7 @@ export type PartyMappingInput = {
   fax: string | null;
   accountGroup: string | null;
   userId: number;
+  personGender?: number;
 };
 
 const MAX_FULL_NAME_LENGTH = 200;
@@ -83,6 +84,9 @@ export const mapPartyToAsanCustomer = (
     );
   }
 
+  if (!Number.isInteger(input.userId) || input.userId <= 0 || input.userId > 2147483647) return refused('ASAN_USER_ID_INVALID', 'a valid Asan user id is required');
+  const gender = input.personGender ?? ASAN_DEFAULT_PERSON_GENDER;
+  if (!Number.isInteger(gender) || gender < 0 || gender > 255) return refused('ASAN_ACCOUNT_NATURE_INVALID', 'account nature must be a byte');
   let personCode: number;
 
   if (isUpdate) {
@@ -110,10 +114,11 @@ export const mapPartyToAsanCustomer = (
     }
   }
 
+  if (!Number.isInteger(personCode) || personCode < 0 || personCode > 2147483647) return refused('ASAN_PERSON_CODE_INVALID', 'person code is outside the int range');
   return accepted({
     PersonCode: personCode,
     PersonFullName: fullName,
-    PersonGender: ASAN_DEFAULT_PERSON_GENDER,
+    PersonGender: gender,
     ...withField('PersonMobile', input.mobile),
     ...withField('PersonNationalCode', input.nationalCode),
     ...withField('PersonAddress', input.address),

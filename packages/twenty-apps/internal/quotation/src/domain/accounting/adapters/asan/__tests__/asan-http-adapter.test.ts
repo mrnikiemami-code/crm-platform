@@ -191,7 +191,7 @@ describe('asan product read', () => {
     );
   });
 
-  it('skips a row without a usable ProductCode instead of fabricating an identity', async () => {
+  it('refuses an incomplete product snapshot instead of silently dropping identities', async () => {
     const items = await adapter(
       {},
       fakeFetch({
@@ -203,7 +203,7 @@ describe('asan product read', () => {
       }).fetchImpl,
     ).listItems();
 
-    expect(items.ok && items.value.map((item) => item.externalItemId)).toEqual(['1001']);
+    expect(items).toMatchObject({ ok: false, refusal: { code: 'ASAN_INCOMPLETE_DATASET' } });
   });
 
   it('accepts a documented-looking envelope and refuses anything else', async () => {
@@ -230,6 +230,21 @@ describe('asan product read', () => {
   });
 });
 
+const sequencedFetch = (...responses: string[]): ReturnType<typeof fakeFetch> => {
+  const calls: Call[] = [];
+  return {
+    calls,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, method: init.method, headers: init.headers, ...(init.body === undefined ? {} : { body: init.body }) });
+      const response = responses.shift();
+      if (response === undefined) throw new Error('unexpected vendor call');
+      return { ok: true, status: 200, text: async () => response };
+    },
+  };
+};
+const productReadback = (price: number, tiers: number[] = []) =>
+  JSON.stringify({ ProductCode: 1001, ProductName: 'کالا', SellPrice: price, SalesPrice: tiers });
+
 describe('asan write transport gate', () => {
   it('refuses a write over plain http without explicit approval, before any request', async () => {
     const fake = fakeFetch({ text: '1' });
@@ -250,7 +265,7 @@ describe('asan write transport gate', () => {
   });
 
   it('sends the tunnel token and the documented create path when approved', async () => {
-    const fake = fakeFetch({ text: '1' });
+    const fake = sequencedFetch('1', productReadback(1000));
     const result = await adapter(
       { allowInsecureTransport: true, tunnelToken: 'tunnel-secret' },
       fake.fetchImpl,
@@ -274,7 +289,7 @@ describe('asan write transport gate', () => {
   });
 
   it('sends writes over https without any extra approval', async () => {
-    const fake = fakeFetch({ text: '1' });
+    const fake = sequencedFetch('1', productReadback(1000));
     const result = await adapter(
       { baseUrl: 'https://accounting.example/api' },
       fake.fetchImpl,
@@ -292,8 +307,8 @@ describe('asan write transport gate', () => {
   });
 
   it('keeps the current sales price tiers on a price edit', async () => {
-    const fake = fakeFetch({ text: '1' });
-    await adapter(
+    const fake = sequencedFetch(productReadback(1000, [1900, 1800]), '1', productReadback(2000, [1900, 1800]));
+    const result = await adapter(
       { baseUrl: 'https://accounting.example/api' },
       fake.fetchImpl,
     ).updateItemPrices({
@@ -305,13 +320,51 @@ describe('asan write transport gate', () => {
       salesPriceUnits: [1900, 1800],
     });
 
-    expect(JSON.parse(fake.calls[0].body ?? '{}')).toMatchObject({
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(fake.calls[1].body ?? '{}')).toMatchObject({
       SellPrice: 2000,
       SalesPrice: [1900, 1800],
     });
   });
 });
 
+describe('Asan write integrity', () => {
+  it('refuses HTTP 200 with zero or malformed result and requires exact product readback', async () => {
+    const input = { externalItemId: '1001', code: '1001', name: 'کالا', secondaryName: null, sellPriceUnits: 1000, salesPriceUnits: [0, 100] };
+    for (const code of ['0', '""', '1.5', '<html>']) {
+      const fake = sequencedFetch(code);
+      expect(await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl).createItem(input)).toMatchObject({ ok: false, refusal: { code: 'ASAN_WRITE_UNCONFIRMED' } });
+      expect(fake.calls).toHaveLength(1);
+    }
+    const fake = sequencedFetch('1', productReadback(1000, [0, 100]));
+    expect(await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl).createItem(input)).toMatchObject({ ok: true, value: { salesPriceUnits: [0, 100] } });
+    expect(JSON.parse(fake.calls[0].body ?? '{}').SalesPrice).toEqual([0, 100]);
+  });
+  it('preserves unspecified price positions instead of erasing them', async () => {
+    const fake = sequencedFetch(productReadback(1000, [0, 1800]), '1', productReadback(2000, [0, 1800]));
+    const result = await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl).updateItemPrices({ externalItemId: '1001', code: '1001', name: 'کالا', secondaryName: null, sellPriceUnits: 2000, salesPriceUnits: [] });
+    expect(result.ok).toBe(true);
+    expect(JSON.parse(fake.calls[1].body ?? '{}').SalesPrice).toEqual([0, 1800]);
+  });
+  const partyInput = { externalPartyId: '801001', fullName: 'علی محمدی', mobile: '09120000000', nationalCode: '0012345678', address: null };
+  const partyRecord = { Code: 801001, FullName: 'علی محمدی', Mobile: '09120000000', NationalCode: '0012345678', Address: 'تهران', EconomicCode: '001234567890', PostalCode: '', Tellephone: '02111111111', Tellephone2: '', Fax: '', AccountGroup: 'الف', Gender: 3 };
+  it('reads and preserves all replacement customer fields and account nature', async () => {
+    const fake = sequencedFetch(JSON.stringify([partyRecord]), '1', JSON.stringify([partyRecord]));
+    const result = await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl).updateParty(partyInput);
+    expect(result).toMatchObject({ ok: true, value: { externalPartyId: '801001', address: 'تهران' } });
+    expect(JSON.parse(fake.calls[1].body ?? '{}')).toMatchObject({ PersonGender: 3, PersonAddress: 'تهران', PersonEcoCode: '001234567890', PersonFirstTell: '02111111111', PersonSecoundTell: '', PersonFax: '', PersonPostalCode: '', PersonAccountGroup: 'الف' });
+    const incomplete = sequencedFetch(JSON.stringify([{ ...partyRecord, Address: undefined }]));
+    expect(await adapter({ baseUrl: 'https://accounting.example/api' }, incomplete.fetchImpl).updateParty(partyInput)).toMatchObject({ ok: false, refusal: { code: 'ASAN_CUSTOMER_PROFILE_INCOMPLETE' } });
+    expect(incomplete.calls).toHaveLength(1);
+  });
+  it('requires unique customer create readback; never reports an empty assigned code as success', async () => {
+    const fake = sequencedFetch('[]', '1', '[]');
+    expect(await adapter({ baseUrl: 'https://accounting.example/api' }, fake.fetchImpl).createParty({ ...partyInput, externalPartyId: null })).toMatchObject({ ok: false, refusal: { code: 'ASAN_WRITE_UNCONFIRMED' } });
+    const existing = sequencedFetch(JSON.stringify([partyRecord]));
+    expect(await adapter({ baseUrl: 'https://accounting.example/api' }, existing.fetchImpl).createParty({ ...partyInput, externalPartyId: null })).toMatchObject({ ok: false, refusal: { code: 'ASAN_CUSTOMER_ALREADY_EXISTS' } });
+    expect(existing.calls).toHaveLength(1);
+  });
+});
 describe('asan document registration', () => {
   const payload = { FactorNumber: 0 };
 

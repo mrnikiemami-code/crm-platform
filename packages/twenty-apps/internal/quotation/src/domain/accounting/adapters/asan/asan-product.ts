@@ -21,6 +21,9 @@ export type AsanProductInput = {
 export const isValidAsanProductCode = (code: number): boolean =>
   Number.isInteger(code) && code > 0 && Number.isSafeInteger(code);
 
+const isValidSellPrice = (price: number): boolean => Number.isSafeInteger(price) && price >= 0;
+const isValidTier = (price: number): boolean => Number.isInteger(price) && price >= 0 && price <= 4294967295;
+
 export type AsanProductCreateInput = {
   productCode: number;
   name: string;
@@ -49,7 +52,11 @@ export const mapItemToAsanProduct = (
   // Asan's own documentation warns that leaving `SalesPrice` out zeroes price 2 and 3 on an
   // EDIT. On create an absent array is simply "no extra prices", so it is omitted rather than
   // sent as zeros — a zero price tier is a real price a salesperson could select.
-  const salesPrices = input.salesPrices.filter((price) => price > 0);
+  if (!isValidSellPrice(input.sellPrice) || input.salesPrices.length > 2 || !input.salesPrices.every(isValidTier)) {
+    return refused('ASAN_PRICE_RANGE_INVALID', 'Asan expects a whole nonnegative sale price and at most two uint price tiers');
+  }
+  // Preserve positional zero; an absent second tier on create is explicit zero.
+  const salesPrices = input.salesPrices.length === 0 ? [] : [input.salesPrices[0], input.salesPrices[1] ?? 0];
 
   return accepted({
     ProductCode: input.productCode,
@@ -85,17 +92,18 @@ export const mapItemPricesToAsanUpdate = (
     );
   }
 
-  if (input.sellPrice <= 0) {
+  if (!isValidSellPrice(input.sellPrice)) {
     return refused(
       'ASAN_SELL_PRICE_INVALID',
-      'a sell price must be a positive whole amount',
+      'a sell price must be a nonnegative whole amount',
     );
   }
 
-  // An empty array is omitted on purpose: Asan's guide states that omitting `SalesPrice` on
-  // an edit SETS PRICE 2 AND 3 TO ZERO. Sending explicit zeros would therefore do exactly
-  // what the caller wants, while an empty array would be ambiguous to a future reader — so
-  // the caller must state the intent.
+  // The adapter must resolve both current or explicitly replaced positions
+  // BEFORE mapping. Omitting this array would erase remote tiers.
+  if (input.salesPrices.length !== 2 || !input.salesPrices.every(isValidTier)) {
+    return refused('ASAN_PRICE_TIERS_REQUIRED', 'both current or explicitly replaced price tiers are required for an edit');
+  }
   const salesPrices = input.salesPrices;
 
   return accepted({

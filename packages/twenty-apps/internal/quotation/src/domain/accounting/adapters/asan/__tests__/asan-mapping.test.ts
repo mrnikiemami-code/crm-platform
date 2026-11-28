@@ -246,6 +246,9 @@ describe('discount and tax special codes', () => {
       Number(ASAN_SPECIAL_ITEM_CODES.tax),
     ]);
     expect(specials.map((detail) => detail.Price)).toEqual([1_000_000, 810_000]);
+    // Separate discount must be subtracted once from gross, not net.
+    expect(factor.FactorDetails[0].Price).toBe(10_000_000);
+    expect(factor.FactorDetails[0].Price - specials[0].Price + specials[1].Price).toBe(9_810_000);
   });
 
   it('does not append a special line when the installation lacks the code', () => {
@@ -448,6 +451,11 @@ describe('Asan response codes', () => {
     ).toEqual({ kind: 'DOCUMENT_REGISTERED', documentNumber: 152 });
   });
 
+  it('refuses customer zero, fractional and blank responses', () => {
+    for (const code of [0, 1.5, '', ' ', '1e2', 2147483648]) {
+      expect(classifyAsanResponse({ operation: 'CREATE_CUSTOMER', rawCode: code }).kind).not.toBe('SUCCEEDED_WITHOUT_IDENTIFIER');
+    }
+  });
   it('reports an undocumented code instead of guessing its meaning', () => {
     expect(
       classifyAsanResponse({ operation: 'REGISTER_PROFORMA', rawCode: -42 }).kind,

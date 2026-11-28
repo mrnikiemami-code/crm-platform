@@ -9,7 +9,7 @@
 export const ASAN_RESPONSE_CODES = {
   // Factor and pro-forma registration: the registered document number, or 0 for failure.
   DOCUMENT_NOT_REGISTERED: 0,
-  // Customer creation/update: 1 for automatic code, 0 for a caller-supplied code.
+  // Historical observed candidate flag; the guide does not prove it is an ID.
   CUSTOMER_OK: 1,
   // Customers2/postCustomer with PersonCode = 0: nothing to update.
   CUSTOMER_UPDATE_NO_CODE: -10,
@@ -61,9 +61,9 @@ export const classifyAsanResponse = ({
   // gateways quote numerics.
   rawCode: unknown;
 }): AsanResponseClassification => {
-  const code = typeof rawCode === 'string' ? Number(rawCode) : rawCode;
+  const code = typeof rawCode === 'string' && /^-?\d+$/.test(rawCode.trim()) ? Number(rawCode) : rawCode;
 
-  if (typeof code !== 'number' || !Number.isFinite(code)) {
+  if (typeof code !== 'number' || !Number.isSafeInteger(code) || code < -2147483648 || code > 2147483647) {
     return {
       kind: 'UNEXPECTED',
       code: Number.NaN,
@@ -89,10 +89,10 @@ export const classifyAsanResponse = ({
     return { kind: 'FAILED', code, reason, retrySafe: RETRY_SAFETY[reason] };
   }
 
-  // Customer endpoints answer 1 or 0 for success, and a negative number for a refusal. The
-  // response is a RESULT FLAG, never an identifier, which is exactly why the capabilities
-  // declare `returnsAssignedCode: false`.
-  if (code >= 0) {
+  // The guide's general contract says zero means not registered. A positive
+  // result is only a candidate until authoritative readback confirms it.
+  // Never use this result as an assigned identity.
+  if (code > 0) {
     return {
       kind: 'SUCCEEDED_WITHOUT_IDENTIFIER',
       note:
