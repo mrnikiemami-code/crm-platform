@@ -640,3 +640,39 @@ describe('asan response body budget', () => {
     }
   });
 });
+
+
+describe('approved restricted customer financial report requests', () => {
+  const scope = { readOnly: true, readAccessScope: 'fixture-authorized' };
+  it('reads only the exact OneCustomer identity and keeps balances separate from ordinary profiles', async () => {
+    const fixture = { Code: 42, FullName: 'مشتری آزمون', Remain: -100, BookCredit: 0, ChequeCredit: '1000' };
+    const fake = fakeFetch({ text: JSON.stringify([fixture]) });
+    const instance = adapter(scope, fake.fetchImpl);
+    expect(await instance.readCustomerFinance('42')).toMatchObject({ ok: true, value: { customerExternalId: '42',
+      remain: { reportedText: '-100' }, bookCredit: { reportedText: '0' }, chequeCredit: { reportedText: '1000' } } });
+    expect(fake.calls[0]).toMatchObject({ method: 'GET', url: 'https://accounting.example/api/CustomersNew/OneCustomer?CustomerCode=42' });
+    expect(JSON.stringify(parseParty(fixture))).not.toMatch(/"Remain"|"BookCredit"|"ChequeCredit"/);
+    expect(await instance.readCustomerFinance('43')).toMatchObject({ ok: false });
+  });
+
+  it('sends only the guide-confirmed report body and rejects a foreign customer in the response', async () => {
+    const fake = fakeFetch({ text: JSON.stringify([{ FactorNumber: 101, CustomerCode: 42, Description: 'fixture',
+      FactorDetails: [{ ProductCode: 10, Count: 1, Price: 100, StorageID: 0 }] }]) });
+    const instance = adapter(scope, fake.fetchImpl);
+    expect(await instance.listCustomerProformas('42', 5)).toMatchObject({ ok: true, value: [{ customerExternalId: '42' }] });
+    expect(fake.calls[0]).toMatchObject({ method: 'POST', url: 'https://accounting.example/api/PishFactorsNew/LastCustomerPishFactors',
+      body: '{"Count":5,"CustomerCode":42}' });
+    expect(await instance.listCustomerProformas('43', 5)).toMatchObject({ ok: false });
+    expect(await instance.listCustomerProformas('9223372036854775807', 5)).toMatchObject({ ok: false });
+    expect(fake.calls).toHaveLength(2);
+  });
+
+  it('refuses restricted report access without an approved scope', async () => {
+    const fake = fakeFetch({ text: '[]' });
+    const instance = adapter({}, fake.fetchImpl);
+    expect(await instance.readCustomerFinance('42')).toMatchObject({ ok: false });
+    expect(await instance.readCustomerLedger('42', '2026-11-01', '2026-11-28')).toMatchObject({ ok: false });
+    expect(await instance.listCustomerProformas('42', 5)).toMatchObject({ ok: false });
+    expect(fake.calls).toHaveLength(0);
+  });
+});
