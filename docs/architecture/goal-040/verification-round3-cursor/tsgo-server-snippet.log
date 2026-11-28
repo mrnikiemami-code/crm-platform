@@ -1,0 +1,2 @@
+packages/twenty-server/src/modules/quotation/services/accounting-connection-authority.service.ts(471,48): error TS1109: Expression expected.
+packages/twenty-server/src/modules/quotation/services/accounting-connection-authority.service.ts(471,95): error TS1109: Expression expected.

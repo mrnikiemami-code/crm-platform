@@ -34,6 +34,17 @@ export type SnapshotView = {
   truncation: SnapshotTruncationView;
 };
 
+export type ItemObservationView = {
+  vendorUnitId: string | null;
+  vendorUnitName: string | null;
+  secondaryUnitName: string | null;
+  unitCount: number | null;
+  priceUnitsByPosition: string[];
+  stockByPosition: number[];
+  totalStock: number | null;
+  serials: string[];
+};
+
 export type ItemMappingRow = {
   externalItemId: string;
   remoteVersion?: string;
@@ -50,6 +61,7 @@ export type ItemMappingRow = {
   crmPriceMicros: string | null;
   priceDifferenceMicros: string | null;
   warnings: string[];
+  observation?: ItemObservationView | null;
 };
 
 export type PartyMappingRow = {
@@ -114,6 +126,49 @@ const readStringArray = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.flatMap((entry) => (typeof entry === 'string' ? [entry] : []))
     : [];
+
+const readNumberArray = (value: unknown): number[] =>
+  Array.isArray(value)
+    ? value.flatMap((entry) =>
+        typeof entry === 'number' && Number.isFinite(entry) ? [entry] : [],
+      )
+    : [];
+
+const readNullableNumber = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+const parseObservationView = (value: unknown): ItemObservationView | null => {
+  const record = asRecord(value);
+
+  if (record === null) {
+    return null;
+  }
+
+  const nested = asRecord(record.observation) ?? record;
+  const serials = [
+    ...readStringArray(nested.serials),
+    ...(typeof nested.serial === 'string' && nested.serial.trim() !== ''
+      ? [nested.serial.trim()]
+      : []),
+  ];
+
+  return {
+    vendorUnitId:
+      readNullableString(record.vendorUnitId) ??
+      readNullableString(nested.unitId),
+    vendorUnitName:
+      readNullableString(record.vendorUnitName) ??
+      readNullableString(nested.unitName),
+    secondaryUnitName:
+      readNullableString(record.vendorSecondaryUnitName) ??
+      readNullableString(nested.secondaryUnitName),
+    unitCount: readNullableNumber(nested.unitCount),
+    priceUnitsByPosition: readStringArray(nested.priceUnitsByPosition),
+    stockByPosition: readNumberArray(nested.stockByPosition),
+    totalStock: readNullableNumber(nested.stock ?? record.stock),
+    serials: [...new Set(serials)],
+  };
+};
 
 const parseTruncation = (value: unknown): SnapshotTruncationView => {
   const record = asRecord(value);
@@ -239,6 +294,14 @@ export const parseItemMappingPage = (value: unknown): MappingPage<ItemMappingRow
           crmPriceMicros: readNullableString(row.crmPriceMicros),
           priceDifferenceMicros: readNullableString(row.priceDifferenceMicros),
           warnings: readStringArray(row.warnings),
+          observation: parseObservationView(
+            row.observation ?? {
+              vendorUnitId: row.vendorUnitId,
+              vendorUnitName: row.vendorUnitName,
+              vendorSecondaryUnitName: row.vendorSecondaryUnitName,
+              stock: row.stock,
+            },
+          ),
         },
       ];
     }),
