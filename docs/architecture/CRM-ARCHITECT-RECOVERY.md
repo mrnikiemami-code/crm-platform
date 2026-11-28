@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 040 round 2 convergence START (2026-11-28)
+
+Remote A fe4c7dab5931df1a928252eaaa4279efd28cc5fe, B 2f0b6cdf03ac7dbc59bf911cb153012a897b7800, common base 120c4d8fb6f034ffa1f65f16b39f0af90c3a43be verified. B handoff and final logs inspected: 43 Jest in four suites and five Vitest in two suites; separate earlier PG log skipped four, final combined run reports PG suite PASS. Not integrated or real item/price/link rollback evidence. One overlapping application.config.ts, additive distinct variables; preserve both. Mandatory residuals include U03 outbound, F06/F07/U05 authority, U04 server-validated price provenance/customer group assignment, P05 actual transactional rollback/race verification. Source merge only, no final acceptance, no Dev/vendor/version bump.
+
 ## CURRENT — Goal 040 round 2 architect source checkpoint (2026-11-28)
 
 Architect lane `feat/crm129-g040-final-finance-security` handoff `fe4c7dab5931df1a928252eaaa4279efd28cc5fe`, source/test tip `322e2cc4b35c063ef5ff9783d089ba6c307fb0fd` (15 commits, 12 files). [Checkpoint](https://github.com/mrnikiemami-code/crm-platform/blob/fe4c7dab5931df1a928252eaaa4279efd28cc5fe/docs/architecture/goal-040/ROUND2-ARCHITECT-CHECKPOINT.md). Cursor remote still common base `120c4d8fb6f034ffa1f65f16b39f0af90c3a43be` at check time; local progress unknown. Source: explicit primary unit equivalence checks, exact destination resolution and paged defaults, admin-attested read scope, authorized bounded read-only reconciliation with no fiscal confirmation/replay, targeted fixtures. Shared seams documented (application variables and query pagination, dispatch). Remaining U03 outbound customer/link, F06 atomic ledger and reconciliation persistence, F07 durable dataset authority, U05 field/route closure. Local bridge failed; runtime NOT_RUN. No Dev, vendor request, version bump or merge. Resume on architect lane, not Cursor. G1/G2 NOT_AUTHORIZED.
