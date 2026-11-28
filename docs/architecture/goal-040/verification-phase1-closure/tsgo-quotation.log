@@ -1,0 +1,2 @@
+src/components/quotation-unit-settings-section.tsx(187,7): error TS2339: Property 'motionless-toolbar' does not exist on type 'JSX.IntrinsicElements'.
+src/services/__tests__/quotation-persist.service.test.ts(108,7): error TS2739: Type '{ id: null; kind: "PRODUCT"; name: string; sku: string; unit: string; description: null; isActive: true; defaultUnitPriceText: string; moneyUnit: "TOMAN"; }' is missing the following properties from type 'CatalogItemUpsertInput': unitRecordId, secondaryName

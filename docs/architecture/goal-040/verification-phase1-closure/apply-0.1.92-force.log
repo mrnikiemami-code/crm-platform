@@ -1,0 +1,2826 @@
+Using remote: dev-crm129
+Applying application manifest on dev-crm129...
+App path: D:\CrmSource\twenty-g040-phase1\packages\twenty-apps\internal\quotation
+
+Checking server...
+Building manifest...
+Building application files...
+Running typecheck...
+Registering application...
+Uploading 45 files...
+Syncing manifest...
+
+Twenty will perform the following actions:
+
+  # searchFieldMetadata "cddc6e1b-036f-55a7-8feb-0bd328a8ed9a" will be created
+  + applicationUniversalIdentifier           = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier         = "09a38b87-22c8-5e2d-9501-3a0c40f00101"
+  + isSystemSideEffect                       = true
+  + objectMetadataUniversalIdentifier        = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + position                                 = 0
+  + tsVectorFieldMetadataUniversalIdentifier = "c33d6b28-8522-520c-a3cf-a9ec821a5dc5"
+
+  # searchFieldMetadata "f217e5cb-5b54-5f8f-9ac2-c15b1cb14274" will be created
+  + applicationUniversalIdentifier           = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier         = "929a3199-73f0-569b-92a5-707742288aea"
+  + isSystemSideEffect                       = true
+  + objectMetadataUniversalIdentifier        = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + position                                 = 0
+  + tsVectorFieldMetadataUniversalIdentifier = "c8dad919-4414-5452-97fc-55037a3cee39"
+
+  # objectMetadata "accountingFinanceAccess" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "Server-only append events for restricted customer reports and reconciliation o…
+  + icon                                            = "IconShieldCheck"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isRemote                                        = false
+  + isSearchable                                    = true
+  + isSystem                                        = false
+  + isUICreatable                                   = false
+  + isUIEditable                                    = false
+  + labelIdentifierFieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00101"
+  + labelPlural                                     = "سوابق دسترسی مالی"
+  + labelSingular                                   = "سابقه دسترسی مالی"
+  + namePlural                                      = "accountingFinanceAccesses"
+  + nameSingular                                    = "accountingFinanceAccess"
+  + openRecordIn                                    = "USER_CHOICE"
+  + readability                                     = "OPEN"
+  + targetTableName                                 = "DEPRECATED"
+  + writability                                     = "OPEN"
+
+  # objectMetadata "quotationUnit" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "فهرست واحدهای فضای کاری. کد حسابداری اختیاری است؛ پس از اولین استفاده با کد غی…
+  + icon                                            = "IconRuler"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isRemote                                        = false
+  + isSearchable                                    = true
+  + isSystem                                        = false
+  + isUICreatable                                   = false
+  + isUIEditable                                    = false
+  + labelIdentifierFieldMetadataUniversalIdentifier = "929a3199-73f0-569b-92a5-707742288aea"
+  + labelPlural                                     = "واحدهای اندازه‌گیری"
+  + labelSingular                                   = "واحد اندازه‌گیری"
+  + namePlural                                      = "quotationUnits"
+  + nameSingular                                    = "quotationUnit"
+  + openRecordIn                                    = "USER_CHOICE"
+  + readability                                     = "OPEN"
+  + targetTableName                                 = "DEPRECATED"
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "attachments" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "QuotationUnits tied to the Attachment"
+  + icon                                            = "IconPaperclip"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Attachments"
+  + name                                            = "attachments"
+  + objectMetadataUniversalIdentifier               = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + relationTargetFieldMetadataUniversalIdentifier  = "e6c9608a-48a6-50e9-932c-939e0284ff2c"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-bd3d-4c60-8dca-571c71d4447a"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "attachments" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "AccountingFinanceAccesses tied to the Attachment"
+  + icon                                            = "IconPaperclip"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Attachments"
+  + name                                            = "attachments"
+  + objectMetadataUniversalIdentifier               = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + relationTargetFieldMetadataUniversalIdentifier  = "6f96496d-b496-544f-93ae-8f9387df4e4f"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-bd3d-4c60-8dca-571c71d4447a"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "catalogItems" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "آیتم‌هایی که این واحد را به‌عنوان مرجع دارند."
+  + icon                                            = "IconBox"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = false
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "کالا و خدمات"
+  + name                                            = "catalogItems"
+  + objectMetadataUniversalIdentifier               = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + relationTargetFieldMetadataUniversalIdentifier  = "fdbf5fa7-f54b-543a-a292-65ded00c0ce0"
+  + relationTargetObjectMetadataUniversalIdentifier = "b8f829cd-59da-547a-85d8-5fde66aa4bfe"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "datasetBindingId" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "Non-secret, administrator-attested dataset identity; immutable after binding. …
+  + icon                              = "IconDatabase"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "شناسه مجموعه داده تأییدشده"
+  + name                              = "datasetBindingId"
+  + objectMetadataUniversalIdentifier = "dab886b2-ef12-53e7-93ca-505db4ea16fe"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "deliveryTerms" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "متن شرایط تحویل که روی سند نمایش داده می‌شود."
+  + icon                              = "IconTruckDelivery"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "شرایط تحویل"
+  + name                              = "deliveryTerms"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "documentNotes" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "یادداشت‌های تجاری اضافه روی پیش‌فاکتور."
+  + icon                              = "IconNotes"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "یادداشت سند"
+  + name                              = "documentNotes"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "issuerAddress" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "نشانی صادرکننده برای چاپ."
+  + icon                              = "IconMapPin"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "نشانی صادرکننده"
+  + name                              = "issuerAddress"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "issuerEconomicCode" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "کد اقتصادی صادرکننده (اسنپ‌شات)."
+  + icon                              = "IconHash"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "کد اقتصادی صادرکننده"
+  + name                              = "issuerEconomicCode"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "issuerLegalName" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "نام حقوقی صادرکننده در لحظهٔ ذخیره."
+  + icon                              = "IconBuildingSkyscraper"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "نام صادرکننده"
+  + name                              = "issuerLegalName"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "issuerNationalId" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "شناسه ملی صادرکننده (اسنپ‌شات)."
+  + icon                              = "IconId"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "شناسه ملی صادرکننده"
+  + name                              = "issuerNationalId"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "issuerPhone" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "تلفن تماس صادرکننده روی سند."
+  + icon                              = "IconPhone"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "تلفن صادرکننده"
+  + name                              = "issuerPhone"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "noteTargets" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "QuotationUnits tied to the Note Target"
+  + icon                                            = "IconNotes"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Notes"
+  + name                                            = "noteTargets"
+  + objectMetadataUniversalIdentifier               = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + relationTargetFieldMetadataUniversalIdentifier  = "2709c215-baf3-5772-90d3-97934b9c1068"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-fff0-4b44-be82-bda313884400"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "noteTargets" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "AccountingFinanceAccesses tied to the Note Target"
+  + icon                                            = "IconNotes"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Notes"
+  + name                                            = "noteTargets"
+  + objectMetadataUniversalIdentifier               = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + relationTargetFieldMetadataUniversalIdentifier  = "ab3b5943-319c-5586-8de1-5f37790c7c9a"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-fff0-4b44-be82-bda313884400"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "observationJson" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "Versioned destination observation snapshot (unit, tier, stock fields) at last …
+  + icon                              = "IconBraces"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "Observation JSON"
+  + name                              = "observationJson"
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "observationVersion" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "Schema version of observationJson for forward-compatible reads."
+  + icon                              = "IconVersions"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "Observation version"
+  + name                              = "observationVersion"
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "observedAt" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "When observationJson was captured from the destination."
+  + icon                              = "IconClock"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "Observed at"
+  + name                              = "observedAt"
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + type                              = "DATE_TIME"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "payloadFingerprint" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "SHA-256 of the exact sealed request and destination binding; immutable after c…
+  + icon                              = "IconFingerprint"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "اثر انگشت درخواست"
+  + name                              = "payloadFingerprint"
+  + objectMetadataUniversalIdentifier = "2fb711ff-a9c4-5886-81b7-c747b9306c7a"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "payloadSnapshot" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "Canonical request evidence without tokens or credentials, retained for reconci…
+  + icon                              = "IconFileInvoice"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "نسخه درخواست حسابداری"
+  + name                              = "payloadSnapshot"
+  + objectMetadataUniversalIdentifier = "2fb711ff-a9c4-5886-81b7-c747b9306c7a"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "paymentDueDate" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "تاریخ سررسید اختیاری؛ از تاریخ اعتبار سند جدا است."
+  + icon                              = "IconCalendarDue"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "سررسید پرداخت"
+  + name                              = "paymentDueDate"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "DATE"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "priceGroupMappings" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "Explicit destination price-group id to CRM PriceList id; server-owned, never i…
+  + icon                              = "IconListDetails"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "نگاشت گروه قیمتی مشتریان"
+  + name                              = "priceGroupMappings"
+  + objectMetadataUniversalIdentifier = "dab886b2-ef12-53e7-93ca-505db4ea16fe"
+  + type                              = "RAW_JSON"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "revisionHash" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "این لینک فقط همین نسخه قطعی را نمایش می‌دهد."
+  + icon                              = "IconFingerprint"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "هش نسخه قطعی"
+  + name                              = "revisionHash"
+  + objectMetadataUniversalIdentifier = "e106e576-13f6-59f3-9620-d842dc269f20"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "secondaryName" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "نام جایگزین از مقصد حسابداری، جدا از نام اصلی CRM."
+  + icon                              = "IconFileText"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "نام ثانویه"
+  + name                              = "secondaryName"
+  + objectMetadataUniversalIdentifier = "b8f829cd-59da-547a-85d8-5fde66aa4bfe"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "selectedPriceId" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "شناسه رکورد قیمت انتخاب‌شده در لحظه افزودن."
+  + icon                              = "IconKey"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "شناسه قیمت ردیف"
+  + name                              = "selectedPriceId"
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "selectedPriceListId" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "فهرست قیمتی که قیمت این ردیف از آن انتخاب شده."
+  + icon                              = "IconKey"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "شناسه فهرست قیمت ردیف"
+  + name                              = "selectedPriceListId"
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "selectedPriceListId" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "شناسه فهرست قیمت انتخاب‌شده برای این پیش‌فاکتور."
+  + icon                              = "IconKey"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "شناسه فهرست قیمت"
+  + name                              = "selectedPriceListId"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "selectedPriceListName" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "نام فهرست قیمت در لحظهٔ انتخاب؛ ثابت می‌ماند."
+  + icon                              = "IconList"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "نام فهرست قیمت (اسنپ‌شات)"
+  + name                              = "selectedPriceListName"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "selectedPriceValidFrom" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "تاریخ شروع اعتبار قیمت انتخاب‌شده (اسنپ‌شات)."
+  + icon                              = "IconCalendar"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "اعتبار قیمت از"
+  + name                              = "selectedPriceValidFrom"
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + type                              = "DATE"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "taskTargets" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "QuotationUnits tied to the Task Target"
+  + icon                                            = "IconCheckbox"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Tasks"
+  + name                                            = "taskTargets"
+  + objectMetadataUniversalIdentifier               = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + relationTargetFieldMetadataUniversalIdentifier  = "2aaf9dad-361b-5b53-ae40-d684d03d775d"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-5a9a-44e8-95df-771cd06d0fb1"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "taskTargets" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "AccountingFinanceAccesses tied to the Task Target"
+  + icon                                            = "IconCheckbox"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Tasks"
+  + name                                            = "taskTargets"
+  + objectMetadataUniversalIdentifier               = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + relationTargetFieldMetadataUniversalIdentifier  = "ea14f5c1-1ace-5c75-ac09-1924b8363a41"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-5a9a-44e8-95df-771cd06d0fb1"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "timelineActivities" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "QuotationUnits tied to the Timeline Activity"
+  + icon                                            = "IconTimelineEvent"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Timeline Activities"
+  + name                                            = "timelineActivities"
+  + objectMetadataUniversalIdentifier               = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + relationTargetFieldMetadataUniversalIdentifier  = "a194193a-9e03-59f7-b828-fc661518fe6c"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-6736-4337-b5c4-8b39fae325a5"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "timelineActivities" will be created
+  + applicationUniversalIdentifier                  = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                                     = "AccountingFinanceAccesses tied to the Timeline Activity"
+  + icon                                            = "IconTimelineEvent"
+  + isActive                                        = true
+  + isAuditLogged                                   = true
+  + isLabelSyncedWithName                           = false
+  + isNullable                                      = true
+  + isSearchable                                    = false
+  + isSystem                                        = false
+  + isSystemSideEffect                              = true
+  + isUIEditable                                    = true
+  + isUnique                                        = false
+  + label                                           = "Timeline Activities"
+  + name                                            = "timelineActivities"
+  + objectMetadataUniversalIdentifier               = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + relationTargetFieldMetadataUniversalIdentifier  = "c3ac8f7a-4b56-5f21-8364-06cb19d6b67c"
+  + relationTargetObjectMetadataUniversalIdentifier = "20202020-6736-4337-b5c4-8b39fae325a5"
+  + type                                            = "RELATION"
+  + universalSettings                               = {"relationType":"ONE_TO_MANY"}
+  + writability                                     = "OPEN"
+
+  # fieldMetadata "unitAccountingCode" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                              = "IconHash"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "کد حسابداری واحد (اسنپ‌شات)"
+  + name                              = "unitAccountingCode"
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "unitCode" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                              = "IconHash"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "کد داخلی واحد (اسنپ‌شات)"
+  + name                              = "unitCode"
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "unitRecordId" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "شناسه واحد در زمان ذخیره؛ فقط سرور می‌نویسد."
+  + icon                              = "IconKey"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = false
+  + isUnique                          = false
+  + label                             = "شناسه مرجع واحد"
+  + name                              = "unitRecordId"
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "visitorName" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                       = "نام نماینده فروش در CRM؛ فقط نمایش داخلی و چاپ."
+  + icon                              = "IconUser"
+  + isActive                          = true
+  + isAuditLogged                     = true
+  + isLabelSyncedWithName             = false
+  + isNullable                        = true
+  + isSearchable                      = false
+  + isSystem                          = false
+  + isSystemSideEffect                = false
+  + isUIEditable                      = true
+  + isUnique                          = false
+  + label                             = "بازدیدکننده / فروشنده"
+  + name                              = "visitorName"
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + type                              = "TEXT"
+  + writability                       = "OPEN"
+
+  # fieldMetadata "kind" will be updated in-place
+  ~ defaultValue = null -> "'CATALOG_ITEM_CREATE'"
+  ~ options      = [{"id":"26eb69e4-06c1-5b4b-9036-74e0dd08b446","color":"blue","label":"ایجاد کال… -> [{"color":"blue","id":"26eb69e4-06c1-5b4b-9036-74e0dd08b446","label":"ایجاد کال…
+
+  # fieldMetadata "unit" will be updated in-place
+  ~ description = "واحد اندازه‌گیری کنار مقدار، مثلاً عدد یا ساعت." -> "متن نمایشی واحد (سازگاری با ردیف‌های قدیمی). همراه با ارجاع unitRecord نگه‌دار…
+
+  # index "IDX_097a31be409efffdb7583db7e12" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_097a31be409efffdb7583db7e12"
+  + objectMetadataUniversalIdentifier = "20202020-fff0-4b44-be82-bda313884400"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.956Z","fieldMetadataUniversalIdentifier":"ab…
+
+  # index "IDX_107139475703cdf8e3cdc378a27" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_107139475703cdf8e3cdc378a27"
+  + objectMetadataUniversalIdentifier = "20202020-6736-4337-b5c4-8b39fae325a5"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.955Z","fieldMetadataUniversalIdentifier":"a1…
+
+  # index "IDX_25899f2bb66ba4023a8f02aef11" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_25899f2bb66ba4023a8f02aef11"
+  + objectMetadataUniversalIdentifier = "20202020-bd3d-4c60-8dca-571c71d4447a"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.955Z","fieldMetadataUniversalIdentifier":"e6…
+
+  # index "IDX_27cec6f4a2d5f3b3c06e91e465b" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_27cec6f4a2d5f3b3c06e91e465b"
+  + objectMetadataUniversalIdentifier = "20202020-5a9a-44e8-95df-771cd06d0fb1"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.956Z","fieldMetadataUniversalIdentifier":"ea…
+
+  # index "IDX_2e92e1475d9872620dc5b0576d6" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_2e92e1475d9872620dc5b0576d6"
+  + objectMetadataUniversalIdentifier = "20202020-5a9a-44e8-95df-771cd06d0fb1"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.955Z","fieldMetadataUniversalIdentifier":"2a…
+
+  # index "IDX_4d64ce3f5dd4f381b1165e8b14a" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_4d64ce3f5dd4f381b1165e8b14a"
+  + objectMetadataUniversalIdentifier = "20202020-fff0-4b44-be82-bda313884400"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.955Z","fieldMetadataUniversalIdentifier":"27…
+
+  # index "IDX_638e8f228b1d457a28014726547" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "GIN"
+  + isCustom                          = false
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_638e8f228b1d457a28014726547"
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.955Z","fieldMetadataUniversalIdentifier":"c8…
+
+  # index "IDX_7cbc06ef9a795d84252dcd45a07" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_7cbc06ef9a795d84252dcd45a07"
+  + objectMetadataUniversalIdentifier = "20202020-bd3d-4c60-8dca-571c71d4447a"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.956Z","fieldMetadataUniversalIdentifier":"6f…
+
+  # index "IDX_c7f7fff72cd7db69edf49aa95f5" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "GIN"
+  + isCustom                          = false
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_c7f7fff72cd7db69edf49aa95f5"
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.956Z","fieldMetadataUniversalIdentifier":"c3…
+
+  # index "IDX_ed84831477609ef0a8578197608" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + indexType                         = "BTREE"
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + isUnique                          = false
+  + name                              = "IDX_ed84831477609ef0a8578197608"
+  + objectMetadataUniversalIdentifier = "20202020-6736-4337-b5c4-8b39fae325a5"
+  + universalFlatIndexFieldMetadatas  = [{"createdAt":"2026-11-28T16:17:14.956Z","fieldMetadataUniversalIdentifier":"c3…
+
+  # view "سابقه دسترسی مالی Record Page Fields" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                              = "IconList"
+  + isActive                          = true
+  + isCompact                         = false
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + name                              = "سابقه دسترسی مالی Record Page Fields"
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + openRecordIn                      = "SIDE_PANEL"
+  + position                          = 0
+  + shouldHideEmptyGroups             = false
+  + type                              = "FIELDS_WIDGET"
+  + visibility                        = "WORKSPACE"
+
+  # view "واحد اندازه‌گیری Record Page Fields" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                              = "IconList"
+  + isActive                          = true
+  + isCompact                         = false
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + name                              = "واحد اندازه‌گیری Record Page Fields"
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + openRecordIn                      = "SIDE_PANEL"
+  + position                          = 0
+  + shouldHideEmptyGroups             = false
+  + type                              = "FIELDS_WIDGET"
+  + visibility                        = "WORKSPACE"
+
+  # view "All {objectLabelPlural}" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                              = "IconTable"
+  + isActive                          = true
+  + isCompact                         = false
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + key                               = "INDEX"
+  + name                              = "All {objectLabelPlural}"
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + openRecordIn                      = "SIDE_PANEL"
+  + position                          = 0
+  + shouldHideEmptyGroups             = false
+  + type                              = "TABLE"
+  + visibility                        = "WORKSPACE"
+
+  # view "All {objectLabelPlural}" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                              = "IconTable"
+  + isActive                          = true
+  + isCompact                         = false
+  + isCustom                          = true
+  + isSystemSideEffect                = true
+  + key                               = "INDEX"
+  + name                              = "All {objectLabelPlural}"
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + openRecordIn                      = "SIDE_PANEL"
+  + position                          = 0
+  + shouldHideEmptyGroups             = false
+  + type                              = "TABLE"
+  + visibility                        = "WORKSPACE"
+
+  # viewField "04e57a1d-a6e5-5b71-882c-01e911a2bfeb" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00110"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 8
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "089e376e-6ea6-5c7c-8aa3-097ed97a4411" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "b1694058-fe71-5b55-8bc8-d987149b1e3d"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 7
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "0f5bb25c-b1dc-55b4-b188-0de0ba4c7f67" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00105"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 3
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "0f7789ec-4641-5901-a382-e629b5911524" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "7949036b-cd15-5811-804e-48d0ef5373c6"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 5
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "0fad77a6-ebbb-5713-981f-c71027afcb94" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "fadb8b17-d3a1-5186-9456-51cd62b8b61b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "0fcc85a7-4bda-527c-844d-587b9b1580c2" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00101"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 0
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "1ea382ea-72ae-51bd-a2ca-7d27a0de7f9d" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "082331c8-012f-543f-acf8-877cbe9d1374"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 53
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "20037ce4-571d-5645-bbd6-6dfee030d1a6" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "415f884b-1988-53ed-bdf4-8fd1981089fc"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 11
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "20844d08-a89e-518b-8667-b5cd49d9822e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00106"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 5
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "226cf55b-3d78-5f80-871b-efb7c0d8ea13" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "0d5b3a2d-fdac-58d9-9861-c11eea3e9116"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 5
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "258ab2e4-85f1-590a-bb0a-99aaa08ecf5d" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00106"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 4
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "2e40dd72-0021-5097-8b8e-629efc9e4b6e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "c7f47aa4-fa07-5775-9e24-260d260cb467"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 14
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "30889402-3ec2-5c1c-8745-34c79ad3040f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "efceadfe-e2fa-505d-a263-95530baae29e"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 3
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "32a91092-1f41-559f-9d54-b77ef7e6d7e1" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "bd212419-2595-57c0-bd7f-e81d51d2b25b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 11
+  + size                             = 180
+  + viewUniversalIdentifier          = "517a8632-47c4-522b-a8b5-1764a5c0bbbd"
+
+  # viewField "34718af3-691d-59e1-8b86-396e00153f42" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "0b69188a-fdaf-52bc-8d49-e397639a9681"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 8
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "350f9633-5a39-531d-979c-2c8180667d67" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "3075338d-9c74-5ee6-a605-0a90638017ac"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 18
+  + size                             = 180
+  + viewUniversalIdentifier          = "52403b58-2491-5c29-bc17-f2a2bc9d491b"
+
+  # viewField "37c0dc9a-f0ab-5333-bb03-149688907b1e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "1e1a47a4-2c3e-53ea-9181-fab539157529"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 50
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "38770be0-3ca2-52a2-9bda-3bbaf6c2d9b7" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "982a8863-a321-59e3-8fb2-b5ead7776cf9"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 10
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "3badc380-c8b4-5109-b1b4-54d18ad68ae4" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "ec6422ff-3d9a-52bc-9b41-1217c2a7f423"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "a8df3f19-51cc-510e-8eda-f14817b983e3"
+
+  # viewField "3c94ccb6-efcf-5f9e-a415-3394d453cc67" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "07a30d44-2402-5d7f-8334-43b45b39b982"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 48
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "3f72d508-68d4-5723-a4a1-afb74a7f0d19" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "8a65a47c-c37f-5d1e-a540-7e93ef71733e"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "40263b5f-6682-5bfa-9aee-d3779fbc4b89" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "8084713d-5e20-5846-b136-0cdb557431d0"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 2
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "4246af76-5d04-5f4d-83db-a8b1b8269971" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "5f3a1d02-951c-56c5-8d5b-0105c4304003"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 10
+  + size                             = 180
+  + viewUniversalIdentifier          = "4a097d02-23e9-5230-9f8d-155cc282fb17"
+
+  # viewField "475c49e9-2e5d-5849-a2bd-ec7641e273fb" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "07a30d44-2402-5d7f-8334-43b45b39b982"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "4b841023-48a9-5ff3-b6d7-83be35686213" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "665a06f2-6df1-5f11-9f84-81d79d1b38a3"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 25
+  + size                             = 180
+  + viewUniversalIdentifier          = "f34b7370-2c2f-5fa9-9a2d-408f39800bce"
+
+  # viewField "4d65367d-3f22-5b33-a9f9-655a25b7eb8f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "8be81bc9-6ef6-5475-ba59-4f284f80a4df"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 0
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "4ff54625-69e7-5b52-8755-05d8882d5af0" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "adc703ea-d690-5472-aac2-deae632ee023"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 55
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "51c0f1fe-3d0c-5d4c-8b77-9439df6880fe" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "5f3a1d02-951c-56c5-8d5b-0105c4304003"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 9
+  + size                             = 180
+  + viewUniversalIdentifier          = "41735314-048b-530b-b59e-e59518990c52"
+
+  # viewField "52866034-db88-53e0-801d-1dcf04ed429f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "5f3a1d02-951c-56c5-8d5b-0105c4304002"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 15
+  + size                             = 180
+  + viewUniversalIdentifier          = "a43063e6-fed2-52fd-8799-58f57d302a08"
+
+  # viewField "532938eb-a288-5f30-a836-76d8710bab67" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "efceadfe-e2fa-505d-a263-95530baae29e"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 2
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "5385ead0-f361-5812-a671-5bcf042e5c3b" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00104"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 2
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "54e7d1f3-17e5-5c79-9001-c4c21bf23f05" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "875ec2b9-4b97-593d-b019-edf315af525b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "5610a31e-2025-5e5e-971e-2db0020bf0fc" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00103"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 1
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "57371cbc-aa70-5077-a0ec-cd86911d3725" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00110"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 9
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "59976871-f104-525b-8be0-8aa0b0855e0a" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "de7b04e4-d580-57ba-a083-a5b1a08624c9"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 15
+  + size                             = 180
+  + viewUniversalIdentifier          = "e73bbe79-ad81-552c-a4b2-7b7d8ec9f351"
+
+  # viewField "5ca09da2-c46a-5c0b-8cd7-db203fcf1ed1" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00107"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 6
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "6221012f-10fe-538f-b516-3d6edce6237f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "3075338d-9c74-5ee6-a605-0a90638017ac"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 30
+  + size                             = 180
+  + viewUniversalIdentifier          = "a8df3f19-51cc-510e-8eda-f14817b983e3"
+
+  # viewField "64fc4f75-3bd2-53c0-b914-705a6cc7f82b" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00104"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 3
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "67366d68-863b-5557-9b6f-a12324d88469" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "c7f47aa4-fa07-5775-9e24-260d260cb467"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "679d0d92-a58f-51c5-8e4b-4347196d929f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "ec6422ff-3d9a-52bc-9b41-1217c2a7f423"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 18
+  + size                             = 180
+  + viewUniversalIdentifier          = "52403b58-2491-5c29-bc17-f2a2bc9d491b"
+
+  # viewField "690c85ad-bf64-58a6-8a93-c166dcb2cbf1" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "875ec2b9-4b97-593d-b019-edf315af525b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 52
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "69abb6ad-6379-5869-97b1-fcfc1d596a8c" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "4a2a9b91-723d-5963-a79c-3d4b71e8b54d"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 18
+  + size                             = 180
+  + viewUniversalIdentifier          = "52403b58-2491-5c29-bc17-f2a2bc9d491b"
+
+  # viewField "6b10892f-675f-580a-9c0d-9195ee22cff8" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "8a65a47c-c37f-5d1e-a540-7e93ef71733e"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 46
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "6b13b510-0e95-5383-8902-122ed1917603" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "7949036b-cd15-5811-804e-48d0ef5373c6"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 6
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "75bbf0ae-2874-58e4-a954-dd5ff7583dc0" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "de7b04e4-d580-57ba-a083-a5b1a08624c9"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "1c2bc0b4-dfc8-50bf-a1c6-3c7b4ed08e7e"
+
+  # viewField "77605f73-1253-58a8-a41b-4f0c379acfdc" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "68a351c8-25eb-5bf2-9bbe-b65f672c1065"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 3
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "7a1d1b5a-5bf8-55ee-9a54-424637dbe25c" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00105"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 4
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "7c3d7f5b-d451-5c73-bb09-73f076b9c95d" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "fdbf5fa7-f54b-543a-a292-65ded00c0ce0"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "1c2bc0b4-dfc8-50bf-a1c6-3c7b4ed08e7e"
+
+  # viewField "7c9cf99e-eaf3-5fbd-a26f-b00ddfd7026f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "982a8863-a321-59e3-8fb2-b5ead7776cf9"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 11
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "7d122493-1ac3-566c-908f-ea1c82fe0579" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "fdbf5fa7-f54b-543a-a292-65ded00c0ce0"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 14
+  + size                             = 180
+  + viewUniversalIdentifier          = "e73bbe79-ad81-552c-a4b2-7b7d8ec9f351"
+
+  # viewField "7d6f23f7-d8c1-5669-b770-f806c807b307" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00107"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 5
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "855fa18a-b1e3-52d4-9d65-816123a3c81e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00108"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 7
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "88b9b09b-9c69-5637-a61e-7547fe8c0b85" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "4a1d0a78-610b-5e39-80aa-a456b010a4f6"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 14
+  + size                             = 180
+  + viewUniversalIdentifier          = "25981319-58d9-533a-942b-614354c6105a"
+
+  # viewField "8a1f0d4c-d26d-505d-83b9-e5d596826d43" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "c715e710-d591-5e14-821e-3a94a99a3915"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 18
+  + size                             = 180
+  + viewUniversalIdentifier          = "52403b58-2491-5c29-bc17-f2a2bc9d491b"
+
+  # viewField "8bfea411-279d-52ed-96a3-6bc4c590126b" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "adc703ea-d690-5472-aac2-deae632ee023"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "8cf60c41-423b-5f59-ba27-33f6edb31f3f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "e31bea10-82ea-5cc1-a28c-8c41a89e0a38"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "91679932-5e61-5f21-9aca-aa7c580e3d88" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "e35faa6e-4eb4-5ba7-9b74-b623ff45b627"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 11
+  + size                             = 180
+  + viewUniversalIdentifier          = "517a8632-47c4-522b-a8b5-1764a5c0bbbd"
+
+  # viewField "9c9d2d43-d3ab-50a8-960c-0182432379e0" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "4a1d0a78-610b-5e39-80aa-a456b010a4f6"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 24
+  + size                             = 180
+  + viewUniversalIdentifier          = "f34b7370-2c2f-5fa9-9a2d-408f39800bce"
+
+  # viewField "9cae1fa4-5614-5a46-a778-2d8f890dce03" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "5f3a1d02-951c-56c5-8d5b-0105c4304001"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "f204334d-106a-553c-aa37-f80d9eef63a2"
+
+  # viewField "a349057e-0a14-5c03-bec4-6af7fa1f91f7" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "b6414a96-1338-501c-9e0f-9184cb082dd1"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 49
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "a5404502-9424-556d-9a36-d8ad9945800e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "2c94a410-ff54-5b7f-be76-79a786ba80ba"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 54
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "a99081df-f90b-5898-aa59-9f3e51517fd9" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "a9f787d9-4715-53e9-ba5f-b8ba1081649b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "aa3f2f55-0144-5a15-9749-dcc7663edd79" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "855d92ca-1b1a-5087-be1c-c551376f5ba0"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 7
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "ab60e6cd-9c53-5761-9746-c6d773d5edc5" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "fadb8b17-d3a1-5186-9456-51cd62b8b61b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 56
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "aee18677-bae0-5f0b-b6a9-0d8cfc5594f7" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "39be4f24-0392-546d-8ce0-f99b6539a20b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 11
+  + size                             = 180
+  + viewUniversalIdentifier          = "517a8632-47c4-522b-a8b5-1764a5c0bbbd"
+
+  # viewField "b6bc0834-15af-5572-b97b-9100c8bd2d46" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00111"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 9
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "b772e0af-1c7c-5519-a401-a6411a6db68f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "855d92ca-1b1a-5087-be1c-c551376f5ba0"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 8
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "b88cd5ab-a69d-5d80-959d-8a202526b3a1" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "75eee6be-c38f-5662-9b79-be9b0e205cc2"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 27
+  + size                             = 180
+  + viewUniversalIdentifier          = "a8df3f19-51cc-510e-8eda-f14817b983e3"
+
+  # viewField "b905bd95-3f95-5981-baa1-368e6e3ed0db" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "b1694058-fe71-5b55-8bc8-d987149b1e3d"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 6
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "b9916c7e-c4ad-56fc-bcf7-462f38617a16" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "5f3a1d02-951c-56c5-8d5b-0105c4304001"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 14
+  + size                             = 180
+  + viewUniversalIdentifier          = "a43063e6-fed2-52fd-8799-58f57d302a08"
+
+  # viewField "bb9d4d79-78df-52f8-9ee9-9550fb62405f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "0b69188a-fdaf-52bc-8d49-e397639a9681"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 9
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "bc96b705-483a-5854-892b-2f0d7b635031" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "2c94a410-ff54-5b7f-be76-79a786ba80ba"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "be254e22-d2fc-567d-8430-4aa048dd370e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "e31bea10-82ea-5cc1-a28c-8c41a89e0a38"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 51
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "be299aa6-75a2-5eac-97d4-0ceac048928e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "1e59229b-2d9a-5a5e-bb54-677683dd1fac"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "c1314da4-e37f-51ca-8e0e-508c7f521b51" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00109"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 8
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "c5e9ab37-dc2a-5b26-b7e1-315ff49ec43d" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "bd212419-2595-57c0-bd7f-e81d51d2b25b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 12
+  + size                             = 180
+  + viewUniversalIdentifier          = "52669ae1-483e-56fe-9cb4-ab74167827bc"
+
+  # viewField "c7f7592c-c0d9-500f-9304-9ae9b5dea44b" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00111"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 10
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "ca694ed7-9953-5609-ac08-44d6228062e0" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "4a2a9b91-723d-5963-a79c-3d4b71e8b54d"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 26
+  + size                             = 180
+  + viewUniversalIdentifier          = "a8df3f19-51cc-510e-8eda-f14817b983e3"
+
+  # viewField "ca817483-bd56-5309-b21e-31e5aef091c0" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00102"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 1
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "cd5adc44-b548-575c-aa21-810c4858fec5" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "a9f787d9-4715-53e9-ba5f-b8ba1081649b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 47
+  + size                             = 180
+  + viewUniversalIdentifier          = "344c6a78-2905-539b-8a4f-9fe3a8f78559"
+
+  # viewField "cfaeeca5-fb2f-5292-98c9-bd75e8ad6f0e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "c715e710-d591-5e14-821e-3a94a99a3915"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 31
+  + size                             = 180
+  + viewUniversalIdentifier          = "a8df3f19-51cc-510e-8eda-f14817b983e3"
+
+  # viewField "cfcd8e47-983c-56ed-a953-b5530971236e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "e35faa6e-4eb4-5ba7-9b74-b623ff45b627"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 14
+  + size                             = 180
+  + viewUniversalIdentifier          = "52669ae1-483e-56fe-9cb4-ab74167827bc"
+
+  # viewField "d0203006-55f1-5eb4-8e6b-0798198615f9" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "415f884b-1988-53ed-bdf4-8fd1981089fc"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 12
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "d18d93fc-ce45-590d-8f5d-3bd928cdb24c" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "1e59229b-2d9a-5a5e-bb54-677683dd1fac"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 12
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "d33ff934-0d27-5869-992a-a47f949a33ee" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "68a351c8-25eb-5bf2-9bbe-b65f672c1065"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 4
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "d8575271-e5d4-5627-b5a7-e0d5e707dfd5" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "1e1a47a4-2c3e-53ea-9181-fab539157529"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "db00f18f-d3dc-5cd5-8444-52eff7569c67" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00102"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 0
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "dc1d8f94-f21a-5665-8f7d-31ab2ed6ba0f" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "8be81bc9-6ef6-5475-ba59-4f284f80a4df"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 1
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "dc61fd33-4ec4-5eea-9bc2-85a2fe8522eb" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00103"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 2
+  + size                             = 180
+  + viewUniversalIdentifier          = "a3ceb042-3170-538a-9e7d-e26020bb57c9"
+
+  # viewField "ddec5a8f-8c9d-5518-88ef-241ea7ee4a11" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00109"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 7
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "e2556fd5-de4b-5475-a0ac-2356c4a54e65" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "7655c1b7-c552-58d8-8495-a214970590cb"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 28
+  + size                             = 180
+  + viewUniversalIdentifier          = "a8df3f19-51cc-510e-8eda-f14817b983e3"
+
+  # viewField "e33c34cb-268d-5080-a6a9-5f262a39f4b9" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "082331c8-012f-543f-acf8-877cbe9d1374"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "e37be2a5-52e6-55e3-bc4e-0d3f23a1ce45" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "929a3199-73f0-569b-92a5-707742288aea"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 0
+  + size                             = 180
+  + viewUniversalIdentifier          = "2720581d-2633-5a71-8003-3a4a605c88ca"
+
+  # viewField "e3838df9-a0a4-5483-a67b-e5866b628fd1" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "39be4f24-0392-546d-8ce0-f99b6539a20b"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "52669ae1-483e-56fe-9cb4-ab74167827bc"
+
+  # viewField "e4235b0b-cd2b-5df6-900d-4c6dad0b6f2b" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "665a06f2-6df1-5f11-9f84-81d79d1b38a3"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 14
+  + size                             = 180
+  + viewUniversalIdentifier          = "25981319-58d9-533a-942b-614354c6105a"
+
+  # viewField "e6b72f6a-2140-5a86-96ff-c6476b76aa31" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "b6414a96-1338-501c-9e0f-9184cb082dd1"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 29
+  + size                             = 180
+  + viewUniversalIdentifier          = "d4920bc3-8c83-51c1-8bd5-1290b66399a0"
+
+  # viewField "e9a824e5-6ca9-52a1-b329-6a03cd028c14" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00108"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 6
+  + size                             = 180
+  + viewUniversalIdentifier          = "e5541c10-325a-5da4-bbcb-e10fb6060664"
+
+  # viewField "eaec909b-8498-551c-8999-ea6c259d32ad" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "75eee6be-c38f-5662-9b79-be9b0e205cc2"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 18
+  + size                             = 180
+  + viewUniversalIdentifier          = "52403b58-2491-5c29-bc17-f2a2bc9d491b"
+
+  # viewField "f510920d-33e2-567d-a4bd-fe5bc648242e" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "7655c1b7-c552-58d8-8495-a214970590cb"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 18
+  + size                             = 180
+  + viewUniversalIdentifier          = "52403b58-2491-5c29-bc17-f2a2bc9d491b"
+
+  # viewField "f93515e7-505c-564b-a372-a61cd18aee49" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "5f3a1d02-951c-56c5-8d5b-0105c4304002"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 13
+  + size                             = 180
+  + viewUniversalIdentifier          = "f204334d-106a-553c-aa37-f80d9eef63a2"
+
+  # viewField "fd83e174-6228-5784-b6b2-35a5df348c38" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "8084713d-5e20-5846-b136-0cdb557431d0"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 1
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # viewField "ff07616d-2009-5a83-8f45-caef87356ca9" will be created
+  + applicationUniversalIdentifier   = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + fieldMetadataUniversalIdentifier = "0d5b3a2d-fdac-58d9-9861-c11eea3e9116"
+  + isActive                         = true
+  + isSystemSideEffect               = true
+  + isVisible                        = true
+  + position                         = 4
+  + size                             = 180
+  + viewUniversalIdentifier          = "5061d383-3c3a-584a-bfcb-f4ca56a90f53"
+
+  # logicFunction "quotation-units" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + builtHandlerPath               = "src/logic-functions/quotation-units.mjs"
+  + checksum                       = "15f135c72e5c082a06e379be3290ee69"
+  + description                    = "Workspace unit-of-measure catalog for quotation settings"
+  + executionMode                  = "LIVE"
+  + handlerName                    = "default.config.handler"
+  + httpRouteTriggerSettings       = {"path":"/quotation/units","httpMethod":"POST","isAuthRequired":true,"forwarded…
+  + isBuildUpToDate                = true
+  + name                           = "quotation-units"
+  + runtime                        = "nodejs22.x"
+  + sourceHandlerPath              = "src/logic-functions/quotation-units.ts"
+  + timeoutSeconds                 = 15
+
+  # logicFunction "accounting-connection-action" will be updated in-place
+  ~ checksum = "b67df3ce37b213cc0717d5dfa909bc8d" -> "c85b166c9345adb000c0703b48ccf03e"
+
+  # logicFunction "accounting-import-action" will be updated in-place
+  ~ checksum = "2a109ffbeef20409390c118f342eb5d7" -> "eda953fa343458ffcd9f5bb88d76b738"
+
+  # logicFunction "accounting-outbound-action" will be updated in-place
+  ~ checksum = "c588f060a0131f96d3fbfa891a98bf6b" -> "067d55b34aee253fa801afcb98f55fb0"
+
+  # logicFunction "save-catalog-item" will be updated in-place
+  ~ checksum = "03de0a8ae25bd8fb970476a5553980b9" -> "94bb5aac7dcfa70f678d03fa1393ce1c"
+
+  # logicFunction "save-draft-quotation" will be updated in-place
+  ~ checksum = "629c9563445b73a6208c6a37f9540f62" -> "bcc0681cb565c7c03c91d8f25f25fcf1"
+
+  # logicFunction "search-catalog-items" will be updated in-place
+  ~ checksum = "2dee18f033df5b85082a374f3a3a8e36" -> "472ed97d5b0bff393f8bbc01dec6ed92"
+
+  # logicFunction "view-customer-quotation" will be updated in-place
+  ~ checksum = "19dc697a90e774c0f92170783ee29ef0" -> "1bff2243473ed900a80de45a830a64d3"
+
+  # objectPermission "1d33d481-0d35-595c-8cc4-67626a44f5e1" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "dab886b2-ef12-53e7-93ca-505db4ea16fe"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "2ab6af07-96cb-5398-b61f-2a37bfab411a" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "20202020-b374-4779-a561-80086cb2e17f"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "3b71dee3-c014-5318-b48a-c72acd57da46" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "41ae25d2-9185-5261-b7e3-69cb9586c517" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "e106e576-13f6-59f3-9620-d842dc269f20"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "44c1a73b-8d1f-5e36-be1c-1bab2199ff5b" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "cd118c37-176e-5398-9ab9-bd94a050360a"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "5bf51e5c-1c22-5561-8730-3f6090d7ee49" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "b0fe2590-f5b5-58a0-b7dc-0493ee35917d"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "6b5d4da6-dea7-566f-ad8f-4162b8c56f51" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "98559981-ec09-59f9-9713-75e2d6bdfc9a"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "9d2e0b0b-3ad9-5195-a1ce-7412cb84664c" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "b714ae92-d6e4-566c-a8d1-0dcdb18610cd" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "2fb711ff-a9c4-5886-81b7-c747b9306c7a"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "ce079ff8-f825-566a-9e66-34d4cf6fcc57" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "e859ac57-43dc-54ab-a1d2-03fc8ed34a10"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "ce38db81-2123-55f5-bb27-29973fb56751" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "20202020-e674-48e5-a542-72570eee7213"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "cf7a9a9d-a5c4-50d0-9652-fee2ea0f1086" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "a3c7e1d5-6b2f-5c48-9d10-4f8e2a7b6c31"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "d51b959d-320b-5cd0-9efb-2fb7e210f308" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "4a0a3ab4-4740-5b2f-a7b8-ee5fc2ce5cfc"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "d996a2dc-5c0a-5ee5-b4cc-a98b81932123" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "b32a8e14-f12c-5745-a38b-69f83627f06b"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "d99d8738-271c-5980-83c9-748845300d72" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "b8f829cd-59da-547a-85d8-5fde66aa4bfe"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "dafad3d9-a277-56fe-b7ac-50fb6e21ffa7" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "e21815ce-195b-5c0e-ae7f-eee6d3ca5b40" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canReadObjectRecords              = true
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "a60d3be8-9e7b-556c-9129-960671a95d89"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "eb65b193-3563-55d0-af95-ae0293e9c4e5" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "f6ea657d-c0ca-5982-95ca-41ca9d3ffcc0" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + canDestroyObjectRecords           = false
+  + canReadObjectRecords              = true
+  + canSoftDeleteObjectRecords        = false
+  + canUpdateObjectRecords            = true
+  + objectMetadataUniversalIdentifier = "905a687c-fa42-5b47-87d0-e46e0fe15b07"
+  + roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "03838741-3e3d-5735-af60-1673c181bc28" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "a3c7e1d5-6b2f-5c48-9d10-4f8e2a7b6c31"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "0de7c592-419e-5147-bf30-42fd9f4e1011" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "126de4b2-7664-533e-9490-120cc3c02fa8" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "e859ac57-43dc-54ab-a1d2-03fc8ed34a10"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "2b91b1c6-9afe-5e81-921e-69d0559048aa" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "42f6bbaa-fc43-5962-87a5-3aca1c468307" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "dab886b2-ef12-53e7-93ca-505db4ea16fe"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "4b401855-309c-559c-b832-c198a76192a9" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "20202020-e674-48e5-a542-72570eee7213"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "52641c8a-38ae-5fb9-89bd-3a7a9d99185c" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "b32a8e14-f12c-5745-a38b-69f83627f06b"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "64645ecc-936a-5555-9a2f-61cf44df08d8" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "905a687c-fa42-5b47-87d0-e46e0fe15b07"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "81608a00-37dc-5540-afd0-cb9bf72394ca" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "2fb711ff-a9c4-5886-81b7-c747b9306c7a"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "94a224b0-2da8-5fdb-82b6-541850c8b129" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "cd118c37-176e-5398-9ab9-bd94a050360a"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "b2cd7123-b03e-5e1a-8e02-0e7e9b5037c8" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "e106e576-13f6-59f3-9620-d842dc269f20"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "cb5bcc4a-af14-59a1-aa16-0a69a79479f1" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "20202020-b374-4779-a561-80086cb2e17f"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "d75de2fa-da47-53dc-9848-596ea2a35b93" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "b0fe2590-f5b5-58a0-b7dc-0493ee35917d"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "d8ef5ba7-0fbd-52dc-b7d2-20a5e772cef1" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "4a0a3ab4-4740-5b2f-a7b8-ee5fc2ce5cfc"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "e381ab18-3b62-5951-b028-680c048c6a74" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canDestroyObjectRecords           = false
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = false
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "98559981-ec09-59f9-9713-75e2d6bdfc9a"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "e7c955ad-f054-5c4a-98a3-c244ce2051de" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "a60d3be8-9e7b-556c-9129-960671a95d89"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "eb4fc333-70a3-52cd-9ea7-a61e5790ce6d" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canSoftDeleteObjectRecords        = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "0f253c33-b8ec-5450-8c76-4030c607e00e"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # objectPermission "f116d65a-f38e-5e4e-bd3a-16d93efc79a2" will be destroyed
+  - applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  - canReadObjectRecords              = true
+  - canUpdateObjectRecords            = true
+  - objectMetadataUniversalIdentifier = "b8f829cd-59da-547a-85d8-5fde66aa4bfe"
+  - roleUniversalIdentifier           = "c1d2e3f4-a5b6-5789-9012-3456789abcde"
+
+  # frontComponent "مالیات و عوارض" will be updated in-place
+  ~ builtComponentChecksum = "0c2156d4644ebbd9912ea93a803ca570868228890fb0cf396778a2af1d5dea18" -> "090dd3e9cdc35025962c96897f324cf6e572a1fc49af384cb6676798f688b2dd"
+
+  # frontComponent "مالیات و عوارض" will be updated in-place
+  ~ builtComponentChecksum = "1e3a62c6e87da73450b9447bf7d42f816e98f21260a8f4da1334c7680bfd54d0" -> "854df6ccf25c77d22717504e0040681356a22ec2d29579bf13b8c72e4dcd6797"
+
+  # frontComponent "accounting-connection-panel" will be updated in-place
+  ~ builtComponentChecksum = "330899aaa5a49eb015b244b98c67da7a30cb300696108c36cf422aa135bfb4b9" -> "4de4efb8b4f175e1c68aee26606cc541d029dc7168e658a616634fd2e2a973da"
+
+  # frontComponent "accounting-settings-page" will be updated in-place
+  ~ builtComponentChecksum = "9d1693b88420a2224a8322b5c8eb1019a2f69e6a0bc9eeea54c0249d716ca075" -> "7c9f0366101d0b94cd7c0d01305df32b4daf7799c2d66729d65609b4ceba4079"
+
+  # frontComponent "catalog-item-form" will be updated in-place
+  ~ builtComponentChecksum = "044b4e1b915b98b422154016536061b73d29ef3aa2c05f409b4c7648b12630de" -> "ef6b08cb7650695f13675802048cc051ecb32ca9f776ada81777a59993610090"
+
+  # frontComponent "quotation-draft-form" will be updated in-place
+  ~ builtComponentChecksum = "b99c17142eb70e3063ead54bdf96c2d8e8bcfc68ee555d33a97106cd24045b6d" -> "7ee32ec6cbad5896c36f3ea8664e6f812afd946aff425d70f0d0791e1b636035"
+
+  # frontComponent "quotation-lifecycle-panel" will be updated in-place
+  ~ builtComponentChecksum = "7b9061f416033fe22570d3915969398f06fce3bb2d01d14de6dc562a209dfc9f" -> "46a0dbba0f34f322fe860e8984e24381e12c32e80c5c6d7c5c57e27034b983e8"
+
+  # pageLayout "Creation Form" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isFirstTabPinned                  = true
+  + isSystemSideEffect                = true
+  + name                              = "Creation Form"
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + type                              = "RECORD_FORM"
+
+  # pageLayout "Creation Form" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isFirstTabPinned                  = true
+  + isSystemSideEffect                = true
+  + name                              = "Creation Form"
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + type                              = "RECORD_FORM"
+
+  # pageLayout "Default سابقه دسترسی مالی Layout" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isFirstTabPinned                  = true
+  + isSystemSideEffect                = true
+  + name                              = "Default سابقه دسترسی مالی Layout"
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + type                              = "RECORD_PAGE"
+
+  # pageLayout "Default واحد اندازه‌گیری Layout" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isFirstTabPinned                  = true
+  + isSystemSideEffect                = true
+  + name                              = "Default واحد اندازه‌گیری Layout"
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + type                              = "RECORD_PAGE"
+
+  # pageLayoutTab "0aa542f6-5886-5d86-b765-e48ba24308fb" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconCheckbox"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "fbf5b29c-48e7-5d56-a998-89b413ca4c2d"
+  + position                       = 30
+  + title                          = "Tasks"
+
+  # pageLayoutTab "24515ae8-a5ce-5c83-aaad-197743930f58" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconCheckbox"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "7d6dc7b8-a30a-5310-bae0-b83eecd748fa"
+  + position                       = 30
+  + title                          = "Tasks"
+
+  # pageLayoutTab "470460ba-edbb-5b2f-9b43-8490af07be64" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconHome"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "7d6dc7b8-a30a-5310-bae0-b83eecd748fa"
+  + position                       = 10
+  + title                          = "Home"
+
+  # pageLayoutTab "63bcc38c-9b98-5950-978b-9f9d7123c887" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconNotes"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "7d6dc7b8-a30a-5310-bae0-b83eecd748fa"
+  + position                       = 40
+  + title                          = "Notes"
+
+  # pageLayoutTab "6b54078e-4fb7-5ee7-b25e-07de6031d0e5" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconFiles"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "fbf5b29c-48e7-5d56-a998-89b413ca4c2d"
+  + position                       = 50
+  + title                          = "Files"
+
+  # pageLayoutTab "82fca7ad-a957-5b8a-9f50-7cf8a0f58ebc" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconNotes"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "fbf5b29c-48e7-5d56-a998-89b413ca4c2d"
+  + position                       = 40
+  + title                          = "Notes"
+
+  # pageLayoutTab "95c7e944-a219-506b-ab72-ba3e84cd13d9" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconHome"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "fbf5b29c-48e7-5d56-a998-89b413ca4c2d"
+  + position                       = 10
+  + title                          = "Home"
+
+  # pageLayoutTab "a519107e-ab09-5611-b110-faa5de35e89c" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconFiles"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "7d6dc7b8-a30a-5310-bae0-b83eecd748fa"
+  + position                       = 50
+  + title                          = "Files"
+
+  # pageLayoutTab "a9c15d7e-dee9-5a23-80e9-c4544c3c8d64" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconTimelineEvent"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "7d6dc7b8-a30a-5310-bae0-b83eecd748fa"
+  + position                       = 20
+  + title                          = "Timeline"
+
+  # pageLayoutTab "ac7eb0d3-e7a0-5942-85e2-2e757c021de2" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconTimelineEvent"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "fbf5b29c-48e7-5d56-a998-89b413ca4c2d"
+  + position                       = 20
+  + title                          = "Timeline"
+
+  # pageLayoutTab "e6c93c94-c29e-5f18-8d16-e2dd36b7bb93" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconList"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "6dd62cf2-4c3b-5644-958f-15f81ee54d8e"
+  + position                       = 10
+  + title                          = "Fields"
+
+  # pageLayoutTab "ff34710d-fe2d-54e7-b7b2-5218a40db07a" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + icon                           = "IconList"
+  + isActive                       = true
+  + isSystemSideEffect             = true
+  + layoutMode                     = "VERTICAL_LIST"
+  + pageLayoutUniversalIdentifier  = "e3686cc7-6070-5040-93a1-bb64c5f17e5b"
+  + position                       = 10
+  + title                          = "Fields"
+
+  # pageLayoutWidget "0172bd95-74e3-5e18-9f77-bbe11a21da8f" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + pageLayoutTabUniversalIdentifier  = "24515ae8-a5ce-5c83-aaad-197743930f58"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Tasks"
+  + type                              = "TASKS"
+  + universalConfiguration            = {"configurationType":"TASKS"}
+
+  # pageLayoutWidget "10d227d9-0987-51b6-b82f-d84ff641a45e" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":21}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"875ec2b9-4b97-593d-b019-ed…
+
+  # pageLayoutWidget "1b2805e4-381e-54b9-9a99-f039a9fc60a9" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + pageLayoutTabUniversalIdentifier  = "0aa542f6-5886-5d86-b765-e48ba24308fb"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Tasks"
+  + type                              = "TASKS"
+  + universalConfiguration            = {"configurationType":"TASKS"}
+
+  # pageLayoutWidget "1f0eeabd-e4dd-5e8f-b0af-53a5491dbbd5" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":18}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"b6414a96-1338-501c-9e0f-91…
+
+  # pageLayoutWidget "24ee5522-aa83-516b-87a1-7290f536f999" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + pageLayoutTabUniversalIdentifier  = "82fca7ad-a957-5b8a-9f50-7cf8a0f58ebc"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Notes"
+  + type                              = "NOTES"
+  + universalConfiguration            = {"configurationType":"NOTES"}
+
+  # pageLayoutWidget "27914928-4c62-5cf3-b061-73993efec6da" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "b8f829cd-59da-547a-85d8-5fde66aa4bfe"
+  + pageLayoutTabUniversalIdentifier  = "d7ad9309-4cf0-5dfa-b3e7-600459e120fd"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":8}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"de7b04e4-d580-57ba-a083-a5…
+
+  # pageLayoutWidget "4083ac69-2db9-5954-912a-6e61621295ba" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + pageLayoutTabUniversalIdentifier  = "18792da8-ec8a-58bf-ae78-85227f33a6ad"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":10}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"e35faa6e-4eb4-5ba7-9b74-b6…
+
+  # pageLayoutWidget "4526900a-fb56-5aee-8992-1b898a6ecbe3" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":17}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"07a30d44-2402-5d7f-8334-43…
+
+  # pageLayoutWidget "4d94cfb1-5301-5187-9290-1b7a3af1e96e" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":22}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"082331c8-012f-543f-acf8-87…
+
+  # pageLayoutWidget "51230ba2-67a3-599b-8074-94b42262a4d0" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":15}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"8a65a47c-c37f-5d1e-a540-7e…
+
+  # pageLayoutWidget "6429b4a9-41f6-5ea8-9a44-f6f6d9ff0ed5" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + pageLayoutTabUniversalIdentifier  = "a519107e-ab09-5611-b110-faa5de35e89c"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Files"
+  + type                              = "FILES"
+  + universalConfiguration            = {"configurationType":"FILES"}
+
+  # pageLayoutWidget "68c9e97c-87a4-5390-8ebb-a0797679c264" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":19}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"1e1a47a4-2c3e-53ea-9181-fa…
+
+  # pageLayoutWidget "7638ea12-e3f2-57a5-934c-0f362c3896b4" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + pageLayoutTabUniversalIdentifier  = "e6c93c94-c29e-5f18-8d16-e2dd36b7bb93"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"929a3199-73f0-569b-92a5-70…
+
+  # pageLayoutWidget "80260af3-7a71-53ca-a353-c956a3df0bdc" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + pageLayoutTabUniversalIdentifier  = "470460ba-edbb-5b2f-9b43-8490af07be64"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Fields"
+  + type                              = "FIELDS"
+  + universalConfiguration            = {"configurationType":"FIELDS","viewUniversalIdentifier":"5061d383-3c3a-584a-bfc…
+
+  # pageLayoutWidget "88f5d4ab-7f35-51ee-b1ca-af8febf5ab9b" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":20}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"e31bea10-82ea-5cc1-a28c-8c…
+
+  # pageLayoutWidget "8d159e89-4bfa-5571-a6f8-e2bc178cf08a" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + pageLayoutTabUniversalIdentifier  = "6b54078e-4fb7-5ee7-b25e-07de6031d0e5"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Files"
+  + type                              = "FILES"
+  + universalConfiguration            = {"configurationType":"FILES"}
+
+  # pageLayoutWidget "94d9f2ce-8b63-55f0-bfec-b2f02d9089f4" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":16}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"a9f787d9-4715-53e9-ba5f-b8…
+
+  # pageLayoutWidget "951cf51f-df02-5440-a17e-628c917e1b50" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + pageLayoutTabUniversalIdentifier  = "18792da8-ec8a-58bf-ae78-85227f33a6ad"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":9}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"39be4f24-0392-546d-8ce0-f9…
+
+  # pageLayoutWidget "9df0af18-3a16-5949-b86a-61913e77ea2e" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + pageLayoutTabUniversalIdentifier  = "63bcc38c-9b98-5950-978b-9f9d7123c887"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Notes"
+  + type                              = "NOTES"
+  + universalConfiguration            = {"configurationType":"NOTES"}
+
+  # pageLayoutWidget "ad946a0c-3b00-5310-a1ef-ed25a05d4a06" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "08f95dbf-072a-58c3-9dfe-b8daeb3e27b8"
+  + pageLayoutTabUniversalIdentifier  = "a9c15d7e-dee9-5a23-80e9-c4544c3c8d64"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Timeline"
+  + type                              = "TIMELINE"
+  + universalConfiguration            = {"configurationType":"TIMELINE"}
+
+  # pageLayoutWidget "ccabfbfd-59bc-53bb-9d89-1bf3547be8b1" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "bd2952f8-d37d-52f7-b22b-35a4bc761864"
+  + pageLayoutTabUniversalIdentifier  = "18792da8-ec8a-58bf-ae78-85227f33a6ad"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":8}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"bd212419-2595-57c0-bd7f-e8…
+
+  # pageLayoutWidget "de03adfd-1db3-5d8d-bcb9-c367e3807bce" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "afaa9a02-5e61-5ba8-8d78-902a057ef187"
+  + pageLayoutTabUniversalIdentifier  = "8eabb560-c980-5c10-bd97-736ccf121e53"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":23}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"2c94a410-ff54-5b7f-be76-79…
+
+  # pageLayoutWidget "de8b1b49-4fe6-5303-9743-2b32766a567e" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + pageLayoutTabUniversalIdentifier  = "95c7e944-a219-506b-ab72-ba3e84cd13d9"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Fields"
+  + type                              = "FIELDS"
+  + universalConfiguration            = {"configurationType":"FIELDS","viewUniversalIdentifier":"e5541c10-325a-5da4-bbc…
+
+  # pageLayoutWidget "dee3ac2a-59f0-5ea6-9cb5-cd0416b9607b" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "09a38b87-22c8-5e2d-9501-3a0c40f00100"
+  + pageLayoutTabUniversalIdentifier  = "ac7eb0d3-e7a0-5942-85e2-2e757c021de2"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":0}
+  + title                             = "Timeline"
+  + type                              = "TIMELINE"
+  + universalConfiguration            = {"configurationType":"TIMELINE"}
+
+  # pageLayoutWidget "fc324fa3-d60d-5765-8ff7-9edb9efd9000" will be created
+  + applicationUniversalIdentifier    = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + isActive                          = true
+  + isSystemSideEffect                = true
+  + objectMetadataUniversalIdentifier = "b8f829cd-59da-547a-85d8-5fde66aa4bfe"
+  + pageLayoutTabUniversalIdentifier  = "d7ad9309-4cf0-5dfa-b3e7-600459e120fd"
+  + position                          = {"layoutMode":"VERTICAL_LIST","index":7}
+  + title                             = ""
+  + type                              = "FORM_FIELD"
+  + universalConfiguration            = {"configurationType":"FORM_FIELD","fieldMetadataId":"fdbf5fa7-f54b-543a-a292-65…
+
+  # applicationVariable "19ae41db-63fd-56f2-8826-4d651665a244" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Default legal name printed as quotation issuer when the draft omits it."
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "QUOTATION_ISSUER_LEGAL_NAME"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:uWuE22f8oMzZR35ezgGnYCMB4Q/2vrgBgulnFA=="
+
+  # applicationVariable "343df0ff-c2c0-56ac-bafb-690000f04543" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Default issuer phone printed on quotations."
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "QUOTATION_ISSUER_PHONE"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:zZXjbIM0EqbXrrUQCo7O340HQiUa+Qd8y+jccA=="
+
+  # applicationVariable "440790f9-7a5a-5b91-af12-7736b7b244d4" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Default economic code for the quotation issuer snapshot."
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "QUOTATION_ISSUER_ECONOMIC_CODE"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:rkhhOE9VnsehYM8Mtc9iKIkrAqN1nEFd4rLp2Q=="
+
+  # applicationVariable "7b1a7a62-3715-5945-b296-8c3e016fb26d" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Default issuer address printed on quotations."
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "QUOTATION_ISSUER_ADDRESS"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:DgZA5zT7sJYQpoZoAmGg0eUx0mfnUtb0RtxfIQ=="
+
+  # applicationVariable "e0b1c2d3-0012-4000-8000-000000000012" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Exact remote user id attested by the administrator during separate read-only a…
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "ASAN_APPROVED_READ_REMOTE_USER_ID"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:Sn4ZEe+DFAmyHFi3m+9JP0AH0Iino2uEQpItdQ=="
+
+  # applicationVariable "e0b1c2d3-0013-4000-8000-000000000013" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Non-secret administrator-attested dataset label. Not vendor identity proof; in…
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "ASAN_APPROVED_READ_DATASET_ID"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:BYDpx0/9dcRkq13gpkEyXUoCyfLF5MplfsjHNg=="
+
+  # applicationVariable "f8b91f85-ba98-5641-835f-4d262b9b051b" will be created
+  + applicationUniversalIdentifier = "e7bcb5ba-01f9-57f2-80df-fb6f596ba1fb"
+  + description                    = "Default national id for the quotation issuer snapshot."
+  + isDeprecated                   = false
+  + isRequired                     = false
+  + isSecret                       = false
+  + key                            = "QUOTATION_ISSUER_NATIONAL_ID"
+  + label                          = ""
+  + type                           = "TEXT"
+  + value                          = "enc:v2:b0f15747:aYmD2Fdz5S0esXy5zaXrEYmLNIGV0XZmft7wUg=="
+
+Plan: 223 to add, 16 to change, 18 to destroy.
+
+Generating API client...
+
+✓ Synced پیش‌فاکتور (45 files)
+Output: D:/CrmSource/twenty-g040-phase1/packages/twenty-apps/internal/quotation/.twenty/output

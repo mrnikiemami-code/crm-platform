@@ -1,0 +1,27 @@
+packages/twenty-server/src/modules/quotation/controllers/__tests__/quotation-ui.controller.spec.ts(87,22): error TS2554: Expected 12 arguments, but got 11.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-currency-delete-one.pre-query.hook.ts(19,15): error TS2315: Type 'DeleteOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-currency-delete-one.pre-query.hook.ts(20,14): error TS2315: Type 'DeleteOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-currency-destroy-one.pre-query.hook.ts(19,15): error TS2315: Type 'DestroyOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-currency-destroy-one.pre-query.hook.ts(20,14): error TS2315: Type 'DestroyOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-currency-restore-one.pre-query.hook.ts(19,15): error TS2315: Type 'RestoreOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-currency-restore-one.pre-query.hook.ts(20,14): error TS2315: Type 'RestoreOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-unit-delete-one.pre-query.hook.ts(19,15): error TS2315: Type 'DeleteOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-unit-delete-one.pre-query.hook.ts(20,14): error TS2315: Type 'DeleteOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-unit-destroy-one.pre-query.hook.ts(19,15): error TS2315: Type 'DestroyOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-unit-destroy-one.pre-query.hook.ts(20,14): error TS2315: Type 'DestroyOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-unit-restore-one.pre-query.hook.ts(19,15): error TS2315: Type 'RestoreOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/quotation-unit-restore-one.pre-query.hook.ts(20,14): error TS2315: Type 'RestoreOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/rounding-rule-delete-one.pre-query.hook.ts(19,15): error TS2315: Type 'DeleteOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/rounding-rule-delete-one.pre-query.hook.ts(20,14): error TS2315: Type 'DeleteOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/rounding-rule-destroy-one.pre-query.hook.ts(19,15): error TS2315: Type 'DestroyOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/rounding-rule-destroy-one.pre-query.hook.ts(20,14): error TS2315: Type 'DestroyOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/rounding-rule-restore-one.pre-query.hook.ts(19,15): error TS2315: Type 'RestoreOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/query-hooks/rounding-rule-restore-one.pre-query.hook.ts(20,14): error TS2315: Type 'RestoreOneResolverArgs' is not generic.
+packages/twenty-server/src/modules/quotation/services/accounting-customer-finance.service.ts(24,53): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/quotation-draft-persistence.service.ts(844,35): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/rounding-rule-authority.service.ts(24,21): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/rounding-rule-authority.service.ts(24,26): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/rounding-rule-authority.service.ts(24,32): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/rounding-rule-authority.service.ts(24,39): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/rounding-rule-authority.service.ts(24,47): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+packages/twenty-server/src/modules/quotation/services/rounding-rule-authority.service.ts(24,56): error TS2737: BigInt literals are not available when targeting lower than ES2020.

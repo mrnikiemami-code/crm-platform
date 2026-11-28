@@ -1,0 +1,53 @@
+Using remote: dev-crm129
+Applying application manifest on dev-crm129...
+App path: D:\CrmSource\twenty-g040-phase1\packages\twenty-apps\internal\quotation
+
+Checking server...
+Building manifest...
+Building application files...
+Running typecheck...
+Computing metadata plan...
+node : Sync failed with 18 errors
+At line:5 char:1
++ node -r .\scripts\windows-path-preload.cjs $cli apply -r dev-crm129 - ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Sync failed with 18 errors:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+objectPermission: 18 errors
+  1. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+ce38db81-2123-55f5-bb27-29973fb56751)
+  2. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+2ab6af07-96cb-5398-b61f-2a37bfab411a)
+  3. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+d99d8738-271c-5980-83c9-748845300d72)
+  4. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+e21815ce-195b-5c0e-ae7f-eee6d3ca5b40)
+  5. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+d51b959d-320b-5cd0-9efb-2fb7e210f308)
+  6. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+9d2e0b0b-3ad9-5195-a1ce-7412cb84664c)
+  7. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+dafad3d9-a277-56fe-b7ac-50fb6e21ffa7)
+  8. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+5bf51e5c-1c22-5561-8730-3f6090d7ee49)
+  9. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+ce079ff8-f825-566a-9e66-34d4cf6fcc57)
+  10. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+41ae25d2-9185-5261-b7e3-69cb9586c517)
+  11. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+d996a2dc-5c0a-5ee5-b4cc-a98b81932123)
+  12. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+1d33d481-0d35-595c-8cc4-67626a44f5e1)
+  13. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+eb65b193-3563-55d0-af95-ae0293e9c4e5)
+  14. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+cf7a9a9d-a5c4-50d0-9652-fee2ea0f1086)
+  15. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+b714ae92-d6e4-566c-a8d1-0dcdb18610cd)
+  16. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+44c1a73b-8d1f-5e36-be1c-1bab2199ff5b)
+  17. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+f6ea657d-c0ca-5982-95ca-41ca9d3ffcc0)
+  18. INVALID_SETTING_PERMISSIONS: Object permission for this role and object already exists (universalIdentifier: 
+6b5d4da6-dea7-566f-ad8f-4162b8c56f51)

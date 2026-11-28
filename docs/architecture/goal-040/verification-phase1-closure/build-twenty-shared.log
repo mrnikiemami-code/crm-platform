@@ -1,0 +1,82 @@
+npx : Calculating the project graph on the Nx Daemon
+At line:4 char:1
++ npx nx build twenty-shared --skip-nx-cache 2>&1 | Tee-Object -FilePat ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Calculating the...n the Nx Daemon:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+
+Creating project graph nodes with 2 plugins
+  - nx/js/dependencies-and-lockfile
+  - nx/core/project-json
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+Creating project graph nodes with nx/js/dependencies-and-lockfile
+
+
+ NX   Running target build for project twenty-shared and 1 task it depends on:
+
+
+
+> nx run twenty-shared:generateBarrels
+
+> tsx packages/twenty-shared/scripts/generateBarrels.ts
+
+(node:48424) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> nx run twenty-shared:build
+
+> npx vite build
+
+(node:51204) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:50516) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+> tsgo -p tsconfig.lib.json --declaration --emitDeclarationOnly --noEmit false --outDir dist --rootDir src && npx tsc-alias -p tsconfig.lib.json --outDir dist
+
+(node:60004) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+
+ NX   Successfully ran target build for project twenty-shared and 1 task it depends on
+
+

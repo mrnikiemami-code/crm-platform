@@ -56,7 +56,8 @@ export default defineObject({
       description: 'What kind of write this is.',
       icon: 'IconCategory',
       isNullable: false,
-      defaultValue: null,
+      // Non-nullable SELECT requires an explicit option default for metadata apply.
+      defaultValue: `'CATALOG_ITEM_CREATE'`,
       options: [
         {
           id: SELECT_OPTION_IDS.operationKindItemCreate,

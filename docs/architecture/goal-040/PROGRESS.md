@@ -4,7 +4,7 @@ Baseline audit 98ab4670868d946bc2b7409789fa0a8b2107c8a9. Last installed evidence
 
 | Phase | State | Evidence | Next |
 |---|---|---|---|
-| 1 critical source | IN_PROGRESS / A SOURCE_PARTIAL | Lane A 1961e98d6d250ad9456f395503195c0277251e42; Lane B not yet pushed | review B handoff, converge; finish remaining source gates |
+| 1 critical source | PHASE1_NOT_CLOSED / candidate 0.1.92 | Dev image c8a2992b7c deployed; Vitest 871 / Jest 129; Playwright UI + workspace-ORM P05 open | architect review handoff; close remaining P0 gates |
 | 2 field/workflow source | PLANNED | U01–U05, user-approved unit catalog | after phase 1 source review |
 | 3 focused runtime | NOT_RUN | P01–P15 ledger required | single combined candidate |
 | 4 G1/G2 live | BLOCKED_EXTERNAL / NOT_AUTHORIZED | API unavailable; credential rotation external | explicit separate approval |
@@ -42,7 +42,11 @@ Source and audit checkpoint `7f71c2873d022ed5cf735591e1f4874aa1e8f90b` on feat/c
 Verification: remote commits inspected; local bridge list_projects internal failure and container git cannot resolve github.com; no integrated build/typecheck/Jest/Vitest/PG/Playwright or schema apply. Previous lane 43 Jest + 5 Vitest are pre-integration evidence only. No Dev/intranet changes, version bump, actual Asan request or G1/G2 authorization. Mandatory residuals: restricted Cardex/balance/credit and customer proforma read authority/implementation, targeted price-tier/store/serial workflow and issuer/remaining commercial wire fields, durable authorized reconciliation acceptance, exact transactional lock/claim/retire and catalog item+price+link rollback/concurrent writer proof, unit compatibility, all metadata applied and integrated P01–P15. G1/G2 external and NOT_AUTHORIZED. Source changes are not a deployable acceptance assertion. Continue architect work from this branch, not old lane heads; one integrated verification after source completion and environment access restored.
 
 
-## CURRENT — Goal 040 round 3 scheduling / PLANNED (2026-11-28)
+## CURRENT — Goal 040 Phase 1 closure build / PHASE1_NOT_CLOSED (2026-11-28)
+
+Candidate quotation@0.1.92 on feat/crm-129-quotation; image `twenty-dev/crm129:c8a2992b7c…` deployed Dev `:3002`; apply idempotent. Vitest 871 / Jest 129 / TLS scoped / disposable PG PASS. Authenticated Playwright UI, workspace-ORM P05, P04>100, embedded-font PDF, seal HTTP still open → **NOT_CLOSED**. See [PHASE1-CLOSURE-HANDOFF.md](PHASE1-CLOSURE-HANDOFF.md). No live Asan; Intranet untouched; G1/G2 NOT_AUTHORIZED.
+
+## PRIOR — Goal 040 round 3 scheduling / PLANNED (2026-11-28)
 
 User requested renewed parallel division against the existing four phases. [Round 3 charter](goal-040/PARALLEL-CLOSURE-ROUND-3.md) at f0cdeca4040e9a984a1fc02af89a9c622110b0c7; prior integrated checkpoint ad1ae351f6ccf7bc386396d5668238e267f1ffee. Architect lane feat/crm129-g040-r3-finance-security owns residual P0, U03 and restricted U05 reads; Cursor lane feat/crm129-g040-r3-commercial-catalog owns U01/U02/U04/P05 commercial/catalog and targeted PG/build proof. A single writer owns shared adapter/dispatch/metadata seams; B records exact seam requirements in handoff. Both lanes will start from the same final scheduling commit, not previous lane tips. Implementation NOT_STARTED; no new product changes or runtime evidence. Integrate once and proceed to original phase 3 P01–P15; phase 4 G1/G2 remains NOT_AUTHORIZED. No Dev/intranet deployment or actual Asan traffic in parallel lanes.
 

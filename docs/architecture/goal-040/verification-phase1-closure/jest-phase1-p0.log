@@ -1,0 +1,33 @@
+npx : PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-revision-snapshot.util.spec.ts
+At line:13 char:1
++ npx jest --config=packages/twenty-server/jest.config.mjs `
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS twenty-ser...ot.util.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS twenty-server packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-unit-lock.pg.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/utils/__tests__/quotation-accounting-code-lock.pg.spec.ts
+PASS twenty-server packages/twenty-server/src/modules/quotation/services/__tests__/accounting-item-apply.pg.spec.ts
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/query-hooks/__tests__/accounting-connection-write-guard.spec.ts (10.508 s)
+PASS twenty-server packages/twenty-server/src/modules/quotation/services/__tests__/quotation-revision.service.spec.ts 
+(12.818 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-item-apply.service.spec.ts (38.906 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-party-outbound.service.spec.ts (38.911 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-connection-authority.service.spec.ts 
+(53.097 s)
+PASS twenty-server 
+packages/twenty-server/src/modules/quotation/services/__tests__/accounting-operation-dispatch.service.spec.ts (53.098 
+s)
+PASS twenty-server packages/twenty-server/src/modules/quotation/controllers/__tests__/quotation-ui.controller.spec.ts 
+(53.354 s)
+
+Test Suites: 11 passed, 11 total
+Tests:       129 passed, 129 total
+Snapshots:   0 total
+Time:        55.076 s

@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 040 Phase 1 closure build assigned / PLANNED (2026-11-28)
+## CURRENT — Goal 040 Phase 1 closure build / PHASE1_NOT_CLOSED (2026-11-28)
+
+Cursor executed PHASE1-CLOSURE-BUILD on feat/crm-129-quotation from assignment tip 5f90a6f2 (baseline 795d732f ancestor). Candidate quotation@**0.1.92**; Dev image `twenty-dev/crm129:c8a2992b7c4de3378a76b7031a4d0eb3bad1b10e` digest `sha256:155a4b4fae4798c4a131de666cecdb6f0c42caa90c5687f6d120226a3363eb38` deployed to existing `:3002` compose; metadata apply + idempotent PASS. Build/typecheck PASS after in-scope fixes; Vitest 871 PASS; Jest P0 slice 129 PASS; TLS PASS_SCOPED; disposable PG locks PASS. [Handoff](goal-040/PHASE1-CLOSURE-HANDOFF.md) + [verification-phase1-closure](goal-040/verification-phase1-closure/). **Verdict PHASE1_NOT_CLOSED**: authenticated Playwright accounting UI NOT_RUN; workspace-ORM P05 NOT_RUN; P04 >100 NOT_RUN; P12 embedded-font NOT_RUN; revision-seal HTTP FAIL (`UNIT_MAPPING_REQUIRED`); credential rotation BLOCKED_EXTERNAL. No live Asan, no Intranet `:6080`, G1/G2 NOT_AUTHORIZED. Architect independently reviews evidence before accepting closure; remaining Phase 2 seams unchanged.
+
+## PRIOR — Goal 040 Phase 1 closure build assigned / PLANNED (2026-11-28)
 
 User explicitly requested a combined Host/accounting regression build and complete offline P0 closure before remaining Phase 2. Scheduling amendment: [PHASE1-CLOSURE-BUILD-TASK.md](goal-040/PHASE1-CLOSURE-BUILD-TASK.md), commit 36e3290cfb0540120098cba1bc21c4061566bd28; exact source/recovery baseline 795d732f8c0a27b374d0e1dc9d403ff983a5b13d. Cursor executes focused Host/Nest/app build, real UI regression and Phase 1 F01–F03/F05–F07 core gates; P01–P07 and dependent partial P12/P14 only. Existing Dev only after safe candidate, backups/metadata checks; no Intranet/live vendor. Preserve local work and existing financial/security gates. One handoff, independent architect acceptance required. No tests executed or build/deploy performed by assignment. Phase 1 remains NOT_CLOSED, Phase 2 remaining seams unchanged, full Phase 3 not certified, G1/G2 NOT_AUTHORIZED.
 
