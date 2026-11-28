@@ -73,7 +73,7 @@ const snapshot = (): QuotationRevisionSnapshot => ({
       lineId: 'line-1',
       description: 'کالا',
       unit: 'عدد',
-      quantityScaled: '1',
+      quantityScaled: '1000000',
       unitPriceMicros: '1000000000000',
       discountMicros: '0',
       taxMicros: '0',

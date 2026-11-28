@@ -112,6 +112,76 @@ export const parseRevisionMicros = (value: unknown): Result<bigint> =>
     ? accepted(BigInt(value))
     : refused('AMOUNT_NOT_A_DECIMAL', 'revision amount must be a canonical integer micro-unit string');
 
+export type DecodedRevisionLine = {
+  quantity: bigint; unitPrice: bigint; gross: bigint; lineDiscount: bigint;
+  documentDiscount: bigint; net: bigint; tax: bigint; total: bigint;
+};
+
+export const decodeRevisionLine = (line: QuotationRevisionLine): Result<DecodedRevisionLine> => {
+  const quantity = parseRevisionMicros(line.quantityScaled);
+  const unitPrice = parseRevisionMicros(line.unitPriceMicros);
+  const lineDiscount = parseRevisionMicros(line.discountMicros);
+  const tax = parseRevisionMicros(line.taxMicros);
+  const total = parseRevisionMicros(line.totalMicros);
+  if (!quantity.ok || !unitPrice.ok || !lineDiscount.ok || !tax.ok || !total.ok) {
+    return refused('AMOUNT_NOT_A_DECIMAL', 'invalid sealed line amount');
+  }
+  const gross = (quantity.value * unitPrice.value + 500000n) / 1000000n;
+  const net = total.value - tax.value;
+  // Historical seals did not store the allocated document discount. It is recoverable
+  // exactly from the sealed quantity, price, line discount and net; the document-level
+  // sum below must also match. No magnitude/encoding guess or historical rewrite.
+  const documentDiscount = gross - lineDiscount.value - net;
+  if (quantity.value <= 0n || unitPrice.value < 0n || lineDiscount.value < 0n ||
+      tax.value < 0n || net < 0n || documentDiscount < 0n ||
+      (line.grossMicros !== undefined && line.grossMicros !== gross.toString()) ||
+      (line.documentDiscountMicros !== undefined && line.documentDiscountMicros !== documentDiscount.toString())) {
+    return refused('TOTALS_INCONSISTENT', 'sealed line quantity, price and discount do not reconcile');
+  }
+  return accepted({ quantity: quantity.value, unitPrice: unitPrice.value, gross,
+    lineDiscount: lineDiscount.value, documentDiscount, net, tax: tax.value, total: total.value });
+};
+
+export const validateRevisionFinancialFacts = (revision: QuotationRevisionSnapshot): Result<true> => {
+  if ((revision.schemaVersion !== undefined && revision.schemaVersion !== 2) ||
+      !Array.isArray(revision.lines) || !revision.lines.length || !revision.totals) {
+    return refused('REVISION_MISMATCH', 'unsupported or incomplete revision');
+  }
+  const ids = new Set<string>();
+  let gross = 0n, lineDiscount = 0n, documentDiscount = 0n, net = 0n, tax = 0n;
+  for (const line of revision.lines) {
+    if (!line || typeof line.lineId !== 'string' || !line.lineId || ids.has(line.lineId) ||
+      (revision.schemaVersion === 2 && (line.grossMicros === undefined || line.documentDiscountMicros === undefined))) {
+      return refused('REVISION_MISMATCH', 'missing or duplicate sealed line identity');
+    }
+    ids.add(line.lineId);
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return decoded;
+    gross += decoded.value.gross;
+    lineDiscount += decoded.value.lineDiscount;
+    documentDiscount += decoded.value.documentDiscount;
+    net += decoded.value.net;
+    tax += decoded.value.tax;
+  }
+  const totals = revision.totals;
+  const duty = parseRevisionMicros(totals.dutyMicros ?? '0');
+  const rounding = parseRevisionMicros(totals.roundingMicros ?? '0');
+  if (!duty.ok || !rounding.ok) return refused('AMOUNT_NOT_A_DECIMAL', 'invalid sealed duty or rounding');
+  if (totals.grossMicros !== gross.toString() ||
+      totals.discountMicros !== (lineDiscount + documentDiscount).toString() ||
+      totals.netMicros !== net.toString() || totals.taxMicros !== tax.toString() ||
+      totals.totalMicros !== (net + tax + rounding.value).toString() ||
+      (net + tax + rounding.value) % 1000000n !== 0n ||
+      net + tax + rounding.value < 0n || duty.value < 0n || duty.value > tax ||
+      (totals.taxOnlyMicros !== undefined && totals.taxOnlyMicros !== (tax - duty.value).toString()) ||
+      (totals.preRoundTotalMicros !== undefined && totals.preRoundTotalMicros !== (net + tax).toString()) ||
+      (revision.schemaVersion === 2 && (totals.lineDiscountMicros !== lineDiscount.toString() ||
+        totals.documentDiscountMicros !== documentDiscount.toString()))) {
+    return refused('TOTALS_INCONSISTENT', 'sealed line sums and document totals do not reconcile');
+  }
+  return accepted(true);
+};
+
 // Key order is normalised before hashing so two structurally equal snapshots can
 // never hash differently because one was built by a different code path.
 export const canonicalizeForHash = (value: unknown): string => {

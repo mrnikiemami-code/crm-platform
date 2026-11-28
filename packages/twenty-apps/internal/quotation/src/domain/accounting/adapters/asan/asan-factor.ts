@@ -9,7 +9,7 @@ import { type AccountingMoneyUnit } from 'src/domain/accounting/adapter-contract
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
 import { toAsanFactorDate } from 'src/domain/accounting/adapters/asan/jalali';
 import { QUANTITY_SCALE } from 'src/domain/money/quantity';
-import { parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { decodeRevisionLine, parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
 // Maps a sealed quotation revision onto Asan's `FactorViewModel`.
@@ -174,37 +174,13 @@ export const mapRevisionToAsanFactor = (
       );
     }
 
-    const scaled = parseRevisionMicros(line.quantityScaled);
-    if (!scaled.ok) return scaled;
-    const quantity = scaledQuantityToAsanCount(scaled.value);
-
-    if (!quantity.ok) {
-      return quantity;
-    }
-
-    const lineTotal = parseRevisionMicros(line.totalMicros);
-
-    if (!lineTotal.ok) {
-      return lineTotal;
-    }
-
-    const tax = parseRevisionMicros(line.taxMicros);
-
-    if (!tax.ok) {
-      return tax;
-    }
-
-    const discount = parseRevisionMicros(line.discountMicros);
-
-    if (!discount.ok) {
-      return discount;
-    }
-
-    // PDF pp.3-4: either net line price OR a separate discount row.
-    // When using the separate row, restore the discount into the product
-    // line so the vendor subtracts it once, not twice.
-    const netOfTaxMicros = lineTotal.value - tax.value;
-    const price = convertToVendorUnits(netOfTaxMicros + (input.specialCodesInUse.discount ? discount.value : 0n));
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return decoded;
+    const quantity = scaledQuantityToAsanCount(decoded.value.quantity);
+    if (!quantity.ok) return quantity;
+    const lineDiscount = decoded.value.lineDiscount + decoded.value.documentDiscount;
+    // Restore ALL allocated discounts when a separate row will subtract them.
+    const price = convertToVendorUnits(input.specialCodesInUse.discount ? decoded.value.gross : decoded.value.net);
 
     if (!price.ok) {
       return price;
@@ -218,7 +194,7 @@ export const mapRevisionToAsanFactor = (
       Description: line.description,
     });
 
-    discountTotalMicros += discount.value;
+    discountTotalMicros += lineDiscount;
   }
 
   // The split is a document-level fact in the sealed snapshot, so it is read from the

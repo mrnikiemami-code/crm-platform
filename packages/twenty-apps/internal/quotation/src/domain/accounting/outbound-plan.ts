@@ -19,7 +19,7 @@ import {
   financialSettingsFromRecord,
 } from 'src/domain/accounting/financial-contract';
 import { taxPolicyProfileFromSnapshot } from 'src/domain/accounting/tax-code-contract';
-import { parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { decodeRevisionLine, parseRevisionMicros, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 
 // The single gate between "the CRM intends to write" and "the CRM writes". Every refusal here
 // is a first-class outcome with a stable code, so the operation record says WHY nothing was
@@ -503,15 +503,12 @@ export const planQuotationExport = (
       );
     }
 
-    const total = parseRevisionMicros(line.totalMicros);
-    const tax = parseRevisionMicros(line.taxMicros);
-
-    if (!total.ok || !tax.ok) {
-      return block('AMOUNT_NOT_A_DECIMAL', `line ${line.lineId} is not an exact amount`, operationId);
-    }
-
-    const net = total.value - tax.value;
-    const priceUnits = crmMicrosToAsanUnits(net, input.settings.moneyUnit);
+    const decoded = decodeRevisionLine(line);
+    if (!decoded.ok) return block(decoded.refusal.code, decoded.refusal.detail, operationId);
+    const priceUnits = crmMicrosToAsanUnits(
+      input.settings.specialCodes.discount ? decoded.value.gross : decoded.value.net,
+      input.settings.moneyUnit,
+    );
 
     if (!priceUnits.ok) {
       return block(priceUnits.refusal.code, priceUnits.refusal.detail, operationId);

@@ -525,3 +525,24 @@ describe('real Nest revision encoding', () => {
     expect(refusalCodeOf(mapRevisionToAsanFactor(mappingInput({ revision: invalid })))).toBe('AMOUNT_NOT_A_DECIMAL');
   });
 });
+
+describe('allocated document discount and sealed gross', () => {
+  it('restores both discounts to gross and subtracts them exactly once', () => {
+    const r = revision({
+      lines: [{ lineId: 'line-1', description: 'کالا', unit: 'عدد', quantityScaled: '1000000',
+        unitPriceMicros: '100000000', grossMicros: '100000000', discountMicros: '10000000',
+        documentDiscountMicros: '5000000', taxMicros: '0', totalMicros: '85000000' }],
+      totals: { grossMicros: '100000000', discountMicros: '15000000', netMicros: '85000000',
+        taxMicros: '0', totalMicros: '85000000' },
+    });
+    const factor = unwrap(mapRevisionToAsanFactor(mappingInput({ revision: r,
+      specialCodesInUse: { discount: true, tax: false, duty: false } })));
+    expect(factor.FactorDetails.map(row => row.Price)).toEqual([100, 15]);
+    expect(validateAsanDocumentPayable({ factor, revision: r, moneyUnit: 'RIAL' }).ok).toBe(true);
+    const legacy = { ...r, lines: r.lines.map(({ grossMicros: _gross, documentDiscountMicros: _share, ...line }) => line) };
+    expect(unwrap(mapRevisionToAsanFactor(mappingInput({ revision: legacy,
+      specialCodesInUse: { discount: true, tax: false, duty: false } }))).FactorDetails).toEqual(factor.FactorDetails);
+    const bad = { ...r, lines: [{ ...r.lines[0], documentDiscountMicros: '4000000' }] };
+    expect(refusalCodeOf(mapRevisionToAsanFactor(mappingInput({ revision: bad })))).toBe('TOTALS_INCONSISTENT');
+  });
+});
