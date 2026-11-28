@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RecordApiError } from 'src/data/record-api';
 import { type ConnectionSettings } from 'src/domain/accounting/adapter-contract';
 import { MockAccountingAdapter } from 'src/domain/accounting/adapters/mock/mock-adapter';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { hashQuotationRevision, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import {
   executeItemPush,
   executeQuotationExport,
@@ -14,7 +14,7 @@ import {
 } from 'src/services/accounting-outbound.service';
 
 const edges = (root: string, rows: Record<string, unknown>[]) => ({
-  [root]: { edges: rows.map((node) => ({ node })) },
+  [root]: { edges: rows.map((node) => ({ node })), pageInfo: { hasNextPage: false, endCursor: null } },
 });
 
 const connectionNode = (overrides: Record<string, unknown> = {}) => ({
@@ -64,7 +64,7 @@ const snapshot = (): QuotationRevisionSnapshot => ({
   version: 2,
   quotationNumber: 'Q-0001',
   currencyCode: 'IRR',
-  customerRef: 'company:company-1',
+  customerRef: 'company-1',
   taxPolicy: 'IR_VAT_9',
   taxRateBasisPoints: '0',
   paymentTerms: null,
@@ -117,13 +117,15 @@ const quotationExecute = ({
         },
         quotationLines: {
           edges: [{ node: { id: 'line-1', item: { id: 'item-1' } } }],
+          pageInfo: { hasNextPage: false, endCursor: null },
         },
       };
     }
 
     if (query.includes('QuotationRevisionForAccounting')) {
+      const seal = { ...snapshot(), customerRef: companyId ?? personId ?? '' };
       return edges('quotationRevisions', [
-        { id: 'rev-1', version: 2, snapshotJson: JSON.stringify(snapshot()) },
+        { id: 'rev-1', version: 2, snapshotJson: JSON.stringify(seal), snapshotHash: hashQuotationRevision(seal) },
       ]);
     }
 
@@ -131,6 +133,7 @@ const quotationExecute = ({
       return edges('accountingItemLinks', [
         {
           id: 'link-1',
+          connection: { id: 'conn-1' },
           externalItemId: '1001',
           remoteVersion: 'v1',
           syncStatus: 'LINKED',
@@ -140,9 +143,12 @@ const quotationExecute = ({
     }
 
     if (query.includes('accountingPartyLinks')) {
-      return edges('accountingPartyLinks', [
+      return edges('accountingPartyLinks', companyId !== 'company-1' ? [] : [
         {
           id: 'party-link-1',
+          connection: { id: 'conn-1' },
+          partyType: 'COMPANY',
+          remoteVersion: 'v1',
           externalPartyId: '101',
           internalPartyId: 'company-1',
           syncStatus: 'LINKED',

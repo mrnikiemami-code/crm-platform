@@ -3,15 +3,13 @@ import { randomUUID } from 'node:crypto';
 import {
   buildAccountingItemLinksQuery,
   buildAccountingOperationsQuery,
-  buildAccountingPartyLinksQuery,
   buildCreateAccountingOperationMutation,
-  buildQuotationForAccountingQuery,
-  buildQuotationRevisionForAccountingQuery,
   buildExportableQuotationsQuery,
   buildIssuedRevisionsForQuotationsQuery,
   buildUpdateAccountingItemLinkMutation,
   buildUpdateAccountingOperationMutation,
 } from 'src/data/accounting-queries';
+import { buildExportHeaderAndLinesQuery, buildExportIssuedRevisionQuery, buildExportLinksQuery } from 'src/data/quotation-export-queries';
 import { RecordApiError, executeRecordGraphql } from 'src/data/record-api';
 import { requireActiveAccountingConnection } from 'src/services/accounting-connection.service';
 import {
@@ -38,7 +36,7 @@ import {
   type AccountingOperationState,
 } from 'src/domain/accounting/sync-operation';
 import { type ConnectionSettings } from 'src/domain/accounting/adapter-contract';
-import { hashQuotationRevision, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { hashQuotationRevision, validateRevisionFinancialFacts, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 import { parseMicrosExact } from 'src/domain/money/micros';
 
@@ -703,55 +701,166 @@ const safeJson = (text: string): Record<string, unknown> | null => {
   }
 };
 
+const completePage = (data: Record<string, unknown>, rootName: string) => {
+  const root = asRecord(data[rootName]);
+  const info = asRecord(root?.pageInfo);
+  const rows = readRows(data, rootName);
+  if (!Array.isArray(root?.edges) || root.edges.length !== rows.length ||
+      typeof info?.hasNextPage !== 'boolean') {
+    throw new RecordApiError('INVALID_RESPONSE', 'Incomplete ' + rootName + ' response');
+  }
+  return { rows, hasNextPage: info.hasNextPage, cursor: readString(info.endCursor) };
+};
+
 const loadQuotationContext = async (
   quotationId: string,
   execute: (query: string) => Promise<Record<string, unknown>>,
 ): Promise<Result<QuotationContext>> => {
-  const data = await execute(buildQuotationForAccountingQuery(quotationId));
+  const data = await execute(buildExportHeaderAndLinesQuery(quotationId));
   const quotation = asRecord(data.quotation);
-
-  if (quotation === null) {
+  if (!quotation || readString(quotation.id) !== quotationId) {
     return refused('QUOTATION_NOT_FOUND', 'quotation not found');
   }
+  const header: QuotationContext['quotation'] = {
+    id: quotationId, name: readString(quotation.name), status: readString(quotation.status),
+    version: readNumber(quotation.version) ?? 0, currencyCode: readString(quotation.currencyCode),
+    personId: readString(asRecord(quotation.person)?.id) || null,
+    companyId: readString(asRecord(quotation.company)?.id) || null,
+  };
+  if (!QUOTATION_EXPORTABLE_STATUSES.has(header.status)) {
+    return accepted({ quotation: header, lineItemIds: [], revision: null });
+  }
+  const first = completePage(data, 'quotationLines');
+  const rows = [...first.rows];
+  let page = first;
+  const cursors = new Set<string>();
+  while (page.hasNextPage) {
+    if (!page.cursor || cursors.has(page.cursor) || rows.length >= 2000 || cursors.size >= 20) {
+      return refused('INVALID_RESPONSE', 'quotation line retrieval incomplete or above supported limit');
+    }
+    cursors.add(page.cursor);
+    const next = await execute(buildExportHeaderAndLinesQuery(quotationId, page.cursor));
+    const nextHeader = asRecord(next.quotation);
+    if (readString(nextHeader?.id) !== quotationId || readNumber(nextHeader?.version) !== header.version) {
+      return refused('REVISION_MISMATCH', 'quotation changed while reading lines');
+    }
+    page = completePage(next, 'quotationLines');
+    rows.push(...page.rows);
+  }
+  const lineItemIds = rows.map((node) => ({
+    lineId: readString(node.id), itemId: readString(asRecord(node.item)?.id) || null,
+  }));
+  if (lineItemIds.length > 2000 || lineItemIds.some(line => !line.lineId) ||
+      new Set(lineItemIds.map(line => line.lineId)).size !== lineItemIds.length) {
+    return refused('INVALID_RESPONSE', 'quotation lines have invalid or repeated identities');
+  }
+  const revisionData = await execute(buildExportIssuedRevisionQuery(quotationId));
+  const revisions = completePage(revisionData, 'quotationRevisions');
+  if (revisions.hasNextPage || revisions.rows.length > 1) {
+    return refused('REVISION_MISMATCH', 'multiple issued revisions are not exportable');
+  }
+  const node = revisions.rows[0];
+  if (!node) return accepted({ quotation: header, lineItemIds, revision: null });
+  const snapshot = parseSnapshot(node.snapshotJson);
+  const revisionNumber = readNumber(node.version);
+  const snapshotHash = readString(node.snapshotHash);
+  if (!snapshot || !snapshotHash || hashQuotationRevision(snapshot) !== snapshotHash) {
+    return refused('REVISION_IMMUTABLE', 'issued revision hash is missing or mismatched');
+  }
+  const customerId = header.companyId ?? header.personId;
+  if (!Number.isSafeInteger(revisionNumber) || revisionNumber === null || revisionNumber < 1 ||
+      !Number.isSafeInteger(snapshot.version) || snapshot.version < 1 ||
+      snapshot.quotationId !== quotationId || snapshot.currencyCode !== header.currencyCode ||
+      !customerId || (!!header.companyId === !!header.personId) || snapshot.customerRef !== customerId ||
+      (snapshot.schemaVersion === 2 && (snapshot.revisionNumber !== revisionNumber ||
+        snapshot.version > header.version || snapshot.customerSnapshot?.id !== customerId ||
+        snapshot.customerSnapshot?.kind !== (header.companyId ? 'COMPANY' : 'PERSON'))) ||
+      (snapshot.schemaVersion === undefined && snapshot.version > header.version + 1)) {
+    return refused('REVISION_MISMATCH', 'issued revision, quotation or customer identity differs');
+  }
+  const amounts = validateRevisionFinancialFacts(snapshot);
+  if (!amounts.ok) return amounts;
+  const current = new Map(lineItemIds.map(line => [line.lineId, line.itemId]));
+  if (snapshot.lines.length !== lineItemIds.length || snapshot.lines.some(line =>
+      !current.has(line.lineId) || (snapshot.schemaVersion === 2 && (line.itemId === undefined || current.get(line.lineId) !== line.itemId)))) {
+    return refused('REVISION_MISMATCH', 'issued line identity differs from current quotation');
+  }
+  return accepted({ quotation: header, lineItemIds,
+    revision: { version: revisionNumber, snapshot, snapshotHash } });
+};
 
-  const revisionData = await execute(
-    buildQuotationRevisionForAccountingQuery(quotationId),
-  );
-  const revisionNode = readRows(revisionData, 'quotationRevisions')[0] ?? null;
-  const snapshot =
-    revisionNode === null ? null : parseSnapshot(revisionNode.snapshotJson);
+type ExportBinding = { id: string; internalId: string; externalId: string; syncStatus: string; remoteVersion: string; partyType: string };
 
-  return accepted({
-    quotation: {
-      id: readString(quotation.id),
-      name: readString(quotation.name),
-      status: readString(quotation.status),
-      version: readNumber(quotation.version) ?? 0,
-      currencyCode: readString(quotation.currencyCode) || 'IRR',
-      personId: readString(asRecord(quotation.person)?.id) || null,
-      companyId: readString(asRecord(quotation.company)?.id) || null,
-    },
-    lineItemIds: readRows(data, 'quotationLines').flatMap((node) => {
-      const lineId = readString(node.id);
+const loadExportBindings = async (
+  connectionId: string, kind: 'item' | 'party', ids: string[],
+  byExternal: boolean, execute: (query: string) => Promise<Record<string, unknown>>,
+): Promise<ExportBinding[]> => {
+  const requested = [...new Set(ids)];
+  const results: ExportBinding[] = [];
+  const seen = new Set<string>();
+  for (let offset = 0; offset < requested.length; offset += 100) {
+    const batch = requested.slice(offset, offset + 100);
+    let after: string | null = null;
+    const cursors = new Set<string>();
+    for (;;) {
+      const data = await execute(buildExportLinksQuery({ connectionId, kind, ids: batch, byExternal, after }));
+      const page = completePage(data, kind === 'item' ? 'accountingItemLinks' : 'accountingPartyLinks');
+      for (const node of page.rows) {
+        const row: ExportBinding = {
+          id: readString(node.id), syncStatus: readString(node.syncStatus), remoteVersion: readString(node.remoteVersion),
+          internalId: kind === 'item' ? readString(asRecord(node.item)?.id) : readString(node.internalPartyId),
+          externalId: readString(kind === 'item' ? node.externalItemId : node.externalPartyId),
+          partyType: kind === 'party' ? readString(node.partyType) : '',
+        };
+        if (!row.id || seen.has(row.id) || readString(asRecord(node.connection)?.id) !== connectionId ||
+            !batch.includes(byExternal ? row.externalId : row.internalId)) {
+          throw new RecordApiError('INVALID_RESPONSE', 'Accounting binding response differs from requested identity');
+        }
+        seen.add(row.id); results.push(row);
+      }
+      if (!page.hasNextPage) break;
+      if (!page.cursor || cursors.has(page.cursor) || cursors.size >= 20) {
+        throw new RecordApiError('INVALID_RESPONSE', 'Incomplete accounting binding history');
+      }
+      cursors.add(page.cursor); after = page.cursor;
+    }
+  }
+  return results;
+};
 
-      return lineId === ''
-        ? []
-        : [
-            {
-              lineId,
-              itemId: readString(asRecord(node.item)?.id) || null,
-            },
-          ];
-    }),
-    revision:
-      revisionNode === null || snapshot === null
-        ? null
-        : {
-            version: readNumber(revisionNode.version) ?? 0,
-            snapshot,
-            snapshotHash: readString(revisionNode.snapshotHash),
-          },
-  });
+const selectExportBindings = async (
+  connectionId: string, context: QuotationContext,
+  execute: (query: string) => Promise<Record<string, unknown>>,
+) => {
+  const customerId = context.quotation.companyId ?? context.quotation.personId;
+  const kind = context.quotation.companyId ? 'COMPANY' : 'PERSON';
+  const itemIds = context.lineItemIds.flatMap(line => line.itemId ? [line.itemId] : []);
+  const [items, parties] = await Promise.all([
+    loadExportBindings(connectionId, 'item', itemIds, false, execute),
+    loadExportBindings(connectionId, 'party', customerId ? [customerId] : [], false, execute),
+  ]);
+  const valid = (row: ExportBinding) => row.syncStatus === 'LINKED' &&
+    /^[1-9]\d*$/.test(row.externalId) && BigInt(row.externalId) <= 2147483647n;
+  // Reverse check prevents two CRM identities from claiming the same remote record.
+  const [reverseItems, reverseParties] = await Promise.all([
+    loadExportBindings(connectionId, 'item', items.filter(valid).map(row => row.externalId), true, execute),
+    loadExportBindings(connectionId, 'party', parties.filter(valid).map(row => row.externalId), true, execute),
+  ]);
+  const unique = (rows: ExportBinding[], reverse: ExportBinding[], internalId: string | null) => {
+    const matches = rows.filter(row => row.internalId === internalId);
+    if (matches.length !== 1 || !valid(matches[0])) return null;
+    const row = matches[0];
+    const back = reverse.filter(other => other.externalId === row.externalId);
+    return back.length === 1 && back[0].id === row.id &&
+      back[0].internalId === row.internalId && back[0].syncStatus === row.syncStatus &&
+      back[0].remoteVersion === row.remoteVersion && back[0].partyType === row.partyType ? row : null;
+  };
+  const candidate = unique(parties, reverseParties, customerId);
+  const party = candidate?.partyType === kind ? candidate : null;
+  const lineBindings = context.lineItemIds.map(line => ({
+    lineId: line.lineId, binding: unique(items, reverseItems, line.itemId),
+  }));
+  return { party, lineBindings };
 };
 
 export type QuotationExportPreview = {
@@ -785,48 +894,21 @@ export const previewQuotationExport = async (
     return context;
   }
 
-  const [itemLinks, partyLinks, operations] = await Promise.all([
-    loadItemLinks(connectionId, execute),
-    readRows(
-      await execute(buildAccountingPartyLinksQuery({ connectionId })),
-      'accountingPartyLinks',
-    ),
+  const [bindings, operations] = await Promise.all([
+    context.value.revision === null ? Promise.resolve({ party: null, lineBindings: [] }) :
+      selectExportBindings(connectionId, context.value, execute),
     loadOperations(connectionId, dependencies, quotationId),
   ]);
-
-  const linkByInternalItemId = new Map(
-    itemLinks.flatMap((link) =>
-      link.internalItemId === null
-        ? []
-        : ([[link.internalItemId, link.externalItemId]] as const),
-    ),
-  );
-
-  const internalPartyId =
-    context.value.quotation.companyId ?? context.value.quotation.personId;
-  const customerLink =
-    internalPartyId === null
-      ? null
-      : (partyLinks.find(
-          (node) => readString(node.internalPartyId) === internalPartyId,
-        ) ?? null);
-  const customerExternalId =
-    customerLink === null ? null : readString(customerLink.externalPartyId) || null;
-
-  const lineLinks = context.value.lineItemIds.map((line) => ({
-    lineId: line.lineId,
-    externalItemId:
-      line.itemId === null
-        ? null
-        : (linkByInternalItemId.get(line.itemId) ?? null),
+  const customerExternalId = bindings.party?.externalId ?? null;
+  const lineLinks = bindings.lineBindings.map(line => ({
+    lineId: line.lineId, externalItemId: line.binding?.externalId ?? null,
   }));
 
   const decision = planQuotationExport({
     connectionId,
     quotation: context.value.quotation,
     revision: context.value.revision,
-    customerExternalId:
-      customerLink === null ? null : readString(customerLink.externalPartyId),
+    customerExternalId,
     lineLinks,
     capabilities: adapter.capabilities,
     settings,
@@ -936,7 +1018,7 @@ export const executeQuotationExport = async (
   const revision = context.value.revision;
   const snapshot = revision.snapshot;
   if (preview.value.revisionVersion !== revision.version ||
-      snapshot.version !== revision.version || snapshot.quotationId !== quotationId ||
+      (snapshot.schemaVersion === 2 && snapshot.revisionNumber !== revision.version) || snapshot.quotationId !== quotationId ||
       context.value.quotation.id !== quotationId ||
       !QUOTATION_EXPORTABLE_STATUSES.has(context.value.quotation.status) ||
       decision.operationId !== buildAccountingOperationId({ connectionId, kind: 'QUOTATION_REVISION_PUSH',
@@ -947,56 +1029,17 @@ export const executeQuotationExport = async (
     return refused('REVISION_IMMUTABLE', 'the stored revision seal could not be verified');
   }
 
-  const itemLinks = await loadItemLinks(connectionId, execute);
-  const linkByInternalItemId = new Map(
-    itemLinks.flatMap((link) =>
-      link.internalItemId === null || link.externalItemId === null
-        ? []
-        : ([[link.internalItemId, link.externalItemId]] as const),
-    ),
-  );
-
+  if (adapter.isLive && snapshot.schemaVersion !== 2) {
+    return refused('REVISION_MISMATCH', 'historical revision has no sealed item/customer identity; reissue before live export');
+  }
+  const bindings = await selectExportBindings(connectionId, context.value, execute);
   const productCodeByLineId: Record<string, number> = {};
-
-  for (const line of context.value.lineItemIds) {
-    const externalItemId =
-      line.itemId === null
-        ? null
-        : (linkByInternalItemId.get(line.itemId) ?? null);
-    const productCode =
-      externalItemId === null ? null : Number(externalItemId);
-
-    if (productCode === null || !Number.isSafeInteger(productCode)) {
-      return refused(
-        'LINE_HAS_NO_PRODUCT_LINK',
-        `line ${line.lineId} has no usable vendor product code`,
-      );
-    }
-
-    productCodeByLineId[line.lineId] = productCode;
+  for (const line of bindings.lineBindings) {
+    if (line.binding === null) return refused('LINE_HAS_NO_PRODUCT_LINK', 'line has no unique active accounting link');
+    productCodeByLineId[line.lineId] = Number(line.binding.externalId);
   }
-
-  const internalPartyId =
-    context.value.quotation.companyId ?? context.value.quotation.personId;
-  const partyRows = readRows(
-    await execute(buildAccountingPartyLinksQuery({ connectionId })),
-    'accountingPartyLinks',
-  );
-  const partyRow =
-    internalPartyId === null
-      ? null
-      : (partyRows.find(
-          (node) => readString(node.internalPartyId) === internalPartyId,
-        ) ?? null);
-  const customerCode =
-    partyRow === null ? null : Number(readString(partyRow.externalPartyId));
-
-  if (customerCode === null || !Number.isSafeInteger(customerCode)) {
-    return refused(
-      'CUSTOMER_NOT_LINKED',
-      'the quotation customer has no usable vendor id',
-    );
-  }
+  if (bindings.party === null) return refused('CUSTOMER_NOT_LINKED', 'customer has no unique active accounting link');
+  const customerCode = Number(bindings.party.externalId);
 
   const userId = Number(settings.remoteUserId);
 
