@@ -96,6 +96,7 @@ export const buildQuotationDraftEditQuery = (quotationId: string): string =>
           kind
           description
           unit
+          unitRecordId
           quantityExact
           unitPriceExact
           discountExact
@@ -174,6 +175,7 @@ export const buildActiveCatalogItemsPageQuery = ({
           kind
           sku
           unit
+          unitRecord { id name isActive }
           description
           isActive
         }
@@ -217,6 +219,7 @@ export const buildCatalogPageWithDefaultPriceListQuery = ({
           kind
           sku
           unit
+          unitRecord { id name isActive }
           description
           isActive
         }
