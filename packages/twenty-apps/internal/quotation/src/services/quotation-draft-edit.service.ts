@@ -28,6 +28,7 @@ export type EditableDraftLine = {
   name: string;
   description: string | null;
   unit: string;
+  unitRecordId?: string | null;
   quantityText: string;
   unitPriceText: string;
   discountKind: EditableDraftDiscountKind;
@@ -190,6 +191,7 @@ type RawLine = {
   kind: CatalogItemKind;
   description: string | null;
   unit: string;
+  unitRecordId?: string | null;
   quantityExact: string;
   unitPriceExact: string;
   discountExact: string;
@@ -220,7 +222,8 @@ const readLines = (data: Record<string, unknown>): RawLine[] => {
         name: readText(node.name),
         kind: readText(node.kind) === 'SERVICE' ? 'SERVICE' : 'PRODUCT',
         description: readNullableText(node.description),
-        unit: readText(node.unit) || 'عدد',
+        unit: readText(node.unit),
+        unitRecordId: readNullableText(node.unitRecordId),
         quantityExact: readText(node.quantityExact) || '0.000000',
         unitPriceExact: readText(node.unitPriceExact) || '0.000000',
         discountExact: readText(node.discountExact) || '0.000000',
@@ -324,6 +327,7 @@ export const parseDraftForEdit = (
       name: rawLine.name,
       description: rawLine.description,
       unit: rawLine.unit,
+      unitRecordId: rawLine.unitRecordId ?? null,
       quantityText: formatQuantityForInput(rawLine.quantityExact),
       unitPriceText,
       discountKind,
