@@ -21,6 +21,8 @@ export type CustomerQuotationView = {
   statusLabel: string;
   customerLabel: string;
   paymentTerms: string | null;
+  // Quotation validity, not the independent bearer-link expiration.
+  validUntilDisplay?: string | null;
   currencyLabel: string;
   lines: CustomerViewLine[];
   grossDisplay: string | null;
