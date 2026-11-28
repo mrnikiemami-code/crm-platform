@@ -57,6 +57,11 @@ RUN npx nx run twenty-server:build
 RUN find /app/packages/twenty-server/dist -name '*.d.ts' -delete \
  && rm -rf /app/packages/twenty-server/dist/packages/twenty-server/test
 
+# The quotation PDF renderer resolves its bundled font next to compiled code.
+# Require both the original font and its license in the dist-only runtime image.
+RUN cmp /app/packages/twenty-server/src/modules/quotation/pdf/fonts/Vazirmatn-Regular.ttf /app/packages/twenty-server/dist/modules/quotation/pdf/fonts/Vazirmatn-Regular.ttf \
+ && cmp /app/packages/twenty-server/src/modules/quotation/pdf/fonts/OFL.txt /app/packages/twenty-server/dist/modules/quotation/pdf/fonts/OFL.txt
+
 RUN yarn workspaces focus --production twenty-emails twenty-shared twenty-client-sdk twenty-server
 
 

@@ -1,6 +1,10 @@
 # CRM — Canonical Architect Recovery (read first)
 
-## CURRENT — Goal 039 broad scope CANCELLED / preserve existing evidence (2026-11-28)
+## CURRENT — 091 runtime evidence reviewed / PDF packaging repair (2026-11-28)
+
+Goal 039 broad scope remains CANCELLED. Evidence commit 4c6eb4fd072f88b1d5651442cc6d185618591090 inspected; installed quotation@0.1.91, 815 Vitest PASS reported, existing quotation lifecycle and Mock preview exercised. PDF gate FAIL: missing module-local Vazirmatn in dist-only runtime. Architect fixed canonical Nest asset copy and Docker build assertion directly; no quotation app version change (server build-only repair), new image NOT built/deployed/tested. See [targeted repair](./goal-039/CRM-129-PDF-PACKAGING-REPAIR-091.md). Credential revocation remains BLOCKED on Dev administrator. Six manual share channels observed success; Bale honest INVALID_INPUT, not successful delivery. Goal 038 G1/G2 suspended; no API, no live vendor writes. No further comprehensive quotation task; next feature scope requires independent source/requirements/evidence audit.
+
+## PRIOR — Goal 039 broad scope CANCELLED / preserve existing evidence (2026-11-28)
 
 User rejected duplicate work on the already implemented quotation module. [Superseding decision](./goal-039/CRM-129-GOAL-039-OFFLINE-ACCEPTANCE.md): stop remaining broad verification, preserve already collected evidence including the four unresolved checks, no new product source changes or test campaign. Worker interim report says 0.1.91 applied, 815 Vitest PASS, TLS scoped PASS; evidence has not yet been pushed as of this checkpoint. Credential rotation remains BLOCKED. Last independently verified Dev 0.1.90 until evidence reviewed. Goal 038 G1/G2 suspended and not authorized. Goal 023 ACTIVE. No new task before independent source/requirements/evidence audit.
 

@@ -71,6 +71,11 @@
         "watchAssets": true
       },
       {
+        "include": "modules/quotation/pdf/fonts/**",
+        "outDir": "dist",
+        "watchAssets": true
+      },
+      {
         "include": "engine/core-modules/dpa/constants/subprocessors.json",
         "outDir": "dist",
         "watchAssets": true
