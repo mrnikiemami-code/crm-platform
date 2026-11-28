@@ -4,6 +4,7 @@ import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import {
   ACCOUNTING_IMPORT_ROUTE,
+  ACCOUNTING_OUTBOUND_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
 import {
@@ -105,6 +106,7 @@ export const AccountingCustomerSection = ({
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
   const [selected, setSelected] = useState<Map<string, PartySelection>>(new Map());
   const [applying, setApplying] = useState(false);
+  const [outboundOpen, setOutboundOpen] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -433,6 +435,11 @@ export const AccountingCustomerSection = ({
     );
   }
 
+  if (outboundOpen) {
+    return <CustomerOutboundPanel key={connectionId} connectionId={connectionId} canManage={canManage}
+      onBack={() => { setOutboundOpen(false); onSubViewChange?.(null); }} />;
+  }
+
   const openPicker = (externalPartyId: string) => {
     setPickerFor(externalPartyId);
     onSubViewChange?.('انتخاب مشتری CRM');
@@ -530,6 +537,7 @@ export const AccountingCustomerSection = ({
         />
       </div>
       <div role="group" aria-label="عملیات گروهی" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--t-spacing-2)' }}>
+        <SecondaryButton label="ارسال مشتری CRM به حسابداری" disabled={!canManage || applying || loading} onClick={() => { setOutboundOpen(true); onSubViewChange?.('ارسال مشتری به حسابداری'); }} />
         {selected.size === 0 ? (
           <PrimaryButton
           label={applying ? 'در حال انتقال…' : 'انتقال همه'}
@@ -873,4 +881,77 @@ const CustomerPicker = ({
       ) : null}
     </div>
   );
+};
+
+const CustomerOutboundPanel = ({ connectionId, canManage, onBack }: {
+  connectionId: string; canManage: boolean; onBack: () => void;
+}) => {
+  const [selection, setSelection] = useState<{ id: string; label: string; type: 'PERSON' | 'COMPANY' } | null>(null);
+  const [preview, setPreview] = useState<{ fingerprint: string; mode: string; externalPartyId: string | null; fullName: string; canExecute: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const generation = useRef(0);
+  useEffect(() => () => { generation.current += 1; }, []);
+  const send = async (execute: boolean) => {
+    if (!selection || !canManage || busy || (execute && !preview?.canExecute)) return;
+    const current = ++generation.current;
+    setBusy(true);
+    setError(null);
+    setReceipt(null);
+    try {
+      const response = await callAppRoute(ACCOUNTING_OUTBOUND_ROUTE, {
+        action: execute ? 'execute-party-push' : 'preview-party-push',
+        connectionId, internalPartyId: selection.id, partyType: selection.type,
+        ...(execute && preview ? { expectedFingerprint: preview.fingerprint } : {}),
+      });
+      if (current !== generation.current) return;
+      if (!response.ok || response.data.success !== true) {
+        setError(toPersianUiMessage(readString(response.data.message), 'ارسال مشتری انجام نشد.'));
+        setPreview(null);
+        return;
+      }
+      if (execute) {
+        const outcome = asRecord(response.data.outcome);
+        if (!readString(outcome?.operationId) || !readString(outcome?.externalPartyId)) {
+          setError('رسید ارسال تأیید نشد؛ ارسال مجدد انجام ندهید.');
+        } else setReceipt(readString(outcome?.externalPartyId));
+        setPreview(null);
+      } else {
+        const data = asRecord(response.data.preview);
+        const fingerprint = readString(data?.fingerprint);
+        const mode = readString(data?.mode);
+        if (!/^[a-f0-9]{64}$/.test(fingerprint) || !['CREATE', 'UPDATE'].includes(mode)) {
+          setError('پیش‌نمایش معتبر نیست.');
+          setPreview(null);
+          return;
+        }
+        setPreview({ fingerprint, mode, fullName: readString(data?.fullName), externalPartyId: readString(data?.externalPartyId) || null, canExecute: data?.canExecute === true });
+      }
+    } catch {
+      if (current === generation.current) {
+        setError(execute ? 'نتیجه ارسال نامشخص است؛ ابتدا سوابق حسابداری را بررسی کنید.' : 'ارتباط با سرور برقرار نشد.');
+        setPreview(null);
+      }
+    } finally {
+      if (current === generation.current) setBusy(false);
+    }
+  };
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--t-spacing-3)' }}>
+    <SubViewBar label="ارسال مشتری CRM به حسابداری" backLabel="بازگشت به فهرست مشتریان" onBack={onBack} />
+    {!selection ? <CustomerPicker connectionId={connectionId} onPick={(candidate, type) => { setSelection({ id: candidate.id, label: candidate.label, type }); setPreview(null); setError(null); }} /> :
+      <div style={styles.row}>
+        <span>{selection.label}</span>
+        <SecondaryButton label="تغییر مشتری" disabled={busy} onClick={() => { generation.current += 1; setSelection(null); setPreview(null); setError(null); setReceipt(null); }} />
+        <PrimaryButton label="پیش‌نمایش ارسال" disabled={busy || !canManage || receipt !== null} onClick={() => void send(false)} />
+      </div>}
+    {preview && <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span>{preview.fullName} — {preview.mode === 'CREATE' ? 'ایجاد مشتری' : 'به‌روزرسانی مشتری متصل'}</span>
+      {preview.externalPartyId ? <span>شناسه حسابداری: {preview.externalPartyId}</span> : null}
+      {!preview.canExecute ? <InlineAlert tone="warning" title="ارسال غیرفعال است">اتصال واقعی یا مجوز ارسال هنوز تأیید نشده است.</InlineAlert> :
+        <PrimaryButton label="تأیید و ارسال" disabled={busy || !canManage} onClick={() => void send(true)} />}
+    </div>}
+    {error && <InlineAlert tone="danger" title="ارسال مشتری">{error}</InlineAlert>}
+    {receipt && <InlineAlert tone="success" title="ثبت مشتری تأیید شد">شناسه حسابداری: {receipt}</InlineAlert>}
+  </div>;
 };
