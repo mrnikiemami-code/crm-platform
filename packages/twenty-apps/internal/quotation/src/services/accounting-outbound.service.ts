@@ -129,7 +129,8 @@ export const loadOperations = async (
     }
     for (const entry of page) { ids.add(entry.id); operations.push(entry); }
     const pageInfo = asRecord(root.pageInfo);
-    if (pageInfo?.hasNextPage !== true) return operations;
+    if (typeof pageInfo?.hasNextPage !== 'boolean') throw new RecordApiError('INVALID_RESPONSE', 'Missing operation pagination metadata');
+    if (!pageInfo.hasNextPage) return operations;
     const next = readString(pageInfo.endCursor);
     if (!next || cursors.has(next) || cursors.size >= 1000) {
       throw new RecordApiError('INVALID_RESPONSE', 'Incomplete operation history');
@@ -839,7 +840,7 @@ const selectExportBindings = async (
     loadExportBindings(connectionId, 'item', itemIds, false, execute),
     loadExportBindings(connectionId, 'party', customerId ? [customerId] : [], false, execute),
   ]);
-  const valid = (row: ExportBinding) => row.syncStatus === 'LINKED' &&
+  const valid = (row: ExportBinding) => row.syncStatus === 'LINKED' && !!row.remoteVersion &&
     /^[1-9]\d*$/.test(row.externalId) && BigInt(row.externalId) <= 2147483647n;
   // Reverse check prevents two CRM identities from claiming the same remote record.
   const [reverseItems, reverseParties] = await Promise.all([
@@ -971,7 +972,7 @@ export const previewQuotationExport = async (
   });
 };
 
-type QuotationClaimIdentity = { id: string; connectionId: string; quotationId: string; revisionNumber: number; fingerprint: string };
+type QuotationClaimIdentity = { id: string; connectionId: string; quotationId: string; revisionNumber: number; fingerprint: string; snapshot: string };
 
 const verifyClaimReceipt = (node: unknown, claim: QuotationClaimIdentity, state: AccountingOperationState,
   externalDocumentId: string | null, errorCode: string | null): boolean => {
@@ -980,7 +981,8 @@ const verifyClaimReceipt = (node: unknown, claim: QuotationClaimIdentity, state:
     row.internalEntityId === claim.quotationId && row.internalRevision === claim.revisionNumber &&
     row.state === state && row.attempts === 1 && row.externalDocumentId === externalDocumentId &&
     row.errorCode === errorCode && row.correlationId === claim.id &&
-    row.payloadFingerprint === claim.fingerprint && asRecord(row.connection)?.id === claim.connectionId;
+    row.payloadFingerprint === claim.fingerprint && row.payloadSnapshot === claim.snapshot &&
+    asRecord(row.connection)?.id === claim.connectionId;
 };
 
 export const executeQuotationExport = async (
@@ -1054,7 +1056,7 @@ export const executeQuotationExport = async (
     return refused('REVISION_MISMATCH', 'document or destination binding changed before claim');
   }
   const claim: QuotationClaimIdentity = {
-    id: decision.operationId, connectionId, quotationId, revisionNumber, fingerprint: initial.fingerprint,
+    id: decision.operationId, connectionId, quotationId, revisionNumber, fingerprint: initial.fingerprint, snapshot: initial.snapshot,
   };
   // The deterministic primary key gives a single insert winner. There is NO
   // second write path and no update-in-place retry for an uncertain request.

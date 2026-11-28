@@ -105,7 +105,11 @@ const readIssuedSeal = async (quotationId: string, dependencies: CustomerLinkDep
   if (asRecord(connection?.pageInfo)?.hasNextPage !== false || rows.length !== 1 ||
       !Array.isArray(connection?.edges) || connection.edges.length !== 1) return null;
   const row = rows[0];
-  const snapshot = asRecord(row.snapshotJson) as QuotationRevisionSnapshot | null;
+  let raw: unknown = row.snapshotJson;
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch { return null; }
+  }
+  const snapshot = asRecord(raw) as unknown as QuotationRevisionSnapshot | null;
   const hash = readString(row.snapshotHash);
   if (!snapshot || snapshot.quotationId !== quotationId || snapshot.currencyCode !== 'IRR' ||
     !hash || hashQuotationRevision(snapshot) !== hash ||

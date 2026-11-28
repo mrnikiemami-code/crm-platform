@@ -168,7 +168,9 @@ const quotationExecute = ({
     if (query.includes('CreateQuotationClaim')) {
       const id = /id: "([^"]+)"/.exec(query)?.[1];
       const fingerprint = /payloadFingerprint: "([^"]+)"/.exec(query)?.[1];
-      claimed = { id, kind: 'QUOTATION_REVISION_PUSH', state: 'IN_FLIGHT',
+      const snapshotLiteral = /payloadSnapshot: ("(?:\\.|[^"\\])*")/.exec(query)?.[1];
+      const payloadSnapshot = snapshotLiteral ? JSON.parse(snapshotLiteral) : null;
+      claimed = { id, payloadSnapshot, kind: 'QUOTATION_REVISION_PUSH', state: 'IN_FLIGHT',
         internalEntityId: quotationId, internalRevision: 2, attempts: 1, correlationId: id,
         connection: { id: 'conn-1' }, externalDocumentId: null, errorCode: null, payloadFingerprint: fingerprint };
       return { createAccountingSyncOperation: claimed };
