@@ -26,23 +26,9 @@ export class QuotationLineCreateManyPreQueryHook
     payload: CreateManyResolverArgs<Record<string, unknown>>,
   ): Promise<CreateManyResolverArgs<Record<string, unknown>>> {
     const rows = Array.isArray(payload.data) ? payload.data : [];
-
     for (const row of rows) {
-      const quotationId = row?.quotationId;
-
-      if (typeof quotationId !== 'string' || quotationId.length === 0) {
-        throw new QuotationQueryValidationException(
-          'quotationId is required to create a quotation line',
-          QuotationQueryValidationExceptionCode.FORBIDDEN,
-        );
-      }
-
-      await this.quotationImmutabilityService.assertQuotationLineMutationAllowed({
-        authContext,
-        quotationId,
-      });
+      await this.quotationImmutabilityService.assertQuotationLineMutationAllowed({ authContext, quotationId: typeof row?.quotationId === 'string' ? row.quotationId : '', validateOnly: true });
     }
-
-    return payload;
+    throw new QuotationQueryValidationException('UNIT_MAPPING_REQUIRED: use the canonical draft save to create lines', QuotationQueryValidationExceptionCode.FORBIDDEN);
   }
 }
