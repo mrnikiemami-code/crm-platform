@@ -60,6 +60,13 @@ describe('asan health check', () => {
       ok: false, refusal: { code: 'ASAN_TRANSPORT_UNAVAILABLE' },
     });
   });
+  it('rejects a read-only adapter write before it reaches the injected transport', async () => {
+    const fake = fakeFetch({ text: '501' });
+    const result = await adapter({ readOnly: true }, fake.fetchImpl).registerProforma({ payload: {}, description: 'test' });
+    expect(result).toMatchObject({ ok: false, refusal: { code: 'ASAN_LIVE_WRITE_NOT_APPROVED' } });
+    expect(fake.calls).toEqual([]);
+  });
+
   it('refuses a cleartext health probe even when legacy approval and token exist', async () => {
     const fake = fakeFetch({ text: '[]' });
     const health = await adapter({

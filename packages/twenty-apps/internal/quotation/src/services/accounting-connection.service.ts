@@ -230,6 +230,7 @@ export const buildAdapter = (
   return createAccountingAdapter({
     adapterId: record.adapterId,
     settings: record.settings,
+    readOnly: true,
     ...(approved && secrets.tunnelToken !== undefined ? { tunnelToken: secrets.tunnelToken } : {}),
     ...(approved && binding !== undefined ? { fetchImpl: createApprovedAsanReadTransport(binding) } : {}),
   });

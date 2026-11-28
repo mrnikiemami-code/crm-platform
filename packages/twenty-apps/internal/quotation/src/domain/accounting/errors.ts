@@ -34,6 +34,8 @@ const PERSIAN_MESSAGES: Record<string, string> = {
 
   TRANSPORT_NOT_APPROVED:
     'ارتباط امن این سرویس تأیید نشده است؛ آدرس سرویس یا تونل باید HTTPS باشد.',
+  ASAN_LIVE_WRITE_NOT_APPROVED:
+    'مسیر فعلی آسان فقط برای خواندن اطلاعات است؛ ثبت یا تغییر اطلاعات مجاز نیست.',
   ASAN_TRANSPORT_UNAVAILABLE:
     'مسیر امن ارتباط با آسان هنوز آماده و تأیید نشده است؛ هیچ اطلاعاتی ارسال نشد.',
   ACCOUNTING_DATASET_REBIND_REQUIRED:

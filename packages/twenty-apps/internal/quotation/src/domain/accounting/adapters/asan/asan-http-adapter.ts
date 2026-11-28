@@ -66,6 +66,7 @@ export type AsanHttpAdapterConfig = {
   allowInsecureTransport?: boolean;
   timeoutMs?: number;
   fetchImpl?: AsanFetch;
+  readOnly?: boolean;
   now?: () => Date;
 };
 
@@ -105,6 +106,9 @@ export const readBoundedResponseText = async (
   );
 
   if (Number.isFinite(declared) && declared > maxBytes) {
+    if (response.body !== undefined && response.body !== null) {
+      await response.body.getReader().cancel().catch(() => undefined);
+    }
     return refused(
       'REMOTE_DATASET_TOO_LARGE',
       `the vendor declared ${declared} bytes, above the ${maxBytes} byte ceiling; the body was not read`,
@@ -400,6 +404,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
   readonly contractVersion = ACCOUNTING_ADAPTER_CONTRACT_VERSION;
   readonly capabilities = ASAN_CAPABILITIES;
   readonly isLive = true;
+  readonly writesEnabled: boolean;
 
   private readonly config: AsanHttpAdapterConfig;
   private readonly fetchImpl: AsanFetch | undefined;
@@ -410,6 +415,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
     // No ambient fetch fallback: until the approved, destination-bound transport
     // is wired, a configured URL must not become a credential-bearing network call.
     this.fetchImpl = config.fetchImpl;
+    this.writesEnabled = config.readOnly !== true && config.fetchImpl !== undefined;
     this.now = config.now ?? (() => new Date());
   }
 
@@ -425,10 +431,17 @@ export class AsanHttpAdapter implements AccountingAdapter {
 
   // The legacy approval flag is not proof of encryption. Customer reads also carry
   // personal information, so every actual request must use a clean HTTPS base URL.
-  private checkWriteTransport(): Result<true> {
+  private checkSecureTransport(): Result<true> {
     return this.transportIsSecure()
       ? accepted(true)
       : refused('TRANSPORT_NOT_APPROVED', 'an HTTPS vendor endpoint or HTTPS tunnel is required');
+  }
+
+  private checkWriteTransport(): Result<true> {
+    const transport = this.checkSecureTransport();
+    if (!transport.ok) return transport;
+    return this.writesEnabled ? accepted(true) :
+      refused('ASAN_LIVE_WRITE_NOT_APPROVED', 'the configured adapter is read-only');
   }
 
   private async request({
@@ -442,7 +455,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
     query?: Record<string, string>;
     body?: unknown;
   }): Promise<Result<RawResponse>> {
-    const transport = this.checkWriteTransport();
+    const transport = this.checkSecureTransport();
     if (!transport.ok) return transport;
     const fetchImpl = this.fetchImpl;
     if (fetchImpl === undefined) return refused(

@@ -32,6 +32,7 @@ export type CreateAdapterInput = {
   tunnelToken?: string;
   allowInsecureTransport?: boolean;
   fetchImpl?: AsanFetch;
+  readOnly?: boolean;
   now?: () => Date;
   // Test seam: replaces the vendor implementation without asking the factory to guess.
   mock?: MockAccountingAdapter;
@@ -67,6 +68,7 @@ export const createAccountingAdapter = (
     new AsanHttpAdapter({
       baseUrl: input.settings.baseUrl,
       remoteUserId: input.settings.remoteUserId,
+      readOnly: input.readOnly === true || input.fetchImpl === undefined,
       ...(input.tunnelToken === undefined
         ? {}
         : { tunnelToken: input.tunnelToken }),

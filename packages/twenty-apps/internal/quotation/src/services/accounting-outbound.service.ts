@@ -33,11 +33,12 @@ import {
   type QuotationExportDecision,
 } from 'src/domain/accounting/outbound-plan';
 import {
+  buildAccountingOperationId,
   type AccountingOperationKind,
   type AccountingOperationState,
 } from 'src/domain/accounting/sync-operation';
 import { type ConnectionSettings } from 'src/domain/accounting/adapter-contract';
-import { type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
+import { hashQuotationRevision, type QuotationRevisionSnapshot } from 'src/domain/quotation/revision';
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 import { parseMicrosExact } from 'src/domain/money/micros';
 
@@ -112,16 +113,31 @@ export const loadOperations = async (
   internalEntityId?: string,
 ): Promise<OperationSnapshot[]> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(
-    buildAccountingOperationsQuery({
-      connectionId,
-      ...(internalEntityId === undefined || internalEntityId.trim() === ''
-        ? {}
-        : { internalEntityId }),
-    }),
-  );
-
-  return parseOperations(data);
+  const operations: OperationSnapshot[] = [];
+  const ids = new Set<string>();
+  const cursors = new Set<string>();
+  let afterCursor: string | null = null;
+  for (;;) {
+    const data = await execute(buildAccountingOperationsQuery({
+      connectionId, afterCursor,
+      ...(internalEntityId === undefined || internalEntityId.trim() === '' ? {} : { internalEntityId }),
+    }));
+    const root = asRecord(data.accountingSyncOperations);
+    if (!Array.isArray(root?.edges)) throw new RecordApiError('INVALID_RESPONSE', 'Operation history unavailable');
+    const page = parseOperations(data);
+    if (page.length !== root.edges.length || page.some((entry) => ids.has(entry.id))) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Operation history has invalid or repeated identities');
+    }
+    for (const entry of page) { ids.add(entry.id); operations.push(entry); }
+    const pageInfo = asRecord(root.pageInfo);
+    if (pageInfo?.hasNextPage !== true) return operations;
+    const next = readString(pageInfo.endCursor);
+    if (!next || cursors.has(next) || cursors.size >= 1000) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Incomplete operation history');
+    }
+    cursors.add(next);
+    afterCursor = next;
+  }
 };
 
 type ItemLinkRow = {
@@ -422,6 +438,10 @@ export const executeItemPush = async (
     return active;
   }
 
+  if (adapter.writesEnabled === false) {
+    return refused('ASAN_LIVE_WRITE_NOT_APPROVED', 'the configured adapter is read-only');
+  }
+
   if (!flags.outboundEnabled) {
     return refused(
       'OUTBOUND_DISABLED',
@@ -628,6 +648,7 @@ type QuotationContext = {
   revision: {
     version: number;
     snapshot: QuotationRevisionSnapshot;
+    snapshotHash: string;
   } | null;
 };
 
@@ -701,6 +722,7 @@ const loadQuotationContext = async (
         : {
             version: readNumber(revisionNode.version) ?? 0,
             snapshot,
+            snapshotHash: readString(revisionNode.snapshotHash),
           },
   });
 };
@@ -781,8 +803,8 @@ export const previewQuotationExport = async (
     lineLinks,
     capabilities: adapter.capabilities,
     settings,
-    outboundEnabled: flags.outboundEnabled,
-    documentExportEnabled: flags.documentExportEnabled,
+    outboundEnabled: flags.outboundEnabled && adapter.writesEnabled !== false,
+    documentExportEnabled: flags.documentExportEnabled && adapter.writesEnabled !== false,
     existingOperations: operations,
     maxAttempts: flags.maxAttempts,
     // A browser assertion is not vendor reconciliation evidence.
@@ -796,8 +818,8 @@ export const previewQuotationExport = async (
     settings,
     capabilities: adapter.capabilities,
     flags: {
-      outboundEnabled: flags.outboundEnabled,
-      documentExportEnabled: flags.documentExportEnabled,
+      outboundEnabled: flags.outboundEnabled && adapter.writesEnabled !== false,
+      documentExportEnabled: flags.documentExportEnabled && adapter.writesEnabled !== false,
     },
     customerExternalId,
     lineLinks,
@@ -842,6 +864,10 @@ export const executeQuotationExport = async (
     return active;
   }
 
+  if (adapter.writesEnabled === false) {
+    return refused('ASAN_LIVE_WRITE_NOT_APPROVED', 'the configured adapter is read-only');
+  }
+
   const preview = await previewQuotationExport(
     { connectionId, quotationId, adapter, settings, flags },
     dependencies,
@@ -877,6 +903,21 @@ export const executeQuotationExport = async (
       'REVISION_NOT_FOUND',
       'no sealed revision exists; the export path needs an issued revision',
     );
+  }
+
+  // Never use the operation identity from one revision with a later payload.
+  const revision = context.value.revision;
+  const snapshot = revision.snapshot;
+  if (preview.value.revisionVersion !== revision.version ||
+      snapshot.version !== revision.version || snapshot.quotationId !== quotationId ||
+      context.value.quotation.id !== quotationId ||
+      !QUOTATION_EXPORTABLE_STATUSES.has(context.value.quotation.status) ||
+      decision.operationId !== buildAccountingOperationId({ connectionId, kind: 'QUOTATION_REVISION_PUSH',
+        internalEntityId: quotationId, internalRevision: revision.version })) {
+    return refused('REVISION_MISMATCH', 'the approved revision changed during export planning');
+  }
+  if (adapter.isLive && (!revision.snapshotHash || hashQuotationRevision(snapshot) !== revision.snapshotHash)) {
+    return refused('REVISION_IMMUTABLE', 'the stored revision seal could not be verified');
   }
 
   const itemLinks = await loadItemLinks(connectionId, execute);
