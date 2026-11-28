@@ -7,7 +7,7 @@ Owner: Cursor (commercial/catalog/U04 + U01/U02/P05 hardening in owned files)
 
 ## Tip SHA
 
-_Set after commit push (see git log -1)._
+`421bee7731d92ce0336da9131a493c9733a0ed8a`
 
 ## Scope delivered
 
