@@ -22,12 +22,13 @@ const setup = (authority: string | null, legacy = false, visible = true) => {
     getRepository: jest.fn(() => ({ findOne: jest.fn(async () => visible ? { id: 'q-1' } : null) })),
   };
   const apply = jest.fn(async () => ({ success: true, outcome: { createdParties: 1 } }));
+  const applyItems = jest.fn(async () => ({ success: true, outcome: { createdItems: 1 } }));
   const service = new AccountingOperationDispatchService(
     cache as never, { execute } as never,
     { resolveSettingsAuthority: jest.fn(async () => authority), resolveRoleId: jest.fn(async () => 'role-1') } as never,
-    manager as never, { apply } as never,
+    manager as never, { apply } as never, { apply: applyItems } as never,
   );
-  return { service, execute, manager, apply, lock };
+  return { service, execute, manager, apply, applyItems, lock };
 };
 
 describe('accounting operation boundary', () => {
@@ -64,6 +65,19 @@ describe('accounting operation boundary', () => {
     expect(execute).not.toHaveBeenCalledWith(expect.objectContaining({ userId: expect.anything() }));
     expect(apply).toHaveBeenCalledWith(expect.objectContaining({ authContext: auth, plan }));
   });
+  it('uses the private prepared item plan and original user, never a caller-injected plan', async () => {
+    const { service, execute, applyItems } = setup('SETTINGS_ROLE');
+    const selections = [{ externalItemId: '001', expectedRemoteVersion: 'v1', unitRecordId: 'unit-1', kind: 'PRODUCT' }];
+    const plan = { connectionId: 'c', rows: [], refused: [] };
+    execute.mockResolvedValueOnce({ status: 'SUCCESS', data: { success: true, plan } } as never);
+    await expect(service.dispatch('accounting-import-apply-items', { connectionId: 'c', selections, applyPrices: true, plan: { injected: true } }, auth))
+      .resolves.toMatchObject({ success: true });
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({ payload: expect.objectContaining({ body: {
+      connectionId: 'c', selections, applyPrices: true, allowRemoteVersionUpdate: false, action: 'prepare-items',
+    } }) }));
+    expect(applyItems).toHaveBeenCalledWith(expect.objectContaining({ plan, authContext: auth }));
+  });
+
   it('holds the workspace work lock before executing a mutating private operation', async () => {
     const { service, execute, lock } = setup('SETTINGS_ROLE');
     execute.mockImplementationOnce(async () => {
@@ -79,7 +93,7 @@ describe('accounting operation boundary', () => {
   it('rejects unlisted actions and unprivileged global operations before execution', async () => {
     const { service, execute } = setup(null);
     expect(await service.dispatch('invented', {}, auth)).toMatchObject({ success: false, code: 'INVALID_INPUT' });
-    expect(await service.dispatch('accounting-import-apply-items', { connectionId: 'c' }, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
+    expect(await service.dispatch('accounting-import-apply-items', { connectionId: 'c', selections: [{ externalItemId: '001', expectedRemoteVersion: 'v1' }] }, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
     expect(execute).not.toHaveBeenCalled();
   });
 
