@@ -1,5 +1,9 @@
 # CRM — Canonical Architect Recovery (read first)
 
+## CURRENT — Goal 040 architect continuation END / source-only (2026-11-28)
+
+Architect A handoff tip `c2189271bc56284e94ffaeb096d216c9cc5f6aa1`; product/test tip `48c2d34124e07128cb0e2a1910d0f8d5a008fb58`. [Exact updated handoff](https://github.com/mrnikiemami-code/crm-platform/blob/c2189271bc56284e94ffaeb096d216c9cc5f6aa1/docs/architecture/goal-040/LANE-A-HANDOFF.md). Six new commits after prior handoff: scoped persisted claim reread, pre-dispatch revision/link/active destination cutoff, fail-closed uncertain outcomes and five targeted cases. No modifications to B or Dev; B remote `f230721d1a0146748475c68e73d61572d7b5df6d` at checkpoint. Local bridge returned internal error; tests and build NOT_RUN. Atomic retire/dispatch and finish CAS remain integration gates, not proven by cutoff rereads. Next allowed: review actual B handoff, converge once and complete remaining unit/F07/U03/U04/U05 source, then single phase 3 verification. No real Asan requests or G1/G2 authorization. START checkpoint 534cb8f7ce9287adf82df96459aa2d2b58395014. Integration branch coordination docs only; no product merge.
+
 ## CURRENT — Goal 040 architect continuation START (2026-11-28)
 
 User explicitly authorized continuation and before/after recovery. Verified remote A `1961e98d6d250ad9456f395503195c0277251e42`, B `f230721d1a0146748475c68e73d61572d7b5df6d` (no pushed B work yet). Review A-owned finance/seal/export source and close independent defects only; preserve B ownership, no integration product writes until handoff. Record actual changes and remaining blockers at end. Canonical recovery update on architect-owned integration branch is coordination documentation only. No build/deploy/schema/vendor traffic; no PASS inferred.
