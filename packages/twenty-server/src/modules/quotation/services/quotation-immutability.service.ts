@@ -235,9 +235,11 @@ export class QuotationImmutabilityService {
   async assertQuotationLineMutationAllowed({
     authContext,
     quotationId,
+    validateOnly = false,
   }: {
     authContext: WorkspaceAuthContext;
     quotationId: string;
+    validateOnly?: boolean;
   }): Promise<void> {
     const [row, heldPermissions] = await Promise.all([
       this.readQuotationRow(authContext, quotationId),
@@ -257,6 +259,8 @@ export class QuotationImmutabilityService {
         QuotationQueryValidationExceptionCode.FORBIDDEN,
       );
     }
+
+    if (validateOnly) return;
 
     // Parent version claim only (no status mutation). Line insert/update still
     // runs after the hook; a failed line write can leave a bumped parent version.
@@ -288,10 +292,16 @@ export class QuotationImmutabilityService {
       }),
     );
 
+    const unitFields = ['unit', 'unitRecordId', 'unitCode', 'unitAccountingCode', 'item', 'itemId'];
+    const affectsUnit = patch !== undefined && unitFields.some(field => Object.prototype.hasOwnProperty.call(patch, field));
     await this.assertQuotationLineMutationAllowed({
       authContext,
       quotationId: line.quotationId,
+      validateOnly: affectsUnit,
     });
+    if (affectsUnit) {
+      throw new QuotationQueryValidationException('UNIT_MAPPING_REQUIRED: use canonical draft save to change item or unit', QuotationQueryValidationExceptionCode.FORBIDDEN);
+    }
   }
 
   private async claimQuotationVersion({
