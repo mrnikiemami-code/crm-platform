@@ -10,6 +10,7 @@ export type AtomicSaveLinePayload = {
   kind: 'PRODUCT' | 'SERVICE';
   description: string | null;
   unit: string;
+  unitRecordId?: string | null;
   quantityExact: string;
   unitPriceExact: string;
   grossExact: string;
