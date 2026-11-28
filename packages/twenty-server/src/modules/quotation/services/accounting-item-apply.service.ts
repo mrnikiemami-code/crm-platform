@@ -143,6 +143,14 @@ export class AccountingItemApplyService {
             assert(unitRecordId, 'UNIT_MAPPING_REQUIRED');
             const unit = await units.findOne({ where: { id: unitRecordId! } });
             assert(unit?.isActive === true && !!unit.name.trim(), 'UNIT_MAPPING_REQUIRED');
+            // A UI check is not authority. Validate the observed primary unit
+            // against the actual locked CRM unit before any item/price/link write.
+            // Vendor ids and CRM accounting codes are different namespaces.
+            const normalizeUnitName = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
+            if (row.vendorUnitId?.trim() || row.vendorUnitName?.trim()) {
+              assert(row.vendorUnitName?.trim() && unit &&
+                normalizeUnitName(row.vendorUnitName) === normalizeUnitName(unit.name), 'UNIT_MAPPING_REQUIRED');
+            }
             const reverse = await links.find({ where: { connectionId, itemId }, withDeleted: true, take: 2 });
             assert(row.action === 'UPDATE_LINK_VERSION' ? reverse.length === 1 && reverse[0].id === expected.id : reverse.length === 0, 'ACCOUNTING_LINK_CONFLICT');
             if (row.action === 'UPDATE_LINK_VERSION') {
