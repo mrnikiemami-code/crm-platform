@@ -2,6 +2,7 @@ import { request as httpsRequest } from 'node:https';
 import { isIP } from 'node:net';
 import { checkServerIdentity } from 'node:tls';
 
+import { isExactAsanPositiveLong } from 'src/domain/accounting/adapters/asan/asan-customer-finance';
 import { ASAN_ENDPOINTS } from 'src/domain/accounting/adapters/asan/asan-endpoints';
 import { type AsanFetch } from 'src/domain/accounting/adapters/asan/asan-http-adapter';
 
@@ -64,9 +65,24 @@ export const isApprovedAsanRead = (binding: AsanReadBinding, input: string, meth
   try {
     const url = new URL(input);
     const prefix = base.pathname.replace(/\/+$/, '') + '/';
+    const route = url.pathname.slice(prefix.length);
+    // A Cardex read is never an unbounded customer-wide/all-customer query.
+    // Its three parameters and the exact <=93-day UTC tick range are mandatory.
+    const isBoundedCardex = route === ASAN_ENDPOINTS.customerCardex && (() => {
+      const q = url.searchParams;
+      const keys = Array.from(q.keys());
+      const from = q.get('FromDate');
+      const to = q.get('ToDate');
+      if (keys.length !== 3 || new Set(keys).size !== 3 ||
+          !isExactAsanPositiveLong(q.get('CustomerCode')) ||
+          !isExactAsanPositiveLong(from) || !isExactAsanPositiveLong(to)) return false;
+      const start = BigInt(from), end = BigInt(to);
+      return start >= 621355968000000000n && end >= start &&
+        end - start < 93n * 864000000000n && end <= 3155378975999999999n;
+    })();
     return url.origin === base.origin && url.username === '' && url.password === '' &&
       url.hash === '' && url.pathname.startsWith(prefix) &&
-      readRoutes.has(url.pathname.slice(prefix.length));
+      (readRoutes.has(route) || isBoundedCardex);
   } catch { return false; }
 };
 
