@@ -402,14 +402,14 @@ export class AsanHttpAdapter implements AccountingAdapter {
   readonly isLive = true;
 
   private readonly config: AsanHttpAdapterConfig;
-  private readonly fetchImpl: AsanFetch;
+  private readonly fetchImpl: AsanFetch | undefined;
   private readonly now: () => Date;
 
   constructor(config: AsanHttpAdapterConfig) {
     this.config = config;
-    this.fetchImpl =
-      config.fetchImpl ??
-      ((input, init) => fetch(input, init));
+    // No ambient fetch fallback: until the approved, destination-bound transport
+    // is wired, a configured URL must not become a credential-bearing network call.
+    this.fetchImpl = config.fetchImpl;
     this.now = config.now ?? (() => new Date());
   }
 
@@ -444,6 +444,10 @@ export class AsanHttpAdapter implements AccountingAdapter {
   }): Promise<Result<RawResponse>> {
     const transport = this.checkWriteTransport();
     if (!transport.ok) return transport;
+    const fetchImpl = this.fetchImpl;
+    if (fetchImpl === undefined) return refused(
+      'ASAN_TRANSPORT_UNAVAILABLE', 'the approved accounting transport has not been wired',
+    );
 
     const headers: Record<string, string> = { Accept: 'application/json' };
     const startedAt = Date.now();
@@ -459,7 +463,7 @@ export class AsanHttpAdapter implements AccountingAdapter {
     let response: Awaited<ReturnType<AsanFetch>>;
 
     try {
-      response = await this.fetchImpl(
+      response = await fetchImpl(
         buildAsanUrl({
           baseUrl: this.config.baseUrl,
           path,

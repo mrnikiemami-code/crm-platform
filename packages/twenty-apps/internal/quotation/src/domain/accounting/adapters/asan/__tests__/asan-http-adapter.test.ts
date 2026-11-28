@@ -54,6 +54,12 @@ const adapter = (
   });
 
 describe('asan health check', () => {
+  it('fails closed without an explicitly injected approved transport', async () => {
+    // No DNS lookup, no global fetch and no token-bearing request may happen.
+    expect(await adapter({ tunnelToken: 'fixture-secret' }).listItems()).toMatchObject({
+      ok: false, refusal: { code: 'ASAN_TRANSPORT_UNAVAILABLE' },
+    });
+  });
   it('refuses a cleartext health probe even when legacy approval and token exist', async () => {
     const fake = fakeFetch({ text: '[]' });
     const health = await adapter({
