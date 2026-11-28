@@ -610,19 +610,19 @@ export const AccountingCatalogSection = ({
                       </NativeSettingsCell>
                       <NativeSettingsCell style={styles.cell}>
                         {row.name}
-                        {row.decision === 'CREATE' && (
+                        {isSelectableItem(row) && (
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                             <select aria-label={`واحد ${row.name}`} value={choice?.unitRecordId ?? ''} disabled={!canManage || applying}
                               onChange={event => changeUnitChoice(row, { unitRecordId: event.target.value })}>
                               <option value="">واحد مرجع را تعیین کنید</option>
                               {units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
                             </select>
-                            <select aria-label={`نوع ${row.name}`} value={choice?.kind ?? ''} disabled={!canManage || applying}
+                            {row.decision === 'CREATE' && <select aria-label={`نوع ${row.name}`} value={choice?.kind ?? ''} disabled={!canManage || applying}
                               onChange={event => changeUnitChoice(row, { kind: event.target.value as UnitChoice['kind'] })}>
                               <option value="">نوع را تعیین کنید</option>
                               <option value="PRODUCT">کالا</option>
                               <option value="SERVICE">خدمت</option>
-                            </select>
+                            </select>}
                             {row.vendorUnitName ? <span>واحد مقصد: {row.vendorUnitName}</span> : null}
                           </div>
                         )}
