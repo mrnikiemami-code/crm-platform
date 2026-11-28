@@ -170,6 +170,13 @@ describe('line amount mapping', () => {
     expect(unwrap(scaledQuantityToAsanCount(3_000_000n))).toBe(3);
   });
 
+  it('rejects safe scaled integers that alias another quantity after division', () => {
+    expect(refusalCodeOf(scaledQuantityToAsanCount(9007199254740991n))).toBe('QUANTITY_OUT_OF_RANGE');
+    expect(refusalCodeOf(scaledQuantityToAsanCount(9007199254740989n))).toBe('QUANTITY_OUT_OF_RANGE');
+    expect(unwrap(scaledQuantityToAsanCount(9007199254740990n))).toBe(9007199254.74099);
+    expect(unwrap(scaledQuantityToAsanCount(1000001n))).toBe(1.000001);
+  });
+
   it('refuses a fractional rial rather than rounding the price', () => {
     expect(refusalCodeOf(microsToAsanMoney(1_500_000n))).toBe(
       'AMOUNT_NOT_WHOLE_UNIT',
