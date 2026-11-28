@@ -22,6 +22,7 @@ import {
   type CustomerSelection,
 } from 'src/components/customer-picker';
 import {
+  ACCOUNTING_CONNECTION_ROUTE,
   QUOTATION_CURRENCIES_ROUTE,
   SAVE_DRAFT_ROUTE,
   SEARCH_CUSTOMERS_ROUTE,
@@ -29,9 +30,7 @@ import {
   callAppRoute,
   callRoundingRulesNestAction,
 } from 'src/components/quotation-api';
-import {
-  buildIrrPriceListsForPickerQuery,
-} from 'src/data/quotation-queries';
+import { loadIrrPriceListOptions } from 'src/services/quotation-price-list-picker.service';
 import { executeRecordGraphql } from 'src/data/record-api';
 import { type CatalogItemKind } from 'src/domain/catalog/catalog-item';
 import {
@@ -460,6 +459,7 @@ export const QuotationDraftForm = () => {
   const [issuerEconomicCode, setIssuerEconomicCode] = useState('');
   const [issuerAddress, setIssuerAddress] = useState('');
   const [issuerPhone, setIssuerPhone] = useState('');
+  const [mappedPriceList, setMappedPriceList] = useState<{ id: string; name: string } | null>(null);
   const [priceListOptions, setPriceListOptions] = useState<
     Array<{ id: string; name: string; isDefault: boolean }>
   >([]);
@@ -719,53 +719,17 @@ export const QuotationDraftForm = () => {
 
     const loadPriceLists = async () => {
       try {
-        const data = await executeRecordGraphql(buildIrrPriceListsForPickerQuery());
-        const connection = data.priceLists as
-          | { edges?: Array<{ node?: Record<string, unknown> }> }
-          | undefined;
-        const edges = Array.isArray(connection?.edges) ? connection.edges : [];
-
-        const rows = edges.flatMap((edge) => {
-          const node = edge?.node;
-          const id = typeof node?.id === 'string' ? node.id.trim() : '';
-          const name =
-            typeof node?.name === 'string' && node.name.trim() !== ''
-              ? node.name.trim()
-              : id;
-
-          if (id === '') {
-            return [];
-          }
-
-          return [
-            {
-              id,
-              name,
-              isDefault: node?.isDefault === true,
-            },
-          ];
-        });
-
-        if (cancelled || rows.length === 0) {
-          return;
-        }
-
+        const rows = await loadIrrPriceListOptions();
+        if (cancelled) return;
         setPriceListOptions(rows);
-
-        if (selectedPriceListId === null) {
-          const preferred =
-            rows.find((row) => row.isDefault) ?? rows[0] ?? null;
-
-          if (preferred !== null) {
-            setSelectedPriceListId(preferred.id);
-            setSelectedPriceListName(preferred.name);
-          }
+        // Never pick the first arbitrary list. Existing draft provenance stays unchanged.
+        const defaults = rows.filter(row => row.isDefault);
+        if (!isRecordEdit && defaults.length === 1) {
+          setSelectedPriceListId(current => current ?? defaults[0].id);
+          setSelectedPriceListName(current => current ?? defaults[0].name);
         }
-      } catch (loadFailure) {
-        console.error(
-          'quotation-draft-form: price list load failed',
-          loadFailure,
-        );
+      } catch {
+        if (!cancelled) setPriceListOptions([]);
       }
     };
 
@@ -1211,6 +1175,24 @@ export const QuotationDraftForm = () => {
     );
   };
 
+  // Only an explicit operator-approved connection/group mapping is recommended.
+  // Never silently reprice an existing draft or an already entered line.
+  useEffect(() => {
+    const customerId = customerType === 'PERSON' ? customerIds.personId : customerIds.companyId;
+    let cancelled = false;
+    setMappedPriceList(null);
+    if (!customerId) return;
+    void callAppRoute(ACCOUNTING_CONNECTION_ROUTE, {
+      action: 'customer-price-list', partyType: customerType, internalPartyId: customerId,
+    }).then(response => {
+      if (cancelled || !response.ok || response.data.success !== true) return;
+      const id = typeof response.data.priceListId === 'string' ? response.data.priceListId : '';
+      const name = typeof response.data.priceListName === 'string' ? response.data.priceListName : '';
+      if (id && name) setMappedPriceList({ id, name });
+    }).catch(() => { /* leave explicit selection available */ });
+    return () => { cancelled = true; };
+  }, [customerType, customerIds.personId, customerIds.companyId]);
+
   const selectedCustomer: CustomerSelection | null =
     customerType === 'PERSON'
       ? customerIds.personId === null
@@ -1521,17 +1503,23 @@ export const QuotationDraftForm = () => {
                 }
               }}
             >
-              {priceListOptions.length === 0 ? (
-                <option value="">در حال بارگذاری…</option>
-              ) : (
-                priceListOptions.map((row) => (
+              <option value="">فهرست قیمت را انتخاب کنید</option>
+              {priceListOptions.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.name}
                     {row.isDefault ? ' — پیش‌فرض' : ''}
+                    {mappedPriceList?.id === row.id ? ' — گروه قیمتی مشتری' : ''}
                   </option>
-                ))
-              )}
+                ))}
             </select>
+            {mappedPriceList && mappedPriceList.id !== selectedPriceListId && (
+              <button type="button" style={styles.input} onClick={() => {
+                if (!priceListOptions.some(row => row.id === mappedPriceList.id)) return;
+                setSelectedPriceListId(mappedPriceList.id);
+                setSelectedPriceListName(mappedPriceList.name);
+                setLines(current => current.map(line => line.selectedPriceId ? { ...line, unitPriceText: '', selectedPriceListId: null, selectedPriceId: null, selectedPriceValidFrom: null, priceWarning: 'کالا را از فهرست قیمت جدید دوباره انتخاب کنید.' } : line));
+              }}>انتخاب فهرست گروه مشتری: {mappedPriceList.name}</button>
+            )}
           </label>
           <label style={styles.label}>
             شرایط تحویل
