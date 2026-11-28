@@ -79,7 +79,11 @@ export class AccountingPartyOutboundService {
           await acquireAccountingConnectionWorkLock(outer);
           await outer.executeRawQuery('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
             [JSON.stringify(['accounting-party-customer', outer.workspaceId, request.partyType, request.internalPartyId])]);
+          const initial = await this.plan(outer, request, role);
+          const identityKeys = ([['nationalCode', initial.profile.nationalCode], ['economicCode', initial.profile.economicCode]] as const).flatMap(([field, value]) => value ? [JSON.stringify(['accounting-party-identity', outer.workspaceId, field, value])] : []).sort();
+          for (const key of identityKeys) await outer.executeRawQuery('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
           const plan = await this.plan(outer, request, role);
+          requireFact(initial.fingerprint === plan.fingerprint, 'RECONCILIATION_REQUIRED');
           const command = { operationId: plan.operationId, mode: plan.mode,
             expectedRemoteVersion: plan.expectedRemoteVersion, profile: plan.profile, sourceProfile: plan.sourceProfile };
           const preview = await worker('preview-party-push', { connectionId: plan.connectionId, command });
@@ -117,6 +121,9 @@ export class AccountingPartyOutboundService {
             await this.orm.runInWorkspaceTransaction(async finishScope => {
               const latest = await this.plan(finishScope, request, role);
               requireFact(latest.fingerprint === plan.fingerprint, 'RECONCILIATION_REQUIRED');
+              // Match the inbound mapper's source-identity lock before checking
+              // or writing the reverse link. The outer customer lock is still held.
+              await finishScope.executeRawQuery('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [JSON.stringify(['accounting-party-source', finishScope.workspaceId, plan.connectionId, externalId])]);
               const links = finishScope.getRepository<Link>('accountingPartyLink', { shouldBypassPermissionChecks: true });
               const reverse = await links.find({ where: { connectionId: plan.connectionId, externalPartyId: externalId }, withDeleted: true, take: 2 });
               requireFact(plan.mode === 'CREATE' ? reverse.length === 0 : reverse.length === 1 && reverse[0].id === plan.linkId && !reverse[0].deletedAt, 'ACCOUNTING_PARTY_IDENTITY_CONFLICT');
@@ -166,6 +173,17 @@ export class AccountingPartyOutboundService {
     const link = links[0] ?? null;
     const profile = buildPartyOutboundProfile(kind, customer!, link?.externalPartyId ?? null);
     requireFact(profile, 'ASAN_CUSTOMER_LOOKUP_REQUIRED');
+    // Strong identity collisions include soft-deleted records; disclose only
+    // a conflict code, never another customer's identity to this caller.
+    if (profile?.nationalCode) {
+      const code = profile.nationalCode;
+      const variants = [...new Set([code, code.replace(/\\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]), code.replace(/\\d/g, d => '٠١٢٣٤٥٦٧٨٩'[Number(d)])])];
+      for (const object of ['person', 'company']) {
+        const rows = await scope.getRepository<{ id: string; nationalCode: string }>(object, { shouldBypassPermissionChecks: true })
+          .find({ where: variants.map(nationalCode => ({ nationalCode })), withDeleted: true, take: 3, select: { id: true } });
+        requireFact(rows.length < 3 && rows.every(candidate => candidate.id === request.internalPartyId && object === (kind === 'PERSON' ? 'person' : 'company')), 'ACCOUNTING_PARTY_IDENTITY_CONFLICT');
+      }
+    }
     const mode = link ? 'UPDATE' as const : 'CREATE' as const;
     // No personal profile data in the accounting ledger snapshot.
     const snapshot = JSON.stringify({ version: 1, connectionId: request.connectionId, adapterId: connection!.adapterId,
