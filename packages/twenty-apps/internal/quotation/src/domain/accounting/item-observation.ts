@@ -35,7 +35,7 @@ export const buildCatalogItemObservationSnapshot = ({
       observation?.unitId !== undefined ? String(observation.unitId) : null,
     vendorUnitName: observation?.unitName ?? null,
     vendorSecondaryUnitName:
-      observation?.secondaryUnitName ?? item.secondaryName,
+      observation?.secondaryUnitName ?? null,
     observation,
   };
 };
