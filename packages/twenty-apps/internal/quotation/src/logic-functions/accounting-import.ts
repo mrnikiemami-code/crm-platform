@@ -39,7 +39,7 @@ import {
 const mappingStorage = () => createKvSnapshotStorage({ client: kv });
 
 const readSelections = (  value: unknown,
-): { externalItemId: string; internalItemId?: string }[] => {
+): { externalItemId: string; internalItemId?: string; unitRecordId?: string }[] => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -53,11 +53,13 @@ const readSelections = (  value: unknown,
     }
 
     const internalItemId = readString(row.internalItemId);
+    const unitRecordId = readString(row.unitRecordId);
 
     return [
       {
         externalItemId,
         ...(internalItemId === '' ? {} : { internalItemId }),
+        ...(unitRecordId === '' ? {} : { unitRecordId }),
       },
     ];
   });
