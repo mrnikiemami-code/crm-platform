@@ -4,6 +4,7 @@ import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import {
   ACCOUNTING_IMPORT_ROUTE,
+  QUOTATION_UNITS_ROUTE,
   callAppRoute,
 } from 'src/components/quotation-api';
 import {
@@ -37,7 +38,8 @@ const APPLY_BATCH_SIZE = 25;
 const TRANSFER_ALL_PAGE_CAP = 1000;
 const BULK_PAGE_SIZE = 100;
 
-type Selection = { internalItemId: string | null };
+type UnitChoice = { unitRecordId: string; kind: 'PRODUCT' | 'SERVICE' | '' };
+type Selection = { internalItemId: string | null; expectedRemoteVersion: string; unitRecordId?: string; kind?: 'PRODUCT' | 'SERVICE' };
 
 type RowFilter = 'ALL' | 'NEEDS_ACTION' | 'UNLINKED' | 'DUPLICATE';
 
@@ -70,9 +72,15 @@ const isSelectableItem = (row: ItemMappingRow): boolean =>
   row.decision === 'LINK_SUGGESTED' ||
   row.decision === 'REMOTE_CHANGED';
 
-const selectionForRow = (row: ItemMappingRow): Selection => ({
+const selectionForRow = (row: ItemMappingRow, choice?: UnitChoice): Selection => ({
   internalItemId: row.suggestedInternalItemId,
+  expectedRemoteVersion: row.remoteVersion ?? '',
+  ...(choice?.unitRecordId ? { unitRecordId: choice.unitRecordId } : {}),
+  ...(choice?.kind ? { kind: choice.kind } : {}),
 });
+const canSelectMappedItem = (row: ItemMappingRow, choice?: UnitChoice) =>
+  isSelectableItem(row) && !!row.remoteVersion &&
+  (row.decision !== 'CREATE' || (!!choice?.unitRecordId && !!choice.kind));
 
 const formatOutcomeReport = (outcome: Record<string, unknown> | null): string => {
   const createdLinks =
@@ -103,6 +111,8 @@ export const AccountingCatalogSection = ({
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [rowFilter, setRowFilter] = useState<RowFilter>('ALL');
   const [cursorStack, setCursorStack] = useState<(string | null)[]>([null]);
+  const [units, setUnits] = useState<{ id: string; name: string }[]>([]);
+  const [unitChoices, setUnitChoices] = useState<Map<string, UnitChoice>>(new Map());
   const [selected, setSelected] = useState<Map<string, Selection>>(new Map());
   const [applying, setApplying] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
@@ -182,6 +192,31 @@ export const AccountingCatalogSection = ({
   }, [connectionId, loadPage, reloadToken]);
 
   useEffect(() => {
+    let cancelled = false;
+    setUnitChoices(new Map());
+    setUnits([]);
+    void callAppRoute(QUOTATION_UNITS_ROUTE, { action: 'list' }).then(response => {
+      if (cancelled || !response.ok || response.data.success !== true) return;
+      const rows = Array.isArray(response.data.units) ? response.data.units : [];
+      setUnits(rows.flatMap(raw => {
+        const row = asRecord(raw);
+        return row?.isActive === true && readString(row.recordId) && readString(row.name)
+          ? [{ id: readString(row.recordId), name: readString(row.name) }] : [];
+      }));
+    }).catch(() => { /* mapping controls stay unavailable */ });
+    return () => { cancelled = true; };
+  }, [connectionId]);
+
+  const changeUnitChoice = (row: ItemMappingRow, patch: Partial<UnitChoice>) => {
+    setUnitChoices(current => {
+      const next = new Map(current);
+      next.set(row.externalItemId, { unitRecordId: '', kind: '', ...current.get(row.externalItemId), ...patch });
+      return next;
+    });
+    setSelected(current => { const next = new Map(current); next.delete(row.externalItemId); return next; });
+  };
+
+  useEffect(() => {
     onPendingCountChange?.(page?.summary.unlinked ?? 0);
   }, [onPendingCountChange, page?.summary.unlinked]);
 
@@ -205,10 +240,10 @@ export const AccountingCatalogSection = ({
         next.delete(row.externalItemId);
         return next;
       }
-      if (!isSelectableItem(row)) {
+      if (!canSelectMappedItem(row, unitChoices.get(row.externalItemId))) {
         return current;
       }
-      next.set(row.externalItemId, selectionForRow(row));
+      next.set(row.externalItemId, selectionForRow(row, unitChoices.get(row.externalItemId)));
       return next;
     });
   };
@@ -219,8 +254,8 @@ export const AccountingCatalogSection = ({
   );
 
   const pageSelectable = useMemo(
-    () => visibleRows.filter(isSelectableItem),
-    [visibleRows],
+    () => visibleRows.filter(row => canSelectMappedItem(row, unitChoices.get(row.externalItemId))),
+    [visibleRows, unitChoices],
   );
 
   const allPageSelected =
@@ -237,7 +272,7 @@ export const AccountingCatalogSection = ({
         return next;
       }
       for (const row of pageSelectable) {
-        next.set(row.externalItemId, selectionForRow(row));
+        next.set(row.externalItemId, selectionForRow(row, unitChoices.get(row.externalItemId)));
       }
       return next;
     });
@@ -268,6 +303,9 @@ export const AccountingCatalogSection = ({
           applyPrices: true,
           selections: batch.map(([externalItemId, selection]) => ({
             externalItemId,
+            expectedRemoteVersion: selection.expectedRemoteVersion,
+            ...(selection.unitRecordId ? { unitRecordId: selection.unitRecordId } : {}),
+            ...(selection.kind ? { kind: selection.kind } : {}),
             ...(selection.internalItemId === null
               ? {}
               : { internalItemId: selection.internalItemId }),
@@ -368,11 +406,11 @@ export const AccountingCatalogSection = ({
           await enqueueSnackbar({ message: 'فهرست کامل و تازه نیست؛ انتقال همه متوقف شد.', variant: 'error' }); return;
         }
         for (const row of mapped.rows) {
-          if (isSelectableItem(row)) {
-            collected.set(row.externalItemId, selectionForRow(row));
+          if (canSelectMappedItem(row, unitChoices.get(row.externalItemId))) {
+            collected.set(row.externalItemId, selectionForRow(row, unitChoices.get(row.externalItemId)));
           } else if (
             row.decision === 'DUPLICATE_REMOTE_CODE' ||
-            row.decision === 'LINK_AMBIGUOUS'
+            row.decision === 'LINK_AMBIGUOUS' || row.decision === 'CREATE'
           ) {
             blocked += 1;
           }
@@ -549,7 +587,8 @@ export const AccountingCatalogSection = ({
               <NativeSettingsBody>
                 {visibleRows.map((row) => {
                   const checked = selected.has(row.externalItemId);
-                  const selectable = isSelectableItem(row);
+                  const choice = unitChoices.get(row.externalItemId);
+                  const selectable = canSelectMappedItem(row, choice);
                   const priceLabel =
                     row.priceMicros === null
                       ? row.planPrice
@@ -569,7 +608,25 @@ export const AccountingCatalogSection = ({
                       <NativeSettingsCell style={{ ...styles.cell, direction: 'ltr', textAlign: 'right' }}>
                         {row.code}
                       </NativeSettingsCell>
-                      <NativeSettingsCell style={styles.cell}>{row.name}</NativeSettingsCell>
+                      <NativeSettingsCell style={styles.cell}>
+                        {row.name}
+                        {row.decision === 'CREATE' && (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                            <select aria-label={`واحد ${row.name}`} value={choice?.unitRecordId ?? ''} disabled={!canManage || applying}
+                              onChange={event => changeUnitChoice(row, { unitRecordId: event.target.value })}>
+                              <option value="">واحد مرجع را تعیین کنید</option>
+                              {units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+                            </select>
+                            <select aria-label={`نوع ${row.name}`} value={choice?.kind ?? ''} disabled={!canManage || applying}
+                              onChange={event => changeUnitChoice(row, { kind: event.target.value as UnitChoice['kind'] })}>
+                              <option value="">نوع را تعیین کنید</option>
+                              <option value="PRODUCT">کالا</option>
+                              <option value="SERVICE">خدمت</option>
+                            </select>
+                            {row.vendorUnitName ? <span>واحد مقصد: {row.vendorUnitName}</span> : null}
+                          </div>
+                        )}
+                      </NativeSettingsCell>
                       <NativeSettingsCell style={styles.cell}>{priceLabel}</NativeSettingsCell>
                       <NativeSettingsCell style={styles.cell}>
                         {row.suggestedInternalItemName === null
