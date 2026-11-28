@@ -77,6 +77,7 @@ type LineDraft = {
   sku: string | null;
   description: string | null;
   unit: string;
+  unitRecordId: string | null;
   quantityText: string;
   unitPriceText: string;
   discountKind: DiscountKind;
@@ -94,7 +95,8 @@ const newLine = (defaultTaxPolicyCode: string): LineDraft => ({
   name: '',
   sku: null,
   description: null,
-  unit: 'عدد',
+  unit: '',
+  unitRecordId: null,
   quantityText: '۱',
   unitPriceText: '',
   discountKind: 'NONE',
@@ -369,6 +371,7 @@ const toDraftLineInput = (
   name: line.name,
   description: line.description,
   unit: line.unit,
+  unitRecordId: line.unitRecordId ?? null,
   quantityText: line.quantityText,
   unitPriceText: line.unitPriceText,
   moneyUnit,
@@ -792,6 +795,7 @@ export const QuotationDraftForm = () => {
             sku: null,
             description: line.description,
             unit: line.unit,
+          unitRecordId: line.unitRecordId ?? null,
             quantityText: line.quantityText,
             unitPriceText: line.unitPriceText,
             discountKind: line.discountKind,
@@ -1125,6 +1129,7 @@ export const QuotationDraftForm = () => {
       sku: selection.sku,
       description: selection.description,
       unit: selection.unit,
+      unitRecordId: selection.unitRecordId ?? null,
       unitPriceText: selection.unitPriceText,
       priceWarning: selection.priceAvailable ? null : selection.priceMessage,
     });
@@ -1132,6 +1137,11 @@ export const QuotationDraftForm = () => {
 
   const onSave = async () => {
     if (draftLocked || loadingDraft) {
+      return;
+    }
+
+    if (lines.some((line) => !line.unitRecordId)) {
+      setError('واحد اندازه‌گیری همه ردیف‌ها باید در کاتالوگ تعیین و کالا مجدداً انتخاب شود.');
       return;
     }
 
@@ -1170,6 +1180,7 @@ export const QuotationDraftForm = () => {
           name: line.name,
           description: line.description,
           unit: line.unit,
+          unitRecordId: line.unitRecordId ?? null,
           quantityText: line.quantityText,
           unitPriceText: line.unitPriceText,
           moneyUnit,
@@ -1436,7 +1447,7 @@ export const QuotationDraftForm = () => {
 
                 {line.catalogItemId ? (
                   <p style={styles.meta}>
-                    {line.kind === 'SERVICE' ? 'خدمت' : 'کالا'} · {line.unit}
+                    {line.kind === 'SERVICE' ? 'خدمت' : 'کالا'} · {line.unitRecordId ? line.unit : 'واحد نیازمند تعیین مرجع'}
                   </p>
                 ) : null}
 
