@@ -45,8 +45,8 @@ export const buildQuotationClaimReadQuery = (id: string, connectionId: string): 
   } }`;
 export const buildQuotationClaimMutation = (data: Record<string, GraphqlValue>): string =>
   `mutation CreateQuotationClaim { createAccountingSyncOperation(data: ${toGraphqlLiteral(data)}) { ${CLAIM_RECEIPT} } }`;
-export const buildQuotationFinishMutation = (id: string, data: Record<string, GraphqlValue>): string =>
-  `mutation FinishQuotationClaim { updateAccountingSyncOperation(id: ${toGraphqlLiteral(id)}, data: ${toGraphqlLiteral(data)}) { ${CLAIM_RECEIPT} } }`;
+export const buildQuotationFinishMutation = (claim: { id: string; connectionId: string; quotationId: string; revisionNumber: number; fingerprint: string }, data: Record<string, GraphqlValue>): string =>
+  `mutation FinishQuotationClaim { updateAccountingSyncOperations(filter: { id: { eq: ${toGraphqlLiteral(claim.id)} }, connectionId: { eq: ${toGraphqlLiteral(claim.connectionId)} }, kind: { eq: "QUOTATION_REVISION_PUSH" }, internalEntityId: { eq: ${toGraphqlLiteral(claim.quotationId)} }, internalRevision: { eq: ${claim.revisionNumber} }, state: { eq: "IN_FLIGHT" }, attempts: { eq: 1 }, correlationId: { eq: ${toGraphqlLiteral(claim.id)} }, payloadFingerprint: { eq: ${toGraphqlLiteral(claim.fingerprint)} } }, data: ${toGraphqlLiteral(data)}) { ${CLAIM_RECEIPT} } }`;
 export const buildSealedRevisionListQuery = (quotationIds: string[]): string =>
   `query IssuedRevisionsForQuotations {
     quotationRevisions(filter: { quotationId: { in: ${toGraphqlLiteral(quotationIds)} }, status: { eq: "ISSUED" } },
