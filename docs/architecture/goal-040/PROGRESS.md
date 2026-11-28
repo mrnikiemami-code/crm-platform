@@ -19,3 +19,6 @@ Lane A `feat/crm129-g040-finance` tip `1961e98d6d250ad9456f395503195c0277251e42`
 
 ## Architect continuation — 2026-11-28
 A source/test tip `48c2d34124e07128cb0e2a1910d0f8d5a008fb58`, handoff tip `c2189271bc56284e94ffaeb096d216c9cc5f6aa1`. F06 cutoff and claim fingerprint verification strengthened; five targeted fixture cases added. Status SOURCE_PARTIAL / BUILD_AND_RUNTIME_NOT_RUN (local bridge internal error). B remote `f230721d1a0146748475c68e73d61572d7b5df6d` at checkpoint. No product integration, Dev changes, or real vendor calls. F06 authorized CAS/atomic dispatch proof and residual F07/U03/U04/U05 plus unit seam remain convergence scope. Next: independent B handoff review; integrate once; complete source and one phase 3. No new worker goal; G1/G2 NOT_AUTHORIZED.
+
+## Independent continuation 2
+A handoff `b09f4098788d701817cefd69c6af9efc56082745`; source/doc tip `41701449a60f62f2da4e47779562b3e6420dd532`. Precision and validity fixes committed, U05 route audit recorded (47/47 dispositions, not 47 implemented). B remote `f230721d1a0146748475c68e73d61572d7b5df6d`. SOURCE_PARTIAL; runtime NOT_RUN. Remaining U03/U04/U05/F06/F07 and unit integration after actual handoff; no live approval or Dev changes.
