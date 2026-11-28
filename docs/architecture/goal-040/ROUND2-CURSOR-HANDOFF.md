@@ -7,7 +7,7 @@ Owner: Cursor (U04 commercial/catalog + owned U01/U02/P05 hardening)
 
 ## Tip SHA
 
-`REPLACE_AFTER_COMMIT`
+`1fc6745191b5c50e614813ec9688cc2622fc29ab`
 
 ## Scope delivered
 
