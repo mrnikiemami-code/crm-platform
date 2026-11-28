@@ -8,7 +8,7 @@ Owner: Cursor (`CRM-129-G040-R3-COMMERCIAL-CATALOG-CLOSURE`)
 
 ## Tip SHA
 
-`REPLACE_AFTER_COMMIT`
+`6060b7108a0a7da51cabcf47ed36e8e1e91e3ced`
 
 ## Scope delivered (review-and-close, not rebuild)
 
