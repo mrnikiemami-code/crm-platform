@@ -293,11 +293,16 @@ describe('Asan typed installation reads', () => {
   it('retains price positions and units without inferring warehouse identity', async () => {
     const raw = { ProductCode: 1001, ProductName: 'کالا', SalesPrice10: [0, '9007199254740993'],
       StoreProduct: [0, 2.5], ProductUnitID: 7, ProductUnitTitle: 'عدد',
-      SecondUnitTitle: 'بسته', ProductUnitCount: 12, TaxID: '64' };
+      SecondUnitTitle: 'بسته', ProductUnitCount: 12, TaxID: '64',
+      parent: 0, ProductSize: 'L', Size: '42', ProductSerial: 'A1', Serials: ['A1','A2'],
+      SellPrice3: 0, SellPrice4: '9007199254740993', VisitorPercent: 0, Karton: 12,
+      BuyPrice: 100, LastBuyPrice: 200 };
     const fake = fakeFetch({ text: JSON.stringify(raw) });
     expect(await adapter({}, fake.fetchImpl).readItem('1001')).toMatchObject({ ok: true, value: {
       observation: { version: '1', priceUnitsByPosition: ['0', '9007199254740993'], stockByPosition: [0, 2.5],
-        unitId: '7', unitName: 'عدد', secondaryUnitName: 'بسته', unitCount: 12, taxCode: '64' },
+        unitId: '7', unitName: 'عدد', secondaryUnitName: 'بسته', unitCount: 12, taxCode: '64',
+        parentId: '0', primarySize: 'L', secondarySize: '42', serial: 'A1', serials: ['A1','A2'],
+        thirdSellPriceUnits: '0', fourthSellPriceUnits: '9007199254740993', representativePercent: 0, unitsPerCarton: 12 },
     } });
     expect(fake.calls[0].url).toContain('OneProductWithoutSerial?ProductCode=1001');
   });

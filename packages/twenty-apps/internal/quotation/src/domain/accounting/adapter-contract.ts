@@ -98,8 +98,17 @@ export type RemoteStorage = { externalStorageId: string; name: string };
 
 export type RemoteCatalogObservation = {
   version: '1';
+  parentId?: string;
+  primarySize?: string;
+  secondarySize?: string;
+  serial?: string;
+  serials?: string[];
+  representativePercent?: number;
   priceUnitsByPosition?: string[];
+  thirdSellPriceUnits?: string;
+  fourthSellPriceUnits?: string;
   stockByPosition?: number[];
+  unitsPerCarton?: number;
   unitId?: string;
   unitName?: string;
   secondaryUnitName?: string;

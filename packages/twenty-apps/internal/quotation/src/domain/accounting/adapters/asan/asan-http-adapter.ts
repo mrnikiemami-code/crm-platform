@@ -284,6 +284,35 @@ const finiteArray = (value: unknown): number[] | null => {
 
 const parseCatalogObservation = (record: Record<string, unknown>): RemoteCatalogObservation | null => {
   const observation: RemoteCatalogObservation = { version: '1' };
+  for (const [wire, key] of [
+    ['parent', 'parentId'], ['SellPrice3', 'thirdSellPriceUnits'], ['SellPrice4', 'fourthSellPriceUnits'],
+  ] as const) {
+    if (record[wire] !== undefined && record[wire] !== null) {
+      const value = exactLong(record[wire], true);
+      if (value === null) return null;
+      observation[key] = value;
+    }
+  }
+  for (const [wire, key] of [['ProductSize', 'primarySize'], ['Size', 'secondarySize'],
+    ['ProductSerial', 'serial']] as const) {
+    if (record[wire] !== undefined && record[wire] !== null) {
+      if (typeof record[wire] !== 'string') return null;
+      observation[key] = record[wire] as string;
+    }
+  }
+  if (record.Serials !== undefined && record.Serials !== null) {
+    if (!Array.isArray(record.Serials) || record.Serials.some((entry: unknown) => typeof entry !== 'string')) return null;
+    observation.serials = [...record.Serials] as string[];
+  }
+  for (const [wire, key] of [['VisitorPercent', 'representativePercent'], ['Karton', 'unitsPerCarton']] as const) {
+    if (record[wire] !== undefined && record[wire] !== null) {
+      const value = readNumber(record[wire]);
+      if (value === null) return null;
+      observation[key] = value;
+    }
+  }
+  // BuyPrice/LastBuyPrice are deliberately excluded from this general catalog
+  // contract; restricted financial reads need a separate permission boundary.
   if (record.SalesPrice10 !== undefined && record.SalesPrice10 !== null) {
     const prices = exactLongArray(record.SalesPrice10);
     if (prices === null) return null;
