@@ -162,7 +162,7 @@ export class QuotationUnitAuthorityService {
           if (locked) {
             return refused(
               'ACCOUNTING_CODE_IN_USE',
-              'کد حسابداری این واحد پس از استفاده در کالا قفل شده است',
+              'کد حسابداری این واحد پس از اولین ذخیره پیش‌فاکتور با کد غیرخالی قفل شده است',
             );
           }
         }
