@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isPriceValidOnDay,
+  selectCurrentCatalogPrice,
   selectCurrentPriceExact,
 } from 'src/domain/catalog/price-snapshot';
 
@@ -44,6 +45,31 @@ describe('price snapshot selection', () => {
     );
 
     expect(result.ok).toBe(false);
+  });
+
+  it('returns price identity metadata for the chosen row', () => {
+    const result = selectCurrentCatalogPrice(
+      [
+        {
+          id: 'price-1',
+          unitPriceExact: '250.000000',
+          validFrom: '2021-01-01',
+          validTo: null,
+        },
+      ],
+      '2026-11-19',
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value).toEqual({
+      unitPriceExact: '250.000000',
+      priceId: 'price-1',
+      validFrom: '2021-01-01',
+    });
   });
 
   it('treats open windows as valid', () => {

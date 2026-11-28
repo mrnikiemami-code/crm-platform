@@ -1,0 +1,22 @@
+npx : Error: Cannot find module 'file-type'
+At line:1 char:154
++ ... | Out-Null; npx jest packages/twenty-server/src/modules/quotation/uti ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: Cannot find module 'file-type':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Require stack:
+- D:\CrmSource\twenty-g040-round2-cursor\packages\twenty-server\jest.config.mjs
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1500:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1071:27)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1116:12)
+    at require.resolve (node:internal/modules/helpers:171:31)
+    at file:///D:/CrmSource/twenty-g040-round2-cursor/packages/twenty-server/jest.config.mjs:62:28
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:633:26
+    at async importModule 
+(C:\Users\User\AppData\Local\npm-cache\_npx\b8d86e6551a4f492\node_modules\jest-util\build\index.js:1052:28)
+    at async readConfigFileAndSetRootDir 
+(C:\Users\User\AppData\Local\npm-cache\_npx\b8d86e6551a4f492\node_modules\jest-config\build\index.js:2369:22)
+    at async readInitialOptions 
+(C:\Users\User\AppData\Local\npm-cache\_npx\b8d86e6551a4f492\node_modules\jest-config\build\index.js:1183:15)

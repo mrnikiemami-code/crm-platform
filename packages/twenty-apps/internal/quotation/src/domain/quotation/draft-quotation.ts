@@ -68,6 +68,9 @@ export type DraftLineInput = {
   // WS3: omit or null → inherit document default tax policy.
   taxPolicy?: string | null;
   taxPolicyDefinition?: TaxPolicyDefinition | null;
+  selectedPriceListId?: string | null;
+  selectedPriceId?: string | null;
+  selectedPriceValidFrom?: string | null;
 };
 
 export type DraftQuotationInput = {
@@ -95,6 +98,18 @@ export type DraftQuotationInput = {
   roundingRuleName?: string | null;
   roundingStepRials?: bigint | null;
   roundingRuleRecordId?: string | null;
+  expiresAt?: string | null;
+  paymentDueDate?: string | null;
+  deliveryTerms?: string | null;
+  documentNotes?: string | null;
+  issuerLegalName?: string | null;
+  issuerNationalId?: string | null;
+  issuerEconomicCode?: string | null;
+  issuerAddress?: string | null;
+  issuerPhone?: string | null;
+  visitorName?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceListName?: string | null;
   lines: DraftLineInput[];
 };
 
@@ -124,6 +139,9 @@ export type DraftLineRecord = {
   // WS4: always equals document currency while MULTI_CURRENCY_DOCUMENTS is off.
   currencyCode: string;
   sortOrder: number;
+  selectedPriceListId: string | null;
+  selectedPriceId: string | null;
+  selectedPriceValidFrom: string | null;
   amounts: QuotationLineAmounts;
 };
 
@@ -164,6 +182,18 @@ export type DraftQuotationPlan = {
   roundingRuleRecordId: string | null;
   preRoundTotalExact: string;
   displayRoundingStepLabel: string;
+  expiresAt: string | null;
+  paymentDueDate: string | null;
+  deliveryTerms: string | null;
+  documentNotes: string | null;
+  issuerLegalName: string | null;
+  issuerNationalId: string | null;
+  issuerEconomicCode: string | null;
+  issuerAddress: string | null;
+  issuerPhone: string | null;
+  visitorName: string | null;
+  selectedPriceListId: string | null;
+  selectedPriceListName: string | null;
   lines: DraftLineRecord[];
 };
 
@@ -590,6 +620,9 @@ export const buildDraftQuotationPlan = (
 
   const lines: DraftLineRecord[] = builtPreTax.map((preTaxLine, index) => {
     const amounts = finalized.value.lines[index];
+    const lineInput = input.lines[index];
+    const selectedPriceValidFrom =
+      lineInput.selectedPriceValidFrom?.trim() || null;
 
     return {
       clientLineId: preTaxLine.clientLineId,
@@ -613,6 +646,9 @@ export const buildDraftQuotationPlan = (
       dutyRateBasisPoints: linePolicies[index].dutyRateBasisPoints.toString(),
       currencyCode: documentCurrency.value,
       sortOrder: preTaxLine.sortOrder,
+      selectedPriceListId: lineInput.selectedPriceListId?.trim() || null,
+      selectedPriceId: lineInput.selectedPriceId?.trim() || null,
+      selectedPriceValidFrom,
       amounts,
     };
   });
@@ -653,6 +689,18 @@ export const buildDraftQuotationPlan = (
       : null,
     preRoundTotalExact,
     displayRoundingStepLabel,
+    expiresAt: input.expiresAt?.trim() || null,
+    paymentDueDate: input.paymentDueDate?.trim() || null,
+    deliveryTerms: input.deliveryTerms?.trim() || null,
+    documentNotes: input.documentNotes?.trim() || null,
+    issuerLegalName: input.issuerLegalName?.trim() || null,
+    issuerNationalId: input.issuerNationalId?.trim() || null,
+    issuerEconomicCode: input.issuerEconomicCode?.trim() || null,
+    issuerAddress: input.issuerAddress?.trim() || null,
+    issuerPhone: input.issuerPhone?.trim() || null,
+    visitorName: input.visitorName?.trim() || null,
+    selectedPriceListId: input.selectedPriceListId?.trim() || null,
+    selectedPriceListName: input.selectedPriceListName?.trim() || null,
     lines,
   });
 };

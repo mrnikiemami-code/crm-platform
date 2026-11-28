@@ -99,6 +99,20 @@ const readVersion = (value: unknown): number | null | undefined => {
 // Absent is legitimate for a client that predates configurable tax; a present but
 // unreadable rate is not, because the server would then be unable to check the tax
 // it is asked to store.
+const readOptionalDate = (value: unknown): string | null | undefined => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
+};
+
 const readTaxRateBasisPoints = (value: unknown): string | null | undefined => {
   if (value === null || value === undefined) {
     return null;
@@ -152,8 +166,13 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
 
   const taxRateBasisPoints = readTaxRateBasisPoints(raw.taxRateBasisPoints);
   const dutyRateBasisPoints = readTaxRateBasisPoints(raw.dutyRateBasisPoints);
+  const selectedPriceValidFrom = readOptionalDate(raw.selectedPriceValidFrom);
 
-  if (taxRateBasisPoints === undefined || dutyRateBasisPoints === undefined) {
+  if (
+    taxRateBasisPoints === undefined ||
+    dutyRateBasisPoints === undefined ||
+    selectedPriceValidFrom === undefined
+  ) {
     return null;
   }
 
@@ -185,6 +204,9 @@ const parseLine = (raw: unknown): QuotationDraftSaveLine | null => {
     taxPolicy: readNullableText(raw.taxPolicy, 64),
     taxRateBasisPoints,
     dutyRateBasisPoints,
+    selectedPriceListId: readNullableText(raw.selectedPriceListId, 64),
+    selectedPriceId: readNullableText(raw.selectedPriceId, 64),
+    selectedPriceValidFrom,
   };
 };
 
@@ -202,6 +224,8 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
   const taxPolicy = readNullableText(raw.taxPolicy, 64);
   const taxRateBasisPoints = readTaxRateBasisPoints(raw.taxRateBasisPoints);
   const dutyRateBasisPoints = readTaxRateBasisPoints(raw.dutyRateBasisPoints);
+  const expiresAt = readOptionalDate(raw.expiresAt);
+  const paymentDueDate = readOptionalDate(raw.paymentDueDate);
 
   if (
     name === null ||
@@ -211,6 +235,8 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     documentDiscountKind === null ||
     taxRateBasisPoints === undefined ||
     dutyRateBasisPoints === undefined ||
+    expiresAt === undefined ||
+    paymentDueDate === undefined ||
     !personId.ok ||
     !companyId.ok
   ) {
@@ -273,6 +299,18 @@ const parseHeader = (raw: unknown): QuotationDraftSaveHeader | null => {
     roundingStepRials: readNullableText(raw.roundingStepRials),
     preRoundTotalExact: readNullableText(raw.preRoundTotalExact),
     roundingRuleRecordId: readNullableText(raw.roundingRuleRecordId),
+    expiresAt,
+    paymentDueDate,
+    deliveryTerms: readNullableText(raw.deliveryTerms),
+    documentNotes: readNullableText(raw.documentNotes),
+    issuerLegalName: readNullableText(raw.issuerLegalName),
+    issuerNationalId: readNullableText(raw.issuerNationalId),
+    issuerEconomicCode: readNullableText(raw.issuerEconomicCode),
+    issuerAddress: readNullableText(raw.issuerAddress),
+    issuerPhone: readNullableText(raw.issuerPhone),
+    visitorName: readNullableText(raw.visitorName),
+    selectedPriceListId: readNullableText(raw.selectedPriceListId, 64),
+    selectedPriceListName: readNullableText(raw.selectedPriceListName),
   };
 };
 

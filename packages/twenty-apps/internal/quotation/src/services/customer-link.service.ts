@@ -368,6 +368,12 @@ export const resolveCustomerQuotationView = async (
   return { kind: 'OK', view: {
     ...viewResult.value,
     validUntilDisplay: formatSealedValidity(snapshot.expiresAt),
+    paymentDueDisplay: formatSealedValidity(snapshot.paymentDueDate ?? null),
+    deliveryTerms: snapshot.deliveryTerms ?? null,
+    documentNotes: snapshot.documentNotes ?? null,
+    visitorName: snapshot.visitorName ?? null,
+    priceListName: snapshot.selectedPriceListName ?? null,
+    issuerDisplay: snapshot.issuerSnapshot?.legalName ?? null,
     // Public projection only: do not include national IDs, contacts, CRM IDs or the raw seal.
     ...(snapshot.schemaVersion === 2 ? {} : { issuedHint: 'نسخه قدیمی: مشخصات مشتری ثبت نشده است.' }),
   } };

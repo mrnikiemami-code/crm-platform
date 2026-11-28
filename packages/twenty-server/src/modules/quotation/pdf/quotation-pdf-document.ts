@@ -134,6 +134,12 @@ export type QuotationPdfInput = {
   customerDetails?: string[];
   identityNote?: string;
   paymentTerms?: string;
+  paymentDueDate?: string;
+  deliveryTerms?: string;
+  documentNotes?: string;
+  visitorName?: string;
+  priceListName?: string;
+  issuerLines?: string[];
   currencyLabel: string;
   lines: QuotationPdfLine[];
   subtotals?: QuotationPdfSubtotals;
@@ -197,6 +203,30 @@ const buildMetaLines = (input: QuotationPdfInput): string[] => {
 
   if (isNonEmptyString(input.paymentTerms)) {
     lines.push(`شرایط پرداخت: ${input.paymentTerms}`);
+  }
+
+  if (isNonEmptyString(input.paymentDueDate)) {
+    lines.push(`سررسید پرداخت: ${input.paymentDueDate}`);
+  }
+
+  if (isNonEmptyString(input.deliveryTerms)) {
+    lines.push(`شرایط تحویل: ${input.deliveryTerms}`);
+  }
+
+  if (isNonEmptyString(input.visitorName)) {
+    lines.push(`بازدیدکننده: ${input.visitorName}`);
+  }
+
+  if (isNonEmptyString(input.priceListName)) {
+    lines.push(`فهرست قیمت: ${input.priceListName}`);
+  }
+
+  if (input.issuerLines) {
+    lines.push(...input.issuerLines);
+  }
+
+  if (isNonEmptyString(input.documentNotes)) {
+    lines.push(`یادداشت: ${input.documentNotes}`);
   }
 
   return lines;

@@ -52,6 +52,8 @@ export type AdapterSecrets = {
   allowInsecureTransport: boolean;
   approvedRead?: AsanReadBinding;
   approvedReadGeneration?: string;
+  approvedReadRemoteUserId?: string;
+  approvedReadDatasetId?: string;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -97,7 +99,7 @@ export const parseConnectionRecord = (
     name: readString(node.name),
     adapterId: readString(node.adapterId),
     adapterVersion: readString(node.adapterVersion) || null,
-    isActive: readBoolean(node.isActive, true),
+    isActive: node.isActive === true,
     isDefault: node.isDefault === true,
     settings: connectionSettingsFromRecord(node),
     capabilities: node.capabilities ?? null,
@@ -112,11 +114,34 @@ export const loadConnections = async (
   dependencies: ConnectionDependencies = {},
 ): Promise<AccountingConnectionRecord[]> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  const data = await execute(buildAccountingConnectionsQuery());
-
-  return readRows(data, 'accountingConnections')
-    .map(parseConnectionRecord)
-    .filter((record): record is AccountingConnectionRecord => record !== null);
+  const result: AccountingConnectionRecord[] = [];
+  const ids = new Set<string>();
+  const cursors = new Set<string>();
+  let afterCursor: string | null = null;
+  for (;;) {
+    const data = await execute(buildAccountingConnectionsQuery({ afterCursor }));
+    const root = asRecord(data.accountingConnections);
+    const rows = readRows(data, 'accountingConnections');
+    const page = asRecord(root?.pageInfo);
+    if (!Array.isArray(root?.edges) || root.edges.length !== rows.length || typeof page?.hasNextPage !== 'boolean') {
+      throw new RecordApiError('INVALID_RESPONSE', 'Incomplete accounting connection listing');
+    }
+    for (const row of rows) {
+      const parsed = parseConnectionRecord(row);
+      if (!parsed || ids.has(parsed.id) || typeof row.isActive !== 'boolean') {
+        throw new RecordApiError('INVALID_RESPONSE', 'Invalid or duplicate accounting connection identity');
+      }
+      ids.add(parsed.id);
+      result.push(parsed);
+    }
+    if (!page.hasNextPage) return result;
+    const next = readString(page.endCursor);
+    if (!next || cursors.has(next) || cursors.size >= 100) {
+      throw new RecordApiError('INVALID_RESPONSE', 'Incomplete accounting connection listing');
+    }
+    cursors.add(next);
+    afterCursor = next;
+  }
 };
 
 // Load a stored connection by id for history / ledger reads. Retired rows are returned
@@ -136,7 +161,14 @@ export const loadConnectionByIdForHistory = async (
   const connections = readRows(data, 'accountingConnections')
     .map(parseConnectionRecord)
     .filter((record): record is AccountingConnectionRecord => record !== null);
-  const selected = connections.find((connection) => connection.id === id) ?? null;
+  const root = asRecord(data.accountingConnections);
+  const page = asRecord(root?.pageInfo);
+  // A scoped query may return zero or exactly one matching row, never an arbitrary first match.
+  if (!Array.isArray(root?.edges) || root.edges.length !== connections.length ||
+      page?.hasNextPage === true || connections.length > 1) {
+    return refused('INVALID_RESPONSE', 'connection identity is incomplete or ambiguous');
+  }
+  const selected = connections.length === 1 && connections[0].id === id ? connections[0] : null;
 
   if (selected === null) {
     return refused('CONNECTION_NOT_FOUND', 'no accounting connection is configured');
@@ -176,13 +208,12 @@ export const resolveConnection = async (
   dependencies: ConnectionDependencies = {},
 ): Promise<Result<AccountingConnectionRecord>> => {
   const execute = dependencies.execute ?? executeRecordGraphql;
-  // Always load the full set when resolving the workspace default: a filtered single-id
-  // query cannot see whether another row is the default, and "first active" is forbidden.
-  const data = await execute(buildAccountingConnectionsQuery({}));
-
-  const connections = readRows(data, 'accountingConnections')
-    .map(parseConnectionRecord)
-    .filter((record): record is AccountingConnectionRecord => record !== null);
+  const explicit = connectionId?.trim();
+  if (explicit) return requireActiveAccountingConnection(explicit, { execute });
+  // Default resolution needs a complete list, not the first page.
+  let connections: AccountingConnectionRecord[];
+  try { connections = await loadConnections({ execute }); }
+  catch { return refused('INVALID_RESPONSE', 'default destination could not be resolved from a complete connection list'); }
 
   const resolved = resolveAccountingDestination({ connections, connectionId });
 
@@ -212,6 +243,8 @@ export const readAdapterSecrets = (env: Record<string, string | undefined>): Ada
     : { tunnelToken: env.ASAN_TUNNEL_TOKEN }),
   allowInsecureTransport: env.ASAN_TRANSPORT_APPROVED === 'true',
   ...(env.ASAN_APPROVED_READ_GENERATION ? { approvedReadGeneration: env.ASAN_APPROVED_READ_GENERATION } : {}),
+  ...(env.ASAN_APPROVED_READ_REMOTE_USER_ID !== undefined ? { approvedReadRemoteUserId: env.ASAN_APPROVED_READ_REMOTE_USER_ID.trim() } : {}),
+  ...(env.ASAN_APPROVED_READ_DATASET_ID ? { approvedReadDatasetId: env.ASAN_APPROVED_READ_DATASET_ID.trim() } : {}),
   ...(env.ASAN_APPROVED_READ_CONNECTION_ID && env.ASAN_APPROVED_READ_BASE_URL && env.ASAN_APPROVED_READ_IPV4
     ? { approvedRead: { connectionId: env.ASAN_APPROVED_READ_CONNECTION_ID,
       baseUrl: env.ASAN_APPROVED_READ_BASE_URL, ipv4: env.ASAN_APPROVED_READ_IPV4 } } : {}),
@@ -235,14 +268,20 @@ export const buildAdapter = (
   }
   const binding = secrets.approvedRead;
   const generation = secrets.approvedReadGeneration;
+  const datasetId = secrets.approvedReadDatasetId;
   const approved = record.adapterId === 'asan' && record.isActive && binding !== undefined &&
     generation !== undefined && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(generation) &&
+    secrets.approvedReadRemoteUserId !== undefined && secrets.approvedReadRemoteUserId === record.settings.remoteUserId &&
+    typeof datasetId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(datasetId) &&
     matchesAsanReadBinding(binding, record.id, record.settings.baseUrl);
   // Never store the token or a token-derived digest in the snapshot. The operator
   // must clear approval and rotate this non-secret UUID whenever credentials rotate.
+  // Dataset ID is an administrator-attested non-secret label, not proof from the vendor.
+  // G1 must independently verify the actual tenant/database before enabling any reads.
   const readAccessScope = approved && binding !== undefined
     ? createHash('sha256').update(JSON.stringify([record.id, record.adapterVersion,
-      binding.baseUrl, binding.ipv4, generation])).digest('hex') : undefined;
+      binding.baseUrl, binding.ipv4, generation, datasetId, record.settings.remoteUserId,
+      record.settings.moneyUnit])).digest('hex') : undefined;
   return createAccountingAdapter({
     adapterId: record.adapterId,
     settings: record.settings,

@@ -1,13 +1,19 @@
 import { accepted, refused, type Result } from 'src/domain/shared/result';
 
-// Snapshot price for a quotation line comes from the workspace's default IRR
-// price list. Validity windows on Price are honored when present; no extra
-// multi-list / promotional pricing rules are invented here.
+// Snapshot price for a quotation line comes from an explicit or default IRR price list.
+// Validity windows on Price are honored when present; no extra multi-list rules are invented.
 
 export type PriceCandidate = {
+  id?: string | null;
   unitPriceExact: string;
   validFrom: string | null;
   validTo: string | null;
+};
+
+export type SelectedCatalogPrice = {
+  unitPriceExact: string;
+  priceId: string | null;
+  validFrom: string | null;
 };
 
 const toDayStamp = (value: string | null | undefined): string | null => {
@@ -37,10 +43,10 @@ export const isPriceValidOnDay = (
   return true;
 };
 
-export const selectCurrentPriceExact = (
+export const selectCurrentCatalogPrice = (
   candidates: PriceCandidate[],
   dayIso: string = new Date().toISOString().slice(0, 10),
-): Result<string> => {
+): Result<SelectedCatalogPrice> => {
   const valid = candidates.filter((candidate) =>
     isPriceValidOnDay(candidate, dayIso),
   );
@@ -52,7 +58,6 @@ export const selectCurrentPriceExact = (
     );
   }
 
-  // Prefer the most recently started valid window; open-ended ties keep insertion order.
   const ranked = [...valid].sort((left, right) => {
     const leftFrom = toDayStamp(left.validFrom) ?? '';
     const rightFrom = toDayStamp(right.validFrom) ?? '';
@@ -64,7 +69,8 @@ export const selectCurrentPriceExact = (
     return leftFrom < rightFrom ? 1 : -1;
   });
 
-  const exact = ranked[0].unitPriceExact.trim();
+  const chosen = ranked[0];
+  const exact = chosen.unitPriceExact.trim();
 
   if (exact === '') {
     return refused(
@@ -73,5 +79,25 @@ export const selectCurrentPriceExact = (
     );
   }
 
-  return accepted(exact);
+  return accepted({
+    unitPriceExact: exact,
+    priceId:
+      typeof chosen.id === 'string' && chosen.id.trim() !== ''
+        ? chosen.id.trim()
+        : null,
+    validFrom: toDayStamp(chosen.validFrom),
+  });
+};
+
+export const selectCurrentPriceExact = (
+  candidates: PriceCandidate[],
+  dayIso: string = new Date().toISOString().slice(0, 10),
+): Result<string> => {
+  const selected = selectCurrentCatalogPrice(candidates, dayIso);
+
+  if (!selected.ok) {
+    return selected;
+  }
+
+  return accepted(selected.value.unitPriceExact);
 };

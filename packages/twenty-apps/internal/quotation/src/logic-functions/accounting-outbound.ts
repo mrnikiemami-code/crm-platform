@@ -13,6 +13,7 @@ import {
   executeQuotationExport,
   listExportableQuotations,
   loadOperations,
+  observeQuotationReconciliation,
   outboundFailureMessage,
   previewItemPush,
   previewQuotationExport,
@@ -313,6 +314,16 @@ const handler = async (event: RoutePayload<unknown>) => {
       }
 
       return { success: true, outcome: outcome.value };
+    }
+
+    if (action === 'reconcile-quotation') {
+      const observed = await observeQuotationReconciliation({
+        connectionId, quotationId: readString(body.quotationId),
+        operationId: readString(body.operationId), adapter: adapter.value,
+        settings: activeConnection.settings,
+      });
+      if (!observed.ok) return failure(observed.refusal.code, persianAccountingMessage(observed.refusal.code));
+      return { success: true, observation: observed.value };
     }
 
     if (action === 'preview-quotation-export') {

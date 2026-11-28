@@ -13,6 +13,7 @@ import {
   type DraftDiscountInput,
   type DraftQuotationInput,
 } from 'src/domain/quotation/draft-quotation';
+import { mergeIssuerSnapshotWithDefaults } from 'src/domain/quotation/issuer-defaults';
 import { persistDraftQuotation } from 'src/services/quotation-persist.service';
 import { loadTaxPolicies } from 'src/services/tax-policy.service';
 import {
@@ -64,6 +65,23 @@ const handler = async (event: RoutePayload<unknown>) => {
   const body = asRecord(event.body);
   const linesRaw = Array.isArray(body.lines) ? body.lines : [];
 
+  const issuerMerged = mergeIssuerSnapshotWithDefaults(
+    {
+      issuerLegalName: readString(body.issuerLegalName) || null,
+      issuerNationalId: readString(body.issuerNationalId) || null,
+      issuerEconomicCode: readString(body.issuerEconomicCode) || null,
+      issuerAddress: readString(body.issuerAddress) || null,
+      issuerPhone: readString(body.issuerPhone) || null,
+    },
+    {
+      QUOTATION_ISSUER_LEGAL_NAME: process.env.QUOTATION_ISSUER_LEGAL_NAME,
+      QUOTATION_ISSUER_NATIONAL_ID: process.env.QUOTATION_ISSUER_NATIONAL_ID,
+      QUOTATION_ISSUER_ECONOMIC_CODE: process.env.QUOTATION_ISSUER_ECONOMIC_CODE,
+      QUOTATION_ISSUER_ADDRESS: process.env.QUOTATION_ISSUER_ADDRESS,
+      QUOTATION_ISSUER_PHONE: process.env.QUOTATION_ISSUER_PHONE,
+    },
+  );
+
   const input: DraftQuotationInput = {
     quotationId: readString(body.quotationId) || null,
     expectedVersion: readVersion(body.expectedVersion),
@@ -76,6 +94,14 @@ const handler = async (event: RoutePayload<unknown>) => {
     companyId: readString(body.companyId) || null,
     name: readString(body.name),
     paymentTerms: readString(body.paymentTerms) || null,
+    expiresAt: readString(body.expiresAt) || null,
+    paymentDueDate: readString(body.paymentDueDate) || null,
+    deliveryTerms: readString(body.deliveryTerms) || null,
+    documentNotes: readString(body.documentNotes) || null,
+    ...issuerMerged,
+    visitorName: readString(body.visitorName) || null,
+    selectedPriceListId: readString(body.selectedPriceListId) || null,
+    selectedPriceListName: readString(body.selectedPriceListName) || null,
     taxPolicy: readString(body.taxPolicy) || DEFAULT_TAX_POLICY_ID,
     currencyCode: readString(body.currencyCode) || 'IRR',
     documentDiscount: readDiscount({
@@ -106,6 +132,9 @@ const handler = async (event: RoutePayload<unknown>) => {
         moneyUnit,
         discount: readDiscount(row),
         taxPolicy: readString(row.taxPolicy) || null,
+        selectedPriceListId: readString(row.selectedPriceListId) || null,
+        selectedPriceId: readString(row.selectedPriceId) || null,
+        selectedPriceValidFrom: readString(row.selectedPriceValidFrom) || null,
       };
     }),
   };

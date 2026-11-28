@@ -31,6 +31,7 @@ const OPERATIONS = {
   'accounting-outbound-preview-item-push': { function: 'outbound', action: 'preview-item-push' },
   'accounting-outbound-execute-item-push': { function: 'outbound', action: 'execute-item-push' },
   'accounting-outbound-preview-quotation-export': { function: 'outbound', action: 'preview-quotation-export' },
+  'accounting-outbound-reconcile-quotation': { function: 'outbound', action: 'reconcile-quotation' },
   'accounting-outbound-execute-quotation-export': { function: 'outbound', action: 'execute-quotation-export' },
   'accounting-outbound-list-exportable-quotations': { function: 'outbound', action: 'list-exportable-quotations' },
 } as const;
@@ -101,10 +102,11 @@ export class AccountingOperationDispatchService {
 
     // A customer write must always have a real workspace user. API keys and
     // unattended app tokens have no delegated CRM authority.
-    if (['apply-parties', 'apply-items'].includes(operation.action) && authContext.type !== 'user') {
+    if (['apply-parties', 'apply-items', 'reconcile-quotation'].includes(operation.action) && authContext.type !== 'user') {
       return forbidden();
     }
 
+    if (operation.action === 'reconcile-quotation' && !readText(input.operationId)) return invalid();
     const partySelections = operation.action === 'apply-parties' ? parseAccountingPartySelections(input.selections) : null;
     if (operation.action === 'apply-parties' && partySelections === null) return invalid();
     const itemSelections = operation.action === 'apply-items' ? parseAccountingItemSelections(input.selections) : null;
@@ -115,9 +117,10 @@ export class AccountingOperationDispatchService {
       const isRecordScoped =
         operation.action === 'preview-quotation-export' ||
         operation.action === 'execute-quotation-export' ||
+        operation.action === 'reconcile-quotation' ||
         (operation.action === 'operations' && quotationId !== '');
       const isRecordRead =
-        isRecordScoped && operation.action !== 'execute-quotation-export';
+        isRecordScoped && operation.action !== 'execute-quotation-export' && operation.action !== 'reconcile-quotation';
 
       if (
         !isOwnerApp &&
@@ -186,7 +189,9 @@ export class AccountingOperationDispatchService {
             ? { connectionId: readText(input.connectionId), selections: partySelections, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-parties' }
             : operation.action === 'apply-items'
               ? { connectionId: readText(input.connectionId), selections: itemSelections, applyPrices: input.applyPrices === true, allowRemoteVersionUpdate: input.allowRemoteVersionUpdate === true, action: 'prepare-items' }
-              : { ...input, action: operation.action },
+              : operation.action === 'reconcile-quotation'
+                ? { connectionId: readText(input.connectionId), quotationId, operationId: readText(input.operationId), action: 'reconcile-quotation' }
+                : { ...input, action: operation.action },
           headers: {},
           pathParameters: {},
           queryStringParameters: {},
@@ -215,7 +220,7 @@ export class AccountingOperationDispatchService {
 
       // Keep lifecycle mutations out of the window from dispatch to durable apply.
       // The worker still rechecks active state, and each operation owns its own claim.
-      if (['apply-items', 'apply-parties', 'execute-item-push', 'execute-quotation-export'].includes(operation.action)) {
+      if (['apply-items', 'apply-parties', 'execute-item-push', 'execute-quotation-export', 'reconcile-quotation'].includes(operation.action)) {
         return await this.workspaceOrmManager.executeInWorkspaceContext(
           () => this.workspaceOrmManager.runInWorkspaceTransaction(async (scope) => {
             await acquireAccountingConnectionWorkLock(scope);

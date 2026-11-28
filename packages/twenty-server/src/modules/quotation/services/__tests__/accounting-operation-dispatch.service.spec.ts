@@ -78,6 +78,20 @@ describe('accounting operation boundary', () => {
     expect(applyItems).toHaveBeenCalledWith(expect.objectContaining({ plan, authContext: auth }));
   });
 
+  it('requires both settings authority and quotation visibility for reconciliation', async () => {
+    const input = { connectionId: 'c', quotationId: 'q-1', operationId: 'op-1', replay: true };
+    const denied = setup(null);
+    expect(await denied.service.dispatch('accounting-outbound-reconcile-quotation', input, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
+    expect(denied.execute).not.toHaveBeenCalled();
+    const hidden = setup('SETTINGS_ROLE', false, false);
+    expect(await hidden.service.dispatch('accounting-outbound-reconcile-quotation', input, auth)).toMatchObject({ success: false, code: 'FORBIDDEN' });
+    const granted = setup('SETTINGS_ROLE');
+    expect(await granted.service.dispatch('accounting-outbound-reconcile-quotation', input, auth)).toMatchObject({ success: true });
+    expect(granted.execute).toHaveBeenCalledWith(expect.objectContaining({ payload: expect.objectContaining({
+      body: { connectionId: 'c', quotationId: 'q-1', operationId: 'op-1', action: 'reconcile-quotation' },
+    }) }));
+  });
+
   it('holds the workspace work lock before executing a mutating private operation', async () => {
     const { service, execute, lock } = setup('SETTINGS_ROLE');
     execute.mockImplementationOnce(async () => {

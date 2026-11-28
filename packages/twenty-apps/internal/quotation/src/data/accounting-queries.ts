@@ -25,9 +25,11 @@ const CONNECTION_FIELDS = `
 export const buildAccountingConnectionsQuery = ({
   connectionId,
   activeOnly,
+  afterCursor = null,
 }: {
   connectionId?: string;
   activeOnly?: boolean;
+  afterCursor?: string | null;
 } = {}): string => {
   const clauses: string[] = [];
 
@@ -42,7 +44,7 @@ export const buildAccountingConnectionsQuery = ({
   const filter =
     clauses.length === 0 ? '' : `filter: { ${clauses.join(', ')} }, `;
 
-  return `query AccountingConnections { accountingConnections(${filter}first: 50) { edges { node { ${CONNECTION_FIELDS} } } } }`;
+  return `query AccountingConnections { accountingConnections(${filter}first: 50${afterCursor === null ? '' : ', after: ' + toGraphqlLiteral(afterCursor)}) { edges { node { ${CONNECTION_FIELDS} } } pageInfo { hasNextPage endCursor } } }`;
 };
 
 export const buildAccountingItemLinksQuery = ({

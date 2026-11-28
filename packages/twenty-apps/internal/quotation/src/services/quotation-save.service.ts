@@ -149,6 +149,18 @@ export const buildDraftQuotationSaveRequest = (
     roundingStepRials: plan.roundingStepRials,
     preRoundTotalExact: plan.preRoundTotalExact,
     roundingRuleRecordId: plan.roundingRuleRecordId,
+    expiresAt: plan.expiresAt,
+    paymentDueDate: plan.paymentDueDate,
+    deliveryTerms: plan.deliveryTerms,
+    documentNotes: plan.documentNotes,
+    issuerLegalName: plan.issuerLegalName,
+    issuerNationalId: plan.issuerNationalId,
+    issuerEconomicCode: plan.issuerEconomicCode,
+    issuerAddress: plan.issuerAddress,
+    issuerPhone: plan.issuerPhone,
+    visitorName: plan.visitorName,
+    selectedPriceListId: plan.selectedPriceListId,
+    selectedPriceListName: plan.selectedPriceListName,
   },
   lines: plan.lines.map((line) => ({
     name: line.name,
@@ -171,6 +183,9 @@ export const buildDraftQuotationSaveRequest = (
     taxRateBasisPoints: line.taxRateBasisPoints,
     dutyRateBasisPoints: line.dutyRateBasisPoints,
     currencyCode: line.currencyCode,
+    selectedPriceListId: line.selectedPriceListId,
+    selectedPriceId: line.selectedPriceId,
+    selectedPriceValidFrom: line.selectedPriceValidFrom,
   })),
 });
 

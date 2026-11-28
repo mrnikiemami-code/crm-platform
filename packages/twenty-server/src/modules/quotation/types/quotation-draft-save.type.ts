@@ -41,6 +41,9 @@ export type QuotationDraftSaveLine = {
   dutyRateBasisPoints?: string | null;
   // WS4: inherits document currency; phase-1 always IRR.
   currencyCode?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceId?: string | null;
+  selectedPriceValidFrom?: string | null;
 };
 
 export type QuotationDraftSaveHeader = {
@@ -75,6 +78,18 @@ export type QuotationDraftSaveHeader = {
   roundingStepRials?: string | null;
   preRoundTotalExact?: string | null;
   roundingRuleRecordId?: string | null;
+  expiresAt?: string | null;
+  paymentDueDate?: string | null;
+  deliveryTerms?: string | null;
+  documentNotes?: string | null;
+  issuerLegalName?: string | null;
+  issuerNationalId?: string | null;
+  issuerEconomicCode?: string | null;
+  issuerAddress?: string | null;
+  issuerPhone?: string | null;
+  visitorName?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceListName?: string | null;
 };
 
 export type QuotationDraftSaveRequest = {

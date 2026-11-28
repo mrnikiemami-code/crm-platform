@@ -59,6 +59,12 @@ export const renderCustomerQuotationHtml = (
       <div>مشتری: ${escapeHtml(view.customerLabel)}</div>
       <div>شرایط پرداخت: ${escapeHtml(view.paymentTerms ?? '—')}</div>
       ${view.validUntilDisplay ? `<div>اعتبار پیش‌فاکتور تا: ${escapeHtml(view.validUntilDisplay)}</div>` : ''}
+      ${view.paymentDueDisplay ? `<div>سررسید پرداخت: ${escapeHtml(view.paymentDueDisplay)}</div>` : ''}
+      ${view.deliveryTerms ? `<div>شرایط تحویل: ${escapeHtml(view.deliveryTerms)}</div>` : ''}
+      ${view.visitorName ? `<div>بازدیدکننده: ${escapeHtml(view.visitorName)}</div>` : ''}
+      ${view.priceListName ? `<div>فهرست قیمت: ${escapeHtml(view.priceListName)}</div>` : ''}
+      ${view.issuerDisplay ? `<div>صادرکننده: ${escapeHtml(view.issuerDisplay)}</div>` : ''}
+      ${view.documentNotes ? `<div>یادداشت: ${escapeHtml(view.documentNotes)}</div>` : ''}
     </div>
     ${view.issuedHint ? `<p class="note">${escapeHtml(view.issuedHint)}</p>` : ''}
     <table>

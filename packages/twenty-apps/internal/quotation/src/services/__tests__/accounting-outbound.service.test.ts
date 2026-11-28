@@ -11,6 +11,7 @@ import {
   parseOperations,
   previewItemPush,
   previewQuotationExport,
+  verifyAsanPrimaryUnit,
 } from 'src/services/accounting-outbound.service';
 
 const edges = (root: string, rows: Record<string, unknown>[]) => ({
@@ -539,6 +540,24 @@ describe('item push execution', () => {
       ok: false,
       refusal: { code: 'FORBIDDEN' },
     });
+  });
+});
+
+describe('Asan primary unit authority', () => {
+  const line = { unitRecordId: 'crm-unit', unitCode: 'UNIT_1', unitAccountingCode: '00100' };
+  const observation = { version: '1', externalItemId: '42', crmUnitRecordId: 'crm-unit', vendorUnitId: '7', vendorUnitName: 'عدد' };
+  const binding = { externalId: '42', remoteVersion: 'v1', observationVersion: '1', observationJson: JSON.stringify(observation) };
+  const remote = { externalItemId: '42', isActive: true, remoteVersion: 'v1', observation: { unitId: '7', unitName: 'عدد' } };
+  it('does not confuse CRM accounting code with vendor ProductUnitID', () => {
+    expect(verifyAsanPrimaryUnit(line, binding, remote)).toBe(true);
+    expect(verifyAsanPrimaryUnit({ ...line, unitAccountingCode: '' }, binding, remote)).toBe(false);
+  });
+  it('rejects unknown/changed mappings, remote versions and primary units', () => {
+    expect(verifyAsanPrimaryUnit({ ...line, unitRecordId: 'other' }, binding, remote)).toBe(false);
+    expect(verifyAsanPrimaryUnit(line, { ...binding, observationJson: null }, remote)).toBe(false);
+    expect(verifyAsanPrimaryUnit(line, binding, { ...remote, remoteVersion: 'v2' })).toBe(false);
+    expect(verifyAsanPrimaryUnit(line, binding, { ...remote, observation: { unitId: '8', unitName: 'کیلو' } })).toBe(false);
+    expect(verifyAsanPrimaryUnit(line, binding, { ...remote, isActive: false })).toBe(false);
   });
 });
 

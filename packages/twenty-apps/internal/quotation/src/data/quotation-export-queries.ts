@@ -27,7 +27,7 @@ export const buildExportLinksQuery = ({
   const root = kind === 'item' ? 'accountingItemLinks' : 'accountingPartyLinks';
   const key = kind === 'item' ? (byExternal ? 'externalItemId' : 'itemId') :
     (byExternal ? 'externalPartyId' : 'internalPartyId');
-  const fields = kind === 'item' ? 'externalItemId item { id }' : 'externalPartyId internalPartyId partyType';
+  const fields = kind === 'item' ? 'externalItemId observationJson observationVersion item { id }' : 'externalPartyId internalPartyId partyType';
   return `query ExportScopedLinks { ${root}(
       filter: { connectionId: { eq: ${toGraphqlLiteral(connectionId)} }, ${key}: { in: ${toGraphqlLiteral(ids)} } },
       first: 100${after === null ? '' : ', after: ' + toGraphqlLiteral(after)}) {

@@ -17,6 +17,7 @@ import {
   type AccountingMoneyUnit,
 } from 'src/domain/accounting/adapter-contract';
 import { crmMicrosToAsanUnits } from 'src/domain/accounting/adapters/asan/asan-money-unit';
+import { compareQuotationReport, type QuotationReconciliationObservation } from 'src/domain/accounting/quotation-reconciliation';
 import { type AsanFactorViewModel } from 'src/domain/accounting/adapters/asan/asan-factor';
 import {
   type QuotationDocumentPreview,
@@ -790,7 +791,7 @@ const loadQuotationContext = async (
     revision: { version: revisionNumber, snapshot, snapshotHash } });
 };
 
-type ExportBinding = { id: string; internalId: string; externalId: string; syncStatus: string; remoteVersion: string; partyType: string };
+type ExportBinding = { id: string; internalId: string; externalId: string; syncStatus: string; remoteVersion: string; partyType: string; observationJson: string | null; observationVersion: string | null };
 
 const loadExportBindings = async (
   connectionId: string, kind: 'item' | 'party', ids: string[],
@@ -812,6 +813,8 @@ const loadExportBindings = async (
           internalId: kind === 'item' ? readString(asRecord(node.item)?.id) : readString(node.internalPartyId),
           externalId: readString(kind === 'item' ? node.externalItemId : node.externalPartyId),
           partyType: kind === 'party' ? readString(node.partyType) : '',
+          observationJson: kind === 'item' ? readString(node.observationJson) || null : null,
+          observationVersion: kind === 'item' ? readString(node.observationVersion) || null : null,
         };
         if (!row.id || seen.has(row.id) || readString(asRecord(node.connection)?.id) !== connectionId ||
             !batch.includes(byExternal ? row.externalId : row.internalId)) {
@@ -854,7 +857,8 @@ const selectExportBindings = async (
     const back = reverse.filter(other => other.externalId === row.externalId);
     return back.length === 1 && back[0].id === row.id &&
       back[0].internalId === row.internalId && back[0].syncStatus === row.syncStatus &&
-      back[0].remoteVersion === row.remoteVersion && back[0].partyType === row.partyType ? row : null;
+      back[0].remoteVersion === row.remoteVersion && back[0].partyType === row.partyType &&
+      back[0].observationJson === row.observationJson && back[0].observationVersion === row.observationVersion ? row : null;
   };
   const candidate = unique(parties, reverseParties, customerId);
   const party = candidate?.partyType === kind ? candidate : null;
@@ -862,6 +866,46 @@ const selectExportBindings = async (
     lineId: line.lineId, binding: unique(items, reverseItems, line.itemId),
   }));
   return { party, lineBindings };
+};
+
+// A CRM accounting code is not an Asan ProductUnitID. The imported, explicitly
+// confirmed primary-unit mapping must agree with the sealed line AND current
+// vendor product. FactorDetails has no UnitID; do not attempt secondary units.
+export const verifyAsanPrimaryUnit = (
+  line: { unitRecordId?: string | null; unitCode?: string; unitAccountingCode?: string },
+  binding: { externalId: string; observationJson: string | null; observationVersion: string | null; remoteVersion: string },
+  remote: { externalItemId: string; isActive: boolean; remoteVersion: string; observation?: { unitId?: string; unitName?: string } },
+): boolean => {
+  const observed = binding.observationJson ? safeJson(binding.observationJson) : null;
+  return !!line.unitRecordId && !!line.unitCode?.trim() && !!line.unitAccountingCode?.trim() &&
+    binding.observationVersion === '1' && observed?.version === '1' &&
+    observed.externalItemId === binding.externalId && observed.crmUnitRecordId === line.unitRecordId &&
+    typeof observed.vendorUnitId === 'string' && /^[1-9]\\d*$/.test(observed.vendorUnitId) &&
+    typeof observed.vendorUnitName === 'string' && observed.vendorUnitName.trim() !== '' &&
+    remote.externalItemId === binding.externalId && remote.isActive === true &&
+    remote.remoteVersion === binding.remoteVersion && remote.observation?.unitId === observed.vendorUnitId &&
+    remote.observation?.unitName === observed.vendorUnitName;
+};
+
+const checkAsanPrimaryUnits = async (
+  adapter: AccountingAdapter, sealed: QuotationRevisionSnapshot,
+  bindings: { lineId: string; binding: ExportBinding | null }[],
+): Promise<boolean> => {
+  if (!adapter.readItem) return false;
+  const byLine = new Map(bindings.map(entry => [entry.lineId, entry.binding]));
+  // Do not launch unbounded remote parallel requests.
+  const observed = new Map<string, Awaited<ReturnType<NonNullable<AccountingAdapter['readItem']>>>>();
+  for (const line of sealed.lines) {
+    const binding = byLine.get(line.lineId);
+    if (!binding) return false;
+    let remote = observed.get(binding.externalId);
+    if (!remote) {
+      remote = await adapter.readItem(binding.externalId);
+      observed.set(binding.externalId, remote);
+    }
+    if (!remote.ok || !verifyAsanPrimaryUnit(line, binding, remote.value)) return false;
+  }
+  return sealed.lines.length > 0;
 };
 
 export type QuotationExportPreview = {
@@ -951,6 +995,15 @@ export const previewQuotationExport = async (
       sealed?.snapshot.lines.some(line => !line.unitRecordId || !line.unitCode?.trim() || !line.unitAccountingCode?.trim())) {
     decision = { kind: 'BLOCKED', code: 'UNIT_MAPPING_REQUIRED', detail: 'live export requires an issued unit reference and nonempty accounting code; do not guess legacy units', operationId: decision.operationId };
   }
+  // Perform the same compatibility check at preview and after the claim. An
+  // unavailable/changed base unit must never be treated as ready.
+  if (adapter.id === 'asan' && sealed && (decision.kind === 'READY' || decision.kind === 'RETRY' || decision.kind === 'IN_PROGRESS')) {
+    let verified = false;
+    try { verified = await checkAsanPrimaryUnits(adapter, sealed.snapshot, bindings.lineBindings); } catch { /* fail closed */ }
+    if (!verified) {
+      decision = { kind: 'BLOCKED', code: 'UNIT_MAPPING_REQUIRED', detail: 'primary unit mapping or current vendor product version is unverified; reconcile the product before dispatch', operationId: decision.operationId };
+    }
+  }
   if ((decision.kind === 'READY' || decision.kind === 'RETRY') && documentPreview.document === null) {
     decision = { kind: 'BLOCKED', code: documentPreview.documentError?.code ?? 'INVALID_INPUT',
       detail: documentPreview.documentError?.detail ?? 'no exact vendor payload', operationId: decision.operationId };
@@ -959,6 +1012,7 @@ export const previewQuotationExport = async (
   const snapshot = sealed && payload ? canonicalizeForHash({
     schemaVersion: 1, connectionId, adapterId: adapter.id, adapterVersion: adapter.contractVersion,
     baseUrl: settings.baseUrl, remoteUserId: settings.remoteUserId, moneyUnit: settings.moneyUnit,
+    ...(adapter.readAccessScope ? { readAccessScope: adapter.readAccessScope } : {}),
     revisionNumber: sealed.version, revisionHash: sealed.snapshotHash,
     party: bindings.party, lineBindings: bindings.lineBindings, payload,
   }) : null;
@@ -1159,6 +1213,66 @@ export const executeQuotationExport = async (
     externalDocumentId: vendorResult.value.externalDocumentId,
     documentNumber: vendorResult.value.documentNumber,
   });
+};
+
+// Authorized, bounded read-only reconciliation. Nothing in this action updates
+// the ledger or enables retry. A recent report cannot certify fiscal success.
+export const observeQuotationReconciliation = async ({
+  connectionId, quotationId, operationId, adapter, settings,
+}: {
+  connectionId: string; quotationId: string; operationId: string;
+  adapter: AccountingAdapter; settings: ConnectionSettings;
+}, dependencies: OutboundDependencies = {}): Promise<Result<QuotationReconciliationObservation>> => {
+  if (!quotationId || !operationId || adapter.id !== 'asan' ||
+      !adapter.readAccessScope || !adapter.listRecentProformas) {
+    return refused('RECONCILIATION_REQUIRED', 'approved Asan read scope and exact operation are required');
+  }
+  const execute = dependencies.execute ?? executeRecordGraphql;
+  const data = await execute(buildQuotationClaimReadQuery(operationId, connectionId));
+  const page = completePage(data, 'accountingSyncOperations');
+  const claim = page.rows[0];
+  const revision = readNumber(claim?.internalRevision);
+  if (page.hasNextPage || page.rows.length !== 1 || !claim || claim.id !== operationId ||
+      asRecord(claim.connection)?.id !== connectionId || claim.internalEntityId !== quotationId ||
+      claim.kind !== 'QUOTATION_REVISION_PUSH' || claim.correlationId !== operationId ||
+      revision === null || !Number.isSafeInteger(revision) || revision < 1 ||
+      buildAccountingOperationId({ connectionId, kind: 'QUOTATION_REVISION_PUSH', internalEntityId: quotationId, internalRevision: revision }) !== operationId ||
+      (claim.state !== 'IN_FLIGHT' && claim.state !== 'MANUAL_EXPORT_REQUIRED')) {
+    return refused('RECONCILIATION_REQUIRED', 'operation identity or uncertainty state is not confirmed');
+  }
+  const stored = typeof claim.payloadSnapshot === 'string' ? claim.payloadSnapshot : '';
+  if (!stored || createHash('sha256').update(stored, 'utf8').digest('hex') !== claim.payloadFingerprint) {
+    return refused('RECONCILIATION_REQUIRED', 'operation payload fingerprint differs');
+  }
+  const snapshot = safeJson(stored);
+  if (!snapshot || snapshot.schemaVersion !== 1 || snapshot.connectionId !== connectionId ||
+      snapshot.adapterId !== adapter.id || snapshot.adapterVersion !== adapter.contractVersion ||
+      snapshot.baseUrl !== settings.baseUrl || snapshot.remoteUserId !== settings.remoteUserId ||
+      snapshot.moneyUnit !== settings.moneyUnit || snapshot.revisionNumber !== revision ||
+      snapshot.readAccessScope !== adapter.readAccessScope) {
+    return refused('RECONCILIATION_REQUIRED', 'original destination and authorization generation cannot be confirmed');
+  }
+  const payload = asRecord(snapshot.payload);
+  const rows = payload?.FactorDetails;
+  if (!payload || typeof payload.Description !== 'string' ||
+      !payload.Description.endsWith(' [CRM:' + operationId + ']') ||
+      typeof payload.CustomerID !== 'number' || !Number.isSafeInteger(payload.CustomerID) || payload.CustomerID <= 0 ||
+      !Array.isArray(rows) || rows.length < 1 || rows.length > 2000 ||
+      rows.some(raw => {
+        const detail = asRecord(raw);
+        return !detail || typeof detail.ProductID !== 'number' || !Number.isSafeInteger(detail.ProductID) ||
+          typeof detail.StorageID !== 'number' || !Number.isSafeInteger(detail.StorageID) ||
+          typeof detail.Count !== 'number' || !Number.isFinite(detail.Count) ||
+          typeof detail.Price !== 'number' || !Number.isSafeInteger(detail.Price);
+      })) return refused('RECONCILIATION_REQUIRED', 'original document payload is not usable');
+  const acknowledgedDocumentId = claim.externalDocumentId === null ? null : readString(claim.externalDocumentId);
+  if (acknowledgedDocumentId !== null && !/^[1-9]\\d*$/.test(acknowledgedDocumentId)) {
+    return refused('RECONCILIATION_REQUIRED', 'acknowledged document id is not usable');
+  }
+  const report = await adapter.listRecentProformas(100);
+  if (!report.ok) return report;
+  return accepted(compareQuotationReport({ payload: payload as unknown as AsanFactorViewModel,
+    acknowledgedDocumentId, report: report.value }));
 };
 
 export const outboundFailureMessage = (error: unknown): string => {

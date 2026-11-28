@@ -55,6 +55,9 @@ export type QuotationRevisionLine = {
   taxPolicy?: string;
   taxRateBasisPoints?: string | null;
   dutyRateBasisPoints?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceId?: string | null;
+  selectedPriceValidFrom?: string | null;
 };
 
 export type QuotationRevisionSnapshot = {
@@ -79,6 +82,18 @@ export type QuotationRevisionSnapshot = {
   // to the bytes they were sealed with, so a duty-free snapshot never gains the field.
   dutyRateBasisPoints?: string | null;
   paymentTerms: string | null;
+  paymentDueDate?: string | null;
+  deliveryTerms?: string | null;
+  documentNotes?: string | null;
+  issuerSnapshot?: {
+    legalName: string;
+    nationalId: string | null;
+    economicCode: string | null;
+    address: string | null;
+    phone: string | null;
+  };
+  visitorName?: string | null;
+  selectedPriceListName?: string | null;
   lines: QuotationRevisionLine[];
   totals: {
     grossMicros: string;
@@ -114,6 +129,17 @@ export type QuotationRevisionHeaderRow = {
   taxRateBasisPoints: string | null;
   dutyRateBasisPoints: string | null;
   paymentTerms: string | null;
+  paymentDueDate?: string | Date | null;
+  deliveryTerms?: string | null;
+  documentNotes?: string | null;
+  issuerLegalName?: string | null;
+  issuerNationalId?: string | null;
+  issuerEconomicCode?: string | null;
+  issuerAddress?: string | null;
+  issuerPhone?: string | null;
+  visitorName?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceListName?: string | null;
   grossExact: string | null;
   lineDiscountExact: string | null;
   documentDiscountExact: string | null;
@@ -154,6 +180,9 @@ export type QuotationRevisionLineRow = {
   taxPolicy?: string | null;
   taxRateBasisPoints?: string | null;
   dutyRateBasisPoints?: string | null;
+  selectedPriceListId?: string | null;
+  selectedPriceId?: string | null;
+  selectedPriceValidFrom?: string | Date | null;
 };
 
 export type QuotationRevisionSnapshotResult =
@@ -195,6 +224,20 @@ export const hashQuotationRevision = (
 
 const microsOf = (value: string | null): bigint | null =>
   isExactAmountText(value) ? parseExactAmountToMicros(value) : null;
+
+const readDateStamp = (value: string | Date | null | undefined): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const trimmed = value.trim();
+
+  return /^\d{4}-\d{2}-\d{2}/.test(trimmed) ? trimmed.slice(0, 10) : null;
+};
 
 // Amounts are never derived here: the snapshot records the stored plan and only checks
 // that it adds up. A quotation whose totals disagree with its lines is refused at issue
@@ -351,7 +394,7 @@ export const buildQuotationRevisionSnapshot = ({
       discountMicros: discount.toString(),
       taxMicros: tax.toString(),
       totalMicros: total.toString(),
-      ...(lineTaxPolicy !== ''
+        ...(lineTaxPolicy !== ''
         ? {
             taxPolicy: lineTaxPolicy,
             taxRateBasisPoints: /^\d{1,5}$/.test(lineTaxRate)
@@ -362,6 +405,13 @@ export const buildQuotationRevisionSnapshot = ({
               : null,
           }
         : {}),
+      ...((line.selectedPriceListId ?? '').trim() === ''
+        ? {}
+        : {
+            selectedPriceListId: (line.selectedPriceListId as string).trim(),
+            selectedPriceId: (line.selectedPriceId ?? '').trim() || null,
+            selectedPriceValidFrom: readDateStamp(line.selectedPriceValidFrom),
+          }),
     });
   }
 
@@ -472,6 +522,39 @@ export const buildQuotationRevisionSnapshot = ({
         (header.paymentTerms ?? '').trim() === ''
           ? null
           : (header.paymentTerms as string).trim(),
+      ...(identity
+        ? {
+            paymentDueDate: readDateStamp(header.paymentDueDate),
+            deliveryTerms:
+              (header.deliveryTerms ?? '').trim() === ''
+                ? null
+                : (header.deliveryTerms as string).trim(),
+            documentNotes:
+              (header.documentNotes ?? '').trim() === ''
+                ? null
+                : (header.documentNotes as string).trim(),
+            ...((header.issuerLegalName ?? '').trim() === ''
+              ? {}
+              : {
+                  issuerSnapshot: {
+                    legalName: (header.issuerLegalName as string).trim(),
+                    nationalId: (header.issuerNationalId ?? '').trim() || null,
+                    economicCode:
+                      (header.issuerEconomicCode ?? '').trim() || null,
+                    address: (header.issuerAddress ?? '').trim() || null,
+                    phone: (header.issuerPhone ?? '').trim() || null,
+                  },
+                }),
+            visitorName:
+              (header.visitorName ?? '').trim() === ''
+                ? null
+                : (header.visitorName as string).trim(),
+            selectedPriceListName:
+              (header.selectedPriceListName ?? '').trim() === ''
+                ? null
+                : (header.selectedPriceListName as string).trim(),
+          }
+        : {}),
       lines: sealedLines,
       totals: {
         grossMicros: headerGross.toString(),
