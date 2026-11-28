@@ -45,6 +45,9 @@ export type QuotationRevisionLine = {
   documentDiscountMicros?: string;
   description: string;
   unit: string;
+  unitRecordId?: string | null;
+  unitCode?: string;
+  unitAccountingCode?: string;
   quantityScaled: string;
   unitPriceMicros: string;
   discountMicros: string;
