@@ -6,6 +6,7 @@ export type WorkspaceQuotationUnitRow = {
   name: string | null;
   isActive: boolean | null;
   accountingCode: string | null;
+  accountingCodeLocked?: boolean | null;
 };
 
 export type WorkspaceQuotationUnitView = {
