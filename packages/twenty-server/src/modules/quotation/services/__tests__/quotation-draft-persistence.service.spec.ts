@@ -126,6 +126,8 @@ const buildScope = ({
       update: jest.fn(async () => ({ affected: 1 })),
     },
     catalogItem: { find: jest.fn(async () => []) },
+    priceList: { findOne: jest.fn(async () => ({ id: 'list-1', name: 'فروش ویژه', currencyCode: 'IRR' })) },
+    price: { find: jest.fn(async () => [{ id: 'price-1', itemId: 'item-1', priceListId: 'list-1', unitPriceExact: '1000000.000000', validFrom: '2020-01-01', validTo: null }]) },
     quotationCurrency: {
       findOne:
         quotationCurrencyFindOne ?? jest.fn(async () => irrCurrency),
@@ -422,6 +424,30 @@ describe('QuotationDraftPersistenceService', () => {
     expect(scope.getRepository('quotationLine').insert.mock.calls[0][0][0].unit).toBe('عدد');
     scope.getRepository('catalogItem').find.mockResolvedValue([{ id: 'item-1', unitRecordId: 'another-unit', isActive: true }]);
     expect(await service.saveDraft({ authContext, body: body({ lines: [rawLine({ itemId: 'item-1' })] }) })).toMatchObject({ kind: 'REJECTED', code: 'UNIT_MAPPING_REQUIRED' });
+  });
+
+  it('validates catalog price origin and stores the authoritative list name', async () => {
+    const scope = buildScope();
+    scope.getRepository('catalogItem').find.mockResolvedValue([{ id: 'item-1', unitRecordId: 'unit-1', isActive: true }]);
+    const { service } = buildService({ permissions: ['quotation.edit'], scope });
+    const input = body({
+      header: { ...body().header, selectedPriceListId: 'list-1', selectedPriceListName: 'caller spoof' },
+      lines: [rawLine({ itemId: 'item-1', selectedPriceListId: 'list-1', selectedPriceId: 'price-1', selectedPriceValidFrom: '2020-01-01' })],
+    });
+    expect(await service.saveDraft({ authContext, body: input })).toMatchObject({ kind: 'SAVED' });
+    expect(scope.getRepository('quotation').insert).toHaveBeenCalledWith(expect.objectContaining({ selectedPriceListName: 'فروش ویژه' }));
+    expect(scope.getRepository('quotationLine').insert).toHaveBeenCalledWith([expect.objectContaining({ selectedPriceId: 'price-1' })]);
+  });
+
+  it.each(['wrong-price', 'wrong-list', 'wrong-amount'])('rejects %s provenance before document writes', async (mode) => {
+    const scope = buildScope();
+    const { service } = buildService({ permissions: ['quotation.edit'], scope });
+    if (mode === 'wrong-amount') scope.getRepository('price').find.mockResolvedValue([{ id: 'price-1', itemId: 'item-1', priceListId: 'list-1', unitPriceExact: '999.000000', validFrom: '2020-01-01', validTo: null }]);
+    expect(await service.saveDraft({ authContext, body: body({
+      header: { ...body().header, selectedPriceListId: 'list-1' },
+      lines: [rawLine({ itemId: 'item-1', selectedPriceListId: mode === 'wrong-list' ? 'other' : 'list-1', selectedPriceId: mode === 'wrong-price' ? 'other' : 'price-1', selectedPriceValidFrom: '2020-01-01' })],
+    }) })).toMatchObject({ kind: 'REJECTED', code: 'PRICE_PROVENANCE_INVALID' });
+    expect(scope.getRepository('quotation').insert).not.toHaveBeenCalled();
   });
 
   it('labels a person draft from the composite name the ORM returns', async () => {
