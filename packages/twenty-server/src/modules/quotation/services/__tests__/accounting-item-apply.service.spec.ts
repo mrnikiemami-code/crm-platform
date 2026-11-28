@@ -48,6 +48,14 @@ describe('Goal 040 atomic item apply source boundary', () => {
     expect(linkInsert).toHaveBeenCalledWith(expect.objectContaining({ observationJson: expect.stringContaining('"serial":"abc"') }));
   });
 
+  it('rejects an observed incompatible primary unit before writing any item, price or link', async () => {
+    const { service, insert, priceInsert, linkInsert } = setup();
+    expect(await service.apply({ ...input, plan: { ...plan, rows: [{ ...row, vendorUnitName: 'کیلوگرم' }] } })).toMatchObject({ success: false, code: 'UNIT_MAPPING_REQUIRED' });
+    expect(insert).not.toHaveBeenCalled();
+    expect(priceInsert).not.toHaveBeenCalled();
+    expect(linkInsert).not.toHaveBeenCalled();
+  });
+
   it('reports failure without advancing the link on price error (real PG rollback remains a separate gate)', async () => {
     const { service, transaction, linkInsert } = setup(true);
     expect(await service.apply(input)).toMatchObject({ success: false, code: 'PERSISTENCE_FAILED' });
